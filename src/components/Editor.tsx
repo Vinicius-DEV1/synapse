@@ -6,9 +6,10 @@ import PageSearchMenu from './PageSearchMenu';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useStore } from '../store/useStore';
 import ImageViewerModal from './ImageViewerModal';
-import { Copy, Trash } from 'lucide-react';
+import { Copy, Trash, Sparkles } from 'lucide-react';
 import { getSettings } from '../utils/settings';
 import type { AppSettings } from '../utils/settings';
+import AiPromptModal from './AiPromptModal';
 
 interface EditorProps {
   pageId: string | null;
@@ -37,6 +38,8 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
   const [pageMenu, setPageMenu] = useState<{ x: number, y: number, query: string, node: Node } | null>(null);
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [aiModal, setAiModal] = useState<{ x: number, y: number, contextText?: string, contextImage?: string, targetNode?: Node } | null>(null);
+  const [aiChatSessions, setAiChatSessions] = useState<Record<string, any[]>>({});
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const { state, dispatch } = useStore();
   const lastPageIdRef = useRef(pageId);
@@ -90,6 +93,26 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
   useEffect(() => {
     if (editorRef.current && pageId !== lastPageIdRef.current) {
       editorRef.current.innerHTML = initialContent || '<p><br></p>';
+      
+      // Reset question blocks
+      editorRef.current.querySelectorAll('.question-block').forEach(qb => {
+        qb.setAttribute('data-answered', 'false');
+        qb.querySelectorAll('input[type="radio"]').forEach((radio: any) => {
+          radio.checked = false;
+        });
+
+        // Add delete button if it doesn't exist
+        if (!qb.querySelector('.question-delete-btn')) {
+          qb.classList.add('relative');
+          const delBtn = document.createElement('button');
+          delBtn.className = 'question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors';
+          delBtn.contentEditable = 'false';
+          delBtn.title = 'Deletar Questão';
+          delBtn.innerHTML = '🗑️';
+          qb.insertBefore(delBtn, qb.firstChild);
+        }
+      });
+
       lastPageIdRef.current = pageId;
     }
   }, [pageId, initialContent]);
@@ -127,6 +150,25 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
   useEffect(() => {
     if (editorRef.current && !editorRef.current.innerHTML) {
       editorRef.current.innerHTML = initialContent || '<p><br></p>';
+      
+      // Reset question blocks
+      editorRef.current.querySelectorAll('.question-block').forEach(qb => {
+        qb.setAttribute('data-answered', 'false');
+        qb.querySelectorAll('input[type="radio"]').forEach((radio: any) => {
+          radio.checked = false;
+        });
+
+        // Add delete button if it doesn't exist
+        if (!qb.querySelector('.question-delete-btn')) {
+          qb.classList.add('relative');
+          const delBtn = document.createElement('button');
+          delBtn.className = 'question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors';
+          delBtn.contentEditable = 'false';
+          delBtn.title = 'Deletar Questão';
+          delBtn.innerHTML = '🗑️';
+          qb.insertBefore(delBtn, qb.firstChild);
+        }
+      });
       
       const ensureTrailingEditable = (container: Element) => {
         const last = container.lastElementChild;
@@ -542,6 +584,34 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
           <p><br></p>`;
         isBlock = true;
         break;
+      case 'question':
+        replacementHtml = `
+          <div class="question-block relative" data-answered="false" data-correct-index="0" contenteditable="false">
+            <button class="question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" contenteditable="false" title="Deletar Questão">🗑️</button>
+            <div class="question-text" contenteditable="true">Escreva sua pergunta aqui...</div>
+            <div class="question-options">
+              <div class="question-option" data-index="0">
+                <input type="radio" name="q_${Date.now()}" value="0">
+                <span contenteditable="true">Opção A (Correta)</span>
+              </div>
+              <div class="question-option" data-index="1">
+                <input type="radio" name="q_${Date.now()}" value="1">
+                <span contenteditable="true">Opção B</span>
+              </div>
+              <div class="question-option" data-index="2">
+                <input type="radio" name="q_${Date.now()}" value="2">
+                <span contenteditable="true">Opção C</span>
+              </div>
+              <div class="question-option" data-index="3">
+                <input type="radio" name="q_${Date.now()}" value="3">
+                <span contenteditable="true">Opção D</span>
+              </div>
+            </div>
+            <button class="question-answer-btn">Responder</button>
+          </div>
+          <p><br></p>`;
+        isBlock = true;
+        break;
     }
     
     if (isBlock) {
@@ -564,6 +634,7 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
       if (commandId === 'bullet') targetForCursor = targetForCursor.querySelector('li') as HTMLElement;
       if (commandId === 'group') targetForCursor = targetForCursor.querySelector('.group-title') as HTMLElement;
       if (commandId === 'table') targetForCursor = targetForCursor.querySelector('td') as HTMLElement;
+      if (commandId === 'question') targetForCursor = targetForCursor.querySelector('.question-text') as HTMLElement;
       if (commandId === 'divider') targetForCursor = newNodes[1] as HTMLElement;
       
       if (targetForCursor) {
@@ -957,6 +1028,38 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
       }
       return;
     }
+    // Handle Question Delete Button
+    if (target.closest('.question-delete-btn')) {
+      e.preventDefault();
+      const questionBlock = target.closest('.question-block');
+      if (questionBlock) {
+        questionBlock.remove();
+        if (editorRef.current) debouncedSave(editorRef.current.innerHTML);
+      }
+      return;
+    }
+
+    // Handle Question Answer Button
+    if (target.classList.contains('question-answer-btn')) {
+      e.preventDefault();
+      const questionBlock = target.closest('.question-block') as HTMLElement;
+      if (questionBlock) {
+        const correctIndex = questionBlock.getAttribute('data-correct-index');
+        const selectedRadio = questionBlock.querySelector('input[type="radio"]:checked') as HTMLInputElement;
+        
+        if (selectedRadio) {
+          if (selectedRadio.value === correctIndex) {
+            questionBlock.setAttribute('data-answered', 'correct');
+          } else {
+            questionBlock.setAttribute('data-answered', 'incorrect');
+          }
+          if (editorRef.current) debouncedSave(editorRef.current.innerHTML);
+        } else {
+          alert('Selecione uma opção antes de responder.');
+        }
+      }
+      return;
+    }
 
     // Image click
     if (target.tagName === 'IMG') {
@@ -1339,7 +1442,20 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
       </div>
 
         {showToolbar && (
-        <FloatingToolbar x={toolbarPos.x} y={toolbarPos.y} />
+        <FloatingToolbar 
+          x={toolbarPos.x} 
+          y={toolbarPos.y} 
+          onAiClick={() => {
+            const selection = window.getSelection();
+            if (selection && !selection.isCollapsed) {
+              const text = selection.toString();
+              const range = selection.getRangeAt(0);
+              const targetNode = range.commonAncestorContainer;
+              setAiModal({ x: toolbarPos.x, y: toolbarPos.y, contextText: text, targetNode });
+              setShowToolbar(false);
+            }
+          }}
+        />
       )}
 
       {slashMenu && !pageMenu && (
@@ -1443,6 +1559,33 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
           >
             <Copy size={16} />
           </button>
+          
+          <button 
+            onClick={() => {
+              const rect = selectedImage.getBoundingClientRect();
+              
+              // Draw image to canvas to get base64
+              const canvas = document.createElement('canvas');
+              canvas.width = selectedImage.naturalWidth;
+              canvas.height = selectedImage.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(selectedImage, 0, 0);
+                const base64 = canvas.toDataURL('image/jpeg');
+                setAiModal({ 
+                  x: rect.left + rect.width / 2, 
+                  y: rect.top - 8, 
+                  contextImage: base64, 
+                  targetNode: selectedImage 
+                });
+              }
+            }}
+            className="p-1.5 hover:bg-white/10 rounded text-brand-400 transition-colors"
+            title="IA Assistente"
+          >
+            <Sparkles size={16} />
+          </button>
+
           <button 
             onClick={() => {
               selectedImage.remove();
@@ -1496,6 +1639,85 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
           setIsViewerOpen(false);
         }}
       />
+
+      {aiModal && (() => {
+        const chatId = aiModal.contextImage || aiModal.contextText || 'global';
+        return (
+          <AiPromptModal
+            x={aiModal.x}
+            y={aiModal.y}
+            chatId={chatId}
+            messages={aiChatSessions[chatId] || []}
+            contextText={aiModal.contextText}
+            contextImage={aiModal.contextImage}
+            onMessageAdd={(id, msgs) => setAiChatSessions(prev => ({ ...prev, [id]: msgs }))}
+            onClear={(id) => setAiChatSessions(prev => ({ ...prev, [id]: [] }))}
+            onClose={() => setAiModal(null)}
+            onSuccess={(response) => {
+              if (!editorRef.current || !aiModal.targetNode) return;
+              
+              let blockNode = aiModal.targetNode as HTMLElement;
+            if (blockNode.nodeType === Node.TEXT_NODE) {
+              blockNode = blockNode.parentElement as HTMLElement;
+            }
+            while (blockNode && blockNode.parentElement !== editorRef.current && !blockNode.parentElement?.classList.contains('group-content') && !blockNode.parentElement?.classList.contains('toggle-content') && !blockNode.parentElement?.classList.contains('callout-content')) {
+              blockNode = blockNode.parentElement as HTMLElement;
+            }
+
+            if (!blockNode || !blockNode.parentElement) {
+              const p = document.createElement('p');
+              p.textContent = response;
+              editorRef.current.appendChild(p);
+              return;
+            }
+
+            let isQuestion = false;
+            try {
+              const parsed = JSON.parse(response);
+              if (parsed.enunciado && Array.isArray(parsed.opcoes) && typeof parsed.correta === 'number') {
+                isQuestion = true;
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question-block relative';
+                questionDiv.dataset.answered = "false";
+                questionDiv.dataset.correctIndex = parsed.correta.toString();
+                questionDiv.contentEditable = "false";
+                
+                let html = `
+                  <button class="question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" contenteditable="false" title="Deletar Questão">🗑️</button>
+                  <div class="question-text" contenteditable="true">${parsed.enunciado}</div>
+                  <div class="question-options">`;
+                parsed.opcoes.forEach((opt: string, idx: number) => {
+                  html += `<div class="question-option" data-index="${idx}"><input type="radio" name="q_${Date.now()}" value="${idx}"><span contenteditable="true">${opt}</span></div>`;
+                });
+                html += `</div><button class="question-answer-btn">Responder</button>`;
+                
+                questionDiv.innerHTML = html;
+                blockNode.parentElement.insertBefore(questionDiv, blockNode.nextSibling);
+                
+                const p = document.createElement('p');
+                p.innerHTML = '<br>';
+                blockNode.parentElement.insertBefore(p, questionDiv.nextSibling);
+              }
+            } catch (e) {}
+
+            if (!isQuestion) {
+              const lines = response.split('\n').filter(l => l.trim() !== '');
+              let lastInserted = blockNode;
+              lines.forEach(line => {
+                const p = document.createElement('p');
+                p.textContent = line;
+                if (lastInserted.parentElement) {
+                  lastInserted.parentElement.insertBefore(p, lastInserted.nextSibling);
+                  lastInserted = p;
+                }
+              });
+            }
+
+            debouncedSave(editorRef.current.innerHTML);
+          }}
+        />
+        );
+      })()}
     </div>
   );
 }
