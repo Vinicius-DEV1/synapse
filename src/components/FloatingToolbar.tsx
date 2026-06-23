@@ -1,13 +1,14 @@
-import { Bold, Italic, Underline, Palette, Strikethrough } from 'lucide-react';
+import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../utils/colors';
 
 interface FloatingToolbarProps {
   x: number;
   y: number;
+  onAiClick?: () => void;
 }
 
-export default function FloatingToolbar({ x, y }: FloatingToolbarProps) {
+export default function FloatingToolbar({ x, y, onAiClick }: FloatingToolbarProps) {
   const [showColors, setShowColors] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +77,16 @@ export default function FloatingToolbar({ x, y }: FloatingToolbarProps) {
       >
         <Strikethrough size={15} />
       </button>
+
+      {onAiClick && (
+        <button
+          onClick={onAiClick}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-all active:scale-90 ml-1 group"
+          title="Assistente IA"
+        >
+          <Sparkles size={15} className="group-hover:animate-pulse text-brand-400" />
+        </button>
+      )}
 
       <div className="w-px h-4 bg-white/10 mx-1" />
 

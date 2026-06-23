@@ -1,15 +1,40 @@
-import React, { useState } from 'react';
-import { Settings, ShieldCheck, KeyRound, ShieldAlert, X, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, ShieldCheck, KeyRound, ShieldAlert, X, Save, Sparkles, RefreshCw } from 'lucide-react';
 import { getSettings, saveSettings } from '../utils/settings';
 import type { AppSettings } from '../utils/settings';
+import { fetchGeminiModels } from '../services/gemini';
+import type { GeminiModel } from '../services/gemini';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai'>('general');
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
+  const [models, setModels] = useState<GeminiModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+
+  useEffect(() => {
+    if (activeTab === 'ai' && appSettings.geminiApiKey && models.length === 0) {
+      loadModels(appSettings.geminiApiKey);
+    }
+  }, [activeTab]);
+
+  const loadModels = async (key: string) => {
+    if (!key) return;
+    setLoadingModels(true);
+    setModelsError('');
+    try {
+      const fetched = await fetchGeminiModels(key);
+      setModels(fetched);
+    } catch (err: any) {
+      setModelsError(err.message || 'Erro ao carregar modelos');
+    } finally {
+      setLoadingModels(false);
+    }
+  };
 
   // Password State
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -108,6 +133,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
               className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'security' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
             >
               Segurança
+            </button>
+            <button 
+              onClick={() => setActiveTab('ai')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'ai' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
+            >
+              IA
             </button>
           </div>
         )}
@@ -282,6 +313,55 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                     <KeyRound size={16} />
                     Alterar Senha Mestra
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* IA */}
+            {activeTab === 'ai' && (
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+                    <Sparkles size={16} className="text-brand-400" />
+                    Gemini API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={appSettings.geminiApiKey || ''}
+                    onChange={(e) => setAppSettings({ ...appSettings, geminiApiKey: e.target.value })}
+                    className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                    placeholder="Sua chave da API..."
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => loadModels(appSettings.geminiApiKey)}
+                    disabled={!appSettings.geminiApiKey || loadingModels}
+                    className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={loadingModels ? 'animate-spin' : ''} />
+                    Carregar modelos disponíveis
+                  </button>
+                </div>
+                
+                <div className="border-t border-white/5 pt-4">
+                  <label className="block text-sm font-medium text-white mb-2">Modelo Principal</label>
+                  <select 
+                    value={appSettings.geminiModel || 'gemini-1.5-pro'}
+                    onChange={(e) => setAppSettings({ ...appSettings, geminiModel: e.target.value })}
+                    className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+                  >
+                    {models.length > 0 ? (
+                      models.map(m => (
+                        <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                      </>
+                    )}
+                  </select>
+                  {modelsError && <p className="text-xs text-red-400 mt-2">{modelsError}</p>}
                 </div>
               </div>
             )}

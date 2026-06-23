@@ -295,3 +295,94 @@
 .editor-table td:focus {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* Question Block Styles */
+.question-block {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  transition: all 0.3s ease;
+}
+
+.question-text {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #f3f4f6;
+  outline: none;
+}
+
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.question-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.question-option:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.question-option input[type="radio"] {
+  accent-color: #8b5cf6;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.question-option span {
+  flex: 1;
+  outline: none;
+  color: #d1d5db;
+}
+
+.question-answer-btn {
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.question-answer-btn:hover {
+  background-color: #7c3aed;
+}
+
+/* State: Answered Correctly */
+.question-block[data-answered="correct"] {
+  border-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.question-block[data-answered="correct"] .question-answer-btn {
+  background-color: #10b981;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* State: Answered Incorrectly */
+.question-block[data-answered="incorrect"] {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.question-block[data-answered="incorrect"] .question-answer-btn {
+  background-color: #ef4444;
+}

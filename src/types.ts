@@ -46,6 +46,16 @@ export interface WishlistItem {
 }
 
 
+export interface AiChatSession {
+  id: string;
+  pageId: string;
+  pageTitle: string;
+  contextText?: string;
+  contextImage?: string;
+  messages: any[];
+  updatedAt: number;
+}
+
 export interface AppState {
   activeModule: 'notes' | 'finance';
   pages: Page[];
@@ -60,6 +70,8 @@ export interface AppState {
     pageId: string;
   } | null;
   confirmDelete: string | null;
+  aiChatSessions: Record<string, AiChatSession>;
+  showAiSidebar: boolean;
 }
 
 export type Action =
@@ -78,7 +90,11 @@ export type Action =
   | { type: 'TOGGLE_NODE'; nodeId: string }
   | { type: 'SHOW_CONTEXT_MENU'; x: number; y: number; pageId: string }
   | { type: 'HIDE_CONTEXT_MENU' }
-  | { type: 'SET_CONFIRM_DELETE'; pageId: string | null };
+  | { type: 'SET_CONFIRM_DELETE'; pageId: string | null }
+  | { type: 'UPDATE_AI_CHAT'; session: AiChatSession }
+  | { type: 'DELETE_AI_CHAT'; id: string }
+  | { type: 'CLEAR_AI_CHATS' }
+  | { type: 'TOGGLE_AI_SIDEBAR' };
 
 
 declare global {

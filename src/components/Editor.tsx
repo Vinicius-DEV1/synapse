@@ -39,7 +39,6 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [aiModal, setAiModal] = useState<{ x: number, y: number, contextText?: string, contextImage?: string, targetNode?: Node } | null>(null);
-  const [aiChatSessions, setAiChatSessions] = useState<Record<string, any[]>>({});
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const { state, dispatch } = useStore();
   const lastPageIdRef = useRef(pageId);
@@ -1647,11 +1646,24 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
             x={aiModal.x}
             y={aiModal.y}
             chatId={chatId}
-            messages={aiChatSessions[chatId] || []}
+            messages={state.aiChatSessions[chatId]?.messages || []}
             contextText={aiModal.contextText}
             contextImage={aiModal.contextImage}
-            onMessageAdd={(id, msgs) => setAiChatSessions(prev => ({ ...prev, [id]: msgs }))}
-            onClear={(id) => setAiChatSessions(prev => ({ ...prev, [id]: [] }))}
+            onMessageAdd={(id, msgs) => {
+              dispatch({
+                type: 'UPDATE_AI_CHAT',
+                session: {
+                  id,
+                  pageId: pageId || '',
+                  pageTitle: state.pages.find(p => p.id === pageId)?.title || 'Página',
+                  contextText: aiModal.contextText,
+                  contextImage: aiModal.contextImage,
+                  messages: msgs,
+                  updatedAt: Date.now()
+                }
+              });
+            }}
+            onClear={(id) => dispatch({ type: 'DELETE_AI_CHAT', id })}
             onClose={() => setAiModal(null)}
             onSuccess={(response) => {
               if (!editorRef.current || !aiModal.targetNode) return;

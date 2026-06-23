@@ -4,6 +4,8 @@ export interface AppSettings {
   restoreTabsOnStartup: boolean;
   fontSize: 'text-sm' | 'text-base' | 'text-lg';
   spellcheck: boolean;
+  geminiApiKey: string;
+  geminiModel: string;
 }
 
 export function getSettings(): AppSettings {
@@ -12,7 +14,9 @@ export function getSettings(): AppSettings {
     inactivityTimeoutMinutes: 60,
     restoreTabsOnStartup: true,
     fontSize: 'text-base',
-    spellcheck: true
+    spellcheck: true,
+    geminiApiKey: '',
+    geminiModel: 'gemini-1.5-pro'
   };
   
   try {

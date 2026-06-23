@@ -71,6 +71,28 @@ export default function TabBar() {
       >
         <Plus size={15} />
       </button>
+
+      {/* Spacer to push AI button to the right */}
+      <div className="flex-1"></div>
+
+      {/* AI Sidebar Toggle */}
+      <button
+        onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
+        className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 mx-2 mb-1 rounded-lg text-xs font-medium transition-colors ${
+          state.showAiSidebar 
+            ? 'bg-brand-500/20 text-brand-400' 
+            : 'text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10'
+        }`}
+        title="Chats Ativos (IA)"
+      >
+        <span className="text-[14px]">✨</span>
+        <span className="hidden sm:inline">Assistente</span>
+        {Object.keys(state.aiChatSessions || {}).length > 0 && (
+          <span className="bg-brand-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
+            {Object.keys(state.aiChatSessions || {}).length}
+          </span>
+        )}
+      </button>
     </div>
   );
 }

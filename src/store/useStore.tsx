@@ -30,6 +30,7 @@ function loadSavedState(): Partial<AppState> {
         activeTabId: parsed.activeTabId,
         sidebarCollapsed: parsed.sidebarCollapsed,
         expandedNodes: parsed.expandedNodes,
+        aiChatSessions: parsed.aiChatSessions || {},
       };
     }
   } catch (e) {
@@ -49,6 +50,8 @@ const initialState: AppState = {
   expandedNodes: saved.expandedNodes || [],
   contextMenu: null,
   confirmDelete: null,
+  aiChatSessions: saved.aiChatSessions || {},
+  showAiSidebar: false,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -159,6 +162,27 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_CONFIRM_DELETE':
       return { ...state, confirmDelete: action.pageId };
 
+    case 'UPDATE_AI_CHAT':
+      return {
+        ...state,
+        aiChatSessions: {
+          ...state.aiChatSessions,
+          [action.session.id]: action.session
+        }
+      };
+
+    case 'DELETE_AI_CHAT': {
+      const newSessions = { ...state.aiChatSessions };
+      delete newSessions[action.id];
+      return { ...state, aiChatSessions: newSessions };
+    }
+
+    case 'CLEAR_AI_CHATS':
+      return { ...state, aiChatSessions: {} };
+
+    case 'TOGGLE_AI_SIDEBAR':
+      return { ...state, showAiSidebar: !state.showAiSidebar };
+
     default:
       return state;
   }
@@ -181,9 +205,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       activeTabId: state.activeTabId,
       sidebarCollapsed: state.sidebarCollapsed,
       expandedNodes: state.expandedNodes,
+      aiChatSessions: state.aiChatSessions,
     };
     localStorage.setItem('appLayoutState', JSON.stringify(stateToSave));
-  }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes]);
+  }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions]);
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

@@ -11,6 +11,7 @@ import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings } from './utils/settings';
 import type { AppSettings } from './utils/settings';
+import AiSidebar from './components/AiSidebar';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -181,6 +182,9 @@ function AppContent() {
           )}
         </div>
       </div>
+
+      {/* AI Sidebar */}
+      <AiSidebar />
 
       {/* Context Menu */}
       {state.contextMenu && (

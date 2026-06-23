@@ -142,13 +142,30 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
                   {isUser ? (
                     <p className="whitespace-pre-wrap">{displayUserText}</p>
                   ) : isQuestionJson ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2 text-brand-300 font-medium">
-                        <Sparkles size={14} />
-                        <span>✨ Questão Gerada</span>
-                      </div>
-                      <p className="text-xs text-dark-subtext">Clique em inserir para adicionar ao caderno.</p>
-                    </div>
+                    (() => {
+                      try {
+                        const parsed = JSON.parse(textContent);
+                        return (
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 text-brand-300 font-medium pb-2 border-b border-white/10">
+                              <Sparkles size={14} />
+                              <span>✨ Questão Gerada</span>
+                            </div>
+                            <p className="text-sm font-medium leading-relaxed">{parsed.enunciado}</p>
+                            <ul className="text-xs space-y-1.5 text-brand-50/80 mt-1">
+                              {parsed.opcoes.map((opt: string, i: number) => (
+                                <li key={i} className="flex gap-2">
+                                  <span className="font-bold text-brand-400">{String.fromCharCode(65 + i)})</span>
+                                  <span>{opt}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      } catch (e) {
+                        return <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>;
+                      }
+                    })()
                   ) : (
                     <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
                   )}
