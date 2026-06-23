@@ -5,7 +5,6 @@ import { promptGemini } from '../services/gemini';
 
 export default function AiSidebar() {
   const { state, dispatch } = useStore();
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +21,7 @@ export default function AiSidebar() {
     }
   };
 
-  const activeSession = activeChatId ? state.aiChatSessions[activeChatId] : null;
+  const activeSession = state.activeAiChatId ? state.aiChatSessions[state.activeAiChatId] : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +72,7 @@ export default function AiSidebar() {
         </button>
       </div>
 
-      {!activeChatId ? (
+      {!state.activeAiChatId ? (
         <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
           {sessions.length === 0 ? (
             <div className="text-center text-dark-subtext text-sm py-10">
@@ -85,7 +84,7 @@ export default function AiSidebar() {
               <div key={session.id} className="bg-dark-bg border border-white/5 rounded-xl p-3 hover:border-brand-500/30 transition-all group">
                 <div 
                   className="cursor-pointer"
-                  onClick={() => setActiveChatId(session.id)}
+                  onClick={() => dispatch({ type: 'OPEN_AI_CHAT', chatId: session.id })}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-dark-subtext truncate pr-2">
@@ -135,7 +134,7 @@ export default function AiSidebar() {
           {/* Chat Header */}
           <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-dark-card">
             <button 
-              onClick={() => setActiveChatId(null)}
+              onClick={() => dispatch({ type: 'OPEN_AI_CHAT', chatId: null })}
               className="p-1.5 text-dark-subtext hover:text-white rounded transition-colors"
             >
               <ChevronRight size={18} className="rotate-180" />

@@ -52,6 +52,7 @@ const initialState: AppState = {
   confirmDelete: null,
   aiChatSessions: saved.aiChatSessions || {},
   showAiSidebar: false,
+  activeAiChatId: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -174,15 +175,18 @@ function reducer(state: AppState, action: Action): AppState {
     case 'DELETE_AI_CHAT': {
       const newSessions = { ...state.aiChatSessions };
       delete newSessions[action.id];
-      return { ...state, aiChatSessions: newSessions };
+      const newState = { ...state, aiChatSessions: newSessions };
+      if (state.activeAiChatId === action.id) {
+        newState.activeAiChatId = null;
+      }
+      return newState;
     }
-
     case 'CLEAR_AI_CHATS':
-      return { ...state, aiChatSessions: {} };
-
+      return { ...state, aiChatSessions: {}, activeAiChatId: null };
     case 'TOGGLE_AI_SIDEBAR':
       return { ...state, showAiSidebar: !state.showAiSidebar };
-
+    case 'OPEN_AI_CHAT':
+      return { ...state, showAiSidebar: true, activeAiChatId: action.chatId };
     default:
       return state;
   }

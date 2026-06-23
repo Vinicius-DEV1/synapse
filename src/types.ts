@@ -72,6 +72,7 @@ export interface AppState {
   confirmDelete: string | null;
   aiChatSessions: Record<string, AiChatSession>;
   showAiSidebar: boolean;
+  activeAiChatId: string | null;
 }
 
 export type Action =
@@ -94,7 +95,8 @@ export type Action =
   | { type: 'UPDATE_AI_CHAT'; session: AiChatSession }
   | { type: 'DELETE_AI_CHAT'; id: string }
   | { type: 'CLEAR_AI_CHATS' }
-  | { type: 'TOGGLE_AI_SIDEBAR' };
+  | { type: 'TOGGLE_AI_SIDEBAR' }
+  | { type: 'OPEN_AI_CHAT'; chatId: string | null };
 
 
 declare global {

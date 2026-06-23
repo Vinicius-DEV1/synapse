@@ -986,6 +986,17 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
       return;
     }
 
+    // Handle AI chat reference clicks
+    const aiChatRef = target.closest('.ai-chat-reference');
+    if (aiChatRef) {
+      e.preventDefault();
+      const chatId = aiChatRef.getAttribute('data-chat-id');
+      if (chatId) {
+        dispatch({ type: 'OPEN_AI_CHAT', chatId });
+      }
+      return;
+    }
+
     // Handle Table add row
     if (target.classList.contains('add-row-btn')) {
       e.preventDefault();
@@ -1450,6 +1461,11 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
               const text = selection.toString();
               const range = selection.getRangeAt(0);
               const targetNode = range.commonAncestorContainer;
+              
+              // Wrap the selection in a glowing span
+              const spanHtml = `<span class="ai-chat-reference text-brand-400 bg-brand-500/10 border-b border-brand-500/30 rounded px-0.5 cursor-pointer" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;" title="Abrir chat da IA" data-chat-id="${text.replace(/"/g, '&quot;')}">${text}</span>`;
+              document.execCommand('insertHTML', false, spanHtml);
+              
               setAiModal({ x: toolbarPos.x, y: toolbarPos.y, contextText: text, targetNode });
               setShowToolbar(false);
             }
