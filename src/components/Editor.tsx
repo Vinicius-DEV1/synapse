@@ -1430,7 +1430,7 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
           contentEditable
           suppressContentEditableWarning
           spellCheck={settings.spellcheck}
-          className={`editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize}`}
+          className={`editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize} ai-highlight-${settings.aiChatHighlight || 'glow'}`}
           data-placeholder="Comece a escrever... (digite [] para criar uma tarefa)"
           onInput={handleInput}
           onPaste={handlePaste}
@@ -1462,8 +1462,8 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
               const range = selection.getRangeAt(0);
               const targetNode = range.commonAncestorContainer;
               
-              // Wrap the selection in a glowing span
-              const spanHtml = `<span class="ai-chat-reference text-brand-400 bg-brand-500/10 border-b border-brand-500/30 rounded px-0.5 cursor-pointer" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;" title="Abrir chat da IA" data-chat-id="${text.replace(/"/g, '&quot;')}">${text}</span>`;
+              // Wrap the selection in a clean span, styling is handled by CSS based on user settings
+              const spanHtml = `<span class="ai-chat-reference" title="Abrir chat da IA" data-chat-id="${text.replace(/"/g, '&quot;')}">${text}</span>`;
               document.execCommand('insertHTML', false, spanHtml);
               
               setAiModal({ x: toolbarPos.x, y: toolbarPos.y, contextText: text, targetNode });

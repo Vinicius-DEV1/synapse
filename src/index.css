@@ -386,3 +386,23 @@
 .question-block[data-answered="incorrect"] .question-answer-btn {
   background-color: #ef4444;
 }
+
+/* AI Chat Highlight Styles */
+.ai-highlight-glow .ai-chat-reference {
+  color: #a78bfa;
+  background-color: rgba(139, 92, 246, 0.1);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  padding: 0 2px;
+  cursor: pointer;
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ai-highlight-underline .ai-chat-reference {
+  border-bottom: 1px dashed rgba(139, 92, 246, 0.5);
+  cursor: pointer;
+}
+
+.ai-highlight-none .ai-chat-reference {
+  cursor: text;
+}

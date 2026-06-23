@@ -6,6 +6,7 @@ export interface AppSettings {
   spellcheck: boolean;
   geminiApiKey: string;
   geminiModel: string;
+  aiChatHighlight: 'glow' | 'underline' | 'none';
 }
 
 export function getSettings(): AppSettings {
@@ -16,7 +17,8 @@ export function getSettings(): AppSettings {
     fontSize: 'text-base',
     spellcheck: true,
     geminiApiKey: '',
-    geminiModel: 'gemini-1.5-pro'
+    geminiModel: 'gemini-1.5-pro',
+    aiChatHighlight: 'glow'
   };
   
   try {

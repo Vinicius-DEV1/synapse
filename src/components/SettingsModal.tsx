@@ -363,6 +363,22 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                   </select>
                   {modelsError && <p className="text-xs text-red-400 mt-2">{modelsError}</p>}
                 </div>
+                
+                <div className="border-t border-white/5 pt-4">
+                  <label className="block text-sm font-medium text-white mb-2">Destaque de Texto (Chat de IA)</label>
+                  <select 
+                    value={appSettings.aiChatHighlight || 'glow'}
+                    onChange={(e) => setAppSettings({ ...appSettings, aiChatHighlight: e.target.value as 'glow' | 'underline' | 'none' })}
+                    className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+                  >
+                    <option value="glow">Brilho Pulsante (Recomendado)</option>
+                    <option value="underline">Apenas Sublinhado (Sutil)</option>
+                    <option value="none">Nenhum (Invisível)</option>
+                  </select>
+                  <p className="text-[11px] text-dark-subtext mt-1.5">
+                    Define como os trechos de texto que possuem um chat vinculado serão exibidos no editor.
+                  </p>
+                </div>
               </div>
             )}
 
