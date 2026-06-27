@@ -37,6 +37,19 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showMobileTools, setShowMobileTools] = useState(false);
+  const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handlePdfClick = () => {
+    setShowMobileTools(true);
+    if (toolsTimeoutRef.current) {
+      clearTimeout(toolsTimeoutRef.current);
+    }
+    toolsTimeoutRef.current = setTimeout(() => {
+      setShowMobileTools(false);
+    }, 3000);
+  };
+
   const [zoomInputActive, setZoomInputActive] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const zoomInputRef = useRef<HTMLInputElement>(null);
@@ -614,7 +627,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   return (
     <div className="flex-1 flex flex-col h-full bg-dark-bg overflow-hidden relative">
       {/* Floating Top-Left Controls */}
-      <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 opacity-30 hover:opacity-100 transition-opacity duration-300">
+      <div className={`absolute top-4 left-4 z-50 flex flex-col gap-2 transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
         <div className="flex items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 shadow-xl">
           <button 
             onClick={onBack}
@@ -630,7 +643,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       </div>
 
       {/* Floating Vertical Toolbar - Right Side */}
-      <div className="absolute top-1/2 -translate-y-1/2 right-4 z-50 flex flex-col items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl opacity-30 hover:opacity-100 transition-opacity duration-300">
+      <div className={`absolute top-1/2 -translate-y-1/2 right-4 z-50 flex flex-col items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
 
         {/* Pagination */}
         <div className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-1.5 w-full">
@@ -763,6 +776,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         {/* PDF Scroll Container */}
         <div 
           ref={scrollRef}
+          onClick={handlePdfClick}
           className={`flex-1 overflow-y-auto pdf-scroll-container p-4 pb-20 reading-mode-${readingMode}`}
         >
           {/* Top spacer — represents all unmounted pages above the window */}
