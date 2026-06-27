@@ -98,9 +98,12 @@ function setupTables() {
       last_read_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      deleted_at DATETIME DEFAULT NULL
+      deleted_at DATETIME DEFAULT NULL,
+      drive_file_id TEXT DEFAULT NULL
     )
   `);
+  // Migration for library_books
+  db.run(`ALTER TABLE library_books ADD COLUMN drive_file_id TEXT DEFAULT NULL`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS library_collections (
@@ -1233,3 +1236,4 @@ ipcMain.handle('sync:get-table', async (_, tableName: string) => {
       });
     });
   });
+

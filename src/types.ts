@@ -65,6 +65,7 @@ export interface LibraryBook {
   last_read_at: string | null;
   created_at: string;
   updated_at: string;
+  drive_file_id?: string | null;
   collections?: LibraryCollection[];
 }
 

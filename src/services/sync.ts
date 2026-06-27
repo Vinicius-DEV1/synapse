@@ -1,7 +1,8 @@
 import { db } from './firebase';
 import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
-import { uploadEncryptedPdf } from './storage';
 import { encryptText, decryptText } from './crypto';
+import { encryptFile } from './storage';
+import { getValidAccessToken, uploadToDrive } from './drive';
 
 // TODAS as tabelas do nosso Super App
 const SYNC_TABLES = [
@@ -137,30 +138,37 @@ export async function syncPdfsToCloud(masterKey: CryptoKey): Promise<void> {
   try {
     const books = await window.api.library.getBooks();
     for (const book of books) {
-      // Se o file_path NÃO contém uma barra ('/'), significa que é um arquivo 
-      // local do Desktop (ex: "livro1.pdf") e ainda não está no Storage ("library/livro1.enc")
-      if (book.file_path && !book.file_path.includes('/')) {
-        console.log(`[Sync] Fazendo upload E2EE de PDF legado: ${book.title}`);
+      // Se não tem drive_file_id (novo no SQLite), precisa subir
+      if (book.file_path && !book.drive_file_id && !book.file_path.includes('/')) {
+        console.log(`[Sync] Fazendo upload E2EE de PDF para Google Drive: ${book.title}`);
         
         try {
+          const token = await getValidAccessToken();
+          if (!token) {
+            console.warn('[Sync] Sem token do Google Drive, pulando PDF:', book.title);
+            continue;
+          }
+
           const fileData = await window.api.library.getBookFile(book.id);
           if (!fileData) continue;
           
-          // O IPC do Electron manda Uint8Array, precisamos garantir que seja ArrayBuffer
           const buffer = fileData instanceof Uint8Array ? fileData.buffer : fileData;
           
-          // Faz o upload pro Firebase Storage
-          const remotePath = await uploadEncryptedPdf(book.id, buffer, masterKey);
+          // Criptografa o PDF inteiro
+          const encrypted = await encryptFile(buffer, masterKey);
           
-          // Atualiza o banco local com o novo caminho da nuvem
+          // Faz o upload pro Google Drive
+          const driveFileId = await uploadToDrive(token, `Caderno_${book.id}.enc`, encrypted);
+          
+          // Atualiza apenas a coluna drive_file_id para não quebrar o arquivo local do Desktop
           await window.api.library.updateBook({
             id: book.id,
-            file_path: remotePath
+            drive_file_id: driveFileId
           });
           
-          console.log(`[Sync] PDF antigo subiu com sucesso: ${remotePath}`);
+          console.log(`[Sync] PDF subiu com sucesso para o Drive com ID: ${driveFileId}`);
         } catch (err) {
-          console.error(`[Sync] Erro ao subir PDF legado: ${book.title}`, err);
+          console.error(`[Sync] Erro ao subir PDF para o Drive: ${book.title}`, err);
         }
       }
     }
