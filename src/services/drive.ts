@@ -82,14 +82,48 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   return token;
 }
 
+const APP_FOLDER_NAME = 'Caderno - Biblioteca';
+
+async function getOrCreateAppFolder(accessToken: string): Promise<string> {
+  const query = encodeURIComponent(`name = '${APP_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+  const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  
+  if (res.ok) {
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      return data.files[0].id;
+    }
+  }
+
+  // Se não existir, cria a pasta
+  const createRes = await fetch(DRIVE_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: APP_FOLDER_NAME,
+      mimeType: 'application/vnd.google-apps.folder'
+    })
+  });
+
+  const createData = await createRes.json();
+  return createData.id;
+}
+
 /**
  * Faz upload do buffer (já criptografado) para o Google Drive
  */
 export async function uploadToDrive(accessToken: string, filename: string, buffer: ArrayBuffer): Promise<string> {
+  const folderId = await getOrCreateAppFolder(accessToken);
+
   const metadata = {
     name: filename,
     mimeType: 'application/octet-stream',
-    parents: ['root'] // Na pasta raiz por enquanto
+    parents: [folderId] // Salva dentro da pasta do app
   };
 
   const form = new FormData();
