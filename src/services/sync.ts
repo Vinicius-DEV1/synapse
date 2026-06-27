@@ -1,6 +1,6 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
-import { encryptText, decryptText } from './crypto';
+import { collection, doc, setDoc, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
+import { encryptText, decryptText, deriveMasterKey } from './crypto';
 import { encryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive } from './drive';
 
@@ -32,6 +32,45 @@ const SYNC_TABLES = [
   'library_collections',
   'config'
 ];
+
+export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
+  try {
+    const masterKey = await deriveMasterKey(password);
+    
+    const docRef = doc(db, 'config', 'auth_validator');
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists() || !docSnap.data().encryptedData) {
+      // Nuvem 100% virgem
+      return { isValid: true, isNew: true };
+    }
+    
+    // Validador existe. Testa estritamente o validador.
+    // Qualquer página corrompida na nuvem será ignorada. O validador é a lei.
+    try {
+      const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
+      const parsed = JSON.parse(decryptedJson);
+      if (parsed.validator === 'CADERNO_VALIDO') {
+        return { isValid: true, isNew: false };
+      }
+    } catch (e) {
+      // Falha ao descriptografar
+    }
+
+    return { isValid: false, isNew: false };
+  } catch (err) {
+    return { isValid: false, isNew: false };
+  }
+}
+
+export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
+  const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });
+  const encryptedData = await encryptText(payload, masterKey);
+  await setDoc(doc(db, 'config', 'auth_validator'), {
+    encryptedData,
+    updatedAt: new Date().toISOString()
+  });
+}
 
 /**
  * Puxa todas as tabelas do Firebase, descriptografa e faz o upsert no SQLite local

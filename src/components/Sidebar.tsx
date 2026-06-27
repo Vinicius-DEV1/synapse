@@ -24,7 +24,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       )
     : rootPages;
 
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const activeModule = activeTab.module;
 
   if (state.sidebarCollapsed) {
     return (
@@ -49,7 +50,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         >
           <PanelLeft size={18} />
         </button>
-        {state.activeModule === 'notes' && (
+        {activeModule === 'notes' && (
           <button
             onClick={() => onCreatePage(null)}
             className="p-2 rounded-lg hover:bg-brand-500/20 text-dark-subtext hover:text-brand-400 transition-all active:scale-95"
@@ -60,27 +61,27 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         )}
         <div className="mt-auto flex flex-col gap-4">
           <button
-            onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'notes' })}
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'notes' })}
             className={`p-2 rounded-lg transition-all active:scale-95 ${
-              state.activeModule === 'notes' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              activeModule === 'notes' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
             }`}
             title="Caderno"
           >
             <BookOpen size={18} />
           </button>
           <button
-            onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'library' })}
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'library' })}
             className={`p-2 rounded-lg transition-all active:scale-95 ${
-              state.activeModule === 'library' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              activeModule === 'library' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
             }`}
             title="Biblioteca"
           >
             <Library size={18} />
           </button>
           <button
-            onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'finance' })}
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'finance' })}
             className={`p-2 rounded-lg transition-all active:scale-95 ${
-              state.activeModule === 'finance' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              activeModule === 'finance' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
             }`}
             title="Finanças"
           >
@@ -113,15 +114,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
-          {state.activeModule === 'notes' ? (
+          {activeModule === 'notes' ? (
             <BookOpen size={20} className="text-brand-400" />
-          ) : state.activeModule === 'library' ? (
+          ) : activeModule === 'library' ? (
             <Library size={20} className="text-brand-400" />
           ) : (
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {state.activeModule === 'notes' ? 'Caderno' : state.activeModule === 'library' ? 'Biblioteca' : 'Finanças'}
+            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : 'Finanças'}
           </span>
         </div>
         <button
@@ -132,7 +133,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </button>
       </div>
 
-      {state.activeModule === 'notes' && (
+      {activeModule === 'notes' && (
         <>
           {/* Search */}
           <div className="px-3 py-2">
@@ -163,7 +164,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
       {/* Tree */}
       <div className="flex-1 overflow-y-auto px-2 py-1">
-        {state.activeModule === 'notes' ? (
+        {activeModule === 'notes' ? (
           <>
             {filteredPages.length === 0 && (
               <div className="text-center text-dark-subtext text-xs py-8 px-4">
@@ -182,7 +183,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               />
             ))}
           </>
-        ) : state.activeModule === 'library' ? (
+        ) : activeModule === 'library' ? (
           <div className="flex flex-col gap-1 mt-2">
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Biblioteca de PDFs</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Use o painel principal para gerenciar seus livros e coleções.</div>
@@ -208,9 +209,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       {/* Module Switcher (Footer) */}
       <div className="p-3 border-t border-white/5 flex flex-col gap-1">
         <button
-          onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'notes' })}
+          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'notes' })}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            state.activeModule === 'notes'
+            activeModule === 'notes'
               ? 'bg-brand-500/10 text-brand-400'
               : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
@@ -219,9 +220,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <span>Caderno</span>
         </button>
         <button
-          onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'library' })}
+          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'library' })}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            state.activeModule === 'library'
+            activeModule === 'library'
               ? 'bg-brand-500/10 text-brand-400'
               : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
@@ -230,9 +231,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <span>Biblioteca</span>
         </button>
         <button
-          onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'finance' })}
+          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'finance' })}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            state.activeModule === 'finance'
+            activeModule === 'finance'
               ? 'bg-brand-500/10 text-brand-400'
               : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}

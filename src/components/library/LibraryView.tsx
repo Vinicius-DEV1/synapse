@@ -10,6 +10,7 @@ import ReadingStatsView from './ReadingStatsView';
 import PdfReader from './PdfReader';
 import DriveAuthModal from './DriveAuthModal';
 import { getDriveCredentials } from '../../services/drive';
+import { useStore } from '../../store/useStore';
 
 type SortBy = 'last_read' | 'title' | 'created' | 'author';
 type SortOrder = 'asc' | 'desc';
@@ -31,7 +32,14 @@ const STATUS_LABELS: Record<ReadingStatus | 'all', string> = {
 export default function LibraryView() {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
-  const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
+  
+  const { state, dispatch } = useStore();
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const selectedBookId = activeTab.module === 'library' ? activeTab.bookId : null;
+  const selectedBook = useMemo(() => {
+    return selectedBookId ? books.find(b => b.id === selectedBookId) || null : null;
+  }, [books, selectedBookId]);
+
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -165,11 +173,11 @@ export default function LibraryView() {
   };
 
   const handleSelectBook = (book: LibraryBook) => {
-    setSelectedBook(book);
+    dispatch({ type: 'OPEN_LIBRARY_BOOK', bookId: book.id, title: book.title });
   };
 
   const handleBackFromReader = () => {
-    setSelectedBook(null);
+    dispatch({ type: 'CLOSE_LIBRARY_BOOK', tabId: activeTab.id });
     loadData(); // refresh data after reading session
   };
 
