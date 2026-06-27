@@ -7,6 +7,7 @@ import type { LibraryBook, LibraryHighlight, LibraryBookmark, ReadingMode } from
 import HighlightToolbar from './HighlightToolbar';
 import AnnotationPanel from './AnnotationPanel';
 import PdfSearchBar from './PdfSearchBar';
+import DictionaryModal from './DictionaryModal';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -27,6 +28,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [dictionaryWord, setDictionaryWord] = useState<string | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);
   const [selection, setSelection] = useState<{text: string; rects: any[]; pageNum: number; position: {x: number; y: number}} | null>(null);
   const [loading, setLoading] = useState(true);
@@ -262,22 +264,40 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       }
       
       const range = sel.getRangeAt(0);
+      const rects = range.getClientRects();
+      if (rects.length === 0) return;
+      
       const rect = range.getBoundingClientRect();
       
-      // Find the page number from the closest parent with data-page-number
+      // Find the page number and page element
       let node: Node | null = range.commonAncestorContainer;
       let pageNum = currentPage;
+      let pageElement: HTMLElement | null = null;
+      
       while (node && node !== document.body) {
         if (node instanceof HTMLElement && node.hasAttribute('data-page-number')) {
           pageNum = parseInt(node.getAttribute('data-page-number') || '1', 10);
+          pageElement = node;
           break;
         }
         node = node.parentNode;
       }
 
+      if (!pageElement) return;
+
+      const pageRect = pageElement.getBoundingClientRect();
+      
+      // Calculate relative rects (percentages) to be scale-invariant
+      const relativeRects = Array.from(rects).map(r => ({
+        left: (r.left - pageRect.left) / pageRect.width,
+        top: (r.top - pageRect.top) / pageRect.height,
+        width: r.width / pageRect.width,
+        height: r.height / pageRect.height
+      }));
+
       setSelection({
         text: sel.toString(),
-        rects: [/* Calculate relative rects here if fully implemented */],
+        rects: relativeRects,
         pageNum,
         position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
       });
@@ -482,11 +502,21 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       {selection && (
         <HighlightToolbar
           position={selection.position}
+          selectedText={selection.text}
           onHighlight={handleCreateHighlight}
+          onDictionary={(text) => setDictionaryWord(text)}
           onDismiss={() => {
             setSelection(null);
             window.getSelection()?.removeAllRanges();
           }}
+        />
+      )}
+
+      {/* Dictionary Modal */}
+      {dictionaryWord && (
+        <DictionaryModal 
+          text={dictionaryWord} 
+          onClose={() => setDictionaryWord(null)} 
         />
       )}
     </div>
@@ -678,8 +708,37 @@ const PdfPage = React.memo(({
             ))}
           </div>
 
-          <div className="pdf-highlight-layer">
-            {/* Render highlights here based on rects */}
+          <div className="pdf-highlight-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            {_highlights.map((h, i) => {
+              try {
+                const rects = JSON.parse(h.rects);
+                return rects.map((r: any, j: number) => {
+                  let colorHex = '#fbbf24'; // yellow
+                  if (h.color === 'green') colorHex = '#34d399';
+                  if (h.color === 'blue') colorHex = '#60a5fa';
+                  if (h.color === 'pink') colorHex = '#f472b6';
+                  if (h.color === 'orange') colorHex = '#fb923c';
+
+                  return (
+                    <div 
+                      key={`${i}-${j}`}
+                      style={{
+                        position: 'absolute',
+                        left: `${r.left * 100}%`,
+                        top: `${r.top * 100}%`,
+                        width: `${r.width * 100}%`,
+                        height: `${r.height * 100}%`,
+                        backgroundColor: colorHex,
+                        opacity: 0.35,
+                        mixBlendMode: 'multiply'
+                      }}
+                    />
+                  );
+                });
+              } catch (e) {
+                return null;
+              }
+            })}
           </div>
 
           <div 

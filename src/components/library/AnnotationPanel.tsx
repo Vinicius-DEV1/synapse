@@ -261,10 +261,18 @@ function AnnotationsTab({
   onDelete: (id: string) => void;
   onNavigate: (page: number) => void;
 }) {
+  const handleRestorePdf = () => {
+    if (confirm('Tem certeza de que deseja apagar TODAS as anotações deste PDF? Isso restaurará o PDF ao seu estado original.')) {
+      groupedHighlights.forEach(items => {
+        items.forEach(h => onDelete(h.id));
+      });
+    }
+  };
+
   return (
-    <div className="p-3 space-y-3">
+    <div className="p-3 flex flex-col h-full space-y-3">
       {/* Search */}
-      <div className="flex items-center bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 focus-within:border-brand-500/50 transition-colors">
+      <div className="flex items-center bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 focus-within:border-brand-500/50 transition-colors shrink-0">
         <Search size={13} className="text-dark-subtext mr-2" />
         <input
           type="text"
@@ -387,10 +395,20 @@ function AnnotationsTab({
           ))}
 
           {/* Total count */}
-          <div className="text-center pt-2 pb-1">
+          <div className="text-center pt-2 pb-1 shrink-0">
             <span className="text-[10px] text-dark-subtext/40">
               {totalCount} {totalCount === 1 ? 'destaque' : 'destaques'}
             </span>
+          </div>
+
+          <div className="mt-auto pt-4 shrink-0">
+            <button
+              onClick={handleRestorePdf}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-red-500/20 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={14} />
+              Restaurar PDF (Apagar Tudo)
+            </button>
           </div>
         </>
       )}

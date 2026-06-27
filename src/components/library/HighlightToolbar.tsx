@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { StickyNote } from 'lucide-react';
+import { StickyNote, BookType } from 'lucide-react';
 import type { HighlightColor } from '../../types';
 
 interface HighlightToolbarProps {
   position: { x: number; y: number };
+  selectedText: string;
   onHighlight: (color: HighlightColor, note?: string) => void;
+  onDictionary: (text: string) => void;
   onDismiss: () => void;
 }
 
@@ -16,7 +18,7 @@ const HIGHLIGHT_COLORS: { color: HighlightColor; hex: string; label: string }[] 
   { color: 'orange', hex: '#fb923c', label: 'Laranja' },
 ];
 
-export default function HighlightToolbar({ position, onHighlight, onDismiss }: HighlightToolbarProps) {
+export default function HighlightToolbar({ position, selectedText, onHighlight, onDictionary, onDismiss }: HighlightToolbarProps) {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [selectedColor, setSelectedColor] = useState<HighlightColor | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -125,10 +127,22 @@ export default function HighlightToolbar({ position, onHighlight, onDismiss }: H
           {/* Divider */}
           <div className="w-px h-5 bg-white/10 mx-1" />
 
+          {/* Dictionary */}
+          <button
+            onClick={() => {
+              onDictionary(selectedText);
+              onDismiss();
+            }}
+            className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-brand-400 transition-all active:scale-90"
+            title="Dicionário / Traduzir"
+          >
+            <BookType size={14} />
+          </button>
+
           {/* Note toggle */}
           <button
             onClick={handleNoteToggle}
-            className={`p-1 rounded-lg transition-all active:scale-90 ${
+            className={`p-1.5 rounded-lg transition-all active:scale-90 ${
               showNoteInput
                 ? 'bg-brand-500/20 text-brand-400'
                 : 'text-dark-subtext hover:bg-white/10 hover:text-brand-400'
