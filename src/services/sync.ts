@@ -80,8 +80,13 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
         const cloudData = snap.data();
         const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
         
+        // Deleções sempre vencem — mesmo que o updated_at não tenha mudado
+        // (corrige registros deletados antes do fix de updated_at no soft-delete)
+        const isDeleted = !!row.deleted_at;
+        
         // Se a nuvem tem uma versão mais nova ou igual, não enviamos a nossa antiga
-        if (localTime <= cloudTime) {
+        // EXCETO se o registro foi deletado localmente (deleção tem prioridade)
+        if (!isDeleted && localTime <= cloudTime) {
           continue; 
         }
       }
