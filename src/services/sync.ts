@@ -4,6 +4,23 @@ import { encryptText, decryptText } from './crypto';
 import { encryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive } from './drive';
 
+function parseDateSafe(dateStr: string | undefined | null | number): number {
+  if (!dateStr) return 0;
+  if (typeof dateStr === 'number') return dateStr;
+  let s = dateStr;
+  // Convert SQLite CURRENT_TIMESTAMP "YYYY-MM-DD HH:MM:SS" to UTC "YYYY-MM-DDTHH:MM:SSZ"
+  if (s.length === 19 && s.charAt(10) === ' ') {
+    s = s.replace(' ', 'T') + 'Z';
+  } else if (s.length === 19 && s.charAt(10) === 'T' && !s.endsWith('Z')) {
+    s = s + 'Z';
+  }
+  const parsed = new Date(s).getTime();
+  if (typeof window !== 'undefined' && (window as any).api?.log) {
+    (window as any).api.log(`[parseDateSafe] input: ${dateStr}, output: ${s} -> ${parsed}`);
+  }
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 // TODAS as tabelas do nosso Super App
 const SYNC_TABLES = [
   'pages', 
@@ -37,10 +54,10 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
         
         const localRow = localRows.find((r: any) => r.id === docSnap.id);
         
-        const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
-        const localTime = localRow ? new Date(localRow.updated_at || localRow.created_at || 0).getTime() : -1;
+        const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+        const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
         
-        if (cloudTime > localTime) {
+        if (cloudTime !== localTime) {
           try {
             const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
             const parsed = JSON.parse(decryptedJson);
@@ -51,6 +68,10 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
               ...parsed
             };
 
+            if (typeof window !== 'undefined' && (window as any).api?.log) {
+              (window as any).api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
+            }
+
             // Merge CRDT Yjs se for uma página e ambos tiverem crdt_state
             if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
               try {
@@ -60,12 +81,38 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
                 Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
                 Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
                 rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
+                
+                if (typeof window !== 'undefined' && (window as any).api?.log) {
+                  (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                }
+                
+                // Se o nosso local era mais novo, preservamos a data local 
+                // para garantir que o pushAllToCloud envie esse novo merge para a nuvem!
+                // Além disso, preservamos os campos LWW (Last Write Wins) que não são CRDT!
+                if (localTime > cloudTime) {
+                  rowToUpsert.updated_at = localRow.updated_at;
+                  if (rowToUpsert.title !== undefined) rowToUpsert.title = localRow.title;
+                  if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
+                  if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
+                  if (rowToUpsert.sort_order !== undefined) rowToUpsert.sort_order = localRow.sort_order;
+                  if (localRow.deleted_at !== undefined) rowToUpsert.deleted_at = localRow.deleted_at;
+                }
               } catch (crdtErr) {
                 console.error("Erro no merge CRDT Yjs:", crdtErr);
               }
+            } else if (localTime > cloudTime) {
+              // Se não tiver CRDT e o local for mais novo, Last Write Wins!
+              // Ignoramos o pull para não sobrescrever nossa edição.
+              if (typeof window !== 'undefined' && (window as any).api?.log) {
+                (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+              }
+              continue;
             }
 
             await window.api.sync.upsertRow(table, rowToUpsert);
+            if (typeof window !== 'undefined' && (window as any).api?.log) {
+              (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+            }
           } catch (err: any) {
             const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
             console.error(msg);
@@ -103,16 +150,41 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
       const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
       
       for (const row of localRows) {
-        const localTime = new Date(row.updated_at || row.created_at || 0).getTime();
+        const localTime = parseDateSafe(row.updated_at || row.created_at || 0);
         const isDeleted = !!row.deleted_at;
         const cloudData = cloudMap.get(row.id);
 
         if (cloudData) {
-          const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
-          if (!isDeleted && localTime <= cloudTime) continue;
+          const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+          
+          let forcePushCrdt = false;
+          if (table === 'pages' && row.crdt_state) {
+            try {
+              const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
+              const parsed = JSON.parse(decryptedJson);
+              if (parsed.crdt_state && parsed.crdt_state !== row.crdt_state) {
+                forcePushCrdt = true;
+                if (typeof window !== 'undefined' && (window as any).api?.log) {
+                  (window as any).api.log(`[PUSH CRDT DIFF] Doc ${row.id}. Forcing push!`);
+                }
+              }
+            } catch (e) {
+              // Ignore decryption error here, let it fail normally
+            }
+          }
+
+          if (!forcePushCrdt && !isDeleted && localTime <= cloudTime) {
+            if (typeof window !== 'undefined' && (window as any).api?.log) {
+              (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
+            }
+            continue;
+          }
         }
 
         try {
+          if (typeof window !== 'undefined' && (window as any).api?.log) {
+            (window as any).api.log(`[PUSH DOING] Doc ${row.id}. Pushing to Firebase.`);
+          }
           const { id, updated_at, created_at, ...sensitiveData } = row;
           const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
           const docRef = doc(db, table, id);

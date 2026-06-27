@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useEditor, EditorContent, FloatingMenu, BubbleMenu } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import Highlight from '@tiptap/extension-highlight';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import Collaboration from '@tiptap/extension-collaboration';
+import { createPortal } from 'react-dom';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Placeholder } from '@tiptap/extension-placeholder';
+import { Highlight } from '@tiptap/extension-highlight';
+import { Link } from '@tiptap/extension-link';
+import { Image } from '@tiptap/extension-image';
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { TaskList } from '@tiptap/extension-task-list';
+import { TaskItem } from '@tiptap/extension-task-item';
+import { Collaboration } from '@tiptap/extension-collaboration';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc, getYDocStateAsBase64 } from '../utils/yjs-utils';
 import { getSettings } from '../utils/settings';
@@ -37,7 +36,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const ydocRef = useRef<Y.Doc | null>(null);
 
   // States para Slash Menu manual
-  const [slashMenu, setSlashMenu] = useState<{ query: string } | null>(null);
+  const [slashMenu, setSlashMenu] = useState<{ query: string, startPos: number, x: number, y: number } | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleSettingsChange = () => setSettings(getSettings());
@@ -52,6 +52,13 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
     }
   }
+
+  // Se o CloudSync puxar algo novo do banco de dados no background, injetamos na tela!
+  useEffect(() => {
+    if (ydocRef.current && initialCrdtState) {
+      applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
+    }
+  }, [initialCrdtState]);
 
   const editor = useEditor({
     extensions: [
@@ -79,30 +86,60 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/') {
-          setSlashMenu({ query: '' });
-          // Não dá preventDefault para o / aparecer
+          const startPos = view.state.selection.$head.pos;
+          const coords = view.coordsAtPos(startPos);
+          const x = coords.left;
+          const y = coords.top + 24; // 24px below cursor
+          setSlashMenu({ query: '', startPos, x, y });
           return false;
         }
         if (slashMenu) {
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' || event.key === ' ') {
             setSlashMenu(null);
+            if (event.key === ' ') return false;
             return true;
+          }
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            setSlashMenu(null);
+            return false; // let the cursor move
           }
           if (event.key === 'Backspace' && slashMenu.query.length === 0) {
             setSlashMenu(null);
             return false;
           }
-          if (event.key.length === 1 && event.key !== '/') {
-            setSlashMenu(prev => prev ? { query: prev.query + event.key } : null);
-          } else if (event.key === 'Backspace') {
-            setSlashMenu(prev => prev ? { query: prev.query.slice(0, -1) } : null);
-          }
+          return false;
         }
         return false;
       }
     },
     onUpdate: ({ editor }) => {
       if (!ydocRef.current) return;
+      
+      setSlashMenu(prev => {
+        try {
+          const currentPos = editor.state.selection.$head.pos;
+          if (prev) {
+            if (currentPos <= prev.startPos) return null; // fechou o menu apagando a barra
+            const rawQuery = editor.state.doc.textBetween(prev.startPos, currentPos);
+            const query = rawQuery.startsWith('/') ? rawQuery.substring(1) : rawQuery;
+            const coords = editor.view.coordsAtPos(prev.startPos);
+            return { ...prev, query, x: coords.left, y: coords.top + 24 };
+          } else {
+            // Mobile fallback: Check if user just typed a slash
+            const { $head } = editor.state.selection;
+            const textBefore = $head.parent.textBetween(0, $head.parentOffset);
+            if (textBefore.endsWith(' /') || textBefore === '/') {
+              const startPos = currentPos - 1;
+              const coords = editor.view.coordsAtPos(startPos);
+              return { query: '', startPos, x: coords.left, y: coords.top + 24 };
+            }
+            return null;
+          }
+        } catch (e) {
+          return null;
+        }
+      });
+
       const html = editor.getHTML();
       const crdtState = getYDocStateAsBase64(ydocRef.current);
       onSave(html, crdtState, []); // Embeds saves serão tratados depois se necessário
@@ -110,13 +147,13 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }, [pageId]);
 
   const executeSlashCommand = useCallback((commandId: string) => {
-    if (!editor) return;
-    setSlashMenu(null);
+    if (!editor || !slashMenu) return;
     
-    // Apaga o que foi digitado de query e a barra "/"
-    const pos = editor.state.selection.$head.pos;
-    const queryLen = (slashMenu?.query.length || 0) + 1; // +1 for the '/'
-    editor.commands.deleteRange({ from: pos - queryLen, to: pos });
+    const startPos = slashMenu.startPos;
+    const endPos = startPos + slashMenu.query.length + 1; 
+    
+    setSlashMenu(null);
+    editor.commands.deleteRange({ from: startPos, to: endPos });
 
     switch (commandId) {
       case 'h1': editor.commands.toggleHeading({ level: 1 }); break;
@@ -132,27 +169,24 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'table': 
         editor.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true }); 
         break;
-      // TODO: Implementar 'page' e 'ia'
       default: break;
     }
   }, [editor, slashMenu]);
 
   return (
-    <div className="relative tiptap-wrapper">
-      {editor && slashMenu && (
-        <div className="absolute z-50 mt-8" style={{ top: 0, left: 0 }}>
-          {/* Mock absolute positioning for now, ideally we use getBoundingClientRect() of cursor */}
-          <SlashMenu 
-            x={100} y={100} 
-            query={slashMenu.query} 
-            onSelect={executeSlashCommand} 
-            onClose={() => setSlashMenu(null)} 
-          />
-        </div>
+    <div className="relative tiptap-wrapper" ref={wrapperRef}>
+      {editor && slashMenu && createPortal(
+        <SlashMenu 
+          x={slashMenu.x} y={slashMenu.y} 
+          query={slashMenu.query} 
+          onSelect={executeSlashCommand} 
+          onClose={() => setSlashMenu(null)} 
+        />,
+        document.body
       )}
 
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100, zIndex: 99999, maxWidth: 'calc(100vw - 32px)' }}>
           <FloatingToolbar 
             formatState={{
               bold: editor.isActive('bold'),
