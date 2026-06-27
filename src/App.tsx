@@ -13,6 +13,7 @@ import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings } from './utils/settings';
 import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
+import { pushPageToCloud, deletePageFromCloud } from './services/sync';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -36,6 +37,7 @@ function AppContent() {
         window.api.auth.lock().then(() => {
           setIsAuth(false);
           setAuthStatus('encrypted');
+          dispatch({ type: 'SET_MASTER_KEY', key: null });
         });
       }
     }
@@ -52,6 +54,7 @@ function AppContent() {
       const cleanup = window.api.auth.onLock(() => {
         setIsAuth(false);
         setAuthStatus('encrypted');
+        dispatch({ type: 'SET_MASTER_KEY', key: null });
       });
       
       // Initialize backend preferences
@@ -86,8 +89,11 @@ function AppContent() {
       if (parentId && !state.expandedNodes.includes(parentId)) {
         dispatch({ type: 'TOGGLE_NODE', nodeId: parentId });
       }
+      if (state.masterKey) {
+        pushPageToCloud(page, state.masterKey).catch(err => console.error("Sync error:", err));
+      }
     }
-  }, [dispatch, state.expandedNodes]);
+  }, [dispatch, state.expandedNodes, state.masterKey]);
 
   const handleCreateLinkedPage = useCallback(async (title: string, parentId: string | null = null) => {
     if (window.api) {
@@ -95,39 +101,62 @@ function AppContent() {
       await window.api.updatePage({ id: page.id, title });
       page.title = title;
       dispatch({ type: 'ADD_PAGE', page });
+      if (state.masterKey) {
+        pushPageToCloud(page, state.masterKey).catch(err => console.error("Sync error:", err));
+      }
       return page.id;
     }
     return '';
-  }, [dispatch]);
+  }, [dispatch, state.masterKey]);
 
   const handleDeletePage = useCallback(async (id: string) => {
     if (window.api) {
       await window.api.deletePage(id);
       dispatch({ type: 'DELETE_PAGE', id });
       dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
+      if (state.masterKey) {
+        deletePageFromCloud(id).catch(err => console.error("Sync error:", err));
+      }
     }
-  }, [dispatch]);
+  }, [dispatch, state.masterKey]);
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
     if (window.api) {
       await window.api.updatePage({ id, ...updates });
       dispatch({ type: 'UPDATE_PAGE', page: { id, ...updates } });
+      
+      if (state.masterKey) {
+        const fullPage = state.pages.find(p => p.id === id);
+        if (fullPage) {
+          pushPageToCloud({ ...fullPage, ...updates }, state.masterKey).catch(console.error);
+        }
+      }
     }
-  }, [dispatch]);
+  }, [dispatch, state.masterKey, state.pages]);
 
   const handleUpdateContent = useCallback(async (id: string, content: string, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
       await window.api.updatePage({ id, content });
       dispatch({ type: 'UPDATE_PAGE', page: { id, content } });
       
+      if (state.masterKey) {
+        const fullPage = state.pages.find(p => p.id === id);
+        if (fullPage) pushPageToCloud({ ...fullPage, content }, state.masterKey).catch(console.error);
+      }
+      
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {
           await window.api.updatePage({ id: embed.id, content: embed.content });
           dispatch({ type: 'UPDATE_PAGE', page: { id: embed.id, content: embed.content } });
+          
+          if (state.masterKey) {
+            const embedPage = state.pages.find(p => p.id === embed.id);
+            if (embedPage) pushPageToCloud({ ...embedPage, content: embed.content }, state.masterKey).catch(console.error);
+          }
         }
       }
     }
-  }, [dispatch]);
+  }, [dispatch, state.masterKey, state.pages]);
 
   // Close context menu on click outside
   useEffect(() => {

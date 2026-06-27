@@ -484,6 +484,27 @@ ipcMain.handle('db:reorder-pages', async (_, updates: { id: string; sort_order: 
   });
 });
 
+ipcMain.handle('db:export-backup', async () => {
+  if (!mainWindow) throw new Error('Window not available');
+  
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Salvar Backup de Emergência (Criptografado)',
+    defaultPath: path.join(app.getPath('documents'), `caderno_backup_${new Date().toISOString().slice(0,10)}.sqlite`),
+    filters: [{ name: 'SQLite DB', extensions: ['sqlite'] }]
+  });
+
+  if (result.canceled || !result.filePath) return { success: false, canceled: true };
+
+  const dbPath = path.join(app.getPath('userData'), 'caderno.sqlite');
+  
+  try {
+    fs.copyFileSync(dbPath, result.filePath);
+    return { success: true, path: result.filePath };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+});
+
 // ============ FINANCE IPC HANDLERS ============
 
 ipcMain.handle('finance:get-transactions', async () => {

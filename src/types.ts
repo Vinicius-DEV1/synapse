@@ -159,6 +159,7 @@ export interface AppState {
   aiChatSessions: Record<string, AiChatSession>;
   showAiSidebar: boolean;
   activeAiChatId: string | null;
+  masterKey: CryptoKey | null;
 }
 
 export type Action =
@@ -182,7 +183,8 @@ export type Action =
   | { type: 'DELETE_AI_CHAT'; id: string }
   | { type: 'CLEAR_AI_CHATS' }
   | { type: 'TOGGLE_AI_SIDEBAR' }
-  | { type: 'OPEN_AI_CHAT'; chatId: string | null };
+  | { type: 'OPEN_AI_CHAT'; chatId: string | null }
+  | { type: 'SET_MASTER_KEY'; key: CryptoKey | null };
 
 
 declare global {
@@ -194,6 +196,7 @@ declare global {
       deletePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
+      exportBackup: () => Promise<{ success: boolean; canceled?: boolean; path?: string; error?: string }>;
       auth: {
         status: () => Promise<{ status: 'new' | 'unencrypted' | 'encrypted' | 'error' }>;
         login: (password: string) => Promise<{ success: boolean; error?: string }>;

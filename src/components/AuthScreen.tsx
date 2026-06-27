@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, Unlock, ShieldAlert, KeyRound } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { deriveMasterKey } from '../services/crypto';
 
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
@@ -11,6 +13,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
+  const { dispatch } = useStore();
 
   // If status is unencrypted, we are setting up a master password and migrating.
   // If status is new, we are just creating it.
@@ -36,6 +39,10 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
       }
 
       if (res.success) {
+        // Deriva a Master Key da senha inserida com sucesso (para uso no E2EE em memória)
+        const masterKey = await deriveMasterKey(password);
+        dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
+        
         onSuccess();
       } else {
         triggerError(res.error || 'Senha incorreta');

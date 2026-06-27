@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, ShieldCheck, KeyRound, ShieldAlert, X, Save, Sparkles, RefreshCw } from 'lucide-react';
+import { Settings, ShieldCheck, KeyRound, ShieldAlert, X, Save, Sparkles, RefreshCw, DatabaseBackup } from 'lucide-react';
 import { getSettings, saveSettings } from '../utils/settings';
 import type { AppSettings } from '../utils/settings';
 import { fetchGeminiModels } from '../services/gemini';
@@ -83,6 +83,19 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     e.preventDefault();
     saveSettings(appSettings);
     onClose();
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      const res = await window.api.exportBackup();
+      if (res.success) {
+        alert('Backup salvo com sucesso em: ' + res.path);
+      } else if (!res.canceled) {
+        alert('Erro ao salvar backup: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Erro inesperado: ' + err.message);
+    }
   };
 
   const triggerError = (msg: string) => {
@@ -313,6 +326,20 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                     <KeyRound size={16} />
                     Alterar Senha Mestra
                   </button>
+                </div>
+
+                <div className="border-t border-white/5 pt-4">
+                  <button 
+                    type="button"
+                    onClick={handleExportBackup}
+                    className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <DatabaseBackup size={16} />
+                    Exportar DB Local (Backup)
+                  </button>
+                  <p className="text-[11px] text-dark-subtext mt-1.5 text-center">
+                    Cria uma cópia física do banco de dados (também criptografada).
+                  </p>
                 </div>
               </div>
             )}
