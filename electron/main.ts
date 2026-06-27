@@ -15,8 +15,9 @@ function generateId(): string {
 
 function setupTables() {
   if (!db) return;
-  db.run('PRAGMA foreign_keys = ON');
-  db.run(`
+  db.serialize(() => {
+  db!.run('PRAGMA foreign_keys = ON');
+  db!.run(`
     CREATE TABLE IF NOT EXISTS pages (
       id TEXT PRIMARY KEY,
       parent_id TEXT,
@@ -31,9 +32,9 @@ function setupTables() {
     )
   `);
   // Add deleted_at to existing pages table if missing (migration)
-  db.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS page_history (
       id TEXT PRIMARY KEY,
       page_id TEXT NOT NULL,
@@ -43,7 +44,7 @@ function setupTables() {
     )
   `);
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS config (
       id TEXT PRIMARY KEY,
       value TEXT NOT NULL,
@@ -53,11 +54,11 @@ function setupTables() {
     )
   `);
   // Migrations for config
-  db.run(`ALTER TABLE config ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
-  db.run(`ALTER TABLE config ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
-  db.run(`ALTER TABLE config ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE config ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE config ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE config ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
@@ -72,10 +73,10 @@ function setupTables() {
     )
   `);
   // Migrations
-  db.run(`ALTER TABLE transactions ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
-  db.run(`ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE transactions ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS wishlist (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -88,10 +89,10 @@ function setupTables() {
     )
   `);
   // Migrations
-  db.run(`ALTER TABLE wishlist ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
-  db.run(`ALTER TABLE wishlist ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE wishlist ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE wishlist ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_books (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -110,9 +111,9 @@ function setupTables() {
     )
   `);
   // Migration for library_books
-  db.run(`ALTER TABLE library_books ADD COLUMN drive_file_id TEXT DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE library_books ADD COLUMN drive_file_id TEXT DEFAULT NULL`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_collections (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -123,9 +124,9 @@ function setupTables() {
     )
   `);
   // Migration
-  db.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_book_collections (
       book_id TEXT NOT NULL,
       collection_id TEXT NOT NULL,
@@ -135,7 +136,7 @@ function setupTables() {
     )
   `);
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_highlights (
       id TEXT PRIMARY KEY,
       book_id TEXT NOT NULL,
@@ -152,9 +153,9 @@ function setupTables() {
     )
   `);
   // Migration
-  db.run(`ALTER TABLE library_highlights ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_highlights ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_bookmarks (
       id TEXT PRIMARY KEY,
       book_id TEXT NOT NULL,
@@ -167,9 +168,9 @@ function setupTables() {
     )
   `);
   // Migration
-  db.run(`ALTER TABLE library_bookmarks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_bookmarks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_ocr_cache (
       id TEXT PRIMARY KEY,
       book_id TEXT NOT NULL,
@@ -181,7 +182,7 @@ function setupTables() {
     )
   `);
 
-  db.run(`
+  db!.run(`
     CREATE TABLE IF NOT EXISTS library_reading_sessions (
       id TEXT PRIMARY KEY,
       book_id TEXT NOT NULL,
@@ -193,6 +194,7 @@ function setupTables() {
       FOREIGN KEY (book_id) REFERENCES library_books(id) ON DELETE CASCADE
     )
   `);
+  });
 }
 
 function createWindow() {
