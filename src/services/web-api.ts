@@ -312,6 +312,12 @@ export const createWebApiMock = async () => {
         if (!db.objectStoreNames.contains(tableName as any)) return [];
         return await db.getAll(tableName as any);
       },
+      deleteRow: async (tableName: string, id: string) => {
+        if (db.objectStoreNames.contains(tableName as any)) {
+          await db.delete(tableName as any, id);
+        }
+        return { success: true };
+      },
       upsertRow: async (tableName: string, row: any) => {
         if (db.objectStoreNames.contains(tableName as any)) {
           await db.put(tableName as any, row);
