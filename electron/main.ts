@@ -450,7 +450,7 @@ ipcMain.handle('db:delete-page', async (_, id: string) => {
           if (err) return rej(err);
           Promise.all(children.map((c) => deleteRecursive(c.id)))
             .then(() => {
-              db!.run('UPDATE pages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [pageId], (err2) => {
+              db!.run('UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [pageId], (err2) => {
                 if (err2) rej(err2);
                 else res();
               });
@@ -541,7 +541,7 @@ ipcMain.handle('finance:create-transaction', async (_, tx: { type: string; amoun
 ipcMain.handle('finance:delete-transaction', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
@@ -582,7 +582,7 @@ ipcMain.handle('finance:create-wishlist', async (_, item: { title: string; estim
 ipcMain.handle('finance:delete-wishlist', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE wishlist SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE wishlist SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
@@ -654,7 +654,7 @@ ipcMain.handle('library:import-book', async () => {
 ipcMain.handle('library:delete-book', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
@@ -765,7 +765,7 @@ ipcMain.handle('library:update-collection', async (_, c: { id: string; name?: st
 ipcMain.handle('library:delete-collection', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
@@ -870,7 +870,7 @@ ipcMain.handle('library:update-highlight', async (_, h: { id: string; color?: st
 ipcMain.handle('library:delete-highlight', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
@@ -938,7 +938,7 @@ ipcMain.handle('library:update-bookmark', async (_, b: { id: string; label: stri
 ipcMain.handle('library:delete-bookmark', async (_, id: string) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
+    db!.run('UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id], (err) => {
       if (err) reject(err);
       else resolve(true);
     });
