@@ -193,6 +193,7 @@ function createWindow() {
   });
 
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.webContents.openDevTools();
   mainWindow.setMenu(null);
 
   if (isDev) {
