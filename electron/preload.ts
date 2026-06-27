@@ -1,82 +1,105 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+let syncCallbacks: (() => void)[] = [];
+
+const invokeWithSync = async (channel: string, ...args: any[]) => {
+  const result = await ipcRenderer.invoke(channel, ...args);
+  if (
+    channel.includes('create') ||
+    channel.includes('update') ||
+    channel.includes('delete') ||
+    channel.includes('set')
+  ) {
+    syncCallbacks.forEach(cb => cb());
+  }
+  return result;
+};
+
 contextBridge.exposeInMainWorld('api', {
-  getAllPages: () => ipcRenderer.invoke('db:get-all-pages'),
+  getAllPages: () => invokeWithSync('db:get-all-pages'),
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) =>
-    ipcRenderer.invoke('db:create-page', page),
+    invokeWithSync('db:create-page', page),
   updatePage: (page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) =>
-    ipcRenderer.invoke('db:update-page', page),
-  deletePage: (id: string) => ipcRenderer.invoke('db:delete-page', id),
+    invokeWithSync('db:update-page', page),
+  deletePage: (id: string) => invokeWithSync('db:delete-page', id),
   reorderPages: (updates: { id: string; sort_order: number }[]) =>
-    ipcRenderer.invoke('db:reorder-pages', updates),
-  getPageHistory: (pageId: string) => ipcRenderer.invoke('db:get-page-history', pageId),
+    invokeWithSync('db:reorder-pages', updates),
+  getPageHistory: (pageId: string) => invokeWithSync('db:get-page-history', pageId),
   
   // Auth
   auth: {
-    status: () => ipcRenderer.invoke('auth:status'),
-    login: (password: string) => ipcRenderer.invoke('auth:login', password),
-    setup: (password: string) => ipcRenderer.invoke('auth:setup', password),
-    changePassword: (newPassword: string) => ipcRenderer.invoke('auth:change-password', newPassword),
+    status: () => invokeWithSync('auth:status'),
+    login: (password: string) => invokeWithSync('auth:login', password),
+    setup: (password: string) => invokeWithSync('auth:setup', password),
+    changePassword: (newPassword: string) => invokeWithSync('auth:change-password', newPassword),
     onLock: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on('app:lock', listener);
       return () => ipcRenderer.removeListener('app:lock', listener);
     },
-    lock: () => ipcRenderer.invoke('auth:lock'),
-    setPreferences: (prefs: { autoLockOnSuspend: boolean }) => ipcRenderer.invoke('auth:set-preferences', prefs),
+    lock: () => invokeWithSync('auth:lock'),
+    setPreferences: (prefs: { autoLockOnSuspend: boolean }) => invokeWithSync('auth:set-preferences', prefs),
   },
 
   // Finance
   finance: {
-    getTransactions: () => ipcRenderer.invoke('finance:get-transactions'),
-    createTransaction: (tx: any) => ipcRenderer.invoke('finance:create-transaction', tx),
-    deleteTransaction: (id: string) => ipcRenderer.invoke('finance:delete-transaction', id),
-    getWishlist: () => ipcRenderer.invoke('finance:get-wishlist'),
-    createWishlist: (item: any) => ipcRenderer.invoke('finance:create-wishlist', item),
-    deleteWishlist: (id: string) => ipcRenderer.invoke('finance:delete-wishlist', id),
+    getTransactions: () => invokeWithSync('finance:get-transactions'),
+    createTransaction: (tx: any) => invokeWithSync('finance:create-transaction', tx),
+    deleteTransaction: (id: string) => invokeWithSync('finance:delete-transaction', id),
+    getWishlist: () => invokeWithSync('finance:get-wishlist'),
+    createWishlist: (item: any) => invokeWithSync('finance:create-wishlist', item),
+    deleteWishlist: (id: string) => invokeWithSync('finance:delete-wishlist', id),
   },
 
   // Library
   library: {
-    getBooks: () => ipcRenderer.invoke('library:get-books'),
-    importBook: () => ipcRenderer.invoke('library:import-book'),
-    deleteBook: (id: string) => ipcRenderer.invoke('library:delete-book', id),
-    updateBook: (book: any) => ipcRenderer.invoke('library:update-book', book),
-    getBookFile: (id: string) => ipcRenderer.invoke('library:get-book-file', id),
-    getCollections: () => ipcRenderer.invoke('library:get-collections'),
-    createCollection: (c: any) => ipcRenderer.invoke('library:create-collection', c),
-    updateCollection: (c: any) => ipcRenderer.invoke('library:update-collection', c),
-    deleteCollection: (id: string) => ipcRenderer.invoke('library:delete-collection', id),
-    setBookCollections: (bookId: string, collectionIds: string[]) => ipcRenderer.invoke('library:set-book-collections', bookId, collectionIds),
-    getBookCollections: (bookId: string) => ipcRenderer.invoke('library:get-book-collections', bookId),
-    getHighlights: (bookId: string) => ipcRenderer.invoke('library:get-highlights', bookId),
-    createHighlight: (h: any) => ipcRenderer.invoke('library:create-highlight', h),
-    updateHighlight: (h: any) => ipcRenderer.invoke('library:update-highlight', h),
-    deleteHighlight: (id: string) => ipcRenderer.invoke('library:delete-highlight', id),
-    getBookmarks: (bookId: string) => ipcRenderer.invoke('library:get-bookmarks', bookId),
-    createBookmark: (b: any) => ipcRenderer.invoke('library:create-bookmark', b),
-    updateBookmark: (b: any) => ipcRenderer.invoke('library:update-bookmark', b),
-    deleteBookmark: (id: string) => ipcRenderer.invoke('library:delete-bookmark', id),
-    getOcrCache: (bookId: string, pageNumber: number) => ipcRenderer.invoke('library:get-ocr-cache', bookId, pageNumber),
-    saveOcrCache: (data: any) => ipcRenderer.invoke('library:save-ocr-cache', data),
-    startReadingSession: (data: any) => ipcRenderer.invoke('library:start-reading-session', data),
-    endReadingSession: (data: any) => ipcRenderer.invoke('library:end-reading-session', data),
-    getReadingStats: (bookId?: string) => ipcRenderer.invoke('library:get-reading-stats', bookId),
+    getBooks: () => invokeWithSync('library:get-books'),
+    importBook: () => invokeWithSync('library:import-book'),
+    deleteBook: (id: string) => invokeWithSync('library:delete-book', id),
+    updateBook: (book: any) => invokeWithSync('library:update-book', book),
+    getBookFile: (id: string) => invokeWithSync('library:get-book-file', id),
+    getCollections: () => invokeWithSync('library:get-collections'),
+    createCollection: (c: any) => invokeWithSync('library:create-collection', c),
+    updateCollection: (c: any) => invokeWithSync('library:update-collection', c),
+    deleteCollection: (id: string) => invokeWithSync('library:delete-collection', id),
+    setBookCollections: (bookId: string, collectionIds: string[]) => invokeWithSync('library:set-book-collections', bookId, collectionIds),
+    getBookCollections: (bookId: string) => invokeWithSync('library:get-book-collections', bookId),
+    getHighlights: (bookId: string) => invokeWithSync('library:get-highlights', bookId),
+    createHighlight: (h: any) => invokeWithSync('library:create-highlight', h),
+    updateHighlight: (h: any) => invokeWithSync('library:update-highlight', h),
+    deleteHighlight: (id: string) => invokeWithSync('library:delete-highlight', id),
+    getBookmarks: (bookId: string) => invokeWithSync('library:get-bookmarks', bookId),
+    createBookmark: (b: any) => invokeWithSync('library:create-bookmark', b),
+    updateBookmark: (b: any) => invokeWithSync('library:update-bookmark', b),
+    deleteBookmark: (id: string) => invokeWithSync('library:delete-bookmark', id),
+    getOcrCache: (bookId: string, pageNumber: number) => invokeWithSync('library:get-ocr-cache', bookId, pageNumber),
+    saveOcrCache: (data: any) => invokeWithSync('library:save-ocr-cache', data),
+    startReadingSession: (data: any) => invokeWithSync('library:start-reading-session', data),
+    endReadingSession: (data: any) => invokeWithSync('library:end-reading-session', data),
+    getReadingStats: (bookId?: string) => invokeWithSync('library:get-reading-stats', bookId),
   },
 
   // Sync
   sync: {
-    getTable: (tableName: string) => ipcRenderer.invoke('sync:get-table', tableName),
-    upsertRow: (tableName: string, row: any) => ipcRenderer.invoke('sync:upsert-row', tableName, row),
+    getTable: (tableName: string) => invokeWithSync('sync:get-table', tableName),
+    upsertRow: (tableName: string, row: any) => invokeWithSync('sync:upsert-row', tableName, row),
   },
 
   // Drive API
   drive: {
-    openExternalUrl: (url: string) => ipcRenderer.invoke('drive:open-external-url', url),
-    getCredentials: () => ipcRenderer.invoke('drive:get-credentials'),
-    saveCredentials: (data: any) => ipcRenderer.invoke('drive:save-credentials', data),
+    openExternalUrl: (url: string) => invokeWithSync('drive:open-external-url', url),
+    getCredentials: () => invokeWithSync('drive:get-credentials'),
+    saveCredentials: (data: any) => invokeWithSync('drive:save-credentials', data),
   },
 
   // Log (diagnóstico temporário)
-  log: (message: string) => ipcRenderer.invoke('log:write', message),
+  log: (message: string) => invokeWithSync('log:write', message),
+
+  // Sync Trigger (internal hook for React)
+  onSyncTrigger: (callback: () => void) => {
+    syncCallbacks.push(callback);
+    return () => {
+      syncCallbacks = syncCallbacks.filter(cb => cb !== callback);
+    };
+  }
 });

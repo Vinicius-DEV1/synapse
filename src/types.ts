@@ -192,6 +192,7 @@ declare global {
   interface Window {
     api: {
       _setMasterKey?: (key: CryptoKey | null) => void;
+      onSyncTrigger?: (callback: () => void) => () => void;
       getAllPages: () => Promise<Page[]>;
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
       updatePage: (page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) => Promise<number>;

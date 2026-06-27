@@ -219,23 +219,9 @@ export const createWebApiMock = async () => {
         return 1;
       },
       getBookFile: async (id: string) => {
-        if (!_masterKey) {
-          alert("Erro: Chave Mestra não encontrada.");
-          return null;
-        }
-        
-        const existing = await db.get('library_books', id);
-        if (existing && existing.file_path) {
-          console.log("Baixando PDF criptografado do Firebase Storage...", existing.file_path);
-          try {
-            const decryptedBuffer = await getDecryptedPdf(existing.file_path, _masterKey);
-            return decryptedBuffer;
-          } catch (err: any) {
-            console.error("Erro ao baixar PDF do Storage:", err);
-            // Removidos os alerts intrusivos. A UI (PdfReader) vai mostrar a tela de erro vermelha com a documentação do case.
-            return null;
-          }
-        }
+        // A versão Web não tem acesso direto aos arquivos do Desktop.
+        // E como desativamos o Firebase Storage, retornamos null direto para que o
+        // PdfReader.tsx caia automaticamente no fallback do Google Drive.
         return null;
       },
       getCollections: async () => await db.getAll('library_collections'),

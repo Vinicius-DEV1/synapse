@@ -1,0 +1,1 @@
+const sqlite3 = require('@journeyapps/sqlcipher'); const db = new sqlite3.Database(':memory:'); db.serialize(() => { db.run('CREATE TABLE t (id INT)'); db.run('ALTER TABLE t ADD COLUMN c INT', (err) => console.log('1:', err)); db.run('ALTER TABLE t ADD COLUMN c INT', (err) => console.log('2:', err)); db.run('ALTER TABLE t ADD COLUMN d INT', (err) => console.log('3:', err)); });

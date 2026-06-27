@@ -23,6 +23,7 @@ interface PdfReaderProps {
 }
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
+  const { state } = useStore();
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const settings = getSettings();
   const [totalPages, setTotalPages] = useState(0);
@@ -86,7 +87,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           const token = await getValidAccessToken();
           if (token) {
              const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-             const masterKey = useStore.getState().masterKey;
+             const masterKey = state.masterKey;
              if (masterKey) {
                fileData = await decryptFile(encryptedData, masterKey);
              } else {
@@ -617,12 +618,12 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         <div className="flex items-center gap-3">
           <button 
             onClick={onBack}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
+            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
             title="Voltar"
           >
             <ArrowLeft size={18} />
           </button>
-          <span className="font-medium text-sm truncate max-w-[200px]" title={book.title}>
+          <span className="hidden md:block font-medium text-sm truncate max-w-[200px]" title={book.title}>
             {book.title}
           </span>
         </div>
@@ -647,10 +648,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-[50%] md:max-w-none flex-nowrap">
           <button 
             onClick={() => handleZoom(z => Math.max(0.5, z - 0.25))}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
+            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
             title="Diminuir (Ctrl+-)"
           >
             <ZoomOut size={16} />
@@ -686,7 +687,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             />
           ) : (
             <span
-              className="text-xs text-dark-subtext w-12 text-center cursor-pointer hover:text-dark-text hover:bg-white/5 rounded px-1 py-0.5 transition-all"
+              className="text-xs text-dark-subtext w-12 text-center cursor-pointer hover:text-dark-text hover:bg-white/5 rounded px-1 py-0.5 transition-all flex-shrink-0"
               title="Clique para digitar um zoom específico"
               onClick={() => {
                 setZoomInputValue(String(Math.round(zoom * 100)));
@@ -696,17 +697,17 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           )}
           <button 
             onClick={() => handleZoom(z => Math.min(3, z + 0.25))}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
+            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
             title="Aumentar (Ctrl++)"
           >
             <ZoomIn size={16} />
           </button>
           
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-white/10 mx-1 flex-shrink-0" />
           
           <button 
             onClick={() => setShowSearch(prev => !prev)}
-            className={`p-1.5 rounded-lg transition-all ${showSearch ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
+            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${showSearch ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
             title="Buscar (Ctrl+F)"
           >
             <Search size={16} />
@@ -714,7 +715,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           
           <button 
             onClick={toggleBookmark}
-            className={`p-1.5 rounded-lg transition-all ${isBookmarked ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
+            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${isBookmarked ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
             title="Marcar página (B)"
           >
             {isBookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
@@ -722,17 +723,17 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           
           <button 
             onClick={cycleReadingMode}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
+            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
             title="Modo de leitura (M)"
           >
             {readingMode === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
           
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-white/10 mx-1 flex-shrink-0" />
           
           <button 
             onClick={() => setShowAnnotations(prev => !prev)}
-            className={`p-1.5 rounded-lg transition-all ${showAnnotations ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
+            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${showAnnotations ? 'bg-blue-500/20 text-blue-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
             title="Anotações e Sumário (S)"
           >
             <StickyNote size={16} />
@@ -966,15 +967,20 @@ const PdfPage = React.memo(({
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = viewport.width * pixelRatio;
+        canvas.height = viewport.height * pixelRatio;
         
         // Cancel previous render
         if (renderTaskRef.current) {
           renderTaskRef.current.cancel();
         }
 
-        const renderContext = { canvasContext: context, viewport };
+        const renderContext = { 
+          canvasContext: context, 
+          viewport: viewport,
+          transform: [pixelRatio, 0, 0, pixelRatio, 0, 0]
+        };
         const renderTask = page.render(renderContext);
         renderTaskRef.current = renderTask;
         
@@ -1044,7 +1050,8 @@ const PdfPage = React.memo(({
                 
                 if (!active) return;
                 
-                const words = (result.data as any).words.map((w: any) => ({
+                const rawWords = (result.data as any).words || [];
+                const words = rawWords.map((w: any) => ({
                   isNormalized: true,
                   str: w.text,
                   left: w.bbox.x0 / viewport.scale,

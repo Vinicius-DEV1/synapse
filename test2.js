@@ -1,0 +1,1 @@
+const sqlite3 = require('@journeyapps/sqlcipher'); const db = new sqlite3.Database(':memory:'); db.serialize(() => { db.run('CREATE TABLE t (id INT)'); db.run('INSERT INTO t VALUES (1)'); db.run('ALTER TABLE t ADD COLUMN c DATETIME DEFAULT CURRENT_TIMESTAMP', (err) => console.log('Err:', err)); });
