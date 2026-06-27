@@ -107,7 +107,8 @@ function AppContent() {
           return withTimeout(
             Promise.all([
               pushAllToCloud(state.masterKey!),
-              syncPdfsToCloud(state.masterKey!),
+              // TODO: Migrar PDFs para o Google Drive API (Firebase Storage exige plano Blaze)
+              // syncPdfsToCloud(state.masterKey!),
             ]),
             60_000
           );
@@ -125,7 +126,7 @@ function AppContent() {
           withTimeout(
             Promise.all([
               pushAllToCloud(state.masterKey),
-              syncPdfsToCloud(state.masterKey),
+              // syncPdfsToCloud(state.masterKey),
             ]),
             60_000
           )
