@@ -140,6 +140,7 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
                 // Além disso, preservamos os campos LWW (Last Write Wins) que não são CRDT!
                 if (localTime > cloudTime) {
                   rowToUpsert.updated_at = localRow.updated_at;
+                  if (localRow.content !== undefined) rowToUpsert.content = localRow.content;
                   if (rowToUpsert.title !== undefined) rowToUpsert.title = localRow.title;
                   if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
                   if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
@@ -210,23 +211,10 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
         if (cloudData) {
           const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
           
-          let forcePushCrdt = false;
-          if (table === 'pages' && row.crdt_state) {
-            try {
-              const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
-              const parsed = JSON.parse(decryptedJson);
-              if (parsed.crdt_state && parsed.crdt_state !== row.crdt_state) {
-                forcePushCrdt = true;
-                if (typeof window !== 'undefined' && (window as any).api?.log) {
-                  (window as any).api.log(`[PUSH CRDT DIFF] Doc ${row.id}. Forcing push!`);
-                }
-              }
-            } catch (e) {
-              // Ignore decryption error here, let it fail normally
-            }
-          }
-
-          if (!forcePushCrdt && !isDeleted && localTime <= cloudTime) {
+          // ⚡ Comparação pura por timestamp (Last Write Wins)
+          // Removido: descriptografia de CADA doc da nuvem para comparar CRDT
+          // O merge CRDT é feito com segurança no pullAllFromCloud.
+          if (!isDeleted && localTime <= cloudTime) {
             if (typeof window !== 'undefined' && (window as any).api?.log) {
               (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
             }

@@ -78,7 +78,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       ToggleBlock,
       PageReference
     ],
-    content: initialCrdtState ? undefined : initialContent,
+    content: initialContent,
     editorProps: {
       attributes: {
         class: `editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize} ai-highlight-${settings.aiChatHighlight || 'glow'}`,
