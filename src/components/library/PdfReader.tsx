@@ -41,13 +41,21 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handlePdfClick = () => {
-    setShowMobileTools(true);
-    if (toolsTimeoutRef.current) {
-      clearTimeout(toolsTimeoutRef.current);
-    }
-    toolsTimeoutRef.current = setTimeout(() => {
-      setShowMobileTools(false);
-    }, 3000);
+    setShowMobileTools(prev => {
+      const nextState = !prev;
+      
+      if (toolsTimeoutRef.current) {
+        clearTimeout(toolsTimeoutRef.current);
+      }
+      
+      if (nextState) {
+        toolsTimeoutRef.current = setTimeout(() => {
+          setShowMobileTools(false);
+        }, 15000);
+      }
+      
+      return nextState;
+    });
   };
 
   const [zoomInputActive, setZoomInputActive] = useState(false);
