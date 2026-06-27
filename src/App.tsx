@@ -98,8 +98,8 @@ function AppContent() {
   useEffect(() => {
     if (isAuth && state.masterKey) {
       startSync();
-      // 1. Ao logar, puxa todas as atualizações da nuvem (timeout de 30s)
-      withTimeout(pullAllFromCloud(state.masterKey), 30_000)
+      // 1. Ao logar, puxa todas as atualizações da nuvem (timeout de 60s)
+      withTimeout(pullAllFromCloud(state.masterKey), 60_000)
         .then(() => {
           // Após puxar, recarrega a UI
           loadPages();
@@ -109,7 +109,7 @@ function AppContent() {
               pushAllToCloud(state.masterKey!),
               syncPdfsToCloud(state.masterKey!),
             ]),
-            30_000
+            60_000
           );
         })
         .then(() => finishSync(true))
@@ -127,7 +127,7 @@ function AppContent() {
               pushAllToCloud(state.masterKey),
               syncPdfsToCloud(state.masterKey),
             ]),
-            30_000
+            60_000
           )
             .then(() => finishSync(true))
             .catch(err => {

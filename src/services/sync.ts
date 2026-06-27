@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
 import { uploadEncryptedPdf } from './storage';
 import { encryptText, decryptText } from './crypto';
 
@@ -63,47 +63,48 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
 /**
  * Lê todas as tabelas locais, criptografa cada registro individualmente e faz o push
  * para o Firebase, também respeitando o "Last Write Wins".
+ * 
+ * Otimizações:
+ * - Usa getDocs (batch) por tabela em vez de getDoc individual por linha
+ * - Registros deletados são sempre enviados (deleção tem prioridade)
+ * - Cada setDoc tem try/catch isolado — uma falha não aborta o sync inteiro
  */
 export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
   if (!window.api?.sync) return;
 
   for (const table of SYNC_TABLES) {
     const localRows = await window.api.sync.getTable(table);
+    if (localRows.length === 0) continue;
+
+    // Lê todos os docs da tabela de uma vez (1 request por tabela, não 1 por linha)
+    const cloudSnap = await getDocs(collection(db, table));
+    const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
     
     for (const row of localRows) {
-      const docRef = doc(db, table, row.id);
-      const snap = await getDoc(docRef);
-      
       const localTime = new Date(row.updated_at || row.created_at || 0).getTime();
-      
-      if (snap.exists()) {
-        const cloudData = snap.data();
+      const isDeleted = !!row.deleted_at;
+      const cloudData = cloudMap.get(row.id);
+
+      if (cloudData) {
         const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
-        
-        // Deleções sempre vencem — mesmo que o updated_at não tenha mudado
-        // (corrige registros deletados antes do fix de updated_at no soft-delete)
-        const isDeleted = !!row.deleted_at;
-        
-        // Se a nuvem tem uma versão mais nova ou igual, não enviamos a nossa antiga
-        // EXCETO se o registro foi deletado localmente (deleção tem prioridade)
-        if (!isDeleted && localTime <= cloudTime) {
-          continue; 
-        }
+        // Pula se nuvem está atualizada — EXCETO se o registro foi deletado (deleção tem prioridade)
+        if (!isDeleted && localTime <= cloudTime) continue;
       }
-      
-      // Separa os metadados (id, tempos) do restante dos dados sensíveis
-      const { id, updated_at, created_at, ...sensitiveData } = row;
-      
-      // Criptografa TODO o conteúdo sensível da linha
-      const payloadToEncrypt = JSON.stringify(sensitiveData);
-      const encryptedData = await encryptText(payloadToEncrypt, masterKey);
-      
-      // Sobe pro Firebase mesclando (merge)
-      await setDoc(docRef, {
-        encryptedData,
-        updatedAt: updated_at || null,
-        createdAt: created_at || null
-      }, { merge: true });
+
+      try {
+        const { id, updated_at, created_at, ...sensitiveData } = row;
+        const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
+        const docRef = doc(db, table, id);
+
+        await setDoc(docRef, {
+          encryptedData,
+          updatedAt: updated_at || null,
+          createdAt: created_at || null
+        }, { merge: true });
+      } catch (err: any) {
+        // Erro isolado: loga mas continua as demais linhas
+        console.error(`[Sync] Falha ao enviar ${row.id} (${table}):`, err.message);
+      }
     }
   }
 }
