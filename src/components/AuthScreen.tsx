@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey } from '../services/crypto';
+import { verifyCloudMasterPassword, initializeCloudValidator } from '../services/sync';
 
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
@@ -31,26 +32,50 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
     setError('');
 
     try {
-      let res;
       if (isSetup) {
-        res = await window.api.auth.setup(password);
-      } else {
-        res = await window.api.auth.login(password);
-      }
-
-      if (res.success) {
-        // Deriva a Master Key da senha inserida com sucesso (para uso no E2EE em memória)
-        const masterKey = await deriveMasterKey(password);
-        dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
-        
-        // Injeta a chave na Web API Mock (se estiver rodando na Web)
-        if (window.api._setMasterKey) {
-          window.api._setMasterKey(masterKey);
+        // Validar na nuvem antes de permitir o setup local
+        const cloudCheck = await verifyCloudMasterPassword(password);
+        if (!cloudCheck.isValid) {
+          triggerError('Senha incompatível com a sua Nuvem (Firebase).');
+          setLoading(false);
+          return;
         }
-        
-        onSuccess();
+
+        const res = await window.api.auth.setup(password);
+        if (res.success) {
+          const masterKey = await deriveMasterKey(password);
+          
+          if (cloudCheck.isNew) {
+            await initializeCloudValidator(masterKey);
+          }
+          
+          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
+          if (window.api._setMasterKey) {
+            window.api._setMasterKey(masterKey);
+          }
+          onSuccess();
+        } else {
+          triggerError(res.error || 'Erro ao configurar senha');
+        }
       } else {
-        triggerError(res.error || 'Senha incorreta');
+        const res = await window.api.auth.login(password);
+        if (res.success) {
+          const masterKey = await deriveMasterKey(password);
+          
+          // FORÇAR A CURA DO VALIDADOR NA NUVEM
+          // Toda vez que você faz um login com sucesso no seu app principal,
+          // ele re-envia o validador para a nuvem usando a sua senha correta,
+          // sobrescrevendo qualquer validador corrompido que tenha sido feito.
+          await initializeCloudValidator(masterKey).catch(e => console.error(e));
+
+          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
+          if (window.api._setMasterKey) {
+            window.api._setMasterKey(masterKey);
+          }
+          onSuccess();
+        } else {
+          triggerError(res.error || 'Senha incorreta');
+        }
       }
     } catch (err: any) {
       triggerError(err.message || 'Erro ao processar');

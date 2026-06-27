@@ -138,7 +138,27 @@ function AppContent() {
     return () => window.removeEventListener('click', handler);
   }, [state.contextMenu, dispatch]);
 
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const activeModule = activeTab.module;
+
+  // Update document title based on active module and platform
+  useEffect(() => {
+    const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+    if (isElectron) {
+      document.title = 'Caderno Desktop';
+    } else {
+      if (activeModule === 'notes') {
+        document.title = 'Caderno Web';
+      } else if (activeModule === 'library') {
+        document.title = 'Biblioteca';
+      } else if (activeModule === 'finance') {
+        document.title = 'Finanças';
+      } else {
+        document.title = 'Caderno Web';
+      }
+    }
+  }, [activeModule]);
+
   const activePage = activeTab?.pageId
     ? state.pages.find((p) => p.id === activeTab.pageId) || null
     : null;
@@ -170,7 +190,7 @@ function AppContent() {
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden">
-          {state.activeModule === 'notes' ? (
+          {activeModule === 'notes' ? (
             <PageView
               page={activePage}
               onUpdateContent={handleUpdateContent}
@@ -178,7 +198,7 @@ function AppContent() {
               onCreateLinkedPage={handleCreateLinkedPage}
               onUpdatePage={handleUpdatePage}
             />
-          ) : state.activeModule === 'library' ? (
+          ) : activeModule === 'library' ? (
             <LibraryView />
           ) : (
             <FinanceView />

@@ -19,7 +19,10 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
+  module: 'notes' | 'library' | 'finance';
   pageId: string | null;
+  bookId?: string | null;
+  bookTitle?: string;
   unsavedContent: string | null;
   scrollY: number;
 }
@@ -145,7 +148,6 @@ export interface AiChatSession {
 }
 
 export interface AppState {
-  activeModule: 'notes' | 'finance' | 'library';
   pages: Page[];
   tabs: Tab[];
   activeTabId: string;
@@ -165,7 +167,9 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'SET_ACTIVE_MODULE'; module: 'notes' | 'finance' | 'library' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' }
+  | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
+  | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
   | { type: 'ADD_PAGE'; page: Page }
   | { type: 'UPDATE_PAGE'; page: Partial<Page> & { id: string } }

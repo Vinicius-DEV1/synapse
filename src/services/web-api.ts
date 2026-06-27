@@ -8,6 +8,14 @@ const generateId = () => crypto.randomUUID();
 // Variável para guardar a chave mestra no escopo da API Web
 let _masterKey: CryptoKey | null = null;
 
+async function hashLocalPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "caderno-local-auth-salt");
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export const createWebApiMock = async () => {
   const db = await getWebDb();
 
@@ -75,13 +83,26 @@ export const createWebApiMock = async () => {
         return { status: 'encrypted' };
       },
       login: async (password: string) => {
-        // No web, we don't have SQLCipher to "open" the DB. 
-        // We just return success because the MasterKey is generated in App.tsx (crypto.ts).
-        // The real security is that the Cloud sync will fail if the key is wrong!
-        return { success: true };
+        const stored = await db.get('config', 'masterHash');
+        if (!stored) return { success: false, error: 'Banco não configurado' };
+        
+        const currentHash = await hashLocalPassword(password);
+        
+        // Migração para usuários web antigos que não tinham hash local salvo
+        if (stored.value === 'setup-done') {
+          await db.put('config', { id: 'masterHash', value: currentHash });
+          return { success: true };
+        }
+        
+        if (stored.value === currentHash) {
+          return { success: true };
+        }
+        
+        return { success: false, error: 'Senha incorreta' };
       },
       setup: async (password: string) => {
-        await db.put('config', { id: 'masterHash', value: 'setup-done' });
+        const hash = await hashLocalPassword(password);
+        await db.put('config', { id: 'masterHash', value: hash });
         return { success: true };
       },
       changePassword: async () => ({ success: false, error: "Alteração de senha requer o app Desktop" }),

@@ -459,16 +459,17 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     });
   };
 
-  const toggleBookmark = async () => {
-    const existing = bookmarks.find(b => b.page_number === currentPage);
+  const toggleBookmark = async (pageNum?: any) => {
+    const targetPage = typeof pageNum === 'number' ? pageNum : currentPage;
+    const existing = bookmarks.find(b => b.page_number === targetPage);
     if (existing) {
       await window.api.library.deleteBookmark(existing.id);
       setBookmarks(prev => prev.filter(b => b.id !== existing.id));
     } else {
       const newBookmark = await window.api.library.createBookmark({
         book_id: book.id,
-        page_number: currentPage,
-        label: `Página ${currentPage}`
+        page_number: targetPage,
+        label: `Página ${targetPage}`
       });
       setBookmarks(prev => [...prev, newBookmark]);
     }
@@ -816,7 +817,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
               bookId={book.id}
               highlights={highlights.filter(h => h.page_number === pageNum)}
               isBookmarked={bookmarks.some(b => b.page_number === pageNum)}
-              onToggleBookmark={toggleBookmark}
+              onToggleBookmark={() => toggleBookmark(pageNum)}
               onHighlightClick={(highlight, rect) => {
                 setActiveHighlight({
                   highlight,

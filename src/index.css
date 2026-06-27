@@ -501,16 +501,18 @@
 .bookmark-ribbon-empty {
   opacity: 0;
   transform: translateY(-24px);
+  background: rgba(100, 100, 100, 0.15); /* Faint gray instead of red */
+  box-shadow: none;
   transition: all 0.3s ease;
 }
 
 .pdf-page-wrapper:hover .bookmark-ribbon-empty {
-  opacity: 0.25;
+  opacity: 1;
   transform: translateY(0);
 }
 
 .pdf-page-wrapper:hover .bookmark-ribbon-empty:hover {
-  opacity: 0.6;
+  background: rgba(100, 100, 100, 0.3);
 }
 
 @keyframes ribbon-drop {

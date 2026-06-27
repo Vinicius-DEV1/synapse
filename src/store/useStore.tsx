@@ -7,7 +7,9 @@ function generateTabId(): string {
 
 const initialTab: Tab = {
   id: generateTabId(),
+  module: 'notes',
   pageId: null,
+  bookId: null,
   unsavedContent: null,
   scrollY: 0,
 };
@@ -24,9 +26,15 @@ function loadSavedState(): Partial<AppState> {
     const s = localStorage.getItem('appLayoutState');
     if (s) {
       const parsed = JSON.parse(s);
+      // Migrate old activeModule into active tab if it's missing module property
+      const mappedTabs = parsed.tabs?.map((t: any) => ({
+        ...t,
+        module: t.module || (parsed.activeModule || 'notes'),
+        unsavedContent: null,
+      })) || [initialTab];
+
       return {
-        activeModule: parsed.activeModule,
-        tabs: parsed.tabs?.map((t: Tab) => ({ ...t, unsavedContent: null })), // clear unsaved content on boot
+        tabs: mappedTabs,
         activeTabId: parsed.activeTabId,
         sidebarCollapsed: parsed.sidebarCollapsed,
         expandedNodes: parsed.expandedNodes,
@@ -42,7 +50,6 @@ function loadSavedState(): Partial<AppState> {
 const saved = loadSavedState();
 
 const initialState: AppState = {
-  activeModule: saved.activeModule || 'notes',
   pages: [],
   tabs: saved.tabs && saved.tabs.length > 0 ? saved.tabs : [initialTab],
   activeTabId: saved.activeTabId || initialTab.id,
@@ -58,8 +65,33 @@ const initialState: AppState = {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case 'SET_ACTIVE_MODULE':
-      return { ...state, activeModule: action.module };
+    case 'UPDATE_TAB_MODULE':
+      return {
+        ...state,
+        tabs: state.tabs.map((t) =>
+          t.id === action.tabId ? { ...t, module: action.module } : t
+        ),
+      };
+
+    case 'OPEN_LIBRARY_BOOK':
+      return {
+        ...state,
+        tabs: state.tabs.map((t) =>
+          t.id === state.activeTabId
+            ? { ...t, module: 'library', bookId: action.bookId, bookTitle: action.title }
+            : t
+        ),
+      };
+
+    case 'CLOSE_LIBRARY_BOOK':
+      return {
+        ...state,
+        tabs: state.tabs.map((t) =>
+          t.id === action.tabId
+            ? { ...t, bookId: null, bookTitle: undefined }
+            : t
+        ),
+      };
 
     case 'SET_PAGES':
       return { ...state, pages: action.pages };

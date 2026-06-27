@@ -1,4 +1,4 @@
-import { Plus, X, FileText } from 'lucide-react';
+import { Plus, X, FileText, Library, Wallet } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function TabBar() {
@@ -8,7 +8,7 @@ export default function TabBar() {
     const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
       type: 'ADD_TAB',
-      tab: { id: tabId, pageId: null, unsavedContent: null, scrollY: 0 },
+      tab: { id: tabId, module: 'notes', pageId: null, unsavedContent: null, scrollY: 0 },
     });
   };
 
@@ -24,12 +24,22 @@ export default function TabBar() {
   return (
     <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
       {state.tabs.map((tab) => {
-        const page = tab.pageId
-          ? state.pages.find((p) => p.id === tab.pageId)
-          : null;
         const isActive = tab.id === state.activeTabId;
-        const title = page?.title || 'Nova Aba';
-        const icon = page?.icon || null;
+        
+        let title = 'Nova Aba';
+        let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+
+        if (tab.module === 'notes') {
+          const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) : null;
+          title = page?.title || 'Nova Página';
+          icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+        } else if (tab.module === 'library') {
+          title = tab.bookTitle || 'Biblioteca';
+          icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
+        } else if (tab.module === 'finance') {
+          title = 'Finanças';
+          icon = <Wallet size={13} className="flex-shrink-0 text-dark-subtext" />;
+        }
 
         return (
           <button
@@ -41,11 +51,7 @@ export default function TabBar() {
                 : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
             }`}
           >
-            {icon ? (
-              <span className="text-sm flex-shrink-0">{icon}</span>
-            ) : (
-              <FileText size={13} className="flex-shrink-0 text-dark-subtext" />
-            )}
+            {icon}
             <span className="truncate flex-1 text-left">{title}</span>
             {state.tabs.length > 1 && (
               <span
