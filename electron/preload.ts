@@ -82,6 +82,7 @@ contextBridge.exposeInMainWorld('api', {
   // Sync
   sync: {
     getTable: (tableName: string) => invokeWithSync('sync:get-table', tableName),
+    deleteRow: (tableName: string, id: string) => invokeWithSync('sync:delete-row', tableName, id),
     upsertRow: (tableName: string, row: any) => invokeWithSync('sync:upsert-row', tableName, row),
   },
 

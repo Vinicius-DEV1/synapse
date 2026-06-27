@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import {
   FileText, Plus, MoreVertical, BookOpen, CheckCircle2,
   Circle, Pencil, Trash2, BookMarked
@@ -16,9 +16,9 @@ interface LibraryGridProps {
 }
 
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
-  not_started: { label: 'Não iniciado', color: 'text-gray-400', icon: Circle },
+  not_started: { label: 'NÃ£o iniciado', color: 'text-gray-400', icon: Circle },
   reading: { label: 'Lendo', color: 'text-emerald-400', icon: BookOpen },
-  finished: { label: 'Concluído', color: 'text-brand-400', icon: CheckCircle2 },
+  finished: { label: 'ConcluÃ­do', color: 'text-brand-400', icon: CheckCircle2 },
 };
 
 export default function LibraryGrid({
@@ -109,7 +109,7 @@ export default function LibraryGrid({
               )}
             </div>
 
-            {/* Dropdown Menu - Movido para fora do cover para nǜo ser cortado */}
+            {/* Dropdown Menu - Movido para fora do cover para nÇœo ser cortado */}
             {menuBookId === book.id && (
               <div
                 ref={menuRef}
@@ -138,7 +138,7 @@ export default function LibraryGrid({
                     className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
                     <Circle size={14} />
-                    Marcar como Nǜo iniciado
+                    Marcar como NÇœo iniciado
                   </button>
                 )}
                 {book.reading_status !== 'reading' && (
@@ -162,7 +162,7 @@ export default function LibraryGrid({
                     className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
                     <CheckCircle2 size={14} />
-                    Marcar como Conclu�do
+                    Marcar como Concluído
                   </button>
                 )}
 
@@ -270,10 +270,10 @@ export default function LibraryGrid({
             <BookMarked size={40} className="text-brand-400" />
           </div>
           <h3 className="text-lg font-semibold text-dark-text mb-1">
-            Sua biblioteca está vazia
+            Sua biblioteca estÃ¡ vazia
           </h3>
           <p className="text-sm text-dark-subtext max-w-xs">
-            Importe seu primeiro PDF para começar a organizar sua leitura.
+            Importe seu primeiro PDF para comeÃ§ar a organizar sua leitura.
           </p>
         </div>
       )}

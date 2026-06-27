@@ -1228,6 +1228,17 @@ ipcMain.handle('sync:get-table', async (_, tableName: string) => {
     });
   });
 
+  ipcMain.handle('sync:delete-row', async (_, tableName: string, id: string) => {
+    return new Promise((resolve, reject) => {
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
+      if (!validTables.includes(tableName)) return reject('Invalid table');
+      db!.run(`DELETE FROM ${tableName} WHERE id = ?`, [id], (err) => {
+        if (err) reject(err);
+        else resolve({ success: true });
+      });
+    });
+  });
+
   ipcMain.handle('sync:upsert-row', async (_, tableName: string, row: any) => {
     return new Promise((resolve, reject) => {
       const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
