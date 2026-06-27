@@ -14,6 +14,11 @@ async function init() {
         get(target, prop) {
           const val = target[prop];
           if (typeof val === 'function') {
+            // Funções internas (_setMasterKey, _setSyncRunning) e listeners (onSyncTrigger, onLock)
+            // NÃO devem ser envolvidas em async — precisam retornar o valor original sincronamente.
+            if (typeof prop === 'string' && (prop.startsWith('_') || prop.startsWith('on'))) {
+              return val;
+            }
             return async (...args: any[]) => {
               const result = await val(...args);
               if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set'))) {
