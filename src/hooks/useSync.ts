@@ -119,9 +119,35 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         window.addEventListener('app-sync-trigger', handleSyncTrigger);
       }
 
+      // 4. ⚡ Gatilho de FOCO: quando a guia ganha visibilidade (ex: usuário volta de outra aba),
+      //    faz um pull imediato para trazer mudanças feitas em outras abas/dispositivos.
+      let isSyncingOnFocus = false;
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && masterKey && !isSyncingOnFocus) {
+          isSyncingOnFocus = true;
+          startSync();
+          withTimeout(
+            pullWithSuppression(masterKey)
+              .then(() => {
+                loadPages();
+                return pushAllToCloud(masterKey);
+              }),
+            30_000
+          )
+            .then(() => finishSync(true))
+            .catch(err => {
+              console.warn('[Sync] Sync on-focus encerrado:', err.message);
+              finishSync(false);
+            })
+            .finally(() => { isSyncingOnFocus = false; });
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
       return () => {
         clearInterval(syncInterval);
         clearTimeout(syncDebounceTimer);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (cleanupSyncTrigger) {
           cleanupSyncTrigger();
         } else {
