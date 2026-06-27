@@ -70,6 +70,13 @@ contextBridge.exposeInMainWorld('api', {
     upsertRow: (tableName: string, row: any) => ipcRenderer.invoke('sync:upsert-row', tableName, row),
   },
 
+  // Drive API
+  drive: {
+    openExternalUrl: (url: string) => ipcRenderer.invoke('drive:open-external-url', url),
+    getCredentials: () => ipcRenderer.invoke('drive:get-credentials'),
+    saveCredentials: (data: any) => ipcRenderer.invoke('drive:save-credentials', data),
+  },
+
   // Log (diagnóstico temporário)
   log: (message: string) => ipcRenderer.invoke('log:write', message),
 });

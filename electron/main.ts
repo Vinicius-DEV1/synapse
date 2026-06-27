@@ -42,6 +42,14 @@ function setupTables() {
       FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS config (
+      id TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+
   db.run(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
@@ -1147,6 +1155,37 @@ ipcMain.handle('library:get-reading-stats', async (_, bookId?: string) => {
         });
       });
     });
+  });
+});
+
+import { shell } from 'electron';
+
+// -- DRIVE API --
+ipcMain.handle('drive:open-external-url', async (_, url: string) => {
+  await shell.openExternal(url);
+});
+
+ipcMain.handle('drive:get-credentials', async () => {
+  return new Promise((resolve) => {
+    db!.get(`SELECT value FROM config WHERE id = 'drive_credentials'`, [], (err, row: any) => {
+      if (err || !row) resolve({ token: null });
+      else resolve(JSON.parse(row.value));
+    });
+  });
+});
+
+ipcMain.handle('drive:save-credentials', async (_, data: any) => {
+  return new Promise((resolve, reject) => {
+    const value = JSON.stringify(data);
+    db!.run(
+      `INSERT INTO config (id, value) VALUES ('drive_credentials', ?) 
+       ON CONFLICT(id) DO UPDATE SET value = ?`,
+      [value, value],
+      function (err) {
+        if (err) reject(err);
+        else resolve({ success: true });
+      }
+    );
   });
 });
 

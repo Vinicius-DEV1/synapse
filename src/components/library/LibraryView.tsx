@@ -8,6 +8,8 @@ import LibraryGrid from './LibraryGrid';
 import BookEditModal from './BookEditModal';
 import ReadingStatsView from './ReadingStatsView';
 import PdfReader from './PdfReader';
+import DriveAuthModal from './DriveAuthModal';
+import { getDriveCredentials } from '../../services/drive';
 
 type SortBy = 'last_read' | 'title' | 'created' | 'author';
 type SortOrder = 'asc' | 'desc';
@@ -44,6 +46,14 @@ export default function LibraryView() {
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
   const [editingCollectionName, setEditingCollectionName] = useState('');
+  const [showDriveAuth, setShowDriveAuth] = useState(false);
+  const [hasDriveAuth, setHasDriveAuth] = useState(false);
+
+  useEffect(() => {
+    getDriveCredentials().then(creds => {
+      setHasDriveAuth(!!creds.token);
+    });
+  }, []);
 
   // --- Derived Data ---
   const authors = useMemo(() => {
@@ -250,7 +260,18 @@ export default function LibraryView() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDriveAuth(true)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  hasDriveAuth 
+                    ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' 
+                    : 'bg-white/5 text-dark-subtext hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
+              >
+                <Cloud size={16} />
+                <span className="hidden sm:inline">Drive</span>
+              </button>
               <button
                 onClick={() => setShowStats(true)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
