@@ -26,6 +26,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const settings = getSettings();
   const [totalPages, setTotalPages] = useState(0);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(book.last_read_page || 1);
   const [zoom, setZoom] = useState(1.0);
   const [readingMode, setReadingMode] = useState<'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast'>(
@@ -72,6 +73,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     const loadPdf = async () => {
       try {
         setLoading(true);
+        setPdfError(null);
         let fileData;
         try {
           fileData = await window.api.library.getBookFile(book.id);
@@ -91,7 +93,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                throw new Error("Chave mestra não encontrada para descriptografar.");
              }
           } else {
-             throw new Error("Sua conta não está conectada ao Google Drive.");
+             throw new Error("Você precisa conectar sua conta do Google Drive primeiro para baixar este livro.");
           }
         }
 
@@ -162,8 +164,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         sessionIdRef.current = session.id;
 
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error loading PDF:", err);
+        setPdfError(err.message || "Falha desconhecida ao carregar o PDF.");
         setLoading(false);
       }
     };
@@ -584,17 +587,16 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     );
   }
 
-  if (!pdfDoc && !loading) {
+  if (!loading && !pdfDoc) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-dark-bg text-dark-subtext">
+      <div className="flex-1 flex flex-col items-center justify-center bg-dark-bg text-dark-subtext p-6">
         <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4">
           <StickyNote size={32} />
         </div>
         <p className="text-lg font-medium text-white mb-2">Falha ao abrir PDF</p>
         <p className="text-sm text-center max-w-md mb-6">
           Não foi possível baixar o arquivo da nuvem. <br/><br/>
-          <strong>Case Registrado:</strong> O Google Firebase agora exige cartão de crédito (Plano Blaze) para ativar o Storage. Como optamos por não usar o Storage por enquanto, PDFs não sincronizam automaticamente na Web. <br/>
-          Para ler aqui, você precisará pensar em uma alternativa futura (ex: salvar no IndexedDB localmente e pedir o upload manual).
+          <strong className="text-red-400">Erro detectado:</strong> {pdfError}
         </p>
         <button 
           onClick={onBack}
