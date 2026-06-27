@@ -19,9 +19,38 @@ async function hashLocalPassword(password: string): Promise<string> {
 export const createWebApiMock = async () => {
   const db = await getWebDb();
 
+  let syncCallbacks: (() => void)[] = [];
+  const triggerSync = () => syncCallbacks.forEach(cb => cb());
+
+  // Flag para suprimir triggers durante operações de sync (pull)
+  let suppressTrigger = false;
+
+  const originalPut = db.put.bind(db);
+  const originalDelete = db.delete.bind(db);
+
+  db.put = async (storeName: string, val: any, key?: IDBValidKey) => {
+    const res = await originalPut(storeName, val, key);
+    if (storeName !== 'config' && !suppressTrigger) triggerSync();
+    return res;
+  };
+  
+  db.delete = async (storeName: string, key: IDBValidKey | IDBKeyRange) => {
+    const res = await originalDelete(storeName, key);
+    if (storeName !== 'config' && !suppressTrigger) triggerSync();
+    return res;
+  };
+
   return {
     // FUNÇÃO EXCLUSIVA DA WEB PARA INJETAR A CHAVE MESTRA
     _setMasterKey: (key: CryptoKey | null) => { _masterKey = key; },
+    // Controla supressão de triggers durante pull (evita cascata)
+    _setSyncRunning: (running: boolean) => { suppressTrigger = running; },
+    onSyncTrigger: (callback: () => void) => {
+      syncCallbacks.push(callback);
+      return () => {
+        syncCallbacks = syncCallbacks.filter(cb => cb !== callback);
+      };
+    },
 
     // --- PAGES ---
     getAllPages: async () => {

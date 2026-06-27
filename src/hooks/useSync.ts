@@ -10,6 +10,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
+/**
+ * Função helper para executar pull sem disparar cascata de sync triggers.
+ * Ativa a flag de supressão durante o pull, garantindo que os db.put do
+ * upsertRow não re-disparem o debounce do sync.
+ */
+async function pullWithSuppression(masterKey: any): Promise<void> {
+  const api = window.api as any;
+  if (api?._setSyncRunning) api._setSyncRunning(true);
+  try {
+    await pullAllFromCloud(masterKey);
+  } finally {
+    if (api?._setSyncRunning) api._setSyncRunning(false);
+  }
+}
+
 export function useSync(isAuth: boolean, masterKey: string | null, loadPages: () => void) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -25,7 +40,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
     if (isAuth && masterKey) {
       startSync();
       // 1. Ao logar, puxa todas as atualizações da nuvem (timeout de 60s)
-      withTimeout(pullAllFromCloud(masterKey), 60_000)
+      withTimeout(pullWithSuppression(masterKey), 60_000)
         .then(() => {
           // Após puxar, recarrega a UI
           loadPages();
@@ -44,12 +59,12 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           finishSync(false);
         });
 
-      // 2. Cria um gatilho de sincronização a cada 1 minuto
+      // 2. Cria um gatilho de sincronização a cada 15 segundos (era 60s)
       const syncInterval = setInterval(() => {
         if (masterKey) {
           startSync();
           withTimeout(
-            pullAllFromCloud(masterKey)
+            pullWithSuppression(masterKey)
               .then(() => {
                 loadPages();
                 return Promise.all([
@@ -65,9 +80,10 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
               finishSync(false);
             });
         }
-      }, 60 * 1000);
+      }, 15 * 1000); // ⚡ 15s (era 60s) — guia leitora atualiza 4x mais rápido
 
-      // 3. Gatilho inteligente (debounce de 3s após qualquer modificação do usuário)
+      // 3. Gatilho inteligente: PUSH PRIMEIRO, depois pull
+      //    Debounce de 1.5s (era 3s) após qualquer modificação do usuário
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
         clearTimeout(syncDebounceTimer);
@@ -75,13 +91,15 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           if (masterKey) {
             startSync();
             withTimeout(
-              pullAllFromCloud(masterKey)
+              // ⚡ Push PRIMEIRO — envia os dados do usuário para a nuvem imediatamente
+              pushAllToCloud(masterKey)
+                .then(() => {
+                  // Depois pull — puxa possíveis mudanças de outros dispositivos
+                  return pullWithSuppression(masterKey);
+                })
                 .then(() => {
                   loadPages();
-                  return Promise.all([
-                    pushAllToCloud(masterKey),
-                    syncPdfsToCloud(masterKey),
-                  ]);
+                  return syncPdfsToCloud(masterKey);
                 }),
               60_000
             )
@@ -91,7 +109,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
                 finishSync(false);
               });
           }
-        }, 3000); // 3 segundos de inatividade após digitar/alterar algo
+        }, 1500); // ⚡ 1.5s (era 3s)
       };
       
       let cleanupSyncTrigger: (() => void) | undefined;

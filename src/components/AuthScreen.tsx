@@ -66,7 +66,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           // Toda vez que você faz um login com sucesso no seu app principal,
           // ele re-envia o validador para a nuvem usando a sua senha correta,
           // sobrescrevendo qualquer validador corrompido que tenha sido feito.
-          await initializeCloudValidator(masterKey).catch(e => console.error(e));
+          initializeCloudValidator(masterKey).catch(e => console.error(e));
 
           dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
