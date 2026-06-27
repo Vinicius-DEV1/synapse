@@ -52,11 +52,13 @@ function setupTables() {
       date TEXT NOT NULL,
       status TEXT DEFAULT 'completed',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL
     )
   `);
-  // Migration
+  // Migrations
   db.run(`ALTER TABLE transactions ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db.run(`ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS wishlist (
@@ -66,11 +68,13 @@ function setupTables() {
       priority TEXT DEFAULT 'medium',
       expected_date TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL
     )
   `);
-  // Migration
+  // Migrations
   db.run(`ALTER TABLE wishlist ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db.run(`ALTER TABLE wishlist ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS library_books (
@@ -96,9 +100,12 @@ function setupTables() {
       name TEXT NOT NULL,
       color TEXT DEFAULT '#8b5cf6',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL
     )
   `);
+  // Migration
+  db.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS library_book_collections (
@@ -121,10 +128,13 @@ function setupTables() {
       highlight_type TEXT DEFAULT 'text',
       note TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL,
       FOREIGN KEY (book_id) REFERENCES library_books(id) ON DELETE CASCADE
     )
   `);
+  // Migration
+  db.run(`ALTER TABLE library_highlights ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS library_bookmarks (
@@ -133,10 +143,13 @@ function setupTables() {
       page_number INTEGER NOT NULL,
       label TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL,
       FOREIGN KEY (book_id) REFERENCES library_books(id) ON DELETE CASCADE
     )
   `);
+  // Migration
+  db.run(`ALTER TABLE library_bookmarks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS library_ocr_cache (
