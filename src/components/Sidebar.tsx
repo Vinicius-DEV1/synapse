@@ -28,7 +28,20 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   if (state.sidebarCollapsed) {
     return (
-      <div className="w-12 h-full bg-dark-card/50 border-r border-white/5 flex flex-col items-center py-4 gap-4">
+      <>
+        {/* Mobile: Floating open button */}
+        <div className="md:hidden absolute top-4 left-0 z-[60]">
+          <button
+            onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+            className="p-2 bg-dark-card/80 backdrop-blur-md rounded-r-xl border border-l-0 border-white/10 text-dark-subtext hover:text-white shadow-xl active:scale-95 transition-all"
+            title="Expandir menu"
+          >
+            <PanelLeft size={18} />
+          </button>
+        </div>
+
+        {/* Desktop: Slim Sidebar */}
+        <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
           className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
@@ -82,12 +95,21 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </button>
         </div>
         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="w-[260px] h-full bg-dark-card/50 border-r border-white/5 flex flex-col">
+    <>
+      {/* Mobile Backdrop */}
+      <div 
+         className="md:hidden fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm transition-opacity"
+         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+      />
+      
+      {/* Sidebar Container */}
+      <div className="fixed md:relative z-[70] md:z-20 w-[260px] h-full bg-dark-bg md:bg-dark-card/50 border-r border-white/5 flex flex-col shadow-2xl md:shadow-none animate-slide-right md:animate-none">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
@@ -228,6 +250,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       </div>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-    </div>
+      </div>
+    </>
   );
 }
