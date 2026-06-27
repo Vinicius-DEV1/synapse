@@ -46,6 +46,7 @@ export const createWebApiMock = async () => {
       const existing = await db.get('pages', id);
       if (!existing) return false;
       existing.deleted_at = new Date().toISOString();
+      existing.updated_at = new Date().toISOString();
       await db.put('pages', existing);
       return true;
     },
@@ -109,6 +110,7 @@ export const createWebApiMock = async () => {
         const existing = await db.get('transactions', id);
         if (existing) {
           existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
           await db.put('transactions', existing);
           return true;
         }
@@ -133,6 +135,7 @@ export const createWebApiMock = async () => {
         const existing = await db.get('wishlist', id);
         if (existing) {
           existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
           await db.put('wishlist', existing);
           return true;
         }
@@ -203,6 +206,7 @@ export const createWebApiMock = async () => {
         const existing = await db.get('library_books', id);
         if (existing) {
           existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
           await db.put('library_books', existing);
           return true;
         }
@@ -270,6 +274,7 @@ export const createWebApiMock = async () => {
         const existing = await db.get('library_highlights', id);
         if (existing) {
           existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
           await db.put('library_highlights', existing);
         }
         return true;
@@ -292,6 +297,7 @@ export const createWebApiMock = async () => {
         const existing = await db.get('library_bookmarks', id);
         if (existing) {
           existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
           await db.put('library_bookmarks', existing);
         }
         return true;
