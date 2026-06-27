@@ -46,9 +46,16 @@ function setupTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS config (
       id TEXT PRIMARY KEY,
-      value TEXT NOT NULL
+      value TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME DEFAULT NULL
     )
   `);
+  // Migrations for config
+  db.run(`ALTER TABLE config ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db.run(`ALTER TABLE config ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db.run(`ALTER TABLE config ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS transactions (
@@ -1181,8 +1188,8 @@ ipcMain.handle('drive:save-credentials', async (_, data: any) => {
   return new Promise((resolve, reject) => {
     const value = JSON.stringify(data);
     db!.run(
-      `INSERT INTO config (id, value) VALUES ('drive_credentials', ?) 
-       ON CONFLICT(id) DO UPDATE SET value = ?`,
+      `INSERT INTO config (id, value, created_at, updated_at) VALUES ('drive_credentials', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+       ON CONFLICT(id) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP`,
       [value, value],
       function (err) {
         if (err) reject(err);
@@ -1202,7 +1209,7 @@ ipcMain.handle('log:write', async (_, message: string) => {
 // -- SYNC API (GENERIC) --
 ipcMain.handle('sync:get-table', async (_, tableName: string) => {
     return new Promise((resolve, reject) => {
-      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections'];
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
       if (!validTables.includes(tableName)) return reject('Invalid table');
       db!.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
         if (err) reject(err);
@@ -1213,7 +1220,7 @@ ipcMain.handle('sync:get-table', async (_, tableName: string) => {
 
   ipcMain.handle('sync:upsert-row', async (_, tableName: string, row: any) => {
     return new Promise((resolve, reject) => {
-      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections'];
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
       if (!validTables.includes(tableName)) return reject('Invalid table');
       
       const keys = Object.keys(row);

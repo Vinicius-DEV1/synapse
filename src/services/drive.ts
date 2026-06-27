@@ -138,7 +138,14 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
   }
   const db = await getWebDb();
   const config = await db.get('config', 'drive_credentials');
-  return config || { token: null };
+  if (config && config.value) {
+    try {
+      return JSON.parse(config.value);
+    } catch (e) {
+      return { token: null };
+    }
+  }
+  return { token: null };
 }
 
 /**
@@ -151,7 +158,11 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
     return;
   }
   const db = await getWebDb();
-  await db.put('config', { id: 'drive_credentials', ...data });
+  await db.put('config', { 
+    id: 'drive_credentials', 
+    value: JSON.stringify(data),
+    updated_at: new Date().toISOString()
+  });
 }
 
 /**

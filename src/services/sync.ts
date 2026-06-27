@@ -12,7 +12,8 @@ const SYNC_TABLES = [
   'library_books', 
   'library_highlights', 
   'library_bookmarks', 
-  'library_collections'
+  'library_collections',
+  'config'
 ];
 
 /**
@@ -199,3 +200,4 @@ export async function hardResetCloud(): Promise<void> {
 
 // Expor globalmente para facilitar o uso no console
 (window as any).hardResetCloud = hardResetCloud;
+
