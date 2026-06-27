@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, Palette } from 'lucide-react';
+import { X, Plus, Palette, Image as ImageIcon, FileText } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 
 interface BookEditModalProps {
@@ -32,12 +32,30 @@ export default function BookEditModal({
   const [author, setAuthor] = useState(book.author);
   const [status, setStatus] = useState<ReadingStatus>(book.reading_status);
   const [selectedCollections, setSelectedCollections] = useState<string[]>(bookCollections);
+  const [coverImage, setCoverImage] = useState(book.cover_image || '');
   const [loading, setLoading] = useState(false);
 
   // New collection form
   const [showNewCollection, setShowNewCollection] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [newCollectionColor, setNewCollectionColor] = useState(PRESET_COLORS[6]); // brand purple
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem (JPG, PNG).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setCoverImage(base64);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const toggleCollection = (id: string) => {
     setSelectedCollections((prev) =>
@@ -57,6 +75,7 @@ export default function BookEditModal({
         title: title.trim(),
         author: author.trim(),
         reading_status: status,
+        cover_image: coverImage,
       });
 
       // Create new collection if needed
@@ -101,29 +120,47 @@ export default function BookEditModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
-          {/* Title */}
-          <div>
-            <label className="block text-xs text-dark-subtext mb-1.5">Título</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Título do livro"
-              className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
-              required
-            />
-          </div>
+          {/* Cover Image */}
+          <div className="flex gap-4 items-start">
+            <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-hidden shrink-0 group">
+              {coverImage ? (
+                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <FileText size={32} className="text-dark-subtext" />
+              )}
+              <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <ImageIcon size={20} className="text-white mb-1" />
+                <span className="text-[10px] text-white font-medium">Trocar</span>
+                <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+              </label>
+            </div>
+            
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs text-dark-subtext mb-1.5">Título</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Título do livro"
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                  required
+                />
+              </div>
 
-          {/* Author */}
-          <div>
-            <label className="block text-xs text-dark-subtext mb-1.5">Autor</label>
-            <input
-              type="text"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Nome do autor"
-              className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
-            />
+              {/* Author */}
+              <div>
+                <label className="block text-xs text-dark-subtext mb-1.5">Autor</label>
+                <input
+                  type="text"
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                  placeholder="Nome do autor"
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Status */}

@@ -5,7 +5,8 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"tsc -p tsconfig.electron.json -w\" \"wait-on tcp:127.0.0.1:35174 && cross-env NODE_ENV=development electron .\"",
-    "build": "tsc -b && vite build && tsc -p tsconfig.electron.json && electron-builder",
+    "build": "tsc -p tsconfig.electron.json && tsc && vite build && electron-builder",
+    "build:web": "vite build --outDir dist-web",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -34,6 +35,7 @@
     "emoji-picker-react": "^4.19.1",
     "firebase": "^12.15.0",
     "htmldiff-js": "^1.0.5",
+    "idb": "^8.0.3",
     "lucide-react": "^1.21.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",

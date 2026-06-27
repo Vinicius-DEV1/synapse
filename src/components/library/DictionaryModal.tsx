@@ -5,12 +5,13 @@ import { promptGemini } from '../../services/gemini';
 
 interface DictionaryModalProps {
   text: string;
+  pageContext?: string;
   onClose: () => void;
 }
 
-export default function DictionaryModal({ text, onClose }: DictionaryModalProps) {
+export default function DictionaryModal({ text, pageContext, onClose }: DictionaryModalProps) {
   const settings = getSettings();
-  const [mode, setMode] = useState<'offline' | 'online'>('offline');
+  const [mode, setMode] = useState<'offline' | 'online'>(settings.dictionaryMode || (settings.hasOfflineDictionary ? 'offline' : 'online'));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,11 +39,11 @@ export default function DictionaryModal({ text, onClose }: DictionaryModalProps)
         // Para a demonstração, retornaremos uma definição genérica ou identificada simulando o DB
         setTimeout(() => {
           const cleanWord = text.trim();
-          let markdown = `### ${cleanWord}\\n\\n`;
-          markdown += `*sf/sm* (Modo Offline)\\n\\n`;
-          markdown += `**Definição Local**\\n`;
-          markdown += `1. Definição simulada para a palavra "${cleanWord}" extraída do banco de dados local.\\n`;
-          markdown += `> Exemplo: O sistema encontrou "${cleanWord}" no dicionário offline sem usar internet.\\n\\n`;
+          let markdown = `### ${cleanWord}\n\n`;
+          markdown += `*sf/sm* (Modo Offline)\n\n`;
+          markdown += `**Definição Local**\n`;
+          markdown += `1. Definição simulada para a palavra "${cleanWord}" extraída do banco de dados local.\n`;
+          markdown += `> Exemplo: O sistema encontrou "${cleanWord}" no dicionário offline sem usar internet.\n\n`;
           
           setResult(markdown);
           setLoading(false);
@@ -52,14 +53,13 @@ export default function DictionaryModal({ text, onClose }: DictionaryModalProps)
           throw new Error('Chave da API do Gemini não configurada. Configure na aba IA das Configurações.');
         }
 
-        const prompt = `Atue como um dicionário e tradutor avançado.
-A palavra ou trecho selecionado é: "${text}".
-Por favor, forneça:
-1. O idioma de origem.
-2. A tradução para o Português (se for em outro idioma).
-3. A definição clara e concisa.
-4. Um exemplo de uso em uma frase.
-Formate a resposta em Markdown com títulos breves. Não use saudações.`;
+        const prompt = `Defina a palavra ou trecho selecionado: "${text}".
+${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
+Sua resposta deve conter apenas:
+- Se for uma palavra estrangeira: A tradução para Português, seguida do seu significado.
+- Se for uma palavra em Português: O seu significado (Definição).
+- Forneça 1 exemplo de uso prático.
+Formate tudo em Markdown usando títulos curtos (## Significado, ## Exemplo). Não use saudações.`;
 
         const response = await promptGemini(
           prompt,
@@ -77,9 +77,9 @@ Formate a resposta em Markdown com títulos breves. Não use saudações.`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={onClose}>
+    <div className="dictionary-modal-container select-none fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={onClose}>
       <div 
-        className="bg-dark-card border border-white/10 rounded-2xl w-[400px] max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
+        className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -148,11 +148,12 @@ Formate a resposta em Markdown com títulos breves. Não use saudações.`;
             <div className="prose prose-invert prose-sm max-w-none prose-headings:text-brand-400 prose-headings:text-sm prose-headings:font-semibold prose-headings:mb-2 prose-p:text-dark-text/90 prose-p:leading-relaxed">
               <div dangerouslySetInnerHTML={{ 
                 __html: result
+                  .replace(/### (.*)/g, '<h5>$1</h5>')
+                  .replace(/## (.*)/g, '<h4>$1</h4>')
+                  .replace(/# (.*)/g, '<h3>$1</h3>')
                   .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                   .replace(/\*(.*?)\*/g, '<em>$1</em>')
                   .replace(/\n/g, '<br/>')
-                  .replace(/# (.*?)(?:<br\/>|$)/g, '<h3>$1</h3>')
-                  .replace(/## (.*?)(?:<br\/>|$)/g, '<h4>$1</h4>')
               }} />
             </div>
           ) : null}

@@ -13,13 +13,15 @@ import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings } from './utils/settings';
 import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
-import { pushPageToCloud, deletePageFromCloud } from './services/sync';
+import { pushAllToCloud, pullAllFromCloud, syncPdfsToCloud } from './services/sync';
+import { Loader2 } from 'lucide-react';
 
 function AppContent() {
   const { state, dispatch } = useStore();
   const [isAuth, setIsAuth] = useState(false);
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Listen to settings changes
   useEffect(() => {
@@ -76,10 +78,37 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isAuth) {
-      loadPages();
+    if (isAuth && state.masterKey) {
+      setIsSyncing(true);
+      // 1. Ao logar, puxa todas as atualizações da nuvem
+      pullAllFromCloud(state.masterKey)
+        .then(() => {
+          // Após puxar, recarrega a UI
+          loadPages();
+          // E empurra possíveis alterações locais antigas
+          pushAllToCloud(state.masterKey!);
+          // E sobe os PDFs legados do Desktop, se existirem
+          syncPdfsToCloud(state.masterKey!);
+        })
+        .catch(err => console.error('Erro no sync inicial:', err))
+        .finally(() => setIsSyncing(false));
+
+      // 2. Cria um gatilho de sincronização a cada 3 minutos
+      const syncInterval = setInterval(() => {
+        if (state.masterKey) {
+          setIsSyncing(true);
+          Promise.all([
+            pushAllToCloud(state.masterKey),
+            syncPdfsToCloud(state.masterKey)
+          ])
+            .catch(console.error)
+            .finally(() => setIsSyncing(false));
+        }
+      }, 3 * 60 * 1000);
+
+      return () => clearInterval(syncInterval);
     }
-  }, [isAuth, loadPages]);
+  }, [isAuth, state.masterKey, loadPages]);
 
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {
@@ -89,11 +118,8 @@ function AppContent() {
       if (parentId && !state.expandedNodes.includes(parentId)) {
         dispatch({ type: 'TOGGLE_NODE', nodeId: parentId });
       }
-      if (state.masterKey) {
-        pushPageToCloud(page, state.masterKey).catch(err => console.error("Sync error:", err));
-      }
     }
-  }, [dispatch, state.expandedNodes, state.masterKey]);
+  }, [dispatch, state.expandedNodes]);
 
   const handleCreateLinkedPage = useCallback(async (title: string, parentId: string | null = null) => {
     if (window.api) {
@@ -101,62 +127,39 @@ function AppContent() {
       await window.api.updatePage({ id: page.id, title });
       page.title = title;
       dispatch({ type: 'ADD_PAGE', page });
-      if (state.masterKey) {
-        pushPageToCloud(page, state.masterKey).catch(err => console.error("Sync error:", err));
-      }
       return page.id;
     }
     return '';
-  }, [dispatch, state.masterKey]);
+  }, [dispatch]);
 
   const handleDeletePage = useCallback(async (id: string) => {
     if (window.api) {
       await window.api.deletePage(id);
       dispatch({ type: 'DELETE_PAGE', id });
       dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
-      if (state.masterKey) {
-        deletePageFromCloud(id).catch(err => console.error("Sync error:", err));
-      }
     }
-  }, [dispatch, state.masterKey]);
+  }, [dispatch]);
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
     if (window.api) {
       await window.api.updatePage({ id, ...updates });
       dispatch({ type: 'UPDATE_PAGE', page: { id, ...updates } });
-      
-      if (state.masterKey) {
-        const fullPage = state.pages.find(p => p.id === id);
-        if (fullPage) {
-          pushPageToCloud({ ...fullPage, ...updates }, state.masterKey).catch(console.error);
-        }
-      }
     }
-  }, [dispatch, state.masterKey, state.pages]);
+  }, [dispatch]);
 
   const handleUpdateContent = useCallback(async (id: string, content: string, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
       await window.api.updatePage({ id, content });
       dispatch({ type: 'UPDATE_PAGE', page: { id, content } });
       
-      if (state.masterKey) {
-        const fullPage = state.pages.find(p => p.id === id);
-        if (fullPage) pushPageToCloud({ ...fullPage, content }, state.masterKey).catch(console.error);
-      }
-      
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {
           await window.api.updatePage({ id: embed.id, content: embed.content });
           dispatch({ type: 'UPDATE_PAGE', page: { id: embed.id, content: embed.content } });
-          
-          if (state.masterKey) {
-            const embedPage = state.pages.find(p => p.id === embed.id);
-            if (embedPage) pushPageToCloud({ ...embedPage, content: embed.content }, state.masterKey).catch(console.error);
-          }
         }
       }
     }
-  }, [dispatch, state.masterKey, state.pages]);
+  }, [dispatch]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -239,6 +242,16 @@ function AppContent() {
           onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
         />
       )}
+
+      {/* Syncing Indicator */}
+      <div 
+        className={`fixed bottom-6 right-6 flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-full shadow-lg shadow-brand-500/20 pointer-events-none transition-all duration-500 ease-in-out z-[9999]
+          ${isSyncing ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+        `}
+      >
+        <Loader2 size={16} className="animate-spin" />
+        <span className="text-sm font-medium">Sincronizando...</span>
+      </div>
     </div>
   );
 }

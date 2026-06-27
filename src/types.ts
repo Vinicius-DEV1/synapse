@@ -190,6 +190,7 @@ export type Action =
 declare global {
   interface Window {
     api: {
+      _setMasterKey?: (key: CryptoKey | null) => void;
       getAllPages: () => Promise<Page[]>;
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
       updatePage: (page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) => Promise<number>;
@@ -239,6 +240,10 @@ declare global {
         startReadingSession: (data: { book_id: string; start_page: number }) => Promise<ReadingSession>;
         endReadingSession: (data: { id: string; end_page: number; pages_read: number }) => Promise<boolean>;
         getReadingStats: (bookId?: string) => Promise<{ bookStats?: BookReadingStats; globalStats: GlobalReadingStats }>;
+      };
+      sync: {
+        getTable: (tableName: string) => Promise<any[]>;
+        upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
       };
     };
   }

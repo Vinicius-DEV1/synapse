@@ -1135,3 +1135,41 @@ ipcMain.handle('library:get-reading-stats', async (_, bookId?: string) => {
     });
   });
 });
+
+// -- SYNC API (GENERIC) --
+ipcMain.handle('sync:get-table', async (_, tableName: string) => {
+    return new Promise((resolve, reject) => {
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections'];
+      if (!validTables.includes(tableName)) return reject('Invalid table');
+      db!.all(`SELECT * FROM ${tableName}`, [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  });
+
+  ipcMain.handle('sync:upsert-row', async (_, tableName: string, row: any) => {
+    return new Promise((resolve, reject) => {
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections'];
+      if (!validTables.includes(tableName)) return reject('Invalid table');
+      
+      const keys = Object.keys(row);
+      const values = Object.values(row);
+      const placeholders = keys.map(() => '?').join(', ');
+      
+      const updateSet = keys.filter(k => k !== 'id' && k !== 'created_at')
+                            .map(k => `${k} = EXCLUDED.${k}`).join(', ');
+      
+      let sql = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
+      if (updateSet.length > 0) {
+        sql += ` ON CONFLICT(id) DO UPDATE SET ${updateSet}`;
+      } else {
+        sql += ` ON CONFLICT(id) DO NOTHING`;
+      }
+      
+      db!.run(sql, values, function (err) {
+        if (err) reject(err);
+        else resolve({ success: true });
+      });
+    });
+  });

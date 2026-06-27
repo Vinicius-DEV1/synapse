@@ -62,5 +62,11 @@ contextBridge.exposeInMainWorld('api', {
     startReadingSession: (data: any) => ipcRenderer.invoke('library:start-reading-session', data),
     endReadingSession: (data: any) => ipcRenderer.invoke('library:end-reading-session', data),
     getReadingStats: (bookId?: string) => ipcRenderer.invoke('library:get-reading-stats', bookId),
+  },
+
+  // Sync
+  sync: {
+    getTable: (tableName: string) => ipcRenderer.invoke('sync:get-table', tableName),
+    upsertRow: (tableName: string, row: any) => ipcRenderer.invoke('sync:upsert-row', tableName, row),
   }
 });

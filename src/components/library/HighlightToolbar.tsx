@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { StickyNote, BookType } from 'lucide-react';
+import { StickyNote, BookType, Trash2 } from 'lucide-react';
 import type { HighlightColor } from '../../types';
 
 interface HighlightToolbarProps {
   position: { x: number; y: number };
-  selectedText: string;
-  onHighlight: (color: HighlightColor, note?: string) => void;
-  onDictionary: (text: string) => void;
+  selectedText?: string;
+  existingHighlight?: { id: string; color: HighlightColor; note?: string };
+  onHighlight?: (color: HighlightColor, note?: string) => void;
+  onUpdateHighlight?: (id: string, color: HighlightColor, note?: string) => void;
+  onDeleteHighlight?: (id: string) => void;
+  onDictionary?: (text: string) => void;
   onDismiss: () => void;
 }
 
@@ -18,10 +21,14 @@ const HIGHLIGHT_COLORS: { color: HighlightColor; hex: string; label: string }[] 
   { color: 'orange', hex: '#fb923c', label: 'Laranja' },
 ];
 
-export default function HighlightToolbar({ position, selectedText, onHighlight, onDictionary, onDismiss }: HighlightToolbarProps) {
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<HighlightColor | null>(null);
-  const [noteText, setNoteText] = useState('');
+export default function HighlightToolbar({ 
+  position, selectedText, existingHighlight,
+  onHighlight, onUpdateHighlight, onDeleteHighlight,
+  onDictionary, onDismiss 
+}: HighlightToolbarProps) {
+  const [showNoteInput, setShowNoteInput] = useState(!!existingHighlight?.note);
+  const [selectedColor, setSelectedColor] = useState<HighlightColor | null>(existingHighlight?.color || null);
+  const [noteText, setNoteText] = useState(existingHighlight?.note || '');
   const toolbarRef = useRef<HTMLDivElement>(null);
   const noteInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,37 +75,44 @@ export default function HighlightToolbar({ position, selectedText, onHighlight, 
   }, [showNoteInput]);
 
   const handleColorClick = useCallback((color: HighlightColor) => {
-    if (showNoteInput) {
+    if (existingHighlight && onUpdateHighlight) {
+      onUpdateHighlight(existingHighlight.id, color, noteText.trim() || undefined);
+      if (!showNoteInput) onDismiss();
+      else setSelectedColor(color);
+    } else if (showNoteInput) {
       setSelectedColor(color);
-    } else {
+    } else if (onHighlight) {
       onHighlight(color);
     }
-  }, [showNoteInput, onHighlight]);
+  }, [existingHighlight, onUpdateHighlight, noteText, showNoteInput, onHighlight, onDismiss]);
 
   const handleNoteToggle = useCallback(() => {
     setShowNoteInput(prev => !prev);
   }, []);
 
   const handleNoteSubmit = useCallback(() => {
-    if (selectedColor) {
+    if (existingHighlight && onUpdateHighlight) {
+      onUpdateHighlight(existingHighlight.id, selectedColor || existingHighlight.color, noteText.trim() || undefined);
+      onDismiss();
+    } else if (onHighlight && selectedColor) {
       onHighlight(selectedColor, noteText.trim() || undefined);
     }
-  }, [selectedColor, noteText, onHighlight]);
+  }, [existingHighlight, onUpdateHighlight, selectedColor, noteText, onHighlight, onDismiss]);
 
   const handleNoteKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && selectedColor) {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleNoteSubmit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       onDismiss();
     }
-  }, [selectedColor, handleNoteSubmit, onDismiss]);
+  }, [handleNoteSubmit, onDismiss]);
 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 animate-scale-in highlight-toolbar-container"
+      className="fixed z-50 animate-scale-in highlight-toolbar-container select-none"
       style={{
         left: `${clampedPosition.x}px`,
         top: `${clampedPosition.y}px`,
@@ -128,16 +142,18 @@ export default function HighlightToolbar({ position, selectedText, onHighlight, 
           <div className="w-px h-5 bg-white/10 mx-1" />
 
           {/* Dictionary */}
-          <button
-            onClick={() => {
-              onDictionary(selectedText);
-              onDismiss();
-            }}
-            className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-brand-400 transition-all active:scale-90"
-            title="Dicionário / Traduzir"
-          >
-            <BookType size={14} />
-          </button>
+          {(!existingHighlight || selectedText) && (
+            <button
+              onClick={() => {
+                if (selectedText) onDictionary?.(selectedText);
+                onDismiss();
+              }}
+              className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-brand-400 transition-all active:scale-90"
+              title="Dicionário / Traduzir"
+            >
+              <BookType size={14} />
+            </button>
+          )}
 
           {/* Note toggle */}
           <button
@@ -147,10 +163,23 @@ export default function HighlightToolbar({ position, selectedText, onHighlight, 
                 ? 'bg-brand-500/20 text-brand-400'
                 : 'text-dark-subtext hover:bg-white/10 hover:text-brand-400'
             }`}
-            title="Adicionar nota"
+            title={existingHighlight?.note ? "Editar nota" : "Adicionar nota"}
           >
             <StickyNote size={14} />
           </button>
+
+          {existingHighlight && onDeleteHighlight && (
+            <button
+              onClick={() => {
+                onDeleteHighlight(existingHighlight.id);
+                onDismiss();
+              }}
+              className="p-1.5 rounded-lg text-dark-subtext hover:bg-red-500/20 hover:text-red-400 transition-all active:scale-90"
+              title="Excluir marcação"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
 
         {/* Note input */}

@@ -127,7 +127,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
-        className={`bg-dark-card border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative ${shake ? 'animate-shake' : ''}`}
+        className={`bg-dark-card border border-white/10 rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl relative ${shake ? 'animate-shake' : ''}`}
       >
         <button
           onClick={onClose}
