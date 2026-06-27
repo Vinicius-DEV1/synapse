@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('api', {
   getAllPages: () => invokeWithSync('db:get-all-pages'),
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) =>
     invokeWithSync('db:create-page', page),
-  updatePage: (page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) =>
+  updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; parent_id?: string | null }) =>
     invokeWithSync('db:update-page', page),
   deletePage: (id: string) => invokeWithSync('db:delete-page', id),
   reorderPages: (updates: { id: string; sort_order: number }[]) =>

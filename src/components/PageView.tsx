@@ -10,7 +10,7 @@ import PageHistoryModal from './PageHistoryModal';
 
 interface PageViewProps {
   page: Page | null;
-  onUpdateContent: (id: string, content: string, embeddedSaves?: {id: string, content: string}[]) => Promise<void>;
+  onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => Promise<void>;
   onCreatePage: (parentId: string | null) => Promise<void>;
   onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
@@ -120,7 +120,8 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
         <Editor
           pageId={page.id}
           initialContent={page.content}
-          onSave={(content, embeddedSaves) => onUpdateContent(page.id, content, embeddedSaves)}
+          initialCrdtState={page.crdt_state}
+          onSave={(content, crdtState, embeddedSaves) => onUpdateContent(page.id, content, crdtState, embeddedSaves)}
           onCreateLinkedPage={(title) => onCreateLinkedPage(title, page.id)}
         />
 

@@ -225,10 +225,10 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  const handleUpdateContent = useCallback(async (id: string, content: string, embeddedSaves?: {id: string, content: string}[]) => {
+  const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
-      await window.api.updatePage({ id, content });
-      dispatch({ type: 'UPDATE_PAGE', page: { id, content } });
+      await window.api.updatePage({ id, content, crdt_state: crdtState });
+      dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
       
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {
