@@ -476,10 +476,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
   // Handle text selection
   useEffect(() => {
-    const handleMouseUp = (e: MouseEvent) => {
+    const handleMouseUp = (e: MouseEvent | TouchEvent) => {
       // Ignorar mouseup se for dentro da toolbar ou modal
       const target = e.target as HTMLElement;
-      if (target.closest('.highlight-toolbar-container') || target.closest('.dictionary-modal-container')) {
+      if (target && (target.closest('.highlight-toolbar-container') || target.closest('.dictionary-modal-container'))) {
         return;
       }
 
@@ -576,8 +576,16 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       });
     };
     
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
+    const handleTouchEnd = (e: TouchEvent) => {
+      setTimeout(() => handleMouseUp(e), 50);
+    };
+    
+    document.addEventListener('mouseup', handleMouseUp as EventListener);
+    document.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp as EventListener);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
   }, [currentPage]);
 
   const handleCreateHighlight = async (color: string, note?: string) => {
