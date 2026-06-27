@@ -1,4 +1,12 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
+
+// Garante que uma promise nunca trava: resolve automaticamente após o timeout.
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<T>((_, reject) =>
+    setTimeout(() => reject(new Error(`Sync timeout após ${ms / 1000}s`)), ms)
+  );
+  return Promise.race([promise, timeout]);
+}
 import { StoreProvider, useStore } from './store/useStore';
 import type { Page } from './types';
 import Sidebar from './components/Sidebar';
@@ -14,14 +22,23 @@ import { getSettings } from './utils/settings';
 import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
 import { pushAllToCloud, pullAllFromCloud, syncPdfsToCloud } from './services/sync';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 function AppContent() {
   const { state, dispatch } = useStore();
   const [isAuth, setIsAuth] = useState(false);
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
-  const [isSyncing, setIsSyncing] = useState(false);
+  type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startSync = () => setSyncStatus('syncing');
+  const finishSync = (ok: boolean) => {
+    setSyncStatus(ok ? 'success' : 'error');
+    if (syncDismissTimer.current) clearTimeout(syncDismissTimer.current);
+    syncDismissTimer.current = setTimeout(() => setSyncStatus('idle'), 3000);
+  };
 
   // Listen to settings changes
   useEffect(() => {
@@ -77,36 +94,53 @@ function AppContent() {
     }
   }, [dispatch]);
 
+
   useEffect(() => {
     if (isAuth && state.masterKey) {
-      setIsSyncing(true);
-      // 1. Ao logar, puxa todas as atualizações da nuvem
-      pullAllFromCloud(state.masterKey)
+      startSync();
+      // 1. Ao logar, puxa todas as atualizações da nuvem (timeout de 30s)
+      withTimeout(pullAllFromCloud(state.masterKey), 30_000)
         .then(() => {
           // Após puxar, recarrega a UI
           loadPages();
-          // E empurra possíveis alterações locais antigas
-          pushAllToCloud(state.masterKey!);
-          // E sobe os PDFs legados do Desktop, se existirem
-          syncPdfsToCloud(state.masterKey!);
+          // E empurra possíveis alterações locais antigas (também com timeout)
+          return withTimeout(
+            Promise.all([
+              pushAllToCloud(state.masterKey!),
+              syncPdfsToCloud(state.masterKey!),
+            ]),
+            30_000
+          );
         })
-        .catch(err => console.error('Erro no sync inicial:', err))
-        .finally(() => setIsSyncing(false));
+        .then(() => finishSync(true))
+        .catch(err => {
+          console.warn('[Sync] Sync inicial encerrado:', err.message);
+          finishSync(false);
+        });
 
       // 2. Cria um gatilho de sincronização a cada 3 minutos
       const syncInterval = setInterval(() => {
         if (state.masterKey) {
-          setIsSyncing(true);
-          Promise.all([
-            pushAllToCloud(state.masterKey),
-            syncPdfsToCloud(state.masterKey)
-          ])
-            .catch(console.error)
-            .finally(() => setIsSyncing(false));
+          startSync();
+          withTimeout(
+            Promise.all([
+              pushAllToCloud(state.masterKey),
+              syncPdfsToCloud(state.masterKey),
+            ]),
+            30_000
+          )
+            .then(() => finishSync(true))
+            .catch(err => {
+              console.warn('[Sync] Sync periódico encerrado:', err.message);
+              finishSync(false);
+            });
         }
       }, 3 * 60 * 1000);
 
-      return () => clearInterval(syncInterval);
+      return () => {
+        clearInterval(syncInterval);
+        if (syncDismissTimer.current) clearTimeout(syncDismissTimer.current);
+      };
     }
   }, [isAuth, state.masterKey, loadPages]);
 
@@ -243,14 +277,25 @@ function AppContent() {
         />
       )}
 
-      {/* Syncing Indicator */}
-      <div 
-        className={`fixed bottom-6 right-6 flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-full shadow-lg shadow-brand-500/20 pointer-events-none transition-all duration-500 ease-in-out z-[9999]
-          ${isSyncing ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+      {/* Sync Status Toast */}
+      <div
+        className={`fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg pointer-events-none transition-all duration-500 ease-in-out z-[9999]
+          ${
+            syncStatus === 'syncing' ? 'bg-brand-500 text-white shadow-brand-500/20 opacity-100 translate-y-0' :
+            syncStatus === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/20 opacity-100 translate-y-0' :
+            syncStatus === 'error'   ? 'bg-red-500 text-white shadow-red-500/20 opacity-100 translate-y-0' :
+            'opacity-0 translate-y-8'
+          }
         `}
       >
-        <Loader2 size={16} className="animate-spin" />
-        <span className="text-sm font-medium">Sincronizando...</span>
+        {syncStatus === 'syncing' && <Loader2 size={16} className="animate-spin" />}
+        {syncStatus === 'success' && <CheckCircle2 size={16} />}
+        {syncStatus === 'error'   && <XCircle size={16} />}
+        <span className="text-sm font-medium">
+          {syncStatus === 'syncing' ? 'Sincronizando...' :
+           syncStatus === 'success' ? 'Sincronizado!' :
+           syncStatus === 'error'   ? 'Falha na sincronização' : ''}
+        </span>
       </div>
     </div>
   );

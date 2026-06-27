@@ -32,6 +32,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [zoomInputActive, setZoomInputActive] = useState(false);
+  const [zoomInputValue, setZoomInputValue] = useState('');
+  const zoomInputRef = useRef<HTMLInputElement>(null);
   const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string } | null>(null);
   const [activeHighlight, setActiveHighlight] = useState<{ highlight: LibraryHighlight, position: { x: number, y: number } } | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);
@@ -47,12 +50,18 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
   const [modeToast, setModeToast] = useState<string | null>(null);
 
+  // Virtual scroll state — estimated page height used for spacers
+  const PAGE_GAP = 16; // gap between pages in px
+  const estimatedPageHeightRef = useRef(800);
+  const [virtualWindow, setVirtualWindow] = useState<{ start: number; end: number }>({ start: 1, end: 1 });
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<any>(null);
+  const measuredHeights = useRef<Map<number, number>>(new Map());
 
   // Load PDF document
   useEffect(() => {
@@ -226,76 +235,118 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     return () => el.removeEventListener('wheel', handleWheel);
   }, [handleZoom, loading]);
 
-  // Observer to track which page is visible
+  // --- TRUE VIRTUALIZATION ---
+  // Helper: get the height of a page (measured or estimated)
+  const getPageHeight = useCallback((pageNum: number) => {
+    return measuredHeights.current.get(pageNum) || estimatedPageHeightRef.current;
+  }, []);
+
+  // Helper: get scroll offset for a given page number
+  const getPageOffset = useCallback((targetPage: number) => {
+    let offset = 0;
+    for (let i = 1; i < targetPage; i++) {
+      offset += getPageHeight(i) + PAGE_GAP;
+    }
+    return offset;
+  }, [getPageHeight, PAGE_GAP]);
+
+  // Scroll-based virtualizer: determines which pages to mount in the DOM
   useEffect(() => {
     if (!scrollRef.current || totalPages === 0 || loading) return;
 
-    observerRef.current = new IntersectionObserver((entries) => {
-      let mostVisiblePage = currentPageRef.current;
-      let maxRatio = 0;
+    const BUFFER = 3; // extra pages above/below viewport
 
-      entries.forEach(entry => {
-        const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1', 10);
-        
-        if (entry.isIntersecting) {
-          if (entry.intersectionRatio > maxRatio) {
-            maxRatio = entry.intersectionRatio;
-            mostVisiblePage = pageNum;
-          }
+    const recalculate = () => {
+      const container = scrollRef.current;
+      if (!container) return;
+
+      const scrollTop = container.scrollTop;
+      const viewportHeight = container.clientHeight;
+
+      // Find the first visible page
+      let accum = 0;
+      let firstVisible = 1;
+      for (let i = 1; i <= totalPages; i++) {
+        const h = getPageHeight(i) + PAGE_GAP;
+        if (accum + h > scrollTop) {
+          firstVisible = i;
+          break;
         }
+        accum += h;
+      }
+
+      // Find the last visible page
+      let lastVisible = firstVisible;
+      let visibleAccum = accum;
+      for (let i = firstVisible; i <= totalPages; i++) {
+        lastVisible = i;
+        visibleAccum += getPageHeight(i) + PAGE_GAP;
+        if (visibleAccum > scrollTop + viewportHeight) break;
+      }
+
+      const windowStart = Math.max(1, firstVisible - BUFFER);
+      const windowEnd = Math.min(totalPages, lastVisible + BUFFER);
+
+      setVirtualWindow(prev => {
+        if (prev.start === windowStart && prev.end === windowEnd) return prev;
+        return { start: windowStart, end: windowEnd };
       });
 
-      if (maxRatio > 0) {
-        setRenderedPages(() => {
-          const next = new Set<number>();
-          // Virtualization window: Keep only most visible page +/- 3 pages in DOM
-          // This prevents memory leak and lag on 1000+ page PDFs
-          for (let i = Math.max(1, mostVisiblePage - 3); i <= Math.min(totalPages, mostVisiblePage + 3); i++) {
-            next.add(i);
-          }
-          return next;
-        });
-      }
+      setRenderedPages(() => {
+        const next = new Set<number>();
+        for (let i = windowStart; i <= windowEnd; i++) {
+          next.add(i);
+        }
+        return next;
+      });
 
-      if (mostVisiblePage !== currentPageRef.current && maxRatio > 0.3) {
-        setCurrentPage(mostVisiblePage);
-        
+      // Track current page (most visible)
+      if (firstVisible !== currentPageRef.current) {
+        setCurrentPage(firstVisible);
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
-          onUpdateBook({ id: book.id, last_read_page: mostVisiblePage, last_read_at: new Date().toISOString() });
+          onUpdateBook({ id: book.id, last_read_page: firstVisible, last_read_at: new Date().toISOString() });
         }, 2000);
       }
-    }, {
-      root: scrollRef.current,
-      rootMargin: '100% 0px 100% 0px',
-      threshold: [0, 0.1, 0.5, 0.9, 1.0]
-    });
-
-    pageRefs.current.forEach(ref => {
-      if (ref) observerRef.current?.observe(ref);
-    });
-
-    return () => {
-      observerRef.current?.disconnect();
     };
-  }, [totalPages, loading, book.id]); // Removed zoom and currentPage from dependencies
+
+    recalculate();
+
+    const container = scrollRef.current;
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          recalculate();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [totalPages, loading, book.id, zoom, getPageHeight, getPageOffset, PAGE_GAP]);
 
   // Scroll to initial page
   useEffect(() => {
     if (!loading && pdfDoc && book.last_read_page > 1) {
       setTimeout(() => {
-        scrollToPage(book.last_read_page, true);
-      }, 500);
+        const offset = getPageOffset(book.last_read_page);
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = offset;
+        }
+      }, 300);
     }
   }, [loading, pdfDoc]);
 
-  const scrollToPage = (pageNum: number, smooth = true) => {
-    const el = pageRefs.current.get(pageNum);
-    if (el) {
-      el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+  const scrollToPage = useCallback((pageNum: number, smooth = true) => {
+    const offset = getPageOffset(pageNum);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: offset, behavior: smooth ? 'smooth' : 'auto' });
       setCurrentPage(pageNum);
     }
-  };
+  }, [getPageOffset]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -578,7 +629,45 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           >
             <ZoomOut size={16} />
           </button>
-          <span className="text-xs text-dark-subtext w-12 text-center">{Math.round(zoom * 100)}%</span>
+          {zoomInputActive ? (
+            <input
+              ref={zoomInputRef}
+              type="number"
+              min={50}
+              max={300}
+              value={zoomInputValue}
+              onChange={e => setZoomInputValue(e.target.value)}
+              onBlur={() => {
+                const parsed = parseInt(zoomInputValue, 10);
+                if (!isNaN(parsed)) {
+                  handleZoom(Math.min(3, Math.max(0.5, parsed / 100)));
+                }
+                setZoomInputActive(false);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const parsed = parseInt(zoomInputValue, 10);
+                  if (!isNaN(parsed)) {
+                    handleZoom(Math.min(3, Math.max(0.5, parsed / 100)));
+                  }
+                  setZoomInputActive(false);
+                } else if (e.key === 'Escape') {
+                  setZoomInputActive(false);
+                }
+              }}
+              className="text-xs text-dark-text w-14 text-center bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-brand-400"
+              autoFocus
+            />
+          ) : (
+            <span
+              className="text-xs text-dark-subtext w-12 text-center cursor-pointer hover:text-dark-text hover:bg-white/5 rounded px-1 py-0.5 transition-all"
+              title="Clique para digitar um zoom específico"
+              onClick={() => {
+                setZoomInputValue(String(Math.round(zoom * 100)));
+                setZoomInputActive(true);
+              }}
+            >{Math.round(zoom * 100)}%</span>
+          )}
           <button 
             onClick={() => handleZoom(z => Math.min(3, z + 0.25))}
             className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
@@ -644,7 +733,17 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           ref={scrollRef}
           className={`flex-1 overflow-y-auto pdf-scroll-container p-4 pb-20 reading-mode-${readingMode}`}
         >
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+          {/* Top spacer — represents all unmounted pages above the window */}
+          {(() => {
+            let topHeight = 0;
+            for (let i = 1; i < virtualWindow.start; i++) {
+              topHeight += getPageHeight(i) + PAGE_GAP;
+            }
+            return topHeight > 0 ? <div style={{ height: topHeight, flexShrink: 0 }} /> : null;
+          })()}
+
+          {/* Only mount pages inside the virtual window */}
+          {Array.from({ length: virtualWindow.end - virtualWindow.start + 1 }, (_, i) => virtualWindow.start + i).map(pageNum => (
             <PdfPage
               key={pageNum}
               pageNum={pageNum}
@@ -661,15 +760,33 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   highlight,
                   position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
                 });
-                setSelection(null); // Clear active selection if any
+                setSelection(null);
                 window.getSelection()?.removeAllRanges();
               }}
               pageRefs={pageRefs}
               canvasRefs={canvasRefs}
               ocrProcessing={ocrProcessing}
               setOcrProcessing={setOcrProcessing}
+              onMeasure={(h) => {
+                if (h > 0 && measuredHeights.current.get(pageNum) !== h) {
+                  measuredHeights.current.set(pageNum, h);
+                  // Update estimated height based on first real measurement
+                  if (estimatedPageHeightRef.current === 800) {
+                    estimatedPageHeightRef.current = h;
+                  }
+                }
+              }}
             />
           ))}
+
+          {/* Bottom spacer — represents all unmounted pages below the window */}
+          {(() => {
+            let bottomHeight = 0;
+            for (let i = virtualWindow.end + 1; i <= totalPages; i++) {
+              bottomHeight += getPageHeight(i) + PAGE_GAP;
+            }
+            return bottomHeight > 0 ? <div style={{ height: bottomHeight, flexShrink: 0 }} /> : null;
+          })()}
         </div>
 
         {/* Annotation Panel */}
@@ -774,11 +891,12 @@ interface PdfPageProps {
   canvasRefs: React.MutableRefObject<Map<number, HTMLCanvasElement>>;
   ocrProcessing: Set<number>;
   setOcrProcessing: React.Dispatch<React.SetStateAction<Set<number>>>;
+  onMeasure?: (height: number) => void;
 }
 
 const PdfPage = React.memo(({
   pageNum, pdfDoc, zoom, isRendered, readingMode, bookId, highlights: _highlights, isBookmarked,
-  onToggleBookmark, onHighlightClick, pageRefs, canvasRefs, ocrProcessing, setOcrProcessing
+  onToggleBookmark, onHighlightClick, pageRefs, canvasRefs, ocrProcessing, setOcrProcessing, onMeasure
 }: PdfPageProps) => {
   const [dimensions, setDimensions] = useState({ width: 600, height: 800 }); // Default
   const [textItems, setTextItems] = useState<any[]>([]);
@@ -794,6 +912,7 @@ const PdfPage = React.memo(({
         const viewport = page.getViewport({ scale: zoom });
         if (active) {
           setDimensions({ width: viewport.width, height: viewport.height });
+          onMeasure?.(viewport.height);
         }
       } catch (e) {
         console.error("Failed to init page", e);
