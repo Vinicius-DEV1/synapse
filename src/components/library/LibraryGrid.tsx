@@ -51,14 +51,7 @@ export default function LibraryGrid({
   };
 
   return (
-    <div
-      className="p-6"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-        gap: '1.5rem',
-      }}
-    >
+    <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
       {/* Book Cards */}
       {books.map((book, index) => {
         const progress = getProgress(book);
@@ -259,7 +252,7 @@ export default function LibraryGrid({
       {/* Import Card */}
       <div
         onClick={onImportBook}
-        className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-all duration-300 hover:bg-brand-500/5 min-h-[280px]"
+        className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-all duration-300 hover:bg-brand-500/5 aspect-[3/4] sm:min-h-[280px]"
         style={{
           animation: `fade-in 0.3s ease-out ${books.length * 50}ms both`,
         }}

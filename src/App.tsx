@@ -22,7 +22,7 @@ import { getSettings } from './utils/settings';
 import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
 import { pushAllToCloud, pullAllFromCloud, syncPdfsToCloud } from './services/sync';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Cloud } from 'lucide-react';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -118,15 +118,19 @@ function AppContent() {
           finishSync(false);
         });
 
-      // 2. Cria um gatilho de sincronização a cada 3 minutos
+      // 2. Cria um gatilho de sincronização a cada 1 minuto
       const syncInterval = setInterval(() => {
         if (state.masterKey) {
           startSync();
           withTimeout(
-            Promise.all([
-              pushAllToCloud(state.masterKey),
-              syncPdfsToCloud(state.masterKey),
-            ]),
+            pullAllFromCloud(state.masterKey)
+              .then(() => {
+                loadPages();
+                return Promise.all([
+                  pushAllToCloud(state.masterKey!),
+                  syncPdfsToCloud(state.masterKey!),
+                ]);
+              }),
             60_000
           )
             .then(() => finishSync(true))
@@ -135,10 +139,50 @@ function AppContent() {
               finishSync(false);
             });
         }
-      }, 3 * 60 * 1000);
+      }, 60 * 1000);
+
+      // 3. Gatilho inteligente (debounce de 3s após qualquer modificação do usuário)
+      let syncDebounceTimer: ReturnType<typeof setTimeout>;
+      const handleSyncTrigger = () => {
+        clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = setTimeout(() => {
+          if (state.masterKey) {
+            startSync();
+            withTimeout(
+              pullAllFromCloud(state.masterKey)
+                .then(() => {
+                  loadPages();
+                  return Promise.all([
+                    pushAllToCloud(state.masterKey!),
+                    syncPdfsToCloud(state.masterKey!),
+                  ]);
+                }),
+              60_000
+            )
+              .then(() => finishSync(true))
+              .catch(err => {
+                console.warn('[Sync] Sync sob demanda encerrado:', err.message);
+                finishSync(false);
+              });
+          }
+        }, 3000); // 3 segundos de inatividade após digitar/alterar algo
+      };
+      
+      let cleanupSyncTrigger: (() => void) | undefined;
+      if (window.api?.onSyncTrigger) {
+        cleanupSyncTrigger = window.api.onSyncTrigger(handleSyncTrigger);
+      } else {
+        window.addEventListener('app-sync-trigger', handleSyncTrigger);
+      }
 
       return () => {
         clearInterval(syncInterval);
+        clearTimeout(syncDebounceTimer);
+        if (cleanupSyncTrigger) {
+          cleanupSyncTrigger();
+        } else {
+          window.removeEventListener('app-sync-trigger', handleSyncTrigger);
+        }
         if (syncDismissTimer.current) clearTimeout(syncDismissTimer.current);
       };
     }
@@ -277,24 +321,19 @@ function AppContent() {
         />
       )}
 
-      {/* Sync Status Toast */}
+      {/* Sync Status Toast (Discreet) */}
       <div
-        className={`fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg pointer-events-none transition-all duration-500 ease-in-out z-[9999]
-          ${
-            syncStatus === 'syncing' ? 'bg-brand-500 text-white shadow-brand-500/20 opacity-100 translate-y-0' :
-            syncStatus === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/20 opacity-100 translate-y-0' :
-            syncStatus === 'error'   ? 'bg-red-500 text-white shadow-red-500/20 opacity-100 translate-y-0' :
-            'opacity-0 translate-y-8'
-          }
+        className={`fixed top-4 right-4 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-dark-card/80 backdrop-blur-sm border border-white/5 shadow-sm pointer-events-none transition-all duration-500 z-[9999]
+          ${syncStatus === 'idle' ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}
         `}
       >
-        {syncStatus === 'syncing' && <Loader2 size={16} className="animate-spin" />}
-        {syncStatus === 'success' && <CheckCircle2 size={16} />}
-        {syncStatus === 'error'   && <XCircle size={16} />}
-        <span className="text-sm font-medium">
-          {syncStatus === 'syncing' ? 'Sincronizando...' :
-           syncStatus === 'success' ? 'Sincronizado!' :
-           syncStatus === 'error'   ? 'Falha na sincronização' : ''}
+        {syncStatus === 'syncing' && <Cloud size={14} className="text-dark-subtext animate-pulse" />}
+        {syncStatus === 'success' && <CheckCircle2 size={14} className="text-emerald-400" />}
+        {syncStatus === 'error'   && <XCircle size={14} className="text-red-400" />}
+        <span className="text-xs font-medium text-dark-subtext">
+          {syncStatus === 'syncing' ? 'Salvando...' :
+           syncStatus === 'success' ? 'Salvo' :
+           syncStatus === 'error'   ? 'Erro ao salvar' : ''}
         </span>
       </div>
     </div>
