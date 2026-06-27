@@ -61,14 +61,14 @@ export default function LibraryGrid({
         return (
           <div
             key={book.id}
-            className="group relative flex flex-col rounded-xl bg-dark-card border border-white/5 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-500/20"
+            className="group relative flex flex-col bg-dark-card border border-white/5 rounded-xl hover:border-brand-500/30 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-brand-500/10"
             style={{
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
             onClick={() => onSelectBook(book)}
           >
             {/* Cover */}
-            <div className="relative aspect-[3/4] overflow-hidden">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl">
               {book.cover_image ? (
                 <img
                   src={book.cover_image}
@@ -98,102 +98,7 @@ export default function LibraryGrid({
                 className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
               >
                 <MoreVertical size={16} />
-              </button>
-
-              {/* Dropdown Menu */}
-              {menuBookId === book.id && (
-                <div
-                  ref={menuRef}
-                  className="absolute top-10 right-2 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => {
-                      setMenuBookId(null);
-                      onEditBook(book);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <Pencil size={14} />
-                    Editar
-                  </button>
-
-                  <div className="border-t border-white/5 my-1" />
-
-                  {book.reading_status !== 'not_started' && (
-                    <button
-                      onClick={() => {
-                        onStatusChange(book, 'not_started');
-                        setMenuBookId(null);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                    >
-                      <Circle size={14} />
-                      Marcar como Não iniciado
-                    </button>
-                  )}
-                  {book.reading_status !== 'reading' && (
-                    <button
-                      onClick={() => {
-                        onStatusChange(book, 'reading');
-                        setMenuBookId(null);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                    >
-                      <BookOpen size={14} />
-                      Marcar como Lendo
-                    </button>
-                  )}
-                  {book.reading_status !== 'finished' && (
-                    <button
-                      onClick={() => {
-                        onStatusChange(book, 'finished');
-                        setMenuBookId(null);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                    >
-                      <CheckCircle2 size={14} />
-                      Marcar como Concluído
-                    </button>
-                  )}
-
-                  <div className="border-t border-white/5 my-1" />
-
-                  {confirmDeleteId === book.id ? (
-                    <div className="px-3 py-2 flex flex-col gap-2">
-                      <span className="text-xs text-red-400">Tem certeza?</span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            onDeleteBook(book.id);
-                            setMenuBookId(null);
-                            setConfirmDeleteId(null);
-                          }}
-                          className="flex-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                        >
-                          Excluir
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="flex-1 px-2 py-1 text-xs rounded bg-white/5 text-dark-subtext hover:bg-white/10 transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteId(book.id)}
-                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                      Excluir
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Progress overlay at bottom of cover */}
+              </button>              {/* Progress overlay at bottom of cover */}
               {progress > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
                   <div
@@ -203,6 +108,99 @@ export default function LibraryGrid({
                 </div>
               )}
             </div>
+
+            {/* Dropdown Menu - Movido para fora do cover para nǜo ser cortado */}
+            {menuBookId === book.id && (
+              <div
+                ref={menuRef}
+                className="absolute top-10 right-2 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => {
+                    setMenuBookId(null);
+                    onEditBook(book);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                >
+                  <Pencil size={14} />
+                  Editar
+                </button>
+
+                <div className="border-t border-white/5 my-1" />
+
+                {book.reading_status !== 'not_started' && (
+                  <button
+                    onClick={() => {
+                      onStatusChange(book, 'not_started');
+                      setMenuBookId(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                  >
+                    <Circle size={14} />
+                    Marcar como Nǜo iniciado
+                  </button>
+                )}
+                {book.reading_status !== 'reading' && (
+                  <button
+                    onClick={() => {
+                      onStatusChange(book, 'reading');
+                      setMenuBookId(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                  >
+                    <BookOpen size={14} />
+                    Marcar como Lendo
+                  </button>
+                )}
+                {book.reading_status !== 'finished' && (
+                  <button
+                    onClick={() => {
+                      onStatusChange(book, 'finished');
+                      setMenuBookId(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                  >
+                    <CheckCircle2 size={14} />
+                    Marcar como Conclu�do
+                  </button>
+                )}
+
+                <div className="border-t border-white/5 my-1" />
+
+                {confirmDeleteId === book.id ? (
+                  <div className="px-3 py-2 flex flex-col gap-2">
+                    <span className="text-xs text-red-400">Tem certeza?</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          onDeleteBook(book.id);
+                          setMenuBookId(null);
+                          setConfirmDeleteId(null);
+                        }}
+                        className="flex-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        Excluir
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 px-2 py-1 text-xs rounded bg-white/5 text-dark-subtext hover:bg-white/10 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(book.id)}
+                    className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    Excluir
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Info */}
             <div className="flex flex-col gap-1.5 p-3 flex-1">
