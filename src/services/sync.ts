@@ -139,8 +139,9 @@ export async function syncPdfsToCloud(masterKey: CryptoKey): Promise<void> {
   try {
     const books = await window.api.library.getBooks();
     for (const book of books) {
-      // Se não tem drive_file_id (novo no SQLite), precisa subir
-      if (book.file_path && !book.drive_file_id && !book.file_path.includes('/')) {
+      // Se não tem drive_file_id (novo no SQLite), precisa subir para o Google Drive
+      // (mesmo os livros antigos que já tinham tentado subir pro Firebase)
+      if (book.file_path && !book.drive_file_id) {
         console.log(`[Sync] Fazendo upload E2EE de PDF para Google Drive: ${book.title}`);
         
         try {
