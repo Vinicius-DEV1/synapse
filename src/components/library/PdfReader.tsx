@@ -9,6 +9,9 @@ import AnnotationPanel from './AnnotationPanel';
 import PdfSearchBar from './PdfSearchBar';
 import DictionaryModal from './DictionaryModal';
 import { getSettings, saveSettings } from '../../utils/settings';
+import { getValidAccessToken, downloadFromDrive } from '../../services/drive';
+import { decryptFile } from '../../services/storage';
+import { useStore } from '../../store';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -69,8 +72,29 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     const loadPdf = async () => {
       try {
         setLoading(true);
-        const fileData = await window.api.library.getBookFile(book.id);
+        let fileData;
+        try {
+          fileData = await window.api.library.getBookFile(book.id);
+        } catch (localErr) {
+          console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
+        }
         
+        if (!fileData && book.drive_file_id) {
+          console.log("Baixando do Google Drive: ", book.drive_file_id);
+          const token = await getValidAccessToken();
+          if (token) {
+             const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+             const masterKey = useStore.getState().masterKey;
+             if (masterKey) {
+               fileData = await decryptFile(encryptedData, masterKey);
+             } else {
+               throw new Error("Chave mestra não encontrada para descriptografar.");
+             }
+          } else {
+             throw new Error("Sua conta não está conectada ao Google Drive.");
+          }
+        }
+
         if (!fileData) {
           throw new Error("Arquivo PDF vazio ou não encontrado. Verifique se o arquivo existe na nuvem.");
         }

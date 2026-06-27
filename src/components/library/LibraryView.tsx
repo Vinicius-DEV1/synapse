@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, Plus, BarChart3, ArrowUpDown, ChevronDown,
-  BookOpen, Loader2, Library, Edit2
+  BookOpen, Loader2, Library, Edit2, Cloud
 } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import LibraryGrid from './LibraryGrid';
@@ -564,6 +564,14 @@ export default function LibraryView() {
 
       {/* Stats Overlay */}
       {showStats && <ReadingStatsView onClose={() => setShowStats(false)} />}
+
+      {/* Drive Auth Modal */}
+      {showDriveAuth && (
+        <DriveAuthModal 
+          onClose={() => setShowDriveAuth(false)}
+          onSuccess={() => setHasDriveAuth(true)}
+        />
+      )}
     </div>
   );
 }
