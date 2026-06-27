@@ -32,7 +32,7 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Add deleted_at to existing pages table if missing (migration)
-  db!.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS page_history (
@@ -54,9 +54,9 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migrations for config
-  db!.run(`ALTER TABLE config ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
-  db!.run(`ALTER TABLE config ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
-  db!.run(`ALTER TABLE config ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE config ADD COLUMN created_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
+  db!.run(`ALTER TABLE config ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
+  db!.run(`ALTER TABLE config ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS transactions (
@@ -73,8 +73,8 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migrations
-  db!.run(`ALTER TABLE transactions ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
-  db!.run(`ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE transactions ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
+  db!.run(`ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS wishlist (
@@ -89,8 +89,8 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migrations
-  db!.run(`ALTER TABLE wishlist ADD COLUMN deleted_at DATETIME DEFAULT NULL`, () => {});
-  db!.run(`ALTER TABLE wishlist ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE wishlist ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
+  db!.run(`ALTER TABLE wishlist ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_books (
@@ -111,7 +111,7 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migration for library_books
-  db!.run(`ALTER TABLE library_books ADD COLUMN drive_file_id TEXT DEFAULT NULL`, () => {});
+  db!.run(`ALTER TABLE library_books ADD COLUMN drive_file_id TEXT DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_collections (
@@ -124,7 +124,7 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migration
-  db!.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_book_collections (
@@ -153,7 +153,7 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migration
-  db!.run(`ALTER TABLE library_highlights ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_highlights ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_bookmarks (
@@ -168,7 +168,7 @@ function setupTables(onComplete: () => void) {
     )
   `);
   // Migration
-  db!.run(`ALTER TABLE library_bookmarks ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, () => {});
+  db!.run(`ALTER TABLE library_bookmarks ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_ocr_cache (
