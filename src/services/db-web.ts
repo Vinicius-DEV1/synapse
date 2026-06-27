@@ -1,0 +1,59 @@
+import { openDB } from 'idb';
+import type { DBSchema, IDBPDatabase } from 'idb';
+
+interface CadernoDBSchema extends DBSchema {
+  pages: { key: string; value: any; indexes: { 'parent_id': string } };
+  transactions: { key: string; value: any; indexes: { 'date': string } };
+  wishlist: { key: string; value: any };
+  library_books: { key: string; value: any; indexes: { 'reading_status': string } };
+  library_highlights: { key: string; value: any; indexes: { 'book_id': string } };
+  library_bookmarks: { key: string; value: any; indexes: { 'book_id': string } };
+  library_collections: { key: string; value: any };
+  library_reading_sessions: { key: string; value: any; indexes: { 'book_id': string } };
+  config: { key: string; value: any };
+}
+
+let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
+
+export async function getWebDb() {
+  if (!dbPromise) {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('pages')) {
+          const store = db.createObjectStore('pages', { keyPath: 'id' });
+          store.createIndex('parent_id', 'parent_id');
+        }
+        if (!db.objectStoreNames.contains('transactions')) {
+          const store = db.createObjectStore('transactions', { keyPath: 'id' });
+          store.createIndex('date', 'date');
+        }
+        if (!db.objectStoreNames.contains('wishlist')) {
+          db.createObjectStore('wishlist', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('library_books')) {
+          const store = db.createObjectStore('library_books', { keyPath: 'id' });
+          store.createIndex('reading_status', 'reading_status');
+        }
+        if (!db.objectStoreNames.contains('library_highlights')) {
+          const store = db.createObjectStore('library_highlights', { keyPath: 'id' });
+          store.createIndex('book_id', 'book_id');
+        }
+        if (!db.objectStoreNames.contains('library_bookmarks')) {
+          const store = db.createObjectStore('library_bookmarks', { keyPath: 'id' });
+          store.createIndex('book_id', 'book_id');
+        }
+        if (!db.objectStoreNames.contains('library_collections')) {
+          db.createObjectStore('library_collections', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('library_reading_sessions')) {
+          const store = db.createObjectStore('library_reading_sessions', { keyPath: 'id' });
+          store.createIndex('book_id', 'book_id');
+        }
+        if (!db.objectStoreNames.contains('config')) {
+          db.createObjectStore('config', { keyPath: 'id' });
+        }
+      },
+    });
+  }
+  return dbPromise;
+}

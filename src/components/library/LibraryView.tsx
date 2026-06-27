@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, Plus, BarChart3, ArrowUpDown, ChevronDown,
-  BookOpen, Loader2, Library
+  BookOpen, Loader2, Library, Edit2
 } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import LibraryGrid from './LibraryGrid';
@@ -33,6 +33,7 @@ export default function LibraryView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ReadingStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<SortBy>('last_read');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -40,6 +41,15 @@ export default function LibraryView() {
   const [editingBook, setEditingBook] = useState<LibraryBook | null>(null);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
+  const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [editingCollectionName, setEditingCollectionName] = useState('');
+
+  // --- Derived Data ---
+  const authors = useMemo(() => {
+    const authorSet = new Set(books.map(b => b.author).filter(Boolean));
+    return Array.from(authorSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [books]);
 
   // --- Data loading ---
   const loadData = useCallback(async () => {
@@ -117,6 +127,33 @@ export default function LibraryView() {
     }
   };
 
+  const handleStartRename = (e: React.MouseEvent, col: LibraryCollection) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setEditingCollectionId(col.id);
+    setEditingCollectionName(col.name);
+  };
+
+  const handleSaveRename = async (col: LibraryCollection) => {
+    if (!editingCollectionName || editingCollectionName.trim() === '') {
+      setEditingCollectionId(null);
+      return;
+    }
+    
+    if (editingCollectionName.trim() !== col.name) {
+      if (!window.api?.library) return;
+      try {
+        await window.api.library.updateCollection({ id: col.id, name: editingCollectionName.trim() });
+        const updated = collections.map(c => c.id === col.id ? { ...c, name: editingCollectionName.trim() } : c);
+        setCollections(updated);
+        await loadData();
+      } catch (err) {
+        console.error('Failed to rename collection', err);
+      }
+    }
+    setEditingCollectionId(null);
+  };
+
   const handleSelectBook = (book: LibraryBook) => {
     setSelectedBook(book);
   };
@@ -152,6 +189,11 @@ export default function LibraryView() {
       );
     }
 
+    // Author filter
+    if (selectedAuthor) {
+      result = result.filter((b) => b.author === selectedAuthor);
+    }
+
     // Sort
     result.sort((a, b) => {
       let cmp = 0;
@@ -176,7 +218,7 @@ export default function LibraryView() {
     });
 
     return result;
-  }, [books, searchQuery, statusFilter, selectedCollection, sortBy, sortOrder]);
+  }, [books, searchQuery, statusFilter, selectedCollection, selectedAuthor, sortBy, sortOrder]);
 
   if (selectedBook) {
     return (
@@ -192,7 +234,7 @@ export default function LibraryView() {
   return (
     <div className="h-full flex flex-col bg-dark-bg">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-white/5 bg-dark-bg/80 backdrop-blur-sm">
+      <div className="relative z-50 flex-shrink-0 border-b border-white/5 bg-dark-bg/80 backdrop-blur-sm">
         <div className="px-6 py-4">
           {/* Top row: title + actions */}
           <div className="flex items-center justify-between mb-4">
@@ -348,23 +390,113 @@ export default function LibraryView() {
                         Todas as coleções
                       </button>
                       {collections.map((col) => (
+                        <div key={col.id} className="relative group">
+                          {editingCollectionId === col.id ? (
+                            <div className="px-3 py-1.5 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                autoFocus
+                                value={editingCollectionName}
+                                onChange={e => setEditingCollectionName(e.target.value)}
+                                onKeyDown={async e => {
+                                  if (e.key === 'Enter') {
+                                    await handleSaveRename(col);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingCollectionId(null);
+                                  }
+                                }}
+                                onBlur={() => handleSaveRename(col)}
+                                className="w-full bg-dark-bg/50 border border-brand-500/50 rounded px-2 py-1 text-sm text-dark-text outline-none"
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedCollection(col.id);
+                                  setShowCollectionDropdown(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors pr-10 ${
+                                  selectedCollection === col.id
+                                    ? 'text-brand-400 bg-brand-500/10'
+                                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+                                }`}
+                              >
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: col.color }}
+                                />
+                                {col.name}
+                              </button>
+                              <button
+                                onClick={(e) => handleStartRename(e, col)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                title="Renomear coleção"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Author filter */}
+            {authors.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowAuthorDropdown(!showAuthorDropdown);
+                    setShowCollectionDropdown(false);
+                    setShowSortDropdown(false);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${
+                    selectedAuthor
+                      ? 'border-brand-500/30 text-brand-400 bg-brand-500/10'
+                      : 'border-white/5 text-dark-subtext hover:text-dark-text hover:bg-white/5'
+                  }`}
+                >
+                  <BookOpen size={14} className="opacity-70" />
+                  <span className="truncate max-w-[120px]">
+                    {selectedAuthor || 'Autor'}
+                  </span>
+                  <ChevronDown size={14} />
+                </button>
+                {showAuthorDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
+                    <div className="absolute top-full mt-1 right-0 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[200px] max-h-64 overflow-y-auto animate-scale-in">
+                      <button
+                        onClick={() => {
+                          setSelectedAuthor(null);
+                          setShowAuthorDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                          !selectedAuthor
+                            ? 'text-brand-400 bg-brand-500/10'
+                            : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+                        }`}
+                      >
+                        Todos os autores
+                      </button>
+                      {authors.map((author) => (
                         <button
-                          key={col.id}
+                          key={author}
                           onClick={() => {
-                            setSelectedCollection(col.id);
-                            setShowCollectionDropdown(false);
+                            setSelectedAuthor(author);
+                            setShowAuthorDropdown(false);
                           }}
-                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
-                            selectedCollection === col.id
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            selectedAuthor === author
                               ? 'text-brand-400 bg-brand-500/10'
                               : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
                           }`}
                         >
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: col.color }}
-                          />
-                          {col.name}
+                          {author}
                         </button>
                       ))}
                     </div>

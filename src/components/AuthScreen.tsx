@@ -43,6 +43,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         const masterKey = await deriveMasterKey(password);
         dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
         
+        // Injeta a chave na Web API Mock (se estiver rodando na Web)
+        if (window.api._setMasterKey) {
+          window.api._setMasterKey(masterKey);
+        }
+        
         onSuccess();
       } else {
         triggerError(res.error || 'Senha incorreta');

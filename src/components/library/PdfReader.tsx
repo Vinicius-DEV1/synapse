@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import Tesseract from 'tesseract.js';
@@ -8,6 +8,7 @@ import HighlightToolbar from './HighlightToolbar';
 import AnnotationPanel from './AnnotationPanel';
 import PdfSearchBar from './PdfSearchBar';
 import DictionaryModal from './DictionaryModal';
+import { getSettings, saveSettings } from '../../utils/settings';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -20,20 +21,31 @@ interface PdfReaderProps {
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const settings = getSettings();
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(book.last_read_page || 1);
   const [zoom, setZoom] = useState(1.0);
-  const [readingMode, setReadingMode] = useState<ReadingMode>('light');
+  const [readingMode, setReadingMode] = useState<'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast'>(
+    (settings.defaultReadingMode as any) || 'light'
+  );
   const [highlights, setHighlights] = useState<LibraryHighlight[]>([]);
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [dictionaryWord, setDictionaryWord] = useState<string | null>(null);
+  const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string } | null>(null);
+  const [activeHighlight, setActiveHighlight] = useState<{ highlight: LibraryHighlight, position: { x: number, y: number } } | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);
-  const [selection, setSelection] = useState<{text: string; rects: any[]; pageNum: number; position: {x: number; y: number}} | null>(null);
+  const [selection, setSelection] = useState<{
+    text: string;
+    pageContext?: string;
+    rects: any[];
+    pageNum: number;
+    position: { x: number; y: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
+  const [modeToast, setModeToast] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -49,6 +61,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       try {
         setLoading(true);
         const fileData = await window.api.library.getBookFile(book.id);
+        
+        if (!fileData) {
+          throw new Error("Arquivo PDF vazio ou não encontrado. Verifique se o arquivo existe na nuvem.");
+        }
+        
         const loadingTask = pdfjsLib.getDocument({ data: fileData });
         const pdf = await loadingTask.promise;
         
@@ -136,11 +153,85 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   }, [currentPage]);
 
   // Set up intersection observer for lazy loading
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  // Sophisticated Zoom Handling (maintains exact relative center)
+  const scrollRatioRef = useRef<number>(0);
+  const zoomAnimRef = useRef<number>(0);
+
+  const handleZoom = useCallback((updater: number | ((z: number) => number)) => {
+    if (!scrollRef.current) {
+      setZoom(updater);
+      return;
+    }
+    
+    const el = scrollRef.current;
+    // Calculate what is exactly in the center of the viewport right now
+    const centerOffset = el.scrollTop + (el.clientHeight / 2);
+    const ratio = centerOffset / el.scrollHeight;
+    scrollRatioRef.current = ratio;
+
+    setZoom(updater);
+
+    if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current);
+
+    // Reapply this ratio across multiple frames while the async PDF rendering updates page heights
+    const startTime = Date.now();
+    let lastScrollHeight = el.scrollHeight;
+    let expectedScrollTop = el.scrollTop;
+
+    const applyScroll = () => {
+      if (Date.now() - startTime < 800 && scrollRef.current) {
+        const currentEl = scrollRef.current;
+        
+        // Se o usuário rolou a página manualmente (mouse/scroll) durante a animação, aborta o ajuste do zoom!
+        if (Math.abs(currentEl.scrollTop - expectedScrollTop) > 10) {
+          return;
+        }
+
+        // Só recalcula e ajusta se a altura total realmente mudou (quando uma página termina de renderizar)
+        if (currentEl.scrollHeight !== lastScrollHeight) {
+          const newCenterOffset = scrollRatioRef.current * currentEl.scrollHeight;
+          expectedScrollTop = newCenterOffset - (currentEl.clientHeight / 2);
+          currentEl.scrollTop = expectedScrollTop;
+          lastScrollHeight = currentEl.scrollHeight;
+        }
+        
+        zoomAnimRef.current = requestAnimationFrame(applyScroll);
+      }
+    };
+    zoomAnimRef.current = requestAnimationFrame(applyScroll);
+  }, []);
+
+  // Ctrl + Mouse Wheel for zoom
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || loading) return;
+    
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          handleZoom(z => Math.min(3, z + 0.1));
+        } else {
+          handleZoom(z => Math.max(0.5, z - 0.1));
+        }
+      }
+    };
+    
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleZoom, loading]);
+
+  // Observer to track which page is visible
   useEffect(() => {
     if (!scrollRef.current || totalPages === 0 || loading) return;
 
     observerRef.current = new IntersectionObserver((entries) => {
-      let mostVisiblePage = currentPage;
+      let mostVisiblePage = currentPageRef.current;
       let maxRatio = 0;
 
       entries.forEach(entry => {
@@ -151,20 +242,22 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             maxRatio = entry.intersectionRatio;
             mostVisiblePage = pageNum;
           }
-          
-          setRenderedPages(prev => {
-            const next = new Set(prev);
-            next.add(pageNum);
-            // Render +/- 2 pages for buffer
-            for (let i = Math.max(1, pageNum - 2); i <= Math.min(totalPages, pageNum + 2); i++) {
-              next.add(i);
-            }
-            return next;
-          });
         }
       });
 
-      if (mostVisiblePage !== currentPage && maxRatio > 0.3) {
+      if (maxRatio > 0) {
+        setRenderedPages(() => {
+          const next = new Set<number>();
+          // Virtualization window: Keep only most visible page +/- 3 pages in DOM
+          // This prevents memory leak and lag on 1000+ page PDFs
+          for (let i = Math.max(1, mostVisiblePage - 3); i <= Math.min(totalPages, mostVisiblePage + 3); i++) {
+            next.add(i);
+          }
+          return next;
+        });
+      }
+
+      if (mostVisiblePage !== currentPageRef.current && maxRatio > 0.3) {
         setCurrentPage(mostVisiblePage);
         
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -185,21 +278,21 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [totalPages, loading, zoom, currentPage, book.id]); // Added zoom to trigger re-observe
+  }, [totalPages, loading, book.id]); // Removed zoom and currentPage from dependencies
 
   // Scroll to initial page
   useEffect(() => {
     if (!loading && pdfDoc && book.last_read_page > 1) {
       setTimeout(() => {
-        scrollToPage(book.last_read_page);
+        scrollToPage(book.last_read_page, true);
       }, 500);
     }
   }, [loading, pdfDoc]);
 
-  const scrollToPage = (pageNum: number) => {
+  const scrollToPage = (pageNum: number, smooth = true) => {
     const el = pageRefs.current.get(pageNum);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+      el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
       setCurrentPage(pageNum);
     }
   };
@@ -222,21 +315,48 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         cycleReadingMode();
       } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         e.preventDefault();
-        setZoom(z => Math.min(3, z + 0.25));
+        handleZoom(z => Math.min(3, z + 0.25));
       } else if (e.ctrlKey && e.key === '-') {
         e.preventDefault();
-        setZoom(z => Math.max(0.5, z - 0.25));
+        handleZoom(z => Math.max(0.5, z - 0.25));
       } else if (e.ctrlKey && e.key === '0') {
         e.preventDefault();
-        setZoom(1.0);
+        handleZoom(1.0);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSearch, showAnnotations, currentPage]);
 
+  useEffect(() => {
+    if (modeToast) {
+      const timer = setTimeout(() => setModeToast(null), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [modeToast]);
+
   const cycleReadingMode = () => {
-    setReadingMode(prev => prev === 'light' ? 'sepia' : prev === 'sepia' ? 'dark' : 'light');
+    setReadingMode(prev => {
+      const modes: Array<'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast'> = ['light', 'sepia', 'mint', 'dim', 'nord', 'midnight', 'dark', 'high-contrast'];
+      const currentIndex = modes.indexOf(prev);
+      const next = modes[(currentIndex + 1) % modes.length];
+      const currentSettings = getSettings();
+      saveSettings({ ...currentSettings, defaultReadingMode: next });
+      
+      const modeNames: Record<string, string> = {
+        'light': 'Modo Claro',
+        'sepia': 'Sépia',
+        'mint': 'Menta Pastel',
+        'dim': 'Suave (Dim)',
+        'nord': 'Nord',
+        'midnight': 'Azul Meia-Noite',
+        'dark': 'Modo Escuro',
+        'high-contrast': 'Alto Contraste'
+      };
+      setModeToast(modeNames[next]);
+      
+      return next;
+    });
   };
 
   const toggleBookmark = async () => {
@@ -270,10 +390,49 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       }
       
       const range = sel.getRangeAt(0);
-      const rects = range.getClientRects();
-      if (rects.length === 0) return;
+      const rawRects = Array.from(range.getClientRects());
+      if (rawRects.length === 0) return;
       
       const rect = range.getBoundingClientRect();
+      
+      // Merge rects that are close to each other on the same line to avoid gaps
+      const mergedRects: {left: number, top: number, right: number, bottom: number, width: number, height: number}[] = [];
+      let currentRect = { 
+        left: rawRects[0].left, top: rawRects[0].top, 
+        right: rawRects[0].right, bottom: rawRects[0].bottom,
+        width: rawRects[0].width, height: rawRects[0].height 
+      };
+
+      for (let i = 1; i < rawRects.length; i++) {
+        const nextRect = rawRects[i];
+        
+        const verticalCenter1 = currentRect.top + currentRect.height / 2;
+        const verticalCenter2 = nextRect.top + nextRect.height / 2;
+        
+        // Considera na mesma linha se os centros verticais estiverem próximos (menos da metade da altura da fonte)
+        const sameLine = Math.abs(verticalCenter1 - verticalCenter2) < Math.max(currentRect.height, nextRect.height) * 0.5;
+        
+        // Permite buracos de até 100 pixels (para justificação de texto bem espaçada)
+        const closeHorizontally = (nextRect.left - currentRect.right) < 100;
+
+        if (sameLine && closeHorizontally) {
+          // Merge
+          currentRect.left = Math.min(currentRect.left, nextRect.left);
+          currentRect.right = Math.max(currentRect.right, nextRect.right);
+          currentRect.top = Math.min(currentRect.top, nextRect.top);
+          currentRect.bottom = Math.max(currentRect.bottom, nextRect.bottom);
+          currentRect.width = currentRect.right - currentRect.left;
+          currentRect.height = currentRect.bottom - currentRect.top;
+        } else {
+          mergedRects.push(currentRect);
+          currentRect = { 
+            left: nextRect.left, top: nextRect.top, 
+            right: nextRect.right, bottom: nextRect.bottom,
+            width: nextRect.width, height: nextRect.height 
+          };
+        }
+      }
+      mergedRects.push(currentRect);
       
       // Find the page number and page element
       let node: Node | null = range.commonAncestorContainer;
@@ -294,19 +453,23 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       const pageRect = pageElement.getBoundingClientRect();
       
       // Calculate relative rects (percentages) to be scale-invariant
-      const relativeRects = Array.from(rects).map(r => ({
+      const relativeRects = mergedRects.map(r => ({
         left: (r.left - pageRect.left) / pageRect.width,
         top: (r.top - pageRect.top) / pageRect.height,
         width: r.width / pageRect.width,
         height: r.height / pageRect.height
       }));
 
-      let selectedString = sel.toString().replace(/\\s+/g, ' ').trim();
+      let selectedString = sel.toString().replace(/\s+/g, ' ').trim();
       // Remove trailing weird characters that sometimes get caught
-      selectedString = selectedString.replace(/[^\\w\\sÀ-ÿ.,!?;:]+$/g, '');
+      selectedString = selectedString.replace(/[^\w\sÀ-ÿ.,!?;:]+$/g, '');
+
+      // Pega todo o texto da página atual para dar contexto à IA
+      const pageTextContext = pageElement.textContent?.replace(/\s+/g, ' ').trim() || '';
 
       setSelection({
         text: selectedString,
+        pageContext: pageTextContext,
         rects: relativeRects,
         pageNum,
         position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
@@ -342,6 +505,28 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       <div className="flex-1 flex flex-col items-center justify-center bg-dark-bg text-dark-subtext">
         <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mb-4" />
         <p>Carregando PDF...</p>
+      </div>
+    );
+  }
+
+  if (!pdfDoc && !loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-dark-bg text-dark-subtext">
+        <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4">
+          <StickyNote size={32} />
+        </div>
+        <p className="text-lg font-medium text-white mb-2">Falha ao abrir PDF</p>
+        <p className="text-sm text-center max-w-md mb-6">
+          Não foi possível baixar o arquivo da nuvem. <br/><br/>
+          <strong>Case Registrado:</strong> O Google Firebase agora exige cartão de crédito (Plano Blaze) para ativar o Storage. Como optamos por não usar o Storage por enquanto, PDFs não sincronizam automaticamente na Web. <br/>
+          Para ler aqui, você precisará pensar em uma alternativa futura (ex: salvar no IndexedDB localmente e pedir o upload manual).
+        </p>
+        <button 
+          onClick={onBack}
+          className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-lg font-medium transition-all"
+        >
+          Voltar para Biblioteca
+        </button>
       </div>
     );
   }
@@ -387,7 +572,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
+            onClick={() => handleZoom(z => Math.max(0.5, z - 0.25))}
             className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
             title="Diminuir (Ctrl+-)"
           >
@@ -395,7 +580,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           </button>
           <span className="text-xs text-dark-subtext w-12 text-center">{Math.round(zoom * 100)}%</span>
           <button 
-            onClick={() => setZoom(z => Math.min(3, z + 0.25))}
+            onClick={() => handleZoom(z => Math.min(3, z + 0.25))}
             className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
             title="Aumentar (Ctrl++)"
           >
@@ -466,10 +651,19 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
               pdfDoc={pdfDoc}
               zoom={zoom}
               isRendered={renderedPages.has(pageNum)}
+              readingMode={readingMode}
               bookId={book.id}
               highlights={highlights.filter(h => h.page_number === pageNum)}
               isBookmarked={bookmarks.some(b => b.page_number === pageNum)}
               onToggleBookmark={toggleBookmark}
+              onHighlightClick={(highlight, rect) => {
+                setActiveHighlight({
+                  highlight,
+                  position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
+                });
+                setSelection(null); // Clear active selection if any
+                window.getSelection()?.removeAllRanges();
+              }}
               pageRefs={pageRefs}
               canvasRefs={canvasRefs}
               ocrProcessing={ocrProcessing}
@@ -508,13 +702,13 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         )}
       </div>
 
-      {/* Highlight Toolbar */}
+      {/* Highlight Toolbar for NEW selection */}
       {selection && (
         <HighlightToolbar
           position={selection.position}
           selectedText={selection.text}
           onHighlight={handleCreateHighlight}
-          onDictionary={(text) => setDictionaryWord(text)}
+          onDictionary={(text) => setDictionaryTarget({ word: text, context: selection.pageContext })}
           onDismiss={() => {
             setSelection(null);
             window.getSelection()?.removeAllRanges();
@@ -522,13 +716,42 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         />
       )}
 
+      {/* Highlight Toolbar for EDITING existing highlight */}
+      {activeHighlight && (
+        <HighlightToolbar
+          position={activeHighlight.position}
+          existingHighlight={{
+            id: activeHighlight.highlight.id,
+            color: activeHighlight.highlight.color as any,
+            note: activeHighlight.highlight.note
+          }}
+          onUpdateHighlight={async (id, color, note) => {
+            await window.api.library.updateHighlight({ id, color: color as any, note: note || '' });
+            setHighlights(prev => prev.map(h => h.id === id ? { ...h, color: color as any, note: note || '' } : h));
+          }}
+          onDeleteHighlight={async (id) => {
+            await window.api.library.deleteHighlight(id);
+            setHighlights(prev => prev.filter(h => h.id !== id));
+          }}
+          onDismiss={() => setActiveHighlight(null)}
+        />
+      )}
+
       {/* Dictionary Modal */}
-      {dictionaryWord && (
+      {dictionaryTarget && (
         <div className="dictionary-modal-container">
           <DictionaryModal 
-            text={dictionaryWord} 
-            onClose={() => setDictionaryWord(null)} 
+            text={dictionaryTarget.word} 
+            pageContext={dictionaryTarget.context}
+            onClose={() => setDictionaryTarget(null)} 
           />
+        </div>
+      )}
+
+      {/* Mode Toast */}
+      {modeToast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium pointer-events-none transition-all duration-300">
+          {modeToast}
         </div>
       )}
     </div>
@@ -541,10 +764,12 @@ interface PdfPageProps {
   pdfDoc: any;
   zoom: number;
   isRendered: boolean;
+  readingMode: 'light' | 'sepia' | 'dark' | 'dim' | 'nord' | 'high-contrast';
   bookId: string;
   highlights: LibraryHighlight[];
   isBookmarked: boolean;
   onToggleBookmark: () => void;
+  onHighlightClick: (h: LibraryHighlight, rect: DOMRect) => void;
   pageRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
   canvasRefs: React.MutableRefObject<Map<number, HTMLCanvasElement>>;
   ocrProcessing: Set<number>;
@@ -552,14 +777,16 @@ interface PdfPageProps {
 }
 
 const PdfPage = React.memo(({
-  pageNum, pdfDoc, zoom, isRendered, bookId, highlights: _highlights, isBookmarked,
-  onToggleBookmark, pageRefs, canvasRefs, ocrProcessing, setOcrProcessing
+  pageNum, pdfDoc, zoom, isRendered, readingMode, bookId, highlights: _highlights, isBookmarked,
+  onToggleBookmark, onHighlightClick, pageRefs, canvasRefs, ocrProcessing, setOcrProcessing
 }: PdfPageProps) => {
   const [dimensions, setDimensions] = useState({ width: 600, height: 800 }); // Default
   const [textItems, setTextItems] = useState<any[]>([]);
   const renderTaskRef = useRef<any>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isRendered) return;
     let active = true;
     const initPage = async () => {
       try {
@@ -574,12 +801,15 @@ const PdfPage = React.memo(({
     };
     initPage();
     return () => { active = false; };
-  }, [pdfDoc, pageNum, zoom]);
+  }, [pdfDoc, pageNum, zoom, isRendered]);
 
   useEffect(() => {
     if (!isRendered) return;
     
     let active = true;
+    let ocrTimeout: any = null;
+    let tesseractWorker: Tesseract.Worker | null = null;
+    
     const renderPage = async () => {
       try {
         const page = await pdfDoc.getPage(pageNum);
@@ -636,43 +866,76 @@ const PdfPage = React.memo(({
           // No text layer, try OCR
           const cache = await window.api.library.getOcrCache(bookId, pageNum);
           if (cache) {
-            setTextItems(JSON.parse(cache.word_boxes));
-          } else if (!ocrProcessing.has(pageNum)) {
-            // Trigger OCR
-            setOcrProcessing(prev => new Set(prev).add(pageNum));
+            const rawWords = JSON.parse(cache.word_boxes);
+            const isNormalized = rawWords[0]?.isNormalized;
             
-            try {
-              const imgData = canvas.toDataURL('image/png');
-              const result = await Tesseract.recognize(imgData, 'por');
+            const scaledWords = rawWords.map((w: any) => ({
+              ...w,
+              left: isNormalized ? w.left * viewport.scale : w.left,
+              top: isNormalized ? w.top * viewport.scale : w.top,
+              width: isNormalized ? w.width * viewport.scale : w.width,
+              height: isNormalized ? w.height * viewport.scale : w.height,
+              fontSize: isNormalized ? w.height * viewport.scale * 0.9 : w.height * 0.9
+            }));
+            setTextItems(scaledWords);
+          } else if (!ocrProcessing.has(pageNum)) {
+            // Trigger OCR with a debounce to prevent spawning workers while scrolling rapidly
+            ocrTimeout = setTimeout(async () => {
+              if (!active) return;
+              setOcrProcessing(prev => new Set(prev).add(pageNum));
               
-              const words = (result.data as any).words.map((w: any) => ({
-                str: w.text,
-                left: w.bbox.x0,
-                top: w.bbox.y0,
-                width: w.bbox.x1 - w.bbox.x0,
-                height: w.bbox.y1 - w.bbox.y0
-              }));
-              
-              if (active) {
-                setTextItems(words);
+              try {
+                const imgData = canvas.toDataURL('image/png');
+                
+                tesseractWorker = await Tesseract.createWorker('por');
+                if (!active) {
+                  await tesseractWorker.terminate();
+                  return;
+                }
+                
+                const result = await tesseractWorker.recognize(imgData);
+                await tesseractWorker.terminate();
+                tesseractWorker = null;
+                
+                if (!active) return;
+                
+                const words = (result.data as any).words.map((w: any) => ({
+                  isNormalized: true,
+                  str: w.text,
+                  left: w.bbox.x0 / viewport.scale,
+                  top: w.bbox.y0 / viewport.scale,
+                  width: (w.bbox.x1 - w.bbox.x0) / viewport.scale,
+                  height: (w.bbox.y1 - w.bbox.y0) / viewport.scale
+                }));
+                
+                const scaledWords = words.map((w: any) => ({
+                  ...w,
+                  left: w.left * viewport.scale,
+                  top: w.top * viewport.scale,
+                  width: w.width * viewport.scale,
+                  height: w.height * viewport.scale,
+                  fontSize: w.height * viewport.scale * 0.9
+                }));
+                
+                setTextItems(scaledWords);
                 await window.api.library.saveOcrCache({
                   book_id: bookId,
                   page_number: pageNum,
                   text_content: result.data.text,
                   word_boxes: JSON.stringify(words)
                 });
+              } catch (err) {
+                console.error("OCR failed for page", pageNum, err);
+              } finally {
+                if (active) {
+                  setOcrProcessing(prev => {
+                    const next = new Set(prev);
+                    next.delete(pageNum);
+                    return next;
+                  });
+                }
               }
-            } catch (err) {
-              console.error("OCR failed for page", pageNum, err);
-            } finally {
-              if (active) {
-                setOcrProcessing(prev => {
-                  const next = new Set(prev);
-                  next.delete(pageNum);
-                  return next;
-                });
-              }
-            }
+            }, 1000); // Wait 1s before starting OCR
           }
         }
       } catch (e: any) {
@@ -688,8 +951,28 @@ const PdfPage = React.memo(({
       if (renderTaskRef.current) {
         renderTaskRef.current.cancel();
       }
+      if (ocrTimeout) clearTimeout(ocrTimeout);
+      if (tesseractWorker) {
+        tesseractWorker.terminate().catch(() => {});
+      }
     };
   }, [isRendered, pdfDoc, pageNum, zoom, bookId]); // Intentionally omitting ocrProcessing and setOcrProcessing to prevent loops
+
+  useEffect(() => {
+    if (!isRendered || !textLayerRef.current || textItems.length === 0) return;
+    
+    // Escala matematicamente o texto do navegador para caber EXATAMENTE
+    // na largura física do texto desenhado no Canvas (técnica oficial do PDF.js)
+    const spans = textLayerRef.current.querySelectorAll('span');
+    spans.forEach(span => {
+      const targetWidth = parseFloat(span.getAttribute('data-target-width') || '0');
+      const naturalWidth = span.getBoundingClientRect().width;
+      if (naturalWidth > 0 && targetWidth > 0) {
+        const scale = targetWidth / naturalWidth;
+        span.style.transform = `scaleX(${scale})`;
+      }
+    });
+  }, [textItems, zoom, isRendered]);
 
   return (
     <div 
@@ -705,28 +988,30 @@ const PdfPage = React.memo(({
             className="w-full h-full block"
           />
           
-          <div className="pdf-text-layer">
-            {textItems.map((item, idx) => (
-              <span 
-                key={idx}
-                style={{
-                  position: 'absolute',
-                  left: item.left,
-                  top: item.top,
-                  width: item.width,
-                  height: item.height,
-                  fontSize: item.fontSize,
-                  lineHeight: 1.1,
-                  fontFamily: 'sans-serif',
-                  transformOrigin: 'left bottom',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  whiteSpace: 'pre'
-                }}
-              >
-                {item.str}
-              </span>
-            ))}
+          <div className="pdf-text-layer" ref={textLayerRef}>
+            {textItems.map((item, idx) => {
+              const targetWidth = item.width;
+              return (
+                <span 
+                  key={idx}
+                  data-target-width={targetWidth}
+                  style={{
+                    position: 'absolute',
+                    left: item.left,
+                    top: item.top,
+                    height: item.height,
+                    fontSize: item.fontSize,
+                    lineHeight: 1.1,
+                    fontFamily: 'sans-serif',
+                    whiteSpace: 'pre',
+                    color: 'transparent',
+                    transformOrigin: 'left bottom',
+                  }}
+                >
+                  {item.str}
+                </span>
+              );
+            })}
           </div>
 
           <div className="pdf-highlight-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
@@ -740,9 +1025,19 @@ const PdfPage = React.memo(({
                   if (h.color === 'pink') colorHex = '#f472b6';
                   if (h.color === 'orange') colorHex = '#fb923c';
 
+                  const isDarkMode = readingMode === 'dark' || readingMode === 'dim' || readingMode === 'nord' || readingMode === 'high-contrast' || readingMode === 'midnight';
+
                   return (
                     <div 
                       key={`${i}-${j}`}
+                      onClick={(e) => {
+                        // Impedir que o clique de seleção de texto interfira
+                        e.stopPropagation();
+                        // Enviar também as coordenadas do clique para posicionar o modal
+                        const rect = (e.target as HTMLElement).getBoundingClientRect();
+                        onHighlightClick(h, rect);
+                      }}
+                      className="cursor-pointer transition-opacity hover:opacity-75"
                       style={{
                         position: 'absolute',
                         left: `${r.left * 100}%`,
@@ -750,9 +1045,10 @@ const PdfPage = React.memo(({
                         width: `${r.width * 100}%`,
                         height: `${r.height * 100}%`,
                         backgroundColor: colorHex,
-                        opacity: 0.45,
-                        mixBlendMode: 'multiply',
-                        borderRadius: '2px'
+                        opacity: isDarkMode ? 0.35 : 0.45,
+                        mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+                        borderRadius: '2px',
+                        pointerEvents: 'auto'
                       }}
                     />
                   );

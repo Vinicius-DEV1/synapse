@@ -9,6 +9,7 @@ export interface AppSettings {
   aiChatHighlight: 'glow' | 'underline' | 'none';
   dictionaryMode: 'offline' | 'online';
   hasOfflineDictionary: boolean;
+  defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
 }
 
 export function getSettings(): AppSettings {
@@ -22,7 +23,8 @@ export function getSettings(): AppSettings {
     geminiModel: 'gemini-1.5-pro',
     aiChatHighlight: 'glow',
     dictionaryMode: 'offline',
-    hasOfflineDictionary: false
+    hasOfflineDictionary: false,
+    defaultReadingMode: 'light'
   };
   
   try {
