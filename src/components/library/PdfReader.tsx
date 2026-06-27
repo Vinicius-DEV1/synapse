@@ -613,132 +613,137 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
   return (
     <div className="flex-1 flex flex-col h-full bg-dark-bg overflow-hidden relative">
-      {/* Header */}
-      <div className="library-header flex-shrink-0 h-14 border-b border-white/5 bg-dark-card/50 flex items-center justify-between px-4 z-20">
-        <div className="flex items-center gap-3">
+      {/* Floating Top-Left Controls */}
+      <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 opacity-30 hover:opacity-100 transition-opacity duration-300">
+        <div className="flex items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 shadow-xl">
           <button 
             onClick={onBack}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
+            className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all flex-shrink-0"
             title="Voltar"
           >
             <ArrowLeft size={18} />
           </button>
-          <span className="hidden md:block font-medium text-sm truncate max-w-[200px]" title={book.title}>
+          <span className="hidden md:block font-medium text-sm truncate max-w-[200px] pr-3" title={book.title}>
             {book.title}
           </span>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg px-2 py-1">
-            <span className="text-xs text-dark-subtext">Pág</span>
-            <input 
-              type="number"
-              value={currentPage}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                  scrollToPage(val);
-                }
-              }}
-              className="w-12 bg-transparent text-center text-sm focus:outline-none focus:bg-white/5 rounded"
-              min={1}
-              max={totalPages}
-            />
-            <span className="text-xs text-dark-subtext">/ {totalPages}</span>
-          </div>
+      {/* Floating Vertical Toolbar - Right Side */}
+      <div className="absolute top-1/2 -translate-y-1/2 right-4 z-50 flex flex-col items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl opacity-30 hover:opacity-100 transition-opacity duration-300">
+
+        {/* Pagination */}
+        <div className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-1.5 w-full">
+          <span className="text-[10px] text-dark-subtext uppercase tracking-wider font-semibold">Pág</span>
+          <input 
+            type="number"
+            value={currentPage}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                scrollToPage(val);
+              }
+            }}
+            className="w-10 bg-transparent text-center text-xs font-medium text-white focus:outline-none focus:bg-white/10 rounded py-1"
+            min={1}
+            max={totalPages}
+          />
+          <span className="text-[10px] text-dark-subtext border-t border-white/10 pt-1 w-full text-center">{totalPages}</span>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-[50%] md:max-w-none flex-nowrap">
-          <button 
-            onClick={() => handleZoom(z => Math.max(0.5, z - 0.25))}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
-            title="Diminuir (Ctrl+-)"
-          >
-            <ZoomOut size={16} />
-          </button>
-          {zoomInputActive ? (
-            <input
-              ref={zoomInputRef}
-              type="number"
-              min={50}
-              max={300}
-              value={zoomInputValue}
-              onChange={e => setZoomInputValue(e.target.value)}
-              onBlur={() => {
+        <div className="w-full h-px bg-white/10" />
+
+        {/* Zoom */}
+        <button 
+          onClick={() => handleZoom(z => Math.min(3, z + 0.25))}
+          className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
+          title="Aumentar (Ctrl++)"
+        >
+          <ZoomIn size={18} />
+        </button>
+        
+        {zoomInputActive ? (
+          <input
+            ref={zoomInputRef}
+            type="number"
+            min={50}
+            max={300}
+            value={zoomInputValue}
+            onChange={e => setZoomInputValue(e.target.value)}
+            onBlur={() => {
+              const parsed = parseInt(zoomInputValue, 10);
+              if (!isNaN(parsed)) {
+                handleZoom(Math.min(3, Math.max(0.5, parsed / 100)));
+              }
+              setZoomInputActive(false);
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
                 const parsed = parseInt(zoomInputValue, 10);
                 if (!isNaN(parsed)) {
                   handleZoom(Math.min(3, Math.max(0.5, parsed / 100)));
                 }
                 setZoomInputActive(false);
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  const parsed = parseInt(zoomInputValue, 10);
-                  if (!isNaN(parsed)) {
-                    handleZoom(Math.min(3, Math.max(0.5, parsed / 100)));
-                  }
-                  setZoomInputActive(false);
-                } else if (e.key === 'Escape') {
-                  setZoomInputActive(false);
-                }
-              }}
-              className="text-xs text-dark-text w-14 text-center bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-brand-400"
-              autoFocus
-            />
-          ) : (
-            <span
-              className="text-xs text-dark-subtext w-12 text-center cursor-pointer hover:text-dark-text hover:bg-white/5 rounded px-1 py-0.5 transition-all flex-shrink-0"
-              title="Clique para digitar um zoom específico"
-              onClick={() => {
-                setZoomInputValue(String(Math.round(zoom * 100)));
-                setZoomInputActive(true);
-              }}
-            >{Math.round(zoom * 100)}%</span>
-          )}
-          <button 
-            onClick={() => handleZoom(z => Math.min(3, z + 0.25))}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
-            title="Aumentar (Ctrl++)"
-          >
-            <ZoomIn size={16} />
-          </button>
-          
-          <div className="w-px h-4 bg-white/10 mx-1 flex-shrink-0" />
-          
-          <button 
-            onClick={() => setShowSearch(prev => !prev)}
-            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${showSearch ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
-            title="Buscar (Ctrl+F)"
-          >
-            <Search size={16} />
-          </button>
-          
-          <button 
-            onClick={toggleBookmark}
-            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${isBookmarked ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
-            title="Marcar página (B)"
-          >
-            {isBookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-          </button>
-          
-          <button 
-            onClick={cycleReadingMode}
-            className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all flex-shrink-0"
-            title="Modo de leitura (M)"
-          >
-            {readingMode === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
-          </button>
-          
-          <div className="w-px h-4 bg-white/10 mx-1 flex-shrink-0" />
-          
-          <button 
-            onClick={() => setShowAnnotations(prev => !prev)}
-            className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${showAnnotations ? 'bg-blue-500/20 text-blue-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'}`}
-            title="Anotações e Sumário (S)"
-          >
-            <StickyNote size={16} />
-          </button>
-        </div>
+              } else if (e.key === 'Escape') {
+                setZoomInputActive(false);
+              }
+            }}
+            className="text-[10px] text-dark-text w-10 text-center bg-white/10 border border-white/20 rounded py-0.5 outline-none focus:border-brand-400"
+            autoFocus
+          />
+        ) : (
+          <span
+            className="text-[10px] text-dark-subtext font-medium cursor-pointer hover:text-white transition-colors"
+            title="Clique para digitar um zoom"
+            onClick={() => {
+              setZoomInputValue(String(Math.round(zoom * 100)));
+              setZoomInputActive(true);
+            }}
+          >{Math.round(zoom * 100)}%</span>
+        )}
+
+        <button 
+          onClick={() => handleZoom(z => Math.max(0.5, z - 0.25))}
+          className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
+          title="Diminuir (Ctrl+-)"
+        >
+          <ZoomOut size={18} />
+        </button>
+
+        <div className="w-full h-px bg-white/10" />
+
+        {/* Tools */}
+        <button 
+          onClick={() => setShowSearch(prev => !prev)}
+          className={`p-2 rounded-lg transition-all ${showSearch ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-white hover:bg-white/10'}`}
+          title="Buscar (Ctrl+F)"
+        >
+          <Search size={18} />
+        </button>
+        
+        <button 
+          onClick={toggleBookmark}
+          className={`p-2 rounded-lg transition-all ${isBookmarked ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:text-white hover:bg-white/10'}`}
+          title="Marcar página (B)"
+        >
+          {isBookmarked ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
+        </button>
+        
+        <button 
+          onClick={cycleReadingMode}
+          className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
+          title="Modo de leitura (M)"
+        >
+          {readingMode === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+        
+        <button 
+          onClick={() => setShowAnnotations(prev => !prev)}
+          className={`p-2 rounded-lg transition-all ${showAnnotations ? 'bg-blue-500/20 text-blue-400' : 'text-dark-subtext hover:text-white hover:bg-white/10'}`}
+          title="Anotações e Sumário (S)"
+        >
+          <StickyNote size={18} />
+        </button>
       </div>
 
       {showSearch && (
