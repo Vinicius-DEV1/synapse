@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Plus, Palette, Image as ImageIcon, FileText, Upload, FileCode2, Loader2 } from 'lucide-react';
 import { extractPdfCover } from '../../utils/pdf-cover';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
@@ -79,19 +79,20 @@ export default function BookEditModal({
     setShowCoverMenu(false);
     setExtractingCover(true);
     try {
-      // Usamos uma URL completa para o file_path caso esteja rodando como file:// ou localhost
-      let url = book.file_path;
-      if (url.startsWith('file://') || url.startsWith('http')) {
-        // ok
-      } else {
-        // Tenta resolver caminho absoluto se possivel
+      if (!window.api?.library?.getBookFile) {
+        throw new Error("API de biblioteca não disponível.");
       }
       
-      const base64 = await extractPdfCover(url);
+      const fileData = await window.api.library.getBookFile(book.id);
+      if (!fileData) {
+        throw new Error("Arquivo PDF não encontrado localmente.");
+      }
+      
+      const base64 = await extractPdfCover(fileData);
       setCoverImage(base64);
     } catch (err) {
       console.error('Falha ao extrair capa', err);
-      alert('Erro ao extrair capa do PDF. O arquivo pode estar corrompido ou o caminho estÃ¡ invÃ¡lido.');
+      alert('Erro ao extrair capa do PDF. O arquivo pode estar corrompido, não baixado, ou não suportado.');
     } finally {
       setExtractingCover(false);
     }

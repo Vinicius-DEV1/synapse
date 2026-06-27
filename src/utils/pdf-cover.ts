@@ -5,13 +5,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 /**
  * Extrai a primeira página de um arquivo PDF e retorna como Base64 JPEG.
- * @param fileUrl Caminho local ou URL do PDF.
+ * @param fileData Dados binários do PDF (Uint8Array).
  * @param targetWidth Largura desejada para a imagem gerada (padrão 400px para boa resolução).
  * @returns Promise com o Base64 da imagem gerada.
  */
-export async function extractPdfCover(fileUrl: string, targetWidth = 400): Promise<string> {
+export async function extractPdfCover(fileData: Uint8Array, targetWidth = 400): Promise<string> {
   try {
-    const loadingTask = pdfjsLib.getDocument(fileUrl);
+    const loadingTask = pdfjsLib.getDocument({ data: fileData });
     const pdfDoc = await loadingTask.promise;
     
     // Obter a primeira página
