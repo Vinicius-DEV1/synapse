@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { X, Plus, Palette, Image as ImageIcon, FileText } from 'lucide-react';
+﻿import { useState, useRef, useEffect } from 'react';
+import { X, Plus, Palette, Image as ImageIcon, FileText, Upload, FileCode2, Loader2 } from 'lucide-react';
+import { extractPdfCover } from '../../utils/pdf-cover';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 
 interface BookEditModalProps {
@@ -11,9 +12,9 @@ interface BookEditModalProps {
 }
 
 const STATUS_OPTIONS: { value: ReadingStatus; label: string }[] = [
-  { value: 'not_started', label: 'Não iniciado' },
+  { value: 'not_started', label: 'NÃ£o iniciado' },
   { value: 'reading', label: 'Lendo' },
-  { value: 'finished', label: 'Concluído' },
+  { value: 'finished', label: 'ConcluÃ­do' },
 ];
 
 const PRESET_COLORS = [
@@ -34,6 +35,20 @@ export default function BookEditModal({
   const [selectedCollections, setSelectedCollections] = useState<string[]>(bookCollections);
   const [coverImage, setCoverImage] = useState(book.cover_image || '');
   const [loading, setLoading] = useState(false);
+  
+  const [showCoverMenu, setShowCoverMenu] = useState(false);
+  const [extractingCover, setExtractingCover] = useState(false);
+  const coverMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (coverMenuRef.current && !coverMenuRef.current.contains(event.target as Node)) {
+        setShowCoverMenu(false);
+      }
+    };
+    if (showCoverMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCoverMenu]);
 
   // New collection form
   const [showNewCollection, setShowNewCollection] = useState(false);
@@ -55,6 +70,31 @@ export default function BookEditModal({
       setCoverImage(base64);
     };
     reader.readAsDataURL(file);
+    setShowCoverMenu(false);
+  };
+
+  const handleExtractCover = async () => {
+    if (!book.file_path) return;
+    
+    setShowCoverMenu(false);
+    setExtractingCover(true);
+    try {
+      // Usamos uma URL completa para o file_path caso esteja rodando como file:// ou localhost
+      let url = book.file_path;
+      if (url.startsWith('file://') || url.startsWith('http')) {
+        // ok
+      } else {
+        // Tenta resolver caminho absoluto se possivel
+      }
+      
+      const base64 = await extractPdfCover(url);
+      setCoverImage(base64);
+    } catch (err) {
+      console.error('Falha ao extrair capa', err);
+      alert('Erro ao extrair capa do PDF. O arquivo pode estar corrompido ou o caminho estÃ¡ invÃ¡lido.');
+    } finally {
+      setExtractingCover(false);
+    }
   };
 
   const toggleCollection = (id: string) => {
@@ -122,28 +162,64 @@ export default function BookEditModal({
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           {/* Cover Image */}
           <div className="flex gap-4 items-start">
-            <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-hidden shrink-0 group">
-              {coverImage ? (
-                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
-              ) : (
-                <FileText size={32} className="text-dark-subtext" />
-              )}
-              <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-visible shrink-0 group">
+              <div className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center">
+                {coverImage && !extractingCover ? (
+                  <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                ) : extractingCover ? (
+                  <Loader2 size={24} className="text-brand-400 animate-spin" />
+                ) : (
+                  <FileText size={32} className="text-dark-subtext" />
+                )}
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setShowCoverMenu(!showCoverMenu)}
+                className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg"
+              >
                 <ImageIcon size={20} className="text-white mb-1" />
                 <span className="text-[10px] text-white font-medium">Trocar</span>
-                <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
-              </label>
+              </button>
+
+              {/* Cover Dropdown Menu */}
+              {showCoverMenu && (
+                <div
+                  ref={coverMenuRef}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[160px] animate-scale-in"
+                >
+                  <label className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer">
+                    <Upload size={14} />
+                    Fazer Upload
+                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+                  </label>
+                  
+                  {book.file_path && (
+                    <>
+                      <div className="border-t border-white/5 my-1" />
+                      <button
+                        type="button"
+                        onClick={handleExtractCover}
+                        className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 flex items-center gap-2 transition-colors"
+                      >
+                        <FileCode2 size={14} />
+                        Extrair do PDF
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="flex-1 flex flex-col gap-4">
               {/* Title */}
               <div>
-                <label className="block text-xs text-dark-subtext mb-1.5">Título</label>
+                <label className="block text-xs text-dark-subtext mb-1.5">TÃ­tulo</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Título do livro"
+                  placeholder="TÃ­tulo do livro"
                   className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
                   required
                 />
@@ -186,7 +262,7 @@ export default function BookEditModal({
 
           {/* Collections */}
           <div>
-            <label className="block text-xs text-dark-subtext mb-2">Coleções</label>
+            <label className="block text-xs text-dark-subtext mb-2">ColeÃ§Ãµes</label>
             <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
               {collections.map((col) => (
                 <label
@@ -233,7 +309,7 @@ export default function BookEditModal({
                 className="flex items-center gap-1.5 mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
               >
                 <Plus size={14} />
-                Nova coleção...
+                Nova coleÃ§Ã£o...
               </button>
             ) : (
               <div className="mt-2 p-3 bg-dark-bg rounded-lg border border-white/5 flex flex-col gap-2.5 animate-fade-in">
@@ -241,7 +317,7 @@ export default function BookEditModal({
                   type="text"
                   value={newCollectionName}
                   onChange={(e) => setNewCollectionName(e.target.value)}
-                  placeholder="Nome da coleção"
+                  placeholder="Nome da coleÃ§Ã£o"
                   className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-1.5 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
                   autoFocus
                 />
