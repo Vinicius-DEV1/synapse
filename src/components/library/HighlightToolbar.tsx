@@ -98,7 +98,7 @@ export default function HighlightToolbar({ position, selectedText, onHighlight, 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 animate-scale-in"
+      className="fixed z-50 animate-scale-in highlight-toolbar-container"
       style={{
         left: `${clampedPosition.x}px`,
         top: `${clampedPosition.y}px`,

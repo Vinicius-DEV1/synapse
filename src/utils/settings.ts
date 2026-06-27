@@ -7,6 +7,8 @@ export interface AppSettings {
   geminiApiKey: string;
   geminiModel: string;
   aiChatHighlight: 'glow' | 'underline' | 'none';
+  dictionaryMode: 'offline' | 'online';
+  hasOfflineDictionary: boolean;
 }
 
 export function getSettings(): AppSettings {
@@ -18,7 +20,9 @@ export function getSettings(): AppSettings {
     spellcheck: true,
     geminiApiKey: '',
     geminiModel: 'gemini-1.5-pro',
-    aiChatHighlight: 'glow'
+    aiChatHighlight: 'glow',
+    dictionaryMode: 'offline',
+    hasOfflineDictionary: false
   };
   
   try {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, BookType, Globe, Database, Sparkles, RefreshCw } from 'lucide-react';
 import { getSettings } from '../../utils/settings';
-import { generateGeminiResponse } from '../../services/gemini';
+import { promptGemini } from '../../services/gemini';
 
 interface DictionaryModalProps {
   text: string;
@@ -26,11 +26,27 @@ export default function DictionaryModal({ text, onClose }: DictionaryModalProps)
 
     try {
       if (currentMode === 'offline') {
-        // Simulando banco offline (futuramente sqlite-dict)
+        if (!settings.hasOfflineDictionary) {
+          setTimeout(() => {
+            setError('Banco de dados offline não encontrado. Para usar o modo offline, baixe o pacote de idioma nas Configurações.');
+            setLoading(false);
+          }, 800);
+          return;
+        }
+
+        // Mocking um banco de dados SQLite Local (Offline)
+        // Para a demonstração, retornaremos uma definição genérica ou identificada simulando o DB
         setTimeout(() => {
-          setError('Banco de dados offline não encontrado. Para usar o modo offline, baixe o pacote de idioma nas Configurações.');
+          const cleanWord = text.trim();
+          let markdown = `### ${cleanWord}\\n\\n`;
+          markdown += `*sf/sm* (Modo Offline)\\n\\n`;
+          markdown += `**Definição Local**\\n`;
+          markdown += `1. Definição simulada para a palavra "${cleanWord}" extraída do banco de dados local.\\n`;
+          markdown += `> Exemplo: O sistema encontrou "${cleanWord}" no dicionário offline sem usar internet.\\n\\n`;
+          
+          setResult(markdown);
           setLoading(false);
-        }, 800);
+        }, 600);
       } else {
         if (!settings.geminiApiKey) {
           throw new Error('Chave da API do Gemini não configurada. Configure na aba IA das Configurações.');
@@ -45,10 +61,9 @@ Por favor, forneça:
 4. Um exemplo de uso em uma frase.
 Formate a resposta em Markdown com títulos breves. Não use saudações.`;
 
-        const response = await generateGeminiResponse(
+        const response = await promptGemini(
           prompt,
-          settings.geminiApiKey,
-          settings.geminiModel,
+          undefined,
           []
         );
         

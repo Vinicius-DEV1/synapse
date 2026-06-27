@@ -477,7 +477,7 @@
 }
 
 .pdf-text-layer ::selection {
-  background: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.75);
 }
 
 /* Highlight Layer */

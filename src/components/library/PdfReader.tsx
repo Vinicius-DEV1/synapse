@@ -256,7 +256,13 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
   // Handle text selection
   useEffect(() => {
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Ignorar mouseup se for dentro da toolbar ou modal
+      const target = e.target as HTMLElement;
+      if (target.closest('.highlight-toolbar-container') || target.closest('.dictionary-modal-container')) {
+        return;
+      }
+
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) {
         setSelection(null);
@@ -295,8 +301,12 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         height: r.height / pageRect.height
       }));
 
+      let selectedString = sel.toString().replace(/\\s+/g, ' ').trim();
+      // Remove trailing weird characters that sometimes get caught
+      selectedString = selectedString.replace(/[^\\w\\sÀ-ÿ.,!?;:]+$/g, '');
+
       setSelection({
-        text: sel.toString(),
+        text: selectedString,
         rects: relativeRects,
         pageNum,
         position: { x: rect.left + rect.width / 2, y: rect.top - 10 }
@@ -514,10 +524,12 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
       {/* Dictionary Modal */}
       {dictionaryWord && (
-        <DictionaryModal 
-          text={dictionaryWord} 
-          onClose={() => setDictionaryWord(null)} 
-        />
+        <div className="dictionary-modal-container">
+          <DictionaryModal 
+            text={dictionaryWord} 
+            onClose={() => setDictionaryWord(null)} 
+          />
+        </div>
       )}
     </div>
   );
@@ -604,12 +616,16 @@ const PdfPage = React.memo(({
               const ty = item.transform[5];
               const [x, y] = viewport.convertToViewportPoint(tx, ty);
               const fontSize = Math.abs(item.transform[3]) * viewport.scale;
+              // Ajuste fino para a altura da linha e topo da bounding box
+              // Multiplicar o fontSize por um fator pode ajudar a centralizar a fonte invisivel
+              const adjustedHeight = fontSize * 1.05; 
               return {
-                str: item.str,
+                str: item.str + (item.hasEOL ? ' ' : ''), // Usar espaço em vez de quebra de linha
                 left: x,
-                top: y - fontSize,
-                width: item.width * viewport.scale,
-                height: fontSize,
+                top: y - (fontSize * 0.85),
+                width: (item.width * viewport.scale) + (item.hasEOL ? fontSize * 0.5 : 0),
+                height: adjustedHeight,
+                fontSize: fontSize,
                 isPdf: true,
                 transform: item.transform
               };
@@ -699,8 +715,13 @@ const PdfPage = React.memo(({
                   top: item.top,
                   width: item.width,
                   height: item.height,
-                  fontSize: item.height * 0.8,
-                  fontFamily: 'sans-serif'
+                  fontSize: item.fontSize,
+                  lineHeight: 1.1,
+                  fontFamily: 'sans-serif',
+                  transformOrigin: 'left bottom',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  whiteSpace: 'pre'
                 }}
               >
                 {item.str}
@@ -729,8 +750,9 @@ const PdfPage = React.memo(({
                         width: `${r.width * 100}%`,
                         height: `${r.height * 100}%`,
                         backgroundColor: colorHex,
-                        opacity: 0.35,
-                        mixBlendMode: 'multiply'
+                        opacity: 0.45,
+                        mixBlendMode: 'multiply',
+                        borderRadius: '2px'
                       }}
                     />
                   );

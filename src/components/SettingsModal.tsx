@@ -45,6 +45,26 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [shake, setShake] = useState(false);
 
+  // Dict Download State
+  const [dictDownloading, setDictDownloading] = useState(false);
+  const [dictProgress, setDictProgress] = useState(0);
+
+  const handleDownloadDict = () => {
+    setDictDownloading(true);
+    setDictProgress(0);
+    const interval = setInterval(() => {
+      setDictProgress(p => {
+        if (p >= 100) {
+          clearInterval(interval);
+          setAppSettings({ ...appSettings, hasOfflineDictionary: true });
+          setDictDownloading(false);
+          return 100;
+        }
+        return p + 10;
+      });
+    }, 200);
+  };
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword.trim()) {
@@ -405,6 +425,54 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                   <p className="text-[11px] text-dark-subtext mt-1.5">
                     Define como os trechos de texto que possuem um chat vinculado serão exibidos no editor.
                   </p>
+                </div>
+                
+                <div className="border-t border-white/5 pt-4">
+                  <label className="block text-sm font-medium text-white mb-2">Modo do Dicionário (PDF)</label>
+                  <select 
+                    value={appSettings.dictionaryMode || 'offline'}
+                    onChange={(e) => setAppSettings({ ...appSettings, dictionaryMode: e.target.value as 'offline' | 'online' })}
+                    className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+                  >
+                    <option value="offline">Offline (Banco de Dados Local)</option>
+                    <option value="online">Online (IA Inteligente)</option>
+                  </select>
+                  <p className="text-[11px] text-dark-subtext mt-1.5 mb-3">
+                    Define qual motor o Dicionário de PDFs irá usar por padrão ao ser aberto.
+                  </p>
+
+                  <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <DatabaseBackup size={14} className={appSettings.hasOfflineDictionary ? "text-emerald-400" : "text-dark-subtext"} />
+                        <span className="text-xs font-medium text-white">Pacote pt-BR (Offline)</span>
+                      </div>
+                      {appSettings.hasOfflineDictionary ? (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-medium">Instalado (12MB)</span>
+                      ) : (
+                        <span className="text-[10px] bg-white/10 text-dark-subtext px-2 py-0.5 rounded-full">Não instalado</span>
+                      )}
+                    </div>
+                    
+                    {!appSettings.hasOfflineDictionary && !dictDownloading && (
+                      <button 
+                        type="button"
+                        onClick={handleDownloadDict}
+                        className="w-full mt-2 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        Baixar Dicionário
+                      </button>
+                    )}
+                    
+                    {dictDownloading && (
+                      <div className="mt-3">
+                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand-500 transition-all duration-200" style={{ width: `${dictProgress}%` }} />
+                        </div>
+                        <p className="text-[10px] text-dark-subtext text-center mt-1.5">Baixando... {dictProgress}%</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
