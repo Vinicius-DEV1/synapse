@@ -72,6 +72,16 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
               (window as any).api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
             }
 
+            if (parsed.deleted_at) {
+              if (typeof window !== 'undefined' && (window as any).api?.log) {
+                (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Hard deleting locally.`);
+              }
+              if (window.api?.sync?.deleteRow) {
+                await window.api.sync.deleteRow(table, docSnap.id);
+              }
+              continue;
+            }
+
             // Merge CRDT Yjs se for uma página e ambos tiverem crdt_state
             if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
               try {
@@ -95,7 +105,6 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
                   if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
                   if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
                   if (rowToUpsert.sort_order !== undefined) rowToUpsert.sort_order = localRow.sort_order;
-                  if (localRow.deleted_at !== undefined) rowToUpsert.deleted_at = localRow.deleted_at;
                 }
               } catch (crdtErr) {
                 console.error("Erro no merge CRDT Yjs:", crdtErr);
@@ -103,10 +112,15 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
             } else if (localTime > cloudTime) {
               // Se não tiver CRDT e o local for mais novo, Last Write Wins!
               // Ignoramos o pull para não sobrescrever nossa edição.
-              if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+              if (parsed.deleted_at && !localRow?.deleted_at) {
+                Object.assign(rowToUpsert, localRow);
+                rowToUpsert.deleted_at = parsed.deleted_at;
+              } else {
+                if (typeof window !== 'undefined' && (window as any).api?.log) {
+                  (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+                }
+                continue;
               }
-              continue;
             }
 
             await window.api.sync.upsertRow(table, rowToUpsert);
