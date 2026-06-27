@@ -11,7 +11,7 @@ import DictionaryModal from './DictionaryModal';
 import { getSettings, saveSettings } from '../../utils/settings';
 import { getValidAccessToken, downloadFromDrive } from '../../services/drive';
 import { decryptFile } from '../../services/storage';
-import { useStore } from '../../store';
+import { useStore } from '../../store/useStore';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;

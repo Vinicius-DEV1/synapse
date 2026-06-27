@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { encryptText, decryptText } from './crypto';
 import { encryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive } from './drive';
@@ -176,3 +176,26 @@ export async function syncPdfsToCloud(masterKey: CryptoKey): Promise<void> {
     console.error("[Sync] Erro na sincronização de PDFs", err);
   }
 }
+
+/**
+ * Utilitário para limpar todos os dados da nuvem (Hard Reset).
+ * Isso apaga as tabelas no Firestore para que o próximo Push suba uma base limpa.
+ */
+export async function hardResetCloud(): Promise<void> {
+  console.log("Iniciando Hard Reset da nuvem...");
+  for (const table of SYNC_TABLES) {
+    try {
+      const snap = await getDocs(collection(db, table));
+      for (const d of snap.docs) {
+        await deleteDoc(doc(db, table, d.id));
+      }
+      console.log(`Tabela ${table} limpa na nuvem.`);
+    } catch (err) {
+      console.error(`Erro ao limpar tabela ${table}:`, err);
+    }
+  }
+  console.log("Hard Reset concluído! A próxima sincronização enviará apenas os dados válidos atuais do seu Desktop.");
+}
+
+// Expor globalmente para facilitar o uso no console
+(window as any).hardResetCloud = hardResetCloud;
