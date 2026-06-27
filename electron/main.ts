@@ -13,8 +13,8 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
 
-function setupTables() {
-  if (!db) return;
+function setupTables(onComplete: () => void) {
+  if (!db) return onComplete();
   db.serialize(() => {
   db!.run('PRAGMA foreign_keys = ON');
   db!.run(`
@@ -194,6 +194,7 @@ function setupTables() {
       FOREIGN KEY (book_id) REFERENCES library_books(id) ON DELETE CASCADE
     )
   `);
+    db!.run('SELECT 1', onComplete);
   });
 }
 
@@ -293,11 +294,12 @@ ipcMain.handle('auth:login', async (_, password) => {
             tempDb.close();
             return resolve({ success: false, error: 'Senha incorreta' });
           }
-          db = tempDb;
-          setupTables();
-          resolve({ success: true });
+            db = tempDb;
+            setupTables(() => {
+              resolve({ success: true });
+            });
+          });
         });
-      });
     });
   });
 });
@@ -328,12 +330,13 @@ ipcMain.handle('auth:setup', async (_, password) => {
                      fs.unlinkSync(backupPath);
                    }
 
-                   db = new sqlite3.Database(dbPath, () => {
-                     db!.run(`PRAGMA key = '${safePwd}'`, () => {
-                       setupTables();
-                       resolve({ success: true });
+                     db = new sqlite3.Database(dbPath, () => {
+                       db!.run(`PRAGMA key = '${safePwd}'`, () => {
+                         setupTables(() => {
+                           resolve({ success: true });
+                         });
+                       });
                      });
-                   });
                  });
               });
             });
@@ -342,15 +345,16 @@ ipcMain.handle('auth:setup', async (_, password) => {
      });
   } else {
     // New database
-    return new Promise((resolve) => {
-      db = new sqlite3.Database(dbPath, () => {
-         const safePwd = password.replace(/'/g, "''");
-         db!.run(`PRAGMA key = '${safePwd}'`, () => {
-            setupTables();
-            resolve({ success: true });
-         });
+      return new Promise((resolve) => {
+        db = new sqlite3.Database(dbPath, () => {
+           const safePwd = password.replace(/'/g, "''");
+           db!.run(`PRAGMA key = '${safePwd}'`, () => {
+              setupTables(() => {
+                resolve({ success: true });
+              });
+           });
+        });
       });
-    });
   }
 });
 
