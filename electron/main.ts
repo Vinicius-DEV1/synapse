@@ -695,7 +695,7 @@ ipcMain.handle('library:delete-book', async (_, id: string) => {
   });
 });
 
-ipcMain.handle('library:update-book', async (_, book: { id: string; title?: string; author?: string; last_read_page?: number; reading_status?: string; last_read_at?: string; total_pages?: number; cover_image?: string }) => {
+ipcMain.handle('library:update-book', async (_, book: { id: string; title?: string; author?: string; last_read_page?: number; reading_status?: string; last_read_at?: string; total_pages?: number; cover_image?: string; drive_file_id?: string }) => {
   if (!db) throw new Error('DB not open');
   const fields: string[] = [];
   const values: any[] = [];
@@ -707,6 +707,7 @@ ipcMain.handle('library:update-book', async (_, book: { id: string; title?: stri
   if (book.last_read_at !== undefined) { fields.push('last_read_at = ?'); values.push(book.last_read_at); }
   if (book.total_pages !== undefined) { fields.push('total_pages = ?'); values.push(book.total_pages); }
   if (book.cover_image !== undefined) { fields.push('cover_image = ?'); values.push(book.cover_image); }
+  if (book.drive_file_id !== undefined) { fields.push('drive_file_id = ?'); values.push(book.drive_file_id); }
 
   if (fields.length === 0) return 0;
 
