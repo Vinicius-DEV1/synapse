@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, ShieldAlert, KeyRound } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey } from '../services/crypto';
 
@@ -71,25 +71,25 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         className={`bg-dark-card border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl transition-all ${shake ? 'animate-shake' : ''}`}
       >
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-brand-500/20 rounded-full flex items-center justify-center text-brand-400">
-            {isSetup ? <KeyRound size={32} /> : <Lock size={32} />}
+          <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-white/40">
+            <Lock size={20} />
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold text-center text-white mb-2">
-          {isSetup ? 'Criar Senha Mestra' : 'Caderno Protegido'}
+        <h1 className="text-xl font-medium text-center text-white mb-2">
+          {isSetup ? 'Configuração Inicial' : 'Bem-vindo de volta'}
         </h1>
         
         <p className="text-center text-dark-subtext mb-8 text-sm">
           {isSetup 
-            ? 'Defina uma senha forte para criptografar todo o seu banco de dados. Atenção: Não existe opção de recuperação caso você a esqueça.' 
-            : 'Seu banco de dados está criptografado. Digite a Senha Mestra para destrancá-lo.'}
+            ? 'Defina uma senha de acesso para continuar.' 
+            : 'Por favor, insira sua senha para acessar.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
-              Senha Mestra
+              Senha
             </label>
             <input
               type="password"
@@ -97,8 +97,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoFocus
-              className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all placeholder:text-white/20"
-              placeholder="Digite sua senha secreta..."
+              className="w-full bg-dark-bg border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
+              placeholder="Sua senha secreta..."
             />
           </div>
 
@@ -112,14 +112,14 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-white/10 hover:bg-white/15 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
               <span className="animate-pulse">Processando...</span>
             ) : (
               <>
-                {isSetup ? <KeyRound size={18} /> : <Unlock size={18} />}
-                {isSetup ? 'Criptografar e Salvar' : 'Destrancar'}
+                {isSetup ? 'Salvar Senha' : 'Acessar'}
+                <ArrowRight size={18} className="opacity-50" />
               </>
             )}
           </button>
