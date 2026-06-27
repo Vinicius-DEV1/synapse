@@ -25,37 +25,42 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
   }
 
   for (const table of SYNC_TABLES) {
-    const querySnapshot = await getDocs(collection(db, table));
-    const localRows = await window.api.sync.getTable(table);
-    
-    for (const docSnap of querySnapshot.docs) {
-      const cloudData = docSnap.data();
-      if (!cloudData.encryptedData) continue;
+    try {
+      const querySnapshot = await getDocs(collection(db, table));
+      const localRows = await window.api.sync.getTable(table);
       
-      const localRow = localRows.find((r: any) => r.id === docSnap.id);
-      
-      const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
-      const localTime = localRow ? new Date(localRow.updated_at || localRow.created_at || 0).getTime() : -1;
-      
-      // Se a nuvem for mais recente (ou se não existir localmente)
-      if (cloudTime > localTime) {
-        try {
-          const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
-          const parsed = JSON.parse(decryptedJson);
-          
-          // Remontar a linha com os tempos da nuvem
-          const rowToUpsert = {
-            id: docSnap.id,
-            updated_at: cloudData.updatedAt,
-            created_at: cloudData.createdAt,
-            ...parsed
-          };
-          
-          await window.api.sync.upsertRow(table, rowToUpsert);
-        } catch (err) {
-          console.error(`Falha ao descriptografar documento ${docSnap.id} da tabela ${table}`, err);
+      for (const docSnap of querySnapshot.docs) {
+        const cloudData = docSnap.data();
+        if (!cloudData.encryptedData) continue;
+        
+        const localRow = localRows.find((r: any) => r.id === docSnap.id);
+        
+        const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
+        const localTime = localRow ? new Date(localRow.updated_at || localRow.created_at || 0).getTime() : -1;
+        
+        if (cloudTime > localTime) {
+          try {
+            const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
+            const parsed = JSON.parse(decryptedJson);
+            const rowToUpsert = {
+              id: docSnap.id,
+              updated_at: cloudData.updatedAt,
+              created_at: cloudData.createdAt,
+              ...parsed
+            };
+            await window.api.sync.upsertRow(table, rowToUpsert);
+          } catch (err: any) {
+            const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
+            console.error(msg);
+            (window.api as any).log?.(msg);
+          }
         }
       }
+    } catch (err: any) {
+      const msg = `PULL erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
+      console.error(msg);
+      (window.api as any).log?.(msg);
+      // Não propaga — continua com a próxima tabela
     }
   }
 }
@@ -73,38 +78,43 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
   if (!window.api?.sync) return;
 
   for (const table of SYNC_TABLES) {
-    const localRows = await window.api.sync.getTable(table);
-    if (localRows.length === 0) continue;
+    try {
+      const localRows = await window.api.sync.getTable(table);
+      if (localRows.length === 0) continue;
 
-    // Lê todos os docs da tabela de uma vez (1 request por tabela, não 1 por linha)
-    const cloudSnap = await getDocs(collection(db, table));
-    const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
-    
-    for (const row of localRows) {
-      const localTime = new Date(row.updated_at || row.created_at || 0).getTime();
-      const isDeleted = !!row.deleted_at;
-      const cloudData = cloudMap.get(row.id);
+      const cloudSnap = await getDocs(collection(db, table));
+      const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
+      
+      for (const row of localRows) {
+        const localTime = new Date(row.updated_at || row.created_at || 0).getTime();
+        const isDeleted = !!row.deleted_at;
+        const cloudData = cloudMap.get(row.id);
 
-      if (cloudData) {
-        const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
-        // Pula se nuvem está atualizada — EXCETO se o registro foi deletado (deleção tem prioridade)
-        if (!isDeleted && localTime <= cloudTime) continue;
+        if (cloudData) {
+          const cloudTime = new Date(cloudData.updatedAt || cloudData.createdAt || 0).getTime();
+          if (!isDeleted && localTime <= cloudTime) continue;
+        }
+
+        try {
+          const { id, updated_at, created_at, ...sensitiveData } = row;
+          const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
+          const docRef = doc(db, table, id);
+          await setDoc(docRef, {
+            encryptedData,
+            updatedAt: updated_at || null,
+            createdAt: created_at || null
+          }, { merge: true });
+        } catch (err: any) {
+          const msg = `PUSH erro doc ${row.id} (${table}): ${err?.message}`;
+          console.error(msg);
+          (window.api as any).log?.(msg);
+        }
       }
-
-      try {
-        const { id, updated_at, created_at, ...sensitiveData } = row;
-        const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
-        const docRef = doc(db, table, id);
-
-        await setDoc(docRef, {
-          encryptedData,
-          updatedAt: updated_at || null,
-          createdAt: created_at || null
-        }, { merge: true });
-      } catch (err: any) {
-        // Erro isolado: loga mas continua as demais linhas
-        console.error(`[Sync] Falha ao enviar ${row.id} (${table}):`, err.message);
-      }
+    } catch (err: any) {
+      const msg = `PUSH erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
+      console.error(msg);
+      (window.api as any).log?.(msg);
+      // Não propaga — continua com a próxima tabela
     }
   }
 }

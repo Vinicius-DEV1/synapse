@@ -1149,6 +1149,13 @@ ipcMain.handle('library:get-reading-stats', async (_, bookId?: string) => {
   });
 });
 
+// -- LOG HANDLER (diagnóstico temporário) --
+const logFile = path.join(app.getPath('userData'), 'sync_debug.log');
+ipcMain.handle('log:write', async (_, message: string) => {
+  const line = `[${new Date().toISOString()}] ${message}\n`;
+  fs.appendFileSync(logFile, line);
+});
+
 // -- SYNC API (GENERIC) --
 ipcMain.handle('sync:get-table', async (_, tableName: string) => {
     return new Promise((resolve, reject) => {

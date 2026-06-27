@@ -68,5 +68,8 @@ contextBridge.exposeInMainWorld('api', {
   sync: {
     getTable: (tableName: string) => ipcRenderer.invoke('sync:get-table', tableName),
     upsertRow: (tableName: string, row: any) => ipcRenderer.invoke('sync:upsert-row', tableName, row),
-  }
+  },
+
+  // Log (diagnóstico temporário)
+  log: (message: string) => ipcRenderer.invoke('log:write', message),
 });
