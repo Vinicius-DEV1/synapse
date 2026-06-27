@@ -24,6 +24,7 @@ function setupTables(onComplete: () => void) {
       title TEXT NOT NULL DEFAULT 'Nova Página',
       icon TEXT DEFAULT '📄',
       content TEXT DEFAULT '',
+      crdt_state TEXT DEFAULT NULL,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -31,8 +32,9 @@ function setupTables(onComplete: () => void) {
       FOREIGN KEY (parent_id) REFERENCES pages(id) ON DELETE CASCADE
     )
   `);
-  // Add deleted_at to existing pages table if missing (migration)
-  db!.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
+  // Migrations
+  db!.run(`ALTER TABLE pages ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR (deleted_at):", err); });
+  db!.run(`ALTER TABLE pages ADD COLUMN crdt_state TEXT DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR (crdt_state):", err); });
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS page_history (
@@ -432,7 +434,7 @@ ipcMain.handle('db:create-page', async (_, page: { parentId: string | null; titl
   });
 });
 
-ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) => {
+ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; parent_id?: string | null }) => {
   if (!db) throw new Error('DB not open');
   const fields: string[] = [];
   const values: any[] = [];
@@ -440,6 +442,7 @@ ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; i
   if (page.title !== undefined) { fields.push('title = ?'); values.push(page.title); }
   if (page.icon !== undefined) { fields.push('icon = ?'); values.push(page.icon); }
   if (page.content !== undefined) { fields.push('content = ?'); values.push(page.content); }
+  if (page.crdt_state !== undefined) { fields.push('crdt_state = ?'); values.push(page.crdt_state); }
   if (page.parent_id !== undefined) { fields.push('parent_id = ?'); values.push(page.parent_id); }
 
   fields.push('updated_at = CURRENT_TIMESTAMP');

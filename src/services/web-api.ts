@@ -26,6 +26,7 @@ export const createWebApiMock = async () => {
         title: title || 'Nova Página',
         icon: icon || '📄',
         content: '',
+        crdt_state: null,
         parent_id: parentId,
         sort_order: Date.now(),
         created_at: new Date().toISOString(),

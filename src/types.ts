@@ -4,6 +4,7 @@ export interface Page {
   title: string;
   icon: string;
   content: string;
+  crdt_state?: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -195,7 +196,7 @@ declare global {
       onSyncTrigger?: (callback: () => void) => () => void;
       getAllPages: () => Promise<Page[]>;
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
-      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; parent_id?: string | null }) => Promise<number>;
+      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; parent_id?: string | null }) => Promise<number>;
       deletePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;

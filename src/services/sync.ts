@@ -50,6 +50,21 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
               created_at: cloudData.createdAt,
               ...parsed
             };
+
+            // Merge CRDT Yjs se for uma página e ambos tiverem crdt_state
+            if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
+              try {
+                const Y = await import('yjs');
+                const { base64ToUint8Array, getYDocStateAsBase64 } = await import('../utils/yjs-utils');
+                const ydoc = new Y.Doc();
+                Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
+                Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
+                rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
+              } catch (crdtErr) {
+                console.error("Erro no merge CRDT Yjs:", crdtErr);
+              }
+            }
+
             await window.api.sync.upsertRow(table, rowToUpsert);
           } catch (err: any) {
             const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
