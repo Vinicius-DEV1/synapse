@@ -7,6 +7,7 @@ import PageView from './components/PageView';
 import ContextMenu from './components/ContextMenu';
 import ConfirmModal from './components/ConfirmModal';
 import FinanceView from './components/finance/FinanceView';
+import LibraryView from './components/library/LibraryView';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings } from './utils/settings';
@@ -177,6 +178,8 @@ function AppContent() {
               onCreateLinkedPage={handleCreateLinkedPage}
               onUpdatePage={handleUpdatePage}
             />
+          ) : state.activeModule === 'library' ? (
+            <LibraryView />
           ) : (
             <FinanceView />
           )}

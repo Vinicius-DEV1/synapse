@@ -145,21 +145,30 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
                     (() => {
                       try {
                         const parsed = JSON.parse(textContent);
+                        const questions = Array.isArray(parsed) ? parsed : [parsed];
+                        const validQuestions = questions.filter(q => q.enunciado && Array.isArray(q.opcoes));
+                        
+                        if (validQuestions.length === 0) throw new Error("No valid questions");
+
                         return (
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-2 text-brand-300 font-medium pb-2 border-b border-white/10">
                               <Sparkles size={14} />
-                              <span>✨ Questão Gerada</span>
+                              <span>✨ {validQuestions.length > 1 ? 'Questões Geradas' : 'Questão Gerada'}</span>
                             </div>
-                            <p className="text-sm font-medium leading-relaxed">{parsed.enunciado}</p>
-                            <ul className="text-xs space-y-1.5 text-brand-50/80 mt-1">
-                              {parsed.opcoes.map((opt: string, i: number) => (
-                                <li key={i} className="flex gap-2">
-                                  <span className="font-bold text-brand-400">{String.fromCharCode(65 + i)})</span>
-                                  <span>{opt}</span>
-                                </li>
-                              ))}
-                            </ul>
+                            {validQuestions.map((q, idx) => (
+                              <div key={idx} className="flex flex-col gap-2">
+                                <p className="text-sm font-medium leading-relaxed">{q.enunciado}</p>
+                                <ul className="text-xs space-y-1.5 text-brand-50/80 mt-1">
+                                  {q.opcoes.map((opt: string, i: number) => (
+                                    <li key={i} className="flex gap-2">
+                                      <span className={`font-bold ${q.correta === i ? 'text-emerald-400' : 'text-brand-400'}`}>{String.fromCharCode(65 + i)})</span>
+                                      <span className={q.correta === i ? 'text-emerald-50' : ''}>{opt}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
                           </div>
                         );
                       } catch (e) {

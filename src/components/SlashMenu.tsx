@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -14,6 +14,7 @@ const SLASH_COMMANDS = [
   { id: 'group', title: 'Coleção', subtitle: 'Agrupe páginas em uma coleção expansível.', icon: Folder },
   { id: 'table', title: 'Tabela', subtitle: 'Adicione uma tabela estruturada.', icon: Table },
   { id: 'question', title: 'Questão', subtitle: 'Crie uma questão de múltipla escolha com IA.', icon: HelpCircle },
+  { id: 'ia', title: 'Pedir à IA', subtitle: 'Peça para a IA escrever qualquer coisa.', icon: Sparkles },
   { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus },
 ];
 

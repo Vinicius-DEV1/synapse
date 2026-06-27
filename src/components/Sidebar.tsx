@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, LayoutDashboard, ArrowRightLeft, Gift, Settings } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -56,6 +56,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <BookOpen size={18} />
           </button>
           <button
+            onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'library' })}
+            className={`p-2 rounded-lg transition-all active:scale-95 ${
+              state.activeModule === 'library' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+            }`}
+            title="Biblioteca"
+          >
+            <Library size={18} />
+          </button>
+          <button
             onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'finance' })}
             className={`p-2 rounded-lg transition-all active:scale-95 ${
               state.activeModule === 'finance' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
@@ -84,11 +93,13 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         <div className="flex items-center gap-2">
           {state.activeModule === 'notes' ? (
             <BookOpen size={20} className="text-brand-400" />
+          ) : state.activeModule === 'library' ? (
+            <Library size={20} className="text-brand-400" />
           ) : (
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {state.activeModule === 'notes' ? 'Caderno' : 'Finanças'}
+            {state.activeModule === 'notes' ? 'Caderno' : state.activeModule === 'library' ? 'Biblioteca' : 'Finanças'}
           </span>
         </div>
         <button
@@ -149,6 +160,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               />
             ))}
           </>
+        ) : state.activeModule === 'library' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Biblioteca de PDFs</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Use o painel principal para gerenciar seus livros e coleções.</div>
+          </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
@@ -179,6 +195,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         >
           <BookOpen size={16} />
           <span>Caderno</span>
+        </button>
+        <button
+          onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'library' })}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+            state.activeModule === 'library'
+              ? 'bg-brand-500/10 text-brand-400'
+              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+          }`}
+        >
+          <Library size={16} />
+          <span>Biblioteca</span>
         </button>
         <button
           onClick={() => dispatch({ type: 'SET_ACTIVE_MODULE', module: 'finance' })}

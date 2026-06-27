@@ -45,6 +45,92 @@ export interface WishlistItem {
   created_at: string;
 }
 
+// ============ LIBRARY TYPES ============
+
+export type ReadingStatus = 'not_started' | 'reading' | 'finished';
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
+export type HighlightType = 'text' | 'rect';
+export type ReadingMode = 'light' | 'sepia' | 'dark';
+
+export interface LibraryBook {
+  id: string;
+  title: string;
+  author: string;
+  file_path: string;
+  original_name: string;
+  cover_image: string;
+  total_pages: number;
+  last_read_page: number;
+  reading_status: ReadingStatus;
+  last_read_at: string | null;
+  created_at: string;
+  updated_at: string;
+  collections?: LibraryCollection[];
+}
+
+export interface LibraryCollection {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface LibraryHighlight {
+  id: string;
+  book_id: string;
+  page_number: number;
+  text_content: string;
+  color: HighlightColor;
+  rects: string;
+  highlight_type: HighlightType;
+  note: string;
+  created_at: string;
+}
+
+export interface LibraryBookmark {
+  id: string;
+  book_id: string;
+  page_number: number;
+  label: string;
+  created_at: string;
+}
+
+export interface OcrCacheEntry {
+  id: string;
+  book_id: string;
+  page_number: number;
+  text_content: string;
+  word_boxes: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  book_id: string;
+  started_at: string;
+  ended_at: string | null;
+  pages_read: number;
+  start_page: number;
+  end_page: number;
+}
+
+export interface BookReadingStats {
+  totalTimeMinutes: number;
+  totalPagesRead: number;
+  averagePagesPerSession: number;
+  sessionsCount: number;
+  lastReadAt: string | null;
+}
+
+export interface GlobalReadingStats {
+  totalBooksStarted: number;
+  totalBooksFinished: number;
+  totalTimeMinutes: number;
+  totalPagesRead: number;
+  currentStreak: number;
+  longestStreak: number;
+  readingDays: string[];
+}
+
 
 export interface AiChatSession {
   id: string;
@@ -57,7 +143,7 @@ export interface AiChatSession {
 }
 
 export interface AppState {
-  activeModule: 'notes' | 'finance';
+  activeModule: 'notes' | 'finance' | 'library';
   pages: Page[];
   tabs: Tab[];
   activeTabId: string;
@@ -76,7 +162,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'SET_ACTIVE_MODULE'; module: 'notes' | 'finance' }
+  | { type: 'SET_ACTIVE_MODULE'; module: 'notes' | 'finance' | 'library' }
   | { type: 'SET_PAGES'; pages: Page[] }
   | { type: 'ADD_PAGE'; page: Page }
   | { type: 'UPDATE_PAGE'; page: Partial<Page> & { id: string } }
@@ -124,6 +210,32 @@ declare global {
         getWishlist: () => Promise<WishlistItem[]>;
         createWishlist: (item: Partial<WishlistItem>) => Promise<WishlistItem>;
         deleteWishlist: (id: string) => Promise<boolean>;
+      };
+      library: {
+        getBooks: () => Promise<LibraryBook[]>;
+        importBook: () => Promise<LibraryBook | null>;
+        deleteBook: (id: string) => Promise<boolean>;
+        updateBook: (book: { id: string; title?: string; author?: string; last_read_page?: number; reading_status?: ReadingStatus; last_read_at?: string }) => Promise<number>;
+        getBookFile: (id: string) => Promise<string>;
+        getCollections: () => Promise<LibraryCollection[]>;
+        createCollection: (c: { name: string; color: string }) => Promise<LibraryCollection>;
+        updateCollection: (c: { id: string; name?: string; color?: string }) => Promise<number>;
+        deleteCollection: (id: string) => Promise<boolean>;
+        setBookCollections: (bookId: string, collectionIds: string[]) => Promise<boolean>;
+        getBookCollections: (bookId: string) => Promise<LibraryCollection[]>;
+        getHighlights: (bookId: string) => Promise<LibraryHighlight[]>;
+        createHighlight: (h: { book_id: string; page_number: number; text_content?: string; color?: HighlightColor; rects?: string; highlight_type?: HighlightType; note?: string }) => Promise<LibraryHighlight>;
+        updateHighlight: (h: { id: string; color?: HighlightColor; note?: string; rects?: string }) => Promise<number>;
+        deleteHighlight: (id: string) => Promise<boolean>;
+        getBookmarks: (bookId: string) => Promise<LibraryBookmark[]>;
+        createBookmark: (b: { book_id: string; page_number: number; label?: string }) => Promise<LibraryBookmark>;
+        updateBookmark: (b: { id: string; label: string }) => Promise<number>;
+        deleteBookmark: (id: string) => Promise<boolean>;
+        getOcrCache: (bookId: string, pageNumber: number) => Promise<OcrCacheEntry | null>;
+        saveOcrCache: (data: { book_id: string; page_number: number; text_content: string; word_boxes: string }) => Promise<boolean>;
+        startReadingSession: (data: { book_id: string; start_page: number }) => Promise<ReadingSession>;
+        endReadingSession: (data: { id: string; end_page: number; pages_read: number }) => Promise<boolean>;
+        getReadingStats: (bookId?: string) => Promise<{ bookStats?: BookReadingStats; globalStats: GlobalReadingStats }>;
       };
     };
   }

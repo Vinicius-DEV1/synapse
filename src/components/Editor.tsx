@@ -38,7 +38,7 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
   const [pageMenu, setPageMenu] = useState<{ x: number, y: number, query: string, node: Node } | null>(null);
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [aiModal, setAiModal] = useState<{ x: number, y: number, contextText?: string, contextImage?: string, targetNode?: Node } | null>(null);
+  const [aiModal, setAiModal] = useState<{ x: number, y: number, contextText?: string, contextImage?: string, targetNode?: Node, chatId?: string } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const { state, dispatch } = useStore();
   const lastPageIdRef = useRef(pageId);
@@ -498,6 +498,24 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
           y: rect.bottom + 4,
           query: '',
           node
+        });
+      }
+      return;
+    }
+
+    if (commandId === 'ia') {
+      if (node.textContent) {
+        const regex = new RegExp(`(?:^|\\s)/${slashMenu.query}$`);
+        node.textContent = node.textContent.replace(regex, (match) => match.startsWith(' ') ? ' ' : '');
+      }
+      setSlashMenu(null);
+      const rect = node.parentElement?.getBoundingClientRect();
+      if (rect) {
+        setAiModal({
+          x: rect.left,
+          y: rect.bottom + 4,
+          targetNode: node,
+          chatId: `prompt_${Date.now()}`
         });
       }
       return;
@@ -1656,7 +1674,7 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
       />
 
       {aiModal && (() => {
-        const chatId = aiModal.contextImage || aiModal.contextText || 'global';
+        const chatId = aiModal.chatId || aiModal.contextImage || aiModal.contextText || 'global';
         return (
           <AiPromptModal
             x={aiModal.x}
@@ -1702,29 +1720,35 @@ export default function Editor({ pageId, initialContent, onSave, onCreateLinkedP
             let isQuestion = false;
             try {
               const parsed = JSON.parse(response);
-              if (parsed.enunciado && Array.isArray(parsed.opcoes) && typeof parsed.correta === 'number') {
+              const questions = Array.isArray(parsed) ? parsed : [parsed];
+              const validQuestions = questions.filter(q => q.enunciado && Array.isArray(q.opcoes) && typeof q.correta === 'number');
+              
+              if (validQuestions.length > 0) {
                 isQuestion = true;
-                const questionDiv = document.createElement('div');
-                questionDiv.className = 'question-block relative';
-                questionDiv.dataset.answered = "false";
-                questionDiv.dataset.correctIndex = parsed.correta.toString();
-                questionDiv.contentEditable = "false";
-                
-                let html = `
-                  <button class="question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" contenteditable="false" title="Deletar Questão">🗑️</button>
-                  <div class="question-text" contenteditable="true">${parsed.enunciado}</div>
-                  <div class="question-options">`;
-                parsed.opcoes.forEach((opt: string, idx: number) => {
-                  html += `<div class="question-option" data-index="${idx}"><input type="radio" name="q_${Date.now()}" value="${idx}"><span contenteditable="true">${opt}</span></div>`;
+                validQuestions.reverse().forEach((q) => {
+                  const questionDiv = document.createElement('div');
+                  questionDiv.className = 'question-block relative';
+                  questionDiv.dataset.answered = "false";
+                  questionDiv.dataset.correctIndex = q.correta.toString();
+                  questionDiv.contentEditable = "false";
+                  
+                  let html = `
+                    <button class="question-delete-btn absolute top-2 right-2 p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" contenteditable="false" title="Deletar Questão">🗑️</button>
+                    <div class="question-text" contenteditable="true">${q.enunciado}</div>
+                    <div class="question-options">`;
+                  q.opcoes.forEach((opt: string, idx: number) => {
+                    html += `<div class="question-option" data-index="${idx}"><input type="radio" name="q_${Date.now()}_${Math.random()}" value="${idx}"><span contenteditable="true">${opt}</span></div>`;
+                  });
+                  html += `</div><button class="question-answer-btn">Responder</button>`;
+                  
+                  questionDiv.innerHTML = html;
+                  if (blockNode.parentElement) {
+                    blockNode.parentElement.insertBefore(questionDiv, blockNode.nextSibling);
+                    const p = document.createElement('p');
+                    p.innerHTML = '<br>';
+                    blockNode.parentElement.insertBefore(p, questionDiv.nextSibling);
+                  }
                 });
-                html += `</div><button class="question-answer-btn">Responder</button>`;
-                
-                questionDiv.innerHTML = html;
-                blockNode.parentElement.insertBefore(questionDiv, blockNode.nextSibling);
-                
-                const p = document.createElement('p');
-                p.innerHTML = '<br>';
-                blockNode.parentElement.insertBefore(p, questionDiv.nextSibling);
               }
             } catch (e) {}
 
