@@ -16,13 +16,7 @@ type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
  * upsertRow não re-disparem o debounce do sync.
  */
 async function pullWithSuppression(masterKey: any): Promise<void> {
-  const api = window.api as any;
-  if (api?._setSyncRunning) api._setSyncRunning(true);
-  try {
-    await pullAllFromCloud(masterKey);
-  } finally {
-    if (api?._setSyncRunning) api._setSyncRunning(false);
-  }
+  await pullAllFromCloud(masterKey);
 }
 
 export function useSync(isAuth: boolean, masterKey: string | null, loadPages: () => void) {

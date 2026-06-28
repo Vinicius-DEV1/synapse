@@ -22,29 +22,24 @@ export const createWebApiMock = async () => {
   let syncCallbacks: (() => void)[] = [];
   const triggerSync = () => syncCallbacks.forEach(cb => cb());
 
-  // Flag para suprimir triggers durante operações de sync (pull)
-  let suppressTrigger = false;
-
   const originalPut = db.put.bind(db);
   const originalDelete = db.delete.bind(db);
 
   db.put = async (storeName: string, val: any, key?: IDBValidKey) => {
     const res = await originalPut(storeName, val, key);
-    if (storeName !== 'config' && !suppressTrigger) triggerSync();
+    if (storeName !== 'config') triggerSync();
     return res;
   };
   
   db.delete = async (storeName: string, key: IDBValidKey | IDBKeyRange) => {
     const res = await originalDelete(storeName, key);
-    if (storeName !== 'config' && !suppressTrigger) triggerSync();
+    if (storeName !== 'config') triggerSync();
     return res;
   };
 
   return {
     // FUNÇÃO EXCLUSIVA DA WEB PARA INJETAR A CHAVE MESTRA
     _setMasterKey: (key: CryptoKey | null) => { _masterKey = key; },
-    // Controla supressão de triggers durante pull (evita cascata)
-    _setSyncRunning: (running: boolean) => { suppressTrigger = running; },
     onSyncTrigger: (callback: () => void) => {
       syncCallbacks.push(callback);
       return () => {
@@ -364,13 +359,13 @@ export const createWebApiMock = async () => {
       },
       deleteRow: async (tableName: string, id: string) => {
         if (db.objectStoreNames.contains(tableName as any)) {
-          await db.delete(tableName as any, id);
+          await originalDelete(tableName as any, id);
         }
         return { success: true };
       },
       upsertRow: async (tableName: string, row: any) => {
         if (db.objectStoreNames.contains(tableName as any)) {
-          await db.put(tableName as any, row);
+          await originalPut(tableName as any, row);
         }
         return { success: true };
       }
