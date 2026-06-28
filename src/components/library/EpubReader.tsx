@@ -267,7 +267,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           </div>
         )}
 
-        <EpubHighlightMenu />
+        <EpubHighlightMenu key={selection?.cfiRange || 'none'} />
 
         <button onClick={() => rendition?.prev()} className="absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
