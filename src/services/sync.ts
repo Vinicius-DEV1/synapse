@@ -180,12 +180,12 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           try {
             const decryptedJson = await decryptText(cloudData.encryptedData, key);
             const parsed = JSON.parse(decryptedJson);
-            const rowToUpsert = {
+            const rowToUpsert: any = {
               id: docSnap.id,
-              updated_at: cloudData.updatedAt,
-              created_at: cloudData.createdAt,
               ...parsed
             };
+            if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
+            if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
 
             if (typeof window !== 'undefined' && (window as any).api?.log) {
               (window as any).api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
@@ -243,9 +243,13 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               }
             }
 
-            await window.api.sync.upsertRow(table, rowToUpsert);
-            if (typeof window !== 'undefined' && (window as any).api?.log) {
-              (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+            try {
+              await window.api.sync.upsertRow(table, rowToUpsert);
+              if (typeof window !== 'undefined' && (window as any).api?.log) {
+                (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+              }
+            } catch (upsertErr) {
+              console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
             }
           } catch (err: any) {
             const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
