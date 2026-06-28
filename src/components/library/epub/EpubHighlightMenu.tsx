@@ -96,13 +96,24 @@ export default function EpubHighlightMenu() {
             <button onClick={() => handleCreateHighlight('blue')} className={`w-6 h-6 rounded-full bg-blue-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'blue' ? 'ring-2 ring-brand-500' : ''}`} />
             <button onClick={() => handleCreateHighlight('pink')} className={`w-6 h-6 rounded-full bg-pink-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'pink' ? 'ring-2 ring-brand-500' : ''}`} />
           </div>
-          
-          {!noteMode && !selection.existingHighlightId && (
+          {!noteMode && (
               <div className="flex items-center gap-1.5">
                 <div className={`w-px h-5 mx-1 ${readingMode === 'dark' ? 'bg-gray-700' : readingMode === 'sepia' ? 'bg-[#d4c6a0]' : 'bg-gray-200'}`} />
-                <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-80 hover:opacity-100 px-1 py-1 flex items-center gap-1">
-                  📝 Nota
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(selection.text);
+                    setSelection(null);
+                  }} 
+                  className="text-xs font-medium opacity-80 hover:opacity-100 p-1 flex items-center" 
+                  title="Copiar texto"
+                >
+                  📋
                 </button>
+                {!selection.existingHighlightId && (
+                  <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-80 hover:opacity-100 px-1 py-1 flex items-center gap-1">
+                    📝 Nota
+                  </button>
+                )}
               </div>
           )}
       </div>
