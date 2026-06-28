@@ -29,6 +29,14 @@ export default function EpubHighlightMenu() {
     }
   }, [selection?.rect, refs]);
 
+  const openTimeRef = React.useRef<number>(0);
+  React.useEffect(() => {
+    if (selection) {
+      openTimeRef.current = Date.now();
+    }
+  }, [selection]);
+
+
   if (!selection) return null;
 
   const handleCreateHighlight = async (color: string) => {
@@ -187,7 +195,12 @@ export default function EpubHighlightMenu() {
         {/* Overlay acima do iframe para fechar ao tocar fora */}
         <div
           className="fixed inset-0 z-[100]"
-          onClick={() => { setSelection(null); setNoteMode(null); setNoteText(''); }}
+          onClick={() => { 
+            if (Date.now() - openTimeRef.current < 400) return; // Ignorar ghost clicks do Android
+            setSelection(null); 
+            setNoteMode(null); 
+            setNoteText(''); 
+          }}
         />
 
         {selectionIsLow ? (
