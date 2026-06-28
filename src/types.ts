@@ -169,6 +169,7 @@ export interface AppState {
   showAiSidebar: boolean;
   activeAiChatId: string | null;
   moduleKeys: Record<string, CryptoKey>;
+  isReadingModeFullScreen: boolean;
 }
 
 export type Action =

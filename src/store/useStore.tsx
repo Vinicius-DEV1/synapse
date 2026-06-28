@@ -61,6 +61,7 @@ const initialState: AppState = {
   showAiSidebar: false,
   activeAiChatId: null,
   moduleKeys: {},
+  isReadingModeFullScreen: false,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -222,6 +223,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, showAiSidebar: true, activeAiChatId: action.chatId };
     case 'SET_MODULE_KEYS':
       return { ...state, moduleKeys: action.keys };
+    case 'SET_READING_MODE_FULLSCREEN':
+      return { ...state, isReadingModeFullScreen: action.isFullScreen };
     default:
       return state;
   }

@@ -23,7 +23,7 @@ interface PdfReaderProps {
 }
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const settings = getSettings();
   const [totalPages, setTotalPages] = useState(0);
@@ -57,6 +57,14 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       return nextState;
     });
   };
+
+  useEffect(() => {
+    dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !showMobileTools });
+    
+    return () => {
+      dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
+    };
+  }, [showMobileTools, dispatch]);
 
   const [zoomInputActive, setZoomInputActive] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
