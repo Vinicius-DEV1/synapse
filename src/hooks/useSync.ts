@@ -36,13 +36,18 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
 
       const doFullSync = async () => {
         if (!navigator.onLine) {
+          console.warn('[Sync] doFullSync abortado: sem conexão com a internet.');
           finishSync(false);
           return;
         }
+        console.log(`[Sync] doFullSync INICIADO às ${new Date().toLocaleTimeString()}`);
         startSync();
         try {
+          console.log('[Sync] Etapa 1: PULL From Cloud (Baixando alterações...)');
           await withTimeout(pullWithSuppression(masterKey), 30_000);
+          console.log('[Sync] PULL concluído. Recarregando páginas na UI...');
           loadPages();
+          console.log('[Sync] Etapa 2: PUSH To Cloud e sync de PDFs (Enviando alterações...)');
           await withTimeout(
             Promise.all([
               pushAllToCloud(masterKey),
@@ -50,11 +55,12 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             ]),
             30_000
           );
+          console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
           finishSync(true);
           // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
           syncChannel.postMessage('LOCAL_UPDATE');
         } catch (err: any) {
-          console.warn('[Sync] Sync failed:', err.message);
+          console.warn(`[Sync] doFullSync FALHOU: ${err.message}`, err);
           finishSync(false);
         }
       };
@@ -89,6 +95,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
+        console.log('[Sync] Gatilho de edição detectado! Agendando sync em 1.5s...');
         clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
           doFullSync();
@@ -106,6 +113,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && !isSyncingOnFocus) {
+          console.log('[Sync] App ganhou foco novamente. Verificando por atualizações...');
           isSyncingOnFocus = true;
           doFullSync().finally(() => { isSyncingOnFocus = false; });
         }
