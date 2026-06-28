@@ -162,6 +162,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
       for (const docSnap of querySnapshot.docs) {
         const cloudData = docSnap.data();
         if (!cloudData.encryptedData) continue;
+        if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') continue;
         
         const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
         if (cloudTime > highestCloudTime) {
