@@ -78,6 +78,12 @@ function AppContent() {
 
   const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages);
 
+  // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
+  // (handlers do ProseMirror não têm acesso ao contexto React)
+  useEffect(() => {
+    (window as any).__cadernoModuleKeys = state.moduleKeys;
+  }, [state.moduleKeys]);
+
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {
       const page = await window.api.createPage({ parentId });

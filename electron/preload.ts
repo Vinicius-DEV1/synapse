@@ -83,6 +83,12 @@ contextBridge.exposeInMainWorld('api', {
     getReadingStats: (bookId?: string) => invokeWithSync('library:get-reading-stats', bookId),
   },
 
+  // Image Cache (para imagens criptografadas do editor)
+  imageCache: {
+    get: (id: string) => invokeWithSync('image-cache:get', id),
+    put: (id: string, data: ArrayBuffer, mimeType: string) => invokeWithSync('image-cache:put', id, data, mimeType),
+  },
+
   // Sync
   sync: {
     getTable: (tableName: string) => invokeWithSync('sync:get-table', tableName),
