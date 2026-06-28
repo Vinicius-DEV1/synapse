@@ -12,9 +12,9 @@ interface BookEditModalProps {
 }
 
 const STATUS_OPTIONS: { value: ReadingStatus; label: string }[] = [
-  { value: 'not_started', label: 'NÃ£o iniciado' },
+  { value: 'not_started', label: 'Não iniciado' },
   { value: 'reading', label: 'Lendo' },
-  { value: 'finished', label: 'ConcluÃ­do' },
+  { value: 'finished', label: 'Concluído' },
 ];
 
 const PRESET_COLORS = [
