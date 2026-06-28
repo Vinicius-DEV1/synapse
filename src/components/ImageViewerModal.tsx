@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import getCroppedImg from '../utils/cropImage';
-import { X, Save, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, Save, ZoomIn, ZoomOut, Scissors } from 'lucide-react';
 
 interface ImageViewerModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [activeSrc, setActiveSrc] = useState('');
+  const viewContainerRef = useRef<HTMLDivElement>(null);
 
   const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -43,6 +44,26 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
     }
   }, [isOpen, imageSrc]);
 
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isOpen, onClose]);
+
+  // Scroll-to-zoom in view mode
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (mode !== 'view') return;
+    e.preventDefault();
+    setZoom(prev => {
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      return Math.min(5, Math.max(0.5, prev + delta));
+    });
+  }, [mode]);
+
   if (!isOpen) return null;
 
   return (
@@ -51,21 +72,29 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
         <h2 className="text-white font-medium text-lg ml-4">
           {mode === 'view' ? 'Visualizador de Imagem' : 'Cortar Imagem'}
         </h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {mode === 'view' ? (
             <button 
               onClick={() => setMode('crop')}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
-              Cortar Imagem
+              <Scissors size={16} /> Cortar
             </button>
           ) : (
-            <button 
-              onClick={handleSave}
-              className="flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              <Save size={18} /> Salvar Corte
-            </button>
+            <>
+              <button 
+                onClick={() => setMode('view')}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSave}
+                className="flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                <Save size={18} /> Salvar Corte
+              </button>
+            </>
           )}
           <button 
             onClick={onClose}
@@ -76,14 +105,19 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
         </div>
       </div>
 
-      <div className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden z-10">
+      <div 
+        ref={viewContainerRef}
+        className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden z-10"
+        onWheel={handleWheel}
+      >
         {mode === 'view' ? (
           activeSrc ? (
             <img 
               src={activeSrc} 
               alt="Viewer" 
-              className="max-w-full max-h-full object-contain transition-transform duration-200"
+              className="max-w-full max-h-full object-contain transition-transform duration-150"
               style={{ transform: `scale(${zoom})` }}
+              draggable={false}
             />
           ) : (
             <div className="text-white bg-red-500/20 p-4 rounded-lg">ERRO: A imagem selecionada não possui 'src' válido!</div>
@@ -104,19 +138,20 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
         )}
       </div>
 
-      <div className="w-full max-w-md p-6 mt-4 bg-dark-card/80 rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl z-20">
-        <ZoomOut className="text-white/50" />
+      <div className="w-full max-w-md p-4 mt-3 bg-dark-card/80 rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl z-20">
+        <ZoomOut className="text-white/50 flex-shrink-0" size={18} />
         <input
           type="range"
           value={zoom}
-          min={1}
-          max={3}
+          min={0.5}
+          max={5}
           step={0.1}
           aria-labelledby="Zoom"
           onChange={(e) => setZoom(Number(e.target.value))}
           className="w-full accent-brand-500"
         />
-        <ZoomIn className="text-white/50" />
+        <ZoomIn className="text-white/50 flex-shrink-0" size={18} />
+        <span className="text-white/40 text-xs min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
       </div>
     </div>
   );
