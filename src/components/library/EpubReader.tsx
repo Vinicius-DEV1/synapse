@@ -22,13 +22,14 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     book, rendition, setRendition, epubBook, setEpubBook,
     readingMode, scrollMode, fontSize, fontFamily,
     locationsReady, setLocationsReady, setTotalPages,
-    setProgress, setCurrentPage, selection, setSelection, setNoteMode, setNoteText,
+    setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
     setShowSettings, setHighlights, setBookmarks, setToc
   } = useEpub();
 
   const [loading, setLoading] = useState(true);
   const [epubError, setEpubError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load EPUB
   useEffect(() => {
@@ -162,7 +163,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                     toJSON: rect.toJSON
                  } as DOMRect;
 
-                 setSelection({ cfiRange, text, rect: safeRect });
+                 // Debounce: o duplo-clique dispara 'selected' 2x em sequência.
+                 // Só o último (com a seleção final completa) vence.
+                 if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+                 selectionTimerRef.current = setTimeout(() => {
+                    setSelection({ cfiRange, text, rect: safeRect });
+                 }, 50);
               }
            });
            
@@ -269,7 +275,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           </div>
         )}
 
-        <EpubHighlightMenu key={selection?.cfiRange || 'none'} />
+        <EpubHighlightMenu />
 
         <button onClick={() => rendition?.prev()} className="absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
