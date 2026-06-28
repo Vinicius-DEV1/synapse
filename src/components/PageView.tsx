@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import type { Page } from '../types';
 import Editor from './Editor';
@@ -41,14 +41,6 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [page, state.pages]);
 
-  if (!page) {
-    return <EmptyState onCreatePage={() => onCreatePage(null)} />;
-  }
-
-  const handleNavigate = (pageId: string) => {
-    dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
-  };
-
   const [contentData, setContentData] = useState<{ content: string; encrypted_content: string | null } | null>(null);
   const [unlockPassword, setUnlockPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -68,6 +60,14 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     }
     return () => { mounted = false; };
   }, [page?.id, page?.is_locked]);
+
+  if (!page) {
+    return <EmptyState onCreatePage={() => onCreatePage(null)} />;
+  }
+
+  const handleNavigate = (pageId: string) => {
+    dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
+  };
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -63,6 +63,7 @@ export function registerAuthHandlers() {
           
           // Re-attach with unlocked keys
           await openCoreAndAttachModules(currentUnlockedKeys);
+          await setupTables();
           
           isLocked = false;
           currentAuthHash = authHash;
