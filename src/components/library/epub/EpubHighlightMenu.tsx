@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { Trash2, Sparkles } from 'lucide-react';
-import { useFloating, offset, flip, shift } from '@floating-ui/react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 
@@ -15,6 +15,7 @@ export default function EpubHighlightMenu() {
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'top',
     middleware: [offset(10), flip(), shift({ padding: 10 })],
+    whileElementsMounted: autoUpdate,
   });
 
   useLayoutEffect(() => {
