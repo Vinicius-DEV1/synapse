@@ -42,15 +42,21 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
   }, [page, state.pages]);
 
   const [contentData, setContentData] = useState<{ content: string; encrypted_content: string | null } | null>(null);
+  const [contentPageId, setContentPageId] = useState<string | null>(null);
   const [unlockPassword, setUnlockPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
+
+  // Reset contentData synchronously when page changes to prevent stale content leaking
+  if (page?.id && page.id !== contentPageId) {
+    setContentData(null);
+    setContentPageId(page.id);
+    setIsUnlocked(false);
+    setUnlockPassword('');
+  }
 
   useEffect(() => {
     let mounted = true;
     if (page?.id) {
-      setContentData(null);
-      setIsUnlocked(false);
-      setUnlockPassword('');
       window.api.getPageContent(page.id).then((data) => {
         if (mounted) {
           setContentData(data);
