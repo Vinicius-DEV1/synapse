@@ -24,7 +24,9 @@ import { GroupBlock } from './editor-extensions/GroupBlock';
 import { QuestionBlock } from './editor-extensions/QuestionBlock';
 import { ToggleBlock } from './editor-extensions/ToggleBlock';
 import { ResizableImage } from './editor-extensions/ResizableImage';
+import { EncryptedImage } from './editor-extensions/EncryptedImage';
 import { PageReference } from './editor-extensions/PageReference';
+import { uploadEncryptedImage } from '../services/image-drive';
 
 interface EditorProps {
   pageId: string | null;
@@ -89,6 +91,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       GroupBlock,
       QuestionBlock,
       ToggleBlock,
+      EncryptedImage,
       PageReference
     ],
     content: initialContent,
@@ -104,15 +107,41 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           if (item.type.indexOf('image') === 0) {
             imagePasted = true;
             const file = item.getAsFile();
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                const src = e.target?.result;
-                if (src && editor) {
-                  editor.chain().focus().setImage({ src: src as string }).run();
-                }
-              };
-              reader.readAsDataURL(file);
+            if (file && editor) {
+              // Obtém a masterKey do módulo de notas para criptografar
+              const masterKey = (window as any).__cadernoModuleKeys?.['notes'];
+              if (masterKey) {
+                // Upload criptografado para o Google Drive (pasta FOTOS)
+                uploadEncryptedImage(file, masterKey)
+                  .then((driveFileId) => {
+                    editor.chain().focus().insertContent({
+                      type: 'encryptedImage',
+                      attrs: { driveFileId }
+                    }).run();
+                  })
+                  .catch((err) => {
+                    console.error('[Editor] Falha no upload E2EE da imagem:', err);
+                    // Fallback: insere como Base64 se o upload falhar
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      const src = e.target?.result;
+                      if (src && editor) {
+                        editor.chain().focus().setImage({ src: src as string }).run();
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  });
+              } else {
+                // Sem masterKey: fallback para Base64
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const src = e.target?.result;
+                  if (src && editor) {
+                    editor.chain().focus().setImage({ src: src as string }).run();
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
             }
           }
         }

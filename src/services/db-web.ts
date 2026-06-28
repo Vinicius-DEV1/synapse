@@ -12,13 +12,14 @@ interface CadernoDBSchema extends DBSchema {
   library_book_collections: { key: string; value: any; indexes: { 'book_id': string } };
   library_reading_sessions: { key: string; value: any; indexes: { 'book_id': string } };
   config: { key: string; value: any };
+  image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 2, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 3, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -56,6 +57,9 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('config')) {
           db.createObjectStore('config', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('image_cache')) {
+          db.createObjectStore('image_cache', { keyPath: 'id' });
         }
       },
     });

@@ -95,4 +95,30 @@ export function registerPagesHandlers() {
     // Implementação de reordenação se existir
     return { success: true };
   });
+
+  // --- IMAGE CACHE (para imagens criptografadas do editor) ---
+
+  ipcMain.handle('image-cache:get', async (_, id: string) => {
+    if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
+    return new Promise((resolve, reject) => {
+      getDb().get('SELECT id, data, mimeType FROM notes.image_cache WHERE id = ?', [id], (err, row: any) => {
+        if (err) reject(err);
+        else resolve(row || null);
+      });
+    });
+  });
+
+  ipcMain.handle('image-cache:put', async (_, id: string, data: ArrayBuffer, mimeType: string) => {
+    if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
+    return new Promise((resolve, reject) => {
+      getDb().run(
+        'INSERT OR REPLACE INTO notes.image_cache (id, data) VALUES (?, ?)',
+        [id, Buffer.from(data)],
+        (err) => {
+          if (err) reject(err);
+          else resolve({ success: true });
+        }
+      );
+    });
+  });
 }

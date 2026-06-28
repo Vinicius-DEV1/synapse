@@ -192,7 +192,12 @@ export function setupTables(): Promise<void> {
               encrypted_content TEXT,
               is_pinned INTEGER DEFAULT 0,
               pinned_order REAL DEFAULT 0
-            )
+            );
+            
+            CREATE TABLE IF NOT EXISTS notes.image_cache (
+              id TEXT PRIMARY KEY,
+              data BLOB NOT NULL
+            );
           `));
           
           promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN is_pinned INTEGER DEFAULT 0`));

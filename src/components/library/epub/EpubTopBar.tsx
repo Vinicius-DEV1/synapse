@@ -44,7 +44,7 @@ export default function EpubTopBar({ onBack }: EpubTopBarProps) {
       <div className="flex items-center gap-4 flex-1 min-w-0">
         <button
           onClick={onBack}
-          className={`p-2 rounded-lg transition-colors flex-shrink-0 
+          className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-10 md:ml-0
             ${readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5'}`}
         >
           <ArrowLeft size={20} />
