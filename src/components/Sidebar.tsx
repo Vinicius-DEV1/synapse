@@ -196,7 +196,20 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       )}
 
       {/* Tree */}
-      <div className="flex-1 overflow-y-auto px-2 py-1">
+      <div 
+        className="flex-1 overflow-y-auto px-2 py-1 pb-20"
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes('application/caderno-page')) {
+            e.preventDefault();
+          }
+        }}
+        onDrop={(e) => {
+          const draggedId = e.dataTransfer.getData('application/caderno-page');
+          if (draggedId) {
+            onUpdatePage(draggedId, { parent_id: null });
+          }
+        }}
+      >
         {activeModule === 'notes' ? (
           <>
             {!searchQuery && pinnedPages.length > 0 && (

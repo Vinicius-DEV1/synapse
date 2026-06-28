@@ -223,6 +223,7 @@ function AppContent() {
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
               onRename={(id, title) => handleUpdatePage(id, { title })}
               onTogglePin={(id) => handleUpdatePage(id, { is_pinned: contextPage?.is_pinned ? 0 : 1 })}
+              onClose={() => dispatch({ type: 'HIDE_CONTEXT_MENU' })}
             />
           );
         })()
