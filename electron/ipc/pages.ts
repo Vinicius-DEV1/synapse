@@ -7,7 +7,7 @@ export function registerPagesHandlers() {
     if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
     return new Promise((resolve, reject) => {
       // Lazy load: content and encrypted_content are NOT fetched
-      getDb().all('SELECT id, parent_id, title, icon, created_at, updated_at, deleted_at, is_locked, password_salt FROM notes.pages WHERE deleted_at IS NULL ORDER BY updated_at DESC', (err, rows) => {
+      getDb().all('SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, password_salt FROM notes.pages WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC', (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -32,17 +32,17 @@ export function registerPagesHandlers() {
     
     return new Promise((resolve, reject) => {
       getDb().run(
-        `INSERT INTO notes.pages (id, parent_id, title, icon) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO notes.pages (id, parent_id, title, icon, sort_order) VALUES (?, ?, ?, ?, 0)`,
         [id, page.parentId, title, icon],
         (err) => {
           if (err) reject(err);
-          else resolve({ id, parent_id: page.parentId, title, icon, is_locked: 0 });
+          else resolve({ id, parent_id: page.parentId, title, icon, content: '', sort_order: 0, crdt_state: null, is_locked: 0 });
         }
       );
     });
   });
 
-  ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null }) => {
+  ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; sort_order?: number; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null }) => {
     if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
     const updates: string[] = [];
     const values: any[] = [];
@@ -50,6 +50,8 @@ export function registerPagesHandlers() {
     if (page.title !== undefined) { updates.push('title = ?'); values.push(page.title); }
     if (page.icon !== undefined) { updates.push('icon = ?'); values.push(page.icon); }
     if (page.content !== undefined) { updates.push('content = ?'); values.push(page.content); }
+    if (page.crdt_state !== undefined) { updates.push('crdt_state = ?'); values.push(page.crdt_state); }
+    if (page.sort_order !== undefined) { updates.push('sort_order = ?'); values.push(page.sort_order); }
     if (page.is_locked !== undefined) { updates.push('is_locked = ?'); values.push(page.is_locked); }
     if (page.password_salt !== undefined) { updates.push('password_salt = ?'); values.push(page.password_salt); }
     if (page.encrypted_content !== undefined) { updates.push('encrypted_content = ?'); values.push(page.encrypted_content); }

@@ -57,8 +57,31 @@ app.whenReady().then(() => {
     await shell.openExternal(url);
     return { success: true };
   });
-  ipcMain.handle('drive:get-credentials', async () => ({ success: false, error: 'Not implemented' }));
-  ipcMain.handle('drive:save-credentials', async (_, data: any) => ({ success: true }));
+
+  const driveCredsPath = path.join(app.getPath('userData'), 'drive_credentials.json').replace(/\\/g, '/');
+  const fs = require('fs');
+
+  ipcMain.handle('drive:get-credentials', async () => {
+    try {
+      if (fs.existsSync(driveCredsPath)) {
+        const raw = fs.readFileSync(driveCredsPath, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error('Erro ao ler credenciais do Drive:', err);
+    }
+    return { token: null };
+  });
+
+  ipcMain.handle('drive:save-credentials', async (_, data: any) => {
+    try {
+      fs.writeFileSync(driveCredsPath, JSON.stringify(data), 'utf-8');
+      return { success: true };
+    } catch (err) {
+      console.error('Erro ao salvar credenciais do Drive:', err);
+      return { success: false, error: String(err) };
+    }
+  });
 
   // Logs
   ipcMain.handle('log:write', async (_, message: string) => {
