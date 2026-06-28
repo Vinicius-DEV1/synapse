@@ -49,23 +49,29 @@ export const createWebApiMock = async () => {
     // --- PAGES ---
     getAllPages: async () => {
       const all = await db.getAll('pages');
-      return all.filter(p => !p.deleted_at);
+      return all.filter(p => !p.deleted_at).map(p => {
+        const { content, encrypted_content, ...rest } = p;
+        return rest;
+      });
+    },
+    getPageContent: async (id: string) => {
+      const page = await db.get('pages', id);
+      if (!page || page.deleted_at) return { content: '', encrypted_content: null };
+      return { content: page.content || '', encrypted_content: page.encrypted_content || null };
     },
     createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }) => {
       const page = {
         id: generateId(),
         title: title || 'Nova Página',
         icon: icon || '📄',
-        content: '',
-        crdt_state: null,
-        parent_id: parentId,
-        sort_order: Date.now(),
+        sort_order: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        deleted_at: null
+        is_locked: 0,
       };
       await db.put('pages', page);
-      return page;
+      const { content, encrypted_content, ...rest } = page;
+      return rest;
     },
     updatePage: async (page: any) => {
       const existing = await db.get('pages', page.id);

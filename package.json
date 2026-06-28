@@ -49,6 +49,7 @@
     "@tiptap/starter-kit": "^3.27.1",
     "clsx": "^2.1.1",
     "emoji-picker-react": "^4.19.1",
+    "epubjs": "^0.3.93",
     "firebase": "^12.15.0",
     "htmldiff-js": "^1.0.5",
     "idb": "^8.0.3",
