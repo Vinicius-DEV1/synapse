@@ -246,10 +246,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const font = fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : 'Inter, sans-serif';
       
       const themeCss = readingMode === 'dark' 
-          ? { 'body': { 'background': '#1a1a1a !important', 'color': '#cccccc !important', 'font-family': `${font} !important` }}
+          ? { 'body': { 'background': '#1a1a1a !important', 'color': '#cccccc !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }}
           : readingMode === 'sepia' 
-          ? { 'body': { 'background': '#f4ecd8 !important', 'color': '#5b4636 !important', 'font-family': `${font} !important` }}
-          : { 'body': { 'background': '#ffffff !important', 'color': '#333333 !important', 'font-family': `${font} !important` }};
+          ? { 'body': { 'background': '#f4ecd8 !important', 'color': '#5b4636 !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }}
+          : { 'body': { 'background': '#ffffff !important', 'color': '#333333 !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }};
           
       rendition.themes.register('custom', themeCss);
       rendition.themes.select('custom');

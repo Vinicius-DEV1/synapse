@@ -11,6 +11,7 @@ interface SidebarItemProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
   isSearchResult?: boolean;
+  disableHierarchyDnD?: boolean;
 }
 
 export default function SidebarItem({
@@ -20,6 +21,7 @@ export default function SidebarItem({
   onCreatePage,
   onUpdatePage,
   isSearchResult,
+  disableHierarchyDnD,
 }: SidebarItemProps) {
   const { state, dispatch } = useStore();
   const [isHovered, setIsHovered] = useState(false);
@@ -81,11 +83,13 @@ export default function SidebarItem({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
+    if (disableHierarchyDnD) return;
     e.stopPropagation();
     e.dataTransfer.setData('application/caderno-page', page.id);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (disableHierarchyDnD) return;
     if (e.dataTransfer.types.includes('application/caderno-page')) {
       e.preventDefault();
       e.stopPropagation();
@@ -96,10 +100,12 @@ export default function SidebarItem({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    if (disableHierarchyDnD) return;
     e.currentTarget.classList.remove('bg-brand-500/20', 'ring-1', 'ring-brand-500');
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (disableHierarchyDnD) return;
     e.stopPropagation();
     e.currentTarget.classList.remove('bg-brand-500/20', 'ring-1', 'ring-brand-500');
     const draggedId = e.dataTransfer.getData('application/caderno-page');
@@ -116,7 +122,7 @@ export default function SidebarItem({
   return (
     <div className="animate-fade-in">
       <div
-        draggable
+        draggable={!disableHierarchyDnD}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
