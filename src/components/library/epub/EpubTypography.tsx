@@ -40,10 +40,15 @@ export default function EpubTypography() {
 
       <div>
         <div className="text-xs font-semibold mb-2 opacity-70 uppercase tracking-wider">Tema de Leitura</div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setReadingMode('light')} className={`w-8 h-8 rounded-full bg-white border-2 ${readingMode === 'light' ? 'border-brand-500' : 'border-gray-300'}`} />
-          <button onClick={() => setReadingMode('sepia')} className={`w-8 h-8 rounded-full bg-[#f4ecd8] border-2 ${readingMode === 'sepia' ? 'border-brand-500' : 'border-gray-300'}`} />
-          <button onClick={() => setReadingMode('dark')} className={`w-8 h-8 rounded-full bg-[#1a1a1a] border-2 ${readingMode === 'dark' ? 'border-brand-500' : 'border-gray-700'}`} />
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setReadingMode('light')} title="Claro" className={`w-8 h-8 rounded-full bg-white border-2 ${readingMode === 'light' ? 'border-brand-500' : 'border-gray-300'}`} />
+          <button onClick={() => setReadingMode('sepia')} title="Sépia" className={`w-8 h-8 rounded-full bg-[#f4ecd8] border-2 ${readingMode === 'sepia' ? 'border-brand-500' : 'border-gray-300'}`} />
+          <button onClick={() => setReadingMode('mint')} title="Menta" className={`w-8 h-8 rounded-full bg-[#e8f5e9] border-2 ${readingMode === 'mint' ? 'border-brand-500' : 'border-gray-300'}`} />
+          <button onClick={() => setReadingMode('dim')} title="Cinza (Dim)" className={`w-8 h-8 rounded-full bg-[#2d2d30] border-2 ${readingMode === 'dim' ? 'border-brand-500' : 'border-gray-700'}`} />
+          <button onClick={() => setReadingMode('nord')} title="Nord" className={`w-8 h-8 rounded-full bg-[#2e3440] border-2 ${readingMode === 'nord' ? 'border-brand-500' : 'border-gray-700'}`} />
+          <button onClick={() => setReadingMode('midnight')} title="Meia-noite" className={`w-8 h-8 rounded-full bg-[#0f172a] border-2 ${readingMode === 'midnight' ? 'border-brand-500' : 'border-gray-700'}`} />
+          <button onClick={() => setReadingMode('dark')} title="Escuro" className={`w-8 h-8 rounded-full bg-[#1a1a2e] border-2 ${readingMode === 'dark' ? 'border-brand-500' : 'border-gray-700'}`} />
+          <button onClick={() => setReadingMode('high-contrast')} title="Alto Contraste" className={`w-8 h-8 rounded-full bg-black border-2 ${readingMode === 'high-contrast' ? 'border-brand-500' : 'border-gray-700'}`} />
         </div>
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm font-semibold opacity-80 flex flex-col">

@@ -21,7 +21,7 @@ interface EpubReaderProps {
 function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const {
     book, rendition, setRendition, epubBook, setEpubBook,
-    readingMode, scrollMode, fontSize, fontFamily,
+    readingMode, setReadingMode, scrollMode, fontSize, fontFamily,
     locationsReady, setLocationsReady, setTotalPages,
     setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
     setShowSettings, setHighlights, setBookmarks, setToc

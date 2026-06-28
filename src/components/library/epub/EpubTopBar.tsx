@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Menu, BookOpen, Bookmark, Search, Settings } from 'lucide-react';
+import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles } from 'lucide-react';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 
@@ -36,16 +36,19 @@ export default function EpubTopBar({ onBack }: EpubTopBarProps) {
     }
   };
 
+  const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
+
   return (
     <div className={`flex-shrink-0 h-14 flex items-center justify-between px-4 z-20 shadow-sm border-b transition-colors
-        ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-800 text-gray-200' : 
+        ${isDark ? 'bg-[#1a1a1a] border-gray-800 text-gray-200' : 
           readingMode === 'sepia' ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]' : 
+          readingMode === 'mint' ? 'bg-[#e8f5e9] border-[#c8e6c9] text-[#1b4332]' : 
           'bg-white border-gray-200 text-gray-800'}`}>
       <div className="flex items-center gap-4 flex-1 min-w-0">
         <button
           onClick={onBack}
           className={`p-2 rounded-lg transition-colors flex-shrink-0 ml-10 md:ml-0
-            ${readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5'}`}
+            ${isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5'}`}
         >
           <ArrowLeft size={20} />
         </button>
@@ -56,23 +59,23 @@ export default function EpubTopBar({ onBack }: EpubTopBarProps) {
       </div>
       
       <div className="flex items-center gap-1">
-        <button onClick={() => setShowToc(!showToc)} className={`p-2 rounded-lg transition-colors ${showToc ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Índice (Sumário)">
+        <button onClick={() => setShowToc(!showToc)} className={`p-2 rounded-lg transition-colors ${showToc ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Índice (Sumário)">
           <Menu size={18} />
         </button>
-        <button onClick={() => setShowNotebook(!showNotebook)} className={`p-2 rounded-lg transition-colors ${showNotebook ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Caderno (Meus Recortes)">
-          <BookOpen size={18} />
+        <button onClick={() => setShowNotebook(!showNotebook)} className={`p-2 rounded-lg transition-colors ${showNotebook ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Caderno (Meus Recortes)">
+          <FileText size={18} />
         </button>
-        <button onClick={handleToggleBookmark} className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Marcador">
-          <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+        <button onClick={handleToggleBookmark} className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Marcador">
+          <Bookmark size={18} className={isBookmarked ? 'fill-current' : ''} />
         </button>
-        <button onClick={() => setShowSearch(!showSearch)} className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Buscar">
+        <button onClick={() => setShowSearch(!showSearch)} className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Buscar">
           <Search size={18} />
         </button>
-        <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Tipografia">
-          <Settings size={18} />
+        <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Tipografia">
+          <Type size={18} />
         </button>
-        <button onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })} className={`p-2 rounded-lg transition-colors ${state.showAiSidebar ? 'bg-brand-500/20 text-brand-500' : (readingMode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="IA">
-          <span className="font-bold font-serif px-1">AI</span>
+        <button onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })} className={`p-2 rounded-lg transition-colors ${state.showAiSidebar ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="IA">
+          <Sparkles size={18} />
         </button>
       </div>
     </div>
