@@ -80,6 +80,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         await newEpubBook.ready;
         if (!active) return;
         
+        if (book.reading_status === 'not_started') {
+          onUpdateBook({ reading_status: 'reading' });
+        }
+        
         if (viewerRef.current) {
            const newRendition = newEpubBook.renderTo(viewerRef.current, {
              width: '100%',
