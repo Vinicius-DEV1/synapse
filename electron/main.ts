@@ -128,15 +128,35 @@ function setupTables(onComplete: () => void) {
   // Migration
   db!.run(`ALTER TABLE library_collections ADD COLUMN updated_at DATETIME DEFAULT NULL`, (err) => { if (err && !err.message.includes("duplicate column")) console.error("MIGRATION ERROR:", err); });
 
+  // Migration for library_book_collections sync support
+  db!.run(`ALTER TABLE library_book_collections ADD COLUMN id TEXT`, (err) => { 
+    if (!err) {
+      db!.run(`UPDATE library_book_collections SET id = lower(hex(randomblob(16))) WHERE id IS NULL`, () => {
+        db!.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_book_col_id ON library_book_collections(id)`);
+      });
+    } else {
+      db!.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_book_col_id ON library_book_collections(id)`);
+    }
+  });
+  db!.run(`ALTER TABLE library_book_collections ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
+  db!.run(`ALTER TABLE library_book_collections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
+  db!.run(`ALTER TABLE library_book_collections ADD COLUMN deleted_at DATETIME DEFAULT NULL`, (err) => {});
+
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_book_collections (
+      id TEXT UNIQUE,
       book_id TEXT NOT NULL,
       collection_id TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME DEFAULT NULL,
       PRIMARY KEY (book_id, collection_id),
       FOREIGN KEY (book_id) REFERENCES library_books(id) ON DELETE CASCADE,
       FOREIGN KEY (collection_id) REFERENCES library_collections(id) ON DELETE CASCADE
     )
   `);
+
+  db!.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_book_col_id ON library_book_collections(id)`);
 
   db!.run(`
     CREATE TABLE IF NOT EXISTS library_highlights (
@@ -817,15 +837,19 @@ ipcMain.handle('library:delete-collection', async (_, id: string) => {
 ipcMain.handle('library:set-book-collections', async (_, bookId: string, collectionIds: string[]) => {
   if (!db) throw new Error('DB not open');
   return new Promise((resolve, reject) => {
-    db!.run('DELETE FROM library_book_collections WHERE book_id = ?', [bookId], (err) => {
+    db!.run('UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?', [bookId], (err) => {
       if (err) return reject(err);
       if (!collectionIds || collectionIds.length === 0) return resolve(true);
 
-      const stmt = db!.prepare('INSERT INTO library_book_collections (book_id, collection_id) VALUES (?, ?)');
+      const stmt = db!.prepare(`
+        INSERT INTO library_book_collections (id, book_id, collection_id, created_at, updated_at, deleted_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+        ON CONFLICT(book_id, collection_id) DO UPDATE SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+      `);
       let remaining = collectionIds.length;
 
       for (const colId of collectionIds) {
-        stmt.run([bookId, colId], (err2) => {
+        stmt.run([generateId(), bookId, colId], (err2) => {
           if (err2) return reject(err2);
           remaining--;
           if (remaining === 0) {
@@ -1230,7 +1254,7 @@ ipcMain.handle('sync:get-table', async (_, tableName: string) => {
 
   ipcMain.handle('sync:delete-row', async (_, tableName: string, id: string) => {
     return new Promise((resolve, reject) => {
-      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'library_book_collections', 'config'];
       if (!validTables.includes(tableName)) return reject('Invalid table');
       db!.run(`DELETE FROM ${tableName} WHERE id = ?`, [id], (err) => {
         if (err) reject(err);
@@ -1241,7 +1265,7 @@ ipcMain.handle('sync:get-table', async (_, tableName: string) => {
 
   ipcMain.handle('sync:upsert-row', async (_, tableName: string, row: any) => {
     return new Promise((resolve, reject) => {
-      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'config'];
+      const validTables = ['pages', 'transactions', 'wishlist', 'library_books', 'library_highlights', 'library_bookmarks', 'library_collections', 'library_book_collections', 'config'];
       if (!validTables.includes(tableName)) return reject('Invalid table');
       
       const keys = Object.keys(row);

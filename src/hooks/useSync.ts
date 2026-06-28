@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud } from '../services/sync';
+import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud, listenForCloudSyncSignal } from '../services/sync';
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) =>
@@ -32,78 +32,67 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
 
   useEffect(() => {
     if (isAuth && masterKey) {
-      startSync();
-      // 1. Ao logar, puxa todas as atualizações da nuvem (timeout de 60s)
-      withTimeout(pullWithSuppression(masterKey), 60_000)
-        .then(() => {
-          // Após puxar, recarrega a UI
+      const syncChannel = new BroadcastChannel('caderno_sync');
+
+      const doFullSync = async () => {
+        if (!navigator.onLine) {
+          finishSync(false);
+          return;
+        }
+        startSync();
+        try {
+          await withTimeout(pullWithSuppression(masterKey), 30_000);
           loadPages();
-          // E empurra possíveis alterações locais antigas (também com timeout)
-          return withTimeout(
+          await withTimeout(
             Promise.all([
               pushAllToCloud(masterKey),
               syncPdfsToCloud(masterKey),
             ]),
-            60_000
+            30_000
           );
-        })
-        .then(() => finishSync(true))
-        .catch(err => {
-          console.warn('[Sync] Sync inicial encerrado:', err.message);
+          finishSync(true);
+          // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
+          syncChannel.postMessage('LOCAL_UPDATE');
+        } catch (err: any) {
+          console.warn('[Sync] Sync failed:', err.message);
           finishSync(false);
-        });
-
-      // 2. Cria um gatilho de sincronização a cada 15 segundos (era 60s)
-      const syncInterval = setInterval(() => {
-        if (masterKey) {
-          startSync();
-          withTimeout(
-            pullWithSuppression(masterKey)
-              .then(() => {
-                loadPages();
-                return Promise.all([
-                  pushAllToCloud(masterKey),
-                  syncPdfsToCloud(masterKey),
-                ]);
-              }),
-            60_000
-          )
-            .then(() => finishSync(true))
-            .catch(err => {
-              console.warn('[Sync] Sync periódico encerrado:', err.message);
-              finishSync(false);
-            });
         }
-      }, 15 * 1000); // ⚡ 15s (era 60s) — guia leitora atualiza 4x mais rápido
+      };
 
-      // 3. Gatilho inteligente: PUSH PRIMEIRO, depois pull
-      //    Debounce de 1.5s (era 3s) após qualquer modificação do usuário
+      // 1. Initial Sync (Sincroniza ao abrir)
+      doFullSync();
+
+      // 2. Cross-Device Real-time Firebase Sync
+      const unsubRealTime = listenForCloudSyncSignal(() => {
+        if (!navigator.onLine) return;
+        console.log('[Sync] Sinal Real-time recebido (Cross-device)! Sincronizando...');
+        startSync();
+        withTimeout(pullWithSuppression(masterKey), 30_000)
+          .then(() => {
+            loadPages();
+            finishSync(true);
+          })
+          .catch(err => {
+            console.warn('[Sync] Falha no Pull em Tempo Real:', err.message);
+            finishSync(false);
+          });
+      });
+
+      // 3. Cross-Tab Sync (Same Browser)
+      syncChannel.onmessage = (msg) => {
+        if (msg.data === 'LOCAL_UPDATE') {
+          console.log('[Sync] Atualização recebida de outra aba. Recarregando UI...');
+          loadPages();
+        }
+      };
+
+      // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
         clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
-          if (masterKey) {
-            startSync();
-            withTimeout(
-              // ⚡ Push PRIMEIRO — envia os dados do usuário para a nuvem imediatamente
-              pushAllToCloud(masterKey)
-                .then(() => {
-                  // Depois pull — puxa possíveis mudanças de outros dispositivos
-                  return pullWithSuppression(masterKey);
-                })
-                .then(() => {
-                  loadPages();
-                  return syncPdfsToCloud(masterKey);
-                }),
-              60_000
-            )
-              .then(() => finishSync(true))
-              .catch(err => {
-                console.warn('[Sync] Sync sob demanda encerrado:', err.message);
-                finishSync(false);
-              });
-          }
-        }, 1500); // ⚡ 1.5s (era 3s)
+          doFullSync();
+        }, 1500); // ⚡ 1.5s após a edição
       };
       
       let cleanupSyncTrigger: (() => void) | undefined;
@@ -113,41 +102,30 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         window.addEventListener('app-sync-trigger', handleSyncTrigger);
       }
 
-      // 4. ⚡ Gatilho de FOCO: quando a guia ganha visibilidade (ex: usuário volta de outra aba),
-      //    faz um pull imediato para trazer mudanças feitas em outras abas/dispositivos.
+      // 5. Gatilho de FOCO: Atualiza quando o usuário volta de outra janela
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible' && masterKey && !isSyncingOnFocus) {
+        if (document.visibilityState === 'visible' && !isSyncingOnFocus) {
           isSyncingOnFocus = true;
-          startSync();
-          withTimeout(
-            pullWithSuppression(masterKey)
-              .then(() => {
-                loadPages();
-                return pushAllToCloud(masterKey);
-              }),
-            30_000
-          )
-            .then(() => finishSync(true))
-            .catch(err => {
-              console.warn('[Sync] Sync on-focus encerrado:', err.message);
-              finishSync(false);
-            })
-            .finally(() => { isSyncingOnFocus = false; });
+          doFullSync().finally(() => { isSyncingOnFocus = false; });
         }
       };
       document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      // 6. Fallback de Segurança (a cada 5 minutos em vez de 15 segundos)
+      const syncInterval = setInterval(() => {
+        doFullSync();
+      }, 5 * 60 * 1000); 
 
       return () => {
         clearInterval(syncInterval);
         clearTimeout(syncDebounceTimer);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
-        if (cleanupSyncTrigger) {
-          cleanupSyncTrigger();
-        } else {
-          window.removeEventListener('app-sync-trigger', handleSyncTrigger);
-        }
+        if (cleanupSyncTrigger) cleanupSyncTrigger();
+        else window.removeEventListener('app-sync-trigger', handleSyncTrigger);
         if (syncDismissTimer.current) clearTimeout(syncDismissTimer.current);
+        unsubRealTime();
+        syncChannel.close();
       };
     }
   }, [isAuth, masterKey, loadPages]);
