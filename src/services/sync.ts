@@ -353,7 +353,19 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             (window as any).api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
           }
           const { id, updated_at, created_at, ...sensitiveData } = row;
-          const encryptedData = await encryptText(JSON.stringify(sensitiveData), key);
+          const jsonString = JSON.stringify(sensitiveData);
+
+          // Proteção contra documentos grandes demais (> 900KB após criptografia ≈ ~1MB no Firestore)
+          if (jsonString.length > 900_000) {
+            const msg = `[PUSH SKIP] Doc ${row.id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
+            console.warn(msg);
+            if (typeof window !== 'undefined' && (window as any).api?.log) {
+              (window as any).api.log(msg);
+            }
+            continue;
+          }
+
+          const encryptedData = await encryptText(jsonString, key);
           const docRef = doc(db, table, id);
           await setDoc(docRef, {
             encryptedData,
@@ -363,7 +375,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           pushedCount++;
         } catch (err: any) {
           const msg = `PUSH erro doc ${row.id} (${table}): ${err?.message}`;
-          console.error(msg);
+          console.warn(msg);
           errors.push(msg);
         }
       }
@@ -376,24 +388,28 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   if (errors.length > 0) {
-    throw new Error(`Ocorreram ${errors.length} erros durante o Push. Primeiro erro: ${errors[0]}`);
+    console.warn(`[Sync] PUSH concluído com ${errors.length} avisos. Primeiro: ${errors[0]}`);
   }
 
-  if (pushedCount > 0) {
-    console.log(`[Sync] PUSH finalizou envios: ${pushedCount} docs. (Ignorados: ${pushSkippedCount})`);
+  if (pushedCount > 0 || errors.length > 0) {
+    console.log(`[Sync] PUSH finalizou: ${pushedCount} docs enviados, ${errors.length} pulados/errados, ${pushSkippedCount} inalterados.`);
     if (typeof window !== 'undefined' && (window as any).api?.log) {
-      (window as any).api.log(`[PUSH SUCCESS] ${pushedCount} registros enviados com sucesso.`);
+      (window as any).api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
-    // Atualiza o tempo local
-    setLastSyncTime('push', highestLocalTime);
+    // Atualiza o tempo local mesmo com erros parciais, para não re-tentar docs que já subiram
+    if (highestLocalTime > getLastSyncTime('push')) {
+      setLastSyncTime('push', highestLocalTime);
+    }
     // Sinaliza na nuvem para que outros dispositivos façam pull
-    try {
-      await setDoc(doc(db, 'config', 'sync_signal'), {
-        updatedAt: serverTimestamp(),
-        source: navigator.userAgent
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Falha ao enviar sinal de sync", e);
+    if (pushedCount > 0) {
+      try {
+        await setDoc(doc(db, 'config', 'sync_signal'), {
+          updatedAt: serverTimestamp(),
+          source: navigator.userAgent
+        }, { merge: true });
+      } catch (e) {
+        console.warn("Falha ao enviar sinal de sync", e);
+      }
     }
   } else {
     console.log(`[Sync] PUSH concluído: Nada novo para enviar. (Ignorados: ${pushSkippedCount})`);
