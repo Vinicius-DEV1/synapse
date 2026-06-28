@@ -51,7 +51,11 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     if (initialCrdtState) {
       applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
     }
+    // For legacy pages that have HTML content but no CRDT state,
+    // we need to seed the Y.Doc AFTER the editor mounts.
+    // This is handled by the immediatelyAfterCreate flag below.
   }
+  const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '';
 
   // Se o CloudSync puxar algo novo do banco de dados no background, injetamos na tela!
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     }
   }, [initialCrdtState]);
 
-  const hydratedRef = useRef<string | null>(null);
+
 
   const editor = useEditor({
     extensions: [
@@ -149,13 +153,12 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }, [pageId]);
 
   useEffect(() => {
-    if (editor && initialContent && !initialCrdtState && hydratedRef.current !== pageId) {
-      hydratedRef.current = pageId;
-      if (editor.isEmpty) {
-        editor.commands.setContent(initialContent);
-      }
+    if (editor && needsLegacyHydration && editor.isEmpty) {
+      editor.commands.setContent(initialContent);
     }
-  }, [editor, initialContent, initialCrdtState, pageId]);
+    // Only run once when editor first mounts for this page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   const executeSlashCommand = useCallback((commandId: string) => {
     if (!editor || !slashMenu) return;
