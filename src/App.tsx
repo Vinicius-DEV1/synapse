@@ -65,6 +65,23 @@ function AppContent() {
     }
   }, []);
 
+  // Run Garbage Collector if needed
+  useEffect(() => {
+    if (isAuth) {
+      const lastRunStr = localStorage.getItem('last_gc_run');
+      const lastRun = lastRunStr ? parseInt(lastRunStr, 10) : 0;
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      
+      if (Date.now() - lastRun > SEVEN_DAYS) {
+        import('./services/image-gc').then(m => {
+          m.runImageGarbageCollector().then(() => {
+            localStorage.setItem('last_gc_run', Date.now().toString());
+          });
+        });
+      }
+    }
+  }, [isAuth]);
+
   const loadPages = useCallback(async () => {
     if (window.api) {
       try {
@@ -164,7 +181,7 @@ function AppContent() {
       if (activeModule === 'notes') {
         document.title = 'Caderno Web';
       } else if (activeModule === 'library') {
-        document.title = 'Biblioteca';
+        document.title = activeTab?.bookTitle || 'Biblioteca';
       } else if (activeModule === 'finance') {
         document.title = 'Finanças';
       } else {

@@ -84,7 +84,7 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
 
 const APP_FOLDER_NAME = 'Caderno - Biblioteca';
 
-async function getOrCreateAppFolder(accessToken: string): Promise<string> {
+export async function getOrCreateAppFolder(accessToken: string): Promise<string> {
   const query = encodeURIComponent(`name = '${APP_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
   const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -114,7 +114,7 @@ async function getOrCreateAppFolder(accessToken: string): Promise<string> {
   return createData.id;
 }
 
-async function getOrCreatePhotosFolder(accessToken: string, parentFolderId: string): Promise<string> {
+export async function getOrCreatePhotosFolder(accessToken: string, parentFolderId: string): Promise<string> {
   const query = encodeURIComponent(`name = 'FOTOS' and '${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
   const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -273,18 +273,59 @@ export async function getValidAccessToken(): Promise<string | null> {
   const creds = await getDriveCredentials();
   if (!creds.token) return null;
 
-  if (creds.token.expires_at && Date.now() > creds.token.expires_at - (5 * 60 * 1000)) {
-    if (!creds.token.refresh_token) return null;
-    
+  if (Date.now() > (creds.token.expires_at || 0) - 60000) { // 1 min buffer
     try {
       const newToken = await refreshToken(creds.token.refresh_token);
       await saveDriveCredentials(newToken);
       return newToken.access_token;
-    } catch (err) {
-      console.error("Falha ao renovar token:", err);
+    } catch (e) {
+      console.error("Failed to refresh token", e);
       return null;
     }
   }
 
   return creds.token.access_token;
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  createdTime: string;
+}
+
+/**
+ * Lista todos os arquivos dentro de uma pasta no Google Drive.
+ */
+export async function listFiles(accessToken: string, folderId: string): Promise<DriveFile[]> {
+  // Query para pegar os arquivos da pasta que não estão na lixeira
+  const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+  // fields pede arquivos com id, name e data de criação
+  const url = `${DRIVE_API_URL}?q=${query}&fields=files(id,name,createdTime)&pageSize=1000`;
+
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to list files in Drive: ${res.status} - ${errorText}`);
+  }
+
+  const data = await res.json();
+  return data.files || [];
+}
+
+/**
+ * Deleta um arquivo definitivamente do Google Drive.
+ */
+export async function deleteFromDrive(accessToken: string, fileId: string): Promise<void> {
+  const res = await fetch(`${DRIVE_API_URL}/${fileId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+
+  if (!res.ok && res.status !== 404) { // Ignora se já foi apagado (404)
+    const errorText = await res.text();
+    throw new Error(`Failed to delete file from Drive: ${res.status} - ${errorText}`);
+  }
 }
