@@ -211,15 +211,23 @@ function AppContent() {
 
       {/* Context Menu */}
       {state.contextMenu && (
-        <ContextMenu
-          x={state.contextMenu.x}
-          y={state.contextMenu.y}
-          pageId={state.contextMenu.pageId}
-          onCreateSubPage={handleCreatePage}
-          onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
-          onRename={(id, title) => handleUpdatePage(id, { title })}
-        />
+        (() => {
+          const contextPage = state.pages.find(p => p.id === state.contextMenu!.pageId);
+          return (
+            <ContextMenu
+              x={state.contextMenu.x}
+              y={state.contextMenu.y}
+              pageId={state.contextMenu.pageId}
+              isPinned={!!contextPage?.is_pinned}
+              onCreateSubPage={handleCreatePage}
+              onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
+              onRename={(id, title) => handleUpdatePage(id, { title })}
+              onTogglePin={(id) => handleUpdatePage(id, { is_pinned: contextPage?.is_pinned ? 0 : 1 })}
+            />
+          );
+        })()
       )}
+
 
       {/* Confirm Delete Modal */}
       {state.confirmDelete && (

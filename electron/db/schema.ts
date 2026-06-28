@@ -189,9 +189,14 @@ export function setupTables(): Promise<void> {
               deleted_at DATETIME DEFAULT NULL,
               is_locked INTEGER DEFAULT 0,
               password_salt TEXT,
-              encrypted_content TEXT
+              encrypted_content TEXT,
+              is_pinned INTEGER DEFAULT 0,
+              pinned_order REAL DEFAULT 0
             )
           `));
+          
+          promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN is_pinned INTEGER DEFAULT 0`));
+          promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN pinned_order REAL DEFAULT 0`));
         }
 
         Promise.all(promises).then(() => resolve()).catch(reject);

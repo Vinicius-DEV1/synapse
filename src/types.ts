@@ -11,6 +11,8 @@ export interface Page {
   is_locked?: number;
   password_salt?: string | null;
   encrypted_content?: string | null;
+  is_pinned?: number;
+  pinned_order?: number;
 }
 
 export interface PageHistoryEntry {
