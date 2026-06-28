@@ -80,9 +80,47 @@ export default function SidebarItem({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('application/caderno-page', page.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/caderno-page')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.add('bg-brand-500/20');
+      e.currentTarget.classList.add('ring-1');
+      e.currentTarget.classList.add('ring-brand-500');
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('bg-brand-500/20', 'ring-1', 'ring-brand-500');
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.stopPropagation();
+    e.currentTarget.classList.remove('bg-brand-500/20', 'ring-1', 'ring-brand-500');
+    const draggedId = e.dataTransfer.getData('application/caderno-page');
+    // Prevent dropping into itself
+    if (draggedId && draggedId !== page.id) {
+      onUpdatePage(draggedId, { parent_id: page.id });
+      // Optionally expand the folder we just dropped into
+      if (!isExpanded) {
+        dispatch({ type: 'TOGGLE_NODE', nodeId: page.id });
+      }
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <div
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={`group flex items-center gap-1 px-2 py-[5px] rounded-lg cursor-pointer transition-all text-[13px] ${
           isActive
             ? 'bg-brand-500/15 text-brand-300'

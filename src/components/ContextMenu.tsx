@@ -9,9 +9,10 @@ interface ContextMenuProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onTogglePin?: (id: string) => void;
+  onClose: () => void;
 }
 
-export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onDelete, onRename, onTogglePin }: ContextMenuProps) {
+export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onDelete, onRename, onTogglePin, onClose }: ContextMenuProps) {
   // Adjust position to stay within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200);
   const adjustedY = Math.min(y, window.innerHeight - 150);
@@ -25,6 +26,7 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
       <button
         onClick={() => {
           onCreateSubPage(pageId);
+          onClose();
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
       >
@@ -34,7 +36,7 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
 
       {onTogglePin && (
         <button
-          onClick={() => onTogglePin(pageId)}
+          onClick={() => { onTogglePin(pageId); onClose(); }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
           {isPinned ? (
@@ -55,6 +57,7 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
           if (newTitle && newTitle.trim()) {
             onRename(pageId, newTitle.trim());
           }
+          onClose();
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
       >
@@ -65,6 +68,7 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
       <button
         onClick={() => {
           onDelete(pageId);
+          onClose();
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
       >
