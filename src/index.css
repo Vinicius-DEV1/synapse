@@ -790,11 +790,7 @@
   min-height: 1.5em; /* Ensures empty p takes space */
 }
 
-.ProseMirror blockquote br {
-  display: block;
-  content: " ";
-  margin-bottom: -1px;
-}
+
 
 
 /* Tiptap TaskList / Checkbox Styling */
