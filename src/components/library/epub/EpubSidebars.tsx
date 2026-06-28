@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, BookOpen, Bookmark, Trash2 } from 'lucide-react';
+import { Search, BookOpen, Bookmark, Trash2, X } from 'lucide-react';
 import { useEpub } from './EpubContext';
 
 export default function EpubSidebars() {
@@ -65,7 +65,12 @@ export default function EpubSidebars() {
       {showToc && (
         <div className={sidebarClass}>
           <div className="p-4">
-            <h3 className="font-bold text-lg mb-4 opacity-80">Sumário</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg opacity-80">Sumário</h3>
+              <button onClick={() => setShowToc(false)} className="md:hidden p-1 opacity-50 hover:opacity-100">
+                <X size={20} />
+              </button>
+            </div>
             {toc.length === 0 ? (
               <p className="opacity-50 text-sm">Nenhum sumário encontrado.</p>
             ) : (
@@ -92,7 +97,12 @@ export default function EpubSidebars() {
       {showSearch && (
         <div className={sidebarClass}>
           <div className="p-4">
-            <h3 className="font-bold text-lg mb-4 opacity-80">Buscar no Livro</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg opacity-80">Buscar no Livro</h3>
+              <button onClick={() => setShowSearch(false)} className="md:hidden p-1 opacity-50 hover:opacity-100">
+                <X size={20} />
+              </button>
+            </div>
             <form onSubmit={handleSearch} className="flex gap-2 mb-4">
               <input 
                 type="text" 
@@ -145,9 +155,15 @@ export default function EpubSidebars() {
       {showNotebook && (
         <div className={sidebarClass}>
           <div className="p-4">
-            <h3 className="font-bold text-lg mb-4 opacity-80 flex items-center gap-2">
-              <BookOpen size={20} /> Meus Recortes
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg opacity-80 flex items-center gap-2">
+                <BookOpen size={20} />
+                Meu Caderno
+              </h3>
+              <button onClick={() => setShowNotebook(false)} className="md:hidden p-1 opacity-50 hover:opacity-100">
+                <X size={20} />
+              </button>
+            </div>
             
             <div className="flex gap-2 mb-4 border-b pb-2">
               <button 
