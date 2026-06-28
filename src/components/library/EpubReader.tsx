@@ -248,10 +248,17 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
               }
            });
            
+           const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
            newRendition.on('click', () => {
              setShowSettings(false);
-             // Adiar a limpeza em 80ms: se um grifo for o alvo do toque, seu callback
-             // chegará nesse intervalo e cancelará este timer antes que ele execute.
+             if (isMobileDevice) {
+               // No mobile, o overlay do bottom sheet (fixed inset-0) já fecha
+               // a barra quando o usuário toca fora. Não interferir aqui.
+               handleEpubClick();
+               return;
+             }
+             // Desktop: limpa seleção no clique normal
              if (clearSelectionTimerRef.current) clearTimeout(clearSelectionTimerRef.current);
              clearSelectionTimerRef.current = setTimeout(() => {
                clearSelectionTimerRef.current = null;
