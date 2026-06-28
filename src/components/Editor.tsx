@@ -100,6 +100,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         class: `editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize} ai-highlight-${settings.aiChatHighlight || 'glow'}`,
         spellcheck: settings.spellcheck ? 'true' : 'false',
       },
+      handleClick: (view, pos, event) => {
+        if (event.target && (event.target as HTMLElement).tagName === 'MARK') {
+          const target = event.target as HTMLElement;
+          const targetPos = view.posAtDOM(target, 0);
+          const node = view.state.doc.nodeAt(targetPos);
+          if (node) {
+            editor?.commands.setTextSelection({ from: targetPos, to: targetPos + node.nodeSize });
+            return true;
+          }
+        }
+        return false;
+      },
       handlePaste: (view, event, slice) => {
         const items = Array.from(event.clipboardData?.items || []);
         let imagePasted = false;

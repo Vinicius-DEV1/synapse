@@ -853,3 +853,6 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   text-decoration: line-through;
 }
 
+
+.editor-content mark { cursor: pointer; transition: opacity 0.2s; }
+.editor-content mark:hover { opacity: 0.8; }
