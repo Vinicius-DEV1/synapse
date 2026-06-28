@@ -4,6 +4,8 @@ import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
 export default function EpubHighlightMenu() {
   const { dispatch } = useStore();
   const {
@@ -12,6 +14,7 @@ export default function EpubHighlightMenu() {
     readingMode, setHighlights
   } = useEpub();
 
+  // Floating (desktop only)
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'top',
     middleware: [offset(10), flip(), shift({ padding: 10 })],
@@ -19,7 +22,7 @@ export default function EpubHighlightMenu() {
   });
 
   useLayoutEffect(() => {
-    if (selection?.rect) {
+    if (selection?.rect && !isMobile) {
       refs.setPositionReference({
         getBoundingClientRect: () => selection.rect,
       });
@@ -80,92 +83,132 @@ export default function EpubHighlightMenu() {
     rendition?.annotations.remove(cfi, "highlight");
   };
 
-  return (
-    <div 
-      ref={refs.setFloating}
-      className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-700 text-white' : readingMode === 'sepia' ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]' : 'bg-white border-gray-200 text-gray-900'}`}
-      style={{
-        ...floatingStyles,
-        visibility: isPositioned ? 'visible' : 'hidden'
-      }}
-    >
+  const modeClass = readingMode === 'dark'
+    ? 'bg-[#1a1a1a] border-gray-700 text-white'
+    : readingMode === 'sepia'
+    ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]'
+    : 'bg-white border-gray-200 text-gray-900';
+
+  const dividerClass = readingMode === 'dark' ? 'bg-gray-700' : readingMode === 'sepia' ? 'bg-[#d4c6a0]' : 'bg-gray-200';
+  const noteAreaClass = readingMode === 'dark' ? 'border-gray-700' : readingMode === 'sepia' ? 'border-[#d4c6a0]' : 'border-gray-100';
+  const textareaClass = readingMode === 'dark'
+    ? 'bg-[#2a2a2a] border-gray-600 text-white'
+    : readingMode === 'sepia'
+    ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]'
+    : 'bg-gray-50 border-gray-200 text-gray-900';
+
+  // ────────────────────────────────────────────
+  // Conteúdo do menu (igual nos dois layouts)
+  // ────────────────────────────────────────────
+  const menuContent = (
+    <>
+      {/* Barra de cores + ações rápidas */}
       <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => handleCreateHighlight('yellow')} className={`w-6 h-6 rounded-full bg-yellow-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'yellow' || (!noteMode && selection.existingHighlightId) ? 'ring-2 ring-brand-500' : ''}`} />
-            <button onClick={() => handleCreateHighlight('green')} className={`w-6 h-6 rounded-full bg-green-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'green' ? 'ring-2 ring-brand-500' : ''}`} />
-            <button onClick={() => handleCreateHighlight('blue')} className={`w-6 h-6 rounded-full bg-blue-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'blue' ? 'ring-2 ring-brand-500' : ''}`} />
-            <button onClick={() => handleCreateHighlight('pink')} className={`w-6 h-6 rounded-full bg-pink-400 hover:scale-110 transition-transform shadow-sm ${noteMode === 'pink' ? 'ring-2 ring-brand-500' : ''}`} />
+        <div className="flex items-center gap-2">
+          <button onClick={() => handleCreateHighlight('yellow')} className={`w-7 h-7 rounded-full bg-yellow-400 hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'yellow' || (!noteMode && selection.existingHighlightId) ? 'ring-2 ring-offset-2 ring-yellow-500' : ''}`} />
+          <button onClick={() => handleCreateHighlight('green')}  className={`w-7 h-7 rounded-full bg-green-400 hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'green'  ? 'ring-2 ring-offset-2 ring-green-500'  : ''}`} />
+          <button onClick={() => handleCreateHighlight('blue')}   className={`w-7 h-7 rounded-full bg-blue-400  hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'blue'   ? 'ring-2 ring-offset-2 ring-blue-500'   : ''}`} />
+          <button onClick={() => handleCreateHighlight('pink')}   className={`w-7 h-7 rounded-full bg-pink-400  hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'pink'   ? 'ring-2 ring-offset-2 ring-pink-500'   : ''}`} />
+        </div>
+
+        {!noteMode && (
+          <div className="flex items-center gap-1">
+            <div className={`w-px h-5 mx-1 ${dividerClass}`} />
+            {/* Copiar */}
+            <button
+              onClick={() => { navigator.clipboard.writeText(selection.text); setSelection(null); }}
+              className="text-sm opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+              title="Copiar texto"
+            >📋</button>
+
+            {/* Nota (só para novos grifos) */}
+            {!selection.existingHighlightId && (
+              <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1">
+                📝 Nota
+              </button>
+            )}
+
+            {/* Lixeira (grifos existentes) */}
+            {selection.existingHighlightId && (
+              <button
+                onClick={() => { handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange); setSelection(null); setNoteMode(null); }}
+                className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-colors"
+                title="Excluir Grifo"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
-          {!noteMode && (
-              <div className="flex items-center gap-1.5">
-                <div className={`w-px h-5 mx-1 ${readingMode === 'dark' ? 'bg-gray-700' : readingMode === 'sepia' ? 'bg-[#d4c6a0]' : 'bg-gray-200'}`} />
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(selection.text);
-                    setSelection(null);
-                  }} 
-                  className="text-xs font-medium opacity-80 hover:opacity-100 p-1 flex items-center" 
-                  title="Copiar texto"
-                >
-                  📋
-                </button>
-                {!selection.existingHighlightId && (
-                  <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-80 hover:opacity-100 px-1 py-1 flex items-center gap-1">
-                    📝 Nota
-                  </button>
-                )}
-              </div>
-          )}
+        )}
       </div>
 
-      {(noteMode || selection.existingHighlightId) && (
-        <div className={`flex flex-col gap-1.5 mt-1 border-t pt-2 ${readingMode === 'dark' ? 'border-gray-700' : readingMode === 'sepia' ? 'border-[#d4c6a0]' : 'border-gray-100'}`}>
+      {/* Área de nota */}
+      {noteMode && (
+        <div className={`flex flex-col gap-1.5 mt-2 border-t pt-2 ${noteAreaClass}`}>
           <textarea
             autoFocus
             value={noteText}
             onChange={e => setNoteText(e.target.value)}
             placeholder="Escreva sua nota aqui..."
-            className={`w-full text-xs p-2 border rounded-lg resize-none focus:outline-brand-500 ${readingMode === 'dark' ? 'bg-[#2a2a2a] border-gray-600 text-white' : readingMode === 'sepia' ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+            className={`w-full text-xs p-2 border rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-brand-500 ${textareaClass}`}
             rows={3}
           />
-          <div className="flex justify-between items-center mt-1">
-            {selection.existingHighlightId ? (
-              <button 
-                onClick={() => {
-                  handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange);
-                  setSelection(null);
-                  setNoteMode(null);
-                }}
-                className="text-red-500 hover:bg-red-500/10 p-1 rounded transition-colors"
-                title="Excluir Grifo"
-              >
-                <Trash2 size={14} />
-              </button>
-            ) : (
-                <div />
-            )}
-            <div className="flex gap-1.5 ml-auto">
-              <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-2 py-1 text-xs opacity-70 hover:opacity-100">Cancelar</button>
-              <button onClick={() => handleCreateHighlight(noteMode || 'yellow')} className="px-2 py-1 bg-brand-500 text-white rounded-md text-xs font-bold hover:bg-brand-600">Salvar</button>
-            </div>
+          <div className="flex justify-end gap-1.5">
+            <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-3 py-1.5 text-xs opacity-70 hover:opacity-100 rounded-lg hover:bg-black/10 transition-colors">Cancelar</button>
+            <button onClick={() => handleCreateHighlight(noteMode || 'yellow')} className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-bold hover:bg-brand-600 transition-colors">Salvar</button>
           </div>
         </div>
       )}
 
+      {/* Botão de IA (só para novos grifos, sem nota aberta) */}
       {!noteMode && !selection.existingHighlightId && (
-        <div className={`flex items-center gap-1 border-t pt-1.5 mt-0.5 ${readingMode === 'dark' ? 'border-gray-700' : readingMode === 'sepia' ? 'border-[#d4c6a0]' : 'border-gray-100'}`}>
-            <button 
-              onClick={() => {
-                dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
-                setSelection(null);
-              }}
-              className={`flex-1 px-2 py-1 bg-brand-500/10 rounded-md text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${readingMode === 'dark' ? 'text-brand-400' : 'text-brand-600'}`}
-            >
-              <Sparkles size={11} />
-              Explicar com IA
-            </button>
+        <div className={`flex items-center gap-1 border-t pt-1.5 mt-0.5 ${noteAreaClass}`}>
+          <button
+            onClick={() => { dispatch({ type: 'TOGGLE_AI_SIDEBAR' }); setSelection(null); }}
+            className={`flex-1 px-2 py-1.5 bg-brand-500/10 rounded-lg text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${readingMode === 'dark' ? 'text-brand-400' : 'text-brand-600'}`}
+          >
+            <Sparkles size={11} />
+            Explicar com IA
+          </button>
         </div>
       )}
+    </>
+  );
+
+  // ────────────────────────────────────────────
+  // MOBILE: Bottom Sheet deslizante
+  // ────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        {/* Overlay para fechar ao tocar fora */}
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => { setSelection(null); setNoteMode(null); setNoteText(''); }}
+        />
+
+        {/* Bottom Sheet */}
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-50 border-t rounded-t-2xl shadow-2xl p-4 pb-6 flex flex-col gap-2 animate-slide-up ${modeClass}`}
+        >
+          {/* Handle bar */}
+          <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-1 opacity-60" />
+          {menuContent}
+        </div>
+      </>
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // DESKTOP: Floating menu (comportamento anterior)
+  // ────────────────────────────────────────────
+  return (
+    <div
+      ref={refs.setFloating}
+      className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
+      style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden' }}
+    >
+      {menuContent}
     </div>
   );
 }

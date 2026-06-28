@@ -235,15 +235,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                  // Só o último (com a seleção final completa) vence.
                  if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
                  selectionTimerRef.current = setTimeout(() => {
-                    const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
-                    if (isMobile) {
-                       // FORÇA BRUTA: Limpar seleção nativa para esconder menu do Android/iOS
-                       contents.window.getSelection().removeAllRanges();
-                       // Adicionar marcador visual temporário (azul claro) para o usuário não perder a referência
-                       newRendition.annotations.highlight(cfiRange, {}, (e: any) => {}, 'temp-selection', { fill: '#b4d5fe', 'fill-opacity': '0.5' });
-                       // Salvar no elemento para podermos remover depois
-                       (newRendition as any)._tempSelectionCfi = cfiRange;
-                    }
                     setSelection({ cfiRange, text, rect: safeRect });
                  }, 50);
               }
@@ -251,14 +242,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            
            newRendition.on('click', () => {
              setShowSettings(false);
-             
-             // Remover marcador temporário se existir
-             const tempCfi = (newRendition as any)._tempSelectionCfi;
-             if (tempCfi) {
-               newRendition.annotations.remove(tempCfi, 'highlight');
-               (newRendition as any)._tempSelectionCfi = null;
-             }
-             
              setSelection(null);
              setNoteMode(null);
              handleEpubClick();
