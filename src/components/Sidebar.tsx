@@ -232,6 +232,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                       onCreatePage={onCreatePage}
                       onUpdatePage={onUpdatePage}
                       isSearchResult={false}
+                      disableHierarchyDnD={true}
                     />
                   </div>
                 ))}
