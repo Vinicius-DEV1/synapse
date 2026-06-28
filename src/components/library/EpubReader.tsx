@@ -379,8 +379,8 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') rendition?.next();
-      if (e.key === 'ArrowLeft') rendition?.prev();
+      if (e.key === 'ArrowRight') turnPage('next');
+      if (e.key === 'ArrowLeft') turnPage('prev');
       if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
         cycleReadingMode();
       }
