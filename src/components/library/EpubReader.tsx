@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../types';
 import { getValidAccessToken, downloadFromDrive } from '../../services/drive';
 import { decryptFile } from '../../services/storage';
+import { useStore } from '../../store/useStore';
 
 import { EpubProvider, useEpub } from './epub/EpubContext';
 import EpubTopBar from './epub/EpubTopBar';
@@ -26,6 +27,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     setShowSettings, setHighlights, setBookmarks, setToc
   } = useEpub();
 
+  const { state } = useStore();
+  const masterKey = state.masterKey;
+
   const [loading, setLoading] = useState(true);
   const [epubError, setEpubError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
@@ -43,8 +47,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         if (book.drive_file_id) {
           const token = await getValidAccessToken();
           if (!token) throw new Error('Não autenticado no Google Drive');
-          const blob = await downloadFromDrive(book.drive_file_id, token);
-          arrayBuffer = await blob.arrayBuffer();
+          const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+          if (masterKey) {
+            arrayBuffer = await decryptFile(encryptedData, masterKey);
+          } else {
+            // Fallback: try using it directly (unencrypted legacy)
+            arrayBuffer = encryptedData;
+          }
         } else if (book.file_path) {
           if (book.file_path.startsWith('file://')) {
             const res = await window.api.library.getBookFile(book.id);
