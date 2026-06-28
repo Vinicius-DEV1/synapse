@@ -184,16 +184,16 @@ export default function EpubHighlightMenu() {
 
     return (
       <>
-        {/* Overlay para fechar ao tocar fora */}
+        {/* Overlay acima do iframe para fechar ao tocar fora */}
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-[100]"
           onClick={() => { setSelection(null); setNoteMode(null); setNoteText(''); }}
         />
 
         {selectionIsLow ? (
           /* Top Sheet — seleção está na base da tela */
           <div
-            className={`fixed top-0 left-0 right-0 z-50 border-b rounded-b-2xl shadow-2xl p-4 pt-6 flex flex-col gap-2 animate-slide-down ${modeClass}`}
+            className={`fixed top-0 left-0 right-0 z-[101] border-b rounded-b-2xl shadow-2xl p-4 pt-6 flex flex-col gap-2 animate-slide-down ${modeClass}`}
           >
             {menuContent}
             <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-1 opacity-60" />
@@ -201,7 +201,7 @@ export default function EpubHighlightMenu() {
         ) : (
           /* Bottom Sheet — seleção está na parte superior da tela */
           <div
-            className={`fixed bottom-0 left-0 right-0 z-50 border-t rounded-t-2xl shadow-2xl p-4 pb-6 flex flex-col gap-2 animate-slide-up ${modeClass}`}
+            className={`fixed bottom-0 left-0 right-0 z-[101] border-t rounded-t-2xl shadow-2xl p-4 pb-6 flex flex-col gap-2 animate-slide-up ${modeClass}`}
           >
             <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-1 opacity-60" />
             {menuContent}
