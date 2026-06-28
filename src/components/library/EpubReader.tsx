@@ -142,6 +142,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                  }
                  
                  const rect = range.getBoundingClientRect();
+                 
+                 // Bloqueio de eventos fantasmas do epub.js (seleções colapsadas/inválidas)
+                 if (rect.width === 0 && rect.height === 0) return;
+                 
                  let offsetX = 0;
                  let offsetY = 0;
                  const iframe = viewerRef.current?.querySelector('iframe');
