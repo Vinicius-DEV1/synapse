@@ -392,6 +392,16 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const progressPercentage = Math.round((useEpub().progress || 0) * 100);
   const currentPageSafe = useEpub().currentPage || 0;
   const totalPagesSafe = useEpub().totalPages || 0;
+  const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
+  
+  const bottomBarClasses = readingMode === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 
+    readingMode === 'midnight' ? 'bg-[#0f172a] text-[#475569]' : 
+    readingMode === 'nord' ? 'bg-[#2e3440] text-[#4c566a]' : 
+    readingMode === 'dim' ? 'bg-[#2d2d30] text-[#808080]' : 
+    readingMode === 'high-contrast' ? 'bg-[#000000] text-[#aaaaaa]' : 
+    readingMode === 'sepia' ? 'bg-[#e9dec0] text-[#8c765f]' : 
+    readingMode === 'mint' ? 'bg-[#c8e6c9] text-[#2d6a4f]' : 
+    'bg-white text-gray-400';
 
   return (
     <div className={`h-full flex flex-col reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
@@ -429,7 +439,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
         <div className={`relative w-full h-full flex-1 bg-transparent overflow-hidden ${showMobileTools ? 'z-0' : 'z-10'}`}>
         <button onClick={() => turnPage('prev')} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
+          <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
             <ArrowLeft size={24} />
           </div>
         </button>
@@ -437,7 +447,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" />
 
         <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
+          <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
              <ArrowLeft size={24} className="rotate-180" />
           </div>
         </button>
@@ -446,7 +456,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
       <div className={`flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-colors z-20
           ${readingMode === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 
+            readingMode === 'midnight' ? 'bg-[#0f172a] text-[#475569]' : 
+            readingMode === 'nord' ? 'bg-[#2e3440] text-[#4c566a]' : 
+            readingMode === 'dim' ? 'bg-[#2d2d30] text-[#808080]' : 
+            readingMode === 'high-contrast' ? 'bg-[#000000] text-[#aaaaaa]' : 
             readingMode === 'sepia' ? 'bg-[#e9dec0] text-[#8c765f]' : 
+            readingMode === 'mint' ? 'bg-[#c8e6c9] text-[#2d6a4f]' : 
             'bg-white text-gray-400'}`}>
         <div>
            {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}
