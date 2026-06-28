@@ -31,7 +31,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     return (
       <>
         {/* Mobile: Floating open button */}
-        <div className="md:hidden absolute top-4 left-0 z-[60]">
+        <div className="md:hidden fixed top-4 left-0 z-[90]">
           <button
             onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
             className="p-2 bg-dark-card/80 backdrop-blur-md rounded-r-xl border border-l-0 border-white/10 text-dark-subtext hover:text-white shadow-xl active:scale-95 transition-all"
