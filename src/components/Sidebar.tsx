@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -14,8 +14,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
 
+  const pinnedPages = state.pages
+    .filter(p => p.is_pinned)
+    .sort((a, b) => (a.pinned_order || 0) - (b.pinned_order || 0));
+
   const rootPages = state.pages
-    .filter((p) => p.parent_id === null)
+    .filter((p) => p.parent_id === null && !p.is_pinned)
     .sort((a, b) => a.sort_order - b.sort_order);
 
   const filteredPages = searchQuery.trim()
@@ -23,6 +27,35 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         p.title.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : rootPages;
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (draggedId === targetId) return;
+    
+    const currentPinned = [...pinnedPages];
+    const draggedIdx = currentPinned.findIndex(p => p.id === draggedId);
+    const targetIdx = currentPinned.findIndex(p => p.id === targetId);
+    
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    
+    const [draggedItem] = currentPinned.splice(draggedIdx, 1);
+    currentPinned.splice(targetIdx, 0, draggedItem);
+    
+    currentPinned.forEach((p, idx) => {
+      if (p.pinned_order !== idx) {
+        onUpdatePage(p.id, { pinned_order: idx });
+      }
+    });
+  };
 
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module;
@@ -166,6 +199,38 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       <div className="flex-1 overflow-y-auto px-2 py-1">
         {activeModule === 'notes' ? (
           <>
+            {!searchQuery && pinnedPages.length > 0 && (
+              <div className="mb-4">
+                <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
+                  <Pin size={12} /> Fixados
+                </div>
+                {pinnedPages.map((page) => (
+                  <div
+                    key={page.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, page.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, page.id)}
+                  >
+                    <SidebarItem
+                      page={page}
+                      depth={0}
+                      activePageId={activeTab?.pageId || null}
+                      onCreatePage={onCreatePage}
+                      onUpdatePage={onUpdatePage}
+                      isSearchResult={false}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {!searchQuery && pinnedPages.length > 0 && (
+              <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider mt-2">
+                Páginas
+              </div>
+            )}
+
             {filteredPages.length === 0 && (
               <div className="text-center text-dark-subtext text-xs py-8 px-4">
                 {searchQuery ? 'Nenhuma página encontrada' : 'Nenhuma página criada'}
