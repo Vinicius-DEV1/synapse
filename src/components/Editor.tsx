@@ -60,6 +60,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     }
   }, [initialCrdtState]);
 
+  const hydratedRef = useRef<string | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -145,6 +147,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       onSave(html, crdtState, []); // Embeds saves serão tratados depois se necessário
     },
   }, [pageId]);
+
+  useEffect(() => {
+    if (editor && initialContent && !initialCrdtState && hydratedRef.current !== pageId) {
+      hydratedRef.current = pageId;
+      if (editor.isEmpty) {
+        editor.commands.setContent(initialContent);
+      }
+    }
+  }, [editor, initialContent, initialCrdtState, pageId]);
 
   const executeSlashCommand = useCallback((commandId: string) => {
     if (!editor || !slashMenu) return;
