@@ -133,6 +133,12 @@ export function setupTables(): Promise<void> {
           promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;"));
         }
 
+        // NOTES TABLES
+        if (attached.includes('notes')) {
+          promises.push(runSafe("ALTER TABLE notes.pages ADD COLUMN sort_order REAL DEFAULT 0;"));
+          promises.push(runSafe("ALTER TABLE notes.pages ADD COLUMN crdt_state TEXT;"));
+        }
+
         // FINANCE TABLES
         if (attached.includes('finance')) {
           promises.push(runSafe(`
@@ -176,6 +182,8 @@ export function setupTables(): Promise<void> {
               title TEXT NOT NULL,
               content TEXT DEFAULT '',
               icon TEXT DEFAULT 'file',
+              sort_order REAL DEFAULT 0,
+              crdt_state TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL,
