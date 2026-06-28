@@ -24,7 +24,7 @@ interface CachedImage {
  * No Electron usa IPC handlers; na web usa IndexedDB diretamente.
  */
 function isElectron(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).api;
+  return typeof window !== 'undefined' && !!(window as any).api && !!(window as any).api.imageCache;
 }
 
 /**
