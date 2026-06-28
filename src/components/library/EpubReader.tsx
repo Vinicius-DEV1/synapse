@@ -49,6 +49,18 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     });
   };
 
+  const { dispatch } = useStore();
+
+  useEffect(() => {
+    // Quando showMobileTools for false, estamos em fullscreen (hide sidebar toggle)
+    dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !showMobileTools });
+    
+    // Ao desmontar o leitor, volta para o estado normal (menu sempre acessível)
+    return () => {
+      dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
+    };
+  }, [showMobileTools, dispatch]);
+
   // Load EPUB
   useEffect(() => {
     let active = true;
@@ -350,7 +362,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           </div>
         </button>
         
-        <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto" style={{ padding: '0 40px' }} />
+        <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" />
 
         <button onClick={() => rendition?.next()} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>

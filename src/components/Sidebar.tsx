@@ -64,15 +64,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     return (
       <>
         {/* Mobile: Floating open button */}
-        <div className="md:hidden fixed top-4 left-0 z-[90]">
-          <button
-            onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+        {!state.isReadingModeFullScreen && (
+          <div className="md:hidden fixed top-4 left-0 z-[90]">
+            <button
+              onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
             className="p-2 bg-dark-card/80 backdrop-blur-md rounded-r-xl border border-l-0 border-white/10 text-dark-subtext hover:text-white shadow-xl active:scale-95 transition-all"
             title="Expandir menu"
           >
             <PanelLeft size={18} />
           </button>
         </div>
+        )}
 
         {/* Desktop: Slim Sidebar */}
         <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
