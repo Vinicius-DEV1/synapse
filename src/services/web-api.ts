@@ -62,6 +62,7 @@ export const createWebApiMock = async () => {
     createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }) => {
       const page = {
         id: generateId(),
+        parent_id: parentId || null,
         title: title || 'Nova Página',
         icon: icon || '📄',
         sort_order: 0,

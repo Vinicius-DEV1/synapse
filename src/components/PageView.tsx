@@ -165,6 +165,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
            </form>
         ) : (
           <Editor
+            key={page.id}
             pageId={page.id}
             initialContent={contentData.content}
             initialCrdtState={page.crdt_state}
