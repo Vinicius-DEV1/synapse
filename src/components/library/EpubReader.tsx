@@ -35,6 +35,20 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [showMobileTools, setShowMobileTools] = useState(false);
+  const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleEpubClick = () => {
+    setShowMobileTools(prev => {
+      const nextState = !prev;
+      if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+      if (nextState) {
+        toolsTimeoutRef.current = setTimeout(() => setShowMobileTools(false), 15000);
+      }
+      return nextState;
+    });
+  };
+
   // Load EPUB
   useEffect(() => {
     let active = true;
@@ -198,6 +212,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
               setShowSettings(false);
               setSelection(null);
               setNoteMode(null);
+              handleEpubClick();
            });
            
            newRendition.on('keyup', (event: any) => {
@@ -277,7 +292,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
   return (
     <div className={`h-full flex flex-col ${readingMode === 'dark' ? 'bg-[#0f0e17]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : 'bg-white'}`}>
-      <EpubTopBar onBack={onBack} />
+      <div className={`
+        md:block flex-shrink-0 transition-transform duration-300 z-50
+        ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
+        absolute md:relative top-0 left-0 right-0
+      `}>
+        <EpubTopBar onBack={onBack} />
+      </div>
       <EpubTypography />
       <EpubSidebars />
 
