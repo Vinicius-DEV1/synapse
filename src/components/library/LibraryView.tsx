@@ -8,6 +8,7 @@ import LibraryGrid from './LibraryGrid';
 import BookEditModal from './BookEditModal';
 import ReadingStatsView from './ReadingStatsView';
 import PdfReader from './PdfReader';
+import EpubReader from './EpubReader';
 import DriveAuthModal from './DriveAuthModal';
 import { getDriveCredentials } from '../../services/drive';
 import { useStore } from '../../store/useStore';
@@ -239,6 +240,18 @@ export default function LibraryView() {
   }, [books, searchQuery, statusFilter, selectedCollection, selectedAuthor, sortBy, sortOrder]);
 
   if (selectedBook) {
+    const isEpub = selectedBook.file_path?.toLowerCase().endsWith('.epub') || selectedBook.title?.toLowerCase().endsWith('.epub');
+
+    if (isEpub) {
+      return (
+        <EpubReader
+          book={selectedBook}
+          onBack={handleBackFromReader}
+          onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
+        />
+      );
+    }
+
     return (
       <PdfReader
         book={selectedBook}

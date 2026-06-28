@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { deriveMasterKey } from '../services/crypto';
+import { deriveMasterKey, importHexKey } from '../services/crypto';
 import { verifyCloudMasterPassword, initializeCloudValidator } from '../services/sync';
 
 interface AuthScreenProps {
@@ -42,13 +42,19 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
 
         const res = await window.api.auth.setup(password);
-        if (res.success) {
+        if (res.success && res.keys) {
+          const moduleKeys: Record<string, CryptoKey> = {};
+          if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
+          if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
+          if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+
           const masterKey = await deriveMasterKey(password);
           
           if (cloudCheck.isNew) {
             await initializeCloudValidator(masterKey);
           }
           
+          dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
@@ -59,7 +65,12 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
       } else {
         const res = await window.api.auth.login(password);
-        if (res.success) {
+        if (res.success && res.keys) {
+          const moduleKeys: Record<string, CryptoKey> = {};
+          if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
+          if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
+          if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+
           const masterKey = await deriveMasterKey(password);
           
           // FORÇAR A CURA DO VALIDADOR NA NUVEM
@@ -68,6 +79,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           // sobrescrevendo qualquer validador corrompido que tenha sido feito.
           initializeCloudValidator(masterKey).catch(e => console.error(e));
 
+          dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);

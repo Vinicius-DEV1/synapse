@@ -31,19 +31,19 @@ function parseDateSafe(dateStr: string | undefined | null | number): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
-// TODAS as tabelas do nosso Super App
-const SYNC_TABLES = [
-  'pages', 
-  'transactions', 
-  'wishlist', 
-  'library_books', 
-  'library_highlights', 
-  'library_bookmarks', 
-  'library_collections',
-  'library_book_collections',
-  'library_reading_sessions',
-  'config'
-];
+const MODULE_TABLES: Record<string, string[]> = {
+  core: ['config'],
+  notes: ['pages'],
+  finance: ['transactions', 'wishlist'],
+  library: [
+    'library_books', 
+    'library_highlights', 
+    'library_bookmarks', 
+    'library_collections',
+    'library_book_collections',
+    'library_reading_sessions'
+  ]
+};
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
   try {
@@ -97,7 +97,7 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
  *
  * @param masterKey - A chave criptográfica derivada da senha do usuário para descriptografia simétrica.
  */
-export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
+export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) {
     console.error("Sync API não exposta no preload.");
     return;
@@ -106,9 +106,13 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
   const lastPull = getLastSyncTime('pull');
   let highestCloudTime = lastPull;
 
-  for (const table of SYNC_TABLES) {
-    try {
-      let q = collection(db, table) as any;
+  for (const module of Object.keys(moduleKeys)) {
+    const key = moduleKeys[module];
+    const tables = MODULE_TABLES[module] || [];
+    
+    for (const table of tables) {
+      try {
+        let q = collection(db, table) as any;
       if (lastPull > 0) {
         // Usa a data ISO para filtrar no servidor e não gastar cota do Firebase atoa
         const lastPullIso = new Date(lastPull).toISOString();
@@ -118,6 +122,8 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
       const querySnapshot = await getDocs(q);
       const localRows = await window.api.sync.getTable(table);
       
+      const localMap = new Map(localRows.map((r: any) => [r.id, r]));
+
       for (const docSnap of querySnapshot.docs) {
         const cloudData = docSnap.data();
         if (!cloudData.encryptedData) continue;
@@ -132,13 +138,12 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
           continue;
         }
         
-        const localRow = localRows.find((r: any) => r.id === docSnap.id);
-        
+        const localRow = localMap.get(docSnap.id);
         const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
         
         if (cloudTime !== localTime) {
           try {
-            const decryptedJson = await decryptText(cloudData.encryptedData, masterKey);
+            const decryptedJson = await decryptText(cloudData.encryptedData, key);
             const parsed = JSON.parse(decryptedJson);
             const rowToUpsert = {
               id: docSnap.id,
@@ -221,6 +226,7 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
       // Aqui escolhemos continuar o pull das outras tabelas
     }
   }
+  }
 
   // Atualiza o tempo do último pull com sucesso
   if (highestCloudTime > lastPull) {
@@ -241,29 +247,34 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
  * @param masterKey - A chave criptográfica para encriptar os dados (E2EE).
  * @throws Dispara um erro se não houver internet ou se houver falha de gravação de lotes.
  */
-export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
+export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) return;
+  
   if (!navigator.onLine) {
-    throw new Error("Sem conexão com a internet (Offline).");
+    throw new Error('Sem conexão com a internet para sincronizar.');
   }
 
   const lastPush = getLastSyncTime('push');
-  let pushedCount = 0;
   let highestLocalTime = lastPush;
+  let pushedCount = 0;
   const errors: string[] = [];
 
-  for (const table of SYNC_TABLES) {
-    try {
-      const localRows = await window.api.sync.getTable(table);
-      if (localRows.length === 0) continue;
+  for (const module of Object.keys(moduleKeys)) {
+    const key = moduleKeys[module];
+    const tables = MODULE_TABLES[module] || [];
+    
+    for (const table of tables) {
+      try {
+        const localRows = await window.api.sync.getTable(table);
+        if (localRows.length === 0) continue;
 
-      // Filtro Diff: Apenas tenta enviar o que foi atualizado após o último push!
-      // Se não for o primeiro push, economizamos descriptografia em massa da nuvem.
-      const rowsToPush = lastPush > 0 
-        ? localRows.filter((r: any) => parseDateSafe(r.updated_at || r.created_at || 0) >= lastPush)
-        : localRows;
+        // Filtro Diff: Apenas tenta enviar o que foi atualizado após o último push!
+        // Se não for o primeiro push, economizamos descriptografia em massa da nuvem.
+        const rowsToPush = lastPush > 0 
+          ? localRows.filter((r: any) => parseDateSafe(r.updated_at || r.created_at || 0) >= lastPush)
+          : localRows;
 
-      if (rowsToPush.length === 0) continue;
+        if (rowsToPush.length === 0) continue;
 
       // Precisamos baixar a coleção apenas para garantir que não sobrescrevemos algo muito mais novo
       const cloudSnap = await getDocs(collection(db, table));
@@ -293,7 +304,7 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
             (window as any).api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
           }
           const { id, updated_at, created_at, ...sensitiveData } = row;
-          const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
+          const encryptedData = await encryptText(JSON.stringify(sensitiveData), key);
           const docRef = doc(db, table, id);
           await setDoc(docRef, {
             encryptedData,
@@ -311,6 +322,7 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
       const msg = `PUSH erro tabela ${table}: ${err?.message}`;
       console.error(msg);
       errors.push(msg);
+    }
     }
   }
 

@@ -3,11 +3,14 @@ export interface Page {
   parent_id: string | null;
   title: string;
   icon: string;
-  content: string;
+  content?: string;
   crdt_state?: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
+  is_locked?: number;
+  password_salt?: string | null;
+  encrypted_content?: string | null;
 }
 
 export interface PageHistoryEntry {
@@ -163,7 +166,7 @@ export interface AppState {
   aiChatSessions: Record<string, AiChatSession>;
   showAiSidebar: boolean;
   activeAiChatId: string | null;
-  masterKey: CryptoKey | null;
+  moduleKeys: Record<string, CryptoKey>;
 }
 
 export type Action =
@@ -190,7 +193,7 @@ export type Action =
   | { type: 'CLEAR_AI_CHATS' }
   | { type: 'TOGGLE_AI_SIDEBAR' }
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
-  | { type: 'SET_MASTER_KEY'; key: CryptoKey | null };
+  | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> };
 
 
 declare global {
@@ -199,17 +202,21 @@ declare global {
       _setMasterKey?: (key: CryptoKey | null) => void;
       onSyncTrigger?: (callback: () => void) => () => void;
       getAllPages: () => Promise<Page[]>;
+      getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null }>;
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
-      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; parent_id?: string | null }) => Promise<number>;
+      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null }) => Promise<number>;
       deletePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
       exportBackup: () => Promise<{ success: boolean; canceled?: boolean; path?: string; error?: string }>;
       auth: {
-        status: () => Promise<{ status: 'new' | 'unencrypted' | 'encrypted' | 'error' }>;
-        login: (password: string) => Promise<{ success: boolean; error?: string }>;
-        setup: (password: string) => Promise<{ success: boolean; error?: string }>;
+        setup: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
+        login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
+        status: () => Promise<{ status: 'new' | 'encrypted' | 'unencrypted' }>;
         changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+        createVisitor: (visitorPassword: string, allowedModules: string[]) => Promise<{ success: boolean; error?: string; visitorId?: string }>;
+        getVisitors: () => Promise<Array<{ id: string; modules: string[] }>>;
+        deleteVisitor: (id: string) => Promise<{ success: boolean; error?: string }>;
         onLock: (callback: () => void) => () => void;
         lock: () => Promise<void>;
         setPreferences: (prefs: { autoLockOnSuspend: boolean }) => Promise<void>;

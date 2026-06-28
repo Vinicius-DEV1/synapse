@@ -38,7 +38,7 @@ function AppContent() {
         window.api.auth.lock().then(() => {
           setIsAuth(false);
           setAuthStatus('encrypted');
-          dispatch({ type: 'SET_MASTER_KEY', key: null });
+          dispatch({ type: 'SET_MODULE_KEYS', keys: {} });
         });
       }
     }
@@ -55,7 +55,7 @@ function AppContent() {
       const cleanup = window.api.auth.onLock(() => {
         setIsAuth(false);
         setAuthStatus('encrypted');
-        dispatch({ type: 'SET_MASTER_KEY', key: null });
+        dispatch({ type: 'SET_MODULE_KEYS', keys: {} });
       });
       
       // Initialize backend preferences
@@ -76,7 +76,7 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  const { syncStatus } = useSync(isAuth, state.masterKey, loadPages);
+  const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages);
 
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {

@@ -17,6 +17,7 @@ const invokeWithSync = async (channel: string, ...args: any[]) => {
 
 contextBridge.exposeInMainWorld('api', {
   getAllPages: () => invokeWithSync('db:get-all-pages'),
+  getPageContent: (id: string) => invokeWithSync('db:get-page-content', id),
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) =>
     invokeWithSync('db:create-page', page),
   updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; parent_id?: string | null }) =>
@@ -32,6 +33,9 @@ contextBridge.exposeInMainWorld('api', {
     login: (password: string) => invokeWithSync('auth:login', password),
     setup: (password: string) => invokeWithSync('auth:setup', password),
     changePassword: (newPassword: string) => invokeWithSync('auth:change-password', newPassword),
+    createVisitor: (visitorPassword: string, allowedModules: string[]) => invokeWithSync('auth:create-visitor', visitorPassword, allowedModules),
+    getVisitors: () => invokeWithSync('auth:get-visitors'),
+    deleteVisitor: (id: string) => invokeWithSync('auth:delete-visitor', id),
     onLock: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on('app:lock', listener);

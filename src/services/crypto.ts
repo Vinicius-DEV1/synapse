@@ -42,6 +42,17 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   );
 }
 
+export async function importHexKey(hexString: string): Promise<CryptoKey> {
+  const bytes = new Uint8Array(hexString.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+  return await crypto.subtle.importKey(
+    'raw',
+    bytes,
+    { name: ENCRYPTION_ALGORITHM },
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
 /**
  * Encripta um texto (string) usando a Chave Mestra.
  * Retorna uma string base64 combinando o IV e o texto encriptado.

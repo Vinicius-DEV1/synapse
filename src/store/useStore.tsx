@@ -60,7 +60,7 @@ const initialState: AppState = {
   aiChatSessions: saved.aiChatSessions || {},
   showAiSidebar: false,
   activeAiChatId: null,
-  masterKey: null,
+  moduleKeys: {},
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -220,8 +220,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, showAiSidebar: !state.showAiSidebar };
     case 'OPEN_AI_CHAT':
       return { ...state, showAiSidebar: true, activeAiChatId: action.chatId };
-    case 'SET_MASTER_KEY':
-      return { ...state, masterKey: action.key };
+    case 'SET_MODULE_KEYS':
+      return { ...state, moduleKeys: action.keys };
     default:
       return state;
   }
