@@ -157,7 +157,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : 'Finanças'}
+            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? (activeTab.bookTitle || 'Biblioteca') : 'Finanças'}
           </span>
         </div>
         <button
