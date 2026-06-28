@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   FileText, Plus, MoreVertical, BookOpen, CheckCircle2,
   Circle, Pencil, Trash2, BookMarked
@@ -16,9 +16,9 @@ interface LibraryGridProps {
 }
 
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
-  not_started: { label: 'NÃ£o iniciado', color: 'text-gray-400', icon: Circle },
+  not_started: { label: 'Não iniciado', color: 'text-gray-400', icon: Circle },
   reading: { label: 'Lendo', color: 'text-emerald-400', icon: BookOpen },
-  finished: { label: 'ConcluÃ­do', color: 'text-brand-400', icon: CheckCircle2 },
+  finished: { label: 'Concluído', color: 'text-brand-400', icon: CheckCircle2 },
 };
 
 export default function LibraryGrid({
@@ -98,7 +98,9 @@ export default function LibraryGrid({
                 className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
               >
                 <MoreVertical size={16} />
-              </button>              {/* Progress overlay at bottom of cover */}
+              </button>
+              
+              {/* Progress overlay at bottom of cover */}
               {progress > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
                   <div
