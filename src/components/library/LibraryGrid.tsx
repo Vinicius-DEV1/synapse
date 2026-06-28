@@ -47,7 +47,13 @@ export default function LibraryGrid({
 
   const getProgress = (book: LibraryBook): number => {
     if (!book.total_pages || book.total_pages === 0) return 0;
-    return Math.min(100, Math.round((book.last_read_page / book.total_pages) * 100));
+    // Para PDF, last_read_page é numérico. Para EPUB, é uma string CFI.
+    // Usamos current_page (numérico) como fallback para EPUBs.
+    const page = typeof book.last_read_page === 'number' 
+      ? book.last_read_page 
+      : (book as any).current_page || 0;
+    if (!page || page <= 0) return 0;
+    return Math.min(100, Math.round((page / book.total_pages) * 100));
   };
 
   return (
