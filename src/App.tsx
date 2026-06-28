@@ -231,19 +231,19 @@ function AppContent() {
         />
       )}
 
-      {/* Sync Status Toast (Discreet) */}
+      {/* Sync Status Toast (Ultra Discreet) */}
       <div
-        className={`fixed top-4 right-4 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-dark-card/80 backdrop-blur-sm border border-white/5 shadow-sm pointer-events-none transition-all duration-500 z-[9999]
-          ${syncStatus === 'idle' ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}
+        className={`fixed bottom-4 right-6 flex items-center gap-1.5 pointer-events-none transition-opacity duration-1000 z-[9999]
+          ${syncStatus === 'idle' ? 'opacity-0' : 'opacity-40'}
         `}
       >
-        {syncStatus === 'syncing' && <Cloud size={14} className="text-dark-subtext animate-pulse" />}
-        {syncStatus === 'success' && <CheckCircle2 size={14} className="text-emerald-400" />}
-        {syncStatus === 'error'   && <XCircle size={14} className="text-red-400" />}
-        <span className="text-xs font-medium text-dark-subtext">
-          {syncStatus === 'syncing' ? 'Salvando...' :
+        {syncStatus === 'syncing' && <Cloud size={12} className="text-dark-subtext animate-pulse" />}
+        {syncStatus === 'success' && <CheckCircle2 size={12} className="text-emerald-400" />}
+        {syncStatus === 'error'   && <XCircle size={12} className="text-red-400" />}
+        <span className="text-[10px] font-medium text-dark-subtext uppercase tracking-widest">
+          {syncStatus === 'syncing' ? 'Salvando' :
            syncStatus === 'success' ? 'Salvo' :
-           syncStatus === 'error'   ? 'Erro ao salvar' : ''}
+           syncStatus === 'error'   ? (!navigator.onLine ? 'Offline' : 'Erro') : ''}
         </span>
       </div>
     </div>

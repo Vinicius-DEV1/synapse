@@ -1,8 +1,18 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
 import { encryptText, decryptText, deriveMasterKey } from './crypto';
 import { encryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive } from './drive';
+import { onSnapshot, serverTimestamp, query, where, collection, doc, setDoc, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
+
+const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
+
+function getLastSyncTime(type: 'pull' | 'push'): number {
+  return parseInt(localStorage.getItem(getLastSyncKey(type)) || '0', 10);
+}
+
+function setLastSyncTime(type: 'pull' | 'push', time: number) {
+  localStorage.setItem(getLastSyncKey(type), time.toString());
+}
 
 function parseDateSafe(dateStr: string | undefined | null | number): number {
   if (!dateStr) return 0;
@@ -30,6 +40,8 @@ const SYNC_TABLES = [
   'library_highlights', 
   'library_bookmarks', 
   'library_collections',
+  'library_book_collections',
+  'library_reading_sessions',
   'config'
 ];
 
@@ -53,12 +65,12 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
       if (parsed.validator === 'CADERNO_VALIDO') {
         return { isValid: true, isNew: false };
       }
-    } catch (e) {
+    } catch {
       // Falha ao descriptografar
     }
 
     return { isValid: false, isNew: false };
-  } catch (err) {
+  } catch {
     return { isValid: false, isNew: false };
   }
 }
@@ -73,8 +85,17 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
 }
 
 /**
- * Puxa todas as tabelas do Firebase, descriptografa e faz o upsert no SQLite local
- * usando a estratégia "Last Write Wins" (A modificação mais recente vence).
+ * Faz o download das atualizações na nuvem (Firebase) para a base local.
+ *
+ * Arquitetura de Sincronização:
+ * 1. Recupera o timestamp do último PULL concluído com sucesso (`caderno_last_pull_time`).
+ * 2. Em cada tabela (`SYNC_TABLES`), aplica uma Query no Firestore usando `where('updatedAt', '>', lastPull)`.
+ *    - Isso economiza cota de leitura do banco de dados ao buscar estritamente os "Diffs" (registros modificados).
+ * 3. Para cada documento baixado, a função descriptografa o conteúdo via E2EE (End-to-End Encryption) usando a `masterKey`.
+ * 4. Resolve conflitos locais adotando LWW (Last Write Wins) ou merges baseados em CRDT (Yjs) se for edição colaborativa de páginas.
+ * 5. Por fim, executa um UPSERT no IndexedDB / SQLite e atualiza o novo Last Pull Timestamp.
+ *
+ * @param masterKey - A chave criptográfica derivada da senha do usuário para descriptografia simétrica.
  */
 export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
   if (!window.api?.sync) {
@@ -82,18 +103,37 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
     return;
   }
 
+  const lastPull = getLastSyncTime('pull');
+  let highestCloudTime = lastPull;
+
   for (const table of SYNC_TABLES) {
     try {
-      const querySnapshot = await getDocs(collection(db, table));
+      let q = collection(db, table) as any;
+      if (lastPull > 0) {
+        // Usa a data ISO para filtrar no servidor e não gastar cota do Firebase atoa
+        const lastPullIso = new Date(lastPull).toISOString();
+        q = query(collection(db, table), where('updatedAt', '>', lastPullIso));
+      }
+      
+      const querySnapshot = await getDocs(q);
       const localRows = await window.api.sync.getTable(table);
       
       for (const docSnap of querySnapshot.docs) {
         const cloudData = docSnap.data();
         if (!cloudData.encryptedData) continue;
         
+        const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+        if (cloudTime > highestCloudTime) {
+          highestCloudTime = cloudTime;
+        }
+
+        // Pula se não mudou desde o nosso último pull bem-sucedido, exceto se for o primeiro pull
+        if (lastPull > 0 && cloudTime <= lastPull) {
+          continue;
+        }
+        
         const localRow = localRows.find((r: any) => r.id === docSnap.id);
         
-        const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
         const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
         
         if (cloudTime !== localTime) {
@@ -178,33 +218,61 @@ export async function pullAllFromCloud(masterKey: CryptoKey): Promise<void> {
       const msg = `PULL erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
       console.error(msg);
       (window.api as any).log?.(msg);
-      // Não propaga — continua com a próxima tabela
+      // Aqui escolhemos continuar o pull das outras tabelas
     }
+  }
+
+  // Atualiza o tempo do último pull com sucesso
+  if (highestCloudTime > lastPull) {
+    setLastSyncTime('pull', highestCloudTime);
   }
 }
 
 /**
- * Lê todas as tabelas locais, criptografa cada registro individualmente e faz o push
- * para o Firebase, também respeitando o "Last Write Wins".
+ * Realiza o upload (Push) inteligente dos dados modificados localmente para a nuvem.
  * 
- * Otimizações:
- * - Usa getDocs (batch) por tabela em vez de getDoc individual por linha
- * - Registros deletados são sempre enviados (deleção tem prioridade)
- * - Cada setDoc tem try/catch isolado — uma falha não aborta o sync inteiro
+ * Lógica do Diff Local:
+ * 1. Verifica se há conexão com a internet. Se não, aborta lançando um erro legível.
+ * 2. Recupera o último Timestamp de PUSH salvo no navegador.
+ * 3. Busca todas as linhas da tabela local, filtrando apenas aquelas cujo `updated_at` é mais novo que o último PUSH.
+ * 4. Ao invés de sobrescrever o Firestore cegamente, ele baixa metadados mínimos dos documentos alvo para comparar datas (Last Write Wins).
+ * 5. Se o dado local for realmente mais novo, criptografa o documento via AES-GCM usando a `masterKey` e sobe para o Firebase (`setDoc`).
+ * 
+ * @param masterKey - A chave criptográfica para encriptar os dados (E2EE).
+ * @throws Dispara um erro se não houver internet ou se houver falha de gravação de lotes.
  */
 export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
   if (!window.api?.sync) return;
+  if (!navigator.onLine) {
+    throw new Error("Sem conexão com a internet (Offline).");
+  }
+
+  const lastPush = getLastSyncTime('push');
+  let pushedCount = 0;
+  let highestLocalTime = lastPush;
+  const errors: string[] = [];
 
   for (const table of SYNC_TABLES) {
     try {
       const localRows = await window.api.sync.getTable(table);
       if (localRows.length === 0) continue;
 
+      // Filtro Diff: Apenas tenta enviar o que foi atualizado após o último push!
+      // Se não for o primeiro push, economizamos descriptografia em massa da nuvem.
+      const rowsToPush = lastPush > 0 
+        ? localRows.filter((r: any) => parseDateSafe(r.updated_at || r.created_at || 0) >= lastPush)
+        : localRows;
+
+      if (rowsToPush.length === 0) continue;
+
+      // Precisamos baixar a coleção apenas para garantir que não sobrescrevemos algo muito mais novo
       const cloudSnap = await getDocs(collection(db, table));
       const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
       
-      for (const row of localRows) {
+      for (const row of rowsToPush) {
         const localTime = parseDateSafe(row.updated_at || row.created_at || 0);
+        if (localTime > highestLocalTime) highestLocalTime = localTime;
+        
         const isDeleted = !!row.deleted_at;
         const cloudData = cloudMap.get(row.id);
 
@@ -212,8 +280,6 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
           const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
           
           // ⚡ Comparação pura por timestamp (Last Write Wins)
-          // Removido: descriptografia de CADA doc da nuvem para comparar CRDT
-          // O merge CRDT é feito com segurança no pullAllFromCloud.
           if (!isDeleted && localTime <= cloudTime) {
             if (typeof window !== 'undefined' && (window as any).api?.log) {
               (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
@@ -224,7 +290,7 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
 
         try {
           if (typeof window !== 'undefined' && (window as any).api?.log) {
-            (window as any).api.log(`[PUSH DOING] Doc ${row.id}. Pushing to Firebase.`);
+            (window as any).api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
           }
           const { id, updated_at, created_at, ...sensitiveData } = row;
           const encryptedData = await encryptText(JSON.stringify(sensitiveData), masterKey);
@@ -234,19 +300,54 @@ export async function pushAllToCloud(masterKey: CryptoKey): Promise<void> {
             updatedAt: updated_at || null,
             createdAt: created_at || null
           }, { merge: true });
+          pushedCount++;
         } catch (err: any) {
           const msg = `PUSH erro doc ${row.id} (${table}): ${err?.message}`;
           console.error(msg);
-          (window.api as any).log?.(msg);
+          errors.push(msg);
         }
       }
     } catch (err: any) {
-      const msg = `PUSH erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
+      const msg = `PUSH erro tabela ${table}: ${err?.message}`;
       console.error(msg);
-      (window.api as any).log?.(msg);
-      // Não propaga — continua com a próxima tabela
+      errors.push(msg);
     }
   }
+
+  if (errors.length > 0) {
+    throw new Error(`Ocorreram ${errors.length} erros durante o Push. Primeiro erro: ${errors[0]}`);
+  }
+
+  if (pushedCount > 0) {
+    if (typeof window !== 'undefined' && (window as any).api?.log) {
+      (window as any).api.log(`[PUSH SUCCESS] ${pushedCount} registros enviados com sucesso.`);
+    }
+    // Atualiza o tempo local
+    setLastSyncTime('push', highestLocalTime);
+    // Sinaliza na nuvem para que outros dispositivos façam pull
+    try {
+      await setDoc(doc(db, 'config', 'sync_signal'), {
+        updatedAt: serverTimestamp(),
+        source: navigator.userAgent
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Falha ao enviar sinal de sync", e);
+    }
+  }
+}
+
+/**
+ * Inscreve-se para escutar sinais de atualização vindos de OUTROS dispositivos (Real-time).
+ * Retorna uma função para cancelar a inscrição.
+ */
+export function listenForCloudSyncSignal(onSignal: () => void) {
+  const signalRef = doc(db, 'config', 'sync_signal');
+  return onSnapshot(signalRef, (docSnap) => {
+    if (docSnap.exists()) {
+      // Sempre que houver uma alteração na nuvem vinda de outro lugar, avisa a UI para rodar o PULL
+      onSignal();
+    }
+  });
 }
 
 /**

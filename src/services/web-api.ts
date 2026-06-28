@@ -1,6 +1,5 @@
 import { getWebDb } from './db-web';
-import { uploadEncryptedPdf, getDecryptedPdf } from './storage';
-import type { Page, Transaction, WishlistItem, LibraryBook, LibraryHighlight, LibraryBookmark, LibraryCollection, OcrCacheEntry, ReadingSession, BookReadingStats, GlobalReadingStats, PageHistoryEntry } from '../types';
+import { uploadEncryptedPdf } from './storage';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -264,7 +263,7 @@ export const createWebApiMock = async () => {
         await db.put('library_books', { ...existing, ...book, updated_at: new Date().toISOString() });
         return 1;
       },
-      getBookFile: async (id: string) => {
+      getBookFile: async (_id: string) => {
         // A versão Web não tem acesso direto aos arquivos do Desktop.
         // E como desativamos o Firebase Storage, retornamos null direto para que o
         // PdfReader.tsx caia automaticamente no fallback do Google Drive.
@@ -285,8 +284,46 @@ export const createWebApiMock = async () => {
         await db.delete('library_collections', id);
         return true;
       },
-      setBookCollections: async () => true, // Simplificado para Web por enquanto
-      getBookCollections: async () => [],
+      setBookCollections: async (bookId: string, collectionIds: string[]) => {
+        const existing = await db.getAllFromIndex('library_book_collections', 'book_id', bookId);
+        
+        for (const e of existing) {
+          if (!collectionIds.includes(e.collection_id)) {
+            if (!e.deleted_at) {
+              e.deleted_at = new Date().toISOString();
+              e.updated_at = new Date().toISOString();
+              await db.put('library_book_collections', e);
+            }
+          } else {
+            if (e.deleted_at) {
+               e.deleted_at = null;
+               e.updated_at = new Date().toISOString();
+               await db.put('library_book_collections', e);
+            }
+          }
+        }
+        
+        const existingColIds = existing.map((e: any) => e.collection_id);
+        const newCols = collectionIds.filter(id => !existingColIds.includes(id));
+        for (const colId of newCols) {
+          await db.put('library_book_collections', {
+            id: generateId(),
+            book_id: bookId,
+            collection_id: colId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null
+          });
+        }
+        return true;
+      },
+      getBookCollections: async (bookId: string) => {
+        const bookCols = await db.getAllFromIndex('library_book_collections', 'book_id', bookId);
+        const activeCols = bookCols.filter((r: any) => !r.deleted_at).map((r: any) => r.collection_id);
+        
+        const allCollections = await db.getAll('library_collections');
+        return allCollections.filter((c: any) => activeCols.includes(c.id) && !c.deleted_at);
+      },
       
       getHighlights: async (bookId: string) => {
         const all = await db.getAllFromIndex('library_highlights', 'book_id', bookId);
