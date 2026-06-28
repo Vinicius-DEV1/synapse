@@ -90,13 +90,13 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
         </button>
         {showColors && (
           <div ref={colorMenuRef} className="absolute bottom-full mb-2 left-0 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50">
-            {BG_COLORS.map(color => (
+            {BG_COLORS.filter(c => c.value !== 'transparent').map(color => (
               <button 
-                key={color.class}
-                onClick={() => { handleFormat('highlight', color.color); setShowColors(false); }}
+                key={color.name}
+                onClick={() => { handleFormat('highlight', color.hex); setShowColors(false); }}
                 className="w-6 h-6 rounded-full border border-white/20 hover:scale-110 transition-transform"
-                style={{ backgroundColor: color.color }}
-                title={color.class}
+                style={{ backgroundColor: color.hex }}
+                title={color.name}
               />
             ))}
           </div>
