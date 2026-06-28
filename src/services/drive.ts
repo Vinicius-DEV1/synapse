@@ -167,9 +167,24 @@ export async function downloadFromDrive(accessToken: string, fileId: string): Pr
  * Pega as credenciais persistidas localmente
  */
 export async function getDriveCredentials(): Promise<{ token: DriveToken | null }> {
-  if (window.api?.drive) {
-    return await window.api.drive.getCredentials();
+  if (window.api?.sync) {
+    try {
+      const rows = await window.api.sync.getTable('config');
+      const row = rows.find((r: any) => r.id === 'drive_credentials');
+      if (row && row.value) {
+        return JSON.parse(row.value);
+      }
+    } catch (e) {
+      console.warn("Failed to read drive_credentials from SQLite", e);
+    }
+    // Fallback to local file for backwards compatibility
+    if (window.api?.drive) {
+      return await window.api.drive.getCredentials();
+    }
+    return { token: null };
   }
+  
+  // Web fallback (lê do config no IndexedDB)
   const db = await getWebDb();
   const config = await db.get('config', 'drive_credentials');
   if (config && config.value) {
@@ -187,10 +202,21 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
  */
 export async function saveDriveCredentials(token: DriveToken | null): Promise<void> {
   const data = { token };
-  if (window.api?.drive) {
-    await window.api.drive.saveCredentials(data);
+  
+  if (window.api?.sync) {
+    // Salva na tabela config para que o sync engine envie pro Firebase
+    await window.api.sync.upsertRow('config', {
+      id: 'drive_credentials',
+      value: JSON.stringify(data),
+      updated_at: new Date().toISOString()
+    });
+    // Fallback local file
+    if (window.api?.drive) {
+      await window.api.drive.saveCredentials(data);
+    }
     return;
   }
+  
   const db = await getWebDb();
   await db.put('config', { 
     id: 'drive_credentials', 
