@@ -59,7 +59,7 @@ export interface WishlistItem {
 export type ReadingStatus = 'not_started' | 'reading' | 'finished';
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
 export type HighlightType = 'text' | 'rect';
-export type ReadingMode = 'light' | 'sepia' | 'dark';
+export type ReadingMode = 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
 
 export interface LibraryBook {
   id: string;

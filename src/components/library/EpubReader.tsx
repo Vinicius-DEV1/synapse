@@ -318,11 +318,30 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       rendition.themes.fontSize(`${fontSize}%`);
       const font = fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : 'Inter, sans-serif';
       
-      const themeCss = readingMode === 'dark' 
-          ? { 'body': { 'background': '#1a1a1a !important', 'color': '#cccccc !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }}
-          : readingMode === 'sepia' 
-          ? { 'body': { 'background': '#f4ecd8 !important', 'color': '#5b4636 !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }}
-          : { 'body': { 'background': '#ffffff !important', 'color': '#333333 !important', 'font-family': `${font} !important`, 'padding-bottom': '60px !important' }};
+      const getEpubThemeColors = (mode: string) => {
+        switch (mode) {
+          case 'dark': return { bg: '#1a1a2e', text: '#d1d5db' };
+          case 'midnight': return { bg: '#0f172a', text: '#94a3b8' };
+          case 'dim': return { bg: '#2d2d30', text: '#e0e0e0' };
+          case 'nord': return { bg: '#2e3440', text: '#d8dee9' };
+          case 'high-contrast': return { bg: '#000000', text: '#ffffff' };
+          case 'sepia': return { bg: '#f4ecd8', text: '#5b4636' };
+          case 'mint': return { bg: '#e8f5e9', text: '#1b4332' };
+          case 'light':
+          default: return { bg: '#ffffff', text: '#333333' };
+        }
+      };
+
+      const colors = getEpubThemeColors(readingMode);
+      const themeCss = {
+        'body': { 
+          'background': `${colors.bg} !important`, 
+          'color': `${colors.text} !important`, 
+          'font-family': `${font} !important`, 
+          'padding-bottom': '60px !important' 
+        }
+      };
+
           
       rendition.themes.register('custom', themeCss);
       rendition.themes.select('custom');
@@ -350,21 +369,32 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     return () => { rendition.off('relocated', onRelocated); };
   }, [rendition, locationsReady, epubBook]);
 
+  const cycleReadingMode = () => {
+    setReadingMode((prev: string) => {
+      const modes = ['light', 'sepia', 'mint', 'dim', 'nord', 'midnight', 'dark', 'high-contrast'];
+      const nextIndex = (modes.indexOf(prev) + 1) % modes.length;
+      return modes[nextIndex] as any;
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') rendition?.next();
       if (e.key === 'ArrowLeft') rendition?.prev();
+      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+        cycleReadingMode();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [rendition]);
+  }, [rendition, setReadingMode]);
 
   const progressPercentage = Math.round((useEpub().progress || 0) * 100);
   const currentPageSafe = useEpub().currentPage || 0;
   const totalPagesSafe = useEpub().totalPages || 0;
 
   return (
-    <div className={`h-full flex flex-col ${readingMode === 'dark' ? 'bg-[#0f0e17]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : 'bg-white'}`}>
+    <div className={`h-full flex flex-col reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
       <div className={`
         md:block flex-shrink-0 transition-transform duration-300 z-50
         ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}

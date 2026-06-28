@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Rendition, Book } from 'epubjs';
-import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
+import type { LibraryBook, LibraryHighlight, LibraryBookmark, ReadingMode } from '../../../types';
+import { getSettings, saveSettings } from '../../../utils/settings';
 
 interface EpubContextType {
   book: LibraryBook;
@@ -12,8 +13,8 @@ interface EpubContextType {
   // Reading Settings
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
-  readingMode: 'light' | 'sepia' | 'dark';
-  setReadingMode: React.Dispatch<React.SetStateAction<'light' | 'sepia' | 'dark'>>;
+  readingMode: ReadingMode;
+  setReadingMode: (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => void;
   fontFamily: 'sans' | 'serif' | 'opendyslexic';
   setFontFamily: React.Dispatch<React.SetStateAction<'sans' | 'serif' | 'opendyslexic'>>;
   scrollMode: boolean;
@@ -63,7 +64,15 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [epubBook, setEpubBook] = useState<Book | null>(null);
   
   const [fontSize, setFontSize] = useState(100);
-  const [readingMode, setReadingMode] = useState<'light' | 'sepia' | 'dark'>('light');
+  const [readingMode, setReadingModeState] = useState<ReadingMode>(getSettings().defaultReadingMode || 'light');
+
+  const setReadingMode = (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => {
+    setReadingModeState(prev => {
+      const newMode = typeof mode === 'function' ? mode(prev) : mode;
+      saveSettings({ ...getSettings(), defaultReadingMode: newMode });
+      return newMode;
+    });
+  };
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic'>('sans');
   const [scrollMode, setScrollMode] = useState(false);
   
