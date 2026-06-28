@@ -124,18 +124,23 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            newEpubBook.ready.then(() => {
               newEpubBook.loaded.navigation.then(nav => setToc(nav.toc));
               return newEpubBook.locations.generate(1600);
-           }).then((locations) => {
-              if (!active) return;
-              setTotalPages(locations.length);
-              setLocationsReady(true);
-              
-              if (newRendition.location && newRendition.location.start) {
-                const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
-                setProgress(percentage);
-                const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
-                setCurrentPage(current);
-              }
-           }).catch(console.error);
+            }).then((locations) => {
+               if (!active) return;
+               setTotalPages(locations.length);
+               setLocationsReady(true);
+               
+               // Persiste total_pages no banco para a barra de progresso na Grid
+               onUpdateBook({ total_pages: locations.length });
+               
+               if (newRendition.location && newRendition.location.start) {
+                 const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
+                 setProgress(percentage);
+                 const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
+                 setCurrentPage(current);
+                 // Persiste posição numérica atual
+                 onUpdateBook({ current_page: current } as any);
+               }
+            }).catch(console.error);
 
            newRendition.on('selected', (cfiRange: string, contents: any) => {
               const windowSelection = contents.window.getSelection();
@@ -246,6 +251,8 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         setProgress(percentage);
         const current = epubBook.locations.locationFromCfi(location.start.cfi);
         setCurrentPage(current);
+        // Persiste posição numérica para a barra de progresso na Grid
+        onUpdateBook({ current_page: current } as any);
       }
     };
 
