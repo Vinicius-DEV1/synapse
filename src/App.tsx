@@ -188,7 +188,7 @@ function AppContent() {
         document.title = 'Caderno Web';
       }
     }
-  }, [activeModule]);
+  }, [activeModule, activeTab?.bookTitle]);
 
   const activePage = activeTab?.pageId
     ? state.pages.find((p) => p.id === activeTab.pageId) || null
