@@ -110,6 +110,13 @@ export default function EpubHighlightMenu() {
   // ────────────────────────────────────────────
   const menuContent = (
     <>
+      {/* Texto Selecionado (Preview) */}
+      {selection.text && (
+        <div className={`mb-3 border-l-2 pl-2 pr-1 py-0.5 text-xs italic opacity-80 line-clamp-2 ${readingMode === 'dark' ? 'border-brand-400' : 'border-brand-500'}`}>
+          "{selection.text}"
+        </div>
+      )}
+
       {/* Barra de cores + ações rápidas */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
