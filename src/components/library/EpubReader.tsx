@@ -128,7 +128,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
               let text = windowSelection.toString();
               
               if (text && windowSelection.rangeCount > 0) {
-                 const range = windowSelection.getRangeAt(0);
+                 const range = windowSelection.getRangeAt(0).cloneRange();
                  
                  if (text.endsWith(' ') || text.endsWith('\n')) {
                     text = text.trim();
