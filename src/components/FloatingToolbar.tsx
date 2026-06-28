@@ -7,6 +7,7 @@ interface FloatingToolbarProps {
     bold: boolean;
     italic: boolean;
     strike: boolean;
+    underline: boolean;
     code: boolean;
     highlight: boolean;
   };
@@ -66,19 +67,41 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
         <Strikethrough size={15} />
       </button>
       <button
+        onClick={() => handleFormat('underline')}
+        className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.underline ? activeClass : inactiveClass}`}
+        title="Sublinhado"
+      >
+        <Underline size={15} />
+      </button>
+      <button
         onClick={() => handleFormat('code')}
         className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.code ? activeClass : inactiveClass}`}
         title="Código"
       >
         <Code size={15} />
       </button>
-      <button
-        onClick={() => handleFormat('highlight')}
-        className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight ? activeClass : inactiveClass}`}
-        title="Destaque"
-      >
-        <Palette size={15} />
-      </button>
+      <div className="relative">
+        <button
+          onClick={() => setShowColors(!showColors)}
+          className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight ? activeClass : inactiveClass}`}
+          title="Destaque"
+        >
+          <Palette size={15} />
+        </button>
+        {showColors && (
+          <div ref={colorMenuRef} className="absolute bottom-full mb-2 left-0 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50">
+            {BG_COLORS.map(color => (
+              <button 
+                key={color.class}
+                onClick={() => { handleFormat('highlight', color.color); setShowColors(false); }}
+                className="w-6 h-6 rounded-full border border-white/20 hover:scale-110 transition-transform"
+                style={{ backgroundColor: color.color }}
+                title={color.class}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {onAiClick && (
         <button
