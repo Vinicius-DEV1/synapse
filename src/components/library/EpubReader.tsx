@@ -141,25 +141,27 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                  }
                  
                  const rect = range.getBoundingClientRect();
-                 const safeRect = {
-                    top: rect.top,
-                    left: rect.left,
-                    width: rect.width,
-                    height: rect.height,
-                    bottom: rect.bottom,
-                    right: rect.right,
-                    x: rect.x,
-                    y: rect.y,
-                    toJSON: rect.toJSON
-                 } as DOMRect;
-                 
+                 let offsetX = 0;
+                 let offsetY = 0;
                  const iframe = viewerRef.current?.querySelector('iframe');
                  if (iframe) {
                      const iframeRect = iframe.getBoundingClientRect();
-                     safeRect.top += iframeRect.top;
-                     safeRect.left += iframeRect.left;
+                     offsetX = iframeRect.left;
+                     offsetY = iframeRect.top;
                  }
-                 
+
+                 const safeRect = {
+                    top: rect.top + offsetY,
+                    left: rect.left + offsetX,
+                    bottom: rect.bottom + offsetY,
+                    right: rect.right + offsetX,
+                    x: rect.x + offsetX,
+                    y: rect.y + offsetY,
+                    width: rect.width,
+                    height: rect.height,
+                    toJSON: rect.toJSON
+                 } as DOMRect;
+
                  setSelection({ cfiRange, text, rect: safeRect });
               }
            });
