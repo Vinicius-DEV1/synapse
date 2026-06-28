@@ -136,8 +136,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                         try {
                            range.setEnd(range.endContainer, range.endOffset - 1);
                            cfiRange = new (ePub as any).CFI(range, contents.cfiBase).toString();
-                           windowSelection.removeAllRanges();
-                           windowSelection.addRange(range);
                         } catch (e) {}
                     }
                  }
