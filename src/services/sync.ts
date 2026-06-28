@@ -85,6 +85,41 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
 }
 
 /**
+ * Envia as chaves modulares criptografadas para a nuvem.
+ * Permite que a versão Web (ou outros dispositivos) baixem as chaves.
+ */
+export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
+  if (!navigator.onLine) return;
+  try {
+    const payload = JSON.stringify(keys);
+    const encryptedData = await encryptText(payload, masterKey);
+    await setDoc(doc(db, 'config', 'module_keys'), {
+      encryptedData,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error("Erro ao subir chaves modulares", err);
+  }
+}
+
+/**
+ * Baixa as chaves modulares da nuvem.
+ */
+export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Record<string, string> | null> {
+  if (!navigator.onLine) return null;
+  try {
+    const docSnap = await getDoc(doc(db, 'config', 'module_keys'));
+    if (docSnap.exists() && docSnap.data().encryptedData) {
+      const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
+      return JSON.parse(decryptedJson);
+    }
+  } catch (err) {
+    console.error("Erro ao baixar chaves modulares", err);
+  }
+  return null;
+}
+
+/**
  * Faz o download das atualizações na nuvem (Firebase) para a base local.
  *
  * Arquitetura de Sincronização:
