@@ -12,7 +12,7 @@ export default function EpubHighlightMenu() {
     readingMode, setHighlights
   } = useEpub();
 
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'top',
     elements: {
       reference: selection?.rect ? { getBoundingClientRect: () => selection.rect } : null,
@@ -77,8 +77,11 @@ export default function EpubHighlightMenu() {
   return (
     <div 
       ref={refs.setFloating}
-      className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 animate-fade-in w-56 ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-700 text-white' : readingMode === 'sepia' ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]' : 'bg-white border-gray-200 text-gray-900'}`}
-      style={floatingStyles}
+      className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-700 text-white' : readingMode === 'sepia' ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]' : 'bg-white border-gray-200 text-gray-900'}`}
+      style={{
+        ...floatingStyles,
+        visibility: isPositioned ? 'visible' : 'hidden'
+      }}
     >
       <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
