@@ -154,7 +154,6 @@ export default function EpubHighlightMenu() {
       {noteMode && (
         <div className={`flex flex-col gap-1.5 mt-2 border-t pt-2 ${noteAreaClass}`}>
           <textarea
-            autoFocus
             value={noteText}
             onChange={e => setNoteText(e.target.value)}
             placeholder="Escreva sua nota aqui..."
