@@ -14,16 +14,11 @@ export default function EpubHighlightMenu() {
 
   const { refs, floatingStyles } = useFloating({
     placement: 'top',
+    elements: {
+      reference: selection?.rect ? { getBoundingClientRect: () => selection.rect } : null,
+    },
     middleware: [offset(10), flip(), shift({ padding: 10 })],
   });
-
-  useEffect(() => {
-    if (selection?.rect) {
-      refs.setReference({
-        getBoundingClientRect: () => selection.rect,
-      });
-    }
-  }, [selection?.rect, refs]);
 
   if (!selection) return null;
 
