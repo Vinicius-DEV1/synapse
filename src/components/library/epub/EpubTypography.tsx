@@ -1,0 +1,63 @@
+import React from 'react';
+import { ZoomOut, ZoomIn } from 'lucide-react';
+import { useEpub } from './EpubContext';
+
+export default function EpubTypography() {
+  const {
+    showSettings, readingMode, setReadingMode,
+    fontSize, setFontSize, fontFamily, setFontFamily,
+    scrollMode, setScrollMode
+  } = useEpub();
+
+  if (!showSettings) return null;
+
+  return (
+    <div className={`absolute top-16 right-4 p-4 rounded-2xl shadow-2xl z-30 border w-64
+       ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-800 text-gray-200' : 
+         readingMode === 'sepia' ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]' : 
+         'bg-white border-gray-200 text-gray-800'}`}>
+      
+      <div className="mb-4">
+        <div className="text-xs font-semibold mb-2 opacity-70 uppercase tracking-wider">Tamanho da Fonte</div>
+        <div className="flex items-center justify-between bg-black/5 rounded-lg p-1">
+          <button onClick={() => setFontSize(f => Math.max(50, f - 10))} className="p-2 hover:bg-black/5 rounded-md flex-1 flex justify-center">
+            <ZoomOut size={18} />
+          </button>
+          <span className="text-sm font-medium w-12 text-center">{fontSize}%</span>
+          <button onClick={() => setFontSize(f => Math.min(250, f + 10))} className="p-2 hover:bg-black/5 rounded-md flex-1 flex justify-center">
+            <ZoomIn size={18} />
+          </button>
+        </div>
+      </div>
+      
+      <div className="mb-4">
+        <div className="text-xs font-semibold mb-2 opacity-70 uppercase tracking-wider">Estilo da Fonte</div>
+        <div className="flex flex-col gap-1">
+          <button onClick={() => setFontFamily('sans')} className={`px-3 py-2 rounded-lg text-sm text-left ${fontFamily === 'sans' ? 'bg-brand-500 text-white' : 'hover:bg-black/5'}`} style={{ fontFamily: 'sans-serif' }}>Sem Serifa (Moderno)</button>
+          <button onClick={() => setFontFamily('serif')} className={`px-3 py-2 rounded-lg text-sm text-left ${fontFamily === 'serif' ? 'bg-brand-500 text-white' : 'hover:bg-black/5'}`} style={{ fontFamily: 'serif' }}>Com Serifa (Clássico)</button>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs font-semibold mb-2 opacity-70 uppercase tracking-wider">Tema de Leitura</div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setReadingMode('light')} className={`w-8 h-8 rounded-full bg-white border-2 ${readingMode === 'light' ? 'border-brand-500' : 'border-gray-300'}`} />
+          <button onClick={() => setReadingMode('sepia')} className={`w-8 h-8 rounded-full bg-[#f4ecd8] border-2 ${readingMode === 'sepia' ? 'border-brand-500' : 'border-gray-300'}`} />
+          <button onClick={() => setReadingMode('dark')} className={`w-8 h-8 rounded-full bg-[#1a1a1a] border-2 ${readingMode === 'dark' ? 'border-brand-500' : 'border-gray-700'}`} />
+        </div>
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm font-semibold opacity-80 flex flex-col">
+            <span>Leitura Contínua</span>
+            <span className="text-[10px] opacity-60 font-normal">Rolar página verticalmente</span>
+          </div>
+          <button 
+            onClick={() => setScrollMode(!scrollMode)}
+            className={`w-10 h-6 rounded-full transition-colors relative flex items-center ${scrollMode ? 'bg-brand-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+          >
+            <div className={`w-4 h-4 bg-white rounded-full shadow-sm absolute transition-transform ${scrollMode ? 'translate-x-5' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

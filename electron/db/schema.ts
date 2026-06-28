@@ -130,7 +130,7 @@ export function setupTables(): Promise<void> {
           `));
           
           // Migration patch for last_read_page
-          db.run("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;", () => {});
+          promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;"));
         }
 
         // FINANCE TABLES
