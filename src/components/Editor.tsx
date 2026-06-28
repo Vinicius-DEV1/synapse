@@ -5,6 +5,7 @@ import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Highlight } from '@tiptap/extension-highlight';
+import Underline from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
 import { Image } from '@tiptap/extension-image';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
@@ -72,7 +73,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         history: false, 
       }),
       Placeholder.configure({ placeholder: "Digite '/' para comandos ou comece a escrever..." }),
-      Highlight,
+      Highlight.configure({ multicolor: true }),
+      Underline,
       Link.configure({ openOnClick: false }),
       Image,
       Table.configure({ resizable: true }),
@@ -206,15 +208,23 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               bold: editor.isActive('bold'),
               italic: editor.isActive('italic'),
               strike: editor.isActive('strike'),
+              underline: editor.isActive('underline'),
               code: editor.isActive('code'),
               highlight: editor.isActive('highlight'),
             }}
-            onFormat={(cmd) => {
+            onFormat={(cmd, value) => {
               if (cmd === 'bold') editor.commands.toggleBold();
               if (cmd === 'italic') editor.commands.toggleItalic();
               if (cmd === 'strike') editor.commands.toggleStrike();
+              if (cmd === 'underline') editor.commands.toggleUnderline();
               if (cmd === 'code') editor.commands.toggleCode();
-              if (cmd === 'highlight') editor.commands.toggleHighlight();
+              if (cmd === 'highlight') {
+                if (value) {
+                  editor.commands.toggleHighlight({ color: value });
+                } else {
+                  editor.commands.toggleHighlight();
+                }
+              }
             }}
           />
         </BubbleMenu>
