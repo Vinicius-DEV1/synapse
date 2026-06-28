@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Trash2, Sparkles } from 'lucide-react';
 import { useFloating, offset, flip, shift } from '@floating-ui/react';
 import { useEpub } from './EpubContext';
@@ -17,7 +17,7 @@ export default function EpubHighlightMenu() {
     middleware: [offset(10), flip(), shift({ padding: 10 })],
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (selection?.rect) {
       refs.setPositionReference({
         getBoundingClientRect: () => selection.rect,
