@@ -42,13 +42,20 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
 
         const res = await window.api.auth.setup(password);
-        if (res.success && res.keys) {
-          const moduleKeys: Record<string, CryptoKey> = {};
-          if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
-          if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
-          if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
-
+        if (res.success) {
           const masterKey = await deriveMasterKey(password);
+          const moduleKeys: Record<string, CryptoKey> = {};
+          
+          if (res.keys) {
+            if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
+            if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
+            if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+          } else {
+            moduleKeys.library = masterKey;
+            moduleKeys.finance = masterKey;
+            moduleKeys.notes = masterKey;
+            moduleKeys.core = masterKey;
+          }
           
           if (cloudCheck.isNew) {
             await initializeCloudValidator(masterKey);
@@ -65,13 +72,21 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
       } else {
         const res = await window.api.auth.login(password);
-        if (res.success && res.keys) {
-          const moduleKeys: Record<string, CryptoKey> = {};
-          if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
-          if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
-          if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
-
+        if (res.success) {
           const masterKey = await deriveMasterKey(password);
+          const moduleKeys: Record<string, CryptoKey> = {};
+          
+          if (res.keys) {
+            if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
+            if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
+            if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+          } else {
+            moduleKeys.library = masterKey;
+            moduleKeys.finance = masterKey;
+            moduleKeys.notes = masterKey;
+            moduleKeys.core = masterKey;
+          }
+
           
           // FORÇAR A CURA DO VALIDADOR NA NUVEM
           // Toda vez que você faz um login com sucesso no seu app principal,
