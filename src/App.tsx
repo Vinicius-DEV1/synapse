@@ -141,6 +141,14 @@ function AppContent() {
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module;
 
+  // Failsafe: If activeTabId is completely detached from the available tabs (e.g. from a broken localStorage state),
+  // self-correct to the first available tab so actions like NAVIGATE_IN_TAB don't silently fail.
+  useEffect(() => {
+    if (state.tabs.length > 0 && !state.tabs.some(t => t.id === state.activeTabId)) {
+      dispatch({ type: 'SWITCH_TAB', tabId: state.tabs[0].id });
+    }
+  }, [state.tabs, state.activeTabId, dispatch]);
+
   // Update document title based on active module and platform
   useEffect(() => {
     const isElectron = navigator.userAgent.toLowerCase().includes('electron');

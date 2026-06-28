@@ -209,10 +209,30 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            });
            
            newRendition.on('click', () => {
-              setShowSettings(false);
-              setSelection(null);
-              setNoteMode(null);
-              handleEpubClick();
+             setShowSettings(false);
+             setSelection(null);
+             setNoteMode(null);
+             handleEpubClick();
+           });
+
+           newRendition.on('touchstart', (event: TouchEvent) => {
+             const touch = event.changedTouches[0];
+             (newRendition as any)._touchStartX = touch.screenX;
+           });
+
+           newRendition.on('touchend', (event: TouchEvent) => {
+             const touch = event.changedTouches[0];
+             const touchEndX = touch.screenX;
+             const touchStartX = (newRendition as any)._touchStartX;
+             
+             if (touchStartX !== undefined) {
+               const deltaX = touchEndX - touchStartX;
+               if (deltaX > 50) {
+                 newRendition.prev();
+               } else if (deltaX < -50) {
+                 newRendition.next();
+               }
+             }
            });
            
            newRendition.on('keyup', (event: any) => {
@@ -324,7 +344,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
         <EpubHighlightMenu />
 
-        <button onClick={() => rendition?.prev()} className="absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+        <button onClick={() => rendition?.prev()} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
             <ArrowLeft size={32} />
           </div>
@@ -332,7 +352,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         
         <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto" style={{ padding: '0 40px' }} />
 
-        <button onClick={() => rendition?.next()} className="absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+        <button onClick={() => rendition?.next()} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
              <ArrowLeft size={32} className="rotate-180" />
           </div>
