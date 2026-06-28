@@ -438,7 +438,20 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           const fileData = await window.api.library.getBookFile(book.id);
           if (!fileData) continue;
           
-          const buffer = fileData instanceof Uint8Array ? fileData.buffer : fileData;
+          // getBookFile returns base64 string - decode to ArrayBuffer
+          let buffer: ArrayBuffer;
+          if (typeof fileData === 'string') {
+            const binaryString = atob(fileData);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            buffer = bytes.buffer;
+          } else if (fileData instanceof Uint8Array) {
+            buffer = fileData.buffer;
+          } else {
+            buffer = fileData;
+          }
           
           // Criptografa o PDF inteiro
           const encrypted = await encryptFile(buffer, masterKey);
