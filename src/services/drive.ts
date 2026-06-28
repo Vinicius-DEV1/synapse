@@ -171,8 +171,11 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
     try {
       const rows = await window.api.sync.getTable('config');
       const row = rows.find((r: any) => r.id === 'drive_credentials');
-      if (row && row.value) {
-        return JSON.parse(row.value);
+      if (row) {
+        const val = row.data || row.value;
+        if (val) {
+          return JSON.parse(val);
+        }
       }
     } catch (e) {
       console.warn("Failed to read drive_credentials from SQLite", e);
@@ -187,11 +190,14 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
   // Web fallback (lê do config no IndexedDB)
   const db = await getWebDb();
   const config = await db.get('config', 'drive_credentials');
-  if (config && config.value) {
-    try {
-      return JSON.parse(config.value);
-    } catch (e) {
-      return { token: null };
+  if (config) {
+    const val = config.data || config.value;
+    if (val) {
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        return { token: null };
+      }
     }
   }
   return { token: null };
@@ -201,18 +207,19 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
  * Salva as credenciais persistidas localmente
  */
 export async function saveDriveCredentials(token: DriveToken | null): Promise<void> {
-  const data = { token };
+  const dataPayload = { token };
   
   if (window.api?.sync) {
     // Salva na tabela config para que o sync engine envie pro Firebase
+    // Usa 'data' pois a coluna do SQLite se chama 'data'
     await window.api.sync.upsertRow('config', {
       id: 'drive_credentials',
-      value: JSON.stringify(data),
+      data: JSON.stringify(dataPayload),
       updated_at: new Date().toISOString()
     });
     // Fallback local file
     if (window.api?.drive) {
-      await window.api.drive.saveCredentials(data);
+      await window.api.drive.saveCredentials(dataPayload);
     }
     return;
   }
@@ -220,7 +227,7 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
   const db = await getWebDb();
   await db.put('config', { 
     id: 'drive_credentials', 
-    value: JSON.stringify(data),
+    data: JSON.stringify(dataPayload),
     updated_at: new Date().toISOString()
   });
 }

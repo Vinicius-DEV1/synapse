@@ -139,7 +139,10 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   }
 
   const lastPull = getLastSyncTime('pull');
+  console.log(`[Sync] PULL Iniciado. (lastPull: ${new Date(lastPull).toISOString()})`);
   let highestCloudTime = lastPull;
+  let pulledDocsCount = 0;
+  let skippedDocsCount = 0;
 
   for (const module of Object.keys(moduleKeys)) {
     const key = moduleKeys[module];
@@ -237,6 +240,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 Object.assign(rowToUpsert, localRow);
                 rowToUpsert.deleted_at = parsed.deleted_at;
               } else {
+                skippedDocsCount++;
                 if (typeof window !== 'undefined' && (window as any).api?.log) {
                   (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                 }
@@ -245,6 +249,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             }
 
             try {
+              pulledDocsCount++;
               await window.api.sync.upsertRow(table, rowToUpsert);
               if (typeof window !== 'undefined' && (window as any).api?.log) {
                 (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
@@ -272,6 +277,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   if (highestCloudTime > lastPull) {
     setLastSyncTime('pull', highestCloudTime);
   }
+  console.log(`[Sync] PULL Concluído. Documentos processados: ${pulledDocsCount}, Ignorados (conflito): ${skippedDocsCount}.`);
 }
 
 /**
@@ -295,8 +301,10 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
+  console.log(`[Sync] PUSH Iniciado. (lastPush: ${new Date(lastPush).toISOString()})`);
   let highestLocalTime = lastPush;
   let pushedCount = 0;
+  let pushSkippedCount = 0;
   const errors: string[] = [];
 
   for (const module of Object.keys(moduleKeys)) {
@@ -332,6 +340,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           
           // ⚡ Comparação pura por timestamp (Last Write Wins)
           if (!isDeleted && localTime <= cloudTime) {
+            pushSkippedCount++;
             if (typeof window !== 'undefined' && (window as any).api?.log) {
               (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
             }
@@ -371,6 +380,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   if (pushedCount > 0) {
+    console.log(`[Sync] PUSH finalizou envios: ${pushedCount} docs. (Ignorados: ${pushSkippedCount})`);
     if (typeof window !== 'undefined' && (window as any).api?.log) {
       (window as any).api.log(`[PUSH SUCCESS] ${pushedCount} registros enviados com sucesso.`);
     }
@@ -385,6 +395,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
     } catch (e) {
       console.warn("Falha ao enviar sinal de sync", e);
     }
+  } else {
+    console.log(`[Sync] PUSH concluído: Nada novo para enviar. (Ignorados: ${pushSkippedCount})`);
   }
 }
 
