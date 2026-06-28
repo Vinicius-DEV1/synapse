@@ -29,8 +29,8 @@ export default function SecurityTab({
     setTimeout(() => setShake(false), 500);
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasswordSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!newPassword.trim()) {
       triggerError('A nova senha não pode ser vazia.');
       return;
@@ -90,7 +90,7 @@ export default function SecurityTab({
     }
 
     return (
-      <form onSubmit={handlePasswordSubmit} className="space-y-4 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         <button 
           type="button"
           onClick={() => setIsChangingPassword(false)}
@@ -106,6 +106,7 @@ export default function SecurityTab({
             type="password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
             className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
             placeholder="Digite a nova senha..."
             autoFocus
@@ -119,6 +120,7 @@ export default function SecurityTab({
             type="password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
             className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
             placeholder="Digite a senha novamente..."
           />
@@ -132,13 +134,14 @@ export default function SecurityTab({
         )}
 
         <button
-          type="submit"
+          type="button"
+          onClick={handlePasswordSubmit}
           disabled={pwdLoading}
           className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {pwdLoading ? 'Alterando...' : 'Confirmar Alteração'}
         </button>
-      </form>
+      </div>
     );
   }
 
@@ -165,8 +168,8 @@ export default function SecurityTab({
     }
   };
 
-  const handleCreateVisitor = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateVisitor = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!visitorPassword.trim()) {
       triggerError('A senha não pode ser vazia');
       return;
@@ -260,6 +263,7 @@ export default function SecurityTab({
             </p>
           </div>
           <button
+            type="button"
             onClick={() => setShowAddVisitor(!showAddVisitor)}
             className="px-3 py-1.5 text-xs font-medium bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 rounded-lg transition-colors"
           >
@@ -268,13 +272,14 @@ export default function SecurityTab({
         </div>
 
         {showAddVisitor && (
-          <form onSubmit={handleCreateVisitor} className="mb-4 p-4 bg-black/20 border border-white/5 rounded-xl space-y-4">
+          <div className="mb-4 p-4 bg-black/20 border border-white/5 rounded-xl space-y-4">
             <div>
               <label className="block text-xs font-medium text-dark-subtext mb-1">Senha do Visitante</label>
               <input
                 type="password"
                 value={visitorPassword}
                 onChange={e => setVisitorPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreateVisitor()}
                 className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
                 placeholder="Senha que destrancará os módulos escolhidos..."
               />
@@ -307,7 +312,8 @@ export default function SecurityTab({
 
             <div className="flex gap-2">
               <button
-                type="submit"
+                type="button"
+                onClick={handleCreateVisitor}
                 disabled={visitorLoading}
                 className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2 rounded-lg text-sm transition-colors"
               >
@@ -321,7 +327,7 @@ export default function SecurityTab({
                 Cancelar
               </button>
             </div>
-          </form>
+          </div>
         )}
 
         <div className="space-y-2">
@@ -334,6 +340,7 @@ export default function SecurityTab({
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => handleDeleteVisitor(visitor.id)}
                 className="text-xs text-red-400 hover:text-red-300 px-2 py-1 bg-red-500/10 rounded"
               >
