@@ -38,6 +38,26 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const [showMobileTools, setShowMobileTools] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const turnPage = (direction: 'next' | 'prev', r: ePub.Rendition = rendition!) => {
+    if (!r) return;
+    
+    // Animação de fade rápida
+    if (viewerRef.current) {
+      viewerRef.current.style.transition = 'opacity 0.05s ease-out';
+      viewerRef.current.style.opacity = '0.3';
+    }
+    
+    setTimeout(() => {
+      if (direction === 'next') r.next();
+      else r.prev();
+      
+      if (viewerRef.current) {
+        viewerRef.current.style.transition = 'opacity 0.15s ease-in';
+        viewerRef.current.style.opacity = '1';
+      }
+    }, 50);
+  };
+
   const handleEpubClick = () => {
     setShowMobileTools(prev => {
       const nextState = !prev;
@@ -240,16 +260,16 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
              if (touchStartX !== undefined) {
                const deltaX = touchEndX - touchStartX;
                if (deltaX > 50) {
-                 newRendition.prev();
+                 turnPage('prev', newRendition);
                } else if (deltaX < -50) {
-                 newRendition.next();
+                 turnPage('next', newRendition);
                }
              }
            });
            
            newRendition.on('keyup', (event: any) => {
-              if (event.key === 'ArrowRight') newEpubBook.rendition?.next();
-              if (event.key === 'ArrowLeft') newEpubBook.rendition?.prev();
+              if (event.key === 'ArrowRight') turnPage('next', newRendition);
+              if (event.key === 'ArrowLeft') turnPage('prev', newRendition);
            });
         }
         setLoading(false);
@@ -356,19 +376,21 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
         <EpubHighlightMenu />
 
-        <button onClick={() => rendition?.prev()} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+        <div className={`relative flex-1 bg-transparent overflow-hidden ${showMobileTools ? 'z-0' : 'z-10'}`}>
+        <button onClick={() => turnPage('prev')} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
-            <ArrowLeft size={32} />
+            <ArrowLeft size={24} />
           </div>
         </button>
         
         <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" />
 
-        <button onClick={() => rendition?.next()} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+        <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${readingMode === 'dark' ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
-             <ArrowLeft size={32} className="rotate-180" />
+             <ArrowLeft size={24} className="rotate-180" />
           </div>
         </button>
+      </div>
       </div>
 
       <div className={`flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-colors z-20
