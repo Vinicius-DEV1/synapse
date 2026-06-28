@@ -34,9 +34,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const [epubError, setEpubError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Flag para evitar que o handler geral de 'click' feche a barra
-  // quando um grifo existente for tocado (os dois eventos disparam em sequência)
-  const highlightClickedRef = useRef(false);
+  // Timer usado para adiar o setSelection(null) do handler de 'click' geral,
+  // dando tempo para o callback de anotação cancelar a limpeza quando um grifo for tocado
+  const clearSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showMobileTools, setShowMobileTools] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,7 +157,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                 if (h.rects) {
                   const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
                   newRendition.annotations.highlight(h.rects, {}, (e: any) => {
-                    highlightClickedRef.current = true; // marcar antes de setSelection
+                    // Cancelar o timer de limpeza do click geral — um grifo foi tocado
+                    if (clearSelectionTimerRef.current) {
+                      clearTimeout(clearSelectionTimerRef.current);
+                      clearSelectionTimerRef.current = null;
+                    }
                     const rect = e.target.getBoundingClientRect();
                     setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id });
                     setNoteMode(h.color || 'yellow');
@@ -246,14 +250,15 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            
            newRendition.on('click', () => {
              setShowSettings(false);
-             // Se um grifo foi clicado, o evento chega aqui logo depois — ignorar
-             if (highlightClickedRef.current) {
-               highlightClickedRef.current = false;
-               return;
-             }
-             setSelection(null);
-             setNoteMode(null);
-             handleEpubClick();
+             // Adiar a limpeza em 80ms: se um grifo for o alvo do toque, seu callback
+             // chegará nesse intervalo e cancelará este timer antes que ele execute.
+             if (clearSelectionTimerRef.current) clearTimeout(clearSelectionTimerRef.current);
+             clearSelectionTimerRef.current = setTimeout(() => {
+               clearSelectionTimerRef.current = null;
+               setSelection(null);
+               setNoteMode(null);
+               handleEpubClick();
+             }, 80);
            });
 
            newRendition.on('touchstart', (event: TouchEvent) => {
