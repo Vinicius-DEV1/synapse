@@ -406,8 +406,11 @@ export function listenForCloudSyncSignal(onSignal: () => void) {
  * Verifica se existem PDFs locais (no Desktop) que ainda não foram subidos para
  * o Firebase Storage e faz o upload deles em background.
  */
-export async function syncPdfsToCloud(masterKey: CryptoKey): Promise<void> {
+export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.library) return;
+  
+  const masterKey = moduleKeys['library'];
+  if (!masterKey) return; // Library module not unlocked
   
   // Impede que esse robô de upload rode na versão Web!
   // A versão Web não tem acesso aos PDFs no HD local para fazer upload,
