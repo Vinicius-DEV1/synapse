@@ -48,6 +48,7 @@ export function setupTables(): Promise<void> {
               total_pages INTEGER DEFAULT 0,
               current_page INTEGER DEFAULT 1,
               reading_status TEXT DEFAULT 'not_started',
+              last_read_page TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL
@@ -127,6 +128,9 @@ export function setupTables(): Promise<void> {
               end_page INTEGER DEFAULT 1
             )
           `));
+          
+          // Migration patch for last_read_page
+          db.run("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;", () => {});
         }
 
         // FINANCE TABLES

@@ -181,6 +181,16 @@ export function registerLibraryHandlers() {
     });
   });
   
+  ipcMain.handle('library:update-highlight', async (_, h: any) => {
+    if (!isModuleUnlocked('library')) throw new Error('Biblioteca bloqueada');
+    return new Promise((resolve, reject) => {
+      getDb().run(`UPDATE library.library_highlights SET color = ?, note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, 
+        [h.color, h.note, h.id], (err) => {
+        if (err) reject(err); else resolve({ success: true });
+      });
+    });
+  });
+  
   ipcMain.handle('library:delete-highlight', async (_, id: string) => {
     if (!isModuleUnlocked('library')) throw new Error('Biblioteca bloqueada');
     return new Promise((resolve, reject) => {
@@ -212,7 +222,36 @@ export function registerLibraryHandlers() {
       });
     });
   });
-  ipcMain.handle('library:get-bookmarks', async () => []);
+  // Bookmarks
+  ipcMain.handle('library:get-bookmarks', async (_, bookId: string) => {
+    if (!isModuleUnlocked('library')) throw new Error('Biblioteca bloqueada');
+    return new Promise((resolve, reject) => {
+      getDb().all('SELECT * FROM library.library_bookmarks WHERE book_id = ? AND deleted_at IS NULL', [bookId], (err, rows) => {
+        if (err) reject(err); else resolve(rows || []);
+      });
+    });
+  });
+
+  ipcMain.handle('library:create-bookmark', async (_, b: any) => {
+    if (!isModuleUnlocked('library')) throw new Error('Biblioteca bloqueada');
+    const id = 'bm_' + Date.now().toString(36);
+    return new Promise((resolve, reject) => {
+      getDb().run(`INSERT INTO library.library_bookmarks (id, book_id, page_number, label) VALUES (?, ?, ?, ?)`, 
+        [id, b.book_id, b.page_number, b.label], (err) => {
+        if (err) reject(err); else resolve({ id, ...b });
+      });
+    });
+  });
+
+  ipcMain.handle('library:delete-bookmark', async (_, id: string) => {
+    if (!isModuleUnlocked('library')) throw new Error('Biblioteca bloqueada');
+    return new Promise((resolve, reject) => {
+      getDb().run(`UPDATE library.library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id], (err) => {
+        if (err) reject(err); else resolve({ success: true });
+      });
+    });
+  });
+
   ipcMain.handle('library:get-ocr-cache', async () => null);
   ipcMain.handle('library:get-reading-stats', async () => ({ globalStats: { booksStarted: 0, booksFinished: 0, totalPagesRead: 0 } }));
 }
