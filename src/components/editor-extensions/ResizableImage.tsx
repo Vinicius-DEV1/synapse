@@ -1,0 +1,83 @@
+import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import { Image as TiptapImage } from '@tiptap/extension-image';
+import { useState, useRef } from 'react';
+
+const ResizableImageNodeView = (props: any) => {
+  const { node, updateAttributes, selected } = props;
+  const [isResizing, setIsResizing] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+
+    const startX = e.clientX;
+    const startWidth = imgRef.current?.offsetWidth || 0;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const currentX = moveEvent.clientX;
+      const diff = currentX - startX;
+      // We are dragging the right handle, so moving right increases width
+      const newWidth = Math.max(50, startWidth + diff); 
+      updateAttributes({ width: newWidth });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <NodeViewWrapper className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}>
+      <img
+        ref={imgRef}
+        src={node.attrs.src}
+        alt={node.attrs.alt}
+        title={node.attrs.title}
+        width={node.attrs.width}
+        // Applying width via style to ensure it overrides max-w-full if needed, but keeps aspect ratio
+        style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', height: 'auto', maxWidth: '100%' }}
+        className={`rounded cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
+        draggable="true"
+        data-drag-handle
+      />
+
+      {/* Resize Handle */}
+      {(selected || isResizing) && (
+        <div
+          className="absolute right-0 bottom-0 w-4 h-4 bg-brand-500 rounded-full border-2 border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm"
+          onMouseDown={handleMouseDown}
+        />
+      )}
+    </NodeViewWrapper>
+  );
+};
+
+export const ResizableImage = TiptapImage.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: element => element.getAttribute('width'),
+        renderHTML: attributes => {
+          if (!attributes.width) return {};
+          return {
+            width: attributes.width,
+            style: `width: ${attributes.width}px`
+          };
+        }
+      }
+    };
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageNodeView);
+  }
+});
