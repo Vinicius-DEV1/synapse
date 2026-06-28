@@ -129,17 +129,17 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                setTotalPages(locations.length);
                setLocationsReady(true);
                
-               // Persiste total_pages no banco para a barra de progresso na Grid
-               onUpdateBook({ total_pages: locations.length });
+               const updates: Partial<LibraryBook> = { total_pages: locations.length };
                
                if (newRendition.location && newRendition.location.start) {
                  const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
                  setProgress(percentage);
                  const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
                  setCurrentPage(current);
-                 // Persiste posição numérica atual
-                 onUpdateBook({ current_page: current } as any);
+                 updates.current_page = current as any;
                }
+               
+               onUpdateBook(updates);
             }).catch(console.error);
 
            newRendition.on('selected', (cfiRange: string, contents: any) => {
@@ -245,15 +245,17 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     if (!rendition) return;
 
     const onRelocated = (location: any) => {
-      onUpdateBook({ last_read_page: location.start.cfi as any });
+      const updates: Partial<LibraryBook> = { last_read_page: location.start.cfi as any };
+      
       if (locationsReady && epubBook) {
         const percentage = epubBook.locations.percentageFromCfi(location.start.cfi);
         setProgress(percentage);
         const current = epubBook.locations.locationFromCfi(location.start.cfi);
         setCurrentPage(current);
-        // Persiste posição numérica para a barra de progresso na Grid
-        onUpdateBook({ current_page: current } as any);
+        updates.current_page = current as any;
       }
+      
+      onUpdateBook(updates);
     };
 
     rendition.on('relocated', onRelocated);
