@@ -108,7 +108,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           const token = await getValidAccessToken();
           if (token) {
              const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-             const masterKey = state.masterKey;
+             const masterKey = state.moduleKeys['library'];
              if (masterKey) {
                fileData = await decryptFile(encryptedData, masterKey);
              } else {

@@ -28,7 +28,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   } = useEpub();
 
   const { state } = useStore();
-  const masterKey = state.masterKey;
+  const masterKey = state.moduleKeys['library'];
 
   const [loading, setLoading] = useState(true);
   const [epubError, setEpubError] = useState<string | null>(null);
