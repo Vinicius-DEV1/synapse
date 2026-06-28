@@ -17,6 +17,7 @@ import { applyBase64StateToYDoc, getYDocStateAsBase64 } from '../utils/yjs-utils
 import { getSettings } from '../utils/settings';
 import SlashMenu from './SlashMenu';
 import FloatingToolbar from './FloatingToolbar';
+import ImageViewerModal from './ImageViewerModal';
 
 // Nossos blocos
 import { GroupBlock } from './editor-extensions/GroupBlock';
@@ -39,6 +40,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   // States para Slash Menu manual
   const [slashMenu, setSlashMenu] = useState<{ query: string, startPos: number, x: number, y: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // States para Image Viewer
+  const [viewerState, setViewerState] = useState<{ isOpen: boolean, src: string, nodePos: number | null }>({ isOpen: false, src: '', nodePos: null });
 
   useEffect(() => {
     const handleSettingsChange = () => setSettings(getSettings());
@@ -76,7 +80,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       Highlight.configure({ multicolor: true }),
       Underline,
       Link.configure({ openOnClick: false }),
-      Image,
+      Image.configure({ inline: true, HTMLAttributes: { class: 'inline-block m-1 rounded cursor-pointer hover:ring-2 hover:ring-brand-500 transition-all' } }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       TaskList, TaskItem.configure({ nested: true }),
@@ -91,6 +95,37 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       attributes: {
         class: `editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize} ai-highlight-${settings.aiChatHighlight || 'glow'}`,
         spellcheck: settings.spellcheck ? 'true' : 'false',
+      },
+      handlePaste: (view, event, slice) => {
+        const items = Array.from(event.clipboardData?.items || []);
+        let imagePasted = false;
+        for (const item of items) {
+          if (item.type.indexOf('image') === 0) {
+            imagePasted = true;
+            const file = item.getAsFile();
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const src = e.target?.result;
+                if (src && editor) {
+                  editor.chain().focus().setImage({ src: src as string }).run();
+                }
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        }
+        return imagePasted;
+      },
+      handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
+        if (node.type.name === 'image') {
+          const src = node.attrs.src;
+          if (src) {
+            setViewerState({ isOpen: true, src, nodePos });
+          }
+          return true;
+        }
+        return false;
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/') {
@@ -199,6 +234,20 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           onClose={() => setSlashMenu(null)} 
         />,
         document.body
+      )}
+
+      {viewerState.isOpen && (
+        <ImageViewerModal
+          isOpen={viewerState.isOpen}
+          imageSrc={viewerState.src}
+          onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null })}
+          onSave={(croppedSrc) => {
+            if (editor && viewerState.nodePos !== null) {
+              editor.chain().focus().setNodeSelection(viewerState.nodePos).setImage({ src: croppedSrc }).run();
+            }
+            setViewerState({ isOpen: false, src: '', nodePos: null });
+          }}
+        />
       )}
 
       {editor && (
