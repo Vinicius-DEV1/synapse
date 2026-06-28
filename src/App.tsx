@@ -185,8 +185,8 @@ function AppContent() {
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Tab Bar */}
-        <TabBar />
+        {/* Tab Bar - Only show in Electron */}
+        {navigator.userAgent.toLowerCase().includes('electron') && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden">
