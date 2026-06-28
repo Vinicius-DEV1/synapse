@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey } from '../services/crypto';
-import { verifyCloudMasterPassword, initializeCloudValidator } from '../services/sync';
+import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud } from '../services/sync';
 
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
@@ -44,12 +44,20 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         const res = await window.api.auth.setup(password);
         if (res.success) {
           const masterKey = await deriveMasterKey(password);
-          const moduleKeys: Record<string, CryptoKey> = {};
+          let rawKeys = res.keys;
           
-          if (res.keys) {
-            if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
-            if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
-            if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+          if (rawKeys) {
+            pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
+          } else {
+            rawKeys = await pullModularKeysFromCloud(masterKey);
+          }
+
+          const moduleKeys: Record<string, CryptoKey> = {};
+          if (rawKeys) {
+            if (rawKeys.library) moduleKeys.library = await importHexKey(rawKeys.library);
+            if (rawKeys.finance) moduleKeys.finance = await importHexKey(rawKeys.finance);
+            if (rawKeys.notes) moduleKeys.notes = await importHexKey(rawKeys.notes);
+            moduleKeys.core = masterKey;
           } else {
             moduleKeys.library = masterKey;
             moduleKeys.finance = masterKey;
@@ -74,12 +82,20 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         const res = await window.api.auth.login(password);
         if (res.success) {
           const masterKey = await deriveMasterKey(password);
-          const moduleKeys: Record<string, CryptoKey> = {};
+          let rawKeys = res.keys;
           
-          if (res.keys) {
-            if (res.keys.library) moduleKeys.library = await importHexKey(res.keys.library);
-            if (res.keys.finance) moduleKeys.finance = await importHexKey(res.keys.finance);
-            if (res.keys.notes) moduleKeys.notes = await importHexKey(res.keys.notes);
+          if (rawKeys) {
+            pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
+          } else {
+            rawKeys = await pullModularKeysFromCloud(masterKey);
+          }
+
+          const moduleKeys: Record<string, CryptoKey> = {};
+          if (rawKeys) {
+            if (rawKeys.library) moduleKeys.library = await importHexKey(rawKeys.library);
+            if (rawKeys.finance) moduleKeys.finance = await importHexKey(rawKeys.finance);
+            if (rawKeys.notes) moduleKeys.notes = await importHexKey(rawKeys.notes);
+            moduleKeys.core = masterKey;
           } else {
             moduleKeys.library = masterKey;
             moduleKeys.finance = masterKey;
