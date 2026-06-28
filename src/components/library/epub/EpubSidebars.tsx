@@ -55,9 +55,12 @@ export default function EpubSidebars() {
     setBookmarks(prev => prev.filter(b => b.id !== id));
   };
 
+  const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
+
   const sidebarClass = `absolute left-0 top-14 bottom-8 w-80 z-30 overflow-y-auto border-r shadow-xl transition-transform
-    ${readingMode === 'dark' ? 'bg-[#1a1a1a] border-gray-800 text-gray-200' : 
+    ${isDark ? 'bg-[#1a1a1a] border-gray-800 text-gray-200' : 
       readingMode === 'sepia' ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]' : 
+      readingMode === 'mint' ? 'bg-[#e8f5e9] border-[#c8e6c9] text-[#1b4332]' : 
       'bg-white border-gray-200 text-gray-800'}`;
 
   return (
@@ -110,9 +113,10 @@ export default function EpubSidebars() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Digite para buscar..."
                 className={`flex-1 px-3 py-2 rounded-lg text-sm border focus:outline-none focus:border-brand-500 transition-colors
-                  ${readingMode === 'dark' ? 'bg-[#2a2a2a] border-gray-700 text-white' : 
+                  ${isDark ? 'bg-[#2a2a2a] border-gray-700 text-white' : 
                     readingMode === 'sepia' ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]' : 
-                    'bg-gray-50 border-gray-200'}`}
+                    readingMode === 'mint' ? 'bg-[#c8e6c9] border-[#a5d6a7] text-[#1b4332]' : 
+                    'bg-gray-50 border-gray-200 text-gray-900'}`}
               />
               <button 
                 type="submit"
