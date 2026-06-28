@@ -23,6 +23,7 @@ import ImageViewerModal from './ImageViewerModal';
 import { GroupBlock } from './editor-extensions/GroupBlock';
 import { QuestionBlock } from './editor-extensions/QuestionBlock';
 import { ToggleBlock } from './editor-extensions/ToggleBlock';
+import { ResizableImage } from './editor-extensions/ResizableImage';
 import { PageReference } from './editor-extensions/PageReference';
 
 interface EditorProps {
@@ -80,7 +81,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       Highlight.configure({ multicolor: true }),
       Underline,
       Link.configure({ openOnClick: false }),
-      Image.configure({ inline: true, HTMLAttributes: { class: 'inline-block m-1 rounded cursor-pointer hover:ring-2 hover:ring-brand-500 transition-all' } }),
+      ResizableImage.configure({ inline: true }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       TaskList, TaskItem.configure({ nested: true }),
