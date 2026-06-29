@@ -91,7 +91,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "phonetic": "transcrição fonética IPA exata",
     "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
-    "collocations": [{"expression": "palavra combinada 1", "meaning": "significado da expressão", "example": "exemplo de uso"}],
+    "collocations": [{"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "example": "example sentence in English"}],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
   },
