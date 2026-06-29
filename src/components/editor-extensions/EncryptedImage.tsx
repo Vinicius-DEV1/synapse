@@ -235,7 +235,8 @@ const EncryptedImageNodeView = (props: any) => {
 export const EncryptedImage = Node.create({
   name: 'encryptedImage',
 
-  group: 'block',
+  inline: true,
+  group: 'inline',
 
   atom: true,
   draggable: true,
