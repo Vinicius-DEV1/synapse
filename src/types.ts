@@ -76,6 +76,9 @@ export interface LibraryBook {
   updated_at: string;
   drive_file_id?: string | null;
   collections?: LibraryCollection[];
+  published_year?: number | null;
+  publisher?: string | null;
+  language?: string | null;
 }
 
 export interface LibraryCollection {

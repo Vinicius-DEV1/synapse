@@ -5,6 +5,7 @@ import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types'
 
 interface BookEditModalProps {
   book: LibraryBook;
+  allBooks: LibraryBook[];
   collections: LibraryCollection[];
   bookCollections: string[]; // collection IDs
   onSave: () => Promise<void>;
@@ -24,6 +25,7 @@ const PRESET_COLORS = [
 
 export default function BookEditModal({
   book,
+  allBooks,
   collections,
   bookCollections,
   onSave,
@@ -31,6 +33,9 @@ export default function BookEditModal({
 }: BookEditModalProps) {
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author);
+  const [publisher, setPublisher] = useState(book.publisher || '');
+  const [publishedYear, setPublishedYear] = useState<string>(book.published_year?.toString() || '');
+  const [language, setLanguage] = useState(book.language || '');
   const [status, setStatus] = useState<ReadingStatus>(book.reading_status);
   const [selectedCollections, setSelectedCollections] = useState<string[]>(bookCollections);
   const [coverImage, setCoverImage] = useState(book.cover_image || '');
@@ -39,6 +44,9 @@ export default function BookEditModal({
   const [showCoverMenu, setShowCoverMenu] = useState(false);
   const [extractingCover, setExtractingCover] = useState(false);
   const coverMenuRef = useRef<HTMLDivElement>(null);
+
+  const uniqueAuthors = Array.from(new Set(allBooks.map(b => b.author).filter(Boolean)));
+  const uniquePublishers = Array.from(new Set(allBooks.map(b => b.publisher).filter(Boolean)));
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -110,11 +118,21 @@ export default function BookEditModal({
 
     setLoading(true);
     try {
+      // Normalize author and publisher to avoid case-sensitive duplication
+      const authorMatch = uniqueAuthors.find(a => a.toLowerCase() === author.trim().toLowerCase());
+      const finalAuthor = authorMatch || author.trim();
+
+      const publisherMatch = uniquePublishers.find(p => p.toLowerCase() === publisher.trim().toLowerCase());
+      const finalPublisher = publisherMatch || publisher.trim();
+
       // Update book details
       await window.api.library.updateBook({
         id: book.id,
         title: title.trim(),
-        author: author.trim(),
+        author: finalAuthor,
+        publisher: finalPublisher,
+        published_year: publishedYear.trim() ? parseInt(publishedYear.trim(), 10) : null,
+        language: language.trim() || null,
         reading_status: status,
         cover_image: coverImage,
       });
@@ -213,31 +231,79 @@ export default function BookEditModal({
             </div>
             
             <div className="flex-1 flex flex-col gap-4">
-              {/* Title */}
-              <div>
-                <label className="block text-xs text-dark-subtext mb-1.5">TÃ­tulo</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="TÃ­tulo do livro"
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
-                  required
-                />
-              </div>
+                {/* Datalists for Suggestions */}
+                <datalist id="author-suggestions">
+                  {uniqueAuthors.map(a => <option key={a} value={a} />)}
+                </datalist>
+                <datalist id="publisher-suggestions">
+                  {uniquePublishers.map(p => <option key={p} value={p} />)}
+                </datalist>
 
-              {/* Author */}
-              <div>
-                <label className="block text-xs text-dark-subtext mb-1.5">Autor</label>
-                <input
-                  type="text"
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="Nome do autor"
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
-                />
+                {/* Title */}
+                <div>
+                  <label className="block text-xs text-dark-subtext mb-1.5">Título</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Título do livro"
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                    required
+                  />
+                </div>
+
+                {/* Author */}
+                <div>
+                  <label className="block text-xs text-dark-subtext mb-1.5">Autor</label>
+                  <input
+                    type="text"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder="Nome do autor"
+                    list="author-suggestions"
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Publisher */}
+                <div>
+                  <label className="block text-xs text-dark-subtext mb-1.5">Editora</label>
+                  <input
+                    type="text"
+                    value={publisher}
+                    onChange={(e) => setPublisher(e.target.value)}
+                    placeholder="Nome da editora"
+                    list="publisher-suggestions"
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  {/* Published Year */}
+                  <div className="flex-1">
+                    <label className="block text-xs text-dark-subtext mb-1.5">Ano</label>
+                    <input
+                      type="number"
+                      value={publishedYear}
+                      onChange={(e) => setPublishedYear(e.target.value)}
+                      placeholder="Ex: 2023"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                    />
+                  </div>
+
+                  {/* Language */}
+                  <div className="flex-1">
+                    <label className="block text-xs text-dark-subtext mb-1.5">Idioma</label>
+                    <input
+                      type="text"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      placeholder="Ex: PT-BR"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
           </div>
 
           {/* Status */}
@@ -263,7 +329,7 @@ export default function BookEditModal({
 
           {/* Collections */}
           <div>
-            <label className="block text-xs text-dark-subtext mb-2">ColeÃ§Ãµes</label>
+            <label className="block text-xs text-dark-subtext mb-2">Coleções</label>
             <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
               {collections.map((col) => (
                 <label
@@ -310,7 +376,7 @@ export default function BookEditModal({
                 className="flex items-center gap-1.5 mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
               >
                 <Plus size={14} />
-                Nova coleÃ§Ã£o...
+                Nova coleção...
               </button>
             ) : (
               <div className="mt-2 p-3 bg-dark-bg rounded-lg border border-white/5 flex flex-col gap-2.5 animate-fade-in">
@@ -318,7 +384,7 @@ export default function BookEditModal({
                   type="text"
                   value={newCollectionName}
                   onChange={(e) => setNewCollectionName(e.target.value)}
-                  placeholder="Nome da coleÃ§Ã£o"
+                  placeholder="Nome da coleção"
                   className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-1.5 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
                   autoFocus
                 />

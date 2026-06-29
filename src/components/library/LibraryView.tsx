@@ -601,6 +601,7 @@ export default function LibraryView() {
       {editingBook && (
         <BookEditModal
           book={editingBook}
+          allBooks={books}
           collections={collections}
           bookCollections={editingBook.collections?.map((c) => c.id) || []}
           onSave={async () => {
