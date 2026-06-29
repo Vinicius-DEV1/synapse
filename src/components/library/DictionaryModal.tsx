@@ -14,18 +14,18 @@ interface DictionaryData {
   english?: {
     word_class?: string;
     phonetic?: string;
-    definition: string;
+    definitions: string[];
     synonyms?: string[];
+    collocations?: string[];
     context_explanation?: string;
-    didactic_notes?: string;
     examples: string[];
   };
   portuguese: {
     translation: string;
-    definition: string;
+    definitions: string[];
     synonyms?: string[];
+    collocations?: string[];
     context_explanation?: string;
-    didactic_notes?: string;
     examples: string[];
   };
 }
@@ -78,8 +78,8 @@ Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
 
 Identifique o idioma da palavra. Siga ESTAS REGRAS RÍGIDAS:
-1. Lexicografia: Retorne definições, fonética e sinônimos baseados em dicionários oficiais (Oxford/Cambridge/Michaelis). NÃO invente significados.
-2. Pedagogia: Na explicação de contexto e notas didáticas, explique extensamente por que a palavra foi usada neste contexto, suas nuances, e dê dicas úteis.
+1. Lexicografia: Retorne as definições separadas e numeradas (1. ..., 2. ...) baseadas em dicionários oficiais (Oxford/Cambridge/Michaelis). NUNCA resuma em um único texto se houver mais de um significado.
+2. Pedagogia: Na explicação de contexto, explique por que a palavra foi usada neste contexto, e sugira collocations (combinações comuns de palavras nativas).
 
 Se a palavra for em INGLÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
@@ -88,18 +88,18 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "english": {
     "word_class": "adjective/noun/verb/etc (em inglês)",
     "phonetic": "transcrição fonética IPA exata",
-    "definition": "Significado estrito e rigoroso em inglês.",
+    "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
+    "collocations": ["palavra combinada 1", "palavra combinada 2", "palavra combinada 3"],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
-    "didactic_notes": "Grammar note, etymology, or false cognate warning in ENGLISH.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
   },
   "portuguese": {
     "translation": "Tradução direta e precisa para o português.",
-    "definition": "Significado rigoroso em português.",
+    "definitions": ["1. Primeiro significado em português.", "2. Segundo significado em português."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando por que a palavra foi escolhida neste contexto e não um de seus sinônimos.",
-    "didactic_notes": "Dica gramatical, etimológica ou alerta de falsos cognatos em PORTUGUÊS.",
+    "collocations": ["combinação 1", "combinação 2"],
+    "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
     "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês"]
   }
 }
@@ -110,10 +110,10 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "detected_language": "pt",
   "portuguese": {
     "translation": "A própria palavra.",
-    "definition": "Significado detalhado e rigoroso em português.",
+    "definitions": ["1. Primeiro significado.", "2. Segundo significado."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "context_explanation": "Explicação do significado exato da palavra no contexto (se houver).",
-    "didactic_notes": "Dica gramatical ou etimológica.",
+    "collocations": ["expressão comum 1", "expressão comum 2"],
+    "context_explanation": "Explicação do significado da palavra no contexto (se houver).",
     "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
   }
 }
@@ -248,7 +248,11 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                 <>
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Definition</h4>
-                    <p className="leading-relaxed text-[15px] text-white/90">{dictionaryData.english.definition}</p>
+                    <div className="flex flex-col gap-1.5">
+                      {dictionaryData.english.definitions.map((def, i) => (
+                        <p key={i} className="leading-relaxed text-[15px] text-white/90">{def}</p>
+                      ))}
+                    </div>
                   </div>
                   
                   {dictionaryData.english.synonyms && dictionaryData.english.synonyms.length > 0 && (
@@ -262,20 +266,24 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                     </div>
                   )}
 
+                  {dictionaryData.english.collocations && dictionaryData.english.collocations.length > 0 && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-blue-400 mb-1.5">
+                        <Sparkles size={12} />
+                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Common Pairings</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {dictionaryData.english.collocations.map((colloc, i) => (
+                          <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded-md text-[13px] font-medium border border-blue-500/20">{colloc}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {dictionaryData.english.context_explanation && (
                     <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
                       <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">In Context</h4>
                       <p className="leading-relaxed text-sm">{dictionaryData.english.context_explanation}</p>
-                    </div>
-                  )}
-                  
-                  {dictionaryData.english.didactic_notes && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                      <div className="flex items-center gap-1.5 text-blue-400 mb-1">
-                        <Sparkles size={12} />
-                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Didactic Note</h4>
-                      </div>
-                      <p className="leading-relaxed text-blue-100/90 text-sm">{dictionaryData.english.didactic_notes}</p>
                     </div>
                   )}
 
@@ -298,7 +306,11 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                   )}
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Significado</h4>
-                    <p className="leading-relaxed text-[15px] text-white/90">{dictionaryData.portuguese.definition}</p>
+                    <div className="flex flex-col gap-1.5">
+                      {dictionaryData.portuguese.definitions.map((def, i) => (
+                        <p key={i} className="leading-relaxed text-[15px] text-white/90">{def}</p>
+                      ))}
+                    </div>
                   </div>
                   
                   {dictionaryData.portuguese.synonyms && dictionaryData.portuguese.synonyms.length > 0 && (
@@ -312,20 +324,24 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                     </div>
                   )}
 
+                  {dictionaryData.portuguese.collocations && dictionaryData.portuguese.collocations.length > 0 && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-blue-400 mb-1.5">
+                        <Sparkles size={12} />
+                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Expressões Comuns</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {dictionaryData.portuguese.collocations.map((colloc, i) => (
+                          <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded-md text-[13px] font-medium border border-blue-500/20">{colloc}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {dictionaryData.portuguese.context_explanation && (
                     <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
                       <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">No Contexto</h4>
                       <p className="leading-relaxed text-sm">{dictionaryData.portuguese.context_explanation}</p>
-                    </div>
-                  )}
-
-                  {dictionaryData.portuguese.didactic_notes && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                      <div className="flex items-center gap-1.5 text-blue-400 mb-1">
-                        <Sparkles size={12} />
-                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Nota Didática</h4>
-                      </div>
-                      <p className="leading-relaxed text-blue-100/90 text-sm">{dictionaryData.portuguese.didactic_notes}</p>
                     </div>
                   )}
 
