@@ -46,16 +46,29 @@ const LinkPreviewComponent = (props: any) => {
     return () => { isMounted = false; };
   }, [url, fetchedTitle, loading, props]);
 
-  const getIcon = () => {
+  const [faviconError, setFaviconError] = useState(false);
+  
+  const domain = (() => {
     try {
-      const hostname = new URL(url).hostname.toLowerCase();
-      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return <Video size={18} className="text-red-500" />;
-      if (hostname.includes('github.com')) return <Code2 size={18} className="text-white" />;
-      if (hostname.includes('twitter.com') || hostname.includes('x.com')) return <MessageCircle size={18} className="text-blue-400" />;
-      return <Globe size={18} className="text-brand-400" />;
+      return new URL(url).hostname;
     } catch {
-      return <Link2 size={18} className="text-brand-400" />;
+      return '';
     }
+  })();
+
+  const renderIcon = () => {
+    if (!domain || faviconError) {
+      return <Globe size={18} className="text-brand-400" />;
+    }
+    
+    return (
+      <img 
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} 
+        alt={`${domain} icon`}
+        className="w-5 h-5 rounded-sm"
+        onError={() => setFaviconError(true)}
+      />
+    );
   };
 
   return (
@@ -68,7 +81,7 @@ const LinkPreviewComponent = (props: any) => {
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
-            {getIcon()}
+            {renderIcon()}
           </div>
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             {loading ? (
