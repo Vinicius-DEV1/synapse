@@ -1,5 +1,60 @@
 import { getSettings } from '../utils/settings';
 
+export interface GeminiKeyEntry {
+  id: string;
+  key: string;
+  status: 'active' | 'exhausted' | 'error';
+  disabledUntil?: number;
+  addedAt: number;
+}
+
+export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
+  if (!window.api?.config) return [];
+  
+  let keys: GeminiKeyEntry[] | null = await window.api.config.get('geminiApiKeys');
+  
+  // Migration logic from old string
+  if (!keys) {
+    const legacyKey = await window.api.config.get('geminiApiKey');
+    if (legacyKey && typeof legacyKey === 'string') {
+      keys = [{
+        id: crypto.randomUUID(),
+        key: legacyKey,
+        status: 'active',
+        addedAt: Date.now()
+      }];
+      await window.api.config.set('geminiApiKeys', keys);
+      await window.api.config.set('geminiApiKey', null);
+    } else {
+      keys = [];
+    }
+  }
+  
+  // Reactivate keys if disabled time has passed
+  let needsSave = false;
+  const now = Date.now();
+  for (const k of keys) {
+    if (k.status === 'exhausted' && k.disabledUntil && k.disabledUntil < now) {
+      k.status = 'active';
+      k.disabledUntil = undefined;
+      needsSave = true;
+    }
+  }
+  
+  if (needsSave) {
+    await window.api.config.set('geminiApiKeys', keys);
+  }
+  
+  return keys;
+}
+
+export async function saveGeminiKeys(keys: GeminiKeyEntry[]): Promise<void> {
+  if (window.api?.config) {
+    await window.api.config.set('geminiApiKeys', keys);
+  }
+}
+
+
 export interface GeminiModel {
   name: string;
   version: string;
@@ -7,9 +62,15 @@ export interface GeminiModel {
   description: string;
 }
 
-export async function fetchGeminiModels(apiKey: string): Promise<GeminiModel[]> {
+export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const keys = await getGeminiKeys();
+    const activeKey = keys.find(k => k.status === 'active');
+    if (!activeKey) {
+      throw new Error('Nenhuma chave da API Gemini ativa encontrada.');
+    }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${activeKey.key}`);
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error?.message || 'Erro ao buscar modelos do Gemini');
@@ -30,17 +91,14 @@ export async function fetchGeminiModels(apiKey: string): Promise<GeminiModel[]> 
 }
 
 export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = []): Promise<string> {
-  const settings = getSettings();
-  let apiKey = settings.geminiApiKey; // Fallback temporário (pode estar vazio se removido de settings)
-  
-  if (window.api?.config) {
-    const dbKey = await window.api.config.get('geminiApiKey');
-    if (dbKey) apiKey = dbKey;
+  const keys = await getGeminiKeys();
+  const activeKeys = keys.filter(k => k.status === 'active');
+
+  if (activeKeys.length === 0) {
+    throw new Error('Todas as chaves da API estão esgotadas ou bloqueadas. Tente novamente mais tarde ou adicione novas chaves nas Configurações.');
   }
 
-  if (!apiKey) {
-    throw new Error('API Key do Gemini não está configurada. Verifique as Configurações.');
-  }
+  const settings = getSettings();
 
   const modelId = settings.geminiModel || 'models/gemini-1.5-pro';
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
@@ -84,26 +142,49 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
   const requestBody = { contents };
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+  // Failover loop
+  for (const currentKeyEntry of activeKeys) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${currentKeyEntry.key}`;
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'Erro ao chamar a API do Gemini');
-    }
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
 
-    if (data.candidates && data.candidates.length > 0) {
-      return data.candidates[0].content.parts[0].text;
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 429 || response.status === 503) {
+          throw new Error('RATE_LIMIT');
+        }
+        throw new Error(data.error?.message || 'Erro ao chamar a API do Gemini');
+      }
+
+      if (data.candidates && data.candidates.length > 0) {
+        return data.candidates[0].content.parts[0].text;
+      }
+      return '';
+    } catch (error: any) {
+      if (error.message === 'RATE_LIMIT') {
+        console.warn(`Chave Gemini esgotada (429/503). Desativando por 23h e rotacionando...`);
+        // Atualiza a chave no banco
+        const allKeys = await getGeminiKeys();
+        const target = allKeys.find(k => k.id === currentKeyEntry.id);
+        if (target) {
+          target.status = 'exhausted';
+          target.disabledUntil = Date.now() + 23 * 60 * 60 * 1000;
+          await saveGeminiKeys(allKeys);
+        }
+        continue; // Tenta a próxima chave do loop
+      }
+      
+      console.error('promptGemini error:', error);
+      throw error;
     }
-    return '';
-  } catch (error) {
-    console.error('promptGemini error:', error);
-    throw error;
   }
+
+  throw new Error('Todas as chaves ativas falharam ao processar o pedido. Limite de cota excedido.');
 }
 
 // Para criar questões automaticamente via JSON
