@@ -154,7 +154,11 @@ export default function EpubHighlightMenu() {
             {/* Dicionário */}
             {(!selection.existingHighlightId || selection.text) && (
               <button
-                onClick={() => setDictionaryTarget({ word: selection.text, context: selection.text })}
+                onClick={() => { 
+                  setDictionaryTarget({ word: selection.text, context: selection.text });
+                  setSelection(null);
+                  setNoteMode(null);
+                }}
                 className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
                 title="Dicionário / Traduzir"
               >
