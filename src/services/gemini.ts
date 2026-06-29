@@ -143,6 +143,8 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   for (const currentKeyEntry of activeKeys) {
     const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${currentKeyEntry.key}`;
 
+    console.log(`[Gemini API] Requisitando modelo: ${fullModelId} | Chave ID: ${currentKeyEntry.id} (${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)})`);
+
     try {
       const response = await fetch(url, {
         method: 'POST',
