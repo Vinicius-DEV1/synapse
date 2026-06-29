@@ -7,7 +7,8 @@ export default function EpubSidebars() {
     readingMode, rendition,
     showToc, setShowToc, toc,
     showSearch, setShowSearch, epubBook,
-    showNotebook, setShowNotebook, highlights, bookmarks, setHighlights, setBookmarks
+    showNotebook, setShowNotebook, highlights, bookmarks, setHighlights, setBookmarks,
+    totalPages
   } = useEpub();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -192,7 +193,12 @@ export default function EpubSidebars() {
                   {highlights.map(hl => (
                     <li key={hl.id} className="text-sm p-3 rounded-lg border bg-black/5 dark:bg-white/5 relative group">
                       <div className="flex justify-between items-start mb-2">
-                        <div className={`w-3 h-3 rounded-full shadow-sm flex-shrink-0 mt-1`} style={{ backgroundColor: { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' }[hl.color as string] || '#fbbf24' }} />
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full shadow-sm flex-shrink-0 mt-0.5`} style={{ backgroundColor: { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' }[hl.color as string] || '#fbbf24' }} />
+                          <span className="text-[11px] font-medium opacity-60">
+                            {totalPages && hl.page_number ? `Pág. ${hl.page_number} (${Math.round((hl.page_number / totalPages) * 100)}%)` : ''}
+                          </span>
+                        </div>
                         <button 
                           onClick={() => handleDeleteHighlight(hl.id, hl.rects)}
                           className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"
@@ -237,8 +243,10 @@ export default function EpubSidebars() {
                         }}
                         className="text-left flex-1 hover:text-brand-500 transition-colors flex items-center gap-2"
                       >
-                        <Bookmark size={14} className="text-brand-500" />
-                        Página Marcada
+                        <Bookmark size={14} className="text-brand-500 flex-shrink-0" />
+                        <span className="truncate">
+                          {totalPages && bm.page_number ? `Página ${bm.page_number} (${Math.round((bm.page_number / totalPages) * 100)}%)` : 'Página Marcada'}
+                        </span>
                       </button>
                       <button 
                         onClick={() => handleDeleteBookmark(bm.id)}
