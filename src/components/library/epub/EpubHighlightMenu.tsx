@@ -1,6 +1,7 @@
-import React, { useLayoutEffect } from 'react';
-import { Trash2, Sparkles } from 'lucide-react';
+import React, { useLayoutEffect, useState } from 'react';
+import { Trash2, Sparkles, BookType } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
+import DictionaryModal from '../DictionaryModal';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 
@@ -37,7 +38,14 @@ export default function EpubHighlightMenu() {
   }, [selection]);
 
 
-  if (!selection) return null;
+  const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context: string } | null>(null);
+
+  if (!selection) {
+    if (dictionaryTarget) {
+      return <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />;
+    }
+    return null;
+  }
 
   const handleCreateHighlight = async (color: string) => {
     if (!selection || !rendition) return;
@@ -136,6 +144,17 @@ export default function EpubHighlightMenu() {
               title="Copiar texto"
             >📋</button>
 
+            {/* Dicionário */}
+            {(!selection.existingHighlightId || selection.text) && (
+              <button
+                onClick={() => setDictionaryTarget({ word: selection.text, context: selection.text })}
+                className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+                title="Dicionário / Traduzir"
+              >
+                <BookType size={15} />
+              </button>
+            )}
+
             {/* Nota (só para novos grifos) */}
             {!selection.existingHighlightId && (
               <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1">
@@ -226,6 +245,10 @@ export default function EpubHighlightMenu() {
             {menuContent}
           </div>
         )}
+
+        {dictionaryTarget && (
+          <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />
+        )}
       </>
     );
   }
@@ -234,12 +257,18 @@ export default function EpubHighlightMenu() {
   // DESKTOP: Floating menu (comportamento anterior)
   // ────────────────────────────────────────────
   return (
-    <div
-      ref={refs.setFloating}
-      className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
-      style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden' }}
-    >
-      {menuContent}
-    </div>
+    <>
+      <div
+        ref={refs.setFloating}
+        className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
+        style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden' }}
+      >
+        {menuContent}
+      </div>
+
+      {dictionaryTarget && (
+        <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />
+      )}
+    </>
   );
 }
