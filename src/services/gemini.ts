@@ -99,7 +99,13 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   }
 
   const settings = getSettings();
-  const modelId = settings.geminiModel || 'models/gemini-1.5-pro';
+  let modelId = settings.geminiModel || 'models/gemini-1.5-pro';
+  
+  // Auto-correção para o nome legado/quebrado que estava causando 503
+  if (modelId === 'gemini-flash-latest' || modelId === 'models/gemini-flash-latest') {
+    modelId = 'models/gemini-1.5-flash';
+  }
+
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
   const systemInstruction = `Se o usuário pedir para transcrever uma questão ou gerar uma questão de múltipla escolha, retorne ESTRITAMENTE um JSON com o schema: {"enunciado": "...", "opcoes": ["A", "B", "C", "D"], "correta": 0} (onde correta é o índice numérico). Não use markdown, apenas o JSON cru. Se não for uma requisição de questão, responda normalmente.`;
@@ -143,7 +149,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   for (const currentKeyEntry of activeKeys) {
     const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${currentKeyEntry.key}`;
 
-    console.log(`[Gemini API] Requisitando modelo: ${fullModelId} | Chave ID: ${currentKeyEntry.id} (${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)})`);
+    console.warn(`[DEBUG IA] Iniciando requisição com a chave: ${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)} | Modelo: ${fullModelId}`);
 
     try {
       const response = await fetch(url, {
