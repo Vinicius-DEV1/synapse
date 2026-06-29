@@ -15,8 +15,12 @@ interface EpubContextType {
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
   readingMode: ReadingMode;
   setReadingMode: (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => void;
-  fontFamily: 'sans' | 'serif' | 'opendyslexic';
-  setFontFamily: React.Dispatch<React.SetStateAction<'sans' | 'serif' | 'opendyslexic'>>;
+  fontFamily: 'sans' | 'serif' | 'opendyslexic' | 'original';
+  setFontFamily: React.Dispatch<React.SetStateAction<'sans' | 'serif' | 'opendyslexic' | 'original'>>;
+  originalFontName: string | null;
+  setOriginalFontName: React.Dispatch<React.SetStateAction<string | null>>;
+  detectedFontSizePx: string | null;
+  setDetectedFontSizePx: React.Dispatch<React.SetStateAction<string | null>>;
   scrollMode: boolean;
   setScrollMode: React.Dispatch<React.SetStateAction<boolean>>;
   
@@ -73,7 +77,9 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       return newMode;
     });
   };
-  const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic'>('sans');
+  const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic' | 'original'>('original');
+  const [originalFontName, setOriginalFontName] = useState<string | null>(null);
+  const [detectedFontSizePx, setDetectedFontSizePx] = useState<string | null>(null);
   const [scrollMode, setScrollMode] = useState(false);
   
   const [progress, setProgress] = useState(0);
@@ -102,6 +108,8 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       fontSize, setFontSize,
       readingMode, setReadingMode,
       fontFamily, setFontFamily,
+      originalFontName, setOriginalFontName,
+      detectedFontSizePx, setDetectedFontSizePx,
       scrollMode, setScrollMode,
       progress, setProgress,
       currentPage, setCurrentPage,
