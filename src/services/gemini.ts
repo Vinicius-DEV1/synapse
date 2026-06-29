@@ -99,11 +99,8 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   }
 
   const settings = getSettings();
-
   const modelId = settings.geminiModel || 'models/gemini-1.5-pro';
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${apiKey}`;
 
   const systemInstruction = `Se o usuário pedir para transcrever uma questão ou gerar uma questão de múltipla escolha, retorne ESTRITAMENTE um JSON com o schema: {"enunciado": "...", "opcoes": ["A", "B", "C", "D"], "correta": 0} (onde correta é o índice numérico). Não use markdown, apenas o JSON cru. Se não for uma requisição de questão, responda normalmente.`;
 
