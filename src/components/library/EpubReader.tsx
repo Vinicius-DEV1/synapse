@@ -504,7 +504,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     'bg-white text-gray-400';
 
   return (
-    <div className={`h-full flex flex-col reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
+    <div className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
       <div className={`
         md:block flex-shrink-0 transition-transform duration-300 z-50
         ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
@@ -554,15 +554,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       </div>
       </div>
 
-      <div className={`flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-colors z-20
-          ${readingMode === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 
-            readingMode === 'midnight' ? 'bg-[#0f172a] text-[#475569]' : 
-            readingMode === 'nord' ? 'bg-[#2e3440] text-[#4c566a]' : 
-            readingMode === 'dim' ? 'bg-[#2d2d30] text-[#808080]' : 
-            readingMode === 'high-contrast' ? 'bg-[#000000] text-[#aaaaaa]' : 
-            readingMode === 'sepia' ? 'bg-[#e9dec0] text-[#8c765f]' : 
-            readingMode === 'mint' ? 'bg-[#c8e6c9] text-[#2d6a4f]' : 
-            'bg-white text-gray-400'}`}>
+      <div className={`
+          flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-50
+          absolute md:relative bottom-0 left-0 right-0
+          ${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+          ${bottomBarClasses}
+        `}>
         <div>
            {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}
         </div>
