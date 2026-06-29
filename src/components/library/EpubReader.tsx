@@ -399,13 +399,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const themeCss: any = {
         [`body.${themeName}`]: { 
           'background': `${colors.bg} !important`, 
-          'color': `${colors.text} !important`, 
-          'padding-bottom': `${bottomPadding} !important` 
+          'color': `${colors.text} !important`
         },
         [`.${themeName} body`]: { 
           'background': `${colors.bg} !important`, 
-          'color': `${colors.text} !important`, 
-          'padding-bottom': `${bottomPadding} !important` 
+          'color': `${colors.text} !important`
         }
       };
 
@@ -549,7 +547,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           </div>
         </button>
         
-        <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" />
+        <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" style={{ paddingBottom: bottomPadding }} />
 
         <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
