@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { Trash2, Sparkles, BookType } from 'lucide-react';
+import { Trash2, Sparkles, BookType, X } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import DictionaryModal from '../DictionaryModal';
 import { useEpub } from './EpubContext';
@@ -39,6 +39,7 @@ export default function EpubHighlightMenu() {
 
 
   const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!selection) {
     if (dictionaryTarget) {
@@ -146,7 +147,7 @@ export default function EpubHighlightMenu() {
             {/* Copiar */}
             <button
               onClick={() => { navigator.clipboard.writeText(selection.text); setSelection(null); }}
-              className="text-sm opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+              className="text-lg opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
               title="Copiar texto"
             >📋</button>
 
@@ -157,26 +158,40 @@ export default function EpubHighlightMenu() {
                 className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
                 title="Dicionário / Traduzir"
               >
-                <BookType size={15} />
+                <BookType size={18} />
               </button>
             )}
 
             {/* Nota (só para novos grifos) */}
             {!selection.existingHighlightId && (
-              <button onClick={() => setNoteMode('yellow')} className="text-xs font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1">
-                📝 Nota
+              <button onClick={() => setNoteMode('yellow')} className="text-sm font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1.5">
+                <span className="text-lg">📝</span> Nota
               </button>
             )}
 
             {/* Lixeira (grifos existentes) */}
             {selection.existingHighlightId && (
-              <button
-                onClick={() => { handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange); setSelection(null); setNoteMode(null); }}
-                className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-colors"
-                title="Excluir Grifo"
-              >
-                <Trash2 size={15} />
-              </button>
+              confirmDelete ? (
+                <div className="flex items-center gap-1 bg-red-500/10 rounded-lg px-1 animate-fade-in">
+                  <button
+                    onClick={() => { handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange); setSelection(null); setNoteMode(null); setConfirmDelete(false); }}
+                    className="text-red-500 text-xs font-bold px-2 py-1.5 hover:bg-red-500/20 rounded-md transition-colors"
+                  >
+                    Confirmar
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)} className="text-dark-subtext px-1.5 py-1.5 hover:bg-black/10 rounded-md transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-colors"
+                  title="Excluir Grifo"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )
             )}
           </div>
         )}
