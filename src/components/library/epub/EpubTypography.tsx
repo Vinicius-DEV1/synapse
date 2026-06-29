@@ -6,6 +6,7 @@ export default function EpubTypography() {
   const {
     showSettings, readingMode, setReadingMode,
     fontSize, setFontSize, fontFamily, setFontFamily,
+    originalFontName, detectedFontSizePx,
     scrollMode, setScrollMode
   } = useEpub();
 
@@ -23,7 +24,10 @@ export default function EpubTypography() {
           <button onClick={() => setFontSize(f => Math.max(50, f - 10))} className="p-2 hover:bg-black/5 rounded-md flex-1 flex justify-center">
             <ZoomOut size={18} />
           </button>
-          <span className="text-sm font-medium w-12 text-center">{fontSize}%</span>
+          <div className="flex flex-col items-center flex-1">
+            <span className="text-sm font-medium">{fontSize}%</span>
+            {detectedFontSizePx && <span className="text-[10px] opacity-60 leading-none mt-0.5">{detectedFontSizePx}</span>}
+          </div>
           <button onClick={() => setFontSize(f => Math.min(250, f + 10))} className="p-2 hover:bg-black/5 rounded-md flex-1 flex justify-center">
             <ZoomIn size={18} />
           </button>
@@ -33,6 +37,12 @@ export default function EpubTypography() {
       <div className="mb-4">
         <div className="text-xs font-semibold mb-2 opacity-70 uppercase tracking-wider">Estilo da Fonte</div>
         <div className="flex flex-col gap-1">
+          <button 
+            onClick={() => setFontFamily('original')} 
+            className={`px-3 py-2 rounded-lg text-sm text-left ${fontFamily === 'original' ? 'bg-brand-500 text-white' : 'hover:bg-black/5'}`}
+          >
+            Original ({originalFontName || 'Detectando...'})
+          </button>
           <button onClick={() => setFontFamily('sans')} className={`px-3 py-2 rounded-lg text-sm text-left ${fontFamily === 'sans' ? 'bg-brand-500 text-white' : 'hover:bg-black/5'}`} style={{ fontFamily: 'sans-serif' }}>Sem Serifa (Moderno)</button>
           <button onClick={() => setFontFamily('serif')} className={`px-3 py-2 rounded-lg text-sm text-left ${fontFamily === 'serif' ? 'bg-brand-500 text-white' : 'hover:bg-black/5'}`} style={{ fontFamily: 'serif' }}>Com Serifa (Clássico)</button>
         </div>
