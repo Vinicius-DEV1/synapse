@@ -193,7 +193,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
       <div className="border-t border-white/5 pt-4">
         <label className="block text-sm font-medium text-white mb-2">Modelo Principal</label>
         <select 
-          value={appSettings.geminiModel || 'gemini-1.5-pro'}
+          value={appSettings.geminiModel ? (appSettings.geminiModel.startsWith('models/') ? appSettings.geminiModel : `models/${appSettings.geminiModel}`) : 'models/gemini-1.5-pro'}
           onChange={(e) => setAppSettings({ ...appSettings, geminiModel: e.target.value })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
@@ -203,8 +203,8 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             ))
           ) : (
             <>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="models/gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="models/gemini-1.5-flash">Gemini 1.5 Flash</option>
             </>
           )}
         </select>
