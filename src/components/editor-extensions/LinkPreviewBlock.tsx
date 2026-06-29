@@ -15,9 +15,8 @@ const LinkPreviewComponent = (props: any) => {
     
     const fetchTitle = async () => {
       try {
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-        const data = await response.json();
-        const html = data.contents;
+        const response = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+        const html = await response.text();
         
         // Extract title using Regex
         const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
