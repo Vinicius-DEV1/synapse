@@ -39,7 +39,36 @@ export function getSettings(): AppSettings {
 export function saveSettings(s: AppSettings) {
   localStorage.setItem('appSettings', JSON.stringify(s));
   window.dispatchEvent(new Event('app-settings-changed'));
+  
   if (window.api?.auth) {
     window.api.auth.setPreferences({ autoLockOnSuspend: s.autoLockOnSuspend });
+  }
+
+  // Backup to DB for sync across incognito sessions
+  if (window.api?.config) {
+    window.api.config.set('appSettings', s).catch(err => {
+      console.error('Failed to sync settings to DB:', err);
+    });
+  }
+}
+
+/**
+ * Puxa as configurações do banco de dados (que vieram da nuvem) e sobrescreve local.
+ * Útil para aplicar as preferências logo após um login no modo anônimo.
+ */
+export async function syncSettingsFromDb() {
+  if (!window.api?.config) return;
+  
+  try {
+    const s = await window.api.config.get('appSettings');
+    if (s && typeof s === 'object') {
+      const current = getSettings();
+      // Mescla com os padrões para evitar crash caso faltem campos
+      const merged = { ...current, ...s };
+      localStorage.setItem('appSettings', JSON.stringify(merged));
+      window.dispatchEvent(new Event('app-settings-changed'));
+    }
+  } catch (err) {
+    console.error('Failed to load settings from DB:', err);
   }
 }

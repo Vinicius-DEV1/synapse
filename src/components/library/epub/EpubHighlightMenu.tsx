@@ -41,6 +41,28 @@ export default function EpubHighlightMenu() {
   const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const getPageContext = () => {
+    try {
+      if (!rendition || !selection?.text) return selection?.text || '';
+      const contents = (rendition as any).getContents();
+      if (contents && contents.length > 0) {
+        const bodyText = contents[0].document.body.innerText;
+        if (bodyText) {
+          const idx = bodyText.indexOf(selection.text);
+          if (idx !== -1) {
+            const start = Math.max(0, idx - 800);
+            const end = Math.min(bodyText.length, idx + 800);
+            return bodyText.substring(start, end);
+          }
+          return bodyText.substring(0, 1600);
+        }
+      }
+    } catch(e) {
+      console.warn('Failed to extract epub context', e);
+    }
+    return selection?.text || '';
+  };
+
   if (!selection) {
     if (dictionaryTarget) {
       return (
@@ -155,7 +177,7 @@ export default function EpubHighlightMenu() {
             {(!selection.existingHighlightId || selection.text) && (
               <button
                 onClick={() => { 
-                  setDictionaryTarget({ word: selection.text, context: selection.text });
+                  setDictionaryTarget({ word: selection.text, context: getPageContext() });
                   setSelection(null);
                   setNoteMode(null);
                 }}
