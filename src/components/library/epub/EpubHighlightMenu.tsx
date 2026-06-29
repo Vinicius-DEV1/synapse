@@ -50,11 +50,11 @@ export default function EpubHighlightMenu() {
         if (bodyText) {
           const idx = bodyText.indexOf(selection.text);
           if (idx !== -1) {
-            const start = Math.max(0, idx - 800);
-            const end = Math.min(bodyText.length, idx + 800);
+            const start = Math.max(0, idx - 1600);
+            const end = Math.min(bodyText.length, idx + 1600);
             return bodyText.substring(start, end);
           }
-          return bodyText.substring(0, 1600);
+          return bodyText.substring(0, 3200);
         }
       }
     } catch(e) {
