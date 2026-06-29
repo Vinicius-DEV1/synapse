@@ -45,6 +45,12 @@ contextBridge.exposeInMainWorld('api', {
     setPreferences: (prefs: { autoLockOnSuspend: boolean }) => invokeWithSync('auth:set-preferences', prefs),
   },
 
+  // Config
+  config: {
+    get: (key: string) => invokeWithSync('config:get', key),
+    set: (key: string, data: any) => invokeWithSync('config:set', key, data)
+  },
+
   // Finance
   finance: {
     getTransactions: () => invokeWithSync('finance:get-transactions'),

@@ -46,6 +46,18 @@ export const createWebApiMock = async () => {
       };
     },
 
+    // --- CONFIG ---
+    config: {
+      get: async (key: string) => {
+        const item = await db.get('config', key);
+        return item ? item.value : null;
+      },
+      set: async (key: string, data: any) => {
+        await db.put('config', { id: key, value: data });
+        return { success: true };
+      }
+    },
+
     // --- PAGES ---
     getAllPages: async () => {
       const all = await db.getAll('pages');

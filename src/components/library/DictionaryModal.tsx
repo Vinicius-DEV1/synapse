@@ -67,10 +67,6 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
           setLoading(false);
         }, 600);
       } else {
-        if (!settings.geminiApiKey) {
-          throw new Error('Chave da API do Gemini não configurada. Configure na aba IA das Configurações.');
-        }
-
         const prompt = `Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
 
