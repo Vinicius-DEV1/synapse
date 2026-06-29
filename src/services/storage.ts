@@ -1,5 +1,6 @@
 import { storage } from './firebase';
 import { ref, uploadBytes, getBytes } from 'firebase/storage';
+import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 
 /**
  * Criptografa o arquivo PDF inteiro usando a Master Key
@@ -45,9 +46,20 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
  */
 export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<string> {
   const encrypted = await encryptFile(fileBuffer, masterKey);
+  
+  try {
+    const token = await getValidAccessToken();
+    if (token) {
+      const driveFileId = await uploadToDrive(token, `library_${bookId}.enc`, encrypted);
+      return `drive://${driveFileId}`;
+    }
+  } catch (err) {
+    console.warn("Drive upload failed, falling back to Firebase", err);
+  }
+
+  // Fallback legado
   const remotePath = `library/${bookId}.enc`;
   const fileRef = ref(storage, remotePath);
-  
   await uploadBytes(fileRef, encrypted);
   return remotePath;
 }
@@ -57,20 +69,24 @@ export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer
  * um ArrayBuffer para o leitor de PDF (pdf.js).
  */
 export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey): Promise<ArrayBuffer> {
-  const fileRef = ref(storage, remotePath);
-  
-  // Implementa um timeout de 15 segundos para evitar carregamento infinito
-  // caso o Firebase Storage não esteja configurado
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error('timeout_storage'));
-    }, 15000);
-  });
+  let encryptedBuffer: ArrayBuffer;
 
-  const encryptedBuffer = await Promise.race([
-    getBytes(fileRef),
-    timeoutPromise
-  ]);
+  if (remotePath.startsWith('drive://')) {
+    const fileId = remotePath.replace('drive://', '');
+    const token = await getValidAccessToken();
+    if (!token) throw new Error('Google Drive não autenticado');
+    encryptedBuffer = await downloadFromDrive(token, fileId);
+  } else {
+    const fileRef = ref(storage, remotePath);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout_storage')), 15000);
+    });
+    const result = await Promise.race([
+      getBytes(fileRef),
+      timeoutPromise
+    ]);
+    encryptedBuffer = result as ArrayBuffer;
+  }
   
-  return await decryptFile(encryptedBuffer as ArrayBuffer, masterKey);
+  return await decryptFile(encryptedBuffer, masterKey);
 }
