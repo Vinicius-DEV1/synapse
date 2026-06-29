@@ -14,9 +14,42 @@ const LinkPreviewComponent = (props: any) => {
     let isMounted = true;
     
     const fetchTitle = async () => {
+      const proxies = [
+        async () => {
+          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('Proxy 1 failed');
+          const data = await res.json();
+          return data.contents as string;
+        },
+        async () => {
+          const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('Proxy 2 failed');
+          return await res.text();
+        },
+        async () => {
+          const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('Proxy 3 failed');
+          return await res.text();
+        }
+      ];
+
+      let html = '';
+      let success = false;
+
+      for (const proxyFn of proxies) {
+        try {
+          html = await proxyFn();
+          if (html) {
+            success = true;
+            break;
+          }
+        } catch (e) {
+          // ignore and try next
+        }
+      }
+
       try {
-        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-        const html = await response.text();
+        if (!success) throw new Error('All proxies failed');
         
         // Extract title using Regex
         const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
