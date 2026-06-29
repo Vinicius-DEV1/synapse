@@ -205,7 +205,7 @@ export const createWebApiMock = async () => {
         return new Promise((resolve) => {
           const input = document.createElement('input');
           input.type = 'file';
-          input.accept = 'application/pdf';
+          input.accept = 'application/pdf,application/epub+zip,.pdf,.epub';
           
           input.onchange = async (e: any) => {
             const file = e.target.files[0];
@@ -226,7 +226,7 @@ export const createWebApiMock = async () => {
               console.log("Upload concluído!", remotePath);
               
               // 2. Salva os metadados no IndexedDB
-              const title = file.name.replace(/\.pdf$/i, '');
+              const title = file.name.replace(/\.(pdf|epub)$/i, '');
               const book = {
                 id: bookId,
                 title,
