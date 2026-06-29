@@ -21,7 +21,7 @@ interface EpubReaderProps {
 function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const {
     book, rendition, setRendition, epubBook, setEpubBook,
-    readingMode, setReadingMode, scrollMode, fontSize, fontFamily,
+    readingMode, setReadingMode, scrollMode, fontSize, setFontSize, fontFamily,
     locationsReady, setLocationsReady, setTotalPages,
     setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
     setShowSettings, setHighlights, setBookmarks, setToc
@@ -295,10 +295,19 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
              }
            });
            
-           newRendition.on('keyup', (event: any) => {
-              if (event.key === 'ArrowRight') turnPage('next', newRendition);
-              if (event.key === 'ArrowLeft') turnPage('prev', newRendition);
-           });
+           newRendition.on('keydown', (event: any) => {
+                if (event.key === 'ArrowRight') turnPage('next', newRendition);
+                if (event.key === 'ArrowLeft') turnPage('prev', newRendition);
+                if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                  cycleReadingMode();
+                }
+                if (event.key === '+' || event.key === '=') {
+                  setFontSize((prev: number) => Math.min(300, prev + 10));
+                }
+                if (event.key === '-') {
+                  setFontSize((prev: number) => Math.max(50, prev - 10));
+                }
+             });
         }
         setLoading(false);
       } catch (err: any) {
@@ -384,17 +393,31 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     });
   };
 
+  const changeZoom = (delta: number) => {
+    setFontSize((prev: number) => Math.max(50, Math.min(300, prev + delta)));
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') turnPage('next');
       if (e.key === 'ArrowLeft') turnPage('prev');
-      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+      
+      const isInput = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
+      if (isInput) return;
+
+      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         cycleReadingMode();
+      }
+      if (e.key === '+' || e.key === '=') {
+        changeZoom(10);
+      }
+      if (e.key === '-') {
+        changeZoom(-10);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [rendition, setReadingMode]);
+  }, [rendition, setReadingMode, setFontSize]);
 
   const progressPercentage = Math.round((useEpub().progress || 0) * 100);
   const currentPageSafe = useEpub().currentPage || 0;
