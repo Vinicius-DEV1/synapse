@@ -266,7 +266,9 @@ export default function LibraryView() {
   }, [books, searchQuery, statusFilter, selectedCollection, selectedAuthor, sortBy, sortOrder]);
 
   if (selectedBook) {
-    const isEpub = selectedBook.file_path?.toLowerCase().endsWith('.epub') || selectedBook.title?.toLowerCase().endsWith('.epub');
+    const isEpub = selectedBook.file_path?.toLowerCase().endsWith('.epub') || 
+                   selectedBook.title?.toLowerCase().endsWith('.epub') ||
+                   selectedBook.original_name?.toLowerCase().endsWith('.epub');
 
     if (isEpub) {
       return (
