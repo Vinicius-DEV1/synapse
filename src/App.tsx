@@ -196,7 +196,7 @@ function AppContent() {
 
   if (authStatus === null) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext">
+      <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext" style={{ height: '100dvh' }}>
         <span className="animate-pulse">Iniciando ambiente seguro...</span>
       </div>
     );
@@ -207,7 +207,7 @@ function AppContent() {
   }
 
   return (
-    <div className="w-screen h-screen flex bg-dark-bg text-dark-text overflow-hidden">
+    <div className="w-screen h-screen flex bg-dark-bg text-dark-text overflow-hidden" style={{ height: '100dvh' }}>
       {/* Sidebar */}
       <Sidebar
         onCreatePage={handleCreatePage}
