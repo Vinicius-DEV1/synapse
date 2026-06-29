@@ -164,6 +164,21 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           </button>
         </div>
 
+        {keys.some(k => k.status !== 'active') && (
+          <button 
+            type="button"
+            onClick={async () => {
+              const allKeys = await getGeminiKeys();
+              allKeys.forEach(k => { k.status = 'active'; k.disabledUntil = undefined; });
+              await saveGeminiKeys(allKeys);
+              setKeys(allKeys);
+            }}
+            className="mt-3 w-full py-2 border border-brand-500/30 text-brand-400 text-xs font-medium rounded-lg hover:bg-brand-500/10 transition-colors"
+          >
+            Resetar bloqueios (Reativar todas as chaves)
+          </button>
+        )}
+
         <button 
           type="button"
           onClick={() => loadModels()}

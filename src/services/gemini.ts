@@ -152,8 +152,12 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
       const data = await response.json();
       if (!response.ok) {
-        if (response.status === 429 || response.status === 503) {
+        if (response.status === 429) {
           throw new Error('RATE_LIMIT');
+        } else if (response.status >= 500) {
+          throw new Error('SERVER_ERROR');
+        } else if (response.status === 400 || response.status === 403 || response.status === 404) {
+          throw new Error(`Erro fatal da API (${response.status}): ${data.error?.message || 'Requisição inválida ou chave incorreta.'}`);
         }
         throw new Error(data.error?.message || 'Erro ao chamar a API do Gemini');
       }
@@ -164,7 +168,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
       return '';
     } catch (error: any) {
       if (error.message === 'RATE_LIMIT') {
-        console.warn(`Chave Gemini esgotada (429/503). Desativando por 23h e rotacionando...`);
+        console.warn(`Chave Gemini esgotada (429). Desativando por 23h e rotacionando...`);
         // Atualiza a chave no banco
         const allKeys = await getGeminiKeys();
         const target = allKeys.find(k => k.id === currentKeyEntry.id);
@@ -174,6 +178,9 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
           await saveGeminiKeys(allKeys);
         }
         continue; // Tenta a próxima chave do loop
+      } else if (error.message === 'SERVER_ERROR') {
+        console.warn(`Servidor do Google indisponível (5xx). Tentando próxima chave sem bloquear a atual...`);
+        continue;
       }
       
       console.error('promptGemini error:', error);
