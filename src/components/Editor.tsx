@@ -23,6 +23,8 @@ import ImageViewerModal from './ImageViewerModal';
 import { GroupBlock } from './editor-extensions/GroupBlock';
 import { QuestionBlock } from './editor-extensions/QuestionBlock';
 import { ToggleBlock } from './editor-extensions/ToggleBlock';
+import { BlockquoteToggle } from './editor-extensions/BlockquoteToggle';
+import { LinkPreviewBlock } from './editor-extensions/LinkPreviewBlock';
 import { ResizableImage } from './editor-extensions/ResizableImage';
 import { EncryptedImage } from './editor-extensions/EncryptedImage';
 import { PageReference } from './editor-extensions/PageReference';
@@ -91,6 +93,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       GroupBlock,
       QuestionBlock,
       ToggleBlock,
+      BlockquoteToggle,
+      LinkPreviewBlock,
       EncryptedImage,
       PageReference
     ],
@@ -113,38 +117,49 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         return false;
       },
       handlePaste: (view, event, slice) => {
+        // Handle URL paste for Link Preview
+        const textPasted = event.clipboardData?.getData('text/plain');
+        if (textPasted) {
+          const urlStr = textPasted.trim();
+          let isUrl = false;
+          try {
+            new URL(urlStr);
+            isUrl = urlStr.startsWith('http');
+          } catch (e) { isUrl = false; }
+          
+          if (isUrl && view.state.selection.empty) {
+            editor.chain().focus().insertContent({
+              type: 'linkPreview',
+              attrs: { url: urlStr, isLoading: true }
+            }).run();
+            event.preventDefault();
+            return true;
+          }
+        }
+
         const items = Array.from(event.clipboardData?.items || []);
         let imagePasted = false;
+        
         for (const item of items) {
           if (item.type.indexOf('image') === 0) {
             imagePasted = true;
             const file = item.getAsFile();
             if (file && editor) {
-              // Obtém a masterKey do módulo de notas para criptografar
               const masterKey = (window as any).__cadernoModuleKeys?.['notes'];
+              
               if (masterKey) {
-                // Upload criptografado para o Google Drive (pasta FOTOS)
-                uploadEncryptedImage(file, masterKey)
-                  .then((driveFileId) => {
-                    editor.chain().focus().insertContent({
-                      type: 'encryptedImage',
-                      attrs: { driveFileId }
-                    }).run();
-                  })
-                  .catch((err) => {
-                    console.error('[Editor] Falha no upload E2EE da imagem:', err);
-                    // Fallback: insere como Base64 se o upload falhar
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      const src = e.target?.result;
-                      if (src && editor) {
-                        editor.chain().focus().setImage({ src: src as string }).run();
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  });
+                const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
+                
+                if (!(window as any).__pendingImageUploads) {
+                  (window as any).__pendingImageUploads = new Map();
+                }
+                (window as any).__pendingImageUploads.set(tempId, file);
+
+                editor.chain().focus().insertContent({
+                  type: 'encryptedImage',
+                  attrs: { driveFileId: tempId }
+                }).run();
               } else {
-                // Sem masterKey: fallback para Base64
                 const reader = new FileReader();
                 reader.onload = (e) => {
                   const src = e.target?.result;
@@ -157,7 +172,11 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             }
           }
         }
-        return imagePasted;
+        if (imagePasted) {
+          event.preventDefault();
+          return true;
+        }
+        return false;
       },
       handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
         if (node.type.name === 'image') {
@@ -249,6 +268,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     editor.commands.deleteRange({ from: startPos, to: endPos });
 
     switch (commandId) {
+      case 'text': editor.commands.setParagraph(); break;
       case 'h1': editor.commands.toggleHeading({ level: 1 }); break;
       case 'h2': editor.commands.toggleHeading({ level: 2 }); break;
       case 'h3': editor.commands.toggleHeading({ level: 3 }); break;
@@ -258,6 +278,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'code': editor.commands.toggleCodeBlock(); break;
       case 'group': editor.commands.insertContent('<div class="group-collection"></div>'); break;
       case 'question': editor.commands.insertContent('<div class="question-block"></div>'); break;
+      case 'toggle': editor.commands.insertContent('<div class="toggle-block"></div>'); break;
+      case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"></div>'); break;
       case 'divider': editor.commands.setHorizontalRule(); break;
       case 'table': 
         editor.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true }); 

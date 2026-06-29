@@ -13,6 +13,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  
+  const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
+  const [visiblePagesCount, setVisiblePagesCount] = useState(10);
 
   const pinnedPages = state.pages
     .filter(p => p.is_pinned)
@@ -219,7 +222,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                 <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
                   <Pin size={12} /> Fixados
                 </div>
-                {pinnedPages.map((page) => (
+                {pinnedPages.slice(0, visiblePinnedCount).map((page) => (
                   <div
                     key={page.id}
                     draggable
@@ -238,6 +241,14 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                     />
                   </div>
                 ))}
+                {!searchQuery && pinnedPages.length > visiblePinnedCount && (
+                  <button
+                    onClick={() => setVisiblePinnedCount(prev => prev + 10)}
+                    className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    Exibir mais ({pinnedPages.length - visiblePinnedCount})
+                  </button>
+                )}
               </div>
             )}
             
@@ -252,7 +263,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                 {searchQuery ? 'Nenhuma página encontrada' : 'Nenhuma página criada'}
               </div>
             )}
-            {filteredPages.map((page) => (
+            {filteredPages.slice(0, visiblePagesCount).map((page) => (
               <SidebarItem
                 key={page.id}
                 page={page}
@@ -261,8 +272,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                 onCreatePage={onCreatePage}
                 onUpdatePage={onUpdatePage}
                 isSearchResult={!!searchQuery}
+                disableHierarchyDnD={!!searchQuery}
               />
             ))}
+            {!searchQuery && filteredPages.length > visiblePagesCount && (
+              <button
+                onClick={() => setVisiblePagesCount(prev => prev + 10)}
+                className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
+              >
+                Exibir mais ({filteredPages.length - visiblePagesCount})
+              </button>
+            )}
           </>
         ) : activeModule === 'library' ? (
           <div className="flex flex-col gap-1 mt-2">

@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
-import { getDecryptedImageUrl } from '../../services/image-drive';
+import { getDecryptedImageUrl, uploadEncryptedImage } from '../../services/image-drive';
 
 // ─── Componente de NodeView para imagens encriptadas ───────────────────────────
 
@@ -23,7 +23,7 @@ const EncryptedImageNodeView = (props: any) => {
   const { state: storeState } = useStore();
   const masterKey = storeState.moduleKeys['notes'];
 
-  // Carrega e descriptografa a imagem do Google Drive
+  // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
   const loadImage = useCallback(async () => {
     if (!driveFileId || !masterKey) return;
 
@@ -36,15 +36,27 @@ const EncryptedImageNodeView = (props: any) => {
     }
 
     try {
+      // Se for um upload recém-colado
+      if (driveFileId.startsWith('uploading_')) {
+        const file = (window as any).__pendingImageUploads?.get(driveFileId);
+        if (file) {
+          const realDriveId = await uploadEncryptedImage(file, masterKey);
+          (window as any).__pendingImageUploads.delete(driveFileId);
+          // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
+          updateAttributes({ driveFileId: realDriveId });
+          return; // A próxima renderização fará o download da URL limpa ou usará cache
+        }
+      }
+
       const url = await getDecryptedImageUrl(driveFileId, masterKey);
       blobUrlRef.current = url;
       setBlobUrl(url);
       setState('loaded');
     } catch (err) {
-      console.error('[EncryptedImage] Erro ao descriptografar imagem:', err);
+      console.error('[EncryptedImage] Erro ao carregar/upload da imagem:', err);
       setState('error');
     }
-  }, [driveFileId, masterKey]);
+  }, [driveFileId, masterKey, updateAttributes]);
 
   useEffect(() => {
     loadImage();
@@ -226,6 +238,7 @@ export const EncryptedImage = Node.create({
   group: 'block',
 
   atom: true,
+  draggable: true,
 
   addAttributes() {
     return {
