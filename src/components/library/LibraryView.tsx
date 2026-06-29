@@ -42,6 +42,7 @@ export default function LibraryView() {
   }, [books, selectedBookId]);
 
   const [loading, setLoading] = useState(true);
+  const [uploadResult, setUploadResult] = useState<{title: string, message: string, type: 'success' | 'error'} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
@@ -121,9 +122,21 @@ export default function LibraryView() {
     if (!window.api?.library) return;
     try {
       const imported = await window.api.library.importBook();
-      if (imported) await loadData();
-    } catch (err) {
+      if (imported) {
+        await loadData();
+        setUploadResult({
+          title: "Upload Concluído",
+          message: `O arquivo "${imported.title}" foi importado com sucesso para a nuvem.`,
+          type: "success"
+        });
+      }
+    } catch (err: any) {
       console.error('Import failed', err);
+      setUploadResult({
+        title: "Erro no Upload",
+        message: err.message || "Ocorreu um erro desconhecido ao tentar enviar o arquivo.",
+        type: "error"
+      });
     } finally {
       setLoading(false);
     }
@@ -605,6 +618,35 @@ export default function LibraryView() {
           onClose={() => setShowDriveAuth(false)}
           onSuccess={() => setHasDriveAuth(true)}
         />
+      )}
+
+      {/* Upload Feedback Modal */}
+      {uploadResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-brand-900 border border-brand-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
+            {uploadResult.type === 'success' ? (
+              <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+            <h3 className="text-xl font-bold text-white mb-2">{uploadResult.title}</h3>
+            <p className="text-brand-300 text-sm mb-6">{uploadResult.message}</p>
+            <button 
+              onClick={() => setUploadResult(null)}
+              className="w-full py-2.5 px-4 bg-brand-800 hover:bg-brand-700 text-white rounded-xl font-medium transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
