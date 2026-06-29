@@ -397,7 +397,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const themeName = `custom-${readingMode}-${fontFamily}`;
 
       const themeCss: any = {
-        [`.${themeName}`]: { 
+        [`body.${themeName}`]: { 
+          'background': `${colors.bg} !important`, 
+          'color': `${colors.text} !important`, 
+          'padding-bottom': `${bottomPadding} !important` 
+        },
+        [`.${themeName} body`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`, 
           'padding-bottom': `${bottomPadding} !important` 
@@ -405,11 +410,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       };
 
       if (fontFamily !== 'original') {
-        themeCss[`.${themeName}`]['font-family'] = `${font} !important`;
-        themeCss[`.${themeName} *`] = { 'font-family': `${font} !important` };
-        themeCss[`.${themeName} p, .${themeName} span, .${themeName} div, .${themeName} h1, .${themeName} h2, .${themeName} h3, .${themeName} h4, .${themeName} h5, .${themeName} h6, .${themeName} a, .${themeName} li, .${themeName} blockquote`] = {
-            'font-family': `${font} !important`
-        };
+        themeCss[`body.${themeName}`]['font-family'] = `${font} !important`;
+        themeCss[`.${themeName} body`]['font-family'] = `${font} !important`;
+        themeCss[`body.${themeName} *`] = { 'font-family': `${font} !important` };
+        themeCss[`.${themeName} body *`] = { 'font-family': `${font} !important` };
       }
           
       rendition.themes.register(themeName, themeCss);
@@ -556,8 +560,8 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       </div>
 
       <div className={`
-          flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-50
-          absolute md:relative bottom-0 left-0 right-0
+          flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-[60]
+          fixed md:relative bottom-0 left-0 right-0
           ${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
           ${bottomBarClasses}
         `}>
