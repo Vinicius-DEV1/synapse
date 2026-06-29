@@ -9,11 +9,26 @@ interface DictionaryModalProps {
   onClose: () => void;
 }
 
+interface DictionaryData {
+  detected_language: 'en' | 'pt';
+  english?: {
+    definition: string;
+    examples: string[];
+  };
+  portuguese: {
+    translation: string;
+    definition: string;
+    examples: string[];
+  };
+}
+
 export default function DictionaryModal({ text, pageContext, onClose }: DictionaryModalProps) {
   const settings = getSettings();
   const [mode, setMode] = useState<'offline' | 'online'>(settings.dictionaryMode || (settings.hasOfflineDictionary ? 'offline' : 'online'));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [dictionaryData, setDictionaryData] = useState<DictionaryData | null>(null);
+  const [languageTab, setLanguageTab] = useState<'en' | 'pt'>('en');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,6 +38,7 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
   const fetchDefinition = async (currentMode: 'offline' | 'online') => {
     setLoading(true);
     setResult(null);
+    setDictionaryData(null);
     setError(null);
 
     try {
@@ -53,13 +69,38 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
           throw new Error('Chave da API do Gemini não configurada. Configure na aba IA das Configurações.');
         }
 
-        const prompt = `Defina a palavra ou trecho selecionado: "${text}".
+        const prompt = `Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
-Sua resposta deve conter apenas:
-- Se for uma palavra estrangeira: A tradução para Português, seguida do seu significado.
-- Se for uma palavra em Português: O seu significado (Definição).
-- Forneça 1 exemplo de uso prático.
-Formate tudo em Markdown usando títulos curtos (## Significado, ## Exemplo). Não use saudações.`;
+
+Identifique o idioma da palavra.
+
+Se a palavra for em INGLÊS:
+Retorne estritamente um objeto JSON com a seguinte estrutura:
+{
+  "detected_language": "en",
+  "english": {
+    "definition": "Significado detalhado em inglês.",
+    "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
+  },
+  "portuguese": {
+    "translation": "Tradução direta para português.",
+    "definition": "Significado detalhado em português.",
+    "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
+  }
+}
+
+Se a palavra for em PORTUGUÊS:
+Retorne estritamente um objeto JSON com a seguinte estrutura:
+{
+  "detected_language": "pt",
+  "portuguese": {
+    "translation": "A própria palavra.",
+    "definition": "Significado detalhado em português.",
+    "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
+  }
+}
+
+Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
 
         const response = await promptGemini(
           prompt,
@@ -67,7 +108,15 @@ Formate tudo em Markdown usando títulos curtos (## Significado, ## Exemplo). N�
           []
         );
         
-        setResult(response);
+        try {
+          const cleaned = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(cleaned) as DictionaryData;
+          setDictionaryData(parsed);
+          setLanguageTab(parsed.detected_language === 'en' ? 'en' : 'pt');
+        } catch (e) {
+          // Fallback if AI fails to return valid JSON
+          setResult(response);
+        }
         setLoading(false);
       }
     } catch (err: any) {
@@ -118,9 +167,35 @@ Formate tudo em Markdown usando títulos curtos (## Significado, ## Exemplo). N�
           </div>
         </div>
 
-        {/* Selected Word */}
+        {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
           <p className="text-sm font-medium text-dark-text italic truncate">"{text}"</p>
+          
+          {dictionaryData && dictionaryData.detected_language === 'en' && (
+            <div className="flex items-center gap-4 mt-3">
+              <button 
+                onClick={() => setLanguageTab('en')}
+                className={`text-xs font-semibold pb-1 border-b-2 transition-colors ${languageTab === 'en' ? 'border-brand-500 text-brand-500' : 'border-transparent text-dark-subtext hover:text-white'}`}
+              >
+                🇺🇸 English
+              </button>
+              <button 
+                onClick={() => setLanguageTab('pt')}
+                className={`text-xs font-semibold pb-1 border-b-2 transition-colors ${languageTab === 'pt' ? 'border-brand-500 text-brand-500' : 'border-transparent text-dark-subtext hover:text-white'}`}
+              >
+                🇧🇷 Português
+              </button>
+            </div>
+          )}
+          {dictionaryData && dictionaryData.detected_language === 'pt' && (
+            <div className="flex items-center gap-4 mt-3">
+              <button 
+                className={`text-xs font-semibold pb-1 border-b-2 border-brand-500 text-brand-500`}
+              >
+                🇧🇷 Português
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -142,6 +217,46 @@ Formate tudo em Markdown usando títulos curtos (## Significado, ## Exemplo). N�
                 >
                   Tentar Modo Online (IA)
                 </button>
+              )}
+            </div>
+          ) : dictionaryData ? (
+            <div className="flex flex-col gap-5 text-sm text-dark-text/90">
+              {languageTab === 'en' && dictionaryData.english ? (
+                <>
+                  <div>
+                    <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Definition</h4>
+                    <p className="leading-relaxed">{dictionaryData.english.definition}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
+                    <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
+                      {dictionaryData.english.examples.map((ex, i) => (
+                        <li key={i}>{ex}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {dictionaryData.detected_language === 'en' && (
+                    <div>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Tradução</h4>
+                      <p className="leading-relaxed font-semibold">{dictionaryData.portuguese.translation}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Significado</h4>
+                    <p className="leading-relaxed">{dictionaryData.portuguese.definition}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Exemplos</h4>
+                    <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
+                      {dictionaryData.portuguese.examples.map((ex, i) => (
+                        <li key={i}>{ex}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
               )}
             </div>
           ) : result ? (
