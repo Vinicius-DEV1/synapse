@@ -6,7 +6,7 @@ import { promptGemini } from '../../services/gemini';
 export interface Collocation {
   expression: string;
   meaning: string;
-  example: string;
+  examples: string[];
 }
 
 interface DictionaryData {
@@ -91,7 +91,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "phonetic": "transcrição fonética IPA exata",
     "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
-    "collocations": [{"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "example": "example sentence in English"}],
+    "collocations": [{"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3"]}],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
   },
@@ -99,7 +99,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "translation": "Tradução direta e precisa para o português.",
     "definitions": ["1. Primeiro significado em português.", "2. Segundo significado em português."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": [{"expression": "combinação 1", "meaning": "significado da combinação", "example": "exemplo de uso"}],
+    "collocations": [{"expression": "combinação 1", "meaning": "significado da combinação", "examples": ["exemplo 1", "exemplo 2", "exemplo 3"]}],
     "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
     "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês"]
   }
@@ -113,7 +113,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "translation": "A própria palavra.",
     "definitions": ["1. Primeiro significado.", "2. Segundo significado."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": [{"expression": "expressão comum 1", "meaning": "significado da expressão", "example": "exemplo de uso"}],
+    "collocations": [{"expression": "expressão comum 1", "meaning": "significado da expressão", "examples": ["exemplo 1", "exemplo 2", "exemplo 3"]}],
     "context_explanation": "Explicação do significado da palavra no contexto (se houver).",
     "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
   }
@@ -396,14 +396,14 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
       {selectedColloc && (
         <div 
           className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
-          onMouseDown={() => setSelectedColloc(null)}
+          onMouseDown={(e) => { e.stopPropagation(); setSelectedColloc(null); }}
         >
           <div 
-            className="bg-dark-card border border-white/10 rounded-2xl w-80 shadow-2xl p-6 relative animate-scale-in" 
+            className="bg-dark-card border border-white/10 rounded-2xl w-80 shadow-2xl p-6 relative animate-scale-in max-h-[80vh] overflow-y-auto" 
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button 
-              onClick={() => setSelectedColloc(null)} 
+              onClick={(e) => { e.stopPropagation(); setSelectedColloc(null); }} 
               className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors"
             >
               <X size={18} />
@@ -414,8 +414,13 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
             </div>
             <p className="text-xl font-bold text-white mb-2">{selectedColloc.expression}</p>
             <p className="text-sm text-brand-300 font-medium mb-4">{selectedColloc.meaning}</p>
+            
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <p className="text-sm italic text-dark-text/90 leading-relaxed">"{selectedColloc.example}"</p>
+              <ul className="list-disc pl-4 space-y-2 marker:text-brand-500/50">
+                {selectedColloc.examples.map((ex, i) => (
+                  <li key={i} className="text-sm italic text-dark-text/90 leading-relaxed">"{ex}"</li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
