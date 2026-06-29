@@ -174,14 +174,15 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                   const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
                   newRendition.annotations.highlight(h.rects, {}, (e: any) => {
                     // Cancelar o timer de limpeza do click geral — um grifo foi tocado
-                    if (clearSelectionTimerRef.current) {
-                      clearTimeout(clearSelectionTimerRef.current);
-                      clearSelectionTimerRef.current = null;
-                    }
-                    const rect = e.target.getBoundingClientRect();
-                    setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id });
-                    setNoteMode(h.color || 'yellow');
-                    setNoteText(h.note || '');
+                      if (clearSelectionTimerRef.current) {
+                        clearTimeout(clearSelectionTimerRef.current);
+                        clearSelectionTimerRef.current = null;
+                      }
+                      const rect = e.target.getBoundingClientRect();
+                      const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+                      setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+                      setNoteMode(h.color || 'yellow');
+                      setNoteText(h.note || '');
                   }, '', { fill: colorMap[h.color] || colorMap.yellow, 'fill-opacity': '0.3', 'cursor': 'pointer' });
                 }
               });
@@ -231,6 +232,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                  
                  const rect = range.getBoundingClientRect();
                  
+                 let blockNode = range.commonAncestorContainer;
+                 while (blockNode && blockNode.nodeType !== 1 && blockNode.parentNode) {
+                     blockNode = blockNode.parentNode;
+                 }
+                 const contextText = blockNode?.textContent?.trim() || text;
+                 
                  // Bloqueio de eventos fantasmas do epub.js (seleções colapsadas/inválidas)
                  if (rect.width === 0 && rect.height === 0) return;
                  
@@ -254,12 +261,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                     height: rect.height,
                     toJSON: rect.toJSON
                  } as DOMRect;
-
+                 
                  // Debounce: o duplo-clique dispara 'selected' 2x em sequência.
                  // Só o último (com a seleção final completa) vence.
                  if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
                  selectionTimerRef.current = setTimeout(() => {
-                    setSelection({ cfiRange, text, rect: safeRect });
+                    setSelection({ cfiRange, text, rect: safeRect, context: contextText });
                  }, 50);
               }
            });

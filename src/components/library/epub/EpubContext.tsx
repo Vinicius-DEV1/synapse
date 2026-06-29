@@ -53,8 +53,8 @@ interface EpubContextType {
   setHighlights: React.Dispatch<React.SetStateAction<LibraryHighlight[]>>;
   
   // Selection
-  selection: { cfiRange: string, text: string, rect: DOMRect, existingHighlightId?: string } | null;
-  setSelection: (s: { cfiRange: string, text: string, rect: DOMRect, existingHighlightId?: string } | null) => void;
+  selection: { cfiRange: string, text: string, rect: DOMRect, existingHighlightId?: string, context?: string } | null;
+  setSelection: (s: { cfiRange: string, text: string, rect: DOMRect, existingHighlightId?: string, context?: string } | null) => void;
   noteMode: string | null;
   setNoteMode: (m: string | null) => void;
   noteText: string;
