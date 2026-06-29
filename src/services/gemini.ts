@@ -31,14 +31,21 @@ export async function fetchGeminiModels(apiKey: string): Promise<GeminiModel[]> 
 
 export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = []): Promise<string> {
   const settings = getSettings();
-  if (!settings.geminiApiKey) {
-    throw new Error('API Key do Gemini não está configurada.');
+  let apiKey = settings.geminiApiKey; // Fallback temporário (pode estar vazio se removido de settings)
+  
+  if (window.api?.config) {
+    const dbKey = await window.api.config.get('geminiApiKey');
+    if (dbKey) apiKey = dbKey;
+  }
+
+  if (!apiKey) {
+    throw new Error('API Key do Gemini não está configurada. Verifique as Configurações.');
   }
 
   const modelId = settings.geminiModel || 'models/gemini-1.5-pro';
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${settings.geminiApiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${apiKey}`;
 
   const systemInstruction = `Se o usuário pedir para transcrever uma questão ou gerar uma questão de múltipla escolha, retorne ESTRITAMENTE um JSON com o schema: {"enunciado": "...", "opcoes": ["A", "B", "C", "D"], "correta": 0} (onde correta é o índice numérico). Não use markdown, apenas o JSON cru. Se não for uma requisição de questão, responda normalmente.`;
 

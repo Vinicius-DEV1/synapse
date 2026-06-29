@@ -6,6 +6,7 @@ import { registerPagesHandlers } from './ipc/pages';
 import { registerLibraryHandlers } from './ipc/library';
 import { registerFinanceHandlers } from './ipc/finance';
 import { registerSyncHandlers } from './ipc/sync';
+import { registerConfigHandlers } from './ipc/config';
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
@@ -44,6 +45,7 @@ app.whenReady().then(() => {
   registerLibraryHandlers();
   registerFinanceHandlers();
   registerSyncHandlers();
+  registerConfigHandlers();
 
   // Preferências
   ipcMain.handle('auth:set-preferences', async (_, prefs: { autoLockOnSuspend: boolean }) => {

@@ -16,13 +16,28 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
 
   const [dictDownloading, setDictDownloading] = useState(false);
   const [dictProgress, setDictProgress] = useState(0);
+  const [apiKey, setApiKey] = useState('');
 
   useEffect(() => {
-    if (appSettings.geminiApiKey && models.length === 0) {
-      loadModels(appSettings.geminiApiKey);
+    if (window.api?.config) {
+      window.api.config.get('geminiApiKey').then((key: string) => {
+        if (key) {
+          setApiKey(key);
+          if (models.length === 0) {
+            loadModels(key);
+          }
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appSettings.geminiApiKey]);
+  }, []);
+
+  const handleApiKeyChange = (val: string) => {
+    setApiKey(val);
+    if (window.api?.config) {
+      window.api.config.set('geminiApiKey', val);
+    }
+  };
 
   const loadModels = async (key: string) => {
     if (!key) return;
@@ -63,15 +78,15 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         </label>
         <input
           type="password"
-          value={appSettings.geminiApiKey || ''}
-          onChange={(e) => setAppSettings({ ...appSettings, geminiApiKey: e.target.value })}
+          value={apiKey}
+          onChange={(e) => handleApiKeyChange(e.target.value)}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
           placeholder="Sua chave da API..."
         />
         <button 
           type="button"
-          onClick={() => loadModels(appSettings.geminiApiKey!)}
-          disabled={!appSettings.geminiApiKey || loadingModels}
+          onClick={() => loadModels(apiKey)}
+          disabled={!apiKey || loadingModels}
           className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors flex items-center gap-1 disabled:opacity-50"
         >
           <RefreshCw size={12} className={loadingModels ? 'animate-spin' : ''} />

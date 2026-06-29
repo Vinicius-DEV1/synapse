@@ -4,7 +4,6 @@ export interface AppSettings {
   restoreTabsOnStartup: boolean;
   fontSize: 'text-sm' | 'text-base' | 'text-lg';
   spellcheck: boolean;
-  geminiApiKey: string;
   geminiModel: string;
   aiChatHighlight: 'glow' | 'underline' | 'none';
   dictionaryMode: 'offline' | 'online';
@@ -19,7 +18,6 @@ export function getSettings(): AppSettings {
     restoreTabsOnStartup: true,
     fontSize: 'text-base',
     spellcheck: true,
-    geminiApiKey: '',
     geminiModel: 'gemini-1.5-pro',
     aiChatHighlight: 'glow',
     dictionaryMode: 'offline',
