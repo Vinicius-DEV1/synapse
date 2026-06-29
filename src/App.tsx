@@ -10,7 +10,7 @@ import FinanceView from './components/finance/FinanceView';
 import LibraryView from './components/library/LibraryView';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
-import { getSettings } from './utils/settings';
+import { getSettings, syncSettingsFromDb } from './utils/settings';
 import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
 import { useSync } from './hooks/useSync';
@@ -94,6 +94,13 @@ function AppContent() {
   }, [dispatch]);
 
   const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages);
+
+  // Sync appSettings from DB once sync is successful (e.g. for incognito logins)
+  useEffect(() => {
+    if (syncStatus === 'success') {
+      syncSettingsFromDb();
+    }
+  }, [syncStatus]);
 
   // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
   // (handlers do ProseMirror não têm acesso ao contexto React)
