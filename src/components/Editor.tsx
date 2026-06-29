@@ -278,8 +278,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'code': editor.commands.toggleCodeBlock(); break;
       case 'group': editor.commands.insertContent('<div class="group-collection"></div>'); break;
       case 'question': editor.commands.insertContent('<div class="question-block"></div>'); break;
-      case 'toggle': editor.commands.insertContent('<div class="toggle-block"></div>'); break;
-      case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"></div>'); break;
+      case 'toggle': editor.commands.insertContent('<div class="toggle-block"><p></p></div>'); break;
+      case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"><p></p></div>'); break;
       case 'divider': editor.commands.setHorizontalRule(); break;
       case 'table': 
         editor.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true }); 
