@@ -87,13 +87,18 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   // Load EPUB
   useEffect(() => {
     let active = true;
-    const loadBook = async () => {
+    const loadEpub = async () => {
       try {
-        setLocationsReady(false);
         setLoading(true);
-        let arrayBuffer: ArrayBuffer;
+        let arrayBuffer: ArrayBuffer | null = null;
+        
+        try {
+          arrayBuffer = await window.api.library.getBookFile(book.id);
+        } catch (localErr) {
+          console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
+        }
 
-        if (book.drive_file_id) {
+        if (!arrayBuffer && book.drive_file_id) {
           const token = await getValidAccessToken();
           if (!token) throw new Error('Não autenticado no Google Drive');
           const encryptedData = await downloadFromDrive(token, book.drive_file_id);
@@ -103,7 +108,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
             // Fallback: try using it directly (unencrypted legacy)
             arrayBuffer = encryptedData;
           }
-        } else if (book.file_path) {
+        } else if (!arrayBuffer && book.file_path) {
           if (book.file_path.startsWith('file://')) {
             const res = await window.api.library.getBookFile(book.id);
             if (!res) throw new Error("Arquivo não encontrado no banco");
@@ -117,7 +122,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
             const bytes = await decryptFile(book.file_path);
             arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
           }
-        } else {
+        }
+        
+        if (!arrayBuffer) {
           throw new Error('Nenhum arquivo encontrado para este livro.');
         }
 
@@ -303,7 +310,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       }
     };
 
-    loadBook();
+    loadEpub();
 
     return () => {
       active = false;
