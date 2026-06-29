@@ -209,26 +209,33 @@ export const createWebApiMock = async () => {
           
           input.onchange = async (e: any) => {
             const file = e.target.files[0];
-            if (!file) return resolve(null);
-            
-            window.dispatchEvent(new Event('library-upload-start'));
-            
-            if (!_masterKey) {
-              alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+            if (!file) {
+              console.log("[Upload] Nenhum arquivo selecionado.");
               window.dispatchEvent(new Event('library-upload-end'));
               return resolve(null);
             }
             
+            console.log(`[Upload] Arquivo selecionado: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+            window.dispatchEvent(new Event('library-upload-start'));
+            
+            if (!_masterKey) {
+              console.warn("[Upload] Chave mestra não encontrada. Upload abortado.");
+              alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+              window.dispatchEvent(new Event('library-upload-end'));
+              return reject(new Error("Chave Mestra não encontrada"));
+            }
+            
             try {
+              console.log("[Upload] Lendo conteúdo do arquivo para a memória...");
               const arrayBuffer = await file.arrayBuffer();
               const bookId = generateId();
               
-              // 1. Upload E2EE para o Firebase Storage
-              console.log("Iniciando upload E2EE do PDF...");
+              console.log("[Upload] Criptografando e enviando para o Google Drive (E2EE)...");
               const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
-              console.log("Upload concluído!", remotePath);
+              console.log(`[Upload] Sucesso na nuvem! Referência do arquivo: ${remotePath}`);
               
               // 2. Salva os metadados no IndexedDB
+              console.log("[Upload] Salvando metadados no banco local...");
               const title = file.name.replace(/\.(pdf|epub)$/i, '');
               const book = {
                 id: bookId,
@@ -247,10 +254,12 @@ export const createWebApiMock = async () => {
               };
               
               await db.put('library_books', book);
+              console.log("[Upload] Processo concluído com sucesso!");
               resolve(book);
             } catch (err) {
-              console.error("Falha ao importar PDF", err);
-              resolve(null);
+              console.error("[Upload] ERRO ao importar arquivo:", err);
+              window.dispatchEvent(new Event('library-upload-end'));
+              reject(err);
             }
           };
           
