@@ -3,10 +3,10 @@ import { X, BookType, Globe, Database, Sparkles, RefreshCw } from 'lucide-react'
 import { getSettings } from '../../utils/settings';
 import { promptGemini } from '../../services/gemini';
 
-interface DictionaryModalProps {
-  text: string;
-  pageContext?: string;
-  onClose: () => void;
+export interface Collocation {
+  expression: string;
+  meaning: string;
+  example: string;
 }
 
 interface DictionaryData {
@@ -16,7 +16,7 @@ interface DictionaryData {
     phonetic?: string;
     definitions: string[];
     synonyms?: string[];
-    collocations?: string[];
+    collocations?: Collocation[];
     context_explanation?: string;
     examples: string[];
   };
@@ -24,7 +24,7 @@ interface DictionaryData {
     translation: string;
     definitions: string[];
     synonyms?: string[];
-    collocations?: string[];
+    collocations?: Collocation[];
     context_explanation?: string;
     examples: string[];
   };
@@ -38,6 +38,7 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | null>(null);
   const [languageTab, setLanguageTab] = useState<'en' | 'pt'>('en');
   const [error, setError] = useState<string | null>(null);
+  const [selectedColloc, setSelectedColloc] = useState<Collocation | null>(null);
 
   useEffect(() => {
     fetchDefinition(mode);
@@ -90,7 +91,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "phonetic": "transcrição fonética IPA exata",
     "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
-    "collocations": ["palavra combinada 1", "palavra combinada 2", "palavra combinada 3"],
+    "collocations": [{"expression": "palavra combinada 1", "meaning": "significado da expressão", "example": "exemplo de uso"}],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
   },
@@ -98,7 +99,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "translation": "Tradução direta e precisa para o português.",
     "definitions": ["1. Primeiro significado em português.", "2. Segundo significado em português."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": ["combinação 1", "combinação 2"],
+    "collocations": [{"expression": "combinação 1", "meaning": "significado da combinação", "example": "exemplo de uso"}],
     "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
     "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês"]
   }
@@ -112,7 +113,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "translation": "A própria palavra.",
     "definitions": ["1. Primeiro significado.", "2. Segundo significado."],
     "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": ["expressão comum 1", "expressão comum 2"],
+    "collocations": [{"expression": "expressão comum 1", "meaning": "significado da expressão", "example": "exemplo de uso"}],
     "context_explanation": "Explicação do significado da palavra no contexto (se houver).",
     "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
   }
@@ -274,7 +275,13 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {dictionaryData.english.collocations.map((colloc, i) => (
-                          <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded-md text-[13px] font-medium border border-blue-500/20">{colloc}</span>
+                          <button 
+                            key={i} 
+                            onClick={() => setSelectedColloc(colloc)}
+                            className="px-2 py-1 bg-blue-500/20 text-blue-200 hover:text-white rounded-md text-[13px] font-medium border border-blue-500/20 hover:bg-blue-500/40 transition-colors cursor-pointer"
+                          >
+                            {colloc.expression}
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -332,7 +339,13 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {dictionaryData.portuguese.collocations.map((colloc, i) => (
-                          <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded-md text-[13px] font-medium border border-blue-500/20">{colloc}</span>
+                          <button 
+                            key={i} 
+                            onClick={() => setSelectedColloc(colloc)}
+                            className="px-2 py-1 bg-blue-500/20 text-blue-200 hover:text-white rounded-md text-[13px] font-medium border border-blue-500/20 hover:bg-blue-500/40 transition-colors cursor-pointer"
+                          >
+                            {colloc.expression}
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -378,6 +391,35 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
           </div>
         )}
       </div>
+
+      {/* Sub-modal para Collocation */}
+      {selectedColloc && (
+        <div 
+          className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
+          onMouseDown={() => setSelectedColloc(null)}
+        >
+          <div 
+            className="bg-dark-card border border-white/10 rounded-2xl w-80 shadow-2xl p-6 relative animate-scale-in" 
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setSelectedColloc(null)} 
+              className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <div className="flex items-center gap-1.5 text-blue-400 mb-4">
+              <Sparkles size={14} />
+              <h4 className="font-semibold text-xs uppercase tracking-wider">Common Pairing</h4>
+            </div>
+            <p className="text-xl font-bold text-white mb-2">{selectedColloc.expression}</p>
+            <p className="text-sm text-brand-300 font-medium mb-4">{selectedColloc.meaning}</p>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-sm italic text-dark-text/90 leading-relaxed">"{selectedColloc.example}"</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
