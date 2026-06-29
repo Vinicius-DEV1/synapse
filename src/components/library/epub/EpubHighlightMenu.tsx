@@ -42,7 +42,13 @@ export default function EpubHighlightMenu() {
 
   if (!selection) {
     if (dictionaryTarget) {
-      return <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />;
+      return (
+        <DictionaryModal 
+          text={dictionaryTarget.word}
+          pageContext={dictionaryTarget.context}
+          onClose={() => setDictionaryTarget(null)} 
+        />
+      );
     }
     return null;
   }
@@ -247,7 +253,11 @@ export default function EpubHighlightMenu() {
         )}
 
         {dictionaryTarget && (
-          <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />
+          <DictionaryModal 
+            text={dictionaryTarget.word}
+            pageContext={dictionaryTarget.context}
+            onClose={() => setDictionaryTarget(null)} 
+          />
         )}
       </>
     );
@@ -267,7 +277,11 @@ export default function EpubHighlightMenu() {
       </div>
 
       {dictionaryTarget && (
-        <DictionaryModal target={dictionaryTarget} onClose={() => setDictionaryTarget(null)} />
+        <DictionaryModal 
+          text={dictionaryTarget.word}
+          pageContext={dictionaryTarget.context}
+          onClose={() => setDictionaryTarget(null)} 
+        />
       )}
     </>
   );
