@@ -13,11 +13,13 @@ interface DictionaryData {
   detected_language: 'en' | 'pt';
   english?: {
     definition: string;
+    context_explanation?: string;
     examples: string[];
   };
   portuguese: {
     translation: string;
     definition: string;
+    context_explanation?: string;
     examples: string[];
   };
 }
@@ -80,11 +82,13 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "detected_language": "en",
   "english": {
     "definition": "Significado detalhado em inglês.",
+    "context_explanation": "Explicação do significado exato da palavra no contexto fornecido da frase (se houver contexto).",
     "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
   },
   "portuguese": {
     "translation": "Tradução direta para português.",
     "definition": "Significado detalhado em português.",
+    "context_explanation": "Explicação em português do significado exato da palavra no contexto fornecido.",
     "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
   }
 }
@@ -96,6 +100,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "portuguese": {
     "translation": "A própria palavra.",
     "definition": "Significado detalhado em português.",
+    "context_explanation": "Explicação do significado exato da palavra no contexto fornecido (se houver).",
     "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
   }
 }
@@ -128,7 +133,7 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
   return (
     <div className="dictionary-modal-container select-none fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={onClose}>
       <div 
-        className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
+        className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[95vw] max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -227,6 +232,12 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Definition</h4>
                     <p className="leading-relaxed">{dictionaryData.english.definition}</p>
                   </div>
+                  {dictionaryData.english.context_explanation && (
+                    <div>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">In Context</h4>
+                      <p className="leading-relaxed text-brand-100">{dictionaryData.english.context_explanation}</p>
+                    </div>
+                  )}
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
                     <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
@@ -248,6 +259,12 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Significado</h4>
                     <p className="leading-relaxed">{dictionaryData.portuguese.definition}</p>
                   </div>
+                  {dictionaryData.portuguese.context_explanation && (
+                    <div>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">No Contexto</h4>
+                      <p className="leading-relaxed text-brand-100">{dictionaryData.portuguese.context_explanation}</p>
+                    </div>
+                  )}
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Exemplos</h4>
                     <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
