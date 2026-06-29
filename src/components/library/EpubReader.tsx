@@ -410,8 +410,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         };
       }
           
-      rendition.themes.register('custom', themeCss);
-      rendition.themes.select('custom');
+      const themeName = `custom-${readingMode}-${fontFamily}`;
+      rendition.themes.register(themeName, themeCss);
+      rendition.themes.select(themeName);
     }
   }, [fontSize, fontFamily, readingMode, rendition]);
 
