@@ -90,18 +90,22 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "word_class": "adjective/noun/verb/etc (em inglês)",
     "phonetic": "transcrição fonética IPA exata",
     "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
-    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
-    "collocations": [{"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3"]}],
+    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
+    "collocations": [
+      {"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3", "example 4", "example 5"]}
+    ],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
-    "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
+    "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English", "Example 4 in English", "Example 5 in English"]
   },
   "portuguese": {
     "translation": "Tradução direta e precisa para o português.",
     "definitions": ["1. Primeiro significado em português.", "2. Segundo significado em português."],
-    "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": [{"expression": "combinação 1", "meaning": "significado da combinação", "examples": ["exemplo 1", "exemplo 2", "exemplo 3"]}],
+    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
+    "collocations": [
+      {"expression": "combinação 1", "meaning": "significado da combinação", "examples": ["exemplo 1", "exemplo 2", "exemplo 3", "exemplo 4", "exemplo 5"]}
+    ],
     "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
-    "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês"]
+    "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês", "Exemplo 4 original em inglês", "Exemplo 5 original em inglês"]
   }
 }
 
@@ -112,10 +116,12 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "portuguese": {
     "translation": "A própria palavra.",
     "definitions": ["1. Primeiro significado.", "2. Segundo significado."],
-    "synonyms": ["sinônimo 1", "sinônimo 2"],
-    "collocations": [{"expression": "expressão comum 1", "meaning": "significado da expressão", "examples": ["exemplo 1", "exemplo 2", "exemplo 3"]}],
+    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
+    "collocations": [
+      {"expression": "expressão comum 1", "meaning": "significado da expressão", "examples": ["exemplo 1", "exemplo 2", "exemplo 3", "exemplo 4", "exemplo 5"]}
+    ],
     "context_explanation": "Explicação do significado da palavra no contexto (se houver).",
-    "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
+    "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português", "Exemplo 4 em português", "Exemplo 5 em português"]
   }
 }
 
