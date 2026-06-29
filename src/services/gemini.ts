@@ -100,11 +100,6 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
   const settings = getSettings();
   let modelId = settings.geminiModel || 'models/gemini-1.5-pro';
-  
-  // Auto-correção para o nome legado/quebrado que estava causando 503
-  if (modelId === 'gemini-flash-latest' || modelId === 'models/gemini-flash-latest') {
-    modelId = 'models/gemini-1.5-flash';
-  }
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
@@ -165,8 +160,10 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
         } else if (response.status >= 500) {
           throw new Error('SERVER_ERROR');
         } else if (response.status === 400 || response.status === 403 || response.status === 404) {
+          console.error(`[DEBUG IA] Fatal Error for Model: ${fullModelId}`, data.error);
           throw new Error(`Erro fatal da API (${response.status}): ${data.error?.message || 'Requisição inválida ou chave incorreta.'}`);
         }
+        console.error(`[DEBUG IA] Unknown API Error:`, data);
         throw new Error(data.error?.message || 'Erro ao chamar a API do Gemini');
       }
 

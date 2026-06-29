@@ -256,9 +256,16 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
               {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.deep_dive && (
                 <button 
                   onClick={() => setShowDeepDive(true)}
-                  className="text-[10px] flex items-center gap-1 bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full font-medium hover:bg-brand-500/30 transition-colors border border-brand-500/30"
+                  className={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex 
+                    ? "text-xs flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-brand-600 text-white px-3 py-1 rounded-full font-bold hover:shadow-lg hover:shadow-purple-500/20 hover:scale-105 transition-all"
+                    : "text-[10px] flex items-center gap-1 bg-white/5 text-dark-subtext px-2 py-0.5 rounded-full font-medium hover:bg-white/10 hover:text-white transition-colors border border-white/5"
+                  }
                 >
-                  <Sparkles size={10} /> Deep Dive
+                  <Sparkles 
+                    size={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex ? 14 : 10} 
+                    className={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex ? "animate-pulse" : ""} 
+                  /> 
+                  Advanced Deep Dive
                 </button>
               )}
             </div>
@@ -502,7 +509,7 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
           onMouseDown={(e) => { e.stopPropagation(); setShowDeepDive(false); }}
         >
           <div 
-            className="bg-dark-card border border-white/10 rounded-2xl w-[450px] shadow-2xl p-6 relative animate-scale-in max-h-[85vh] overflow-y-auto custom-scrollbar" 
+            className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[95vw] shadow-2xl p-6 relative animate-scale-in max-h-[85vh] overflow-y-auto custom-scrollbar" 
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button 
