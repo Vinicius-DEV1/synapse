@@ -169,7 +169,7 @@ export default function EpubHighlightMenu() {
             {/* Copiar */}
             <button
               onClick={() => { navigator.clipboard.writeText(selection.text); setSelection(null); }}
-              className="text-lg opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+              className="text-2xl opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
               title="Copiar texto"
             >📋</button>
 
@@ -184,14 +184,14 @@ export default function EpubHighlightMenu() {
                 className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
                 title="Dicionário / Traduzir"
               >
-                <BookType size={18} />
+                <BookType size={22} />
               </button>
             )}
 
             {/* Nota (só para novos grifos) */}
             {!selection.existingHighlightId && (
               <button onClick={() => setNoteMode('yellow')} className="text-sm font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1.5">
-                <span className="text-lg">📝</span> Nota
+                <span className="text-2xl">📝</span> Nota
               </button>
             )}
 
@@ -215,7 +215,7 @@ export default function EpubHighlightMenu() {
                   className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-colors"
                   title="Excluir Grifo"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={22} />
                 </button>
               )
             )}
