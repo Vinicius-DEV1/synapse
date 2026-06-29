@@ -12,14 +12,20 @@ interface DictionaryModalProps {
 interface DictionaryData {
   detected_language: 'en' | 'pt';
   english?: {
+    word_class?: string;
+    phonetic?: string;
     definition: string;
+    synonyms?: string[];
     context_explanation?: string;
+    didactic_notes?: string;
     examples: string[];
   };
   portuguese: {
     translation: string;
     definition: string;
+    synonyms?: string[];
     context_explanation?: string;
+    didactic_notes?: string;
     examples: string[];
   };
 }
@@ -67,25 +73,34 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
           setLoading(false);
         }, 600);
       } else {
-        const prompt = `Analise a palavra ou trecho selecionado: "${text}".
+        const prompt = `Você é um dicionário internacional renomado e um professor de idiomas experiente focado em estudantes brasileiros.
+Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
 
-Identifique o idioma da palavra.
+Identifique o idioma da palavra. Siga ESTAS REGRAS RÍGIDAS:
+1. Lexicografia: Retorne definições, fonética e sinônimos baseados em dicionários oficiais (Oxford/Cambridge/Michaelis). NÃO invente significados.
+2. Pedagogia: Na explicação de contexto e notas didáticas, explique extensamente por que a palavra foi usada neste contexto, suas nuances, e dê dicas úteis.
 
 Se a palavra for em INGLÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
 {
   "detected_language": "en",
   "english": {
-    "definition": "Significado detalhado em inglês.",
-    "context_explanation": "Explicação do significado exato da palavra no contexto fornecido da frase (se houver contexto).",
-    "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
+    "word_class": "adjective/noun/verb/etc (em inglês)",
+    "phonetic": "transcrição fonética IPA exata",
+    "definition": "Significado estrito e rigoroso em inglês.",
+    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3"],
+    "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
+    "didactic_notes": "Grammar note, etymology, or false cognate warning in ENGLISH.",
+    "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English"]
   },
   "portuguese": {
-    "translation": "Tradução direta para português.",
-    "definition": "Significado detalhado em português.",
-    "context_explanation": "Explicação em português do significado exato da palavra no contexto fornecido.",
-    "examples": ["Exemplo 1 em inglês", "Exemplo 2 em inglês", "Exemplo 3 em inglês"]
+    "translation": "Tradução direta e precisa para o português.",
+    "definition": "Significado rigoroso em português.",
+    "synonyms": ["sinônimo 1", "sinônimo 2"],
+    "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando por que a palavra foi escolhida neste contexto e não um de seus sinônimos.",
+    "didactic_notes": "Dica gramatical, etimológica ou alerta de falsos cognatos em PORTUGUÊS.",
+    "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês"]
   }
 }
 
@@ -95,13 +110,15 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "detected_language": "pt",
   "portuguese": {
     "translation": "A própria palavra.",
-    "definition": "Significado detalhado em português.",
-    "context_explanation": "Explicação do significado exato da palavra no contexto fornecido (se houver).",
+    "definition": "Significado detalhado e rigoroso em português.",
+    "synonyms": ["sinônimo 1", "sinônimo 2"],
+    "context_explanation": "Explicação do significado exato da palavra no contexto (se houver).",
+    "didactic_notes": "Dica gramatical ou etimológica.",
     "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português"]
   }
 }
 
-Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
+Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem nenhum texto adicional.`;
 
         const response = await promptGemini(
           prompt,
@@ -170,7 +187,12 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
 
         {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
-          <p className="text-sm font-medium text-dark-text italic truncate">"{text}"</p>
+          <p className="text-lg font-bold text-white mb-0.5">"{text}"</p>
+          {dictionaryData && languageTab === 'en' && dictionaryData.english && (
+            <div className="text-xs text-brand-300 opacity-80 mb-3 font-medium">
+              {dictionaryData.english.phonetic} {dictionaryData.english.word_class && ` • ${dictionaryData.english.word_class}`}
+            </div>
+          )}
           
           {dictionaryData && dictionaryData.detected_language === 'en' && (
             <div className="flex items-center gap-4 mt-3">
@@ -221,19 +243,42 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
               )}
             </div>
           ) : dictionaryData ? (
-            <div className="flex flex-col gap-5 text-sm text-dark-text/90">
+            <div className="flex flex-col gap-6 text-sm text-dark-text/90">
               {languageTab === 'en' && dictionaryData.english ? (
                 <>
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Definition</h4>
-                    <p className="leading-relaxed">{dictionaryData.english.definition}</p>
+                    <p className="leading-relaxed text-[15px] text-white/90">{dictionaryData.english.definition}</p>
                   </div>
-                  {dictionaryData.english.context_explanation && (
+                  
+                  {dictionaryData.english.synonyms && dictionaryData.english.synonyms.length > 0 && (
                     <div>
-                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">In Context</h4>
-                      <p className="leading-relaxed text-brand-100">{dictionaryData.english.context_explanation}</p>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Synonyms</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {dictionaryData.english.synonyms.map((syn, i) => (
+                          <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {dictionaryData.english.context_explanation && (
+                    <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
+                      <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">In Context</h4>
+                      <p className="leading-relaxed text-sm">{dictionaryData.english.context_explanation}</p>
+                    </div>
+                  )}
+                  
+                  {dictionaryData.english.didactic_notes && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-blue-400 mb-1">
+                        <Sparkles size={12} />
+                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Didactic Note</h4>
+                      </div>
+                      <p className="leading-relaxed text-blue-100/90 text-sm">{dictionaryData.english.didactic_notes}</p>
+                    </div>
+                  )}
+
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
                     <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
@@ -248,19 +293,42 @@ Retorne APENAS o JSON válido, sem crases (\`\`\`) e sem texto adicional.`;
                   {dictionaryData.detected_language === 'en' && (
                     <div>
                       <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Tradução</h4>
-                      <p className="leading-relaxed font-semibold">{dictionaryData.portuguese.translation}</p>
+                      <p className="leading-relaxed font-semibold text-[15px] text-white/90">{dictionaryData.portuguese.translation}</p>
                     </div>
                   )}
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Significado</h4>
-                    <p className="leading-relaxed">{dictionaryData.portuguese.definition}</p>
+                    <p className="leading-relaxed text-[15px] text-white/90">{dictionaryData.portuguese.definition}</p>
                   </div>
-                  {dictionaryData.portuguese.context_explanation && (
+                  
+                  {dictionaryData.portuguese.synonyms && dictionaryData.portuguese.synonyms.length > 0 && (
                     <div>
-                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">No Contexto</h4>
-                      <p className="leading-relaxed text-brand-100">{dictionaryData.portuguese.context_explanation}</p>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Sinônimos</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {dictionaryData.portuguese.synonyms.map((syn, i) => (
+                          <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {dictionaryData.portuguese.context_explanation && (
+                    <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
+                      <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">No Contexto</h4>
+                      <p className="leading-relaxed text-sm">{dictionaryData.portuguese.context_explanation}</p>
+                    </div>
+                  )}
+
+                  {dictionaryData.portuguese.didactic_notes && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-blue-400 mb-1">
+                        <Sparkles size={12} />
+                        <h4 className="font-semibold text-[11px] uppercase tracking-wider">Nota Didática</h4>
+                      </div>
+                      <p className="leading-relaxed text-blue-100/90 text-sm">{dictionaryData.portuguese.didactic_notes}</p>
+                    </div>
+                  )}
+
                   <div>
                     <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Exemplos</h4>
                     <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">

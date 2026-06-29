@@ -285,7 +285,7 @@ export default function EpubHighlightMenu() {
     <>
       <div
         ref={refs.setFloating}
-        className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-56 ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
+        className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-max min-w-[260px] max-w-[320px] ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
         style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden' }}
       >
         {menuContent}
