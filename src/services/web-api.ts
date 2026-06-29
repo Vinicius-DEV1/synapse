@@ -211,8 +211,11 @@ export const createWebApiMock = async () => {
             const file = e.target.files[0];
             if (!file) return resolve(null);
             
+            window.dispatchEvent(new Event('library-upload-start'));
+            
             if (!_masterKey) {
               alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+              window.dispatchEvent(new Event('library-upload-end'));
               return resolve(null);
             }
             

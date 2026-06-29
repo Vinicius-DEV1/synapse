@@ -105,6 +105,17 @@ export default function LibraryView() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    const onUploadStart = () => setLoading(true);
+    const onUploadEnd = () => setLoading(false);
+    window.addEventListener('library-upload-start', onUploadStart);
+    window.addEventListener('library-upload-end', onUploadEnd);
+    return () => {
+      window.removeEventListener('library-upload-start', onUploadStart);
+      window.removeEventListener('library-upload-end', onUploadEnd);
+    };
+  }, []);
+
   // --- Actions ---
   const handleImport = async () => {
     if (!window.api?.library) return;
@@ -113,6 +124,8 @@ export default function LibraryView() {
       if (imported) await loadData();
     } catch (err) {
       console.error('Import failed', err);
+    } finally {
+      setLoading(false);
     }
   };
 
