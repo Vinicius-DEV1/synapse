@@ -394,8 +394,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const isMobileView = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       const bottomPadding = isMobileView ? '60px' : '16px';
 
+      const themeName = `custom-${readingMode}-${fontFamily}`;
+
       const themeCss: any = {
-        'body': { 
+        [`.${themeName}`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`, 
           'padding-bottom': `${bottomPadding} !important` 
@@ -403,14 +405,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       };
 
       if (fontFamily !== 'original') {
-        themeCss['body']['font-family'] = `${font} !important`;
-        themeCss['*'] = { 'font-family': `${font} !important` };
-        themeCss['p, span, div, h1, h2, h3, h4, h5, h6, a, li, blockquote'] = {
+        themeCss[`.${themeName}`]['font-family'] = `${font} !important`;
+        themeCss[`.${themeName} *`] = { 'font-family': `${font} !important` };
+        themeCss[`.${themeName} p, .${themeName} span, .${themeName} div, .${themeName} h1, .${themeName} h2, .${themeName} h3, .${themeName} h4, .${themeName} h5, .${themeName} h6, .${themeName} a, .${themeName} li, .${themeName} blockquote`] = {
             'font-family': `${font} !important`
         };
       }
           
-      const themeName = `custom-${readingMode}-${fontFamily}`;
       rendition.themes.register(themeName, themeCss);
       rendition.themes.select(themeName);
     }
