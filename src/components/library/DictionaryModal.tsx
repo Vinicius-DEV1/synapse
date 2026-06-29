@@ -9,25 +9,35 @@ export interface Collocation {
   examples: string[];
 }
 
+export interface DeepDiveSynonym {
+  word: string;
+  nuance: string;
+}
+
+export interface DeepDive {
+  etymology: string;
+  nuance_explanation: string;
+  contextual_synonyms: DeepDiveSynonym[];
+  progressive_examples: string[];
+}
+
+interface LanguageData {
+  word_class?: string;
+  phonetic?: string;
+  definitions: string[];
+  synonyms?: string[];
+  collocations?: Collocation[];
+  context_explanation?: string;
+  examples: string[];
+  is_rare_or_complex?: boolean;
+  nuance_tag?: string;
+  deep_dive?: DeepDive;
+}
+
 interface DictionaryData {
   detected_language: 'en' | 'pt';
-  english?: {
-    word_class?: string;
-    phonetic?: string;
-    definitions: string[];
-    synonyms?: string[];
-    collocations?: Collocation[];
-    context_explanation?: string;
-    examples: string[];
-  };
-  portuguese: {
-    translation: string;
-    definitions: string[];
-    synonyms?: string[];
-    collocations?: Collocation[];
-    context_explanation?: string;
-    examples: string[];
-  };
+  english?: LanguageData;
+  portuguese: LanguageData & { translation: string };
 }
 
 export default function DictionaryModal({ text, pageContext, onClose }: DictionaryModalProps) {
@@ -39,6 +49,7 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
   const [languageTab, setLanguageTab] = useState<'en' | 'pt'>('en');
   const [error, setError] = useState<string | null>(null);
   const [selectedColloc, setSelectedColloc] = useState<Collocation | null>(null);
+  const [showDeepDive, setShowDeepDive] = useState(false);
 
   useEffect(() => {
     fetchDefinition(mode);
@@ -87,6 +98,8 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
 {
   "detected_language": "en",
   "english": {
+    "is_rare_or_complex": true/false (true if C1/C2, archaic, highly formal, or rare),
+    "nuance_tag": "short tag like [Poetic] or [Formal] if rare, otherwise null",
     "word_class": "adjective/noun/verb/etc (em inglês)",
     "phonetic": "transcrição fonética IPA exata",
     "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
@@ -95,17 +108,39 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       {"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3", "example 4", "example 5"]}
     ],
     "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
-    "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English", "Example 4 in English", "Example 5 in English"]
+    "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English", "Example 4 in English", "Example 5 in English"],
+    "deep_dive": {
+      "etymology": "historical roots of the word",
+      "nuance_explanation": "details about the exact tone, connotation and when NOT to use it",
+      "contextual_synonyms": [
+        {"word": "synonym 1", "nuance": "when to use this vs the original word"},
+        {"word": "synonym 2", "nuance": "when to use this vs the original word"},
+        {"word": "synonym 3", "nuance": "when to use this vs the original word"},
+        {"word": "synonym 4", "nuance": "when to use this vs the original word"},
+        {"word": "synonym 5", "nuance": "when to use this vs the original word"}
+      ],
+      "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
+    }
   },
   "portuguese": {
     "translation": "Tradução direta e precisa para o português.",
+    "is_rare_or_complex": true/false,
+    "nuance_tag": "short tag if rare, otherwise null",
     "definitions": ["1. Primeiro significado em português.", "2. Segundo significado em português."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
     "collocations": [
       {"expression": "combinação 1", "meaning": "significado da combinação", "examples": ["exemplo 1", "exemplo 2", "exemplo 3", "exemplo 4", "exemplo 5"]}
     ],
     "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
-    "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês", "Exemplo 4 original em inglês", "Exemplo 5 original em inglês"]
+    "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês", "Exemplo 4 original em inglês", "Exemplo 5 original em inglês"],
+    "deep_dive": {
+      "etymology": "origem e raízes históricas",
+      "nuance_explanation": "nuances e tom emocional da palavra",
+      "contextual_synonyms": [
+        {"word": "sinônimo 1", "nuance": "quando usar"}
+      ],
+      "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
+    }
   }
 }
 
@@ -115,13 +150,23 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "detected_language": "pt",
   "portuguese": {
     "translation": "A própria palavra.",
+    "is_rare_or_complex": true/false,
+    "nuance_tag": "short tag se rara",
     "definitions": ["1. Primeiro significado.", "2. Segundo significado."],
     "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
     "collocations": [
       {"expression": "expressão comum 1", "meaning": "significado da expressão", "examples": ["exemplo 1", "exemplo 2", "exemplo 3", "exemplo 4", "exemplo 5"]}
     ],
     "context_explanation": "Explicação do significado da palavra no contexto (se houver).",
-    "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português", "Exemplo 4 em português", "Exemplo 5 em português"]
+    "examples": ["Exemplo 1 em português", "Exemplo 2 em português", "Exemplo 3 em português", "Exemplo 4 em português", "Exemplo 5 em português"],
+    "deep_dive": {
+      "etymology": "origem e raízes",
+      "nuance_explanation": "nuance da palavra",
+      "contextual_synonyms": [
+        {"word": "sinônimo 1", "nuance": "quando usar"}
+      ],
+      "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
+    }
   }
 }
 
@@ -195,9 +240,27 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
         {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
           <p className="text-lg font-bold text-white mb-0.5">"{text}"</p>
-          {dictionaryData && languageTab === 'en' && dictionaryData.english && (
-            <div className="text-xs text-brand-300 opacity-80 mb-3 font-medium">
-              {dictionaryData.english.phonetic} {dictionaryData.english.word_class && ` • ${dictionaryData.english.word_class}`}
+          {dictionaryData && (
+            <div className="flex items-center gap-2 mb-3">
+              {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese) && (
+                <div className="text-xs text-brand-300 opacity-80 font-medium">
+                  {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.phonetic} 
+                  {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.word_class && ` • ${(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.word_class}`}
+                </div>
+              )}
+              {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.nuance_tag && (
+                <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded font-medium border border-purple-500/20">
+                  {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.nuance_tag}
+                </span>
+              )}
+              {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.deep_dive && (
+                <button 
+                  onClick={() => setShowDeepDive(true)}
+                  className="text-[10px] flex items-center gap-1 bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full font-medium hover:bg-brand-500/30 transition-colors border border-brand-500/30"
+                >
+                  <Sparkles size={10} /> Deep Dive
+                </button>
+              )}
             </div>
           )}
           
@@ -428,6 +491,70 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                 ))}
               </ul>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-modal para Deep Dive */}
+      {showDeepDive && dictionaryData && (
+        <div 
+          className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
+          onMouseDown={(e) => { e.stopPropagation(); setShowDeepDive(false); }}
+        >
+          <div 
+            className="bg-dark-card border border-white/10 rounded-2xl w-[450px] shadow-2xl p-6 relative animate-scale-in max-h-[85vh] overflow-y-auto custom-scrollbar" 
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowDeepDive(false); }} 
+              className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="flex items-center gap-1.5 text-purple-400 mb-6">
+              <Sparkles size={16} />
+              <h4 className="font-semibold text-sm uppercase tracking-wider">Advanced Deep Dive</h4>
+            </div>
+
+            {(() => {
+              const data = languageTab === 'en' ? dictionaryData.english?.deep_dive : dictionaryData.portuguese?.deep_dive;
+              if (!data) return null;
+              return (
+                <div className="space-y-6">
+                  <div>
+                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-1.5">Etymology & Roots</h5>
+                    <p className="text-sm text-white/90 leading-relaxed">{data.etymology}</p>
+                  </div>
+                  
+                  <div>
+                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-1.5">Nuance & Connotation</h5>
+                    <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{data.nuance_explanation}</p>
+                  </div>
+
+                  <div>
+                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-2">Contextual Synonyms</h5>
+                    <div className="space-y-2">
+                      {data.contextual_synonyms.map((syn, i) => (
+                        <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
+                          <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
+                          <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-2">Progressive Examples</h5>
+                    <ul className="space-y-3">
+                      {data.progressive_examples.map((ex, i) => (
+                        <li key={i} className="text-sm italic text-white/80 border-l-2 border-brand-500/50 pl-3">"{ex}"</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
