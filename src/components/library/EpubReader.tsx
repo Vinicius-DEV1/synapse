@@ -388,12 +388,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
       const colors = getEpubThemeColors(readingMode);
       
-      // Detecta se estamos no Mobile ou Web App via tamanho de tela e userAgent
-      // Se for mobile, precisamos de 60px de padding para não conflitar com a barra inferior flutuante ou gestos de iOS.
-      // Se for desktop, 16px é suficiente apenas para o texto não ficar grudado no rodapé inferior fixo, o que libera ~3 linhas úteis!
-      const isMobileView = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-      const bottomPadding = isMobileView ? '60px' : '16px';
-
       const themeName = `custom-${readingMode}-${fontFamily}`;
 
       const themeCss: any = {
@@ -496,6 +490,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const currentPageSafe = currentPage || 0;
   const totalPagesSafe = totalPages || 0;
   const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
+  
+  // Detecta se estamos no Mobile ou Web App via tamanho de tela e userAgent
+  // Se for mobile, precisamos de 60px de padding para não conflitar com a barra inferior flutuante ou gestos de iOS.
+  // Se for desktop, 16px é suficiente apenas para o texto não ficar grudado no rodapé inferior fixo.
+  const isMobileView = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const bottomPadding = isMobileView ? '60px' : '16px';
   
   const bottomBarClasses = readingMode === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 
     readingMode === 'midnight' ? 'bg-[#0f172a] text-[#475569]' : 
