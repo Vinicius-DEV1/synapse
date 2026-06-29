@@ -16,30 +16,45 @@ const LinkPreviewComponent = (props: any) => {
     const fetchTitle = async () => {
       const proxies = [
         async () => {
+          // Microlink (Excelente para extrair Título, Imagem e Logo. Limite por IP do usuário)
+          const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('Microlink failed');
+          const json = await res.json();
+          if (json.data && json.data.title) {
+            return json.data.title as string;
+          }
+          throw new Error('No title in Microlink response');
+        },
+        async () => {
+          // JSONLink (Alternativa gratuita e sem chave para extração)
+          const res = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('JSONLink failed');
+          const json = await res.json();
+          if (json.title) {
+            return json.title as string;
+          }
+          throw new Error('No title in JSONLink response');
+        },
+        async () => {
+          // Fallback final: proxy genérico do allorigins lendo o HTML cru
           const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('Proxy 1 failed');
+          if (!res.ok) throw new Error('AllOrigins failed');
           const data = await res.json();
-          return data.contents as string;
-        },
-        async () => {
-          const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('Proxy 2 failed');
-          return await res.text();
-        },
-        async () => {
-          const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('Proxy 3 failed');
-          return await res.text();
+          const match = (data.contents as string).match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (match && match[1]) {
+            return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          }
+          throw new Error('Regex failed on AllOrigins HTML');
         }
       ];
 
-      let html = '';
+      let fetchedTitleStr = '';
       let success = false;
 
       for (const proxyFn of proxies) {
         try {
-          html = await proxyFn();
-          if (html) {
+          fetchedTitleStr = await proxyFn();
+          if (fetchedTitleStr) {
             success = true;
             break;
           }
@@ -51,17 +66,11 @@ const LinkPreviewComponent = (props: any) => {
       try {
         if (!success) throw new Error('All proxies failed');
         
-        // Extract title using Regex
-        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (match && match[1]) {
-          const newTitle = match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-          if (isMounted) {
-            setFetchedTitle(newTitle);
-            props.updateAttributes({ title: newTitle, isLoading: false });
-            setLoading(false);
-          }
-        } else {
-          throw new Error('Title not found');
+        const newTitle = fetchedTitleStr;
+        if (isMounted) {
+          setFetchedTitle(newTitle);
+          props.updateAttributes({ title: newTitle, isLoading: false });
+          setLoading(false);
         }
       } catch (err) {
         console.error('Failed to fetch link title:', err);
