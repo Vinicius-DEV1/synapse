@@ -156,28 +156,41 @@ export async function uploadToDrive(accessToken: string, filename: string, buffe
 
   const metadata = {
     name: filename,
-    mimeType: 'application/octet-stream',
-    parents: [folderId] // Salva dentro da pasta do app
+    parents: [folderId]
   };
 
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  form.append('file', new Blob([buffer], { type: 'application/octet-stream' }));
-
-  const res = await fetch(DRIVE_UPLOAD_URL, {
+  // Passo 1: Criar o arquivo vazio (apenas metadados)
+  const metaRes = await fetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
     },
-    body: form
+    body: JSON.stringify(metadata)
   });
 
-  if (!res.ok) {
-    throw new Error(`Erro ao fazer upload no Google Drive: ${res.statusText}`);
+  if (!metaRes.ok) {
+    throw new Error(`Erro ao criar arquivo no Google Drive: ${metaRes.statusText}`);
   }
 
-  const data = await res.json();
-  return data.id; // File ID no Google Drive
+  const metaData = await metaRes.json();
+  const fileId = metaData.id;
+
+  // Passo 2: Fazer o upload do conteúdo (ArrayBuffer) usando uploadType=media
+  const uploadRes = await fetch(`${DRIVE_UPLOAD_URL.split('?')[0]}/${fileId}?uploadType=media`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/octet-stream'
+    },
+    body: buffer
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error(`Erro ao fazer upload no Google Drive: ${uploadRes.statusText}`);
+  }
+
+  return fileId;
 }
 
 /**
