@@ -1,5 +1,5 @@
 import { getWebDb } from './db-web';
-import { uploadEncryptedPdf } from './storage';
+import { uploadEncryptedPdf, getDecryptedPdf } from './storage';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -273,11 +273,17 @@ export const createWebApiMock = async () => {
         await db.put('library_books', { ...existing, ...book, updated_at: new Date().toISOString() });
         return 1;
       },
-      getBookFile: async (_id: string) => {
-        // A versão Web não tem acesso direto aos arquivos do Desktop.
-        // E como desativamos o Firebase Storage, retornamos null direto para que o
-        // PdfReader.tsx caia automaticamente no fallback do Google Drive.
-        return null;
+      getBookFile: async (id: string) => {
+        const book = await db.get('library_books', id);
+        if (!book || !book.file_path) return null;
+        if (!_masterKey) throw new Error("Chave Mestra não encontrada");
+        try {
+          const arrayBuffer = await getDecryptedPdf(book.file_path, _masterKey);
+          return arrayBuffer;
+        } catch (e) {
+          console.error("Falha ao baixar do drive/storage", e);
+          return null;
+        }
       },
       getCollections: async () => await db.getAll('library_collections'),
       createCollection: async (c: any) => {
