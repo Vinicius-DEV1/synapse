@@ -53,7 +53,7 @@ export const createWebApiMock = async () => {
         return item ? item.value : null;
       },
       set: async (key: string, data: any) => {
-        await db.put('config', { id: key, value: data });
+        await db.put('config', { id: key, value: data, updated_at: new Date().toISOString() });
         return { success: true };
       }
     },
