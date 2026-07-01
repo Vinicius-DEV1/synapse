@@ -5,6 +5,7 @@ import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
 import CultureViewModal from './CultureViewModal';
+import CultureGoalModal from './CultureGoalModal';
 
 type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
 export type ViewMode = 'grid' | 'compact' | 'list';
@@ -68,12 +69,16 @@ export default function CultureView() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CultureItem | null>(null);
   const [viewingItem, setViewingItem] = useState<CultureItem | null>(null);
+  const [goalModalItem, setGoalModalItem] = useState<CultureItem | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>(
     () => (localStorage.getItem('culture_view_mode') as ViewMode) || 'grid'
   );
   const [sortMode, setSortMode] = useState<SortMode>(
     () => (localStorage.getItem('culture_sort_mode') as SortMode) || 'default'
+  );
+  const [showGoalsSection, setShowGoalsSection] = useState<boolean>(
+    () => localStorage.getItem('culture_show_goals_section') !== 'false'
   );
   const [sectionOrder, setSectionOrder] = useState<string[]>(loadSectionOrder);
 
@@ -85,6 +90,14 @@ export default function CultureView() {
   const setAndPersistSortMode = (mode: SortMode) => {
     setSortMode(mode);
     localStorage.setItem('culture_sort_mode', mode);
+  };
+
+  const toggleGoalsSection = () => {
+    setShowGoalsSection(prev => {
+      const next = !prev;
+      localStorage.setItem('culture_show_goals_section', next.toString());
+      return next;
+    });
   };
 
   const moveSectionUp = (type: string) => {
@@ -147,17 +160,15 @@ export default function CultureView() {
     const handled = new Set<string>();
     const groups: { type: string; label: string; items: CultureItem[]; isGoalSection?: boolean }[] = [];
 
-    // Separate Goals into their own section at the top
+    // Separate Goals into their own section at the top (if enabled)
     const goalItems = filteredItems.filter(i => i.is_goal && !(i.total_progress > 0 && i.progress >= i.total_progress));
-    if (goalItems.length > 0) {
+    if (showGoalsSection && goalItems.length > 0) {
       groups.push({ 
         type: 'goals', 
         label: '🎯 Objetivos Ativos', 
         items: sortItems(goalItems, sortMode),
         isGoalSection: true
       });
-      // We also add them to handled if we don't want them in their respective type sections.
-      // But typically we DO want them in both, or maybe just remove them from the type sections?
       // Let's remove them from the type sections so they don't duplicate.
       goalItems.forEach(i => handled.add(i.id));
     }
@@ -187,6 +198,19 @@ export default function CultureView() {
   const handleView = (item: CultureItem) => { setViewingItem(item); };
   const handleCloseViewModal = () => { setViewingItem(null); };
 
+  const handleEditGoalNote = (item: CultureItem) => { setGoalModalItem(item); };
+  const handleCloseGoalModal = () => { setGoalModalItem(null); };
+  const handleSaveGoalNote = async (note: string) => {
+    if (goalModalItem) {
+      try {
+        await CultureService.updateItem(goalModalItem.id, { is_goal: true, goal_note: note });
+        loadItems();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
   const formatDate = (iso: string) => {
     try {
       return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(iso));
@@ -207,6 +231,7 @@ export default function CultureView() {
         onUpdate={loadItems}
         onClick={() => handleView(item)}
         onEdit={() => handleEdit(item)}
+        onEditGoal={() => handleEditGoalNote(item)}
         hasNewRelease={recentReleases.some(ep => ep.item_id === item.id)}
       />
     ));
@@ -237,6 +262,21 @@ export default function CultureView() {
             </div>
 
             {/* View mode toggle */}
+            <div className="flex items-center gap-1.5 border-r border-white/10 pr-3 mr-1">
+              <button
+                onClick={toggleGoalsSection}
+                title={showGoalsSection ? "Ocultar seção de Objetivos" : "Mostrar seção de Objetivos"}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  showGoalsSection 
+                    ? 'bg-brand-500/20 text-brand-400 border-brand-500/30 hover:bg-brand-500/30' 
+                    : 'bg-white/5 text-dark-subtext border-white/10 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Target size={13} />
+                <span className="hidden sm:inline">Objetivos</span>
+              </button>
+            </div>
+
             <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/10">
               {([
                 { mode: 'grid'    as ViewMode, icon: <LayoutGrid  size={15} />, title: 'Grade normal' },
@@ -390,6 +430,15 @@ export default function CultureView() {
           item={viewingItem}
           isOpen={!!viewingItem}
           onClose={handleCloseViewModal}
+        />
+      )}
+
+      {goalModalItem && (
+        <CultureGoalModal
+          item={goalModalItem}
+          isOpen={!!goalModalItem}
+          onClose={handleCloseGoalModal}
+          onSave={handleSaveGoalNote}
         />
       )}
     </div>

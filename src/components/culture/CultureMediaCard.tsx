@@ -11,6 +11,7 @@ interface Props {
   onUpdate: () => void;
   onClick: () => void;
   onEdit: () => void;
+  onEditGoal: () => void;
   hasNewRelease?: boolean;
 }
 
@@ -32,7 +33,7 @@ function getStatusInfo(status?: string) {
   return null;
 }
 
-export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, hasNewRelease }: Props) {
+export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoal, hasNewRelease }: Props) {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -102,7 +103,7 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
   const ctxMenu = contextMenu && (
     <ContextMenuPopup
       item={item} pos={contextMenu} hasEpisodes={hasEpisodes}
-      onFinish={handleFinish} onToggleGoal={handleToggleGoal}
+      onFinish={handleFinish} onToggleGoal={handleToggleGoal} onEditGoal={onEditGoal}
       onEpisodes={openEpisodes}
       onEdit={onEdit} onDelete={handleDelete}
     />
@@ -346,12 +347,13 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
 }
 
 // ── Context Menu ──────────────────────────────────────────────────────────────
-function ContextMenuPopup({ item, pos, hasEpisodes, onFinish, onToggleGoal, onEpisodes, onEdit, onDelete }: {
+function ContextMenuPopup({ item, pos, hasEpisodes, onFinish, onToggleGoal, onEditGoal, onEpisodes, onEdit, onDelete }: {
   item: CultureItem;
   pos: { x: number; y: number };
   hasEpisodes: boolean;
   onFinish: (e: React.MouseEvent) => void;
   onToggleGoal: (e: React.MouseEvent) => void;
+  onEditGoal: (e: React.MouseEvent) => void;
   onEpisodes: (e: React.MouseEvent) => void;
   onEdit: () => void;
   onDelete: (e: React.MouseEvent) => void;
@@ -366,9 +368,20 @@ function ContextMenuPopup({ item, pos, hasEpisodes, onFinish, onToggleGoal, onEp
         <button onClick={onFinish} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
           <CheckCircle size={14} className="text-green-400" /><span>Marcar como Finalizado</span>
         </button>
-        <button onClick={onToggleGoal} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
-          <Target size={14} className="text-brand-400" /><span>{item.is_goal ? 'Remover dos Objetivos' : 'Definir como Objetivo'}</span>
-        </button>
+        {!item.is_goal ? (
+          <button onClick={onEditGoal} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
+            <Target size={14} className="text-brand-400" /><span>Definir como Objetivo</span>
+          </button>
+        ) : (
+          <>
+            <button onClick={onEditGoal} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
+              <Target size={14} className="text-brand-400" /><span>Editar Meta</span>
+            </button>
+            <button onClick={onToggleGoal} className="flex items-center gap-2 px-3 py-2 hover:bg-red-500/10 text-red-400 rounded transition-colors text-left">
+              <X size={14} /><span>Remover dos Objetivos</span>
+            </button>
+          </>
+        )}
         {hasEpisodes && (
           <button onClick={onEpisodes} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
             <List size={14} className="text-blue-400" /><span>Episódios</span>
