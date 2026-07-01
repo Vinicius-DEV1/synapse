@@ -112,6 +112,8 @@ export default function EpubHighlightMenu() {
         setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
         rendition.annotations.remove(activeSelection.cfiRange, "highlight");
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          // Impede a propagação do clique no SVG do grifo para o iframe do EpubJS, 
+          // evitando que o leitor ache que o usuário clicou fora e feche o menu (efeito fantasma).
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           const rect = e.target.getBoundingClientRect();
@@ -132,6 +134,8 @@ export default function EpubHighlightMenu() {
         setHighlights((prev: any[]) => [...prev, hl]);
 
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          // Impede a propagação do clique no SVG do grifo para o iframe do EpubJS, 
+          // evitando que o leitor ache que o usuário clicou fora e feche o menu (efeito fantasma).
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           const rect = e.target.getBoundingClientRect();
