@@ -79,15 +79,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
   const { dispatch } = useStore();
 
+  // Ao desmontar o leitor, volta para o estado normal (menu sempre acessível)
   useEffect(() => {
-    // Quando showMobileTools for false, estamos em fullscreen (hide sidebar toggle)
-    dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !showMobileTools });
-    
-    // Ao desmontar o leitor, volta para o estado normal (menu sempre acessível)
     return () => {
       dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
     };
-  }, [showMobileTools, dispatch]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (modeToast) {
@@ -169,6 +166,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
              width: '100%',
              height: '100%',
              spread: 'none',
+             minSpreadWidth: 10000,
              allowScriptedContent: true,
              manager: scrollMode ? 'continuous' : 'default',
              flow: scrollMode ? 'scrolled' : 'paginated'
