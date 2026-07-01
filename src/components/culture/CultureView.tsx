@@ -186,7 +186,7 @@ export default function CultureView() {
     const others = filteredItems.filter(i => !handled.has(i.id));
     if (others.length > 0) groups.push({ type: 'other', label: '📦 Outros', items: sortItems(others, sortMode) });
     return groups;
-  }, [filteredItems, activeFilter, sectionOrder, sortMode]);
+  }, [filteredItems, activeFilter, sectionOrder, sortMode, showGoalsSection]);
 
   const flatItems = useMemo(() => {
     if (activeFilter === 'all') return [];
