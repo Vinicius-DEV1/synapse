@@ -228,6 +228,8 @@ export interface CultureEpisode {
   id: string;
   item_id: string;
   episode_number: number;
+  season_number?: number;
+  episode_in_season?: number;
   title: string;
   synopsis: string;
   is_watched: boolean;
