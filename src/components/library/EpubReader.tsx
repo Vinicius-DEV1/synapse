@@ -39,6 +39,8 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   // Timer usado para adiar o setSelection(null) do handler de 'click' geral,
   // dando tempo para o callback de anotação cancelar a limpeza quando um grifo for tocado
   const clearSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flag que indica que um grifo acabou de ser clicado — o próximo 'click' geral deve ser ignorado
+  const highlightJustClickedRef = useRef(false);
 
   const [showMobileTools, setShowMobileTools] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -190,6 +192,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                         clearTimeout(clearSelectionTimerRef.current);
                         clearSelectionTimerRef.current = null;
                       }
+                      // Sinalizar que um grifo foi clicado — o próximo 'click' genérico deve ser ignorado
+                      highlightJustClickedRef.current = true;
+                      setTimeout(() => { highlightJustClickedRef.current = false; }, 300);
                       const rect = e.target.getBoundingClientRect();
                       const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
                       setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
@@ -315,6 +320,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                handleEpubClick();
                return;
              }
+             // Se um grifo acabou de ser clicado, NÃO limpar a seleção
+             if (highlightJustClickedRef.current) {
+               return;
+             }
              // Desktop: limpa seleção no clique normal
              if (clearSelectionTimerRef.current) clearTimeout(clearSelectionTimerRef.current);
              clearSelectionTimerRef.current = setTimeout(() => {
@@ -322,7 +331,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                setSelection(null);
                setNoteMode(null);
                handleEpubClick();
-             }, 80);
+             }, 120);
            });
 
            newRendition.on('touchstart', (event: TouchEvent) => {
