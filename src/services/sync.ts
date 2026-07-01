@@ -42,7 +42,8 @@ const MODULE_TABLES: Record<string, string[]> = {
     'library_collections',
     'library_book_collections',
     'library_reading_sessions'
-  ]
+  ],
+  culture: ['items']
 };
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
@@ -154,8 +155,13 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   let pulledDocsCount = 0;
   let skippedDocsCount = 0;
 
-  for (const module of Object.keys(moduleKeys)) {
-    const key = moduleKeys[module];
+  const effectiveModuleKeys = { ...moduleKeys };
+  if (effectiveModuleKeys['notes']) {
+    effectiveModuleKeys['culture'] = effectiveModuleKeys['notes'];
+  }
+
+  for (const module of Object.keys(effectiveModuleKeys)) {
+    const key = effectiveModuleKeys[module];
     const tables = MODULE_TABLES[module] || [];
     
     for (const table of tables) {
@@ -317,8 +323,13 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   let pushSkippedCount = 0;
   const errors: string[] = [];
 
-  for (const module of Object.keys(moduleKeys)) {
-    const key = moduleKeys[module];
+  const effectiveModuleKeys = { ...moduleKeys };
+  if (effectiveModuleKeys['notes']) {
+    effectiveModuleKeys['culture'] = effectiveModuleKeys['notes'];
+  }
+
+  for (const module of Object.keys(effectiveModuleKeys)) {
+    const key = effectiveModuleKeys[module];
     const tables = MODULE_TABLES[module] || [];
     
     for (const table of tables) {

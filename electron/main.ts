@@ -7,6 +7,7 @@ import { registerLibraryHandlers } from './ipc/library';
 import { registerFinanceHandlers } from './ipc/finance';
 import { registerSyncHandlers } from './ipc/sync';
 import { registerConfigHandlers } from './ipc/config';
+import { registerCultureHandlers } from './ipc/cultureIpc';
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
@@ -44,6 +45,7 @@ app.whenReady().then(() => {
   registerPagesHandlers();
   registerLibraryHandlers();
   registerFinanceHandlers();
+  registerCultureHandlers();
   registerSyncHandlers();
   registerConfigHandlers();
 

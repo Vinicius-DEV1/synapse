@@ -204,6 +204,41 @@ export function setupTables(): Promise<void> {
           promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN pinned_order REAL DEFAULT 0`));
         }
 
+        // CULTURE TABLES
+        if (attached.includes('culture')) {
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS culture.items (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              type TEXT NOT NULL,
+              synopsis TEXT,
+              cover_image TEXT,
+              access_link TEXT,
+              progress INTEGER DEFAULT 0,
+              total_progress INTEGER DEFAULT 0,
+              is_goal INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              deleted_at DATETIME DEFAULT NULL
+            )
+          `));
+          
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN api_id TEXT;"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN api_source TEXT;"));
+
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS culture.episodes (
+              id TEXT PRIMARY KEY,
+              item_id TEXT NOT NULL,
+              episode_number INTEGER,
+              title TEXT,
+              synopsis TEXT,
+              is_watched INTEGER DEFAULT 0,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `));
+        }
+
         Promise.all(promises).then(() => resolve()).catch(reject);
       });
     });
