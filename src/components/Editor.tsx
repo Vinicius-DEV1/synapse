@@ -28,7 +28,7 @@ import { LinkPreviewBlock } from './editor-extensions/LinkPreviewBlock';
 import { ResizableImage } from './editor-extensions/ResizableImage';
 import { EncryptedImage } from './editor-extensions/EncryptedImage';
 import { PageReference } from './editor-extensions/PageReference';
-import { uploadEncryptedImage } from '../services/image-drive';
+import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
 
 interface EditorProps {
   pageId: string | null;
@@ -154,6 +154,11 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
                   (window as any).__pendingImageUploads = new Map();
                 }
                 (window as any).__pendingImageUploads.set(tempId, file);
+
+                // Cache local imediato: a imagem será exibida rápido e não será perdida se a página recarregar/renderizar
+                file.arrayBuffer().then(buffer => {
+                  setCachedImage(tempId, buffer, file.type).catch(console.error);
+                });
 
                 editor.chain().focus().insertContent({
                   type: 'encryptedImage',

@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, ExternalLink, Target, Calendar, CheckCircle } from 'lucide-react';
-import type { CultureItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { X, ExternalLink, Target, Calendar, CheckCircle, Tv, BookOpen, Layers, Play } from 'lucide-react';
+import type { CultureItem, CultureEpisode } from '../../types';
+import { CultureService } from '../../services/culture';
 
 interface Props {
   item: CultureItem;
@@ -27,6 +28,28 @@ function getStatusInfo(status?: string) {
 }
 
 export default function CultureViewModal({ item, isOpen, onClose }: Props) {
+  const [episodes, setEpisodes] = useState<CultureEpisode[]>([]);
+  const [showEpisodes, setShowEpisodes] = useState(false);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+
+  // Carrega a lista de episódios quando o usuário solicitar
+  const handleLoadEpisodes = async () => {
+    if (episodes.length > 0) {
+      setShowEpisodes(!showEpisodes);
+      return;
+    }
+    setLoadingEpisodes(true);
+    try {
+      const eps = await CultureService.getEpisodes(item.id);
+      setEpisodes(eps);
+      setShowEpisodes(true);
+    } catch (err) {
+      console.error('[CultureViewModal] Erro ao carregar episódios:', err);
+    } finally {
+      setLoadingEpisodes(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const percent = item.total_progress > 0
@@ -35,9 +58,30 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
   const isFinished = item.total_progress > 0 && item.progress >= item.total_progress;
   const statusInfo = getStatusInfo(item.status);
 
+  // Verifica se é um tipo que pode ter episódios (séries, anime)
+  const hasEpisodesFeature = ['anime', 'série'].includes(item.type);
+  // Verifica se é manga (tem volumes/capítulos)
+  const isManga = item.type === 'manga';
+
   const handleOpenLink = () => {
     if (item.access_link) window.api?.drive?.openExternalUrl(item.access_link);
   };
+
+  // Constrói cards de metadados dinâmicos
+  const metaCards: { icon: React.ReactNode; label: string; value: string }[] = [];
+
+  if (item.episodes_count) {
+    metaCards.push({ icon: <Tv size={14} />, label: 'Episódios', value: String(item.episodes_count) });
+  }
+  if (item.chapters) {
+    metaCards.push({ icon: <BookOpen size={14} />, label: 'Capítulos', value: String(item.chapters) });
+  }
+  if (item.volumes) {
+    metaCards.push({ icon: <Layers size={14} />, label: 'Volumes', value: String(item.volumes) });
+  }
+  if (item.created_at) {
+    metaCards.push({ icon: <Calendar size={14} />, label: 'Adicionado em', value: new Date(item.created_at).toLocaleDateString('pt-BR') });
+  }
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
@@ -99,6 +143,23 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
               </div>
             )}
 
+            {/* Metadata Stats Grid */}
+            {metaCards.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                {metaCards.map((mc, i) => (
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-brand-500/10 text-brand-400">
+                      {mc.icon}
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-white/40 font-medium">{mc.label}</p>
+                      <p className="text-sm font-bold text-white">{mc.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Progress */}
             <div>
               <div className="flex items-end justify-between mb-2">
@@ -123,6 +184,45 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
                 <p className="text-sm text-white/60 leading-relaxed whitespace-pre-wrap">
                   {item.synopsis}
                 </p>
+              </div>
+            )}
+
+            {/* Ver Episódios Button */}
+            {hasEpisodesFeature && (
+              <div>
+                <button
+                  onClick={handleLoadEpisodes}
+                  disabled={loadingEpisodes}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 rounded-xl text-sm font-semibold text-brand-400 transition-colors w-full justify-center"
+                >
+                  <Play size={16} />
+                  {loadingEpisodes ? 'Carregando...' : showEpisodes ? 'Ocultar Episódios' : 'Ver Episódios'}
+                </button>
+
+                {/* Episode List */}
+                {showEpisodes && episodes.length > 0 && (
+                  <div className="mt-4 space-y-1.5 max-h-[300px] overflow-y-auto scrollbar-custom">
+                    {episodes.map((ep) => (
+                      <div 
+                        key={ep.id} 
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          ep.is_watched 
+                            ? 'bg-green-500/10 text-green-400/80' 
+                            : 'bg-white/5 text-white/70 hover:bg-white/10'
+                        }`}
+                      >
+                        <span className="text-xs font-mono text-white/30 w-6 text-right flex-shrink-0">
+                          {ep.episode_number}
+                        </span>
+                        <span className="flex-1 truncate">{ep.title}</span>
+                        {ep.is_watched && <CheckCircle size={14} className="text-green-400 flex-shrink-0" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showEpisodes && episodes.length === 0 && !loadingEpisodes && (
+                  <p className="mt-3 text-center text-sm text-white/30">Nenhum episódio encontrado.</p>
+                )}
               </div>
             )}
 
