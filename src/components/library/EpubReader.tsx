@@ -262,6 +262,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
               const windowSelection = contents.window.getSelection();
               let text = windowSelection.toString();
               
+              // Se um grifo acabou de ser clicado, não iniciar nova seleção
+              if (Date.now() - globalLastHighlightClick < 500) {
+                 return;
+              }
+              
               if (text && windowSelection.rangeCount > 0) {
                  const range = windowSelection.getRangeAt(0).cloneRange();
                  
@@ -451,12 +456,16 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`,
           'padding-bottom': `${bottomPadding} !important`,
+          'padding-left': `20px !important`,
+          'padding-right': `20px !important`,
           'margin-bottom': `0px !important`
         },
         [`.${themeName} body`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`,
           'padding-bottom': `${bottomPadding} !important`,
+          'padding-left': `20px !important`,
+          'padding-right': `20px !important`,
           'margin-bottom': `0px !important`
         }
       };
