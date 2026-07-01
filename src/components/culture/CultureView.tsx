@@ -4,8 +4,6 @@ import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
 
@@ -65,6 +63,13 @@ export default function CultureView() {
   const handleCloseModal = () => {
     setIsAddModalOpen(false);
     setEditingItem(null);
+  };
+
+  const formatDate = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date);
+    } catch { return 'Recente'; }
   };
 
   return (
@@ -135,7 +140,7 @@ export default function CultureView() {
                   <div className="text-xs font-semibold text-white truncate">{ep.item_title}</div>
                   <div className="text-xs text-white/50 truncate">EP {ep.episode_number}: {ep.title}</div>
                   <div className="text-[10px] text-brand-400 mt-1">
-                    {ep.aired_at ? format(new Date(ep.aired_at), "dd 'de' MMM", { locale: ptBR }) : 'Recente'}
+                    {ep.aired_at ? formatDate(ep.aired_at) : 'Recente'}
                   </div>
                 </div>
               </div>
