@@ -102,7 +102,19 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         let arrayBuffer: ArrayBuffer | null = null;
         
         try {
-          arrayBuffer = await window.api.library.getBookFile(book.id);
+          const res = await window.api.library.getBookFile(book.id);
+          if (res) {
+            if (typeof res === 'string') {
+              const binaryString = atob(res);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+              }
+              arrayBuffer = bytes.buffer;
+            } else {
+              arrayBuffer = res;
+            }
+          }
         } catch (localErr) {
           console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
         }
