@@ -216,7 +216,7 @@ declare global {
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
       exportBackup: () => Promise<{ success: boolean; canceled?: boolean; path?: string; error?: string }>;
       auth: {
-        setup: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
+        setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         status: () => Promise<{ status: 'new' | 'encrypted' | 'unencrypted' }>;
         changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;

@@ -41,15 +41,24 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           return;
         }
 
-        const res = await window.api.auth.setup(password);
+        let existingKeysToUse = undefined;
+        const masterKey = await deriveMasterKey(password);
+
+        if (!cloudCheck.isNew) {
+           const pulled = await pullModularKeysFromCloud(masterKey);
+           if (pulled) existingKeysToUse = pulled;
+        }
+
+        const res = await window.api.auth.setup(password, existingKeysToUse);
         if (res.success) {
-          const masterKey = await deriveMasterKey(password);
           let rawKeys = res.keys;
           
           if (rawKeys) {
-            pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
+            if (cloudCheck.isNew) {
+              pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
+            }
           } else {
-            rawKeys = await pullModularKeysFromCloud(masterKey);
+            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};

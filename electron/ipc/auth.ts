@@ -75,7 +75,7 @@ export function registerAuthHandlers() {
     }
   });
 
-  ipcMain.handle('auth:setup', async (_, password) => {
+  ipcMain.handle('auth:setup', async (_, password, existingKeys?: { library?: string; finance?: string; notes?: string }) => {
     try {
       await openCoreAndAttachModules({});
       const db = getDb();
@@ -90,10 +90,10 @@ export function registerAuthHandlers() {
           
           const authHash = hashAuthPassword(password);
           
-          // Gerar chaves mestras dos módulos
-          const libKey = crypto.randomBytes(32).toString('hex');
-          const finKey = crypto.randomBytes(32).toString('hex');
-          const notKey = crypto.randomBytes(32).toString('hex');
+          // Gerar chaves mestras dos módulos, ou usar chaves existentes da nuvem
+          const libKey = existingKeys?.library || crypto.randomBytes(32).toString('hex');
+          const finKey = existingKeys?.finance || crypto.randomBytes(32).toString('hex');
+          const notKey = existingKeys?.notes || crypto.randomBytes(32).toString('hex');
           
           const libEnc = encryptModuleKey(libKey, password);
           const finEnc = encryptModuleKey(finKey, password);
