@@ -62,10 +62,15 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
           episode_number: index + 1, // TVMaze has season/number, mas faremos linear por enquanto
           title: `S${String(ep.season).padStart(2, '0')}E${String(ep.number).padStart(2, '0')} - ${ep.name}`,
           synopsis: (ep.summary || '').replace(/<[^>]+>/g, ''),
-          is_watched: false
+          is_watched: false,
+          aired_at: ep.airstamp ? new Date(ep.airstamp).toISOString() : null
         }));
 
         await CultureService.saveEpisodes(item.id, epsToSave);
+        
+        // Atualizar também a data de last_sync_at no item!
+        await window.api.culture.updateItem(item.id, { ...item, last_sync_at: new Date().toISOString() });
+
         if (isMounted.current) {
           await loadEpisodes(); // Recarrega
         }
@@ -97,10 +102,16 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
             episode_number: ep.mal_id,
             title: ep.title || `Episódio ${ep.mal_id}`,
             synopsis: ep.title_japanese ? `JP: ${ep.title_japanese}` : '',
-            is_watched: false
+            is_watched: false,
+            aired_at: ep.aired ? new Date(ep.aired).toISOString() : null
           }));
 
           await CultureService.saveEpisodes(item.id, epsToSave);
+          
+          // Na última página, atualizar sync date
+          if (!data.pagination?.has_next_page) {
+             await window.api.culture.updateItem(item.id, { ...item, last_sync_at: new Date().toISOString() });
+          }
           
           totalFetched += epList.length;
           setSyncProgress(totalFetched);

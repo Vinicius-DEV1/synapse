@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
-import type { CultureItem } from '../../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Filter, Calendar } from 'lucide-react';
+import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
 
 export default function CultureView() {
   const [items, setItems] = useState<CultureItem[]>([]);
+  const [recentReleases, setRecentReleases] = useState<(CultureEpisode & { item_title: string, item_cover: string })[]>([]);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -18,6 +21,15 @@ export default function CultureView() {
     try {
       const data = await CultureService.getItems();
       setItems(data);
+      
+      const releases = await CultureService.getRecentReleases();
+      setRecentReleases(releases);
+
+      // Background sync silencioso (se houver obras em andamento)
+      CultureService.syncOngoingItems(data).then(() => {
+        // Depois do sync terminar silenciosamente, checa se chegou release novo
+        CultureService.getRecentReleases().then(newReleases => setRecentReleases(newReleases));
+      });
     } catch (err) {
       console.error(err);
     }
@@ -32,7 +44,6 @@ export default function CultureView() {
     return () => removeListener && removeListener();
   }, []);
 
-  const filteredItems = items.filter(item => {
     const matchSearch = item.title.toLowerCase().includes(search.toLowerCase()) || 
                         (item.synopsis && item.synopsis.toLowerCase().includes(search.toLowerCase()));
     
@@ -105,6 +116,33 @@ export default function CultureView() {
         </div>
       </div>
 
+      {/* Lançamentos Recentes */}
+      {recentReleases.length > 0 && (
+        <div className="mx-6 mt-6 bg-brand-500/10 border border-brand-500/20 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in">
+          <div className="flex items-center gap-2 text-brand-400 font-semibold text-sm">
+            <Calendar size={16} />
+            <span>Lançamentos da Semana</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-custom pb-2">
+            {recentReleases.map(ep => (
+              <div key={ep.id} className="flex-shrink-0 w-64 bg-black/20 rounded-xl p-3 border border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => {
+                const item = items.find(i => i.id === ep.item_id);
+                if (item) setEditingItem(item); 
+              }}>
+                {ep.item_cover && <img src={ep.item_cover} alt="cover" className="w-10 h-14 object-cover rounded shadow" />}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-white truncate">{ep.item_title}</div>
+                  <div className="text-xs text-white/50 truncate">EP {ep.episode_number}: {ep.title}</div>
+                  <div className="text-[10px] text-brand-400 mt-1">
+                    {ep.aired_at ? format(new Date(ep.aired_at), "dd 'de' MMM", { locale: ptBR }) : 'Recente'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid Content */}
       <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
         {filteredItems.length === 0 ? (
@@ -122,6 +160,7 @@ export default function CultureView() {
                 item={item} 
                 onUpdate={loadItems} 
                 onClick={() => handleEdit(item)} 
+                hasNewRelease={recentReleases.some(ep => ep.item_id === item.id)}
               />
             ))}
           </div>

@@ -216,9 +216,11 @@ export interface CultureItem {
   total_progress: number;
   is_goal: boolean;
   api_id?: string;
-  api_source?: string;
-  created_at?: string;
-  updated_at?: string;
+  api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books';
+  status?: string; // 'releasing', 'finished', etc.
+  last_sync_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CultureEpisode {
@@ -226,8 +228,9 @@ export interface CultureEpisode {
   item_id: string;
   episode_number: number;
   title: string;
-  synopsis?: string;
+  synopsis: string;
   is_watched: boolean;
+  aired_at?: string;
   updated_at?: string;
 }
 

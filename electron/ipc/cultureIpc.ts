@@ -17,10 +17,10 @@ export function registerCultureHandlers() {
     const id = 'cult_' + Date.now().toString(36);
     return new Promise((resolve, reject) => {
       getDb().run(
-        `INSERT INTO culture.items (id, title, type, synopsis, cover_image, access_link, progress, total_progress, is_goal, api_id, api_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress || 0, item.total_progress || 0, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null],
+        `INSERT INTO culture.items (id, title, type, synopsis, cover_image, access_link, progress, total_progress, is_goal, api_id, api_source, status, last_sync_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress || 0, item.total_progress || 0, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null],
         (err) => {
-          if (err) reject(err); else resolve({ id, ...item, progress: item.progress || 0, total_progress: item.total_progress || 0, is_goal: item.is_goal ? 1 : 0 });
+          if (err) reject(err); else resolve({ id, ...item, progress: item.progress || 0, total_progress: item.total_progress || 0, is_goal: item.is_goal ? 1 : 0, status: item.status || 'unknown' });
         }
       );
     });
@@ -30,8 +30,8 @@ export function registerCultureHandlers() {
     if (!isModuleUnlocked('notes')) throw new Error('Cofre principal bloqueado');
     return new Promise((resolve, reject) => {
       getDb().run(
-        `UPDATE culture.items SET title = ?, type = ?, synopsis = ?, cover_image = ?, access_link = ?, progress = ?, total_progress = ?, is_goal = ?, api_id = ?, api_source = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress, item.total_progress, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, id],
+        `UPDATE culture.items SET title = ?, type = ?, synopsis = ?, cover_image = ?, access_link = ?, progress = ?, total_progress = ?, is_goal = ?, api_id = ?, api_source = ?, status = ?, last_sync_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress, item.total_progress, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null, id],
         (err) => {
           if (err) reject(err); else resolve({ success: true, id, ...item });
         }
@@ -85,18 +85,19 @@ export function registerCultureHandlers() {
         db.run('BEGIN TRANSACTION');
         
         const stmt = db.prepare(`
-          INSERT INTO culture.episodes (id, item_id, episode_number, title, synopsis, is_watched)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO culture.episodes (id, item_id, episode_number, title, synopsis, is_watched, aired_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET 
             title = excluded.title, 
             synopsis = excluded.synopsis,
+            aired_at = excluded.aired_at,
             updated_at = CURRENT_TIMESTAMP
         `);
 
         for (const ep of episodes) {
           // ID único fixo para o episódio baseado na API para evitar duplicações se recarregar
           const epId = ep.id || `ep_${itemId}_${ep.episode_number}`;
-          stmt.run([epId, itemId, ep.episode_number, ep.title, ep.synopsis || '', ep.is_watched ? 1 : 0]);
+          stmt.run([epId, itemId, ep.episode_number, ep.title, ep.synopsis || '', ep.is_watched ? 1 : 0, ep.aired_at || null]);
         }
 
         stmt.finalize();
@@ -123,6 +124,25 @@ export function registerCultureHandlers() {
           if (err) reject(err); else resolve({ success: true });
         }
       );
+    });
+  });
+
+  ipcMain.handle('culture:get-recent-releases', async () => {
+    if (!isModuleUnlocked('notes')) throw new Error('Cofre principal bloqueado');
+    return new Promise((resolve, reject) => {
+      getDb().all(`
+        SELECT e.*, i.title as item_title, i.cover_image as item_cover
+        FROM culture.episodes e
+        JOIN culture.items i ON e.item_id = i.id
+        WHERE e.is_watched = 0
+          AND e.aired_at IS NOT NULL
+          AND e.aired_at <= CURRENT_TIMESTAMP
+          AND e.aired_at >= datetime('now', '-14 days')
+        ORDER BY e.aired_at DESC
+        LIMIT 10
+      `, (err, rows) => {
+        if (err) reject(err); else resolve(rows || []);
+      });
     });
   });
 }

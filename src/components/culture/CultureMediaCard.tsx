@@ -8,9 +8,10 @@ interface Props {
   item: CultureItem;
   onUpdate: () => void;
   onClick: () => void;
+  hasNewRelease?: boolean;
 }
 
-export default function CultureMediaCard({ item, onUpdate, onClick }: Props) {
+export default function CultureMediaCard({ item, onUpdate, onClick, hasNewRelease }: Props) {
   const [showEpisodes, setShowEpisodes] = useState(false);
 
   const percent = item.total_progress > 0 
@@ -45,10 +46,47 @@ export default function CultureMediaCard({ item, onUpdate, onClick }: Props) {
     }
   };
 
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
+
+  React.useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleFinish = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const p = item.total_progress > 0 ? item.total_progress : (item.progress > 0 ? item.progress : 1);
+      await CultureService.updateProgress(item.id, p);
+      onUpdate();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Tem certeza que deseja excluir '${item.title}'?`)) {
+      try {
+        await CultureService.deleteItem(item.id);
+        onUpdate();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
   return (
     <>
       <div 
         onClick={onClick}
+        onContextMenu={handleContextMenu}
         className={`group relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl ${
           item.is_goal ? 'ring-2 ring-brand-500 shadow-[0_0_15px_rgba(var(--brand-500),0.3)]' : 'ring-1 ring-white/5 border border-white/5'
         } bg-white/5 backdrop-blur-sm`}
@@ -98,6 +136,14 @@ export default function CultureMediaCard({ item, onUpdate, onClick }: Props) {
           <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">
             {item.type}
           </div>
+          
+          {/* New Release Badge */}
+          {hasNewRelease && (
+            <div className="absolute top-2 left-16 px-2 py-1 rounded bg-red-500/90 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-red-500/50 animate-pulse">
+              <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+              Novo
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -167,6 +213,34 @@ export default function CultureMediaCard({ item, onUpdate, onClick }: Props) {
           onUpdate(); // Re-fetches items from backend
         }}
       />
+
+      {contextMenu && (
+        <div 
+          className="fixed z-[9999] bg-dark-card border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-scale-up"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col text-sm min-w-[200px] p-1">
+            <button onClick={handleFinish} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
+              <CheckCircle size={14} className="text-green-400" />
+              <span>Marcar como Finalizado</span>
+            </button>
+            <button onClick={handleToggleGoal} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
+              <Target size={14} className="text-brand-400" />
+              <span>{item.is_goal ? 'Remover dos Objetivos' : 'Definir como Objetivo'}</span>
+            </button>
+            <button onClick={onClick} className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-white rounded transition-colors text-left">
+              <List size={14} className="text-blue-400" />
+              <span>Editar Detalhes</span>
+            </button>
+            <div className="h-px bg-white/10 my-1 mx-2" />
+            <button onClick={handleDelete} className="flex items-center gap-2 px-3 py-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded transition-colors text-left">
+              <CheckCircle size={14} className="opacity-0" />
+              <span className="font-medium">Excluir Obra</span>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

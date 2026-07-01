@@ -68,8 +68,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     try {
       const type = formData.type as string;
       let results: any[] = [];
-      
-      const fetchJikan = async (q: string, t: 'anime' | 'manga') => {
+           const fetchJikan = async (q: string, t: 'anime' | 'manga') => {
         try {
           const res = await fetch(`https://api.jikan.moe/v4/${t}?q=${encodeURIComponent(q)}&limit=3`);
           const data = await res.json();
@@ -80,7 +79,8 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
             total: item.episodes || item.chapters || 0,
             type: t,
             api_id: item.mal_id.toString(),
-            api_source: 'jikan'
+            api_source: 'jikan',
+            status: item.status === 'Currently Airing' || item.status === 'Publishing' ? 'releasing' : (item.status === 'Finished Airing' || item.status === 'Finished' ? 'finished' : 'unknown')
           }));
         } catch { return []; }
       };
@@ -89,14 +89,15 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
         try {
           const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3`);
           const data = await res.json();
-          return (data?.items || []).map((item: any) => ({
+          return (data.items || []).map((item: any) => ({
             title: item.volumeInfo.title,
             synopsis: item.volumeInfo.description || '',
             cover: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
             total: item.volumeInfo.pageCount || 0,
             type: 'livro',
             api_id: item.id,
-            api_source: 'googlebooks'
+            api_source: 'books',
+            status: 'finished'
           }));
         } catch { return []; }
       };
@@ -112,10 +113,11 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
             total: 0,
             type: 'série',
             api_id: item.show.id.toString(),
-            api_source: 'tvmaze'
+            api_source: 'tvmaze',
+            status: item.show.status === 'Running' ? 'releasing' : (item.show.status === 'Ended' ? 'finished' : 'unknown')
           }));
         } catch { return []; }
-      };
+      };  };
 
       const fetchITunesMovies = async (q: string) => {
         try {
@@ -176,7 +178,8 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       total_progress: result.total > 0 ? result.total : prev.total_progress,
       type: result.type,
       api_id: result.api_id,
-      api_source: result.api_source
+      api_source: result.api_source,
+      status: result.status || 'unknown'
     }));
     setSearchResults([]);
   };
