@@ -112,6 +112,8 @@ export default function EpubHighlightMenu() {
         setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
         rendition.annotations.remove(activeSelection.cfiRange, "highlight");
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
           const rect = e.target.getBoundingClientRect();
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
           setNoteMode(color);
@@ -130,6 +132,8 @@ export default function EpubHighlightMenu() {
         setHighlights((prev: any[]) => [...prev, hl]);
 
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
           const rect = e.target.getBoundingClientRect();
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
           setNoteMode(color);
