@@ -79,6 +79,7 @@ export interface LibraryBook {
   published_year?: number | null;
   publisher?: string | null;
   language?: string | null;
+  epub_locations?: string | null;
 }
 
 export interface LibraryCollection {

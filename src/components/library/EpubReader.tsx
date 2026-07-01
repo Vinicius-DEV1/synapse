@@ -194,13 +194,35 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
            newEpubBook.ready.then(() => {
               newEpubBook.loaded.navigation.then(nav => setToc(nav.toc));
-              return newEpubBook.locations.generate(1600);
-            }).then((locations) => {
+              
+              if (book.epub_locations) {
+                try {
+                  newEpubBook.locations.load(book.epub_locations);
+                  return newEpubBook.locations;
+                } catch (e) {
+                  console.error('Failed to load cached locations:', e);
+                  return newEpubBook.locations.generate(1600);
+                }
+              } else {
+                return newEpubBook.locations.generate(1600).then((locations) => {
+                  if (active) {
+                    try {
+                      const serialized = newEpubBook.locations.save();
+                      onUpdateBook({ epub_locations: serialized });
+                    } catch (err) {
+                      console.error('Failed to save generated locations:', err);
+                    }
+                  }
+                  return locations;
+                });
+              }
+            }).then((locations: any) => {
                if (!active) return;
-               setTotalPages(locations.length);
+               const total = newEpubBook.locations.total ? newEpubBook.locations.total : (locations.length || 0);
+               setTotalPages(total);
                setLocationsReady(true);
                
-               const updates: Partial<LibraryBook> = { total_pages: locations.length };
+               const updates: Partial<LibraryBook> = { total_pages: total };
                
                if (newRendition.location && newRendition.location.start) {
                  const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
@@ -517,6 +539,17 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     readingMode === 'mint' ? 'bg-[#c8e6c9] text-[#2d6a4f]' : 
     'bg-white text-gray-400';
 
+  const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const page = Number(e.target.value);
+    if (!epubBook || !rendition || !locationsReady) return;
+    
+    // Calcula o CFI da nova página e manda o rendition exibir
+    const cfi = epubBook.locations.cfiFromLocation(page);
+    if (cfi) {
+      rendition.display(cfi);
+    }
+  };
+
   return (
     <div className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
       <div className={`
@@ -569,7 +602,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       </div>
 
       <div className={`
-          flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-[60]
+          group relative flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-[60]
           fixed md:relative bottom-0 left-0 right-0
           ${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
           ${bottomBarClasses}
@@ -577,6 +610,22 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
         <div>
            {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}
         </div>
+
+        {/* Scrubber (Slider Estilo Kindle) */}
+        {locationsReady && totalPagesSafe > 1 && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[80%] max-w-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-300 bg-black/60 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 flex flex-col items-center gap-2">
+            <span className="text-white font-bold text-xs">Página {currentPageSafe}</span>
+            <input 
+              type="range" 
+              min="1" 
+              max={totalPagesSafe} 
+              value={currentPageSafe} 
+              onChange={handleScrub}
+              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-brand-500"
+            />
+          </div>
+        )}
+
         <div>
            {locationsReady ? `${progressPercentage}%` : '...'}
         </div>
