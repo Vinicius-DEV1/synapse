@@ -217,6 +217,8 @@ export function setupTables(): Promise<void> {
               progress INTEGER DEFAULT 0,
               total_progress INTEGER DEFAULT 0,
               is_goal INTEGER DEFAULT 0,
+              status TEXT DEFAULT 'unknown',
+              last_sync_at DATETIME DEFAULT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL
@@ -225,6 +227,8 @@ export function setupTables(): Promise<void> {
           
           promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN api_id TEXT;"));
           promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN api_source TEXT;"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN status TEXT DEFAULT 'unknown';"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN last_sync_at DATETIME DEFAULT NULL;"));
 
           promises.push(runSafe(`
             CREATE TABLE IF NOT EXISTS culture.episodes (
@@ -234,9 +238,12 @@ export function setupTables(): Promise<void> {
               title TEXT,
               synopsis TEXT,
               is_watched INTEGER DEFAULT 0,
+              aired_at DATETIME DEFAULT NULL,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `));
+          
+          promises.push(runSafe("ALTER TABLE culture.episodes ADD COLUMN aired_at DATETIME DEFAULT NULL;"));
         }
 
         Promise.all(promises).then(() => resolve()).catch(reject);
