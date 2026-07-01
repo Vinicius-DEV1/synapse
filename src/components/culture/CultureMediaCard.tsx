@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { CultureItem } from '../../types';
-import { Target, Plus, CheckCircle, ExternalLink, Image as ImageIcon, List } from 'lucide-react';
+import { Target, Plus, CheckCircle, ExternalLink, Image as ImageIcon, List, X } from 'lucide-react';
 import { CultureService } from '../../services/culture';
 import { CultureEpisodeModal } from './CultureEpisodeModal';
+import { ContextMenuPopup } from './ContextMenuPopup';
 import type { ViewMode } from './CultureView';
 
 interface Props {
@@ -89,7 +90,23 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
     }
   };
 
-  const openEpisodes = (e: React.MouseEvent) => { e.stopPropagation(); setShowEpisodes(true); };
+  const handleEditGoalClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContextMenu(null);
+    onEditGoal();
+  };
+
+  const openEpisodes = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContextMenu(null);
+    setShowEpisodes(true);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContextMenu(null);
+    onEdit();
+  };
 
   const episodeModal = (
     <CultureEpisodeModal
@@ -103,9 +120,9 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
   const ctxMenu = contextMenu && (
     <ContextMenuPopup
       item={item} pos={contextMenu} hasEpisodes={hasEpisodes}
-      onFinish={handleFinish} onToggleGoal={handleToggleGoal} onEditGoal={onEditGoal}
+      onFinish={handleFinish} onToggleGoal={handleToggleGoal} onEditGoal={handleEditGoalClick}
       onEpisodes={openEpisodes}
-      onEdit={onEdit} onDelete={handleDelete}
+      onEdit={handleEditClick} onDelete={handleDelete}
     />
   );
 
