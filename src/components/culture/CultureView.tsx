@@ -44,6 +44,7 @@ export default function CultureView() {
     return () => removeListener && removeListener();
   }, []);
 
+  const filteredItems = items.filter(item => {
     const matchSearch = item.title.toLowerCase().includes(search.toLowerCase()) || 
                         (item.synopsis && item.synopsis.toLowerCase().includes(search.toLowerCase()));
     
