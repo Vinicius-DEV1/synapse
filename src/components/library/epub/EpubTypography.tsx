@@ -7,7 +7,8 @@ export default function EpubTypography() {
     showSettings, readingMode, setReadingMode,
     fontSize, setFontSize, fontFamily, setFontFamily,
     originalFontName, detectedFontSizePx,
-    scrollMode, setScrollMode
+    scrollMode, setScrollMode,
+    textWidth, setTextWidth
   } = useEpub();
 
   if (!showSettings) return null;
@@ -59,6 +60,31 @@ export default function EpubTypography() {
           <button onClick={() => setReadingMode('midnight')} title="Meia-noite" className={`w-8 h-8 rounded-full bg-[#0f172a] border-2 ${readingMode === 'midnight' ? 'border-brand-500' : 'border-gray-700'}`} />
           <button onClick={() => setReadingMode('dark')} title="Escuro" className={`w-8 h-8 rounded-full bg-[#1a1a2e] border-2 ${readingMode === 'dark' ? 'border-brand-500' : 'border-gray-700'}`} />
           <button onClick={() => setReadingMode('high-contrast')} title="Alto Contraste" className={`w-8 h-8 rounded-full bg-black border-2 ${readingMode === 'high-contrast' ? 'border-brand-500' : 'border-gray-700'}`} />
+        </div>
+        <div className="flex items-center justify-between mt-4 mb-2">
+          <div className="text-sm font-semibold opacity-80 flex flex-col">
+            <span>Largura do Texto</span>
+          </div>
+          <div className="flex items-center gap-1 bg-black/10 p-0.5 rounded-lg">
+            <button 
+              onClick={() => setTextWidth('narrow')}
+              className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${textWidth === 'narrow' ? 'bg-brand-500 text-white shadow-sm' : 'hover:bg-black/5 opacity-70'}`}
+            >
+              Estreita
+            </button>
+            <button 
+              onClick={() => setTextWidth('medium')}
+              className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${textWidth === 'medium' ? 'bg-brand-500 text-white shadow-sm' : 'hover:bg-black/5 opacity-70'}`}
+            >
+              Média
+            </button>
+            <button 
+              onClick={() => setTextWidth('full')}
+              className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${textWidth === 'full' ? 'bg-brand-500 text-white shadow-sm' : 'hover:bg-black/5 opacity-70'}`}
+            >
+              Larga
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm font-semibold opacity-80 flex flex-col">

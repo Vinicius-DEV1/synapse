@@ -9,6 +9,7 @@ export interface AppSettings {
   dictionaryMode: 'offline' | 'online';
   hasOfflineDictionary: boolean;
   defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
+  defaultTextWidth: 'narrow' | 'medium' | 'full';
 }
 
 export function getSettings(): AppSettings {
@@ -22,7 +23,8 @@ export function getSettings(): AppSettings {
     aiChatHighlight: 'glow',
     dictionaryMode: 'offline',
     hasOfflineDictionary: false,
-    defaultReadingMode: 'light'
+    defaultReadingMode: 'light',
+    defaultTextWidth: 'medium'
   };
   
   try {
