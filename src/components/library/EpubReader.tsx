@@ -711,8 +711,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   );
 }
 
-import { getSettings } from '../../../utils/settings';
-
 // Variável global para evitar fechamento acidental ao clicar em grifos (bypassa closures)
 let globalLastHighlightClick = 0;
 
