@@ -30,6 +30,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     progress: 0,
     total_progress: 0,
     is_goal: 0,
+    goal_note: '',
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -355,19 +356,32 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
               />
             </div>
             
-            <div className="flex items-center gap-3 sm:col-span-2 mt-2">
-              <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="flex flex-col gap-3 sm:col-span-2 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer group w-fit">
                 <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${formData.is_goal ? 'bg-brand-500 border-brand-500' : 'border-white/20 group-hover:border-white/40'}`}>
                   {formData.is_goal ? <div className="w-2 h-2 bg-white rounded-sm" /> : null}
                 </div>
                 <span className="text-sm font-medium">Definir como Objetivo Ativo</span>
+                <input 
+                  type="checkbox" 
+                  className="hidden" 
+                  checked={!!formData.is_goal} 
+                  onChange={e => setFormData({ ...formData, is_goal: e.target.checked ? 1 : 0 })} 
+                />
               </label>
-              <input 
-                type="checkbox" 
-                className="hidden" 
-                checked={!!formData.is_goal} 
-                onChange={e => setFormData({ ...formData, is_goal: e.target.checked ? 1 : 0 })} 
-              />
+
+              {!!formData.is_goal && (
+                <div className="flex flex-col gap-1.5 pl-7 animate-fade-in">
+                  <label className="text-xs text-brand-400 font-medium">Sua meta para esta obra (Opcional)</label>
+                  <input
+                    type="text"
+                    value={formData.goal_note || ''}
+                    onChange={e => setFormData({ ...formData, goal_note: e.target.value })}
+                    placeholder="Ex: Assistir 1 ep por dia, Concluir toda a saga em 1 ano..."
+                    className="text-white bg-brand-500/5 border border-brand-500/30 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/70 text-sm"
+                  />
+                </div>
+              )}
             </div>
 
           </div>

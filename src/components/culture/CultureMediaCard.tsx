@@ -128,9 +128,14 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, ha
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               {hasNewRelease && <span className="flex-shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-              {item.is_goal && <Target size={11} className="flex-shrink-0 text-brand-400" />}
+              {item.is_goal && <Target size={11} className="flex-shrink-0 text-brand-400" title={item.goal_note || 'Objetivo'} />}
               <span className="text-sm font-medium text-dark-text truncate">{item.title}</span>
             </div>
+            {item.is_goal && item.goal_note && (
+              <div className="mt-0.5 text-[11px] text-brand-300/80 truncate">
+                <span className="font-medium text-brand-400/80">Meta: </span>{item.goal_note}
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] text-dark-subtext uppercase tracking-wider">{item.type}</span>
               {statusInfo && (
@@ -197,7 +202,7 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, ha
 
             {hasNewRelease && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-pulse" />}
             {item.is_goal && (
-              <div className="absolute top-1 left-1 p-0.5 rounded bg-brand-500/80">
+              <div className="absolute top-1 left-1 p-0.5 rounded bg-brand-500/80" title={item.goal_note || 'Objetivo'}>
                 <Target size={9} className="text-white" />
               </div>
             )}
@@ -292,6 +297,12 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, ha
           <h3 className="font-semibold text-sm text-dark-text leading-tight line-clamp-1" title={item.title}>
             {item.title}
           </h3>
+          
+          {item.is_goal && item.goal_note && (
+            <div className="mt-0.5 text-[10px] text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded line-clamp-2 leading-tight">
+              <span className="font-medium">Meta: </span>{item.goal_note}
+            </div>
+          )}
 
           {/* Status badge */}
           {statusInfo && (

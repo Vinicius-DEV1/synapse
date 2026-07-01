@@ -216,6 +216,7 @@ export interface CultureItem {
   progress: number;
   total_progress: number;
   is_goal: boolean;
+  goal_note?: string;
   api_id?: string;
   api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books';
   status?: string; // 'releasing', 'finished', etc.
