@@ -144,8 +144,9 @@ export default function CultureView() {
 
   const filteredItems = useMemo(() =>
     items.filter(item => {
+      const titleStr = item.title || 'Obra sem nome';
       const matchSearch =
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
+        titleStr.toLowerCase().includes(search.toLowerCase()) ||
         (item.synopsis && item.synopsis.toLowerCase().includes(search.toLowerCase()));
       if (!matchSearch) return false;
       if (activeFilter === 'all') return true;
@@ -203,7 +204,7 @@ export default function CultureView() {
   const handleSaveGoalNote = async (note: string) => {
     if (goalModalItem) {
       try {
-        await CultureService.updateItem(goalModalItem.id, { is_goal: true, goal_note: note });
+        await CultureService.updateItem(goalModalItem.id, { ...goalModalItem, is_goal: true, goal_note: note });
         loadItems();
       } catch (err) {
         console.error(err);
