@@ -4,6 +4,7 @@ import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
+import CultureViewModal from './CultureViewModal';
 
 type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
 export type ViewMode = 'grid' | 'compact' | 'list';
@@ -66,6 +67,7 @@ export default function CultureView() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CultureItem | null>(null);
+  const [viewingItem, setViewingItem] = useState<CultureItem | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>(
     () => (localStorage.getItem('culture_view_mode') as ViewMode) || 'grid'
@@ -165,6 +167,9 @@ export default function CultureView() {
 
   const handleEdit = (item: CultureItem) => { setEditingItem(item); setIsAddModalOpen(true); };
   const handleCloseModal = () => { setIsAddModalOpen(false); setEditingItem(null); };
+  
+  const handleView = (item: CultureItem) => { setViewingItem(item); };
+  const handleCloseViewModal = () => { setViewingItem(null); };
 
   const formatDate = (iso: string) => {
     try {
@@ -184,7 +189,8 @@ export default function CultureView() {
         item={item}
         viewMode={viewMode}
         onUpdate={loadItems}
-        onClick={() => handleEdit(item)}
+        onClick={() => handleView(item)}
+        onEdit={() => handleEdit(item)}
         hasNewRelease={recentReleases.some(ep => ep.item_id === item.id)}
       />
     ));
@@ -360,6 +366,14 @@ export default function CultureView() {
           onClose={handleCloseModal}
           onSuccess={loadItems}
           itemToEdit={editingItem}
+        />
+      )}
+
+      {viewingItem && (
+        <CultureViewModal
+          item={viewingItem}
+          isOpen={!!viewingItem}
+          onClose={handleCloseViewModal}
         />
       )}
     </div>
