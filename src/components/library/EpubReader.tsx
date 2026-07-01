@@ -25,7 +25,8 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     originalFontName, setOriginalFontName, detectedFontSizePx, setDetectedFontSizePx,
     locationsReady, setLocationsReady, setTotalPages,
     setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
-    setShowSettings, highlights, setHighlights, setBookmarks, setToc
+    setShowSettings, highlights, setHighlights, setBookmarks, setToc,
+    textWidth
   } = useEpub();
 
   const { state } = useStore();
@@ -654,7 +655,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
           </div>
         </button>
         
-        <div ref={viewerRef} className="w-full h-full max-w-4xl mx-auto px-2 sm:px-10" />
+        <div ref={viewerRef} className={`w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300 ${
+          textWidth === 'narrow' ? 'max-w-2xl' :
+          textWidth === 'medium' ? 'max-w-4xl' : 'max-w-[1400px]'
+        }`} />
 
         <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>

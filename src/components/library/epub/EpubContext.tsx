@@ -23,6 +23,8 @@ interface EpubContextType {
   setDetectedFontSizePx: React.Dispatch<React.SetStateAction<string | null>>;
   scrollMode: boolean;
   setScrollMode: React.Dispatch<React.SetStateAction<boolean>>;
+  textWidth: 'narrow' | 'medium' | 'full';
+  setTextWidth: (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => void;
   
   // Progress & Navigation
   progress: number;
@@ -82,6 +84,15 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [detectedFontSizePx, setDetectedFontSizePx] = useState<string | null>(null);
   const [scrollMode, setScrollMode] = useState(false);
   
+  const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(getSettings().defaultTextWidth || 'medium');
+  const setTextWidth = (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => {
+    setTextWidthState(prev => {
+      const newWidth = typeof w === 'function' ? w(prev) : w;
+      saveSettings({ ...getSettings(), defaultTextWidth: newWidth });
+      return newWidth;
+    });
+  };
+  
   const [progress, setProgress] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -111,6 +122,7 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       originalFontName, setOriginalFontName,
       detectedFontSizePx, setDetectedFontSizePx,
       scrollMode, setScrollMode,
+      textWidth: textWidthState, setTextWidth,
       progress, setProgress,
       currentPage, setCurrentPage,
       totalPages, setTotalPages,
