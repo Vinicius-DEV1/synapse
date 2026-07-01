@@ -381,6 +381,14 @@ export default function EpubHighlightMenu() {
   // ────────────────────────────────────────────
   return (
     <>
+      {/* 
+        Correção do Pulo (Flash) no Posicionamento:
+        O 'floatingStyles' injeta a posição exata via CSS inline (ex: transform: translate(x,y)).
+        Nossa classe 'animate-fade-in' também usa 'transform' (translateY) no CSS.
+        Se os dois ficarem na mesma tag, a animação CSS sobrescreve o posicionamento do Floating UI
+        durante 0.2s, jogando o menu pra posição (0,0).
+        A solução é ter uma div "pai" apenas para a posição e uma div "filha" apenas para a animação.
+      */}
       <div
         key={selection?.existingHighlightId || selection?.cfiRange || 'menu'}
         ref={refs.setFloating}
