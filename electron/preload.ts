@@ -68,6 +68,9 @@ contextBridge.exposeInMainWorld('api', {
     updateItem: (id: string, item: any) => invokeWithSync('culture:update-item', id, item),
     updateProgress: (id: string, progress: number) => invokeWithSync('culture:update-progress', id, progress),
     deleteItem: (id: string) => invokeWithSync('culture:delete-item', id),
+    getEpisodes: (itemId: string) => invokeWithSync('culture:get-episodes', itemId),
+    saveEpisodes: (itemId: string, episodes: any[]) => invokeWithSync('culture:save-episodes', itemId, episodes),
+    toggleEpisodeWatched: (episodeId: string, isWatched: boolean) => invokeWithSync('culture:toggle-episode-watched', episodeId, isWatched),
   },
 
   // Library

@@ -234,18 +234,19 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
         <div className="flex-1 overflow-y-auto p-6 scrollbar-custom flex flex-col gap-6">
           
           {!itemToEdit && (
-            <div className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
+            <div className="text-white bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
               <label className="text-xs font-semibold text-brand-400 uppercase tracking-wider">Busca Inteligente</label>
               <div className="flex gap-2">
                 <input
                   type="text"
+                  autoFocus
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Ex: Interstellar, One Piece..."
-                  className="flex-1 bg-dark-bg border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500/50"
+                  className="flex-1 text-white placeholder-white/40 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 pointer-events-auto select-text"
                 />
                 <button 
-                  onClick={() => handleSearch()}
+                  onClick={() => handleSearch(searchQuery)}
                   disabled={isSearching}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
                 >
@@ -266,7 +267,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                       {res.cover && <img src={res.cover} alt="cover" className="w-12 h-16 object-cover rounded" />}
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
                         <div className="font-semibold text-sm truncate">{res.title}</div>
-                        <div className="text-xs text-dark-subtext line-clamp-2 mt-1">{res.synopsis}</div>
+                        <div className="text-xs text-white/60 line-clamp-2 mt-1">{res.synopsis}</div>
                       </div>
                     </div>
                   ))}
@@ -278,35 +279,35 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
           {/* Form */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-xs text-dark-subtext">Título</label>
+              <label className="text-xs text-white/60">Título</label>
               <input
                 type="text"
                 value={formData.title}
-                onChange={e => setFormData({ ...formData, title: e.target.value })}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50"
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                className="text-white placeholder-white/40 bg-black/20 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 pointer-events-auto select-text"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-dark-subtext">Tipo de Mídia</label>
+              <label className="text-xs text-white/60">Tipo de Mídia</label>
               <select
                 value={formData.type}
-                onChange={e => setFormData({ ...formData, type: e.target.value as CultureType })}
-                className="bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-dark-text focus:outline-none focus:border-brand-500/50 appearance-none"
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as CultureType }))}
+                className="text-white bg-black/20 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 appearance-none pointer-events-auto"
               >
                 {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
 
             <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-xs text-dark-subtext">Progresso (Atual / Total)</label>
+              <label className="text-xs text-white/60">Progresso (Atual / Total)</label>
               <div className="flex gap-2 items-center">
                 <input
                   type="number"
                   min="0"
                   value={formData.progress}
                   onChange={e => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-                  className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50"
+                  className="w-20 text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50"
                 />
                 <span className="text-dark-subtext">/</span>
                 <input
@@ -314,7 +315,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                   min="0"
                   value={formData.total_progress}
                   onChange={e => setFormData({ ...formData, total_progress: parseInt(e.target.value) || 0 })}
-                  className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50"
+                  className="w-20 text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50"
                   placeholder="∞"
                 />
               </div>
@@ -326,7 +327,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 type="text"
                 value={formData.cover_image}
                 onChange={e => setFormData({ ...formData, cover_image: e.target.value })}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm"
+                className="text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm"
               />
             </div>
 
@@ -336,7 +337,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 type="text"
                 value={formData.access_link}
                 onChange={e => setFormData({ ...formData, access_link: e.target.value })}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm"
+                className="text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm"
                 placeholder="https://..."
               />
             </div>
@@ -347,7 +348,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 value={formData.synopsis}
                 onChange={e => setFormData({ ...formData, synopsis: e.target.value })}
                 rows={4}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm resize-none"
+                className="text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 text-sm resize-none"
               />
             </div>
             
