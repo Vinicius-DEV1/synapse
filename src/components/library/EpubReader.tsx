@@ -625,16 +625,18 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
         {/* Scrubber (Slider Estilo Kindle) */}
         {locationsReady && totalPagesSafe > 1 && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[80%] max-w-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-300 bg-black/60 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 flex flex-col items-center gap-2">
-            <span className="text-white font-bold text-xs">Página {currentPageSafe}</span>
-            <input 
-              type="range" 
-              min="1" 
-              max={totalPagesSafe} 
-              value={currentPageSafe} 
-              onChange={handleScrub}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-brand-500"
-            />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-[80%] max-w-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-300 pb-2">
+            <div className="bg-black/60 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 flex flex-col items-center gap-2">
+              <span className="text-white font-bold text-xs">Página {currentPageSafe}</span>
+              <input 
+                type="range" 
+                min="1" 
+                max={totalPagesSafe} 
+                value={currentPageSafe} 
+                onChange={handleScrub}
+                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-brand-500"
+              />
+            </div>
           </div>
         )}
 
