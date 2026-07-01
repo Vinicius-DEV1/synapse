@@ -374,9 +374,10 @@ export default function EpubHighlightMenu() {
   return (
     <>
       <div
+        key={selection?.existingHighlightId || selection?.cfiRange || 'menu'}
         ref={refs.setFloating}
         className={`absolute z-40 shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-max min-w-[260px] max-w-[320px] ${isPositioned ? 'animate-fade-in' : ''} ${modeClass}`}
-        style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden' }}
+        style={{ ...floatingStyles, visibility: isPositioned ? 'visible' : 'hidden', opacity: isPositioned ? undefined : 0, pointerEvents: isPositioned ? 'auto' : 'none' }}
       >
         {menuContent}
       </div>
