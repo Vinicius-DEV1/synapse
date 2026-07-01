@@ -49,7 +49,6 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
   const [languageTab, setLanguageTab] = useState<'en' | 'pt'>('en');
   const [error, setError] = useState<string | null>(null);
   const [selectedColloc, setSelectedColloc] = useState<Collocation | null>(null);
-  const [showDeepDive, setShowDeepDive] = useState(false);
 
   useEffect(() => {
     fetchDefinition(mode);
@@ -239,7 +238,15 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
 
         {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
-          <p className="text-lg font-bold text-white mb-0.5">"{text}"</p>
+          <div className="flex items-center gap-3 mb-0.5">
+            <p className="text-lg font-bold text-white">"{text}"</p>
+            {dictionaryData && (languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex && (
+              <span className="flex items-center gap-1 text-[10px] bg-gradient-to-r from-purple-500/20 to-brand-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]">
+                <Sparkles size={10} className="text-purple-400" />
+                Advanced
+              </span>
+            )}
+          </div>
           {dictionaryData && (
             <div className="flex items-center gap-2 mb-3">
               {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese) && (
@@ -252,21 +259,6 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                 <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded font-medium border border-purple-500/20">
                   {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.nuance_tag}
                 </span>
-              )}
-              {(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.deep_dive && (
-                <button 
-                  onClick={() => setShowDeepDive(true)}
-                  className={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex 
-                    ? "text-xs flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-brand-600 text-white px-3 py-1 rounded-full font-bold hover:shadow-lg hover:shadow-purple-500/20 hover:scale-105 transition-all"
-                    : "text-[10px] flex items-center gap-1 bg-white/5 text-dark-subtext px-2 py-0.5 rounded-full font-medium hover:bg-white/10 hover:text-white transition-colors border border-white/5"
-                  }
-                >
-                  <Sparkles 
-                    size={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex ? 14 : 10} 
-                    className={(languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex ? "animate-pulse" : ""} 
-                  /> 
-                  Advanced Deep Dive
-                </button>
               )}
             </div>
           )}
@@ -331,16 +323,44 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                       ))}
                     </div>
                   </div>
+
+                  {dictionaryData.english.is_rare_or_complex && dictionaryData.english.deep_dive && (
+                    <>
+                      <div>
+                        <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Etymology & Roots</h4>
+                        <p className="leading-relaxed text-sm text-white/90">{dictionaryData.english.deep_dive.etymology}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Nuance & Connotation</h4>
+                        <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{dictionaryData.english.deep_dive.nuance_explanation}</p>
+                      </div>
+                    </>
+                  )}
                   
-                  {dictionaryData.english.synonyms && dictionaryData.english.synonyms.length > 0 && (
+                  {dictionaryData.english.is_rare_or_complex && dictionaryData.english.deep_dive ? (
                     <div>
-                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Synonyms</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {dictionaryData.english.synonyms.map((syn, i) => (
-                          <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                      <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Contextual Synonyms</h4>
+                      <div className="space-y-2">
+                        {dictionaryData.english.deep_dive.contextual_synonyms.map((syn, i) => (
+                          <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
+                            <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
+                            <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
+                  ) : (
+                    dictionaryData.english.synonyms && dictionaryData.english.synonyms.length > 0 && (
+                      <div>
+                        <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Synonyms</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {dictionaryData.english.synonyms.map((syn, i) => (
+                            <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )
                   )}
 
                   {dictionaryData.english.collocations && dictionaryData.english.collocations.length > 0 && (
@@ -370,14 +390,25 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                     </div>
                   )}
 
-                  <div>
-                    <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
-                    <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
-                      {dictionaryData.english.examples.map((ex, i) => (
-                        <li key={i}>{ex}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {dictionaryData.english.is_rare_or_complex && dictionaryData.english.deep_dive ? (
+                    <div>
+                      <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Progressive Examples</h4>
+                      <ul className="space-y-3">
+                        {dictionaryData.english.deep_dive.progressive_examples.map((ex, i) => (
+                          <li key={i} className="text-sm italic text-white/80 border-l-2 border-brand-500/50 pl-3">"{ex}"</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div>
+                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
+                      <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
+                        {dictionaryData.english.examples.map((ex, i) => (
+                          <li key={i}>{ex}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -395,16 +426,44 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                       ))}
                     </div>
                   </div>
+
+                  {dictionaryData.portuguese.is_rare_or_complex && dictionaryData.portuguese.deep_dive && (
+                    <>
+                      <div>
+                        <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Etimologia e Raízes</h4>
+                        <p className="leading-relaxed text-sm text-white/90">{dictionaryData.portuguese.deep_dive.etymology}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Nuances</h4>
+                        <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{dictionaryData.portuguese.deep_dive.nuance_explanation}</p>
+                      </div>
+                    </>
+                  )}
                   
-                  {dictionaryData.portuguese.synonyms && dictionaryData.portuguese.synonyms.length > 0 && (
+                  {dictionaryData.portuguese.is_rare_or_complex && dictionaryData.portuguese.deep_dive ? (
                     <div>
-                      <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Sinônimos</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {dictionaryData.portuguese.synonyms.map((syn, i) => (
-                          <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                      <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Sinônimos Contextuais</h4>
+                      <div className="space-y-2">
+                        {dictionaryData.portuguese.deep_dive.contextual_synonyms.map((syn, i) => (
+                          <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
+                            <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
+                            <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
+                  ) : (
+                    dictionaryData.portuguese.synonyms && dictionaryData.portuguese.synonyms.length > 0 && (
+                      <div>
+                        <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Sinônimos</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {dictionaryData.portuguese.synonyms.map((syn, i) => (
+                            <span key={i} className="px-2 py-1 bg-white/5 text-brand-100 rounded-md text-xs border border-white/10">{syn}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )
                   )}
 
                   {dictionaryData.portuguese.collocations && dictionaryData.portuguese.collocations.length > 0 && (
@@ -502,69 +561,6 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
         </div>
       )}
 
-      {/* Sub-modal para Deep Dive */}
-      {showDeepDive && dictionaryData && (
-        <div 
-          className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
-          onMouseDown={(e) => { e.stopPropagation(); setShowDeepDive(false); }}
-        >
-          <div 
-            className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[95vw] shadow-2xl p-6 relative animate-scale-in max-h-[85vh] overflow-y-auto custom-scrollbar" 
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowDeepDive(false); }} 
-              className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors"
-            >
-              <X size={18} />
-            </button>
-            
-            <div className="flex items-center gap-1.5 text-purple-400 mb-6">
-              <Sparkles size={16} />
-              <h4 className="font-semibold text-sm uppercase tracking-wider">Advanced Deep Dive</h4>
-            </div>
-
-            {(() => {
-              const data = languageTab === 'en' ? dictionaryData.english?.deep_dive : dictionaryData.portuguese?.deep_dive;
-              if (!data) return null;
-              return (
-                <div className="space-y-6">
-                  <div>
-                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-1.5">Etymology & Roots</h5>
-                    <p className="text-sm text-white/90 leading-relaxed">{data.etymology}</p>
-                  </div>
-                  
-                  <div>
-                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-1.5">Nuance & Connotation</h5>
-                    <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{data.nuance_explanation}</p>
-                  </div>
-
-                  <div>
-                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-2">Contextual Synonyms</h5>
-                    <div className="space-y-2">
-                      {data.contextual_synonyms.map((syn, i) => (
-                        <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
-                          <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
-                          <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h5 className="text-xs font-bold text-brand-300 uppercase tracking-wide mb-2">Progressive Examples</h5>
-                    <ul className="space-y-3">
-                      {data.progressive_examples.map((ex, i) => (
-                        <li key={i} className="text-sm italic text-white/80 border-l-2 border-brand-500/50 pl-3">"{ex}"</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

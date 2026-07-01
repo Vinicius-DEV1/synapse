@@ -520,7 +520,8 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
  */
 export async function hardResetCloud(): Promise<void> {
   console.log("Iniciando Hard Reset da nuvem...");
-  for (const table of SYNC_TABLES) {
+  const allTables = Object.values(MODULE_TABLES).flat();
+  for (const table of allTables) {
     try {
       const snap = await getDocs(collection(db, table));
       for (const d of snap.docs) {
