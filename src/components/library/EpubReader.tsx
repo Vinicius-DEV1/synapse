@@ -187,7 +187,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                 if (h.rects) {
                   const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
                   newRendition.annotations.highlight(h.rects, {}, (e: any) => {
-                    // Cancelar o timer de limpeza do click geral — um grifo foi tocado
+                      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                      
+                      // Cancelar o timer de limpeza do click geral — um grifo foi tocado
                       if (clearSelectionTimerRef.current) {
                         clearTimeout(clearSelectionTimerRef.current);
                         clearSelectionTimerRef.current = null;
