@@ -117,7 +117,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
             status: item.show.status === 'Running' ? 'releasing' : (item.show.status === 'Ended' ? 'finished' : 'unknown')
           }));
         } catch { return []; }
-      };  };
+      };
 
       const fetchITunesMovies = async (q: string) => {
         try {
