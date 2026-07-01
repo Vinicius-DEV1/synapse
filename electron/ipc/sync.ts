@@ -8,10 +8,12 @@ const TABLE_MODULE_MAP: Record<string, string> = {
   'library_book_collections': 'library',
   'library_highlights': 'library',
   'library_bookmarks': 'library',
+  'library_reading_sessions': 'library',
   'transactions': 'finance',
   'wishlist': 'finance',
   'pages': 'notes',
-  'items': 'culture'
+  'items': 'culture',
+  'episodes': 'culture'
 };
 
 export function registerSyncHandlers() {

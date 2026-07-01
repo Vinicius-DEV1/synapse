@@ -43,7 +43,7 @@ const MODULE_TABLES: Record<string, string[]> = {
     'library_book_collections',
     'library_reading_sessions'
   ],
-  culture: ['items']
+  culture: ['items', 'episodes']
 };
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
