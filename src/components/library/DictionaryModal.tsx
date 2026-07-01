@@ -40,7 +40,15 @@ interface DictionaryData {
   portuguese: LanguageData & { translation: string };
 }
 
-export default function DictionaryModal({ text, pageContext, onClose }: DictionaryModalProps) {
+export interface DictionaryModalProps {
+  text: string;
+  pageContext?: string;
+  onClose: () => void;
+  preloadedData?: DictionaryData | null;
+  onSaveHighlight?: (color: string, note: string) => void;
+}
+
+export default function DictionaryModal({ text, pageContext, onClose, preloadedData, onSaveHighlight }: DictionaryModalProps) {
   const settings = getSettings();
   const [mode, setMode] = useState<'offline' | 'online'>(settings.dictionaryMode || (settings.hasOfflineDictionary ? 'offline' : 'online'));
   const [loading, setLoading] = useState(false);
@@ -49,10 +57,16 @@ export default function DictionaryModal({ text, pageContext, onClose }: Dictiona
   const [languageTab, setLanguageTab] = useState<'en' | 'pt'>('en');
   const [error, setError] = useState<string | null>(null);
   const [selectedColloc, setSelectedColloc] = useState<Collocation | null>(null);
+  const [savedLocally, setSavedLocally] = useState(!!preloadedData);
 
   useEffect(() => {
-    fetchDefinition(mode);
-  }, [text, mode]);
+    if (preloadedData) {
+      setDictionaryData(preloadedData);
+      setLanguageTab(preloadedData.detected_language === 'en' ? 'en' : 'pt');
+    } else {
+      fetchDefinition(mode);
+    }
+  }, [text, mode, preloadedData]);
 
   const fetchDefinition = async (currentMode: 'offline' | 'online') => {
     setLoading(true);
@@ -519,12 +533,43 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
           ) : null}
         </div>
         
-        {mode === 'online' && (
-          <div className="px-4 py-2 bg-dark-bg/80 flex items-center gap-1.5 border-t border-white/5">
-            <Sparkles size={12} className="text-brand-400" />
-            <span className="text-[10px] text-dark-subtext">Gerado por IA (Gemini)</span>
+        <div className="px-4 py-2 bg-dark-bg/80 flex items-center justify-between border-t border-white/5">
+          <div className="flex items-center gap-1.5">
+            {mode === 'online' && !preloadedData && (
+              <>
+                <Sparkles size={12} className="text-brand-400" />
+                <span className="text-[10px] text-dark-subtext">Gerado por IA (Gemini)</span>
+              </>
+            )}
+            {preloadedData && (
+              <>
+                <Database size={12} className="text-blue-400" />
+                <span className="text-[10px] text-dark-subtext">Salvo Localmente</span>
+              </>
+            )}
           </div>
-        )}
+          
+          {onSaveHighlight && dictionaryData && !savedLocally && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const noteContent = `<!-- AI_DICT -->${JSON.stringify(dictionaryData)}`;
+                onSaveHighlight('yellow', noteContent);
+                setSavedLocally(true);
+              }}
+              className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors"
+            >
+              <Database size={12} />
+              <span>Salvar no Livro</span>
+            </button>
+          )}
+          {savedLocally && onSaveHighlight && (
+            <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400">
+              <Database size={12} />
+              <span>Salvo</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Sub-modal para Collocation */}

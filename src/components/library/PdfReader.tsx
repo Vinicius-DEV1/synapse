@@ -69,7 +69,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [zoomInputActive, setZoomInputActive] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const zoomInputRef = useRef<HTMLInputElement>(null);
-  const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string } | null>(null);
+  const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string, preloadedData?: any, selection?: any } | null>(null);
   const [activeHighlight, setActiveHighlight] = useState<{ highlight: LibraryHighlight, position: { x: number, y: number } } | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);
   const [selection, setSelection] = useState<{
@@ -907,7 +907,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           position={selection.position}
           selectedText={selection.text}
           onHighlight={handleCreateHighlight}
-          onDictionary={(text) => setDictionaryTarget({ word: text, context: selection.pageContext })}
+          onDictionary={(text, preloadedData) => setDictionaryTarget({ word: text, context: selection.pageContext, preloadedData, selection })}
           onDismiss={() => {
             setSelection(null);
             window.getSelection()?.removeAllRanges();
@@ -924,6 +924,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             color: activeHighlight.highlight.color as any,
             note: activeHighlight.highlight.note
           }}
+          selectedText={activeHighlight.highlight.text_content}
+          onDictionary={(text, preloadedData) => setDictionaryTarget({ word: text, preloadedData, selection: activeHighlight })}
           onUpdateHighlight={async (id, color, note) => {
             await window.api.library.updateHighlight({ id, color: color as any, note: note || '' });
             setHighlights(prev => prev.map(h => h.id === id ? { ...h, color: color as any, note: note || '' } : h));
@@ -942,6 +944,29 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           <DictionaryModal 
             text={dictionaryTarget.word} 
             pageContext={dictionaryTarget.context}
+            preloadedData={dictionaryTarget.preloadedData}
+            onSaveHighlight={async (color, note) => {
+              const sel = dictionaryTarget.selection;
+              if (sel?.rects) {
+                 // É uma nova seleção
+                 const hl = await window.api.library.createHighlight({
+                    book_id: book.id,
+                    page_number: sel.pageNum,
+                    text_content: sel.text,
+                    color,
+                    rects: JSON.stringify(sel.rects),
+                    highlight_type: 'text',
+                    note: note
+                 });
+                 setHighlights(prev => [...prev, hl]);
+                 setSelection(null);
+                 window.getSelection()?.removeAllRanges();
+              } else if (sel?.highlight) {
+                 // É uma edição (na verdade não deveria ter onSaveHighlight em edição, pois já está salvo, mas caso caia aqui)
+                 await window.api.library.updateHighlight({ id: sel.highlight.id, color: color as any, note });
+                 setHighlights(prev => prev.map(h => h.id === sel.highlight.id ? { ...h, color: color as any, note } : h));
+              }
+            }}
             onClose={() => setDictionaryTarget(null)} 
           />
         </div>

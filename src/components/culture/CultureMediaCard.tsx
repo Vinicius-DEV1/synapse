@@ -3,7 +3,6 @@ import type { CultureItem } from '../../types';
 import { Target, Plus, CheckCircle, ExternalLink, Image as ImageIcon, List, X } from 'lucide-react';
 import { CultureService } from '../../services/culture';
 import { CultureEpisodeModal } from './CultureEpisodeModal';
-import { ContextMenuPopup } from './ContextMenuPopup';
 import type { ViewMode } from './CultureView';
 
 interface Props {

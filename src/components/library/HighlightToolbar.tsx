@@ -9,7 +9,7 @@ interface HighlightToolbarProps {
   onHighlight?: (color: HighlightColor, note?: string) => void;
   onUpdateHighlight?: (id: string, color: HighlightColor, note?: string) => void;
   onDeleteHighlight?: (id: string) => void;
-  onDictionary?: (text: string) => void;
+  onDictionary?: (text: string, preloadedData?: any) => void;
   onDismiss: () => void;
 }
 
@@ -182,32 +182,70 @@ export default function HighlightToolbar({
           )}
         </div>
 
-        {/* Note input */}
+        {/* Note input / AI Dict Card */}
         {showNoteInput && (
           <div className="px-3 pb-2.5 animate-fade-in">
-            <div className="flex items-center gap-1.5">
-              <input
-                ref={noteInputRef}
-                type="text"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                onKeyDown={handleNoteKeyDown}
-                placeholder="Adicionar nota..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-dark-text placeholder:text-dark-subtext/50 focus:outline-none focus:border-brand-500/50 transition-colors"
-              />
-              {selectedColor && (
-                <button
-                  onClick={handleNoteSubmit}
-                  className="px-2 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-xs rounded-lg transition-colors font-medium"
-                >
-                  OK
-                </button>
-              )}
-            </div>
-            {!selectedColor && (
-              <p className="text-[10px] text-dark-subtext/60 mt-1 px-0.5">
-                Selecione uma cor acima
-              </p>
+            {noteText.startsWith('<!-- AI_DICT -->') ? (
+              <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-2.5 flex flex-col gap-2 mt-2 w-[220px]">
+                <div className="flex items-center gap-1.5 text-brand-500">
+                  <BookType size={14} />
+                  <span className="text-xs font-bold uppercase tracking-wider">Tradução Salva</span>
+                </div>
+                <div className="text-xs opacity-90 italic text-dark-text whitespace-normal">
+                  {(() => {
+                    try {
+                      const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+                      return data.portuguese?.translation 
+                        ? `"${data.portuguese.translation}"` 
+                        : "Tradução disponível no dicionário completo.";
+                    } catch(e) {
+                      return "Tradução detalhada salva pela IA.";
+                    }
+                  })()}
+                </div>
+                <div className="flex justify-end mt-1">
+                  <button 
+                    onClick={() => {
+                      let preloadedData = null;
+                      try { preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')); } catch(e){}
+                      if (onDictionary) {
+                         onDictionary(selectedText || existingHighlight?.note || '', preloadedData);
+                      }
+                      onDismiss();
+                    }} 
+                    className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-[11px] font-bold hover:bg-brand-600 transition-colors flex items-center gap-1.5"
+                  >
+                    <BookType size={12}/> Ver Dicionário
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <input
+                    ref={noteInputRef}
+                    type="text"
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    onKeyDown={handleNoteKeyDown}
+                    placeholder="Adicionar nota..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-dark-text placeholder:text-dark-subtext/50 focus:outline-none focus:border-brand-500/50 transition-colors"
+                  />
+                  {selectedColor && (
+                    <button
+                      onClick={handleNoteSubmit}
+                      className="px-2 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-xs rounded-lg transition-colors font-medium"
+                    >
+                      OK
+                    </button>
+                  )}
+                </div>
+                {!selectedColor && (
+                  <p className="text-[10px] text-dark-subtext/60 mt-1 px-0.5">
+                    Selecione uma cor acima
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
