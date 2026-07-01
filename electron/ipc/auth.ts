@@ -58,7 +58,8 @@ export function registerAuthHandlers() {
           currentUnlockedKeys = { 
              library: library || undefined, 
              finance: finance || undefined, 
-             notes: notes || undefined 
+             notes: notes || undefined,
+             culture: notes || undefined
           };
           
           // Re-attach with unlocked keys
@@ -113,7 +114,7 @@ export function registerAuthHandlers() {
                 return resolve({ success: false, error: insertErr.message });
               }
               
-              currentUnlockedKeys = { library: libKey, finance: finKey, notes: notKey };
+              currentUnlockedKeys = { library: libKey, finance: finKey, notes: notKey, culture: notKey };
               
               try {
                 await openCoreAndAttachModules(currentUnlockedKeys);

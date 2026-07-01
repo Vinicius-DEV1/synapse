@@ -61,6 +61,15 @@ contextBridge.exposeInMainWorld('api', {
     deleteWishlist: (id: string) => invokeWithSync('finance:delete-wishlist', id),
   },
 
+  // Culture
+  culture: {
+    getItems: () => invokeWithSync('culture:get-items'),
+    createItem: (item: any) => invokeWithSync('culture:create-item', item),
+    updateItem: (id: string, item: any) => invokeWithSync('culture:update-item', id, item),
+    updateProgress: (id: string, progress: number) => invokeWithSync('culture:update-progress', id, progress),
+    deleteItem: (id: string) => invokeWithSync('culture:delete-item', id),
+  },
+
   // Library
   library: {
     getBooks: () => invokeWithSync('library:get-books'),

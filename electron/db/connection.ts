@@ -64,6 +64,7 @@ export interface UnlockedModules {
   library?: string;
   finance?: string;
   notes?: string;
+  culture?: string;
 }
 
 export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise<void> {
@@ -72,6 +73,7 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
     const libraryPath = path.join(app.getPath('userData'), 'caderno_library.sqlite').replace(/\\/g, '/');
     const financePath = path.join(app.getPath('userData'), 'caderno_finance.sqlite').replace(/\\/g, '/');
     const notesPath = path.join(app.getPath('userData'), 'caderno_notes.sqlite').replace(/\\/g, '/');
+    const culturePath = path.join(app.getPath('userData'), 'caderno_culture.sqlite').replace(/\\/g, '/');
     
     const newDb = new sqlite3.Database(corePath, (err) => {
       if (err) return reject(err);
@@ -92,6 +94,7 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
             attach(libraryPath, 'library', unlockedKeys.library)
               .then(() => attach(financePath, 'finance', unlockedKeys.finance))
               .then(() => attach(notesPath, 'notes', unlockedKeys.notes))
+              .then(() => attach(culturePath, 'culture', unlockedKeys.culture))
               .then(() => {
                 db = newDb;
                 resolve();

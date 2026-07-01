@@ -24,7 +24,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance';
+  module: 'notes' | 'library' | 'finance' | 'culture';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -202,6 +202,35 @@ export type Action =
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> };
 
 
+// ============ CULTURE TYPES ============
+export type CultureType = 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
+
+export interface CultureItem {
+  id: string;
+  title: string;
+  type: CultureType;
+  synopsis?: string;
+  cover_image?: string;
+  access_link?: string;
+  progress: number;
+  total_progress: number;
+  is_goal: boolean;
+  api_id?: string;
+  api_source?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CultureEpisode {
+  id: string;
+  item_id: string;
+  episode_number: number;
+  title: string;
+  synopsis?: string;
+  is_watched: boolean;
+  updated_at?: string;
+}
+
 declare global {
   interface Window {
     api: {
@@ -234,6 +263,16 @@ declare global {
         getWishlist: () => Promise<WishlistItem[]>;
         createWishlist: (item: Partial<WishlistItem>) => Promise<WishlistItem>;
         deleteWishlist: (id: string) => Promise<boolean>;
+      };
+      culture: {
+        getItems: () => Promise<CultureItem[]>;
+        createItem: (item: Partial<CultureItem>) => Promise<CultureItem>;
+        updateItem: (id: string, item: Partial<CultureItem>) => Promise<{success: boolean, id: string}>;
+        updateProgress: (id: string, progress: number) => Promise<{success: boolean, id: string}>;
+        deleteItem: (id: string) => Promise<{success: boolean}>;
+        getEpisodes: (itemId: string) => Promise<CultureEpisode[]>;
+        saveEpisodes: (itemId: string, episodes: any[]) => Promise<{success: boolean, count: number}>;
+        toggleEpisodeWatched: (episodeId: string, isWatched: boolean) => Promise<{success: boolean}>;
       };
       library: {
         getBooks: () => Promise<LibraryBook[]>;

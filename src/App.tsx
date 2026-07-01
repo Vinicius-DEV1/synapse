@@ -8,6 +8,7 @@ import ContextMenu from './components/ContextMenu';
 import ConfirmModal from './components/ConfirmModal';
 import FinanceView from './components/finance/FinanceView';
 import LibraryView from './components/library/LibraryView';
+import CultureView from './components/culture/CultureView';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
@@ -189,6 +190,8 @@ function AppContent() {
         document.title = 'Caderno Web';
       } else if (activeModule === 'library') {
         document.title = activeTab?.bookTitle || 'Biblioteca';
+      } else if (activeModule === 'culture') {
+        document.title = 'Cultura';
       } else if (activeModule === 'finance') {
         document.title = 'Finanças';
       } else {
@@ -238,6 +241,8 @@ function AppContent() {
             />
           ) : activeModule === 'library' ? (
             <LibraryView />
+          ) : activeModule === 'culture' ? (
+            <CultureView />
           ) : (
             <FinanceView />
           )}
