@@ -91,9 +91,19 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
 export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
   if (!navigator.onLine) return;
   try {
+    const docRef = doc(db, 'config', 'module_keys');
+    const docSnap = await getDoc(docRef);
+    
+    // TRAVA DE SEGURANÇA ABSOLUTA: Se já existem chaves na nuvem, NUNCA sobrescreve.
+    // Isso previne que bugs de novos logins (como o que tivemos) destruam a criptografia.
+    if (docSnap.exists() && docSnap.data().encryptedData) {
+      console.error("🔒 ALERTA DE SEGURANÇA: Tentativa de sobrescrever chaves de criptografia existentes foi bloqueada.");
+      return;
+    }
+
     const payload = JSON.stringify(keys);
     const encryptedData = await encryptText(payload, masterKey);
-    await setDoc(doc(db, 'config', 'module_keys'), {
+    await setDoc(docRef, {
       encryptedData,
       updatedAt: serverTimestamp()
     }, { merge: true });
