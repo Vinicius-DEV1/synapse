@@ -145,17 +145,33 @@ export default function CultureView() {
   const groupedItems = useMemo(() => {
     if (activeFilter !== 'all') return null;
     const handled = new Set<string>();
-    const groups: { type: string; label: string; items: CultureItem[] }[] = [];
+    const groups: { type: string; label: string; items: CultureItem[]; isGoalSection?: boolean }[] = [];
+
+    // Separate Goals into their own section at the top
+    const goalItems = filteredItems.filter(i => i.is_goal && !(i.total_progress > 0 && i.progress >= i.total_progress));
+    if (goalItems.length > 0) {
+      groups.push({ 
+        type: 'goals', 
+        label: '🎯 Objetivos Ativos', 
+        items: sortItems(goalItems, sortMode),
+        isGoalSection: true
+      });
+      // We also add them to handled if we don't want them in their respective type sections.
+      // But typically we DO want them in both, or maybe just remove them from the type sections?
+      // Let's remove them from the type sections so they don't duplicate.
+      goalItems.forEach(i => handled.add(i.id));
+    }
 
     for (const type of sectionOrder) {
-      handled.add(type);
-      const typeItems = filteredItems.filter(i => i.type === type);
+      const typeItems = filteredItems.filter(i => i.type === type && !handled.has(i.id));
       if (typeItems.length > 0) {
         groups.push({ type, label: TYPE_LABELS[type] || type, items: sortItems(typeItems, sortMode) });
+        typeItems.forEach(i => handled.add(i.id));
       }
     }
-    // tipos fora da ordem salva
-    const others = filteredItems.filter(i => !handled.has(i.type));
+    
+    // tipos fora da ordem salva (excluding goals already handled)
+    const others = filteredItems.filter(i => !handled.has(i.id));
     if (others.length > 0) groups.push({ type: 'other', label: '📦 Outros', items: sortItems(others, sortMode) });
     return groups;
   }, [filteredItems, activeFilter, sectionOrder, sortMode]);
@@ -328,12 +344,12 @@ export default function CultureView() {
                       {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
                     </span>
                     <div className="flex-1 h-px bg-white/5" />
-                    {/* Reorder arrows — only for named sections */}
-                    {!isOther && (
+                    {/* Reorder arrows — only for named type sections (not goals, not others) */}
+                    {!isOther && !group.isGoalSection && (
                       <div className="flex items-center gap-0.5">
                         <button
                           onClick={() => moveSectionUp(group.type)}
-                          disabled={isFirst}
+                          disabled={isFirst || (idx === 1 && groupedItems[0]?.isGoalSection)} // disable if it's right under goals
                           title="Mover seção para cima"
                           className="p-1 rounded text-white/20 hover:text-white/60 hover:bg-white/5 transition-colors disabled:opacity-0 disabled:cursor-not-allowed"
                         >
