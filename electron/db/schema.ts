@@ -49,6 +49,7 @@ export function setupTables(): Promise<void> {
               current_page INTEGER DEFAULT 1,
               reading_status TEXT DEFAULT 'not_started',
               last_read_page TEXT,
+              epub_locations TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL
@@ -131,6 +132,7 @@ export function setupTables(): Promise<void> {
           
           // Migration patch for last_read_page
           promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;"));
+          promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN epub_locations TEXT;"));
         }
 
         // NOTES TABLES
