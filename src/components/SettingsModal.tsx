@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Settings, X, Save } from 'lucide-react';
 import { getSettings, saveSettings } from '../utils/settings';
 import type { AppSettings } from '../utils/settings';
@@ -23,8 +24,8 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
         className="bg-dark-card border border-white/10 rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
       >
@@ -113,4 +114,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
