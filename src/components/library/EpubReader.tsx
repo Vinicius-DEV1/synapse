@@ -395,6 +395,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            });
            
            newRendition.on('keydown', (event: any) => {
+                if (event.key === 'F11') {
+                   event.preventDefault();
+                   dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !state.isReadingModeFullScreen });
+                   return;
+                }
                 if (event.key === 'ArrowRight') turnPage('next', newRendition);
                 if (event.key === 'ArrowLeft') turnPage('prev', newRendition);
                 if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.metaKey && !event.altKey) {
