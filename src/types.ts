@@ -30,6 +30,7 @@ export interface Tab {
   bookTitle?: string;
   unsavedContent: string | null;
   scrollY: number;
+  moduleState?: Record<string, any>;
 }
 
 export type TransactionType = 'income' | 'expense' | 'loan_made' | 'loan_taken';
@@ -187,6 +188,8 @@ export type Action =
   | { type: 'ADD_TAB'; tab: Tab }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SET_ACTIVE_TAB'; tabId: string }
+  | { type: 'REORDER_TABS'; sourceIndex: number; targetIndex: number }
+  | { type: 'UPDATE_TAB_STATE'; tabId: string; stateUpdates: Record<string, any> }
   | { type: 'NAVIGATE_IN_TAB'; pageId: string }
   | { type: 'SET_UNSAVED_CONTENT'; tabId: string; content: string }
   | { type: 'SET_SCROLL_Y'; tabId: string; scrollY: number }
@@ -221,6 +224,10 @@ export interface CultureItem {
   api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books';
   status?: string; // 'releasing', 'finished', etc.
   last_sync_at?: string;
+  // Campos extras de metadados da API
+  volumes?: number | null;
+  chapters?: number | null;
+  episodes_count?: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -31,7 +31,7 @@ function isElectron(): boolean {
  * Busca uma imagem no cache local.
  * Retorna o registro cacheado ou undefined se não existir.
  */
-async function getCachedImage(id: string): Promise<CachedImage | undefined> {
+export async function getCachedImage(id: string): Promise<CachedImage | undefined> {
   if (isElectron()) {
     // Electron — usa IPC para acessar o cache de imagens
     const result = await (window as any).api.imageCache.get(id);
@@ -47,7 +47,7 @@ async function getCachedImage(id: string): Promise<CachedImage | undefined> {
 /**
  * Salva uma imagem no cache local.
  */
-async function setCachedImage(
+export async function setCachedImage(
   id: string,
   data: ArrayBuffer,
   mimeType: string

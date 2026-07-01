@@ -25,7 +25,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     originalFontName, setOriginalFontName, detectedFontSizePx, setDetectedFontSizePx,
     locationsReady, setLocationsReady, setTotalPages,
     setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
-    setShowSettings, setHighlights, setBookmarks, setToc
+    setShowSettings, highlights, setHighlights, setBookmarks, setToc
   } = useEpub();
 
   const { state } = useStore();
@@ -195,14 +195,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                       if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
                       if (e && typeof e.preventDefault === 'function') e.preventDefault();
                       
+                      globalLastHighlightClick = Date.now();
+                      
                       // Cancelar o timer de limpeza do click geral — um grifo foi tocado
                       if (clearSelectionTimerRef.current) {
                         clearTimeout(clearSelectionTimerRef.current);
                         clearSelectionTimerRef.current = null;
                       }
-                      // Sinalizar que um grifo foi clicado — o próximo 'click' genérico deve ser ignorado
-                      highlightJustClickedRef.current = true;
-                      setTimeout(() => { highlightJustClickedRef.current = false; }, 300);
                       const rect = e.target.getBoundingClientRect();
                       const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
                       setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
@@ -329,7 +328,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                return;
              }
              // Se um grifo acabou de ser clicado, NÃO limpar a seleção
-             if (highlightJustClickedRef.current) {
+             if (Date.now() - globalLastHighlightClick < 500) {
                return;
              }
              // Desktop: limpa seleção no clique normal
@@ -473,7 +472,35 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       rendition.themes.register(themeName, themeCss);
       rendition.themes.select(themeName);
     }
-  }, [fontSize, fontFamily, readingMode, rendition]);
+    
+    // Redesenha as marcações após o reflow do redimensionamento
+    const timer = setTimeout(() => {
+      if (rendition && highlights) {
+        // Usa as chaves subjacentes para evitar piscar todas as vezes se não for necessário,
+        // mas como fontSize muda o layout, precisamos limpar e recriar.
+        rendition.annotations.clear();
+        highlights.forEach(h => {
+          if (h.rects) {
+            const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+            rendition.annotations.highlight(h.rects, {}, (e: any) => {
+                if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                globalLastHighlightClick = Date.now();
+                if (clearSelectionTimerRef.current) {
+                  clearTimeout(clearSelectionTimerRef.current);
+                  clearSelectionTimerRef.current = null;
+                }
+                const rect = e.target.getBoundingClientRect();
+                const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+                setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+            }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+          }
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [fontSize, fontFamily, readingMode, rendition, highlights]);
 
   useEffect(() => {
     if (!rendition) return;
@@ -527,6 +554,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !state.isReadingModeFullScreen });
+        return;
+      }
+
       if (e.key === 'ArrowRight') turnPage('next');
       if (e.key === 'ArrowLeft') turnPage('prev');
       
@@ -545,7 +578,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [rendition, setReadingMode, setFontSize]);
+  }, [rendition, setReadingMode, setFontSize, dispatch, state.isReadingModeFullScreen]);
 
   const { progress, currentPage, totalPages } = useEpub();
   const progressPercentage = Math.round((progress || 0) * 100);
@@ -582,8 +615,9 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   return (
     <div className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
       <div className={`
-        md:block flex-shrink-0 transition-transform duration-300 z-50
+        transition-all duration-300 z-30
         ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
+        ${state.isReadingModeFullScreen ? 'hidden' : ''}
         absolute md:relative top-0 left-0 right-0
       `}>
         <EpubTopBar onBack={onBack} />
@@ -673,10 +707,15 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   );
 }
 
-export default function EpubReader(props: EpubReaderProps) {
+import { getSettings } from '../../../utils/settings';
+
+// Variável global para evitar fechamento acidental ao clicar em grifos (bypassa closures)
+let globalLastHighlightClick = 0;
+
+export default function EpubReader({ book, onBack, onUpdateBook }: EpubReaderProps) {
   return (
-    <EpubProvider book={props.book}>
-      <EpubCore {...props} />
+    <EpubProvider book={book}>
+      <EpubCore book={book} onBack={onBack} onUpdateBook={onUpdateBook} />
     </EpubProvider>
   );
 }

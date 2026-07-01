@@ -143,6 +143,21 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, tabs: newTabs, activeTabId: newActiveId };
     }
 
+    case 'REORDER_TABS': {
+      const newTabs = [...state.tabs];
+      const [moved] = newTabs.splice(action.sourceIndex, 1);
+      newTabs.splice(action.targetIndex, 0, moved);
+      return { ...state, tabs: newTabs };
+    }
+
+    case 'UPDATE_TAB_STATE':
+      return {
+        ...state,
+        tabs: state.tabs.map((t) =>
+          t.id === action.tabId ? { ...t, moduleState: { ...(t.moduleState || {}), ...action.stateUpdates } } : t
+        ),
+      };
+
     case 'SET_ACTIVE_TAB':
       return { ...state, activeTabId: action.tabId };
 

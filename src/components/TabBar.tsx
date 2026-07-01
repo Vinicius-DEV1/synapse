@@ -21,9 +21,21 @@ export default function TabBar() {
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   };
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('tabIndex', index.toString());
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('tabIndex'), 10);
+    if (!isNaN(dragIndex) && dragIndex !== dropIndex) {
+      dispatch({ type: 'REORDER_TABS', sourceIndex: dragIndex, targetIndex: dropIndex });
+    }
+  };
+
   return (
     <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
-      {state.tabs.map((tab) => {
+      {state.tabs.map((tab, index) => {
         const isActive = tab.id === state.activeTabId;
         
         let title = 'Nova Aba';
@@ -39,11 +51,18 @@ export default function TabBar() {
         } else if (tab.module === 'finance') {
           title = 'Finanças';
           icon = <Wallet size={13} className="flex-shrink-0 text-dark-subtext" />;
+        } else if (tab.module === 'culture') {
+          title = 'Cultura';
+          icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
         }
 
         return (
           <button
             key={tab.id}
+            draggable={true}
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => handleDrop(e, index)}
             onClick={() => handleSelectTab(tab.id)}
             className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] transition-all ${
               isActive

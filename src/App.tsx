@@ -180,6 +180,21 @@ function AppContent() {
     }
   }, [state.tabs, state.activeTabId, dispatch]);
 
+  // Global Keyboard Shortcuts (Alt + 1..9 for tabs)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key, 10) - 1;
+        if (index >= 0 && index < state.tabs.length) {
+          e.preventDefault();
+          dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.tabs, dispatch]);
+
   // Update document title based on active module and platform
   useEffect(() => {
     const isElectron = navigator.userAgent.toLowerCase().includes('electron');
@@ -219,15 +234,17 @@ function AppContent() {
   return (
     <div className="w-screen h-screen flex bg-dark-bg text-dark-text overflow-hidden" style={{ height: '100dvh' }}>
       {/* Sidebar */}
-      <Sidebar
-        onCreatePage={handleCreatePage}
-        onUpdatePage={handleUpdatePage}
-      />
+      {!state.isReadingModeFullScreen && (
+        <Sidebar
+          onCreatePage={handleCreatePage}
+          onUpdatePage={handleUpdatePage}
+        />
+      )}
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Tab Bar - Only show in Electron */}
-        {navigator.userAgent.toLowerCase().includes('electron') && <TabBar />}
+        {!state.isReadingModeFullScreen && navigator.userAgent.toLowerCase().includes('electron') && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden">
@@ -250,7 +267,7 @@ function AppContent() {
       </div>
 
       {/* AI Sidebar */}
-      <AiSidebar />
+      {!state.isReadingModeFullScreen && <AiSidebar />}
 
       {/* Context Menu */}
       {state.contextMenu && (

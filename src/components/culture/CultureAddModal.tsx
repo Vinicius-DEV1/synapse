@@ -78,6 +78,10 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
             synopsis: item.synopsis || '',
             cover: item.images?.jpg?.large_image_url || '',
             total: item.episodes || item.chapters || 0,
+            // Captura volumes e capítulos extras da API Jikan
+            volumes: item.volumes || null,
+            chapters: item.chapters || null,
+            episodes_count: item.episodes || null,
             type: t,
             api_id: item.mal_id.toString(),
             api_source: 'jikan',
