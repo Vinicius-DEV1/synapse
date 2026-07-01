@@ -104,13 +104,24 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       try {
         setLoading(true);
         setPdfError(null);
-        let fileData;
+        let fileData: any;
         try {
-          fileData = await window.api.library.getBookFile(book.id);
+          const res = await window.api.library.getBookFile(book.id);
+          if (res) {
+            if (typeof res === 'string') {
+              const binaryString = atob(res);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+              }
+              fileData = bytes;
+            } else {
+              fileData = res;
+            }
+          }
         } catch (localErr) {
           console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
         }
-        
         if (!fileData && book.drive_file_id) {
           console.log("Baixando do Google Drive: ", book.drive_file_id);
           const token = await getValidAccessToken();
