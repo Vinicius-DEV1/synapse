@@ -142,7 +142,7 @@ export const createWebApiMock = async () => {
         
         return { success: false, error: 'Senha incorreta' };
       },
-      setup: async (password: string) => {
+      setup: async (password: string, existingKeys?: any) => {
         const hash = await hashLocalPassword(password);
         await db.put('config', { id: 'masterHash', value: hash });
         return { success: true };
