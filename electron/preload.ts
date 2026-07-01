@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('api', {
   auth: {
     status: () => invokeWithSync('auth:status'),
     login: (password: string) => invokeWithSync('auth:login', password),
-    setup: (password: string) => invokeWithSync('auth:setup', password),
+    setup: (password: string, existingKeys?: any) => invokeWithSync('auth:setup', password, existingKeys),
     changePassword: (newPassword: string) => invokeWithSync('auth:change-password', newPassword),
     createVisitor: (visitorPassword: string, allowedModules: string[]) => invokeWithSync('auth:create-visitor', visitorPassword, allowedModules),
     getVisitors: () => invokeWithSync('auth:get-visitors'),
