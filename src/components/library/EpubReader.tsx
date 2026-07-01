@@ -187,6 +187,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                 if (h.rects) {
                   const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
                   newRendition.annotations.highlight(h.rects, {}, (e: any) => {
+                      // Correção Crítica (Efeito Fantasma):
+                      // O EpubJS renderiza grifos como SVGs por cima do iframe. Quando o usuário clica no grifo,
+                      // o evento é disparado aqui, mas depois se propaga (bubble) até o document do iframe.
+                      // Se não impedirmos a propagação, o EpubJS vai disparar 'rendition.on("click")',
+                      // o que seria interpretado como um clique no fundo vazio, fechando o menu quase instantaneamente.
                       if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
                       if (e && typeof e.preventDefault === 'function') e.preventDefault();
                       
