@@ -184,18 +184,21 @@ function AppContent() {
   // self-correct to the first available tab so actions like NAVIGATE_IN_TAB don't silently fail.
   useEffect(() => {
     if (state.tabs.length > 0 && !state.tabs.some(t => t.id === state.activeTabId)) {
-      dispatch({ type: 'SWITCH_TAB', tabId: state.tabs[0].id });
+      dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[0].id });
     }
   }, [state.tabs, state.activeTabId, dispatch]);
 
   // Global Keyboard Shortcuts (Alt + 1..9 for tabs)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key >= '1' && e.key <= '9') {
-        const index = parseInt(e.key, 10) - 1;
-        if (index >= 0 && index < state.tabs.length) {
-          e.preventDefault();
-          dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id });
+      if (e.altKey && e.code && e.code.startsWith('Digit')) {
+        const num = parseInt(e.code.replace('Digit', ''), 10);
+        if (num >= 1 && num <= 9) {
+          const index = num - 1;
+          if (index >= 0 && index < state.tabs.length) {
+            e.preventDefault();
+            dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id });
+          }
         }
       }
     };
