@@ -232,6 +232,9 @@ export function setupTables(): Promise<void> {
           promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN status TEXT DEFAULT 'unknown';"));
           promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN last_sync_at DATETIME DEFAULT NULL;"));
           promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN goal_note TEXT;"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN volumes INTEGER DEFAULT NULL;"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN chapters INTEGER DEFAULT NULL;"));
+          promises.push(runSafe("ALTER TABLE culture.items ADD COLUMN episodes_count INTEGER DEFAULT NULL;"));
 
           promises.push(runSafe(`
             CREATE TABLE IF NOT EXISTS culture.episodes (
