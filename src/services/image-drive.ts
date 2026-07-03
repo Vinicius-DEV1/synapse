@@ -69,8 +69,9 @@ export async function setCachedImage(
 
 /**
  * Faz upload de uma imagem criptografada para a pasta FOTOS do Google Drive.
- * Também salva a imagem original (sem criptografia) no cache local (IndexedDB).
- * Retorna o ID do arquivo no Google Drive.
+ * Se não houver token do Drive (modo offline/local), salva apenas no cache local
+ * com um ID permanente (local_xxx) para que a imagem continue visível sem Drive.
+ * Retorna o ID final da imagem (Drive ID ou ID local).
  */
 export async function uploadEncryptedImage(
   file: File,
@@ -79,12 +80,15 @@ export async function uploadEncryptedImage(
   // 1. Lê o arquivo como ArrayBuffer
   const originalBuffer = await file.arrayBuffer();
 
-  // 2. Obtém um token de acesso válido
-  const token = await getValidAccessToken();
+  // 2. Tenta obter um token de acesso válido
+  const token = await getValidAccessToken().catch(() => null);
+
   if (!token) {
-    throw new Error(
-      'Sem token do Google Drive. Faça login no Drive nas Configurações.'
-    );
+    // Modo offline/local: salva apenas no cache com ID permanente
+    const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await setCachedImage(localId, originalBuffer, file.type);
+    console.log(`[ImageDrive] Sem token Drive — imagem salva localmente como ${localId}`);
+    return localId;
   }
 
   // 3. Criptografa o conteúdo com AES-GCM
@@ -118,29 +122,34 @@ export async function getDecryptedImageUrl(
 
   if (cached) {
     // Encontrou no cache — cria blob URL diretamente
-    const blob = new Blob([cached.data], { type: cached.mimeType });
+    const blob = new Blob([cached.data], { type: cached.mimeType || 'image/png' });
     return URL.createObjectURL(blob);
   }
 
-  // 2. Não está no cache — precisa baixar do Drive
-  const token = await getValidAccessToken();
+  // 2. Imagens com ID local_ existem APENAS no cache — se não estão lá, perderam-se
+  if (driveFileId.startsWith('local_')) {
+    throw new Error('Imagem local não encontrada no cache. Pode ter sido perdida ao reinstalar o app.');
+  }
+
+  // 3. Não está no cache — precisa baixar do Drive
+  const token = await getValidAccessToken().catch(() => null);
   if (!token) {
     throw new Error(
       'Sem token do Google Drive. Faça login no Drive nas Configurações.'
     );
   }
 
-  // 3. Baixa o arquivo criptografado do Drive
+  // 4. Baixa o arquivo criptografado do Drive
   const encryptedBuffer = await downloadFromDrive(token, driveFileId);
 
-  // 4. Descriptografa o conteúdo
+  // 5. Descriptografa o conteúdo
   const decryptedBuffer = await decryptFile(encryptedBuffer, masterKey);
 
-  // 5. Salva no cache local para próximas consultas
+  // 6. Salva no cache local para próximas consultas
   // Usa 'image/png' como fallback pois não temos o mimeType original
   await setCachedImage(driveFileId, decryptedBuffer, 'image/png');
 
-  // 6. Cria e retorna a blob URL
+  // 7. Cria e retorna a blob URL
   const blob = new Blob([decryptedBuffer], { type: 'image/png' });
   return URL.createObjectURL(blob);
 }

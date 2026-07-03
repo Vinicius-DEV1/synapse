@@ -151,8 +151,8 @@ export function registerPagesHandlers() {
     if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
     return new Promise((resolve, reject) => {
       getDb().run(
-        'INSERT OR REPLACE INTO notes.image_cache (id, data) VALUES (?, ?)',
-        [id, Buffer.from(data)],
+        'INSERT OR REPLACE INTO notes.image_cache (id, data, mimeType) VALUES (?, ?, ?)',
+        [id, Buffer.from(data), mimeType || 'image/png'],
         (err) => {
           if (err) reject(err);
           else resolve({ success: true });
