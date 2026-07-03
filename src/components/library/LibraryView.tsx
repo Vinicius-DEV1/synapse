@@ -30,12 +30,12 @@ const STATUS_LABELS: Record<ReadingStatus | 'all', string> = {
   finished: 'Concluídos',
 };
 
-export default function LibraryView() {
+export default function LibraryView({ tabId }: { tabId: string }) {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
   
   const { state, dispatch } = useStore();
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const activeTab = state.tabs.find((t) => t.id === tabId) || state.tabs[0];
   const selectedBookId = activeTab.module === 'library' ? activeTab.bookId : null;
   const selectedBook = useMemo(() => {
     return selectedBookId ? books.find(b => b.id === selectedBookId) || null : null;

@@ -255,22 +255,35 @@ function AppContent() {
         {!state.isReadingModeFullScreen && navigator.userAgent.toLowerCase().includes('electron') && <TabBar />}
 
         {/* Main Area */}
-        <div className="flex-1 overflow-hidden">
-          {activeModule === 'notes' ? (
-            <PageView
-              page={activePage}
-              onUpdateContent={handleUpdateContent}
-              onCreatePage={handleCreatePage}
-              onCreateLinkedPage={handleCreateLinkedPage}
-              onUpdatePage={handleUpdatePage}
-            />
-          ) : activeModule === 'library' ? (
-            <LibraryView />
-          ) : activeModule === 'culture' ? (
-            <CultureView />
-          ) : (
-            <FinanceView />
-          )}
+        <div className="flex-1 overflow-hidden relative">
+          {state.tabs.map((tab) => {
+            const isActive = tab.id === state.activeTabId;
+            const tabModule = tab.module;
+            const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) || null : null;
+            
+            return (
+              <div 
+                key={tab.id} 
+                className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
+              >
+                {tabModule === 'notes' ? (
+                  <PageView
+                    page={page}
+                    onUpdateContent={handleUpdateContent}
+                    onCreatePage={handleCreatePage}
+                    onCreateLinkedPage={handleCreateLinkedPage}
+                    onUpdatePage={handleUpdatePage}
+                  />
+                ) : tabModule === 'library' ? (
+                  <LibraryView tabId={tab.id} />
+                ) : tabModule === 'culture' ? (
+                  <CultureView />
+                ) : (
+                  <FinanceView />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
