@@ -525,7 +525,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
               }
               const rawRect = e.target.getBoundingClientRect();
               let offsetX = 0; let offsetY = 0;
-              const iframe = document.querySelector('iframe');
+              const iframe = viewerRef.current?.querySelector('iframe');
               if (iframe) {
                   const iframeRect = iframe.getBoundingClientRect();
                   offsetX = iframeRect.left;
