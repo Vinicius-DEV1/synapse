@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('api', {
   reorderPages: (updates: { id: string; sort_order: number }[]) =>
     invokeWithSync('db:reorder-pages', updates),
   getPageHistory: (pageId: string) => invokeWithSync('db:get-page-history', pageId),
+  savePageHistory: (pageId: string, content: string) => invokeWithSync('db:save-page-history', pageId, content),
   
   // Auth
   auth: {

@@ -204,6 +204,14 @@ export function setupTables(): Promise<void> {
           
           promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN is_pinned INTEGER DEFAULT 0`));
           promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN pinned_order REAL DEFAULT 0`));
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS notes.page_history (
+              id TEXT PRIMARY KEY,
+              page_id TEXT NOT NULL,
+              content TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `));
         }
 
         // CULTURE TABLES
