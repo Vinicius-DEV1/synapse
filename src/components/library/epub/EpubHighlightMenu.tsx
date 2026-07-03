@@ -81,6 +81,8 @@ export default function EpubHighlightMenu() {
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
+          (window as any).__lastHighlightClick = Date.now();
           const rect = e.target.getBoundingClientRect();
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
           setNoteMode(color);
@@ -100,6 +102,8 @@ export default function EpubHighlightMenu() {
         rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
+          (window as any).__lastHighlightClick = Date.now();
           const rect = e.target.getBoundingClientRect();
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
           setNoteMode(color);
