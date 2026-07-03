@@ -263,25 +263,58 @@ export default function EpubHighlightMenu() {
       {noteMode && (
         noteText.startsWith('<!-- AI_DICT -->') ? (
           <div className={`mt-2 border-t pt-2 ${noteAreaClass}`}>
-            <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-2.5 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 text-brand-500">
-                <Sparkles size={14} />
-                <span className="text-xs font-bold uppercase tracking-wider">Tradução Salva</span>
-              </div>
-              <div className="text-xs opacity-90 italic">
+            <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-2.5 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-brand-500">
+                  <Sparkles size={13} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">IA Salva</span>
+                </div>
                 {(() => {
                   try {
                     const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-                    return data.portuguese?.translation 
-                      ? `"${data.portuguese.translation}"` 
-                      : "Tradução disponível no dicionário completo.";
-                  } catch(e) {
-                    return "Tradução detalhada salva pela IA.";
-                  }
+                    const wc = data.english?.word_class || data.portuguese?.word_class;
+                    return wc ? <span className="text-[10px] opacity-60 italic">{wc}</span> : null;
+                  } catch { return null; }
                 })()}
               </div>
-              <div className="flex justify-between mt-1 items-center">
-                <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-3 py-1.5 text-[11px] font-medium opacity-70 hover:opacity-100 transition-colors">Fechar</button>
+
+              {/* Definições em inglês */}
+              {(() => {
+                try {
+                  const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+                  const defs: string[] = data.english?.definitions || [];
+                  if (defs.length > 0) {
+                    return (
+                      <ul className="flex flex-col gap-0.5 pl-1">
+                        {defs.slice(0, 3).map((def, i) => (
+                          <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
+                            <span className="opacity-40 shrink-0">{i + 1}.</span>
+                            <span>{def}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  // Fallback: contexto em PT
+                  const ptDefs: string[] = data.portuguese?.definitions || [];
+                  if (ptDefs.length > 0) {
+                    return (
+                      <ul className="flex flex-col gap-0.5 pl-1">
+                        {ptDefs.slice(0, 2).map((def, i) => (
+                          <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
+                            <span className="opacity-40 shrink-0">{i + 1}.</span>
+                            <span>{def}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                } catch { return null; }
+                return null;
+              })()}
+
+              <div className="flex justify-between items-center mt-0.5">
+                <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-2 py-1 text-[10px] font-medium opacity-60 hover:opacity-100 transition-colors">Fechar</button>
                 <button 
                   onClick={() => {
                     let preloadedData = null;
@@ -290,13 +323,14 @@ export default function EpubHighlightMenu() {
                     setSelection(null);
                     setNoteMode(null);
                   }} 
-                  className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-[11px] font-bold hover:bg-brand-600 transition-colors flex items-center gap-1.5"
+                  className="px-2.5 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold hover:bg-brand-600 transition-colors flex items-center gap-1"
                 >
-                  <BookType size={12}/> Ver Dicionário
+                  <BookType size={11}/> Ver completo
                 </button>
               </div>
             </div>
           </div>
+
         ) : (
           <div className={`flex flex-col gap-1.5 mt-2 border-t pt-2 ${noteAreaClass}`}>
             <textarea
