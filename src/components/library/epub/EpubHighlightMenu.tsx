@@ -83,7 +83,19 @@ export default function EpubHighlightMenu() {
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
           (window as any).__lastHighlightClick = Date.now();
-          const rect = e.target.getBoundingClientRect();
+          const rawRect = e.target.getBoundingClientRect();
+          let offsetX = 0; let offsetY = 0;
+          const iframe = document.querySelector('iframe');
+          if (iframe) {
+              const iframeRect = iframe.getBoundingClientRect();
+              offsetX = iframeRect.left; offsetY = iframeRect.top;
+          }
+          const rect = {
+              top: rawRect.top + offsetY, left: rawRect.left + offsetX,
+              bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
+              x: rawRect.x + offsetX, y: rawRect.y + offsetY,
+              width: rawRect.width, height: rawRect.height, toJSON: rawRect.toJSON
+          } as DOMRect;
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
           setNoteMode(color);
           setNoteText(finalNote || '');
@@ -104,7 +116,19 @@ export default function EpubHighlightMenu() {
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
           (window as any).__lastHighlightClick = Date.now();
-          const rect = e.target.getBoundingClientRect();
+          const rawRect = e.target.getBoundingClientRect();
+          let offsetX = 0; let offsetY = 0;
+          const iframe = document.querySelector('iframe');
+          if (iframe) {
+              const iframeRect = iframe.getBoundingClientRect();
+              offsetX = iframeRect.left; offsetY = iframeRect.top;
+          }
+          const rect = {
+              top: rawRect.top + offsetY, left: rawRect.left + offsetX,
+              bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
+              x: rawRect.x + offsetX, y: rawRect.y + offsetY,
+              width: rawRect.width, height: rawRect.height, toJSON: rawRect.toJSON
+          } as DOMRect;
           setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
           setNoteMode(color);
           setNoteText(hl.note || '');
