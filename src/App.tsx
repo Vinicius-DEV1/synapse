@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { StoreProvider, useStore } from './store/useStore';
 import type { Page } from './types';
 import Sidebar from './components/Sidebar';
@@ -146,10 +146,18 @@ function AppContent() {
     }
   }, [dispatch]);
 
+  const historyTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
       await window.api.updatePage({ id, content, crdt_state: crdtState });
       dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
+      
+      // Auto-save to page history with 5s debounce (prevents too many entries during fast typing)
+      if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
+      historyTimerRef.current[id] = setTimeout(() => {
+        window.api?.savePageHistory?.(id, content).catch(console.error);
+      }, 5000);
       
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {

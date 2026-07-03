@@ -96,6 +96,45 @@ export function registerPagesHandlers() {
     return { success: true };
   });
 
+  // --- PAGE HISTORY ---
+
+  ipcMain.handle('db:get-page-history', async (_, pageId: string) => {
+    if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
+    return new Promise((resolve, reject) => {
+      getDb().all(
+        'SELECT id, page_id, content, created_at FROM notes.page_history WHERE page_id = ? ORDER BY created_at DESC LIMIT 50',
+        [pageId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  });
+
+  ipcMain.handle('db:save-page-history', async (_, pageId: string, content: string) => {
+    if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
+    const id = 'hist_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+    const db = getDb();
+    return new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO notes.page_history (id, page_id, content) VALUES (?, ?, ?)',
+        [id, pageId, content],
+        (err) => {
+          if (err) { reject(err); return; }
+          // Mantém apenas as últimas 50 revisões por página
+          db.run(
+            `DELETE FROM notes.page_history WHERE page_id = ? AND id NOT IN (
+              SELECT id FROM notes.page_history WHERE page_id = ? ORDER BY created_at DESC LIMIT 50
+            )`,
+            [pageId, pageId],
+            () => resolve({ success: true, id })
+          );
+        }
+      );
+    });
+  });
+
   // --- IMAGE CACHE (para imagens criptografadas do editor) ---
 
   ipcMain.handle('image-cache:get', async (_, id: string) => {

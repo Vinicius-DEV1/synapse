@@ -257,6 +257,7 @@ declare global {
       deletePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
+      savePageHistory: (pageId: string, content: string) => Promise<{ success: boolean; id: string }>;
       exportBackup: () => Promise<{ success: boolean; canceled?: boolean; path?: string; error?: string }>;
       auth: {
         setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
