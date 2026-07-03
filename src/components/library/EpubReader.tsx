@@ -402,11 +402,19 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            });
            
            newRendition.on('keydown', (event: any) => {
-                if (event.key === 'F11') {
-                   event.preventDefault();
-                   dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
-                   return;
-                }
+                 if (event.altKey && event.code && event.code.startsWith('Digit')) {
+                   const num = parseInt(event.code.replace('Digit', ''), 10);
+                   if (num >= 1 && num <= 9) {
+                     event.preventDefault();
+                     window.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, code: event.code, key: event.key }));
+                     return;
+                   }
+                 }
+                 if (event.key === 'F11') {
+                    event.preventDefault();
+                    dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
+                    return;
+                 }
                 if (event.key === 'ArrowRight') turnPage('next', newRendition);
                 if (event.key === 'ArrowLeft') turnPage('prev', newRendition);
                 if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.metaKey && !event.altKey) {
