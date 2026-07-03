@@ -600,6 +600,16 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [rendition, setReadingMode, setFontSize, dispatch, state.isReadingModeFullScreen]);
 
+  // Recalcula o layout do EPUB.js quando a largura do contêiner ou o modo tela cheia mudam.
+  // Aguarda 350ms para garantir que a animação CSS (transition-all duration-300) termine.
+  useEffect(() => {
+    if (!rendition) return;
+    const timer = setTimeout(() => {
+      rendition.resize();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [textWidth, state.isReadingModeFullScreen, showMobileTools, rendition]);
+
   const { progress, currentPage, totalPages } = useEpub();
   const progressPercentage = Math.round((progress || 0) * 100);
   const currentPageSafe = currentPage || 0;
