@@ -346,6 +346,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
              if (clearSelectionTimerRef.current) clearTimeout(clearSelectionTimerRef.current);
              clearSelectionTimerRef.current = setTimeout(() => {
                clearSelectionTimerRef.current = null;
+               
+               // CHECAGEM DE SEGURANÇA FINAL: verifica novamente se o clique no grifo chegou agorinha mesmo!
+               const finalLastHlClick = Math.max(globalLastHighlightClick, (window as any).__lastHighlightClick || 0);
+               if (Date.now() - finalLastHlClick < 500) {
+                 return; // Aborta! Um grifo foi clicado enquanto esperávamos.
+               }
+
                setSelection(null);
                setNoteMode(null);
                handleEpubClick();
@@ -516,7 +523,21 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                 clearTimeout(clearSelectionTimerRef.current);
                 clearSelectionTimerRef.current = null;
               }
-              const rect = e.target.getBoundingClientRect();
+              const rawRect = e.target.getBoundingClientRect();
+              let offsetX = 0; let offsetY = 0;
+              const iframe = document.querySelector('iframe');
+              if (iframe) {
+                  const iframeRect = iframe.getBoundingClientRect();
+                  offsetX = iframeRect.left;
+                  offsetY = iframeRect.top;
+              }
+              const rect = {
+                  top: rawRect.top + offsetY, left: rawRect.left + offsetX,
+                  bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
+                  x: rawRect.x + offsetX, y: rawRect.y + offsetY,
+                  width: rawRect.width, height: rawRect.height,
+                  toJSON: rawRect.toJSON
+              } as DOMRect;
               const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
               setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
               setNoteMode(h.color || 'yellow');
