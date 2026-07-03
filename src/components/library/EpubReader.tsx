@@ -331,10 +331,12 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                handleEpubClick();
                return;
              }
-             // Se um grifo acabou de ser clicado, NÃO limpar a seleção
-             if (Date.now() - globalLastHighlightClick < 500) {
-               return;
-             }
+              // Se um grifo acabou de ser clicado, NÃO limpar a seleção
+              // Verifica a var local E a window (usada pelo EpubHighlightMenu para grifos novos)
+              const lastHlClick = Math.max(globalLastHighlightClick, (window as any).__lastHighlightClick || 0);
+              if (Date.now() - lastHlClick < 500) {
+                return;
+              }
              // Desktop: limpa seleção no clique normal
              if (clearSelectionTimerRef.current) clearTimeout(clearSelectionTimerRef.current);
              clearSelectionTimerRef.current = setTimeout(() => {
@@ -486,84 +488,31 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       rendition.themes.select(themeName);
     }
     
-    // Redesenha as marcações após o reflow do redimensionamento
-    // Aumenta o timer para 600ms para garantir que o reflow de fonte complete antes
+    // Redesenha as marcações após o reflow — usa 800ms para garantir que o reflow complete
     const timer = setTimeout(() => {
       if (rendition && highlights) {
-        // Força re-navegação para o CFI atual para que o epub.js
-        // reposicione os SVGs dos grifos após o reflow causado pelo fontSize
-        let currentCfi: string | null = null;
-        try {
-          const currentLocation = rendition.currentLocation() as any;
-          currentCfi = currentLocation?.start?.cfi || null;
-        } catch (_) {
-          currentCfi = null;
-        }
-        if (currentCfi) {
-          rendition.display(currentCfi).then(() => {
-            // Após navegação, limpa e recria as anotações com posições corretas
-            rendition.annotations.clear();
-            highlights.forEach(h => {
-              if (h.rects) {
-                const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-                rendition.annotations.highlight(h.rects, {}, (e: any) => {
-                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                    globalLastHighlightClick = Date.now();
-                    if (clearSelectionTimerRef.current) {
-                      clearTimeout(clearSelectionTimerRef.current);
-                      clearSelectionTimerRef.current = null;
-                    }
-                    const rect = e.target.getBoundingClientRect();
-                    const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
-                    setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
-                }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+        const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+        rendition.annotations.clear();
+        highlights.forEach(h => {
+          if (h.rects) {
+            rendition.annotations.highlight(h.rects, {}, (e: any) => {
+              if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+              if (e && typeof e.preventDefault === 'function') e.preventDefault();
+              globalLastHighlightClick = Date.now();
+              if (clearSelectionTimerRef.current) {
+                clearTimeout(clearSelectionTimerRef.current);
+                clearSelectionTimerRef.current = null;
               }
-            });
-          }).catch(() => {
-            // Fallback: recria sem navegar (comportamento anterior)
-            rendition.annotations.clear();
-            highlights.forEach(h => {
-              if (h.rects) {
-                const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-                rendition.annotations.highlight(h.rects, {}, (e: any) => {
-                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                    globalLastHighlightClick = Date.now();
-                    if (clearSelectionTimerRef.current) {
-                      clearTimeout(clearSelectionTimerRef.current);
-                      clearSelectionTimerRef.current = null;
-                    }
-                    const rect = e.target.getBoundingClientRect();
-                    const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
-                    setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
-                }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
-              }
-            });
-          });
-        } else {
-          // Sem CFI disponível: apenas recria as anotações
-          rendition.annotations.clear();
-          highlights.forEach(h => {
-            if (h.rects) {
-              const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-              rendition.annotations.highlight(h.rects, {}, (e: any) => {
-                  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                  if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                  globalLastHighlightClick = Date.now();
-                  if (clearSelectionTimerRef.current) {
-                    clearTimeout(clearSelectionTimerRef.current);
-                    clearSelectionTimerRef.current = null;
-                  }
-                  const rect = e.target.getBoundingClientRect();
-                  const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
-                  setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
-              }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
-            }
-          });
-        }
+              const rect = e.target.getBoundingClientRect();
+              const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+              setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+              setNoteMode(h.color || 'yellow');
+              setNoteText(h.note || '');
+            }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+          }
+        });
       }
-    }, 600);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [fontSize, fontFamily, readingMode, rendition, highlights]);
