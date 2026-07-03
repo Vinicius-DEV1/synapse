@@ -85,7 +85,7 @@ export default function EpubHighlightMenu() {
           (window as any).__lastHighlightClick = Date.now();
           const rawRect = e.target.getBoundingClientRect();
           let offsetX = 0; let offsetY = 0;
-          const iframe = document.querySelector('iframe');
+          const iframe = e.target.ownerDocument?.defaultView?.frameElement;
           if (iframe) {
               const iframeRect = iframe.getBoundingClientRect();
               offsetX = iframeRect.left; offsetY = iframeRect.top;
@@ -118,7 +118,7 @@ export default function EpubHighlightMenu() {
           (window as any).__lastHighlightClick = Date.now();
           const rawRect = e.target.getBoundingClientRect();
           let offsetX = 0; let offsetY = 0;
-          const iframe = document.querySelector('iframe');
+          const iframe = e.target.ownerDocument?.defaultView?.frameElement;
           if (iframe) {
               const iframeRect = iframe.getBoundingClientRect();
               offsetX = iframeRect.left; offsetY = iframeRect.top;
