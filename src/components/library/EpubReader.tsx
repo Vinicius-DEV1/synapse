@@ -46,6 +46,11 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const [showMobileTools, setShowMobileTools] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isFullScreenRef = useRef(state.isReadingModeFullScreen);
+  useEffect(() => {
+    isFullScreenRef.current = state.isReadingModeFullScreen;
+  }, [state.isReadingModeFullScreen]);
+
   const turnPage = (direction: 'next' | 'prev', r: ePub.Rendition = rendition!) => {
     if (!r) return;
     
@@ -399,7 +404,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
            newRendition.on('keydown', (event: any) => {
                 if (event.key === 'F11') {
                    event.preventDefault();
-                   dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !state.isReadingModeFullScreen });
+                   dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
                    return;
                 }
                 if (event.key === 'ArrowRight') turnPage('next', newRendition);
@@ -571,7 +576,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F11') {
         e.preventDefault();
-        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !state.isReadingModeFullScreen });
+        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
         return;
       }
 
