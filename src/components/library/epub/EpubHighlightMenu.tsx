@@ -70,6 +70,7 @@ export default function EpubHighlightMenu() {
           text={dictionaryTarget.word}
           pageContext={dictionaryTarget.context}
           preloadedData={dictionaryTarget.preloadedData}
+          onSaveHighlight={dictionaryTarget.selection ? (color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection) : undefined}
           onClose={() => setDictionaryTarget(null)} 
         />
       );
@@ -371,7 +372,10 @@ export default function EpubHighlightMenu() {
             pageContext={dictionaryTarget.context}
             preloadedData={dictionaryTarget.preloadedData}
             onSaveHighlight={(color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection)}
-            onClose={() => setDictionaryTarget(null)} 
+            onClose={() => {
+              if (dictionaryTarget.selection) setSelection(dictionaryTarget.selection);
+              setDictionaryTarget(null);
+            }} 
           />
         )}
       </>
