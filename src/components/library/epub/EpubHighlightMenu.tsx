@@ -63,7 +63,65 @@ export default function EpubHighlightMenu() {
     return selection?.text || '';
   };
 
+  const handleCreateHighlight = async (color: string, noteOverride?: string, selOverride?: any) => {
+    const activeSelection = selOverride || selection;
+    if (!activeSelection || !rendition) return;
+    try {
+      const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+      const finalNote = noteOverride !== undefined ? noteOverride : (noteText || undefined);
+      
+      if (activeSelection.existingHighlightId) {
+        await window.api.library.updateHighlight({
+          id: activeSelection.existingHighlightId,
+          color,
+          note: finalNote
+        });
+        setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
+        rendition.annotations.remove(activeSelection.cfiRange, "highlight");
+        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          const rect = e.target.getBoundingClientRect();
+          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
+          setNoteMode(color);
+          setNoteText(finalNote || '');
+        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
+      } else {
+        const hl = await window.api.library.createHighlight({
+          book_id: book.id,
+          page_number: 0,
+          text_content: activeSelection.text,
+          color,
+          rects: activeSelection.cfiRange,
+          highlight_type: 'text',
+          note: finalNote
+        });
+        setHighlights((prev: any[]) => [...prev, hl]);
+        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
+          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          const rect = e.target.getBoundingClientRect();
+          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
+          setNoteMode(color);
+          setNoteText(hl.note || '');
+        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setSelection(null);
+    setNoteMode(null);
+    setNoteText('');
+  };
+
+  const handleDeleteHighlight = async (id: string, cfi: string) => {
+    await window.api.library.deleteHighlight(id);
+    setHighlights((prev: any[]) => prev.filter(h => h.id !== id));
+    rendition?.annotations.remove(cfi, "highlight");
+  };
+
   if (!selection && !dictionaryTarget?.selection) {
+
     if (dictionaryTarget) {
       return (
         <DictionaryModal 
@@ -97,67 +155,6 @@ export default function EpubHighlightMenu() {
     );
   }
 
-  const handleCreateHighlight = async (color: string, noteOverride?: string, selOverride?: any) => {
-    const activeSelection = selOverride || selection;
-    if (!activeSelection || !rendition) return;
-    try {
-      const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-      const finalNote = noteOverride !== undefined ? noteOverride : (noteText || undefined);
-      
-      if (activeSelection.existingHighlightId) {
-        await window.api.library.updateHighlight({
-          id: activeSelection.existingHighlightId,
-          color,
-          note: finalNote
-        });
-        setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
-        rendition.annotations.remove(activeSelection.cfiRange, "highlight");
-        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
-          // Impede a propagação do clique no SVG do grifo para o iframe do EpubJS, 
-          // evitando que o leitor ache que o usuário clicou fora e feche o menu (efeito fantasma).
-          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-          if (e && typeof e.preventDefault === 'function') e.preventDefault();
-          const rect = e.target.getBoundingClientRect();
-          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
-          setNoteMode(color);
-          setNoteText(finalNote || '');
-        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
-      } else {
-        const hl = await window.api.library.createHighlight({
-          book_id: book.id,
-          page_number: 0,
-          text_content: activeSelection.text,
-          color,
-          rects: activeSelection.cfiRange,
-          highlight_type: 'text',
-          note: finalNote
-        });
-        setHighlights((prev: any[]) => [...prev, hl]);
-
-        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
-          // Impede a propagação do clique no SVG do grifo para o iframe do EpubJS, 
-          // evitando que o leitor ache que o usuário clicou fora e feche o menu (efeito fantasma).
-          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-          if (e && typeof e.preventDefault === 'function') e.preventDefault();
-          const rect = e.target.getBoundingClientRect();
-          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
-          setNoteMode(color);
-          setNoteText(hl.note || '');
-        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setSelection(null);
-    setNoteMode(null);
-    setNoteText('');
-  };
-
-  const handleDeleteHighlight = async (id: string, cfi: string) => {
-    await window.api.library.deleteHighlight(id);
-    setHighlights((prev: any[]) => prev.filter(h => h.id !== id));
-    rendition?.annotations.remove(cfi, "highlight");
-  };
 
   const modeClass = readingMode === 'dark'
     ? 'bg-[#1a1a1a] border-gray-700 text-white'

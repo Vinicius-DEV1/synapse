@@ -492,8 +492,13 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       if (rendition && highlights) {
         // Força re-navegação para o CFI atual para que o epub.js
         // reposicione os SVGs dos grifos após o reflow causado pelo fontSize
-        const currentLocation = rendition.currentLocation() as any;
-        const currentCfi = currentLocation?.start?.cfi;
+        let currentCfi: string | null = null;
+        try {
+          const currentLocation = rendition.currentLocation() as any;
+          currentCfi = currentLocation?.start?.cfi || null;
+        } catch (_) {
+          currentCfi = null;
+        }
         if (currentCfi) {
           rendition.display(currentCfi).then(() => {
             // Após navegação, limpa e recria as anotações com posições corretas
