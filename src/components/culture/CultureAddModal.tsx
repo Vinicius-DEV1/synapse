@@ -184,7 +184,10 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       type: result.type,
       api_id: result.api_id,
       api_source: result.api_source,
-      status: result.status || 'unknown'
+      status: result.status || 'unknown',
+      volumes: result.volumes ?? null,
+      chapters: result.chapters ?? null,
+      episodes_count: result.episodes_count ?? null,
     }));
     setSearchResults([]);
   };

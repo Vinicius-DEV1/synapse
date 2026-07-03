@@ -17,8 +17,8 @@ export function registerCultureHandlers() {
     const id = 'cult_' + Date.now().toString(36);
     return new Promise((resolve, reject) => {
       getDb().run(
-        `INSERT INTO culture.items (id, title, type, synopsis, cover_image, access_link, progress, total_progress, is_goal, api_id, api_source, status, last_sync_at, goal_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress || 0, item.total_progress || 0, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null, item.goal_note || null],
+        `INSERT INTO culture.items (id, title, type, synopsis, cover_image, access_link, progress, total_progress, is_goal, api_id, api_source, status, last_sync_at, goal_note, volumes, chapters, episodes_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress || 0, item.total_progress || 0, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null, item.goal_note || null, item.volumes ?? null, item.chapters ?? null, item.episodes_count ?? null],
         (err) => {
           if (err) reject(err); else resolve({ id, ...item, progress: item.progress || 0, total_progress: item.total_progress || 0, is_goal: item.is_goal ? 1 : 0, status: item.status || 'unknown' });
         }
@@ -30,8 +30,8 @@ export function registerCultureHandlers() {
     if (!isModuleUnlocked('notes')) throw new Error('Cofre principal bloqueado');
     return new Promise((resolve, reject) => {
       getDb().run(
-        `UPDATE culture.items SET title = ?, type = ?, synopsis = ?, cover_image = ?, access_link = ?, progress = ?, total_progress = ?, is_goal = ?, api_id = ?, api_source = ?, status = ?, last_sync_at = ?, goal_note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress, item.total_progress, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null, item.goal_note || null, id],
+        `UPDATE culture.items SET title = ?, type = ?, synopsis = ?, cover_image = ?, access_link = ?, progress = ?, total_progress = ?, is_goal = ?, api_id = ?, api_source = ?, status = ?, last_sync_at = ?, goal_note = ?, volumes = ?, chapters = ?, episodes_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [item.title, item.type, item.synopsis, item.cover_image, item.access_link, item.progress, item.total_progress, item.is_goal ? 1 : 0, item.api_id || null, item.api_source || null, item.status || 'unknown', item.last_sync_at || null, item.goal_note || null, item.volumes ?? null, item.chapters ?? null, item.episodes_count ?? null, id],
         (err) => {
           if (err) reject(err); else resolve({ success: true, id, ...item });
         }
