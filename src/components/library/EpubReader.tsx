@@ -487,30 +487,78 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     }
     
     // Redesenha as marcações após o reflow do redimensionamento
+    // Aumenta o timer para 600ms para garantir que o reflow de fonte complete antes
     const timer = setTimeout(() => {
       if (rendition && highlights) {
-        // Usa as chaves subjacentes para evitar piscar todas as vezes se não for necessário,
-        // mas como fontSize muda o layout, precisamos limpar e recriar.
-        rendition.annotations.clear();
-        highlights.forEach(h => {
-          if (h.rects) {
-            const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-            rendition.annotations.highlight(h.rects, {}, (e: any) => {
-                if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                globalLastHighlightClick = Date.now();
-                if (clearSelectionTimerRef.current) {
-                  clearTimeout(clearSelectionTimerRef.current);
-                  clearSelectionTimerRef.current = null;
-                }
-                const rect = e.target.getBoundingClientRect();
-                const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
-                setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
-            }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
-          }
-        });
+        // Força re-navegação para o CFI atual para que o epub.js
+        // reposicione os SVGs dos grifos após o reflow causado pelo fontSize
+        const currentLocation = rendition.currentLocation() as any;
+        const currentCfi = currentLocation?.start?.cfi;
+        if (currentCfi) {
+          rendition.display(currentCfi).then(() => {
+            // Após navegação, limpa e recria as anotações com posições corretas
+            rendition.annotations.clear();
+            highlights.forEach(h => {
+              if (h.rects) {
+                const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+                rendition.annotations.highlight(h.rects, {}, (e: any) => {
+                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                    globalLastHighlightClick = Date.now();
+                    if (clearSelectionTimerRef.current) {
+                      clearTimeout(clearSelectionTimerRef.current);
+                      clearSelectionTimerRef.current = null;
+                    }
+                    const rect = e.target.getBoundingClientRect();
+                    const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+                    setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+                }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+              }
+            });
+          }).catch(() => {
+            // Fallback: recria sem navegar (comportamento anterior)
+            rendition.annotations.clear();
+            highlights.forEach(h => {
+              if (h.rects) {
+                const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+                rendition.annotations.highlight(h.rects, {}, (e: any) => {
+                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                    globalLastHighlightClick = Date.now();
+                    if (clearSelectionTimerRef.current) {
+                      clearTimeout(clearSelectionTimerRef.current);
+                      clearSelectionTimerRef.current = null;
+                    }
+                    const rect = e.target.getBoundingClientRect();
+                    const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+                    setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+                }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+              }
+            });
+          });
+        } else {
+          // Sem CFI disponível: apenas recria as anotações
+          rendition.annotations.clear();
+          highlights.forEach(h => {
+            if (h.rects) {
+              const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+              rendition.annotations.highlight(h.rects, {}, (e: any) => {
+                  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                  globalLastHighlightClick = Date.now();
+                  if (clearSelectionTimerRef.current) {
+                    clearTimeout(clearSelectionTimerRef.current);
+                    clearSelectionTimerRef.current = null;
+                  }
+                  const rect = e.target.getBoundingClientRect();
+                  const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
+                  setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
+              }, undefined, { fill: colorMap[h.color || 'yellow'], 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' });
+            }
+          });
+        }
       }
-    }, 400);
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [fontSize, fontFamily, readingMode, rendition, highlights]);
