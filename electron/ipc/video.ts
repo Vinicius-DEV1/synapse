@@ -40,6 +40,18 @@ export function setupVideoIpc() {
     }
   });
 
+  ipcMain.handle('video:copyLocal', async (_, sourcePath: string, filename: string) => {
+    const videosDir = await getVideosDir();
+    const destPath = path.join(videosDir, filename);
+    try {
+      await fs.copyFile(sourcePath, destPath);
+      return destPath;
+    } catch (e) {
+      console.error('Failed to copy local video', e);
+      throw e;
+    }
+  });
+
   ipcMain.handle('video:saveLocal', async (_, filename: string, buffer: ArrayBuffer) => {
     const videosDir = await getVideosDir();
     const filePath = path.join(videosDir, filename);

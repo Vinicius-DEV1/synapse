@@ -323,6 +323,7 @@ declare global {
         getLocalPath: (filename: string) => Promise<string | null>;
         deleteLocal: (filename: string) => Promise<boolean>;
         saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
+        copyLocal: (sourcePath: string, filename: string) => Promise<string>;
       };
     };
   }

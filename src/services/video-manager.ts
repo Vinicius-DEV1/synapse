@@ -11,9 +11,8 @@ export async function getVideoStreamLink(driveFileId: string): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  // alt=media retorna os bytes reais do arquivo para a tag <video>
-  // O access_token na URL permite que o navegador faça o request diretamente
-  return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
+  // Usa o protocolo customizado do Electron para injetar os cabeçalhos de Authorization nativamente
+  return `stream-drive://${driveFileId}?token=${token}`;
 }
 
 /**
@@ -85,13 +84,28 @@ export async function uploadNewVideo(
     subtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
   }
 
+  let isLocal = false;
+  let localPath = undefined;
+
+  // Try to copy local directly in Electron to avoid re-downloading
+  const sourcePath = (file as any).path;
+  if (sourcePath && window.api?.video?.copyLocal) {
+    try {
+      localPath = await window.api.video.copyLocal(sourcePath, file.name);
+      isLocal = true;
+    } catch (e) {
+      console.warn("Não foi possível copiar arquivo localmente:", e);
+    }
+  }
+
   const newVideo: VideoItem = {
     id: crypto.randomUUID(),
     title: file.name.replace(/\.[^/.]+$/, ""),
     original_name: file.name,
     drive_file_id: fileId,
     drive_subtitle_id: subtitleId || undefined,
-    is_local: false, // Inicia na nuvem
+    is_local: isLocal,
+    file_path: localPath,
     progress: 0,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()

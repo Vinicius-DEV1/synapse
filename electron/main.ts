@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, powerMonitor, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, powerMonitor, dialog, protocol, net } from 'electron';
 import * as path from 'path';
 import { closeDb } from './db/connection';
 import { registerAuthHandlers } from './ipc/auth';
@@ -42,6 +42,30 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Protocolo customizado para streaming do Drive ignorando CORS/Cookies e adicionando Header
+  protocol.handle('stream-drive', async (request) => {
+    try {
+      const url = new URL(request.url);
+      const fileId = url.hostname; // stream-drive://<fileId>?token=...
+      const token = url.searchParams.get('token');
+
+      const headers = new Headers(request.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+
+      const fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+      
+      const response = await net.fetch(fetchUrl, {
+        headers,
+        method: request.method,
+        bypassCustomProtocolHandlers: true
+      });
+      
+      return response;
+    } catch (e) {
+      console.error("stream-drive protocol error:", e);
+      return new Response(null, { status: 500 });
+    }
+  });
   // Registrar módulos IPC modulares
   registerAuthHandlers();
   registerPagesHandlers();
