@@ -24,7 +24,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -178,7 +178,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -318,6 +318,11 @@ declare global {
       sync: {
         getTable: (tableName: string) => Promise<any[]>;
         upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
+      };
+      video?: {
+        getLocalPath: (filename: string) => Promise<string | null>;
+        deleteLocal: (filename: string) => Promise<boolean>;
+        saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
       };
     };
   }

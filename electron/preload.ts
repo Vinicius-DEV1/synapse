@@ -123,6 +123,13 @@ contextBridge.exposeInMainWorld('api', {
     saveCredentials: (data: any) => invokeWithSync('drive:save-credentials', data),
   },
 
+  // Video API
+  video: {
+    getLocalPath: (filename: string) => invokeWithSync('video:getLocalPath', filename),
+    deleteLocal: (filename: string) => invokeWithSync('video:deleteLocal', filename),
+    saveLocal: (filename: string, buffer: ArrayBuffer) => invokeWithSync('video:saveLocal', filename, buffer),
+  },
+
   // Log (diagnóstico temporário)
   log: (message: string) => invokeWithSync('log:write', message),
 
