@@ -51,8 +51,8 @@ app.whenReady().then(() => {
   protocol.handle('stream-drive', async (request) => {
     try {
       const url = new URL(request.url);
-      // Se for registrado como standard, fileId estará no hostname. Caso contrário, estará no pathname
-      const fileId = url.hostname || url.pathname.replace(/^\/+/, ''); 
+      // stream-drive://api/<fileId>?token=...
+      const fileId = url.pathname.replace(/^\/+/, ''); 
       const token = url.searchParams.get('token');
 
       const headers = new Headers(request.headers);
