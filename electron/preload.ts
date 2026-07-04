@@ -129,6 +129,7 @@ contextBridge.exposeInMainWorld('api', {
     deleteLocal: (filename: string) => invokeWithSync('video:deleteLocal', filename),
     saveLocal: (filename: string, buffer: ArrayBuffer) => invokeWithSync('video:saveLocal', filename, buffer),
     copyLocal: (sourcePath: string, filename: string) => invokeWithSync('video:copyLocal', sourcePath, filename),
+    extractSubtitles: (localPath: string) => invokeWithSync('video:extractSubtitles', localPath),
   },
 
   // Log (diagnóstico temporário)

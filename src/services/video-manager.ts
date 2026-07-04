@@ -77,15 +77,8 @@ export async function uploadNewVideo(
   // uploadToDrive (definido em drive.ts) faz o upload na pasta do app
   const fileId = await uploadToDrive(token, file.name, buffer, false, onProgress);
   
-  let subtitleId = null;
-  if (subtitleText) {
-    const enc = new TextEncoder();
-    const subBuffer = enc.encode(subtitleText).buffer;
-    subtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
-  }
-
   let isLocal = false;
-  let localPath = undefined;
+  let localPath: string | undefined = undefined;
 
   // Try to copy local directly in Electron to avoid re-downloading
   const sourcePath = (file as any).path;
@@ -96,6 +89,28 @@ export async function uploadNewVideo(
     } catch (e) {
       console.warn("Não foi possível copiar arquivo localmente:", e);
     }
+  }
+
+  let finalSubtitleText = subtitleText;
+  
+  // Tenta extrair legenda embutida automaticamente se for local e não foi fornecida legenda externa
+  if (!finalSubtitleText && isLocal && localPath && window.api?.video?.extractSubtitles) {
+    try {
+      if (onProgress) onProgress(99); // Mocking extraction progress visually
+      const extractedVtt = await window.api.video.extractSubtitles(localPath);
+      if (extractedVtt) {
+        finalSubtitleText = extractedVtt;
+      }
+    } catch (e) {
+      console.warn("Falha na auto-extração de legendas:", e);
+    }
+  }
+
+  let subtitleId = null;
+  if (finalSubtitleText) {
+    const enc = new TextEncoder();
+    const subBuffer = enc.encode(finalSubtitleText).buffer;
+    subtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
   }
 
   const newVideo: VideoItem = {

@@ -1,8 +1,13 @@
 import { ipcMain, app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 
 export function setupVideoIpc() {
+  if (ffmpegStatic) {
+    ffmpeg.setFfmpegPath(ffmpegStatic);
+  }
   // Get or create the videos directory
   const getVideosDir = async () => {
     // We use the userData directory for standard storage, or a subfolder in the app if requested.
@@ -62,5 +67,31 @@ export function setupVideoIpc() {
       console.error('Failed to save local video', e);
       throw e;
     }
+  });
+
+  ipcMain.handle('video:extractSubtitles', async (_, localPath: string) => {
+    return new Promise((resolve) => {
+      const vttOutPath = `${localPath}.extracted.vtt`;
+      ffmpeg(localPath)
+        .outputOptions([
+          '-map 0:s:0', // Extrai a primeira faixa de legenda
+          '-c:s webvtt' // Converte para o padrão da web (VTT)
+        ])
+        .output(vttOutPath)
+        .on('end', async () => {
+          try {
+            const content = await fs.readFile(vttOutPath, 'utf8');
+            await fs.unlink(vttOutPath).catch(() => {});
+            resolve(content);
+          } catch (e) {
+            resolve(null);
+          }
+        })
+        .on('error', (err) => {
+          console.log('[ffmpeg] Nenhuma legenda embutida encontrada ou falha:', err.message);
+          resolve(null);
+        })
+        .run();
+    });
   });
 }

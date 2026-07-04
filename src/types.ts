@@ -324,6 +324,7 @@ declare global {
         deleteLocal: (filename: string) => Promise<boolean>;
         saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
         copyLocal: (sourcePath: string, filename: string) => Promise<string>;
+        extractSubtitles: (localPath: string) => Promise<string | null>;
       };
     };
   }
