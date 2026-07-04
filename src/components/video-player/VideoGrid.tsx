@@ -1,5 +1,5 @@
 import React from 'react';
-import { VideoItem } from '../../types_video';
+import type { VideoItem } from '../../types_video';
 import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 

@@ -1,5 +1,5 @@
 import { getValidAccessToken, getOrCreateAppFolder, uploadToDrive, downloadFromDrive } from './drive';
-import { VideoItem } from '../types_video';
+import type { VideoItem } from '../types_video';
 
 // Tabela sincronizada que vai guardar os metadados dos vídeos
 const VIDEO_TABLE = 'videos';
