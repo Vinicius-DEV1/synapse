@@ -24,7 +24,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     readingMode, setReadingMode, scrollMode, fontSize, setFontSize, fontFamily,
     originalFontName, setOriginalFontName, detectedFontSizePx, setDetectedFontSizePx,
     locationsReady, setLocationsReady, setTotalPages,
-    setProgress, setCurrentPage, setSelection, setNoteMode, setNoteText,
+    setProgress, setCurrentPage, selection, setSelection, setNoteMode, setNoteText,
     setShowSettings, highlights, setHighlights, setBookmarks, setToc,
     textWidth
   } = useEpub();
