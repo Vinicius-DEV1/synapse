@@ -70,7 +70,10 @@ export default function VideoGrid({ videos, onPlayVideo, onDownloadVideo, onDele
             {/* Context Menu */}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
-                <button className="text-dark-subtext hover:text-white p-1 rounded transition-colors outline-none">
+                <button 
+                  className="text-dark-subtext hover:text-white p-1 rounded transition-colors outline-none relative z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreVertical size={16} />
                 </button>
               </DropdownMenu.Trigger>
