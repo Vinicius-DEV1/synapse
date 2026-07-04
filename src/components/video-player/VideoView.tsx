@@ -4,12 +4,13 @@ import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import VideoUploadModal from './VideoUploadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText } from '../../services/video-manager';
-import { PlaySquare, Plus } from 'lucide-react';
+import { PlaySquare, Plus, LayoutGrid, List, AlignJustify } from 'lucide-react';
 
 export default function VideoView() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   
   // Player state
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
@@ -58,10 +59,10 @@ export default function VideoView() {
     }
   };
 
-  const handleUpload = async (file: File, subtitleText: string | null, onProgress?: (percent: number) => void) => {
+  const handleUpload = async (file: File, subtitleText: string | null, trackIndex?: string, duration?: number, onProgress?: (percent: number) => void) => {
     setIsUploading(true);
     try {
-      await uploadNewVideo(file, subtitleText, onProgress);
+      await uploadNewVideo(file, subtitleText, trackIndex, duration, onProgress);
       await loadVideos();
     } finally {
       setIsUploading(false);
@@ -78,7 +79,17 @@ export default function VideoView() {
     }
   };
 
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+
   const handleDeleteLocal = async (video: VideoItem) => {
+    const confirm = window.api?.app?.showConfirm ? 
+      await window.api.app.showConfirm(`Tem certeza que deseja excluir '${video.title}' localmente? Ele ainda estará no Drive.`) 
+      : 1;
+      
+    if (confirm !== 1) return; // 1 é o botão "Sim", 0 é o Cancelar. Depende de como mapiei: 'Cancelar'(0), 'Sim, excluir'(1). 
+    // Wait, in main.ts: buttons: ['Cancelar', 'Sim, excluir']. So 1 means 'Sim, excluir'.
+
+    setIsDeletingId(video.id);
     try {
       if (window.api?.video) {
         await window.api.video.deleteLocal(video.original_name);
@@ -92,37 +103,33 @@ export default function VideoView() {
       }
     } catch (e) {
       console.error("Erro ao excluir localmente", e);
+    } finally {
+      setIsDeletingId(null);
     }
   };
 
   const handleDeleteCloud = async (video: VideoItem) => {
-    // Delete from local first if it exists
-    if (video.is_local) {
-      await handleDeleteLocal(video);
-    }
-    // Delete from DB (The sync engine should handle the deletion from the actual Google Drive if implemented, 
-    // but for now we just delete the metadata).
-    if (window.api?.sync) {
-      await window.api.sync.deleteRow('videos', video.id);
-      await loadVideos();
+    const confirm = window.api?.app?.showConfirm ? 
+      await window.api.app.showConfirm(`Tem certeza que deseja apagar permanentemente '${video.title}'? O arquivo local também será removido.`) 
+      : 1;
+
+    if (confirm !== 1) return;
+
+    setIsDeletingId(video.id);
+    try {
+      if (video.is_local) {
+        await window.api?.video?.deleteLocal(video.original_name);
+      }
+      if (window.api?.sync) {
+        await window.api.sync.deleteRow('videos', video.id);
+        await loadVideos();
+      }
+    } catch(e) {
+      console.error("Erro ao excluir da nuvem", e);
+    } finally {
+      setIsDeletingId(null);
     }
   };
-
-  if (activeVideo && activeVideoSrc) {
-    return (
-      <div className="w-full h-full absolute inset-0 z-50 bg-black">
-        <VideoPlayer 
-          src={activeVideoSrc}
-          title={activeVideo.title}
-          subtitleContent={activeSubtitle}
-          onClose={() => {
-            setActiveVideo(null);
-            setActiveVideoSrc(null);
-          }}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text relative">
@@ -138,13 +145,38 @@ export default function VideoView() {
           </div>
         </div>
         
-        <button 
-          onClick={() => setShowUploadModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
-        >
-          <Plus size={16} />
-          <span>Importar Vídeo</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-dark-card border border-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+              title="Visualização em Grade"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+              title="Visualização em Lista"
+            >
+              <List size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+              title="Visualização Compacta"
+            >
+              <AlignJustify size={18} />
+            </button>
+          </div>
+          <button 
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
+          >
+            <Plus size={16} />
+            <span>Importar Vídeo</span>
+          </button>
+        </div>
       </div>
 
       {playerError && (
@@ -153,14 +185,16 @@ export default function VideoView() {
         </div>
       )}
 
-      {/* Grid */}
+      {/* Grid / List */}
       <div className="flex-1 overflow-y-auto">
         <VideoGrid 
           videos={videos} 
+          viewMode={viewMode} 
           onPlayVideo={handlePlayVideo}
           onDownloadVideo={handleDownload}
           onDeleteLocal={handleDeleteLocal}
           onDeleteCloud={handleDeleteCloud}
+          isDeletingId={isDeletingId}
         />
       </div>
 
@@ -170,6 +204,27 @@ export default function VideoView() {
           onClose={() => setShowUploadModal(false)}
           onUpload={handleUpload}
         />
+      )}
+      {/* Fullscreen Player */}
+      {activeVideoSrc && activeVideo && (
+        <div className="absolute inset-0 z-50 bg-black">
+          <VideoPlayer 
+            src={activeVideoSrc} 
+            title={activeVideo.title}
+            subtitleContent={activeSubtitle}
+            onClose={() => {
+              setActiveVideo(null);
+              setActiveVideoSrc(null);
+            }}
+            onDurationLoaded={async (dur) => {
+              if (!activeVideo.duration && window.api?.sync) {
+                const updated = { ...activeVideo, duration: dur };
+                await window.api.sync.upsertRow('videos', updated);
+                setVideos(prev => prev.map(v => v.id === updated.id ? updated : v));
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );

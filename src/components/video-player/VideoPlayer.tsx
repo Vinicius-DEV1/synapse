@@ -10,9 +10,10 @@ interface VideoPlayerProps {
   subtitleContent?: string; // VTT text content
   title: string;
   onClose: () => void;
+  onDurationLoaded?: (duration: number) => void;
 }
 
-export default function VideoPlayer({ src, subtitleContent, title, onClose }: VideoPlayerProps) {
+export default function VideoPlayer({ src, subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -76,6 +77,18 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose }: Vi
         togglePlay();
       } else if (e.code === 'Escape') {
         if (isFullscreen) toggleFullscreen();
+      } else if (e.code === 'KeyF' || e.key === 'f') {
+        toggleFullscreen();
+      } else if (e.code === 'ArrowLeft') {
+        if (videoRef.current) {
+          videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
+          setProgress(videoRef.current.currentTime);
+        }
+      } else if (e.code === 'ArrowRight') {
+        if (videoRef.current) {
+          videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 5);
+          setProgress(videoRef.current.currentTime);
+        }
       }
     };
 
@@ -111,6 +124,9 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose }: Vi
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
+      if (onDurationLoaded) {
+        onDurationLoaded(videoRef.current.duration);
+      }
     }
   };
 
@@ -172,7 +188,37 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose }: Vi
       videoRef.current.pause();
       setIsPlaying(false);
     }
-    setDictState({ word, context });
+    
+    // Find the current cue index to build the surrounding context
+    const time = videoRef.current ? videoRef.current.currentTime : 0;
+    const currentIndex = cues.findIndex(c => time >= c.startTime && time <= c.endTime);
+    
+    let extendedContext = context;
+    
+    if (currentIndex !== -1) {
+      // Gather previous context (up to 1600 chars)
+      let prevContext = '';
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        if (prevContext.length + cues[i].text.length > 1600) break;
+        prevContext = cues[i].text + ' ' + prevContext;
+      }
+      
+      // Gather next context (up to 1600 chars)
+      let nextContext = '';
+      for (let i = currentIndex + 1; i < cues.length; i++) {
+        if (nextContext.length + cues[i].text.length > 1600) break;
+        nextContext = nextContext + ' ' + cues[i].text;
+      }
+      
+      const fullContext = [];
+      if (prevContext.trim()) fullContext.push(`[Contexto Anterior]: ${prevContext.trim()}`);
+      fullContext.push(`[Cena Atual]: ${context}`);
+      if (nextContext.trim()) fullContext.push(`[Contexto Posterior]: ${nextContext.trim()}`);
+      
+      extendedContext = fullContext.join('\n\n');
+    }
+
+    setDictState({ word, context: extendedContext });
   };
 
   return (

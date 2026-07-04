@@ -1,5 +1,12 @@
 // ============ VIDEO PLAYER TYPES ============
 
+export interface TrackItem {
+  id: string; // FFmpeg map index, e.g., '0:s:0' or '0:a:1'
+  label: string; // e.g., 'Portuguese', 'English'
+  drive_id?: string; // Google Drive file ID if synced
+  local_path?: string; // Local extracted file path
+}
+
 export interface VideoItem {
   id: string;
   title: string;
@@ -7,8 +14,10 @@ export interface VideoItem {
   duration?: number;
   file_path?: string;          // Local path if downloaded
   drive_file_id?: string;      // Google Drive file ID
-  drive_subtitle_id?: string;  // Google Drive subtitle file ID
-  local_subtitle_path?: string;// Local subtitle path
+  drive_subtitle_id?: string;  // Google Drive subtitle file ID (Legacy/Default)
+  local_subtitle_path?: string;// Local subtitle path (Legacy/Default)
+  subtitles_json?: string;     // Serialized TrackItem[]
+  audio_tracks_json?: string;  // Serialized TrackItem[]
   is_local: boolean;
   progress: number;            // Current playback progress in seconds
   created_at: string;

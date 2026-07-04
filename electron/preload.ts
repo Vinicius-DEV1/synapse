@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 let syncCallbacks: (() => void)[] = [];
 
@@ -28,6 +28,16 @@ contextBridge.exposeInMainWorld('api', {
   getPageHistory: (pageId: string) => invokeWithSync('db:get-page-history', pageId),
   savePageHistory: (pageId: string, content: string) => invokeWithSync('db:save-page-history', pageId, content),
   
+  // App
+  app: {
+    getDbPath: () => invokeWithSync('app:getDbPath'),
+    quit: () => ipcRenderer.send('app:quit'),
+    minimize: () => ipcRenderer.send('app:minimize'),
+    maximize: () => ipcRenderer.send('app:maximize'),
+    getPathForFile: (file: File) => webUtils.getPathForFile(file),
+    showConfirm: (message: string) => invokeWithSync('app:showConfirm', message),
+  },
+
   // Auth
   auth: {
     status: () => invokeWithSync('auth:status'),
@@ -130,6 +140,8 @@ contextBridge.exposeInMainWorld('api', {
     saveLocal: (filename: string, buffer: ArrayBuffer) => invokeWithSync('video:saveLocal', filename, buffer),
     copyLocal: (sourcePath: string, filename: string) => invokeWithSync('video:copyLocal', sourcePath, filename),
     extractSubtitles: (localPath: string) => invokeWithSync('video:extractSubtitles', localPath),
+    scanSubtitles: (localPath: string) => invokeWithSync('video:scanSubtitles', localPath),
+    openFileDialog: () => invokeWithSync('video:openFileDialog'),
   },
 
   // Log (diagnóstico temporário)

@@ -4,7 +4,7 @@ import { processSubtitleFile } from '../../utils/subtitles';
 
 interface VideoUploadModalProps {
   onClose: () => void;
-  onUpload: (videoFile: File, subtitleText: string | null, onProgress?: (percent: number) => void) => Promise<void>;
+  onUpload: (videoFile: File, subtitleText: string | null, trackIndex?: string, duration?: number, onProgress?: (percent: number) => void) => Promise<void>;
 }
 
 export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModalProps) {
@@ -13,19 +13,13 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  
+  const [embeddedSubs, setEmbeddedSubs] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
+  const [selectedTrackIndex, setSelectedTrackIndex] = useState<string>('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [videoDuration, setVideoDuration] = useState<number | undefined>();
 
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      // Basic validation for mp4/mkv
-      if (!file.name.toLowerCase().endsWith('.mp4') && !file.name.toLowerCase().endsWith('.mkv')) {
-        setError('Por favor, selecione um arquivo de vídeo válido (.mp4 ou .mkv)');
-        return;
-      }
-      setVideoFile(file);
-      setError(null);
-    }
-  };
+
 
   const handleSubtitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -50,7 +44,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
         subtitleText = await processSubtitleFile(subtitleFile);
       }
       
-      await onUpload(videoFile, subtitleText, (percent) => setUploadProgress(percent));
+      await onUpload(videoFile, subtitleText, subtitleText ? undefined : selectedTrackIndex, videoDuration, (percent) => setUploadProgress(percent));
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -83,35 +77,104 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-white/80">Arquivo de Vídeo (MP4 / MKV)</label>
             <div className="relative">
-              <input 
-                type="file" 
-                accept=".mp4,.mkv,video/mp4,video/x-matroska" 
-                onChange={handleVideoChange}
-                className="hidden" 
-                id="video-upload"
+              <button 
+                type="button"
+                onClick={async () => {
+                  if (!window.api?.video?.openFileDialog) return;
+                  const res = await window.api.video.openFileDialog();
+                  if (res) {
+                    // Crie um File a partir do path nativo (funciona porque webSecurity: false)
+                    try {
+                      const fileReq = await fetch('file:///' + res.path.replace(/\\/g, '/'));
+                      const blob = await fileReq.blob();
+                      const file = new File([blob], res.name, { type: res.type });
+                      // Manter o path original anexado
+                      (file as any).electronPath = res.path;
+                      
+                      setVideoFile(file);
+                      setError(null);
+                      setEmbeddedSubs([]);
+                      setSelectedTrackIndex('');
+                      
+                      const tempUrl = URL.createObjectURL(file);
+                      const tempVideo = document.createElement('video');
+                      tempVideo.preload = 'metadata';
+                      tempVideo.onloadedmetadata = () => {
+                        URL.revokeObjectURL(tempUrl);
+                        setVideoDuration(tempVideo.duration);
+                      };
+                      tempVideo.src = tempUrl;
+
+                      if (window.api?.video?.scanSubtitles) {
+                        setIsScanning(true);
+                        try {
+                          const scanRes = await window.api.video.scanSubtitles(res.path);
+                          if (scanRes.error) {
+                            console.error('ffprobe error:', scanRes.error, 'debug:', scanRes.debug);
+                          }
+                          setEmbeddedSubs(scanRes.subtitles || []);
+                          if (scanRes.subtitles && scanRes.subtitles.length > 0) {
+                            setSelectedTrackIndex(scanRes.subtitles[0].index);
+                          }
+                        } catch (err: any) {
+                          alert('Falha ao rodar o escâner: ' + err.message);
+                        } finally {
+                          setIsScanning(false);
+                        }
+                      }
+                    } catch (err: any) {
+                      setError('Falha ao carregar arquivo local: ' + err.message);
+                    }
+                  }
+                }}
                 disabled={isUploading}
-              />
-              <label 
-                htmlFor="video-upload"
-                className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
-                  isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer'
+                className={`w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
+                  isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer focus:outline-none focus:border-brand-500'
                 } ${
                   videoFile ? 'border-brand-500/50 bg-brand-500/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'
                 }`}
               >
                 <FileVideo size={24} className={videoFile ? 'text-brand-400' : 'text-dark-subtext'} />
                 <span className={`text-sm ${videoFile ? 'text-white font-medium' : 'text-dark-subtext'}`}>
-                  {videoFile ? videoFile.name : 'Clique para selecionar um vídeo'}
+                  {videoFile ? videoFile.name : 'Clique para selecionar um vídeo do PC'}
                 </span>
-              </label>
+              </button>
             </div>
           </div>
+
+          {/* Embedded Subtitles Select */}
+          {!subtitleFile && videoFile && isScanning && (
+            <div className="flex items-center gap-2 text-sm text-brand-400 p-3 bg-brand-500/10 rounded-xl">
+              <Loader2 size={16} className="animate-spin" />
+              <span>Procurando legendas embutidas...</span>
+            </div>
+          )}
+
+          {!subtitleFile && videoFile && !isScanning && embeddedSubs.length > 0 && (
+            <div className="flex flex-col gap-2 p-4 bg-brand-500/5 border border-brand-500/20 rounded-xl">
+              <label className="text-sm font-medium text-white/80">Legendas embutidas detectadas</label>
+              <select 
+                value={selectedTrackIndex}
+                onChange={(e) => setSelectedTrackIndex(e.target.value)}
+                disabled={isUploading}
+                className="w-full bg-dark-bg border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
+              >
+                <option value="">Nenhuma (Não extrair)</option>
+                {embeddedSubs.map((sub, i) => (
+                  <option key={sub.index} value={sub.index}>
+                    {i + 1}. {sub.language !== 'und' ? sub.language.toUpperCase() : 'Desconhecido'} ({sub.codec}) {sub.title ? `- ${sub.title}` : ''}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-dark-subtext">Você pode extrair uma destas legendas ou fazer upload de uma externa abaixo.</span>
+            </div>
+          )}
 
           {/* Subtitle Input */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-white/80">
               Arquivo de Legenda (Opcional - SRT / VTT)
-              <span className="block text-xs text-dark-subtext font-normal mt-0.5">Legendas SRT serão convertidas automaticamente para VTT.</span>
+              <span className="block text-xs text-dark-subtext font-normal mt-0.5">Sobrescreve a legenda embutida, se houver. SRT é convertido pra VTT.</span>
             </label>
             <div className="relative">
               <input 
