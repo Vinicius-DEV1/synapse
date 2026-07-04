@@ -66,13 +66,17 @@ export async function resolveVideoUrl(video: VideoItem): Promise<string> {
 /**
  * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
  */
-export async function uploadNewVideo(file: File, subtitleText: string | null): Promise<VideoItem> {
+export async function uploadNewVideo(
+  file: File, 
+  subtitleText: string | null,
+  onProgress?: (percent: number) => void
+): Promise<VideoItem> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
   const buffer = await file.arrayBuffer();
   // uploadToDrive (definido em drive.ts) faz o upload na pasta do app
-  const fileId = await uploadToDrive(token, file.name, buffer, false);
+  const fileId = await uploadToDrive(token, file.name, buffer, false, onProgress);
   
   let subtitleId = null;
   if (subtitleText) {

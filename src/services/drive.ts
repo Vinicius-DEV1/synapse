@@ -148,7 +148,13 @@ export async function getOrCreatePhotosFolder(accessToken: string, parentFolderI
 /**
  * Faz upload do buffer (já criptografado) para o Google Drive
  */
-export async function uploadToDrive(accessToken: string, filename: string, buffer: ArrayBuffer, usePhotosFolder: boolean = false): Promise<string> {
+export async function uploadToDrive(
+  accessToken: string, 
+  filename: string, 
+  buffer: ArrayBuffer, 
+  usePhotosFolder: boolean = false,
+  onProgress?: (percent: number) => void
+): Promise<string> {
   let folderId = await getOrCreateAppFolder(accessToken);
   if (usePhotosFolder) {
     folderId = await getOrCreatePhotosFolder(accessToken, folderId);
@@ -176,21 +182,35 @@ export async function uploadToDrive(accessToken: string, filename: string, buffe
   const metaData = await metaRes.json();
   const fileId = metaData.id;
 
-  // Passo 2: Fazer o upload do conteúdo (ArrayBuffer) usando uploadType=media
-  const uploadRes = await fetch(`${DRIVE_UPLOAD_URL.split('?')[0]}/${fileId}?uploadType=media`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/octet-stream'
-    },
-    body: buffer
+  // Passo 2: Fazer o upload do conteúdo (ArrayBuffer) usando uploadType=media via XMLHttpRequest para ter progresso
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PATCH', `${DRIVE_UPLOAD_URL.split('?')[0]}/${fileId}?uploadType=media`, true);
+    
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(fileId);
+      } else {
+        reject(new Error(`Erro ao fazer upload no Google Drive: ${xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Falha na rede durante o upload.'));
+    
+    xhr.send(buffer);
   });
-
-  if (!uploadRes.ok) {
-    throw new Error(`Erro ao fazer upload no Google Drive: ${uploadRes.statusText}`);
-  }
-
-  return fileId;
 }
 
 /**

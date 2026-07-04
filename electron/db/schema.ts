@@ -25,6 +25,24 @@ export function setupTables(): Promise<void> {
         )
       `);
 
+      db.run(`
+        CREATE TABLE IF NOT EXISTS videos (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          original_name TEXT NOT NULL,
+          duration REAL,
+          file_path TEXT,
+          drive_file_id TEXT,
+          drive_subtitle_id TEXT,
+          local_subtitle_path TEXT,
+          is_local INTEGER DEFAULT 0,
+          progress REAL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          deleted_at DATETIME DEFAULT NULL
+        )
+      `);
+
       // Verifica quais bancos estão acoplados
       db.all('PRAGMA database_list', (err, rows: any[]) => {
         if (err) return reject(err);
