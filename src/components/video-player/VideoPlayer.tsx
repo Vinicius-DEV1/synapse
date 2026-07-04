@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft } from 'lucide-react';
 import InteractiveSubtitles from './InteractiveSubtitles';
-import { parseVtt, SubtitleCue } from '../../utils/vtt-parser';
+import { parseVtt } from '../../utils/vtt-parser';
+import type { SubtitleCue } from '../../utils/vtt-parser';
 import DictionaryModal from '../library/DictionaryModal';
 
 interface VideoPlayerProps {
