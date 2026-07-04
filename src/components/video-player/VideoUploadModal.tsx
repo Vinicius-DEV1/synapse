@@ -148,7 +148,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
               <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-brand-500 h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: \`\${uploadProgress}%\` }}
+                  style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </div>
