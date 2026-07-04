@@ -41,12 +41,18 @@ function createWindow() {
   }
 }
 
+// Registrar o scheme ANTES do app.whenReady para que o Chromium entenda a URL corretamente e suporte streams
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'stream-drive', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+]);
+
 app.whenReady().then(() => {
   // Protocolo customizado para streaming do Drive ignorando CORS/Cookies e adicionando Header
   protocol.handle('stream-drive', async (request) => {
     try {
       const url = new URL(request.url);
-      const fileId = url.hostname; // stream-drive://<fileId>?token=...
+      // Se for registrado como standard, fileId estará no hostname. Caso contrário, estará no pathname
+      const fileId = url.hostname || url.pathname.replace(/^\/+/, ''); 
       const token = url.searchParams.get('token');
 
       const headers = new Headers(request.headers);
