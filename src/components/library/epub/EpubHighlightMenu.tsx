@@ -302,31 +302,42 @@ export default function EpubHighlightMenu() {
                 })()}
               </div>
 
-              {/* Definições em inglês */}
+              {/* Definições */}
               {(() => {
                 try {
                   const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-                  const defs: string[] = data.english?.definitions || [];
+                  
+                  // Tenta pegar definições em inglês primeiro
+                  let defs: string[] = [];
+                  if (data.english?.definitions) defs = data.english.definitions;
+                  else if (data.english?.definition) defs = [data.english.definition];
+                  else if (data.definitions) defs = data.definitions;
+                  else if (data.definition) defs = [data.definition];
+
                   if (defs.length > 0) {
                     return (
                       <ul className="flex flex-col gap-0.5 pl-1">
                         {defs.slice(0, 3).map((def, i) => (
                           <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
-                            <span className="opacity-40 shrink-0">{i + 1}.</span>
+                            {defs.length > 1 && <span className="opacity-40 shrink-0">{i + 1}.</span>}
                             <span>{def}</span>
                           </li>
                         ))}
                       </ul>
                     );
                   }
-                  // Fallback: contexto em PT
-                  const ptDefs: string[] = data.portuguese?.definitions || [];
+
+                  // Fallback: português
+                  let ptDefs: string[] = [];
+                  if (data.portuguese?.definitions) ptDefs = data.portuguese.definitions;
+                  else if (data.portuguese?.definition) ptDefs = [data.portuguese.definition];
+
                   if (ptDefs.length > 0) {
                     return (
                       <ul className="flex flex-col gap-0.5 pl-1">
                         {ptDefs.slice(0, 2).map((def, i) => (
                           <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
-                            <span className="opacity-40 shrink-0">{i + 1}.</span>
+                            {ptDefs.length > 1 && <span className="opacity-40 shrink-0">{i + 1}.</span>}
                             <span>{def}</span>
                           </li>
                         ))}
