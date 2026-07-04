@@ -58,10 +58,10 @@ export default function VideoView() {
     }
   };
 
-  const handleUpload = async (file: File, subtitleText: string | null) => {
+  const handleUpload = async (file: File, subtitleText: string | null, onProgress?: (percent: number) => void) => {
     setIsUploading(true);
     try {
-      await uploadNewVideo(file, subtitleText);
+      await uploadNewVideo(file, subtitleText, onProgress);
       await loadVideos();
     } finally {
       setIsUploading(false);

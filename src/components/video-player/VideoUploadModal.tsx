@@ -4,13 +4,14 @@ import { processSubtitleFile } from '../../utils/subtitles';
 
 interface VideoUploadModalProps {
   onClose: () => void;
-  onUpload: (videoFile: File, subtitleText: string | null) => Promise<void>;
+  onUpload: (videoFile: File, subtitleText: string | null, onProgress?: (percent: number) => void) => Promise<void>;
 }
 
 export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModalProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +42,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
 
     setIsUploading(true);
     setError(null);
+    setUploadProgress(0);
 
     try {
       let subtitleText = null;
@@ -48,7 +50,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
         subtitleText = await processSubtitleFile(subtitleFile);
       }
       
-      await onUpload(videoFile, subtitleText);
+      await onUpload(videoFile, subtitleText, (percent) => setUploadProgress(percent));
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -87,10 +89,13 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                 onChange={handleVideoChange}
                 className="hidden" 
                 id="video-upload"
+                disabled={isUploading}
               />
               <label 
                 htmlFor="video-upload"
-                className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+                className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
+                  isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer'
+                } ${
                   videoFile ? 'border-brand-500/50 bg-brand-500/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'
                 }`}
               >
@@ -115,10 +120,13 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                 onChange={handleSubtitleChange}
                 className="hidden" 
                 id="subtitle-upload"
+                disabled={isUploading}
               />
               <label 
                 htmlFor="subtitle-upload"
-                className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+                className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
+                  isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer'
+                } ${
                   subtitleFile ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'
                 }`}
               >
@@ -129,6 +137,22 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
               </label>
             </div>
           </div>
+          
+          {/* Progress Bar */}
+          {isUploading && (
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex justify-between text-xs text-dark-subtext font-medium">
+                <span>Enviando para o Google Drive...</span>
+                <span>{Math.round(uploadProgress)}%</span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-brand-500 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: \`\${uploadProgress}%\` }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 mt-2">
             <button
