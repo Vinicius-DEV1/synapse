@@ -32,9 +32,11 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
 
   useEffect(() => {
     if (isAuth && masterKey) {
+      let isClosed = false;
       const syncChannel = new BroadcastChannel('caderno_sync');
 
       const doFullSync = async () => {
+        if (isClosed) return;
         if (!navigator.onLine) {
           console.warn('[Sync] doFullSync abortado: sem conexão com a internet.');
           finishSync(false);
@@ -55,13 +57,17 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             ]),
             30_000
           );
-          console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
-          finishSync(true);
-          // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
-          syncChannel.postMessage('LOCAL_UPDATE');
+          if (!isClosed) {
+            console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
+            finishSync(true);
+            // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
+            syncChannel.postMessage('LOCAL_UPDATE');
+          }
         } catch (err: any) {
-          console.warn(`[Sync] doFullSync FALHOU: ${err.message}`, err);
-          finishSync(false);
+          if (!isClosed) {
+            console.warn(`[Sync] doFullSync FALHOU: ${err.message}`, err);
+            finishSync(false);
+          }
         }
       };
 
@@ -126,6 +132,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       }, 5 * 60 * 1000); 
 
       return () => {
+        isClosed = true;
         clearInterval(syncInterval);
         clearTimeout(syncDebounceTimer);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
