@@ -8,6 +8,7 @@ import { registerFinanceHandlers } from './ipc/finance';
 import { registerSyncHandlers } from './ipc/sync';
 import { registerConfigHandlers } from './ipc/config';
 import { registerCultureHandlers } from './ipc/cultureIpc';
+import { setupVideoIpc } from './ipc/video';
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
@@ -25,6 +26,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false, // Necessário para carregar vídeos locais via file://
     },
   });
 
@@ -48,6 +50,7 @@ app.whenReady().then(() => {
   registerCultureHandlers();
   registerSyncHandlers();
   registerConfigHandlers();
+  setupVideoIpc();
 
   // Preferências
   ipcMain.handle('auth:set-preferences', async (_, prefs: { autoLockOnSuspend: boolean }) => {

@@ -9,6 +9,7 @@ import ConfirmModal from './components/ConfirmModal';
 import FinanceView from './components/finance/FinanceView';
 import LibraryView from './components/library/LibraryView';
 import CultureView from './components/culture/CultureView';
+import VideoView from './components/video-player/VideoView';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
@@ -281,6 +282,8 @@ function AppContent() {
                   <LibraryView tabId={tab.id} />
                 ) : tabModule === 'culture' ? (
                   <CultureView />
+                ) : tabModule === 'video' ? (
+                  <VideoView />
                 ) : (
                   <FinanceView />
                 )}
