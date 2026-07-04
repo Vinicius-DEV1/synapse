@@ -66,7 +66,28 @@ app.whenReady().then(() => {
         bypassCustomProtocolHandlers: true
       });
       
-      return response;
+      // Log diagnostics in the terminal
+      console.log(`[stream-drive] Fetching ${fileId} - Status: ${response.status} - Content-Type: ${response.headers.get('content-type')}`);
+      
+      if (!response.ok) {
+        console.error(`[stream-drive] Error fetching from Drive: ${response.status} ${response.statusText}`);
+      }
+      
+      // Se a API do Drive retornar application/octet-stream, forçamos video/mp4 (ou webm)
+      // para o Chromium não rejeitar de imediato se ele for rigoroso com mime-types
+      let contentType = response.headers.get('content-type') || 'video/mp4';
+      if (contentType === 'application/octet-stream') {
+        contentType = 'video/mp4'; 
+      }
+      
+      const resHeaders = new Headers(response.headers);
+      resHeaders.set('Content-Type', contentType);
+      
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: resHeaders
+      });
     } catch (e) {
       console.error("stream-drive protocol error:", e);
       return new Response(null, { status: 500 });
