@@ -559,6 +559,18 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
     return () => clearTimeout(timer);
   }, [fontSize, fontFamily, readingMode, rendition, highlights]);
 
+  // Limpa a seleção nativa no DOM do EPUB.js quando o menu for fechado (selection === null)
+  // Isso impede bugs de "marcação fantasma" quando o zoom ou layout muda e o epub.js re-dispara 'selected'.
+  useEffect(() => {
+    if (!selection && rendition) {
+      try {
+        rendition.getContents().forEach((content: any) => {
+          content.window.getSelection()?.removeAllRanges();
+        });
+      } catch (e) {}
+    }
+  }, [selection, rendition]);
+
   useEffect(() => {
     if (!rendition) return;
 
