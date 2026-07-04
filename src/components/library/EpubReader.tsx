@@ -208,7 +208,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                       }
                       const rawRect = e.target.getBoundingClientRect();
                       let offsetX = 0; let offsetY = 0;
-                      const iframe = viewerRef.current?.querySelector('iframe');
+                      const iframe = e.target.ownerDocument?.defaultView?.frameElement;
                       if (iframe) {
                           const iframeRect = iframe.getBoundingClientRect();
                           offsetX = iframeRect.left;
@@ -313,7 +313,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                  
                  let offsetX = 0;
                  let offsetY = 0;
-                 const iframe = viewerRef.current?.querySelector('iframe');
+                 const iframe = contents.document?.defaultView?.frameElement;
                  if (iframe) {
                      const iframeRect = iframe.getBoundingClientRect();
                      offsetX = iframeRect.left;
@@ -545,7 +545,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
                   }
                   const rawRect = e.target.getBoundingClientRect();
                   let offsetX = 0; let offsetY = 0;
-                  const iframe = viewerRef.current?.querySelector('iframe');
+                  const iframe = e.target.ownerDocument?.defaultView?.frameElement;
                   if (iframe) {
                       const iframeRect = iframe.getBoundingClientRect();
                       offsetX = iframeRect.left;
