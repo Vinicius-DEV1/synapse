@@ -25,9 +25,6 @@ function parseDateSafe(dateStr: string | undefined | null | number): number {
     s = s + 'Z';
   }
   const parsed = new Date(s).getTime();
-  if (typeof window !== 'undefined' && (window as any).api?.log) {
-    (window as any).api.log(`[parseDateSafe] input: ${dateStr}, output: ${s} -> ${parsed}`);
-  }
   return isNaN(parsed) ? 0 : parsed;
 }
 

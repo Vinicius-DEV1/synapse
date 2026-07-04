@@ -68,6 +68,8 @@ export async function resolveVideoUrl(video: VideoItem): Promise<string> {
 export async function uploadNewVideo(
   file: File, 
   subtitleText: string | null,
+  trackIndex?: string,
+  duration?: number,
   onProgress?: (percent: number) => void
 ): Promise<VideoItem> {
   const token = await getValidAccessToken();
@@ -80,8 +82,9 @@ export async function uploadNewVideo(
   let isLocal = false;
   let localPath: string | undefined = undefined;
 
-  // Try to copy local directly in Electron to avoid re-downloading
-  const sourcePath = (file as any).path;
+  // Usa a propriedade electronPath injetada pelo nosso botão nativo
+  const sourcePath = (file as any).electronPath;
+  
   if (sourcePath && window.api?.video?.copyLocal) {
     try {
       localPath = await window.api.video.copyLocal(sourcePath, file.name);
@@ -94,10 +97,11 @@ export async function uploadNewVideo(
   let finalSubtitleText = subtitleText;
   
   // Tenta extrair legenda embutida automaticamente se for local e não foi fornecida legenda externa
-  if (!finalSubtitleText && isLocal && localPath && window.api?.video?.extractSubtitles) {
+  // Apenas extrai se um trackIndex for passado pelo usuário
+  if (!finalSubtitleText && isLocal && localPath && window.api?.video?.extractSubtitles && trackIndex) {
     try {
       if (onProgress) onProgress(99); // Mocking extraction progress visually
-      const extractedVtt = await window.api.video.extractSubtitles(localPath);
+      const extractedVtt = await window.api.video.extractSubtitles(localPath, trackIndex);
       if (extractedVtt) {
         finalSubtitleText = extractedVtt;
       }
@@ -122,6 +126,7 @@ export async function uploadNewVideo(
     is_local: isLocal,
     file_path: localPath,
     progress: 0,
+    duration: duration,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };

@@ -248,6 +248,14 @@ export interface CultureEpisode {
 declare global {
   interface Window {
     api: {
+      app: {
+        getDbPath: () => Promise<string>;
+        quit: () => void;
+        minimize: () => void;
+        maximize: () => void;
+        getPathForFile: (file: File) => string;
+        showConfirm: (message: string) => Promise<number>;
+      };
       _setMasterKey?: (key: CryptoKey | null) => void;
       onSyncTrigger?: (callback: () => void) => () => void;
       getAllPages: () => Promise<Page[]>;
@@ -324,7 +332,9 @@ declare global {
         deleteLocal: (filename: string) => Promise<boolean>;
         saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
         copyLocal: (sourcePath: string, filename: string) => Promise<string>;
-        extractSubtitles: (localPath: string) => Promise<string | null>;
+        extractSubtitles: (localPath: string, trackIndex?: string) => Promise<string | null>;
+        scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;
+        openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
       };
     };
   }

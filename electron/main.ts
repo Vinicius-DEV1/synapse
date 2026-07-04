@@ -147,6 +147,20 @@ app.whenReady().then(() => {
     return true;
   });
 
+  ipcMain.handle('app:showConfirm', async (_, message: string) => {
+    if (!mainWindow) return 1;
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      buttons: ['Cancelar', 'Sim, excluir'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Confirmação',
+      message: message,
+      noLink: true
+    });
+    return result.response;
+  });
+
   powerMonitor.on('suspend', () => {
     if (shouldLockOnSuspend && mainWindow) {
       ipcMain.emit('auth:lock');
