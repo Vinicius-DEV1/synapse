@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, BookOpen, Bookmark, Trash2, X } from 'lucide-react';
+import { Search, BookOpen, Bookmark, Trash2, X, Sparkles } from 'lucide-react';
 import { useEpub } from './EpubContext';
 
 export default function EpubSidebars() {
@@ -218,8 +218,34 @@ export default function EpubSidebars() {
                            "{hl.text_content}"
                         </div>
                         {hl.note && (
-                          <div className="mt-2 text-xs font-medium text-brand-600 dark:text-brand-400 p-2 bg-white/50 dark:bg-black/20 rounded">
-                            📝 {hl.note}
+                          <div className="mt-2 text-xs font-medium text-brand-600 dark:text-brand-400 p-2 bg-white/50 dark:bg-black/20 rounded text-left">
+                            {hl.note.startsWith('<!-- AI_DICT -->') ? (
+                              (() => {
+                                try {
+                                  const data = JSON.parse(hl.note.replace('<!-- AI_DICT -->', ''));
+                                  let defs: string[] = [];
+                                  if (data.english?.definitions) defs = data.english.definitions;
+                                  else if (data.english?.definition) defs = [data.english.definition];
+                                  else if (data.definitions) defs = data.definitions;
+                                  else if (data.definition) defs = [data.definition];
+                                  
+                                  const textToShow = defs.length > 0 ? defs[0] : (data.portuguese?.definition || data.portuguese?.definitions?.[0] || 'Dicionário IA');
+                                  
+                                  return (
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-1 opacity-70">
+                                        <Sparkles size={10} /> <span className="font-bold text-[9px] uppercase tracking-wider">IA Salva</span>
+                                      </div>
+                                      <div className="line-clamp-2 opacity-90">{textToShow}</div>
+                                    </div>
+                                  );
+                                } catch (e) {
+                                  return <>📝 {hl.note}</>;
+                                }
+                              })()
+                            ) : (
+                              <>📝 {hl.note}</>
+                            )}
                           </div>
                         )}
                       </button>
