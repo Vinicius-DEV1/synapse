@@ -222,4 +222,69 @@ export function setupVideoIpc() {
       type: filePath.toLowerCase().endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4'
     };
   });
+  ipcMain.handle('youtube:fetchInfo', async (_, url: string) => {
+    try {
+      const youtubedl = require('youtube-dl-exec');
+      const output = await youtubedl(url, {
+        dumpSingleJson: true,
+        noCheckCertificates: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
+      });
+      return output;
+    } catch (e: any) {
+      console.error('Failed to fetch youtube info', e);
+      throw new Error(e.message || 'Falha ao buscar informações do vídeo');
+    }
+  });
+
+  ipcMain.handle('youtube:download', async (event, url: string, filename: string, quality: string) => {
+    const videosDir = await getVideosDir();
+    const destPath = path.join(videosDir, filename);
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const youtubedl = require('youtube-dl-exec');
+        // Quality can be 'best', or specific format codes.
+        const formatCode = quality === 'best' ? 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' : quality;
+        
+        const subprocess = youtubedl.exec(url, {
+          output: destPath,
+          format: formatCode,
+          mergeOutputFormat: 'mp4',
+          noCheckCertificates: true,
+          noWarnings: true,
+          preferFreeFormats: true,
+          addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
+        });
+
+        subprocess.stdout?.on('data', (data: Buffer) => {
+          const str = data.toString();
+          // yt-dlp outputs progress like: "[download]  15.3% of 50.00MiB at  1.50MiB/s ETA 00:30"
+          const match = str.match(/\[download\]\s+([\d\.]+)%/);
+          if (match && match[1]) {
+            const percent = parseFloat(match[1]);
+            if (!isNaN(percent)) {
+              event.sender.send('youtube:download-progress', percent);
+            }
+          }
+        });
+
+        subprocess.stderr?.on('data', (data: Buffer) => {
+          console.error(`[youtube-dl] stderr: ${data.toString()}`);
+        });
+
+        subprocess.on('close', (code: number) => {
+          if (code === 0) {
+            resolve(destPath);
+          } else {
+            reject(new Error(`Download failed with code ${code}`));
+          }
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }

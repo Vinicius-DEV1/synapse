@@ -3,13 +3,15 @@ import type { VideoItem } from '../../types_video';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
+import YouTubeDownloadModal from './YouTubeDownloadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText } from '../../services/video-manager';
-import { PlaySquare, Plus, LayoutGrid, List, AlignJustify } from 'lucide-react';
+import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, Youtube } from 'lucide-react';
 
 export default function VideoView() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   
   // Player state
@@ -169,13 +171,23 @@ export default function VideoView() {
               <AlignJustify size={18} />
             </button>
           </div>
-          <button 
-            onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
-          >
-            <Plus size={16} />
-            <span>Importar Vídeo</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowYoutubeModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 text-white text-sm font-medium rounded-lg transition-colors border border-white/10"
+              title="Baixar do YouTube"
+            >
+              <Youtube size={16} className="text-red-500" />
+              <span className="hidden sm:inline">YouTube</span>
+            </button>
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Importar</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -205,6 +217,15 @@ export default function VideoView() {
           onUpload={handleUpload}
         />
       )}
+      
+      {/* YouTube Modal */}
+      {showYoutubeModal && (
+        <YouTubeDownloadModal 
+          onClose={() => setShowYoutubeModal(false)}
+          onSuccess={loadVideos}
+        />
+      )}
+
       {/* Fullscreen Player */}
       {activeVideoSrc && activeVideo && (
         <div className="absolute inset-0 z-50 bg-black">
