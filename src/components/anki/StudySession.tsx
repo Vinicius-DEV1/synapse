@@ -75,13 +75,13 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   const playAudio = () => {
     const card = cards[currentIndex];
     if (card?.media_url) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+      if (!audioRef.current || !audioRef.current.src.endsWith(encodeURI(card.media_url).replace(/%20/g, ' '))) {
+        if (audioRef.current) audioRef.current.pause();
+        audioRef.current = new Audio(card.media_url);
       }
-      const audio = new Audio(card.media_url);
-      audioRef.current = audio;
-      audio.play().catch(e => console.error("Audio play failed:", e));
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.error("Audio play failed:", e));
     }
   };
 
@@ -91,7 +91,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
        const card = cards[currentIndex];
        if (card.card_type === 'listening' && !showingAnswer) {
           playAudio();
-       } else if (showingAnswer && card.media_url) {
+       } else if (showingAnswer && card.media_url && card.card_type !== 'listening') {
           playAudio();
        }
     }
@@ -161,11 +161,17 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           {/* Back */}
           {showingAnswer && (
             <div className="flex-1 p-10 flex flex-col items-center justify-center text-center bg-white/5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {card.card_type === 'listening' && (
+                <div 
+                  className="text-2xl text-dark-text mb-6 font-medium"
+                  dangerouslySetInnerHTML={{ __html: card.front }}
+                />
+              )}
               <div 
                 className="text-xl text-dark-subtext whitespace-pre-wrap leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: card.back }}
               />
-              {card.media_url && card.card_type === 'reading' && (
+              {card.media_url && (
                 <button onClick={playAudio} className="mt-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm">
                    <Volume2 className="w-4 h-4" /> Ouvir Novamente
                 </button>
