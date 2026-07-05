@@ -43,6 +43,21 @@ export function setupTables(): Promise<void> {
         )
       `);
 
+      db.run(`
+        CREATE TABLE IF NOT EXISTS video_words (
+          id TEXT PRIMARY KEY,
+          video_id TEXT NOT NULL,
+          word TEXT NOT NULL,
+          context TEXT,
+          timestamp REAL,
+          color TEXT DEFAULT 'yellow',
+          note TEXT DEFAULT '',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          deleted_at DATETIME DEFAULT NULL
+        )
+      `);
+
       // Verifica quais bancos estão acoplados
       db.all('PRAGMA database_list', (err, rows: any[]) => {
         if (err) return reject(err);

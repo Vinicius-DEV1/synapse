@@ -46,9 +46,10 @@ export interface DictionaryModalProps {
   onClose: () => void;
   preloadedData?: DictionaryData | null;
   onSaveHighlight?: (color: string, note: string) => void;
+  sourceType?: 'book' | 'video';
 }
 
-export default function DictionaryModal({ text, pageContext, onClose, preloadedData, onSaveHighlight }: DictionaryModalProps) {
+export default function DictionaryModal({ text, pageContext, onClose, preloadedData, onSaveHighlight, sourceType = 'book' }: DictionaryModalProps) {
   const settings = getSettings();
   const [mode, setMode] = useState<'offline' | 'online'>(settings.dictionaryMode || (settings.hasOfflineDictionary ? 'offline' : 'online'));
   const [loading, setLoading] = useState(false);
@@ -572,13 +573,13 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
               className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors"
             >
               <Database size={12} />
-              <span>Salvar no Livro</span>
+              <span>{sourceType === 'video' ? 'Salvar no Vídeo' : 'Salvar no Livro'}</span>
             </button>
           )}
           {savedLocally && onSaveHighlight && (
             <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400">
               <Database size={12} />
-              <span>Salvo</span>
+              <span>{sourceType === 'video' ? 'Salvo no Vídeo' : 'Salvo Localmente'}</span>
             </div>
           )}
         </div>
