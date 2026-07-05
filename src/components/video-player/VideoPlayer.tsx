@@ -377,26 +377,14 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     let extendedContext = context;
     
     if (currentIndex !== -1) {
-      // Gather previous context (up to 1600 chars)
-      let prevContext = '';
-      for (let i = currentIndex - 1; i >= 0; i--) {
-        if (prevContext.length + cues[i].text.length > 1600) break;
-        prevContext = cues[i].text + ' ' + prevContext;
+      const startIdx = Math.max(0, currentIndex - 3);
+      const endIdx = Math.min(cues.length - 1, currentIndex + 3);
+      const contextLines = [];
+      for (let i = startIdx; i <= endIdx; i++) {
+        const c = cues[i];
+        contextLines.push(`[${(c.startTime * 1000).toFixed(0)}ms - ${(c.endTime * 1000).toFixed(0)}ms]: ${c.text.trim()}`);
       }
-      
-      // Gather next context (up to 1600 chars)
-      let nextContext = '';
-      for (let i = currentIndex + 1; i < cues.length; i++) {
-        if (nextContext.length + cues[i].text.length > 1600) break;
-        nextContext = nextContext + ' ' + cues[i].text;
-      }
-      
-      const fullContext = [];
-      if (prevContext.trim()) fullContext.push(`[Contexto Anterior]: ${prevContext.trim()}`);
-      fullContext.push(`[Cena Atual]: ${context}`);
-      if (nextContext.trim()) fullContext.push(`[Contexto Posterior]: ${nextContext.trim()}`);
-      
-      extendedContext = fullContext.join('\n\n');
+      extendedContext = "Contexto das Legendas (Tempo Mínimo e Máximo em ms):\n" + contextLines.join('\n');
     }
 
     let preloadedData = null;
