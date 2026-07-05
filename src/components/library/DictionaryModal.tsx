@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit } from 'lucide-react';
 import { getSettings } from '../../utils/settings';
 import { promptGemini } from '../../services/gemini';
-import CardEditor, { CardDraft } from '../anki/CardEditor';
+import CardEditor from '../anki/CardEditor';
 
 export interface Collocation {
   expression: string;
