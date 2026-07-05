@@ -135,8 +135,11 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
                   ))}
                 </ul>
               ) : video.local_subtitle_path ? (
-                <p className="text-sm text-white/90 bg-purple-500/10 px-2 py-1.5 rounded border border-purple-500/20">
-                  1 Legenda Extraída/Externa
+                <p className="text-sm text-white/90 bg-purple-500/10 px-2 py-1.5 rounded border border-purple-500/20 flex items-center justify-between">
+                  <span className="truncate pr-2" title={video.local_subtitle_path.split(/[\\/]/).pop() || 'Legenda'}>
+                    {video.local_subtitle_path.split(/[\\/]/).pop() || 'Legenda.vtt'}
+                  </span>
+                  <span className="text-xs text-purple-400/80 flex-shrink-0">Padrão</span>
                 </p>
               ) : (
                 <p className="text-sm text-white/50">Nenhuma legenda encontrada</p>
