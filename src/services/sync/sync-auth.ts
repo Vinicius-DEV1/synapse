@@ -1,0 +1,75 @@
+import { db } from '../firebase';
+import { encryptText, decryptText, deriveMasterKey } from '../crypto';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
+  try {
+    const masterKey = await deriveMasterKey(password);
+    
+    const docRef = doc(db, 'config', 'auth_validator');
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists() || !docSnap.data().encryptedData) {
+      return { isValid: true, isNew: true };
+    }
+    
+    try {
+      const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
+      const parsed = JSON.parse(decryptedJson);
+      if (parsed.validator === 'CADERNO_VALIDO') {
+        return { isValid: true, isNew: false };
+      }
+    } catch {
+      // Falha ao descriptografar
+    }
+
+    return { isValid: false, isNew: false };
+  } catch {
+    return { isValid: false, isNew: false };
+  }
+}
+
+export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
+  const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });
+  const encryptedData = await encryptText(payload, masterKey);
+  await setDoc(doc(db, 'config', 'auth_validator'), {
+    encryptedData,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
+  if (!navigator.onLine) return;
+  try {
+    const docRef = doc(db, 'config', 'module_keys');
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists() && docSnap.data().encryptedData) {
+      console.error("🔒 ALERTA DE SEGURANÇA: Tentativa de sobrescrever chaves de criptografia existentes foi bloqueada.");
+      return;
+    }
+
+    const payload = JSON.stringify(keys);
+    const encryptedData = await encryptText(payload, masterKey);
+    await setDoc(docRef, {
+      encryptedData,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error("Erro ao subir chaves modulares", err);
+  }
+}
+
+export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Record<string, string> | null> {
+  if (!navigator.onLine) return null;
+  try {
+    const docSnap = await getDoc(doc(db, 'config', 'module_keys'));
+    if (docSnap.exists() && docSnap.data().encryptedData) {
+      const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
+      return JSON.parse(decryptedJson);
+    }
+  } catch (err) {
+    console.error("Erro ao baixar chaves modulares", err);
+  }
+  return null;
+}
