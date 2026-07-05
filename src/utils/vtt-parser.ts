@@ -58,7 +58,9 @@ export function parseVtt(vttContent: string): SubtitleCue[] {
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>')
           .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
+          .replace(/&#39;/g, "'")
+          .replace(/\s+/g, ' ')
+          .trim();
 
         cues.push(currentCue as SubtitleCue);
         currentCue = {};
