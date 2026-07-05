@@ -146,6 +146,17 @@ contextBridge.exposeInMainWorld('api', {
     openFileDialog: () => invokeWithSync('video:openFileDialog'),
   },
 
+  // YouTube API
+  youtube: {
+    fetchInfo: (url: string) => invokeWithSync('youtube:fetchInfo', url),
+    download: (url: string, filename: string, quality: string) => invokeWithSync('youtube:download', url, filename, quality),
+    onProgress: (callback: (percent: number) => void) => {
+      const listener = (_: any, percent: number) => callback(percent);
+      ipcRenderer.on('youtube:download-progress', listener);
+      return () => ipcRenderer.removeListener('youtube:download-progress', listener);
+    }
+  },
+
   // Log (diagnóstico temporário)
   log: (message: string) => invokeWithSync('log:write', message),
 

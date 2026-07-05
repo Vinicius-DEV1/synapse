@@ -239,3 +239,73 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
     return null;
   }
 }
+
+export interface YouTubeDownloadOptions {
+  url: string;
+  quality: string;
+  filename: string;
+  youtubeInfo?: any; 
+  collectionId?: string;
+  collectionName?: string;
+  onProgress?: (percent: number) => void;
+}
+
+/**
+ * Baixa um vídeo do YouTube via yt-dlp, salva localmente e faz upload para o Drive.
+ */
+export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): Promise<VideoItem> {
+  const { url, quality, filename, youtubeInfo, collectionId, collectionName, onProgress } = options;
+  
+  const token = await getValidAccessToken();
+  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
+
+  if (!window.api?.youtube) {
+    throw new Error("YouTube downloader não está disponível (desktop apenas).");
+  }
+
+  let unsubscribe: (() => void) | undefined;
+  if (onProgress) {
+    unsubscribe = window.api.youtube.onProgress((percent) => {
+      // Reservamos os 95% para o download do yt-dlp
+      onProgress(percent * 0.95);
+    });
+  }
+
+  try {
+    // 1. Download
+    const localPath = await window.api.youtube.download(url, filename, quality);
+    
+    // 2. Upload
+    const driveFileId = await uploadLocalFileToDrive(token, localPath, filename, (p) => {
+      if (onProgress) onProgress(95 + (p * 0.05)); // 95% a 100% para o upload
+    });
+
+    // 3. Database
+    const newVideo: VideoItem = {
+      id: crypto.randomUUID(),
+      title: filename.replace(/\.[^/.]+$/, ""),
+      original_name: filename,
+      drive_file_id: driveFileId,
+      is_local: true,
+      file_path: localPath,
+      progress: 0,
+      collection_id: collectionId,
+      collection_name: collectionName,
+      youtube_url: url,
+      youtube_description: youtubeInfo?.description,
+      duration: youtubeInfo?.duration || undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (window.api?.sync) {
+      await window.api.sync.upsertRow(VIDEO_TABLE, newVideo);
+    }
+
+    if (onProgress) onProgress(100);
+
+    return newVideo;
+  } finally {
+    if (unsubscribe) unsubscribe();
+  }
+}

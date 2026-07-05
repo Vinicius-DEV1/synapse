@@ -52,6 +52,12 @@ export function setupTables(): Promise<void> {
         const runSafe = (sql: string) => new Promise<void>(res => db.run(sql, () => res()));
         const promises: Promise<void>[] = [];
 
+        // Migrate videos table
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN collection_id TEXT;"));
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN collection_name TEXT;"));
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN youtube_url TEXT;"));
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN youtube_description TEXT;"));
+
         // LIBRARY TABLES
         if (attached.includes('library')) {
           promises.push(runSafe(`
