@@ -169,6 +169,13 @@ contextBridge.exposeInMainWorld('api', {
     saveCard: (cardData: any) => invokeWithSync('anki:save-card', cardData),
     getDueCards: (deckId: string) => invokeWithSync('anki:get-due-cards', deckId),
     reviewCard: (cardId: string, rating: number) => invokeWithSync('anki:review-card', cardId, rating),
+    getAllCards: (deckId?: string) => invokeWithSync('anki:get-all-cards', deckId),
+    deleteCard: (cardId: string) => invokeWithSync('anki:delete-card', cardId),
+    deleteCardsBulk: (cardIds: string[]) => invokeWithSync('anki:delete-cards-bulk', cardIds),
+    updateCard: (cardId: string, data: any) => invokeWithSync('anki:update-card', cardId, data),
+    moveCards: (cardIds: string[], newDeckId: string) => invokeWithSync('anki:move-cards', cardIds, newDeckId),
+    updateDeck: (deckId: string, name: string, description: string) => invokeWithSync('anki:update-deck', deckId, name, description),
+    deleteDeck: (deckId: string) => invokeWithSync('anki:delete-deck', deckId),
   },
 
   // Audio

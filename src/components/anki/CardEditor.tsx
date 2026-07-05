@@ -17,9 +17,10 @@ interface CardEditorProps {
   draft: CardDraft;
   onClose: () => void;
   onSaveSuccess?: () => void;
+  editingCardId?: string;
 }
 
-export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditorProps) {
+export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardId }: CardEditorProps) {
   const [front, setFront] = useState(draft.front);
   const [back, setBack] = useState(draft.back);
   const [extraNote, setExtraNote] = useState(draft.extra_note || '');
@@ -86,25 +87,32 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
         }
       }
 
-      // 2. Save Card
+      // 2. Save or Update Card
       if (window.api?.anki) {
-        const res = await window.api.anki.saveCard({
-           deck_id: selectedDeck,
-           front,
-           back,
-           extra_note: extraNote,
-           source_module: draft.source_module,
-           source_id: draft.source_id,
-           media_url: finalMediaUrl,
-           card_type: draft.card_type
-        });
-
-        if (res.success) {
-           onSaveSuccess?.();
-           onClose();
+        if (editingCardId) {
+          const res = await window.api.anki.updateCard(editingCardId, {
+             front,
+             back,
+             extra_note: extraNote,
+             media_url: finalMediaUrl
+          });
+          if (!res.success) throw new Error(res.error);
         } else {
-           console.error("Failed to save card:", res.error);
+          const res = await window.api.anki.saveCard({
+             deck_id: selectedDeck,
+             front,
+             back,
+             extra_note: extraNote,
+             source_module: draft.source_module,
+             source_id: draft.source_id,
+             media_url: finalMediaUrl,
+             card_type: draft.card_type
+          });
+          if (!res.success) throw new Error(res.error);
         }
+
+        if (onSaveSuccess) onSaveSuccess();
+        onClose();
       }
     } catch (err) {
       console.error(err);
@@ -123,7 +131,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
         <header className="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-dark-bg/50">
           <h2 className="text-lg font-bold flex items-center gap-2">
              <BrainCircuit className="w-5 h-5 text-indigo-400" />
-             Criar Flashcard
+             {editingCardId ? 'Editar Flashcard' : 'Criar Flashcard'}
           </h2>
           <button onClick={onClose} className="p-1 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors">
             <X className="w-5 h-5" />
@@ -131,19 +139,21 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
         </header>
 
         <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
-          
-          <div>
-            <label className="block text-sm font-medium text-dark-subtext mb-1">Baralho</label>
-            <select 
-              value={selectedDeck}
-              onChange={(e) => setSelectedDeck(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500"
-            >
-              {decks.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
+          {!editingCardId && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-subtext mb-1">Baralho</label>
+              <select 
+                value={selectedDeck}
+                onChange={(e) => setSelectedDeck(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500 appearance-none"
+                disabled={loading || decks.length === 0}
+              >
+                {decks.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
              <div className="flex justify-between items-center mb-1">
