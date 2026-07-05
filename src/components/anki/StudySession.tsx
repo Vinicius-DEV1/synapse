@@ -209,9 +209,9 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           {/* Back */}
           {showingAnswer && (
             <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-dark-surface animate-in fade-in slide-in-from-bottom-4 duration-300">
-              {card.card_type !== 'listening' && (
+              {card.card_type === 'listening' && (
                 <div 
-                  className="text-lg text-dark-text font-medium"
+                  className="text-lg text-dark-text font-medium mb-4"
                   dangerouslySetInnerHTML={{ __html: card.front }}
                 />
               )}
