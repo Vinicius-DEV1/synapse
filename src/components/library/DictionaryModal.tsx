@@ -148,7 +148,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
     },
     "anki_card": {
-      "front": "Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)",
+      "front": "${pageContext ? 'USE EXATAMENTE o mesmo trecho do Contexto da página fornecido, apenas colocando a palavra-alvo em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
       "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)"
     }
   }${isEnglishOnly ? '' : `,
@@ -198,7 +198,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
     },
     "anki_card": {
-      "front": "Frase de contexto com a palavra-alvo em <b>negrito</b>.",
+      "front": "${pageContext ? 'USE EXATAMENTE o mesmo trecho do Contexto da página fornecido, apenas colocando a palavra-alvo em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
       "back": "Significado preciso em português."
     }
   }
@@ -628,7 +628,11 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
             card_type: sourceType === 'video' ? 'listening' : 'reading',
             source_module: sourceType === 'video' ? 'video' : 'library',
             source_id: 'auto',
-            tts_text: sourceType !== 'video' ? text : undefined,
+            tts_text: sourceType !== 'video' ? (
+              dictionaryData.detected_language === 'en'
+                ? dictionaryData.english?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
+                : dictionaryData.portuguese?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
+            ) : undefined,
             video_clip: videoClip
           }}
           onClose={() => setShowAnkiEditor(false)}
