@@ -247,6 +247,7 @@ export interface YouTubeDownloadOptions {
   youtubeInfo?: any; 
   collectionId?: string;
   collectionName?: string;
+  selectedSubs?: string[];
   onProgress?: (percent: number) => void;
 }
 
@@ -254,7 +255,7 @@ export interface YouTubeDownloadOptions {
  * Baixa um vídeo do YouTube via yt-dlp, salva localmente e faz upload para o Drive.
  */
 export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): Promise<VideoItem> {
-  const { url, quality, filename, youtubeInfo, collectionId, collectionName, onProgress } = options;
+  const { url, quality, filename, youtubeInfo, collectionId, collectionName, selectedSubs, onProgress } = options;
   
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
@@ -273,18 +274,19 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
 
   try {
     // 1. Download
-    const localPath = await window.api.youtube.download(url, filename, quality);
+    const localPath = await window.api.youtube.download(url, filename, quality, selectedSubs);
+    const finalFilename = localPath.split(/[\\/]/).pop() || filename.replace(/\.mp4$/, '.mkv');
     
     // 2. Upload
-    const driveFileId = await uploadLocalFileToDrive(token, localPath, filename, (p) => {
+    const driveFileId = await uploadLocalFileToDrive(token, localPath, finalFilename, (p) => {
       if (onProgress) onProgress(95 + (p * 0.05)); // 95% a 100% para o upload
     });
 
     // 3. Database
     const newVideo: VideoItem = {
       id: crypto.randomUUID(),
-      title: filename.replace(/\.[^/.]+$/, ""),
-      original_name: filename,
+      title: finalFilename.replace(/\.[^/.]+$/, ""),
+      original_name: finalFilename,
       drive_file_id: driveFileId,
       is_local: true,
       file_path: localPath,
