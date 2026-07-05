@@ -60,6 +60,7 @@
     "htmldiff-js": "^1.0.5",
     "idb": "^8.0.3",
     "lucide-react": "^1.21.0",
+    "node-edge-tts": "^1.2.10",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

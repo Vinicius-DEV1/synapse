@@ -337,6 +337,17 @@ declare global {
         openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
         openFolderDialog: () => Promise<string | null>;
       };
+      anki?: {
+        getDecks: () => Promise<{ success: boolean; decks?: any[]; error?: string }>;
+        createDeck: (name: string, desc?: string) => Promise<{ success: boolean; id?: string; error?: string }>;
+        saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
+        getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
+        reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
+      };
+      audio?: {
+        generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+        extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      };
     };
   }
 }
