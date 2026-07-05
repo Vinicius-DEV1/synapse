@@ -29,6 +29,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
 
   const [availableSubs, setAvailableSubs] = useState<SubtitleOption[]>([]);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
+  const [subSearch, setSubSearch] = useState('');
 
   const handleFetchInfo = async () => {
     if (!url) return;
@@ -54,8 +55,15 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
           }
         });
       }
+      // Sort: manual first, then alphabetical
+      subs.sort((a, b) => {
+        if (a.isAuto === b.isAuto) return a.lang.localeCompare(b.lang);
+        return a.isAuto ? 1 : -1;
+      });
+
       setAvailableSubs(subs);
       setSelectedSubs([]);
+      setSubSearch('');
 
       if (info._type === 'playlist' || info.entries) {
         setIsPlaylist(true);
@@ -209,12 +217,26 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
 
                 {availableSubs.length > 0 && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-white/70 flex items-center gap-2">
-                      <MessageSquare size={14} className="text-brand-400" />
-                      Legendas para Embutir
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-white/70 flex items-center gap-2">
+                        <MessageSquare size={14} className="text-brand-400" />
+                        Legendas para Embutir
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="Buscar idioma..."
+                        value={subSearch}
+                        onChange={(e) => setSubSearch(e.target.value)}
+                        className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-brand-500 w-32"
+                      />
+                    </div>
                     <div className="max-h-[120px] overflow-y-auto bg-black/20 border border-white/10 rounded-lg p-2 flex flex-col gap-1">
-                      {availableSubs.map(sub => (
+                      {availableSubs
+                        .filter(sub => 
+                          sub.lang.toLowerCase().includes(subSearch.toLowerCase()) || 
+                          sub.name.toLowerCase().includes(subSearch.toLowerCase())
+                        )
+                        .map(sub => (
                         <label key={sub.lang} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-md cursor-pointer transition-colors group">
                           <input 
                             type="checkbox"
@@ -230,6 +252,9 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                           </span>
                         </label>
                       ))}
+                      {availableSubs.filter(sub => sub.lang.toLowerCase().includes(subSearch.toLowerCase()) || sub.name.toLowerCase().includes(subSearch.toLowerCase())).length === 0 && (
+                        <span className="text-xs text-dark-subtext p-2 text-center">Nenhuma legenda encontrada.</span>
+                      )}
                     </div>
                   </div>
                 )}
