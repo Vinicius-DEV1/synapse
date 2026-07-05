@@ -212,12 +212,12 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
               {card.card_type !== 'listening' && (
                 <div 
                   className="text-lg text-dark-text font-medium"
-                  dangerouslySetInnerHTML={{ __html: card.front.replace(/<\/?b>/g, '') }}
+                  dangerouslySetInnerHTML={{ __html: card.front }}
                 />
               )}
               <div 
                 className="text-base text-dark-subtext whitespace-pre-wrap leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: card.back.replace(/<\/?b>/g, '') }}
+                dangerouslySetInnerHTML={{ __html: card.back }}
               />
               {card.media_url && (
                 <button onClick={playAudio} className="mt-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm">
@@ -231,7 +231,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       </main>
 
       {/* Controls */}
-      <footer className="h-24 flex items-center justify-center p-4 bg-dark-bg">
+      <footer className="h-32 flex items-start justify-center pt-6 px-4 bg-dark-bg">
         {!showingAnswer ? (
           <button 
             onClick={() => setShowingAnswer(true)}
