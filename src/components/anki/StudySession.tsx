@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, RotateCcw, X, Volume2 } from 'lucide-react';
+import { Play, RotateCcw, X, Volume2, Edit3 } from 'lucide-react';
+import CardEditor from './CardEditor';
 
 interface Card {
   id: string;
@@ -7,7 +8,11 @@ interface Card {
   back: string;
   media_url?: string;
   card_type: 'reading' | 'listening';
+  card_type: 'reading' | 'listening';
   state: number;
+  extra_note?: string;
+  source_module?: string;
+  source_id?: string;
 }
 
 export default function StudySession({ deckId, onClose }: { deckId: string; onClose: () => void }) {
@@ -15,6 +20,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showingAnswer, setShowingAnswer] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
 
   useEffect(() => {
     loadDueCards();
@@ -97,6 +103,27 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
     }
   }, [currentIndex, showingAnswer, loading]);
 
+  if (editingCard) {
+    return (
+      <CardEditor
+        draft={{
+          front: editingCard.front,
+          back: editingCard.back,
+          extra_note: editingCard.extra_note,
+          media_url: editingCard.media_url,
+          card_type: editingCard.card_type,
+          source_module: editingCard.source_module,
+          source_id: editingCard.source_id
+        }}
+        editingCardId={editingCard.id}
+        onClose={() => {
+          setEditingCard(null);
+          loadDueCards();
+        }}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="absolute inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-50">
@@ -129,9 +156,14 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
         <div className="flex items-center gap-4 text-sm font-medium">
            <span className="text-dark-subtext">Cartão {currentIndex + 1} de {cards.length}</span>
         </div>
-        <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg">
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setEditingCard(cards[currentIndex])} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-colors" title="Editar Cartão">
+            <Edit3 className="w-5 h-5" />
+          </button>
+          <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Card Area */}
