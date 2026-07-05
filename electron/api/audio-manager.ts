@@ -1,6 +1,7 @@
 import { app, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { EdgeTTS } from 'node-edge-tts';
@@ -39,7 +40,17 @@ export function registerAudioHandlers() {
       const filePath = path.join(mediaDir, fileName);
 
       return new Promise((resolve) => {
-        ffmpeg(videoPath)
+        let safeVideoPath = videoPath;
+        if (safeVideoPath.startsWith('file://')) {
+          try {
+            safeVideoPath = fileURLToPath(safeVideoPath);
+          } catch(e) {
+            safeVideoPath = decodeURI(safeVideoPath.replace('file://', ''));
+            if (safeVideoPath.startsWith('/')) safeVideoPath = safeVideoPath.substring(1);
+          }
+        }
+        
+        ffmpeg(safeVideoPath)
           .setStartTime(startTimeMs / 1000)
           .setDuration((endTimeMs - startTimeMs) / 1000)
           .output(filePath)
