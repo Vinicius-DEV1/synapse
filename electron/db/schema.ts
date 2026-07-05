@@ -57,6 +57,8 @@ export function setupTables(): Promise<void> {
         promises.push(runSafe("ALTER TABLE videos ADD COLUMN collection_name TEXT;"));
         promises.push(runSafe("ALTER TABLE videos ADD COLUMN youtube_url TEXT;"));
         promises.push(runSafe("ALTER TABLE videos ADD COLUMN youtube_description TEXT;"));
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN audio_tracks_json TEXT;"));
+        promises.push(runSafe("ALTER TABLE videos ADD COLUMN subtitles_json TEXT;"));
 
         // LIBRARY TABLES
         if (attached.includes('library')) {
