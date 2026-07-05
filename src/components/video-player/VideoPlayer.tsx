@@ -280,9 +280,9 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   };
 
   const formatTime = (timeInSeconds: number) => {
-    const m = Math.floor(timeInSeconds / 60).toString().padStart(2, '0');
-    const s = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
     const h = Math.floor(timeInSeconds / 3600);
+    const m = Math.floor((timeInSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
     if (h > 0) {
       return `${h}:${m}:${s}`;
     }
