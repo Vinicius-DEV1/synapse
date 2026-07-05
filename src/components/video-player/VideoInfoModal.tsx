@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, Youtube } from 'lucide-react';
+import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types_video';
 
 interface VideoInfoModalProps {
@@ -81,7 +81,7 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
 
                 {video.youtube_url && (
                   <span className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded text-xs text-red-400">
-                    <Youtube size={12} /> YouTube
+                    <MonitorPlay size={12} /> YouTube
                   </span>
                 )}
               </div>
