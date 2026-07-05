@@ -73,17 +73,21 @@ export default function VideoView() {
     }
   };
 
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
+
   const handleDownload = async (video: VideoItem) => {
+    setIsDownloadingId(video.id);
     try {
       await downloadVideoToLocal(video);
       await loadVideos();
     } catch (e) {
       console.error("Erro ao baixar:", e);
       alert("Erro ao baixar o vídeo para uso local.");
+    } finally {
+      setIsDownloadingId(null);
     }
   };
-
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
 
   const handleDeleteLocal = async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
@@ -204,6 +208,7 @@ export default function VideoView() {
           onDeleteLocal={handleDeleteLocal}
           onDeleteCloud={handleDeleteCloud}
           isDeletingId={isDeletingId}
+          isDownloadingId={isDownloadingId}
         />
       </div>
 
