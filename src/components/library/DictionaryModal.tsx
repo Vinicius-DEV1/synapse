@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, BookType, Globe, Database, Sparkles, RefreshCw } from 'lucide-react';
+import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit } from 'lucide-react';
 import { getSettings } from '../../utils/settings';
 import { promptGemini } from '../../services/gemini';
+import CardEditor, { CardDraft } from '../anki/CardEditor';
 
 export interface Collocation {
   expression: string;
@@ -21,6 +22,11 @@ export interface DeepDive {
   progressive_examples: string[];
 }
 
+export interface AnkiCard {
+  front: string;
+  back: string;
+}
+
 interface LanguageData {
   word_class?: string;
   phonetic?: string;
@@ -32,6 +38,7 @@ interface LanguageData {
   is_rare_or_complex?: boolean;
   nuance_tag?: string;
   deep_dive?: DeepDive;
+  anki_card?: AnkiCard;
 }
 
 interface DictionaryData {
@@ -47,9 +54,10 @@ export interface DictionaryModalProps {
   preloadedData?: DictionaryData | null;
   onSaveHighlight?: (color: string, note: string) => void;
   sourceType?: 'book' | 'video';
+  videoClip?: { path: string; startMs: number; endMs: number };
 }
 
-export default function DictionaryModal({ text, pageContext, onClose, preloadedData, onSaveHighlight, sourceType = 'book' }: DictionaryModalProps) {
+export default function DictionaryModal({ text, pageContext, onClose, preloadedData, onSaveHighlight, sourceType = 'book', videoClip }: DictionaryModalProps) {
   const settings = getSettings();
   const [mode, setMode] = useState<'offline' | 'online'>(settings.dictionaryMode || (settings.hasOfflineDictionary ? 'offline' : 'online'));
   const [loading, setLoading] = useState(false);
@@ -59,6 +67,7 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
   const [error, setError] = useState<string | null>(null);
   const [selectedColloc, setSelectedColloc] = useState<Collocation | null>(null);
   const [savedLocally, setSavedLocally] = useState(!!preloadedData);
+  const [showAnkiEditor, setShowAnkiEditor] = useState(false);
 
   useEffect(() => {
     if (preloadedData) {
@@ -137,6 +146,10 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
         {"word": "synonym 5", "nuance": "when to use this vs the original word"}
       ],
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
+    },
+    "anki_card": {
+      "front": "Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)",
+      "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)"
     }
   }${isEnglishOnly ? '' : `,
   "portuguese": {
@@ -183,6 +196,10 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
         {"word": "sinônimo 1", "nuance": "quando usar"}
       ],
       "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
+    },
+    "anki_card": {
+      "front": "Frase de contexto com a palavra-alvo em <b>negrito</b>.",
+      "back": "Significado preciso em português."
     }
   }
 }
@@ -576,14 +593,47 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
               <span>{sourceType === 'video' ? 'Salvar no Vídeo' : 'Salvar no Livro'}</span>
             </button>
           )}
+
+          {dictionaryData && (dictionaryData.english?.anki_card || dictionaryData.portuguese?.anki_card) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAnkiEditor(true);
+              }}
+              className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors ml-2"
+            >
+              <BrainCircuit size={12} />
+              <span>Salvar no Anki</span>
+            </button>
+          )}
+
           {savedLocally && onSaveHighlight && (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400 ml-2">
               <Database size={12} />
               <span>{sourceType === 'video' ? 'Salvo no Vídeo' : 'Salvo Localmente'}</span>
             </div>
           )}
         </div>
       </div>
+
+      {showAnkiEditor && dictionaryData && (
+        <CardEditor 
+          draft={{
+            front: dictionaryData.detected_language === 'en' 
+              ? dictionaryData.english?.anki_card?.front || ''
+              : dictionaryData.portuguese?.anki_card?.front || '',
+            back: dictionaryData.detected_language === 'en'
+              ? dictionaryData.english?.anki_card?.back || ''
+              : dictionaryData.portuguese?.anki_card?.back || '',
+            card_type: sourceType === 'video' ? 'listening' : 'reading',
+            source_module: sourceType === 'video' ? 'video' : 'library',
+            source_id: 'auto',
+            tts_text: sourceType !== 'video' ? text : undefined,
+            video_clip: videoClip
+          }}
+          onClose={() => setShowAnkiEditor(false)}
+        />
+      )}
 
       {/* Sub-modal para Collocation */}
       {selectedColloc && (
