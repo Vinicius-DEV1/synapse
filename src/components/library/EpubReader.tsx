@@ -187,48 +187,6 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
            window.api.library.getHighlights(book.id).then((hls: LibraryHighlight[]) => {
               setHighlights(hls);
-              hls.forEach(h => {
-                if (h.rects) {
-                  const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-                  newRendition.annotations.highlight(h.rects, {}, (e: any) => {
-                      // Correção Crítica (Efeito Fantasma):
-                      // O EpubJS renderiza grifos como SVGs por cima do iframe. Quando o usuário clica no grifo,
-                      // o evento é disparado aqui, mas depois se propaga (bubble) até o document do iframe.
-                      // Se não impedirmos a propagação, o EpubJS vai disparar 'rendition.on("click")',
-                      // o que seria interpretado como um clique no fundo vazio, fechando o menu quase instantaneamente.
-                      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                      if (e && typeof e.preventDefault === 'function') e.preventDefault();
-                      
-                      globalLastHighlightClick = Date.now();
-                      
-                      // Cancelar o timer de limpeza do click geral — um grifo foi tocado
-                      if (clearSelectionTimerRef.current) {
-                        clearTimeout(clearSelectionTimerRef.current);
-                        clearSelectionTimerRef.current = null;
-                      }
-                      const rawRect = e.target.getBoundingClientRect();
-                      let offsetX = 0; let offsetY = 0;
-                      const iframe = e.target.ownerDocument?.defaultView?.frameElement;
-                      if (iframe) {
-                          const iframeRect = iframe.getBoundingClientRect();
-                          offsetX = iframeRect.left;
-                          offsetY = iframeRect.top;
-                      }
-                      const rect = {
-                          top: rawRect.top + offsetY, left: rawRect.left + offsetX,
-                          bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
-                          x: rawRect.x + offsetX, y: rawRect.y + offsetY,
-                          width: rawRect.width, height: rawRect.height,
-                          toJSON: rawRect.toJSON
-                      } as DOMRect;
-                      
-                      const contextText = e.target.parentNode?.textContent?.trim() || h.text_content;
-                      setSelection({ cfiRange: h.rects, text: h.text_content, rect, existingHighlightId: h.id, context: contextText });
-                      setNoteMode(h.color || 'yellow');
-                      setNoteText(h.note || '');
-                  }, '', { fill: colorMap[h.color] || colorMap.yellow, 'fill-opacity': '0.3', 'cursor': 'pointer' });
-                }
-              });
            });
            
            window.api.library.getBookmarks(book.id).then((bms: LibraryBookmark[]) => {
@@ -527,11 +485,35 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const timer = setTimeout(() => {
         if (rendition && highlights) {
           const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
+          
+          // Correção do Bug de Ghosting (Sobreposição e Zoom): 
+          // O método clear() nativo do epub.js não remove corretamente os SVGs do DOM sob certas condições de reflow.
+          // Para garantir que não teremos highlights órfãos ou duplicados escurecendo, removemos um por um pelo CFI.
+          highlights.forEach(h => {
+             if (h.rects) {
+               try {
+                  rendition.annotations.remove(h.rects, "highlight");
+               } catch (e) {}
+             }
+          });
+
+          // Fallback para limpar outras anotações fantasmas na memória
           try {
             rendition.annotations.clear();
           } catch (e) {
             console.warn("EpubJS clear annotations error:", e);
           }
+          
+          // E também apagamos forçadamente SVGs de anotações soltos no DOM do iframe.
+          try {
+            rendition.getContents().forEach((content: any) => {
+              const doc = content.document;
+              if (doc) {
+                const orphanedHighlights = doc.querySelectorAll('svg[class*="epubjs-hl"], svg[class*="epubjs-annotation"]');
+                orphanedHighlights.forEach((node: Element) => node.remove());
+              }
+            });
+          } catch (e) {}
           highlights.forEach(h => {
             if (h.rects) {
               try {
