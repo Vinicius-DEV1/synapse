@@ -48,7 +48,7 @@ export default function AnkiView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {decks.map(deck => (
-            <div key={deck.id} className="bg-white/5 p-6 rounded-2xl ring-1 ring-white/5 flex flex-col cursor-pointer hover:bg-white/10 hover:ring-indigo-500/50 transition-all duration-300 group">
+            <div key={deck.id} className="bg-dark-surface p-6 rounded-2xl border border-white/5 flex flex-col cursor-pointer hover:border-indigo-500/50 hover:shadow-lg transition-all duration-300 group">
               <h3 className="text-xl font-semibold mb-2 text-white/90 group-hover:text-white transition-colors">{deck.name}</h3>
               <p className="text-dark-subtext text-sm flex-1 leading-relaxed">{deck.description}</p>
               
@@ -62,7 +62,7 @@ export default function AnkiView() {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setManagingDeck(deck)}
-                    className="flex items-center justify-center bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-colors text-dark-subtext hover:text-white"
+                    className="flex items-center justify-center bg-dark-bg hover:bg-white/5 border border-white/5 p-2 rounded-xl transition-colors text-dark-subtext hover:text-white"
                     title="Gerenciar Baralho (Cards, Opções)"
                   >
                     <Settings className="w-5 h-5" />
