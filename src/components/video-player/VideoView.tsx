@@ -4,7 +4,7 @@ import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
 import YouTubeDownloadModal from './YouTubeDownloadModal';
-import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText } from '../../services/video-manager';
+import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText, deleteVideoAndSync } from '../../services/video-manager';
 import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, Youtube } from 'lucide-react';
 
 export default function VideoView() {
@@ -112,20 +112,15 @@ export default function VideoView() {
 
   const handleDeleteCloud = async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
-      await window.api.app.showConfirm(`Tem certeza que deseja apagar permanentemente '${video.title}'? O arquivo local também será removido.`) 
+      await window.api.app.showConfirm(`Tem certeza que deseja apagar permanentemente '${video.title}'? O arquivo local e os do Google Drive serão excluídos.`) 
       : 1;
 
     if (confirm !== 1) return;
 
     setIsDeletingId(video.id);
     try {
-      if (video.is_local) {
-        await window.api?.video?.deleteLocal(video.original_name);
-      }
-      if (window.api?.sync) {
-        await window.api.sync.deleteRow('videos', video.id);
-        await loadVideos();
-      }
+      await deleteVideoAndSync(video);
+      await loadVideos();
     } catch(e) {
       console.error("Erro ao excluir da nuvem", e);
     } finally {
