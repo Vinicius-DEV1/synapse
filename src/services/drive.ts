@@ -216,18 +216,38 @@ export async function uploadToDrive(
 /**
  * Baixa um arquivo do Google Drive
  */
-export async function downloadFromDrive(accessToken: string, fileId: string): Promise<ArrayBuffer> {
-  const res = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
+export async function downloadFromDrive(
+  accessToken: string, 
+  fileId: string,
+  onProgress?: (percent: number) => void
+): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', `${DRIVE_API_URL}/${fileId}?alt=media`, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+
+    if (onProgress) {
+      xhr.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
+      };
     }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error(`Erro ao baixar arquivo do Google Drive: ${xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Falha na rede durante o download.'));
+    
+    xhr.send();
   });
-
-  if (!res.ok) {
-    throw new Error(`Erro ao baixar arquivo do Google Drive: ${res.statusText}`);
-  }
-
-  return await res.arrayBuffer();
 }
 
 /**

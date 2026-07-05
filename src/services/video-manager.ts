@@ -18,7 +18,7 @@ export async function getVideoStreamLink(driveFileId: string): Promise<string> {
 /**
  * Baixa um vídeo do drive e salva localmente (apenas Desktop)
  */
-export async function downloadVideoToLocal(video: VideoItem): Promise<string> {
+export async function downloadVideoToLocal(video: VideoItem, onProgress?: (percent: number) => void): Promise<string> {
   if (!window.api?.video) {
     throw new Error("Download local só está disponível no ambiente Desktop.");
   }
@@ -28,7 +28,7 @@ export async function downloadVideoToLocal(video: VideoItem): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
-  const buffer = await downloadFromDrive(token, video.drive_file_id);
+  const buffer = await downloadFromDrive(token, video.drive_file_id, onProgress);
   const localPath = await window.api.video.saveLocal(video.original_name, buffer);
   
   // Atualiza banco de dados marcando como local
