@@ -3,6 +3,7 @@ import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey } from '../services/crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud } from '../services/sync';
+import { setDriveMasterKey } from '../services/drive';
 
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
@@ -83,6 +84,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }
+          setDriveMasterKey(masterKey);
           onSuccess();
         } else {
           triggerError(res.error || 'Erro ao configurar senha');
@@ -124,6 +126,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }
+          setDriveMasterKey(masterKey);
           onSuccess();
         } else {
           triggerError(res.error || 'Senha incorreta');

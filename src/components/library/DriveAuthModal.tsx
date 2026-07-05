@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Cloud, Key, CheckCircle, Loader2 } from 'lucide-react';
-import { getDriveAuthUrl, exchangeCodeForToken, saveDriveCredentials, getDriveCredentials } from '../../services/drive';
+import { getDriveAuthUrl, exchangeCodeForToken, saveDriveCredentials, getDriveCredentials, generateCodeVerifier, generateCodeChallenge } from '../../services/drive';
 
 interface DriveAuthModalProps {
   onClose: () => void;
@@ -23,7 +23,11 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
   }, []);
 
   const handleOpenAuth = async () => {
-    const url = getDriveAuthUrl();
+    const verifier = generateCodeVerifier();
+    sessionStorage.setItem('drive_code_verifier', verifier);
+    const challenge = await generateCodeChallenge(verifier);
+    const url = getDriveAuthUrl(challenge);
+    
     if (window.api?.drive) {
       await window.api.drive.openExternalUrl(url);
     } else {
@@ -36,11 +40,17 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
     e.preventDefault();
     if (!code.trim()) return;
 
+    const verifier = sessionStorage.getItem('drive_code_verifier');
+    if (!verifier) {
+      setError('Sessão de login expirou. Volte e clique no botão de login novamente.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       
-      const token = await exchangeCodeForToken(code.trim());
+      const token = await exchangeCodeForToken(code.trim(), verifier);
       await saveDriveCredentials(token);
       
       setAlreadyAuthed(true);
@@ -60,6 +70,7 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
     setAlreadyAuthed(false);
     setStep(1);
     setCode('');
+    sessionStorage.removeItem('drive_code_verifier');
   };
 
   return (
