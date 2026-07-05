@@ -100,8 +100,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
     return (
       <CardEditor
         draft={{
-          front: editingCard.front,
-          back: editingCard.back,
+          front: editingCard.front.replace(/<\/?b>/g, ''),
+          back: editingCard.back.replace(/<\/?b>/g, ''),
           extra_note: editingCard.extra_note,
           media_url: editingCard.media_url,
           card_type: editingCard.card_type,
@@ -148,16 +148,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
         <div className="flex-1 flex flex-col overflow-hidden relative">
           
           {showSettings && (
-            <div className="absolute top-0 left-0 right-0 bg-dark-surface/95 backdrop-blur p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
+            <div className="absolute top-0 left-0 right-0 bg-dark-surface p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
               <h3 className="text-lg font-medium mb-4 text-dark-text">Configurações do Baralho</h3>
               <div className="space-y-4 max-w-md">
                 <div>
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Nome do Baralho</label>
-                  <input type="text" value={deckName} onChange={e => setDeckName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:bg-white/10" />
+                  <input type="text" value={deckName} onChange={e => setDeckName(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição</label>
-                  <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:bg-white/10" />
+                  <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
                 </div>
                 <div className="flex justify-between pt-4">
                   <button onClick={handleDeleteDeck} className="text-red-400 hover:text-red-300 text-sm font-medium">Excluir Baralho Inteiro</button>
@@ -176,7 +176,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                 placeholder="Buscar cartões..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-transparent rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 hover:bg-white/10 transition-all placeholder-dark-subtext/50"
+                className="w-full pl-10 pr-4 py-2 bg-dark-surface border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
               />
             </div>
             
@@ -217,7 +217,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {filteredCards.map(card => (
-                    <tr key={card.id} className="hover:bg-white/[0.03] transition-colors group">
+                    <tr key={card.id} className="hover:bg-dark-surface transition-colors group">
                       <td className="p-3">
                         <input 
                           type="checkbox" 
@@ -226,8 +226,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                           className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
-                      <td className="p-3 text-sm text-dark-text max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.front }}></td>
-                      <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back }}></td>
+                      <td className="p-3 text-sm text-dark-text max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.front.replace(/<\/?b>/g, '') }}></td>
+                      <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back.replace(/<\/?b>/g, '') }}></td>
                       <td className="p-3 text-center">
                         {card.media_url && (
                           <button onClick={() => playAudio(card.media_url)} className="text-dark-subtext hover:text-indigo-400 p-1">
