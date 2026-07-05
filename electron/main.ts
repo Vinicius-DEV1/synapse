@@ -9,6 +9,8 @@ import { registerSyncHandlers } from './ipc/sync';
 import { registerConfigHandlers } from './ipc/config';
 import { registerCultureHandlers } from './ipc/cultureIpc';
 import { setupVideoIpc } from './ipc/video';
+import { registerAudioHandlers } from './api/audio-manager';
+import { registerAnkiHandlers } from './api/anki-manager';
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
@@ -102,6 +104,8 @@ app.whenReady().then(() => {
   registerSyncHandlers();
   registerConfigHandlers();
   setupVideoIpc();
+  registerAudioHandlers();
+  registerAnkiHandlers();
 
   // Preferências
   ipcMain.handle('auth:set-preferences', async (_, prefs: { autoLockOnSuspend: boolean }) => {

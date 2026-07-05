@@ -162,6 +162,21 @@ contextBridge.exposeInMainWorld('api', {
   // Log (diagnóstico temporário)
   log: (message: string) => invokeWithSync('log:write', message),
 
+  // Anki
+  anki: {
+    getDecks: () => invokeWithSync('anki:get-decks'),
+    createDeck: (name: string, desc?: string) => invokeWithSync('anki:create-deck', name, desc),
+    saveCard: (cardData: any) => invokeWithSync('anki:save-card', cardData),
+    getDueCards: (deckId: string) => invokeWithSync('anki:get-due-cards', deckId),
+    reviewCard: (cardId: string, rating: number) => invokeWithSync('anki:review-card', cardId, rating),
+  },
+
+  // Audio
+  audio: {
+    generateTTS: (text: string, lang?: string) => invokeWithSync('audio:generate-tts', text, lang),
+    extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => invokeWithSync('audio:extract-clip', videoPath, startTimeMs, endTimeMs),
+  },
+
   // Sync Trigger (internal hook for React)
   onSyncTrigger: (callback: () => void) => {
     syncCallbacks.push(callback);
