@@ -148,16 +148,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
         <div className="flex-1 flex flex-col overflow-hidden relative">
           
           {showSettings && (
-            <div className="absolute top-0 left-0 right-0 bg-dark-bg p-6 border-b border-dark-border z-10 animate-fade-in shadow-xl">
+            <div className="absolute top-0 left-0 right-0 bg-dark-surface/95 backdrop-blur p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
               <h3 className="text-lg font-medium mb-4 text-dark-text">Configurações do Baralho</h3>
               <div className="space-y-4 max-w-md">
                 <div>
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Nome do Baralho</label>
-                  <input type="text" value={deckName} onChange={e => setDeckName(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded px-3 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500" />
+                  <input type="text" value={deckName} onChange={e => setDeckName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:bg-white/10" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição</label>
-                  <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded px-3 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500" />
+                  <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:bg-white/10" />
                 </div>
                 <div className="flex justify-between pt-4">
                   <button onClick={handleDeleteDeck} className="text-red-400 hover:text-red-300 text-sm font-medium">Excluir Baralho Inteiro</button>
@@ -168,7 +168,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
           )}
 
           {/* Toolbar */}
-          <div className="p-4 border-b border-dark-border flex justify-between items-center bg-dark-surface/50">
+          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-transparent">
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-subtext" />
               <input 
@@ -176,7 +176,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                 placeholder="Buscar cartões..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-transparent rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 hover:bg-white/10 transition-all placeholder-dark-subtext/50"
               />
             </div>
             
@@ -215,9 +215,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                     <th className="p-3 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-border/30">
+                <tbody className="divide-y divide-white/5">
                   {filteredCards.map(card => (
-                    <tr key={card.id} className="hover:bg-white/5 transition-colors group">
+                    <tr key={card.id} className="hover:bg-white/[0.03] transition-colors group">
                       <td className="p-3">
                         <input 
                           type="checkbox" 
@@ -236,7 +236,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                         )}
                       </td>
                       <td className="p-3 text-xs text-dark-subtext">
-                        <span className="px-2 py-1 rounded bg-dark-border/50">{card.card_type}</span>
+                        <span className="px-2 py-1 rounded bg-white/5 text-dark-subtext border border-white/10">{card.card_type}</span>
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

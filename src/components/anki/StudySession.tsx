@@ -165,7 +165,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   return (
     <div className="absolute inset-0 bg-dark-bg flex flex-col z-50 select-text">
       {/* Header */}
-      <header className="h-14 border-b border-dark-border flex items-center justify-between px-6 bg-dark-surface/50 backdrop-blur">
+      <header className="h-16 flex items-center justify-between px-8">
         <div className="flex items-center gap-4 text-sm font-medium">
            <span className="text-dark-subtext">Cartão {currentIndex + 1} de {cards.length}</span>
         </div>
@@ -184,14 +184,14 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
       {/* Card Area */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-dark-surface rounded-2xl border border-dark-border shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
+        <div className="w-full max-w-2xl bg-white/[0.02] rounded-3xl border border-white/5 shadow-[0_0_60px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
           <div className="flex-1 p-10 flex flex-col items-center justify-center text-center relative">
             {card.card_type === 'listening' ? (
               <button 
                 onClick={playAudio}
-                className="w-20 h-20 bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center hover:bg-indigo-600/40 transition-colors cursor-pointer"
+                className="w-24 h-24 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center hover:bg-indigo-500/20 hover:scale-105 transition-all duration-300 cursor-pointer shadow-[0_0_30px_rgba(99,102,241,0.1)]"
               >
                 <Volume2 className="w-10 h-10" />
               </button>
@@ -204,11 +204,11 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           </div>
 
           {/* Divider */}
-          {showingAnswer && <div className="h-px w-full bg-dark-border" />}
+          {showingAnswer && <div className="h-px w-full bg-white/5" />}
 
           {/* Back */}
           {showingAnswer && (
-            <div className="flex-1 p-10 flex flex-col items-center justify-center text-center bg-white/5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex-1 p-10 flex flex-col items-center justify-center text-center bg-white/[0.01] animate-in fade-in slide-in-from-bottom-4 duration-300">
               {card.card_type === 'listening' && (
                 <div 
                   className="text-2xl text-dark-text mb-6 font-medium"
@@ -235,27 +235,27 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
         {!showingAnswer ? (
           <button 
             onClick={() => setShowingAnswer(true)}
-            className="px-12 py-4 bg-dark-surface border border-dark-border rounded-xl text-lg font-medium hover:bg-white/5 hover:border-indigo-500 transition-all w-full max-w-md"
+            className="px-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-lg font-medium hover:bg-white/10 hover:border-white/20 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl hover:-translate-y-1"
           >
             Mostrar Resposta <span className="ml-2 text-dark-subtext text-sm">(Espaço)</span>
           </button>
         ) : (
-          <div className="flex gap-4 w-full max-w-2xl px-4">
-            <button onClick={() => handleRating(1)} className="flex-1 py-3 px-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-medium flex flex-col items-center justify-center gap-1">
-              <span>Errei (Again)</span>
-              <span className="text-xs opacity-60">1</span>
+          <div className="flex gap-4 w-full max-w-2xl px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <button onClick={() => handleRating(1)} className="flex-1 py-4 px-2 rounded-2xl bg-red-500/5 hover:bg-red-500/15 text-red-400 border border-red-500/10 hover:border-red-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 hover:-translate-y-1">
+              <span>Errei</span>
+              <span className="text-xs opacity-50 font-normal">Again (1)</span>
             </button>
-            <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/20 font-medium flex flex-col items-center justify-center gap-1">
-              <span>Difícil (Hard)</span>
-              <span className="text-xs opacity-60">2</span>
+            <button onClick={() => handleRating(2)} className="flex-1 py-4 px-2 rounded-2xl bg-orange-500/5 hover:bg-orange-500/15 text-orange-400 border border-orange-500/10 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 hover:-translate-y-1">
+              <span>Difícil</span>
+              <span className="text-xs opacity-50 font-normal">Hard (2)</span>
             </button>
-            <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 font-medium flex flex-col items-center justify-center gap-1">
-              <span>Bom (Good)</span>
-              <span className="text-xs opacity-60">3</span>
+            <button onClick={() => handleRating(3)} className="flex-1 py-4 px-2 rounded-2xl bg-green-500/5 hover:bg-green-500/15 text-green-400 border border-green-500/10 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 hover:-translate-y-1">
+              <span>Bom</span>
+              <span className="text-xs opacity-50 font-normal">Good (3)</span>
             </button>
-            <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20 font-medium flex flex-col items-center justify-center gap-1">
-              <span>Fácil (Easy)</span>
-              <span className="text-xs opacity-60">4</span>
+            <button onClick={() => handleRating(4)} className="flex-1 py-4 px-2 rounded-2xl bg-blue-500/5 hover:bg-blue-500/15 text-blue-400 border border-blue-500/10 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 hover:-translate-y-1">
+              <span>Fácil</span>
+              <span className="text-xs opacity-50 font-normal">Easy (4)</span>
             </button>
           </div>
         )}
