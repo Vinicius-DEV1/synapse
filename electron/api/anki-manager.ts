@@ -7,7 +7,20 @@ export function registerAnkiHandlers() {
     return new Promise((resolve) => {
       getDb().all('SELECT * FROM anki.anki_decks ORDER BY created_at DESC', (err, rows) => {
         if (err) return resolve({ success: false, error: err.message });
-        resolve({ success: true, decks: rows });
+        if (rows.length === 0) {
+          // Auto-create default deck
+          const id = crypto.randomUUID();
+          getDb().run(
+            'INSERT INTO anki.anki_decks (id, name, description) VALUES (?, ?, ?)',
+            [id, 'Vocabulário Geral', 'Baralho principal gerado automaticamente'],
+            (insertErr) => {
+              if (insertErr) return resolve({ success: false, error: insertErr.message });
+              resolve({ success: true, decks: [{ id, name: 'Vocabulário Geral', description: 'Baralho principal gerado automaticamente', created_at: new Date().toISOString() }] });
+            }
+          );
+        } else {
+          resolve({ success: true, decks: rows });
+        }
       });
     });
   });
