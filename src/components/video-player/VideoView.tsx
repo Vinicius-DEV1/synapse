@@ -12,7 +12,9 @@ export default function VideoView() {
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>(() => {
+    return (localStorage.getItem('videoViewMode') as any) || 'grid';
+  });
   
   // Player state
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
@@ -145,21 +147,21 @@ export default function VideoView() {
         <div className="flex items-center gap-4">
           <div className="flex items-center bg-dark-card border border-white/10 rounded-lg p-1">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => { setViewMode('grid'); localStorage.setItem('videoViewMode', 'grid'); }}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
               title="Visualização em Grade"
             >
               <LayoutGrid size={18} />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => { setViewMode('list'); localStorage.setItem('videoViewMode', 'list'); }}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
               title="Visualização em Lista"
             >
               <List size={18} />
             </button>
             <button
-              onClick={() => setViewMode('compact')}
+              onClick={() => { setViewMode('compact'); localStorage.setItem('videoViewMode', 'compact'); }}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
               title="Visualização Compacta"
             >
