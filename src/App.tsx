@@ -10,6 +10,7 @@ import FinanceView from './components/finance/FinanceView';
 import LibraryView from './components/library/LibraryView';
 import CultureView from './components/culture/CultureView';
 import VideoView from './components/video-player/VideoView';
+import AnkiView from './components/anki/AnkiView';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
@@ -221,6 +222,8 @@ function AppContent() {
         document.title = 'Cultura';
       } else if (activeModule === 'finance') {
         document.title = 'Finanças';
+      } else if (activeModule === 'anki') {
+        document.title = 'Flashcards';
       } else {
         document.title = 'Caderno Web';
       }
@@ -284,6 +287,8 @@ function AppContent() {
                   <CultureView />
                 ) : tabModule === 'video' ? (
                   <VideoView />
+                ) : tabModule === 'anki' ? (
+                  <AnkiView />
                 ) : (
                   <FinanceView />
                 )}
