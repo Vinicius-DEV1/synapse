@@ -223,58 +223,84 @@ export function setupVideoIpc() {
     };
   });
   ipcMain.handle('youtube:fetchInfo', async (_, url: string) => {
-    try {
-      const youtubedl = require('youtube-dl-exec');
-      const output = await youtubedl(url, {
-        dumpSingleJson: true,
-        noCheckCertificates: true,
-        noWarnings: true,
-        preferFreeFormats: true,
-        addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
-      });
-      return output;
-    } catch (e: any) {
-      console.error('Failed to fetch youtube info', e);
-      throw new Error(e.message || 'Falha ao buscar informações do vídeo');
-    }
+    return new Promise((resolve, reject) => {
+      try {
+        const { spawn } = require('child_process');
+        const youtubedl = require('youtube-dl-exec');
+        const ytdlPath = youtubedl.constants.YOUTUBE_DL_PATH;
+
+        const args = [
+          url,
+          '--dump-single-json',
+          '--no-check-certificates',
+          '--no-warnings',
+          '--prefer-free-formats',
+          '--add-header', 'referer:youtube.com',
+          '--add-header', 'user-agent:Mozilla/5.0'
+        ];
+
+        const subprocess = spawn(ytdlPath, args, { shell: false });
+        let stdoutData = '';
+        let stderrData = '';
+
+        subprocess.stdout.on('data', (data: Buffer) => { stdoutData += data.toString(); });
+        subprocess.stderr.on('data', (data: Buffer) => { stderrData += data.toString(); });
+
+        subprocess.on('close', (code: number) => {
+          if (code === 0) {
+            try {
+              resolve(JSON.parse(stdoutData));
+            } catch (e) {
+              reject(new Error("Falha ao ler dados do vídeo."));
+            }
+          } else {
+            console.error('youtube-dl stderr:', stderrData);
+            reject(new Error(`Falha ao buscar informações do vídeo (Code: ${code})`));
+          }
+        });
+      } catch (e: any) {
+        reject(e);
+      }
+    });
   });
 
   ipcMain.handle('youtube:download', async (event, url: string, filename: string, quality: string, subs?: string[]) => {
     const videosDir = await getVideosDir();
-    // Forçamos mkv se tiver legenda embutida, ou sempre mkv para melhor compatibilidade com as trilhas
     const finalFilename = filename.replace(/\.mp4$/, '.mkv');
     const destPath = path.join(videosDir, finalFilename);
     
     return new Promise((resolve, reject) => {
       try {
+        const { spawn } = require('child_process');
         const youtubedl = require('youtube-dl-exec');
-        // Quality can be 'best', or specific format codes.
+        const ytdlPath = youtubedl.constants.YOUTUBE_DL_PATH;
+        
         const formatCode = quality === 'best' ? 'bestvideo+bestaudio/best' : quality;
         
-        const ytdlOptions: any = {
-          output: `"${destPath}"`,
-          format: formatCode,
-          mergeOutputFormat: 'mkv',
-          ffmpegLocation: ffmpegStatic ? `"${ffmpegStatic}"` : undefined,
-          noCheckCertificates: true,
-          noWarnings: true,
-          preferFreeFormats: true,
-          addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
-        };
+        const args = [
+          url,
+          '--output', destPath,
+          '--format', formatCode,
+          '--merge-output-format', 'mkv',
+          '--no-check-certificates',
+          '--no-warnings',
+          '--prefer-free-formats',
+          '--add-header', 'referer:youtube.com',
+          '--add-header', 'user-agent:Mozilla/5.0'
+        ];
+
+        if (ffmpegStatic) {
+          args.push('--ffmpeg-location', ffmpegStatic);
+        }
 
         if (subs && subs.length > 0) {
-          ytdlOptions.writeSubs = true;
-          ytdlOptions.writeAutoSubs = true;
-          ytdlOptions.subLangs = subs.join(',');
-          ytdlOptions.embedSubs = true;
-          ytdlOptions.compatOptions = 'no-keep-subs'; // limpa os VTT soltos
+          args.push('--write-subs', '--write-auto-subs', '--sub-langs', subs.join(','), '--embed-subs', '--compat-options', 'no-keep-subs');
         }
         
-        const subprocess = youtubedl.exec(url, ytdlOptions);
+        const subprocess = spawn(ytdlPath, args, { shell: false });
 
-        subprocess.stdout?.on('data', (data: Buffer) => {
+        subprocess.stdout.on('data', (data: Buffer) => {
           const str = data.toString();
-          // yt-dlp outputs progress like: "[download]  15.3% of 50.00MiB at  1.50MiB/s ETA 00:30"
           const match = str.match(/\[download\]\s+([\d\.]+)%/);
           if (match && match[1]) {
             const percent = parseFloat(match[1]);
@@ -284,7 +310,7 @@ export function setupVideoIpc() {
           }
         });
 
-        subprocess.stderr?.on('data', (data: Buffer) => {
+        subprocess.stderr.on('data', (data: Buffer) => {
           console.error(`[youtube-dl] stderr: ${data.toString()}`);
         });
 
