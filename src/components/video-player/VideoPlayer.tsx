@@ -45,6 +45,40 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   // Errors
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Resume Progress
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [savedProgress] = useState(video.progress || 0);
+
+  useEffect(() => {
+    if (savedProgress > 5) {
+      setShowResumePrompt(true);
+    }
+  }, [savedProgress]);
+
+  useEffect(() => {
+    if (showResumePrompt) {
+      const timer = setTimeout(() => setShowResumePrompt(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showResumePrompt]);
+
+  const saveProgress = (currentTime: number) => {
+    if (window.api?.sync && currentTime > 0) {
+      const updated = { ...video, progress: currentTime };
+      window.api.sync.upsertRow('videos', updated).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      if (videoRef.current) {
+        saveProgress(videoRef.current.currentTime);
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isPlaying, video]);
+
   // Initialize tracks from JSON
   useEffect(() => {
     try {
@@ -187,10 +221,12 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
            audioRef.current.play();
         }
         setIsPlaying(true);
+        if (showResumePrompt) setShowResumePrompt(false);
       } else {
         videoRef.current.pause();
         if (audioRef.current) audioRef.current.pause();
         setIsPlaying(false);
+        saveProgress(videoRef.current.currentTime);
       }
     }
   };
@@ -426,6 +462,18 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
             </div>
           )}
         </div>
+
+        {/* Play/Pause Center Button */}
+        {showControls && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <button 
+              onClick={togglePlay}
+              className="bg-black/50 p-6 rounded-full text-white pointer-events-auto hover:bg-brand-500/80 hover:scale-110 transition-all duration-300"
+            >
+              {isPlaying ? <Pause size={48} /> : <Play size={48} className="ml-2" />}
+            </button>
+          </div>
+        )}
 
         {/* Bottom Bar Controls */}
         <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
