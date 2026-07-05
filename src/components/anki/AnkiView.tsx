@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Play, BrainCircuit } from 'lucide-react';
+import { Plus, Play, BrainCircuit, Settings } from 'lucide-react';
 import StudySession from './StudySession';
+import DeckBrowser from './DeckBrowser';
 
 export default function AnkiView() {
   const [decks, setDecks] = useState<any[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
+  const [managingDeck, setManagingDeck] = useState<any | null>(null);
 
   useEffect(() => {
     loadDecks();
@@ -57,13 +59,22 @@ export default function AnkiView() {
                   <div className="text-green-400" title="Revisões Feitas">0</div>
                 </div>
                 
-                <button 
-                  onClick={() => setStudyingDeckId(deck.id)}
-                  className="flex items-center gap-2 bg-dark-bg hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded text-sm transition-colors border border-dark-border"
-                >
-                  <Play className="w-4 h-4" />
-                  Estudar
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setManagingDeck(deck)}
+                    className="flex items-center gap-2 bg-dark-bg hover:bg-white/10 px-3 py-1.5 rounded text-sm transition-colors border border-dark-border text-dark-subtext"
+                    title="Gerenciar Baralho (Cards, Opções)"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setStudyingDeckId(deck.id)}
+                    className="flex items-center gap-2 bg-dark-bg hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded text-sm transition-colors border border-dark-border"
+                  >
+                    <Play className="w-4 h-4" />
+                    Estudar
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -78,6 +89,17 @@ export default function AnkiView() {
       
       {studyingDeckId && (
         <StudySession deckId={studyingDeckId} onClose={() => setStudyingDeckId(null)} />
+      )}
+
+      {managingDeck && (
+        <DeckBrowser 
+          deck={managingDeck} 
+          onClose={() => setManagingDeck(null)} 
+          onDeckDeleted={() => {
+            setManagingDeck(null);
+            loadDecks();
+          }} 
+        />
       )}
     </div>
   );

@@ -343,6 +343,13 @@ declare global {
         saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
         getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
         reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
+        getAllCards: (deckId?: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
+        deleteCard: (cardId: string) => Promise<{ success: boolean; error?: string }>;
+        deleteCardsBulk: (cardIds: string[]) => Promise<{ success: boolean; error?: string }>;
+        updateCard: (cardId: string, data: any) => Promise<{ success: boolean; error?: string }>;
+        moveCards: (cardIds: string[], newDeckId: string) => Promise<{ success: boolean; error?: string }>;
+        updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
+        deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
       };
       audio?: {
         generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
