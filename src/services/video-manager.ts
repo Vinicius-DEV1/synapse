@@ -277,6 +277,27 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
     const localPath = await window.api.youtube.download(url, filename, quality, selectedSubs);
     const finalFilename = localPath.split(/[\\/]/).pop() || filename.replace(/\.mp4$/, '.mkv');
     
+    // 1.5. Extract Subtitle (if available)
+    let localSubtitlePath: string | undefined = undefined;
+    let driveSubtitleId: string | undefined = undefined;
+    
+    if (selectedSubs && selectedSubs.length > 0) {
+      try {
+        const scanResult = await window.api.video.scanTracks(localPath);
+        if (scanResult.subtitles && scanResult.subtitles.length > 0) {
+          const firstSubIndex = scanResult.subtitles[0].index;
+          const vttContent = await window.api.video.extractSubtitles(localPath, firstSubIndex);
+          if (vttContent) {
+            const subFilename = `${finalFilename}_sub.vtt`;
+            localSubtitlePath = await window.api.video.saveLocal(subFilename, new TextEncoder().encode(vttContent).buffer as ArrayBuffer);
+            driveSubtitleId = await uploadLocalFileToDrive(token, localSubtitlePath, subFilename);
+          }
+        }
+      } catch (e) {
+        console.error("Falha ao extrair legenda do youtube:", e);
+      }
+    }
+
     // 2. Upload
     const driveFileId = await uploadLocalFileToDrive(token, localPath, finalFilename, (p) => {
       if (onProgress) onProgress(95 + (p * 0.05)); // 95% a 100% para o upload
@@ -288,9 +309,10 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
       title: finalFilename.replace(/\.[^/.]+$/, ""),
       original_name: finalFilename,
       drive_file_id: driveFileId,
+      drive_subtitle_id: driveSubtitleId,
       is_local: true,
       file_path: localPath,
-      progress: 0,
+      local_subtitle_path: localSubtitlePath,
       collection_id: collectionId,
       collection_name: collectionName,
       youtube_url: url,
