@@ -410,8 +410,8 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     let video_clip = undefined;
     if (currentIndex !== -1) {
       const cue = cues[currentIndex];
-      const startMs = Math.max(0, (cue.startTime - 1) * 1000);
-      const endMs = (cue.endTime + 1) * 1000;
+      const startMs = Math.max(0, (cue.startTime - 0.5) * 1000);
+      const endMs = (cue.endTime + 0.5) * 1000;
       video_clip = { path: video.local_path || src, startMs, endMs };
     }
 
