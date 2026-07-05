@@ -62,10 +62,14 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     }
   }, [showResumePrompt]);
 
-  const saveProgress = (currentTime: number) => {
+  const saveProgress = async (currentTime: number) => {
     if (window.api?.sync && currentTime > 0) {
       const updated = { ...video, progress: currentTime };
-      window.api.sync.upsertRow('videos', updated).catch(console.error);
+      try {
+        await window.api.sync.upsertRow('videos', updated);
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
@@ -262,9 +266,9 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (videoRef.current) {
-      saveProgress(videoRef.current.currentTime);
+      await saveProgress(videoRef.current.currentTime);
     }
     onClose();
   };
