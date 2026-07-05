@@ -5,6 +5,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
+import { getDb } from '../db/connection';
+
 export function setupVideoIpc() {
   if (ffmpegStatic) {
     ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -12,19 +14,48 @@ export function setupVideoIpc() {
   if (ffprobeStatic && ffprobeStatic.path) {
     ffmpeg.setFfprobePath(ffprobeStatic.path);
   }
+  
   // Get or create the videos directory
   const getVideosDir = async () => {
-    // We use the userData directory for standard storage, or a subfolder in the app if requested.
-    // The user requested: "pasta do projeto/videos, mais ele pode alterar nas configurações"
-    // For now we default to a 'videos' folder in userData which is safe for Electron
-    const videosDir = path.join(app.getPath('userData'), 'videos');
-    try {
-      await fs.mkdir(videosDir, { recursive: true });
-    } catch (e) {
-      console.error('Failed to create videos directory', e);
-    }
-    return videosDir;
+    return new Promise<string>((resolve) => {
+      try {
+        const db = getDb();
+        db.get('SELECT data FROM config WHERE id = ?', ['videoStoragePath'], async (err, row: any) => {
+          let videosDir = path.join(app.getPath('userData'), 'videos');
+          
+          if (!err && row && row.data) {
+            const customPath = JSON.parse(row.data);
+            if (customPath && typeof customPath === 'string') {
+              videosDir = customPath;
+            }
+          }
+          
+          try {
+            await fs.mkdir(videosDir, { recursive: true });
+          } catch (e) {
+            console.error('Failed to create videos directory', e);
+          }
+          resolve(videosDir);
+        });
+      } catch (e) {
+        const fallback = path.join(app.getPath('userData'), 'videos');
+        resolve(fallback);
+      }
+    });
   };
+
+  ipcMain.handle('video:openFolderDialog', async () => {
+    const { dialog } = require('electron');
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Selecione a pasta para salvar os vídeos'
+    });
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
 
   ipcMain.handle('video:getLocalPath', async (_, filename: string) => {
     const videosDir = await getVideosDir();

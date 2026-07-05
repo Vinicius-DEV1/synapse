@@ -335,6 +335,7 @@ declare global {
         extractSubtitles: (localPath: string, trackIndex?: string) => Promise<string | null>;
         scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;
         openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
+        openFolderDialog: () => Promise<string | null>;
       };
     };
   }
