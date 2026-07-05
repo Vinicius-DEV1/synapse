@@ -26,7 +26,7 @@ export function closeDb(): Promise<void> {
  * Deriva uma chave AES-256 a partir da senha.
  */
 function deriveKeyFromPassword(password: string): Buffer {
-  return crypto.pbkdf2Sync(password, 'caderno-keychain-salt', 100000, 32, 'sha256');
+  return crypto.pbkdf2Sync(password, 'caderno-keychain-salt', 600000, 32, 'sha256');
 }
 
 export function encryptModuleKey(moduleKey: string, password: string): string {
