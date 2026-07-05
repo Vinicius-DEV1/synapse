@@ -183,7 +183,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       </header>
 
       {/* Card Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 pb-24 sm:pb-32 overflow-y-auto">
         <div className="w-full max-w-2xl bg-dark-surface rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
