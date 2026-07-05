@@ -62,69 +62,147 @@ export async function resolveVideoUrl(video: VideoItem): Promise<string> {
   throw new Error("Vídeo não foi encontrado nem localmente nem na nuvem.");
 }
 
+import type { UploadOptions } from '../components/video-player/VideoUploadModal';
+import type { TrackItem } from '../types_video';
+
+/**
+ * Helper to upload a local file to Drive via fetch
+ */
+async function uploadLocalFileToDrive(token: string, localPath: string, driveFileName: string, onProgress?: (p: number) => void) {
+  const fileReq = await fetch('file:///' + localPath.replace(/\\/g, '/'));
+  const blob = await fileReq.blob();
+  const buffer = await blob.arrayBuffer();
+  const { uploadToDrive } = await import('./drive');
+  return await uploadToDrive(token, driveFileName, buffer, false, onProgress);
+}
+
 /**
  * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
  */
-export async function uploadNewVideo(
-  file: File, 
-  subtitleText: string | null,
-  trackIndex?: string,
-  duration?: number,
-  onProgress?: (percent: number) => void
-): Promise<VideoItem> {
+export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem> {
+  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], onProgress } = options;
+  
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
-  const buffer = await file.arrayBuffer();
-  // uploadToDrive (definido em drive.ts) faz o upload na pasta do app
-  const fileId = await uploadToDrive(token, file.name, buffer, false, onProgress);
-  
   let isLocal = false;
   let localPath: string | undefined = undefined;
-
-  // Usa a propriedade electronPath injetada pelo nosso botão nativo
+  let mainFileId = '';
+  
   const sourcePath = (file as any).electronPath;
+  const baseName = file.name.replace(/\.[^/.]+$/, "");
   
-  if (sourcePath && window.api?.video?.copyLocal) {
-    try {
-      localPath = await window.api.video.copyLocal(sourcePath, file.name);
-      isLocal = true;
-    } catch (e) {
-      console.warn("Não foi possível copiar arquivo localmente:", e);
-    }
-  }
+  if (onProgress) onProgress(5); 
 
-  let finalSubtitleText = subtitleText;
-  
-  // Tenta extrair legenda embutida automaticamente se for local e não foi fornecida legenda externa
-  // Apenas extrai se um trackIndex for passado pelo usuário
-  if (!finalSubtitleText && isLocal && localPath && window.api?.video?.extractSubtitles && trackIndex) {
+  if (sourcePath && window.api?.video) {
     try {
-      if (onProgress) onProgress(99); // Mocking extraction progress visually
-      const extractedVtt = await window.api.video.extractSubtitles(localPath, trackIndex);
-      if (extractedVtt) {
-        finalSubtitleText = extractedVtt;
+      if (primaryAudioTrack && (window.api.video as any).remuxDefaultTrack) {
+        if (onProgress) onProgress(15); 
+        // 1. Remux the video
+        localPath = await (window.api.video as any).remuxDefaultTrack(sourcePath, file.name, primaryAudioTrack);
+        isLocal = true;
+        
+        if (onProgress) onProgress(40);
+        // Upload the remuxed video instead of the original
+        mainFileId = await uploadLocalFileToDrive(token, localPath, file.name, (p) => {
+          if (onProgress) onProgress(40 + (p * 0.3)); // 40 to 70%
+        });
+      } else if (window.api.video.copyLocal) {
+        // Fallback or no primary track selected
+        localPath = await window.api.video.copyLocal(sourcePath, file.name);
+        isLocal = true;
+        
+        if (onProgress) onProgress(40);
+        const buffer = await file.arrayBuffer();
+        mainFileId = await uploadToDrive(token, file.name, buffer, false, (p) => {
+          if (onProgress) onProgress(40 + (p * 0.3));
+        });
       }
     } catch (e) {
-      console.warn("Falha na auto-extração de legendas:", e);
+      console.warn("Não foi possível processar o vídeo localmente:", e);
     }
   }
 
-  let subtitleId = null;
-  if (finalSubtitleText) {
-    const enc = new TextEncoder();
-    const subBuffer = enc.encode(finalSubtitleText).buffer;
-    subtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
+  // If local processing failed or it's a pure web file
+  if (!mainFileId) {
+    const buffer = await file.arrayBuffer();
+    mainFileId = await uploadToDrive(token, file.name, buffer, false, (p) => {
+      if (onProgress) onProgress(10 + (p * 0.6));
+    });
   }
+
+  if (onProgress) onProgress(75);
+
+  // 2. Extract and Upload Extra Audios
+  const audioTracksList: TrackItem[] = [];
+  if (sourcePath && window.api?.video && extraAudioTracks.length > 0) {
+    for (const track of extraAudioTracks) {
+      try {
+        const audioOutPath = await (window.api.video as any).extractAudio(sourcePath, track);
+        if (audioOutPath) {
+          const driveFileName = `${baseName} - Audio ${track.replace(/:/g, '')}.m4a`;
+          const audioDriveId = await uploadLocalFileToDrive(token, audioOutPath, driveFileName);
+          audioTracksList.push({
+            id: track,
+            label: `Áudio ${track}`,
+            drive_id: audioDriveId,
+            local_path: audioOutPath
+          });
+        }
+      } catch (err) {
+        console.error(`Falha ao extrair/upar áudio extra ${track}:`, err);
+      }
+    }
+  }
+
+  if (onProgress) onProgress(85);
+
+  // 3. Extract and Upload Extra Subtitles
+  const subtitleTracksList: TrackItem[] = [];
+  
+  // Custom external subtitle (Legacy main subtitle)
+  let mainSubtitleId = null;
+  if (subtitleText) {
+    const enc = new TextEncoder();
+    const subBuffer = enc.encode(subtitleText).buffer;
+    mainSubtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
+  }
+
+  // Embedded extra subtitles
+  if (sourcePath && window.api?.video && extraSubtitleTracks.length > 0) {
+    for (const track of extraSubtitleTracks) {
+      try {
+        const vttText = await window.api.video.extractSubtitles(sourcePath, track);
+        if (vttText) {
+          const enc = new TextEncoder();
+          const subBuffer = enc.encode(vttText).buffer;
+          const driveFileName = `${baseName} - Legenda ${track.replace(/:/g, '')}.vtt`;
+          const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false);
+          
+          subtitleTracksList.push({
+            id: track,
+            label: `Legenda ${track}`,
+            drive_id: subDriveId
+          });
+        }
+      } catch (err) {
+        console.error(`Falha ao extrair/upar legenda extra ${track}:`, err);
+      }
+    }
+  }
+
+  if (onProgress) onProgress(99);
 
   const newVideo: VideoItem = {
     id: crypto.randomUUID(),
-    title: file.name.replace(/\.[^/.]+$/, ""),
+    title: baseName,
     original_name: file.name,
-    drive_file_id: fileId,
-    drive_subtitle_id: subtitleId || undefined,
+    drive_file_id: mainFileId,
+    drive_subtitle_id: mainSubtitleId || undefined,
     is_local: isLocal,
     file_path: localPath,
+    audio_tracks_json: JSON.stringify(audioTracksList),
+    subtitles_json: JSON.stringify(subtitleTracksList),
     progress: 0,
     duration: duration,
     created_at: new Date().toISOString(),
@@ -134,6 +212,8 @@ export async function uploadNewVideo(
   if (window.api?.sync) {
     await window.api.sync.upsertRow(VIDEO_TABLE, newVideo);
   }
+
+  if (onProgress) onProgress(100);
 
   return newVideo;
 }

@@ -1,21 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, MessageSquare } from 'lucide-react';
 import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
 import DictionaryModal from '../library/DictionaryModal';
+import type { VideoItem, TrackItem } from '../../types_video';
 
 interface VideoPlayerProps {
   src: string;
+  video: VideoItem;
   subtitleContent?: string; // VTT text content
   title: string;
   onClose: () => void;
   onDurationLoaded?: (duration: number) => void;
 }
 
-export default function VideoPlayer({ src, subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
+export default function VideoPlayer({ src, video, subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const syncLoopRef = useRef<number>();
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -25,6 +29,12 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   
+  // Tracks
+  const [audioTracks, setAudioTracks] = useState<TrackItem[]>([]);
+  const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>([]);
+  const [activeAudioIndex, setActiveAudioIndex] = useState<number>(-1); // -1 = Native Video Audio (Track 1)
+  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
+
   // Subtitles
   const [cues, setCues] = useState<SubtitleCue[]>([]);
   const [activeCueText, setActiveCueText] = useState('');
@@ -32,11 +42,81 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
   // Dictionary
   const [dictState, setDictState] = useState<{ word: string; context: string } | null>(null);
 
+  // Initialize tracks from JSON
+  useEffect(() => {
+    try {
+      if (video.audio_tracks_json) {
+        setAudioTracks(JSON.parse(video.audio_tracks_json));
+      }
+      if (video.subtitles_json) {
+        setSubtitleTracks(JSON.parse(video.subtitles_json));
+      }
+    } catch (e) {
+      console.error("Failed to parse tracks", e);
+    }
+  }, [video]);
+
+  // Handle active audio URL resolving
+  useEffect(() => {
+    if (activeAudioIndex === -1) {
+      setActiveAudioUrl(null);
+      if (videoRef.current) videoRef.current.muted = isMuted; // Restore native audio
+      return;
+    }
+    
+    const track = audioTracks[activeAudioIndex];
+    if (track) {
+      if (videoRef.current) videoRef.current.muted = true; // Mute native video audio
+      
+      const resolveUrl = async () => {
+        if (track.local_path && window.api?.video) {
+          const streamUrl = `file:///${track.local_path.replace(/\\/g, '/')}`;
+          setActiveAudioUrl(streamUrl);
+        } else if (track.drive_id) {
+          // Cloud stream URL
+          const { getVideoStreamLink } = await import('../../services/video-manager');
+          try {
+            const url = await getVideoStreamLink(track.drive_id);
+            setActiveAudioUrl(url);
+          } catch(e) { console.error(e); }
+        }
+      };
+      resolveUrl();
+    }
+  }, [activeAudioIndex, audioTracks, isMuted]);
+
   useEffect(() => {
     if (subtitleContent) {
       setCues(parseVtt(subtitleContent));
     }
   }, [subtitleContent]);
+
+  // --- Audio Sync Anti-Lag Logic ---
+  useEffect(() => {
+    const syncAudio = () => {
+      if (videoRef.current && audioRef.current && activeAudioUrl && isPlaying) {
+        const vTime = videoRef.current.currentTime;
+        const aTime = audioRef.current.currentTime;
+        const diff = Math.abs(vTime - aTime);
+        
+        // If difference is greater than 100ms, snap it back
+        if (diff > 0.1) {
+          audioRef.current.currentTime = vTime;
+        }
+      }
+      syncLoopRef.current = requestAnimationFrame(syncAudio);
+    };
+
+    if (isPlaying) {
+      syncLoopRef.current = requestAnimationFrame(syncAudio);
+    } else if (syncLoopRef.current) {
+      cancelAnimationFrame(syncLoopRef.current);
+    }
+
+    return () => {
+      if (syncLoopRef.current) cancelAnimationFrame(syncLoopRef.current);
+    };
+  }, [isPlaying, activeAudioUrl]);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -65,10 +145,9 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
     };
   }, [isPlaying, dictState]);
 
-  // Spacebar shortcut
+  // Spacebar & Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if dictionary is open or typing in an input
       if (dictState) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -79,32 +158,46 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
         if (isFullscreen) toggleFullscreen();
       } else if (e.code === 'KeyF' || e.key === 'f') {
         toggleFullscreen();
+      } else if (e.code === 'KeyA' || e.key === 'a') {
+        // Cycle audio track
+        setActiveAudioIndex(prev => {
+          if (prev >= audioTracks.length - 1) return -1; // back to native
+          return prev + 1;
+        });
       } else if (e.code === 'ArrowLeft') {
-        if (videoRef.current) {
-          videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
-          setProgress(videoRef.current.currentTime);
-        }
+        seekBy(-5);
       } else if (e.code === 'ArrowRight') {
-        if (videoRef.current) {
-          videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 5);
-          setProgress(videoRef.current.currentTime);
-        }
+        seekBy(5);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dictState, isFullscreen]);
+  }, [dictState, isFullscreen, audioTracks]);
 
   const togglePlay = () => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
         videoRef.current.play();
+        if (audioRef.current && activeAudioUrl) {
+           audioRef.current.currentTime = videoRef.current.currentTime;
+           audioRef.current.play();
+        }
         setIsPlaying(true);
       } else {
         videoRef.current.pause();
+        if (audioRef.current) audioRef.current.pause();
         setIsPlaying(false);
       }
+    }
+  };
+
+  const seekBy = (seconds: number) => {
+    if (videoRef.current) {
+      const newTime = Math.max(0, Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + seconds));
+      videoRef.current.currentTime = newTime;
+      if (audioRef.current) audioRef.current.currentTime = newTime;
+      setProgress(newTime);
     }
   };
 
@@ -134,13 +227,19 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
     const time = Number(e.target.value);
     if (videoRef.current) {
       videoRef.current.currentTime = time;
+      if (audioRef.current) audioRef.current.currentTime = time;
       setProgress(time);
     }
   };
 
   const toggleMute = () => {
     if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
+      // If we are using an extra audio track, mute that one instead of native
+      if (activeAudioUrl && audioRef.current) {
+        audioRef.current.muted = !isMuted;
+      } else {
+        videoRef.current.muted = !isMuted;
+      }
       setIsMuted(!isMuted);
     }
   };
@@ -148,7 +247,11 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
     if (videoRef.current) {
-      videoRef.current.volume = val;
+      if (activeAudioUrl && audioRef.current) {
+        audioRef.current.volume = val;
+      } else {
+        videoRef.current.volume = val;
+      }
       setVolume(val);
       if (val === 0) setIsMuted(true);
       else setIsMuted(false);
@@ -186,6 +289,7 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
   const handleWordClick = (word: string, context: string) => {
     if (videoRef.current) {
       videoRef.current.pause();
+      if (audioRef.current) audioRef.current.pause();
       setIsPlaying(false);
     }
     
@@ -234,9 +338,29 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => {
+          setIsPlaying(true);
+          if (audioRef.current && activeAudioUrl) {
+            audioRef.current.currentTime = videoRef.current?.currentTime || 0;
+            audioRef.current.play();
+          }
+        }}
+        onPause={() => {
+          setIsPlaying(false);
+          if (audioRef.current) audioRef.current.pause();
+        }}
       />
+      
+      {/* Secondary Audio Element */}
+      {activeAudioUrl && (
+        <audio 
+          ref={audioRef}
+          src={activeAudioUrl}
+          preload="auto"
+          onWaiting={() => { if (videoRef.current) videoRef.current.pause(); }}
+          onPlaying={() => { if (videoRef.current && isPlaying) videoRef.current.play(); }}
+        />
+      )}
 
       {/* Interactive Subtitles Overlay */}
       {!dictState && (
@@ -251,14 +375,34 @@ export default function VideoPlayer({ src, subtitleContent, title, onClose, onDu
         className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
       >
         {/* Top Bar */}
-        <div className="absolute top-0 left-0 right-0 p-6 flex items-center gap-4 pointer-events-auto">
-          <button 
-            onClick={onClose}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h2 className="text-white font-medium text-lg drop-shadow-md">{title}</h2>
+        <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-auto">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onClose}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h2 className="text-white font-medium text-lg drop-shadow-md">{title}</h2>
+          </div>
+          
+          {/* Audio Selector */}
+          {audioTracks.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+                title="Trocar Idioma (A)"
+              >
+                <Languages size={16} className="text-brand-400" />
+                <span className="text-sm font-medium">
+                  {activeAudioIndex === -1 ? 'Áudio Nativo (0 Lag)' : audioTracks[activeAudioIndex].label}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Bottom Bar Controls */}

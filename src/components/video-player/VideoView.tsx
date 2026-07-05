@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { VideoItem } from '../../types_video';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
-import VideoUploadModal from './VideoUploadModal';
+import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText } from '../../services/video-manager';
 import { PlaySquare, Plus, LayoutGrid, List, AlignJustify } from 'lucide-react';
 
@@ -59,10 +59,10 @@ export default function VideoView() {
     }
   };
 
-  const handleUpload = async (file: File, subtitleText: string | null, trackIndex?: string, duration?: number, onProgress?: (percent: number) => void) => {
+  const handleUpload = async (options: UploadOptions) => {
     setIsUploading(true);
     try {
-      await uploadNewVideo(file, subtitleText, trackIndex, duration, onProgress);
+      await uploadNewVideo(options);
       await loadVideos();
     } finally {
       setIsUploading(false);
@@ -210,6 +210,7 @@ export default function VideoView() {
         <div className="absolute inset-0 z-50 bg-black">
           <VideoPlayer 
             src={activeVideoSrc} 
+            video={activeVideo}
             title={activeVideo.title}
             subtitleContent={activeSubtitle}
             onClose={() => {

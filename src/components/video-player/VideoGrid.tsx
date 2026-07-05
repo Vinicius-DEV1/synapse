@@ -138,11 +138,15 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
                   className="z-50 min-w-[180px] bg-dark-card border border-white/10 rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
                   sideOffset={5}
                   align="end"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {!video.is_local && (
                     <DropdownMenu.Item 
                       className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer outline-none transition-colors"
-                      onClick={() => onDownloadVideo(video)}
+                      onSelect={(e) => { 
+                        e.stopPropagation(); 
+                        setTimeout(() => onDownloadVideo(video), 10); 
+                      }}
                     >
                       <Download size={14} />
                       Baixar para o PC
@@ -152,7 +156,10 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
                   {video.is_local && (
                     <DropdownMenu.Item 
                       className="flex items-center gap-2 px-2 py-1.5 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg cursor-pointer outline-none transition-colors"
-                      onClick={() => onDeleteLocal(video)}
+                      onSelect={(e) => { 
+                        e.stopPropagation(); 
+                        setTimeout(() => onDeleteLocal(video), 10); 
+                      }}
                     >
                       <HardDrive size={14} />
                       Excluir localmente
@@ -163,7 +170,10 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
                   
                   <DropdownMenu.Item 
                     className="flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg cursor-pointer outline-none transition-colors"
-                    onClick={() => onDeleteCloud(video)}
+                    onSelect={(e) => { 
+                      e.stopPropagation(); 
+                      setTimeout(() => onDeleteCloud(video), 10); 
+                    }}
                   >
                     <Trash2 size={14} />
                     Excluir do Drive
