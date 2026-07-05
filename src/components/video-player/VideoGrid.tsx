@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { VideoItem } from '../../types_video';
-import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, Folder, ArrowLeft } from 'lucide-react';
+import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, Folder, ArrowLeft, Info } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import VideoInfoModal from './VideoInfoModal';
 
 interface VideoGridProps {
   videos: VideoItem[];
@@ -23,6 +24,7 @@ interface VideoCollection {
 
 export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, isDeletingId }: VideoGridProps) {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [activeInfoVideo, setActiveInfoVideo] = useState<VideoItem | null>(null);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '--:--';
@@ -234,6 +236,17 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
                     align="end"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <DropdownMenu.Item 
+                      className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer outline-none transition-colors"
+                      onSelect={(e) => { 
+                        e.stopPropagation(); 
+                        setTimeout(() => setActiveInfoVideo(video), 10); 
+                      }}
+                    >
+                      <Info size={14} />
+                      Informações
+                    </DropdownMenu.Item>
+                    
                     {!video.is_local && (
                       <DropdownMenu.Item 
                         className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg cursor-pointer outline-none transition-colors"
@@ -286,6 +299,13 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
           </div>
         )}
       </div>
+      
+      {activeInfoVideo && (
+        <VideoInfoModal 
+          video={activeInfoVideo} 
+          onClose={() => setActiveInfoVideo(null)} 
+        />
+      )}
     </div>
   );
 }
