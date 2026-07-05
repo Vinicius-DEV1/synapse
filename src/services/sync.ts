@@ -2,7 +2,7 @@ import { db } from './firebase';
 import { encryptText, decryptText, deriveMasterKey } from './crypto';
 import { encryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive } from './drive';
-import { onSnapshot, serverTimestamp, query, where, collection, doc, setDoc, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
+import { onSnapshot, serverTimestamp, query, where, collection, doc, setDoc, getDocs, deleteDoc, getDoc, limit, startAfter } from 'firebase/firestore';
 
 const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
 
