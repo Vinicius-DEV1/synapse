@@ -183,7 +183,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       </header>
 
       {/* Card Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 pb-24 sm:pb-32 overflow-y-auto">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 pb-24 sm:pb-32 gap-8 overflow-y-auto">
         <div className="w-full max-w-2xl bg-dark-surface rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
@@ -228,38 +228,38 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           )}
 
         </div>
-      </main>
 
-      {/* Controls */}
-      <footer className="h-32 flex items-start justify-center pt-6 px-4 bg-dark-bg">
-        {!showingAnswer ? (
-          <button 
-            onClick={() => setShowingAnswer(true)}
-            className="px-12 py-4 bg-dark-surface border border-white/10 rounded-xl text-base font-medium hover:bg-white/5 hover:border-indigo-500/50 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl"
-          >
-            Mostrar Resposta <span className="ml-2 text-dark-subtext text-sm">(Espaço)</span>
-          </button>
-        ) : (
-          <div className="flex gap-4 w-full max-w-2xl px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <button onClick={() => handleRating(1)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-red-400 border border-white/5 hover:border-red-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300">
-              <span>Errei</span>
-              <span className="text-xs opacity-50 font-normal">Again (1)</span>
+        {/* Controls */}
+        <div className="w-full max-w-2xl flex justify-center mt-2">
+          {!showingAnswer ? (
+            <button 
+              onClick={() => setShowingAnswer(true)}
+              className="px-12 py-4 bg-dark-surface border border-white/10 rounded-xl text-base font-medium hover:bg-white/5 hover:border-indigo-500/50 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl"
+            >
+              Mostrar Resposta <span className="ml-2 text-dark-subtext text-sm">(Espaço)</span>
             </button>
-            <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-orange-400 border border-white/5 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300">
-              <span>Difícil</span>
-              <span className="text-xs opacity-50 font-normal">Hard (2)</span>
-            </button>
-            <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-green-400 border border-white/5 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300">
-              <span>Bom</span>
-              <span className="text-xs opacity-50 font-normal">Good (3)</span>
-            </button>
-            <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-blue-400 border border-white/5 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300">
-              <span>Fácil</span>
-              <span className="text-xs opacity-50 font-normal">Easy (4)</span>
-            </button>
-          </div>
-        )}
-      </footer>
+          ) : (
+            <div className="flex gap-4 w-full px-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <button onClick={() => handleRating(1)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-red-400 border border-white/5 hover:border-red-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <span>Errei</span>
+                <span className="text-xs opacity-50 font-normal">Again (1)</span>
+              </button>
+              <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-orange-400 border border-white/5 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <span>Difícil</span>
+                <span className="text-xs opacity-50 font-normal">Hard (2)</span>
+              </button>
+              <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-green-400 border border-white/5 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <span>Bom</span>
+                <span className="text-xs opacity-50 font-normal">Good (3)</span>
+              </button>
+              <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-blue-400 border border-white/5 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <span>Fácil</span>
+                <span className="text-xs opacity-50 font-normal">Easy (4)</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
