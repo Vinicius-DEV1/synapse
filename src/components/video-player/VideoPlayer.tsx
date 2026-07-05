@@ -436,7 +436,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-auto">
           <div className="flex items-center gap-4">
             <button 
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
             >
               <ArrowLeft size={20} />

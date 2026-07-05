@@ -330,6 +330,7 @@ export default function VideoView() {
             onClose={() => {
               setActiveVideo(null);
               setActiveVideoSrc(null);
+              loadVideos();
             }}
             onDurationLoaded={async (dur) => {
               if (!activeVideo.duration && window.api?.sync) {
