@@ -11,22 +11,25 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
   const tokens = useMemo(() => {
     if (!currentSubtitle) return [];
     
-    // Force clean any stray spaces or weird hidden whitespace before tokenizing
-    const cleanSubtitle = currentSubtitle.replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    // Robust tokenization using native Intl.Segmenter (handles all languages, emojis, and punctuation correctly)
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
+    const segments = Array.from(segmenter.segment(currentSubtitle));
     
-    // Split by word boundaries or specific punctuation, mapping to object { text, isWord }
-    // A simple approach is to match words and non-words
-    const regex = /([\wÀ-ÿ'-]+)|([^\wÀ-ÿ'-]+)/g;
-    const result = [];
-    let match;
-    while ((match = regex.exec(cleanSubtitle)) !== null) {
-      if (match[1]) {
-        result.push({ text: match[1], isWord: true });
-      } else if (match[2]) {
-        result.push({ text: match[2], isWord: false });
+    return segments.map(seg => {
+      if (seg.isWordLike) {
+        return { text: seg.segment, isWord: true };
+      } else {
+        // Force compress any sequence of whitespace (including HTML spaces, tabs, etc) into a single standard space
+        let cleanSpace = seg.segment.replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ');
+        
+        // If it's pure whitespace, just return a single space. Otherwise, it might be punctuation like ". "
+        if (cleanSpace.trim().length === 0 && cleanSpace.length > 0) {
+          cleanSpace = ' ';
+        }
+        
+        return { text: cleanSpace, isWord: false };
       }
-    }
-    return result;
+    });
   }, [currentSubtitle]);
 
   if (!currentSubtitle) return null;
