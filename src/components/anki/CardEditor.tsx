@@ -27,10 +27,34 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
   const [selectedDeck, setSelectedDeck] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | undefined>(draft.media_url);
+  const [generatingAudio, setGeneratingAudio] = useState(false);
 
   useEffect(() => {
     loadDecks();
+    if (!mediaUrl && (draft.video_clip || draft.tts_text)) {
+      generatePreviewAudio();
+    }
   }, []);
+
+  const generatePreviewAudio = async () => {
+    setGeneratingAudio(true);
+    try {
+      if (window.api?.audio) {
+        if (draft.video_clip) {
+           const { path, startMs, endMs } = draft.video_clip;
+           const audioRes = await window.api.audio.extractClip(path, startMs, endMs);
+           if (audioRes.success) setMediaUrl(audioRes.filePath);
+        } else if (draft.tts_text) {
+           const audioRes = await window.api.audio.generateTTS(draft.tts_text, 'en-US');
+           if (audioRes.success) setMediaUrl(audioRes.filePath);
+        }
+      }
+    } catch (err) {
+      console.error("Audio preview failed:", err);
+    } finally {
+      setGeneratingAudio(false);
+    }
+  };
 
   const loadDecks = async () => {
     if (window.api?.anki) {
@@ -49,7 +73,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
     let finalMediaUrl = mediaUrl;
 
     try {
-      // 1. Process Audio if needed
+      // Audio is now pre-generated on mount. If for some reason it isn't, we'd fallback here, 
+      // but let's assume finalMediaUrl is ready from mediaUrl.
       if (!finalMediaUrl && window.api?.audio) {
         if (draft.video_clip) {
            const { path, startMs, endMs } = draft.video_clip;
@@ -89,7 +114,10 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div className="bg-dark-surface border border-dark-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         <header className="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-dark-bg/50">
@@ -152,11 +180,32 @@ export default function CardEditor({ draft, onClose, onSaveSuccess }: CardEditor
           </div>
 
           {(draft.video_clip || draft.tts_text || mediaUrl) && (
-            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 flex items-center gap-3 text-sm text-indigo-300">
-               <Volume2 className="w-5 h-5 flex-shrink-0" />
-               <p>
-                 Um clipe de áudio será {draft.video_clip ? 'extraído do vídeo' : mediaUrl ? 'anexado' : 'gerado via Edge TTS'} ao salvar.
-               </p>
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 flex items-center justify-between gap-3 text-sm text-indigo-300">
+               <div className="flex items-center gap-3">
+                 <Volume2 className="w-5 h-5 flex-shrink-0" />
+                 <div>
+                   {generatingAudio ? (
+                     <p className="animate-pulse">Gerando áudio do flashcard...</p>
+                   ) : mediaUrl ? (
+                     <p>Áudio pronto! O arquivo será salvo junto ao cartão.</p>
+                   ) : (
+                     <p>Um clipe de áudio será {draft.video_clip ? 'extraído do vídeo' : 'gerado via Edge TTS'}.</p>
+                   )}
+                 </div>
+               </div>
+               
+               {mediaUrl && !generatingAudio && (
+                 <button 
+                   onClick={() => {
+                     const audio = new Audio(mediaUrl);
+                     audio.play().catch(e => console.error(e));
+                   }}
+                   className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-200 rounded-lg transition-colors font-medium border border-indigo-500/30"
+                 >
+                   <Volume2 className="w-4 h-4" />
+                   Ouvir
+                 </button>
+               )}
             </div>
           )}
         </div>

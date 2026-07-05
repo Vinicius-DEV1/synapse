@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { getDb } from '../db/connection';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 
 export function registerAnkiHandlers() {
   ipcMain.handle('anki:get-decks', async () => {
@@ -14,7 +14,7 @@ export function registerAnkiHandlers() {
 
   ipcMain.handle('anki:create-deck', async (_, name: string, description: string = '') => {
     return new Promise((resolve) => {
-      const id = uuidv4();
+      const id = crypto.randomUUID();
       getDb().run(
         'INSERT INTO anki.anki_decks (id, name, description) VALUES (?, ?, ?)',
         [id, name, description],
@@ -28,7 +28,7 @@ export function registerAnkiHandlers() {
 
   ipcMain.handle('anki:save-card', async (_, cardData: any) => {
     return new Promise((resolve) => {
-      const id = uuidv4();
+      const id = crypto.randomUUID();
       const { deck_id, front, back, extra_note, source_module, source_id, media_url, card_type } = cardData;
       
       const db = getDb();
@@ -126,7 +126,7 @@ export function registerAnkiHandlers() {
              
              db.run(
                'INSERT INTO anki.anki_reviews (id, card_id, rating) VALUES (?, ?, ?)',
-               [uuidv4(), cardId, rating],
+               [crypto.randomUUID(), cardId, rating],
                (err3) => {
                  if (err3) { db.run('ROLLBACK'); return resolve({ success: false, error: err3.message }); }
                  db.run('COMMIT');
