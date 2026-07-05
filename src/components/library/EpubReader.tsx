@@ -620,9 +620,10 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle OS Fullscreen
+      // Toggle OS Fullscreen AND Reader UI Fullscreen (Foco)
       if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
+        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
         if (window.api?.app?.toggleFullScreen) {
           window.api.app.toggleFullScreen();
         }
