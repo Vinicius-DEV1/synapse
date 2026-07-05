@@ -10,12 +10,16 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
   // Regex to split by spaces and punctuation, but keeping punctuation so it renders correctly
   const tokens = useMemo(() => {
     if (!currentSubtitle) return [];
+    
+    // Force clean any stray spaces or weird hidden whitespace before tokenizing
+    const cleanSubtitle = currentSubtitle.replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    
     // Split by word boundaries or specific punctuation, mapping to object { text, isWord }
     // A simple approach is to match words and non-words
     const regex = /([\wÀ-ÿ'-]+)|([^\wÀ-ÿ'-]+)/g;
     const result = [];
     let match;
-    while ((match = regex.exec(currentSubtitle)) !== null) {
+    while ((match = regex.exec(cleanSubtitle)) !== null) {
       if (match[1]) {
         result.push({ text: match[1], isWord: true });
       } else if (match[2]) {
