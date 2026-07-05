@@ -46,7 +46,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         startSync();
         try {
           console.log('[Sync] Etapa 1: PULL From Cloud (Baixando alterações...)');
-          await withTimeout(pullWithSuppression(masterKey), 30_000);
+          await withTimeout(pullWithSuppression(masterKey), 120_000);
           console.log('[Sync] PULL concluído. Recarregando páginas na UI...');
           loadPages();
           console.log('[Sync] Etapa 2: PUSH To Cloud e sync de PDFs (Enviando alterações...)');
@@ -55,7 +55,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
               pushAllToCloud(masterKey),
               syncPdfsToCloud(masterKey),
             ]),
-            30_000
+            120_000
           );
           if (!isClosed) {
             console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
