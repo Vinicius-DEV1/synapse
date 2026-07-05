@@ -12,6 +12,7 @@ interface VideoGridProps {
   onDeleteLocal: (video: VideoItem) => void;
   onDeleteCloud: (video: VideoItem) => void;
   isDeletingId?: string | null;
+  isDownloadingId?: string | null;
 }
 
 interface VideoCollection {
@@ -22,7 +23,7 @@ interface VideoCollection {
   videos: VideoItem[];
 }
 
-export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, isDeletingId }: VideoGridProps) {
+export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, isDeletingId, isDownloadingId }: VideoGridProps) {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [activeInfoVideo, setActiveInfoVideo] = useState<VideoItem | null>(null);
 
@@ -128,7 +129,7 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
         {displayVideos.map((video) => (
           <div 
             key={video.id}
-            className={`group relative bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-300 ${isDeletingId === video.id ? 'opacity-50 pointer-events-none' : (isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1')} ${isList ? 'flex items-center p-2 gap-4' : 'flex-col'}`}
+            className={`group relative bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-300 ${(isDeletingId === video.id || isDownloadingId === video.id) ? 'opacity-50 pointer-events-none' : (isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1')} ${isList ? 'flex items-center p-2 gap-4' : 'flex-col'}`}
             onClick={(e) => {
               const target = e.target as HTMLElement;
               if (!target.closest('button')) {
@@ -141,6 +142,15 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-xs font-medium mt-2 text-white shadow-black drop-shadow-md">Excluindo...</span>
+                </div>
+              </div>
+            )}
+            {isDownloadingId === video.id && (
+              <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                <div className="flex flex-col items-center">
+                  <Download className="text-brand-400 mb-2 animate-bounce" size={24} />
+                  <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs font-medium mt-2 text-white shadow-black drop-shadow-md">Baixando do Drive...</span>
                 </div>
               </div>
             )}
