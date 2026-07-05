@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Play, BrainCircuit } from 'lucide-react';
+import StudySession from './StudySession';
 
 export default function AnkiView() {
   const [decks, setDecks] = useState<any[]>([]);
+  const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDecks();
@@ -55,7 +57,10 @@ export default function AnkiView() {
                   <div className="text-green-400" title="Revisões Feitas">0</div>
                 </div>
                 
-                <button className="flex items-center gap-2 bg-dark-bg hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded text-sm transition-colors border border-dark-border">
+                <button 
+                  onClick={() => setStudyingDeckId(deck.id)}
+                  className="flex items-center gap-2 bg-dark-bg hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded text-sm transition-colors border border-dark-border"
+                >
                   <Play className="w-4 h-4" />
                   Estudar
                 </button>
@@ -70,6 +75,10 @@ export default function AnkiView() {
           )}
         </div>
       </div>
+      
+      {studyingDeckId && (
+        <StudySession deckId={studyingDeckId} onClose={() => setStudyingDeckId(null)} />
+      )}
     </div>
   );
 }
