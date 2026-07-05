@@ -161,6 +161,12 @@ app.whenReady().then(() => {
     return result.response;
   });
 
+  ipcMain.on('app:toggleFullScreen', () => {
+    if (mainWindow) {
+      mainWindow.setFullScreen(!mainWindow.isFullScreen());
+    }
+  });
+
   powerMonitor.on('suspend', () => {
     if (shouldLockOnSuspend && mainWindow) {
       ipcMain.emit('auth:lock');
