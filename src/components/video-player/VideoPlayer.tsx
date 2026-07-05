@@ -428,52 +428,56 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         </div>
 
         {/* Bottom Bar Controls */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col gap-4 pointer-events-auto">
-          {/* Progress Bar */}
-          <div className="w-full flex items-center gap-3">
-            <span className="text-white/80 text-xs font-medium tabular-nums">{formatTime(progress)}</span>
+        <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
+          <div className="flex items-center w-full gap-4">
+            {/* Play/Pause Button */}
+            <button 
+              onClick={togglePlay}
+              className="text-white hover:text-brand-400 transition-colors"
+            >
+              {isPlaying ? <Pause size={28} /> : <Play size={28} className="ml-1" />}
+            </button>
+
+            {/* Volume Control */}
+            <div className="flex items-center gap-2 group/volume">
+              <button onClick={toggleMute} className="text-white hover:text-brand-400 transition-colors">
+                {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-0 opacity-0 group-hover/volume:w-20 group-hover/volume:opacity-100 h-1.5 bg-white/30 rounded-full appearance-none cursor-pointer accent-brand-500 transition-all duration-300"
+              />
+            </div>
+
+            {/* Current Time */}
+            <span className="text-white/80 text-xs font-medium tabular-nums ml-2">
+              {formatTime(progress)}
+            </span>
+
+            {/* Progress Bar */}
             <input
               type="range"
               min={0}
               max={duration || 100}
               value={progress}
               onChange={handleSeek}
-              className="flex-1 h-1.5 bg-white/30 rounded-full appearance-none cursor-pointer accent-brand-500 hover:h-2 transition-all"
+              className="flex-1 h-1.5 mx-2 bg-white/30 rounded-full appearance-none cursor-pointer accent-brand-500 hover:h-2 transition-all"
             />
-            <span className="text-white/80 text-xs font-medium tabular-nums">{formatTime(duration)}</span>
-          </div>
 
-          {/* Buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={togglePlay}
-                className="text-white hover:text-brand-400 transition-colors"
-              >
-                {isPlaying ? <Pause size={28} /> : <Play size={28} className="ml-1" />}
-              </button>
-              
-              <div className="flex items-center gap-2 group/volume">
-                <button onClick={toggleMute} className="text-white hover:text-brand-400 transition-colors">
-                  {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  className="w-0 opacity-0 group-hover/volume:w-20 group-hover/volume:opacity-100 h-1.5 bg-white/30 rounded-full appearance-none cursor-pointer accent-brand-500 transition-all duration-300"
-                />
-              </div>
-            </div>
+            {/* Duration Time */}
+            <span className="text-white/80 text-xs font-medium tabular-nums mr-2">
+              {formatTime(duration)}
+            </span>
 
-            <div className="flex items-center gap-4">
-              <button onClick={toggleFullscreen} className="text-white hover:text-brand-400 transition-colors">
-                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-              </button>
-            </div>
+            {/* Fullscreen Button */}
+            <button onClick={toggleFullscreen} className="text-white hover:text-brand-400 transition-colors">
+              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            </button>
           </div>
         </div>
       </div>
