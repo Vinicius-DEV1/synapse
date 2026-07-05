@@ -73,19 +73,22 @@ export function setupVideoIpc() {
     }
   });
 
-  ipcMain.handle('video:scanSubtitles', async (_, localPath: string) => {
+  ipcMain.handle('video:scanTracks', async (_, localPath: string) => {
     return new Promise((resolve) => {
       try {
         ffmpeg.ffprobe(localPath, (err, metadata) => {
           if (err) {
             console.error('[ffprobe] Erro ao analisar o arquivo:', err.message);
-            return resolve({ subtitles: [], error: err.message, debug: 'ffprobe callback error' });
+            return resolve({ subtitles: [], audioTracks: [], error: err.message, debug: 'ffprobe callback error' });
           }
           
           const subtitles: { index: string; language?: string; codec: string; title?: string }[] = [];
+          const audioTracks: { index: string; language?: string; codec: string; title?: string }[] = [];
           const streams = metadata.streams || [];
           
           let subtitleCount = 0;
+          let audioCount = 0;
+          
           streams.forEach((stream) => {
             if (stream.codec_type === 'subtitle') {
               const lang = stream.tags?.language || 'und';
@@ -97,17 +100,28 @@ export function setupVideoIpc() {
                 title: title
               });
               subtitleCount++;
+            } else if (stream.codec_type === 'audio') {
+              const lang = stream.tags?.language || 'und';
+              const title = stream.tags?.title || '';
+              audioTracks.push({
+                index: `0:a:${audioCount}`, 
+                language: lang,
+                codec: stream.codec_name || 'unknown',
+                title: title
+              });
+              audioCount++;
             }
           });
           
           resolve({ 
             subtitles, 
+            audioTracks,
             error: null, 
-            debug: `Streams found: ${streams.length}, Subs found: ${subtitleCount}, ffprobePath: ${ffprobeStatic?.path || 'unknown'}` 
+            debug: `Streams found: ${streams.length}, Subs: ${subtitleCount}, Audios: ${audioCount}` 
           });
         });
       } catch (err: any) {
-        resolve({ subtitles: [], error: err.message, debug: 'ffprobe try-catch error' });
+        resolve({ subtitles: [], audioTracks: [], error: err.message, debug: 'ffprobe try-catch error' });
       }
     });
   });
@@ -134,6 +148,53 @@ export function setupVideoIpc() {
         .on('error', (err) => {
           console.log(`[ffmpeg] Falha ao extrair legenda ${mapStr}:`, err.message);
           resolve(null);
+        })
+        .run();
+    });
+  });
+
+  ipcMain.handle('video:extractAudio', async (_, localPath: string, trackIndex: string) => {
+    return new Promise((resolve) => {
+      // Create a unique temporary file path for the extracted audio
+      const audioOutPath = `${localPath}_${trackIndex.replace(/:/g, '')}.m4a`;
+      ffmpeg(localPath)
+        .outputOptions([
+          `-map ${trackIndex}`,
+          '-c:a aac', // Convert to AAC for guaranteed web compatibility
+          '-b:a 128k' // Reasonable bitrate to save space
+        ])
+        .output(audioOutPath)
+        .on('end', () => {
+          resolve(audioOutPath);
+        })
+        .on('error', (err) => {
+          console.error(`[ffmpeg] Falha ao extrair áudio ${trackIndex}:`, err.message);
+          resolve(null);
+        })
+        .run();
+    });
+  });
+
+  ipcMain.handle('video:remuxDefaultTrack', async (_, sourcePath: string, filename: string, trackIndex: string) => {
+    const videosDir = await getVideosDir();
+    const destPath = path.join(videosDir, filename);
+    
+    return new Promise((resolve, reject) => {
+      ffmpeg(sourcePath)
+        .outputOptions([
+          '-map 0:v',          // Include all video streams
+          `-map ${trackIndex}`, // Include the chosen audio stream FIRST (makes it default)
+          '-map 0:a',          // Include all other audio streams so they are not lost inside the MKV
+          '-map 0:s?',         // Include all subtitle streams (if any)
+          '-c copy'            // Copy streams without re-encoding (Zero quality loss, very fast)
+        ])
+        .output(destPath)
+        .on('end', () => {
+          resolve(destPath);
+        })
+        .on('error', (err) => {
+          console.error(`[ffmpeg] Falha ao fazer o remux do arquivo principal:`, err.message);
+          reject(err);
         })
         .run();
     });

@@ -139,8 +139,10 @@ contextBridge.exposeInMainWorld('api', {
     deleteLocal: (filename: string) => invokeWithSync('video:deleteLocal', filename),
     saveLocal: (filename: string, buffer: ArrayBuffer) => invokeWithSync('video:saveLocal', filename, buffer),
     copyLocal: (sourcePath: string, filename: string) => invokeWithSync('video:copyLocal', sourcePath, filename),
-    extractSubtitles: (localPath: string) => invokeWithSync('video:extractSubtitles', localPath),
-    scanSubtitles: (localPath: string) => invokeWithSync('video:scanSubtitles', localPath),
+    extractSubtitles: (localPath: string, trackIndex?: string) => invokeWithSync('video:extractSubtitles', localPath, trackIndex),
+    scanTracks: (localPath: string) => invokeWithSync('video:scanTracks', localPath),
+    extractAudio: (localPath: string, trackIndex: string) => invokeWithSync('video:extractAudio', localPath, trackIndex),
+    remuxDefaultTrack: (sourcePath: string, filename: string, trackIndex: string) => invokeWithSync('video:remuxDefaultTrack', sourcePath, filename, trackIndex),
     openFileDialog: () => invokeWithSync('video:openFileDialog'),
   },
 
