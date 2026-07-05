@@ -11,9 +11,17 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
   const tokens = useMemo(() => {
     if (!currentSubtitle) return [];
     
-    // Robust tokenization using native Intl.Segmenter (handles all languages, emojis, and punctuation correctly)
+    // Nuclear cleanup: remove zero-width formatting characters and standardize ALL whitespace
+    // This absolutely guarantees no weird "mega spaces" can exist in the string before tokenization
+    const nuclearSubtitle = currentSubtitle
+      .replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Robust tokenization using native Intl.Segmenter
     const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
-    const segments = Array.from(segmenter.segment(currentSubtitle));
+    const segments = Array.from(segmenter.segment(nuclearSubtitle));
     
     return segments.map(seg => {
       if (seg.isWordLike) {

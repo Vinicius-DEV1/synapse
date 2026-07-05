@@ -1,1 +1,9 @@
-const sqlite3 = require('@journeyapps/sqlcipher'); const db = new sqlite3.Database(':memory:'); db.serialize(() => { db.run('CREATE TABLE t (id INT)'); db.run('ALTER TABLE t ADD COLUMN c INT', (err) => console.log('1:', err)); db.run('ALTER TABLE t ADD COLUMN c INT', (err) => console.log('2:', err)); db.run('ALTER TABLE t ADD COLUMN d INT', (err) => console.log('3:', err)); });
+const seg = new Intl.Segmenter('en', {granularity: 'word'});
+const segments = Array.from(seg.segment(' And with Alison\'s decision looming. I    wanted to check in with both of them. '));
+const res = segments.map(seg => {
+    if (seg.isWordLike) return seg.segment;
+    let cleanSpace = seg.segment.replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ');
+    if (cleanSpace.trim().length === 0 && cleanSpace.length > 0) cleanSpace = ' ';
+    return cleanSpace;
+});
+console.log(res.join(''));
