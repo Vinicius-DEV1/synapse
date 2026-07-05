@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, MessageSquare, BookOpen, Trash2, X } from 'lucide-react';
+import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, MessageSquare, BookOpen, Trash2, X, Sparkles } from 'lucide-react';
 import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
@@ -40,7 +40,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const [activeCueText, setActiveCueText] = useState('');
   
   // Dictionary
-  const [dictState, setDictState] = useState<{ word: string; context: string } | null>(null);
+  const [dictState, setDictState] = useState<{ word: string; context: string; preloadedData?: any } | null>(null);
 
   // Vocabulary
   const [videoWords, setVideoWords] = useState<any[]>([]);
@@ -394,7 +394,15 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       extendedContext = fullContext.join('\n\n');
     }
 
-    setDictState({ word, context: extendedContext });
+    let preloadedData = null;
+    const existingWord = activeSavedWords.find(vw => vw.word.toLowerCase() === word.toLowerCase());
+    if (existingWord && existingWord.note) {
+      try {
+        preloadedData = JSON.parse(existingWord.note.replace('<!-- AI_DICT -->', ''));
+      } catch(e) {}
+    }
+
+    setDictState({ word, context: extendedContext, preloadedData });
   };
 
   return (
@@ -619,9 +627,10 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
       {/* Dictionary Modal */}
       {dictState && (
-        <DictionaryModal
+        <DictionaryModal 
           text={dictState.word}
           pageContext={dictState.context}
+          preloadedData={dictState.preloadedData}
           onClose={() => setDictState(null)}
           sourceType="video"
           onSaveHighlight={async (color, note) => {
@@ -703,15 +712,47 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
                     </div>
                   </div>
                   {vw.context && (
-                    <p className="text-sm text-white/60 italic border-l-2 border-white/20 pl-3 py-1">
-                      "{vw.context}"
+                    <p className="text-sm text-white/60 italic border-l-2 border-white/20 pl-3 py-1 mt-2 line-clamp-3">
+                      "{vw.context.match(/\[Cena Atual\]:\s*([^\n]+)/)?.[1] || vw.context}"
                     </p>
                   )}
-                  {vw.note && (
-                    <p className="text-sm text-brand-300 mt-1">
-                      {vw.note}
-                    </p>
-                  )}
+                  {vw.note && vw.note.startsWith('<!-- AI_DICT -->') ? (
+                    (() => {
+                      try {
+                        const data = JSON.parse(vw.note.replace('<!-- AI_DICT -->', ''));
+                        let defs: string[] = [];
+                        if (data.english?.definitions) defs = data.english.definitions;
+                        else if (data.english?.definition) defs = [data.english.definition];
+                        else if (data.definitions) defs = data.definitions;
+                        else if (data.definition) defs = [data.definition];
+                        
+                        const textToShow = defs.length > 0 ? defs[0] : (data.portuguese?.definition || data.portuguese?.definitions?.[0] || 'Dicionário IA');
+                        
+                        return (
+                          <button 
+                            onClick={() => {
+                              if (videoRef.current) videoRef.current.pause();
+                              setDictState({ word: vw.word, context: vw.context, preloadedData: data });
+                              setShowVocabDrawer(false);
+                            }}
+                            className="mt-2 text-xs font-medium text-brand-600 dark:text-brand-400 p-2 bg-white/50 dark:bg-black/20 rounded text-left hover:bg-black/40 transition-colors w-full group/btn cursor-pointer flex flex-col gap-1 border border-transparent hover:border-brand-500/30"
+                          >
+                            <div className="flex items-center justify-between opacity-70">
+                              <div className="flex items-center gap-1">
+                                <Sparkles size={10} /> <span className="font-bold text-[9px] uppercase tracking-wider">IA Salva</span>
+                              </div>
+                              <span className="text-[9px] opacity-0 group-hover/btn:opacity-100 transition-opacity">Ver Mais →</span>
+                            </div>
+                            <div className="line-clamp-2 opacity-90">{textToShow}</div>
+                          </button>
+                        );
+                      } catch (e) {
+                        return <p className="text-sm text-brand-300 mt-1">{vw.note}</p>;
+                      }
+                    })()
+                  ) : vw.note ? (
+                    <p className="text-sm text-brand-300 mt-1">{vw.note}</p>
+                  ) : null}
                 </div>
               ))
             )}
