@@ -262,6 +262,13 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     }
   };
 
+  const handleClose = () => {
+    if (videoRef.current) {
+      saveProgress(videoRef.current.currentTime);
+    }
+    onClose();
+  };
+
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = Number(e.target.value);
     if (videoRef.current) {
