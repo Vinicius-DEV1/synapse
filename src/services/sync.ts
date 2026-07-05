@@ -40,7 +40,8 @@ const MODULE_TABLES: Record<string, string[]> = {
     'library_book_collections',
     'library_reading_sessions'
   ],
-  culture: ['items', 'episodes']
+  culture: ['items', 'episodes'],
+  video: ['videos']
 };
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
@@ -155,6 +156,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   const effectiveModuleKeys = { ...moduleKeys };
   if (effectiveModuleKeys['notes']) {
     effectiveModuleKeys['culture'] = effectiveModuleKeys['notes'];
+  }
+  if (effectiveModuleKeys['core']) {
+    effectiveModuleKeys['video'] = effectiveModuleKeys['core'];
   }
 
   for (const module of Object.keys(effectiveModuleKeys)) {
@@ -324,6 +328,9 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   if (effectiveModuleKeys['notes']) {
     effectiveModuleKeys['culture'] = effectiveModuleKeys['notes'];
   }
+  if (effectiveModuleKeys['core']) {
+    effectiveModuleKeys['video'] = effectiveModuleKeys['core'];
+  }
 
   for (const module of Object.keys(effectiveModuleKeys)) {
     const key = effectiveModuleKeys[module];
@@ -385,10 +392,14 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
 
           const encryptedData = await encryptText(jsonString, key);
           const docRef = doc(db, table, id);
+          
+          const safeUpdatedAt = row.updated_at ? new Date(parseDateSafe(row.updated_at)).toISOString() : null;
+          const safeCreatedAt = row.created_at ? new Date(parseDateSafe(row.created_at)).toISOString() : null;
+          
           await setDoc(docRef, {
             encryptedData,
-            updatedAt: updated_at || null,
-            createdAt: created_at || null
+            updatedAt: safeUpdatedAt,
+            createdAt: safeCreatedAt
           }, { merge: true });
           pushedCount++;
         } catch (err: any) {

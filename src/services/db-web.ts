@@ -13,6 +13,7 @@ interface CadernoDBSchema extends DBSchema {
   library_reading_sessions: { key: string; value: any; indexes: { 'book_id': string } };
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
+  videos: { key: string; value: any };
   items: { key: string; value: any };
   episodes: { key: string; value: any; indexes: { 'item_id': string } };
 }
@@ -62,6 +63,9 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('image_cache')) {
           db.createObjectStore('image_cache', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('videos')) {
+          db.createObjectStore('videos', { keyPath: 'id' });
         }
         // Culture stores
         if (!db.objectStoreNames.contains('items')) {

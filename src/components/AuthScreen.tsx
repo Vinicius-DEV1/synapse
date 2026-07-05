@@ -63,9 +63,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
           const moduleKeys: Record<string, CryptoKey> = {};
           if (rawKeys) {
-            if (rawKeys.library) moduleKeys.library = await importHexKey(rawKeys.library);
-            if (rawKeys.finance) moduleKeys.finance = await importHexKey(rawKeys.finance);
-            if (rawKeys.notes) moduleKeys.notes = await importHexKey(rawKeys.notes);
+            moduleKeys.library = rawKeys.library ? await importHexKey(rawKeys.library) : masterKey;
+            moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
+            moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
             moduleKeys.core = masterKey;
           } else {
             moduleKeys.library = masterKey;
@@ -101,9 +101,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
           const moduleKeys: Record<string, CryptoKey> = {};
           if (rawKeys) {
-            if (rawKeys.library) moduleKeys.library = await importHexKey(rawKeys.library);
-            if (rawKeys.finance) moduleKeys.finance = await importHexKey(rawKeys.finance);
-            if (rawKeys.notes) moduleKeys.notes = await importHexKey(rawKeys.notes);
+            moduleKeys.library = rawKeys.library ? await importHexKey(rawKeys.library) : masterKey;
+            moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
+            moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
             moduleKeys.core = masterKey;
           } else {
             moduleKeys.library = masterKey;
