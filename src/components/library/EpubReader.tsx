@@ -605,7 +605,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
       const modes = ['light', 'sepia', 'mint', 'dim', 'nord', 'midnight', 'dark', 'high-contrast'];
       const nextIndex = (modes.indexOf(prev) + 1) % modes.length;
       const nextMode = modes[nextIndex];
-      setModeToast(modeNames[nextMode]);
+      setTimeout(() => setModeToast(modeNames[nextMode]), 0);
       return nextMode as any;
     });
   };
@@ -613,7 +613,7 @@ function EpubCore({ onBack, onUpdateBook }: Omit<EpubReaderProps, 'book'>) {
   const changeZoom = (delta: number) => {
     setFontSize((prev: number) => {
       const next = Math.max(50, Math.min(300, prev + delta));
-      setModeToast(`Zoom: ${next}% ${detectedFontSizePx ? `(${detectedFontSizePx})` : ''}`);
+      setTimeout(() => setModeToast(`Zoom: ${next}% ${detectedFontSizePx ? `(${detectedFontSizePx})` : ''}`), 0);
       return next;
     });
   };
