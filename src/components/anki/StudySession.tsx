@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, RotateCcw, X, Volume2 } from 'lucide-react';
 
 interface Card {
@@ -70,10 +70,17 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showingAnswer, currentIndex, cards]);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const playAudio = () => {
     const card = cards[currentIndex];
     if (card?.media_url) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       const audio = new Audio(card.media_url);
+      audioRef.current = audio;
       audio.play().catch(e => console.error("Audio play failed:", e));
     }
   };
