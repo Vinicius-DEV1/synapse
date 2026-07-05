@@ -13,7 +13,9 @@ export function setupTables(): Promise<void> {
           auth_hash TEXT NOT NULL,
           library_key_enc TEXT,
           finance_key_enc TEXT,
-          notes_key_enc TEXT
+          notes_key_enc TEXT,
+          culture_key_enc TEXT,
+          anki_key_enc TEXT
         )
       `);
 
@@ -303,6 +305,59 @@ export function setupTables(): Promise<void> {
           `));
           
           promises.push(runSafe("ALTER TABLE culture.episodes ADD COLUMN aired_at DATETIME DEFAULT NULL;"));
+        }
+
+        // ANKI TABLES
+        if (attached.includes('anki')) {
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS anki.anki_decks (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              description TEXT,
+              color TEXT DEFAULT '#4F46E5',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `));
+
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS anki.anki_cards (
+              id TEXT PRIMARY KEY,
+              deck_id TEXT NOT NULL,
+              front TEXT NOT NULL,
+              back TEXT NOT NULL,
+              extra_note TEXT,
+              source_module TEXT,
+              source_id TEXT,
+              media_url TEXT,
+              card_type TEXT DEFAULT 'reading',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `));
+
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS anki.anki_srs_state (
+              card_id TEXT PRIMARY KEY,
+              due_date DATETIME NOT NULL,
+              stability REAL NOT NULL,
+              difficulty REAL NOT NULL,
+              elapsed_days INTEGER DEFAULT 0,
+              scheduled_days INTEGER DEFAULT 0,
+              reps INTEGER DEFAULT 0,
+              lapses INTEGER DEFAULT 0,
+              state INTEGER DEFAULT 0 -- 0=New, 1=Learning, 2=Review, 3=Relearning
+            )
+          `));
+
+          promises.push(runSafe(`
+            CREATE TABLE IF NOT EXISTS anki.anki_reviews (
+              id TEXT PRIMARY KEY,
+              card_id TEXT NOT NULL,
+              rating INTEGER NOT NULL, -- 1=Again, 2=Hard, 3=Good, 4=Easy
+              duration INTEGER DEFAULT 0, -- in ms
+              review_time DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `));
         }
 
         Promise.all(promises).then(() => resolve()).catch(reject);

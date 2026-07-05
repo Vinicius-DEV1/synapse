@@ -54,12 +54,15 @@ export function registerAuthHandlers() {
           const library = decryptModuleKey(row.library_key_enc, password);
           const finance = decryptModuleKey(row.finance_key_enc, password);
           const notes = decryptModuleKey(row.notes_key_enc, password);
+          const culture = row.culture_key_enc ? decryptModuleKey(row.culture_key_enc, password) : notes;
+          const anki = row.anki_key_enc ? decryptModuleKey(row.anki_key_enc, password) : notes;
           
           currentUnlockedKeys = { 
              library: library || undefined, 
              finance: finance || undefined, 
              notes: notes || undefined,
-             culture: notes || undefined
+             culture: culture || undefined,
+             anki: anki || undefined
           };
           
           // Re-attach with unlocked keys
@@ -107,14 +110,14 @@ export function registerAuthHandlers() {
             });
           });
 
-          db.run(`INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc) VALUES (?, ?, ?, ?, ?)`,
-            ['master', authHash, libEnc, finEnc, notEnc], async (insertErr) => {
+          db.run(`INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            ['master', authHash, libEnc, finEnc, notEnc, notEnc, notEnc], async (insertErr) => {
               if (insertErr) {
                 console.error('Setup INSERT err:', insertErr);
                 return resolve({ success: false, error: insertErr.message });
               }
               
-              currentUnlockedKeys = { library: libKey, finance: finKey, notes: notKey, culture: notKey };
+              currentUnlockedKeys = { library: libKey, finance: finKey, notes: notKey, culture: notKey, anki: notKey };
               
               try {
                 await openCoreAndAttachModules(currentUnlockedKeys);
@@ -160,9 +163,12 @@ export function registerAuthHandlers() {
         const finEnc = modulesToUnlock.includes('finance') && currentUnlockedKeys.finance ? encryptModuleKey(currentUnlockedKeys.finance, newPassword) : null;
         const notEnc = modulesToUnlock.includes('notes') && currentUnlockedKeys.notes ? encryptModuleKey(currentUnlockedKeys.notes, newPassword) : null;
         
+        const culEnc = modulesToUnlock.includes('culture') && currentUnlockedKeys.culture ? encryptModuleKey(currentUnlockedKeys.culture, newPassword) : null;
+        const ankiEnc = modulesToUnlock.includes('anki') && currentUnlockedKeys.anki ? encryptModuleKey(currentUnlockedKeys.anki, newPassword) : null;
+        
         return new Promise((resolve) => {
-           db.run(`INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc) VALUES (?, ?, ?, ?, ?)`,
-             ['guest_' + Date.now(), newHash, libEnc, finEnc, notEnc], (err) => {
+           db.run(`INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             ['guest_' + Date.now(), newHash, libEnc, finEnc, notEnc, culEnc, ankiEnc], (err) => {
                if (err) resolve({ success: false, error: err.message });
                else resolve({ success: true });
              });
@@ -180,17 +186,22 @@ export function registerAuthHandlers() {
     const finKey = allowedModules.includes('finance') ? currentUnlockedKeys.finance : null;
     const notKey = allowedModules.includes('notes') ? currentUnlockedKeys.notes : null;
     
+    const culKey = allowedModules.includes('culture') ? currentUnlockedKeys.culture : null;
+    const ankiKey = allowedModules.includes('anki') ? currentUnlockedKeys.anki : null;
+    
     const libEnc = libKey ? encryptModuleKey(libKey, visitorPassword) : null;
     const finEnc = finKey ? encryptModuleKey(finKey, visitorPassword) : null;
     const notEnc = notKey ? encryptModuleKey(notKey, visitorPassword) : null;
+    const culEnc = culKey ? encryptModuleKey(culKey, visitorPassword) : null;
+    const ankiEnc = ankiKey ? encryptModuleKey(ankiKey, visitorPassword) : null;
     
     const authHash = hashAuthPassword(visitorPassword);
     const id = 'visitor_' + Date.now().toString(36);
     
     return new Promise((resolve) => {
       getDb().run(
-        `INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc) VALUES (?, ?, ?, ?, ?)`,
-        [id, authHash, libEnc, finEnc, notEnc],
+        `INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, authHash, libEnc, finEnc, notEnc, culEnc, ankiEnc],
         (err) => {
           if (err) resolve({ success: false, error: err.message });
           else resolve({ success: true, visitorId: id });
@@ -202,7 +213,7 @@ export function registerAuthHandlers() {
   ipcMain.handle('auth:get-visitors', async () => {
     if (isLocked) return [];
     return new Promise((resolve) => {
-      getDb().all('SELECT id, library_key_enc, finance_key_enc, notes_key_enc FROM keychain WHERE id != "master"', (err, rows) => {
+      getDb().all('SELECT id, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc FROM keychain WHERE id != "master"', (err, rows) => {
         if (err || !rows) return resolve([]);
         
         const visitors = rows.map((r: any) => ({
@@ -210,7 +221,9 @@ export function registerAuthHandlers() {
           modules: [
             r.library_key_enc ? 'library' : null,
             r.finance_key_enc ? 'finance' : null,
-            r.notes_key_enc ? 'notes' : null
+            r.notes_key_enc ? 'notes' : null,
+            r.culture_key_enc ? 'culture' : null,
+            r.anki_key_enc ? 'anki' : null
           ].filter(Boolean)
         }));
         
