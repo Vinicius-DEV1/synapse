@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, MessageSquare } from 'lucide-react';
+import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, MessageSquare, BookOpen, Trash2, X } from 'lucide-react';
 import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
@@ -41,6 +41,32 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   
   // Dictionary
   const [dictState, setDictState] = useState<{ word: string; context: string } | null>(null);
+
+  // Vocabulary
+  const [videoWords, setVideoWords] = useState<any[]>([]);
+  const [showVocabDrawer, setShowVocabDrawer] = useState(false);
+
+  const loadVideoWords = async () => {
+    if (window.api?.sync) {
+      try {
+        const words = await window.api.sync.getTable('video_words');
+        const currentVideoWords = words.filter((w: any) => w.video_id === video.id && !w.deleted_at);
+        setVideoWords(currentVideoWords);
+      } catch(e) {
+        console.error(e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadVideoWords();
+  }, [video.id]);
+
+  const activeSavedWords = videoWords.filter(vw => {
+    // Check if the saved word's timestamp falls within the currently active cue (or any active cue in 'cues')
+    const activeCue = cues.find(c => vw.timestamp >= c.startTime && vw.timestamp <= c.endTime);
+    return activeCue && activeCue.text === activeCueText;
+  });
 
   // Errors
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -471,6 +497,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         <InteractiveSubtitles 
           currentSubtitle={activeCueText} 
           onWordClick={handleWordClick} 
+          savedWords={activeSavedWords}
         />
       )}
 
@@ -490,13 +517,12 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
             <h2 className="text-white font-medium text-lg drop-shadow-md">{title}</h2>
           </div>
           
-          {/* Audio Selector */}
-          {audioTracks.length > 0 && (
-            <div className="flex items-center gap-3">
+          {/* Top Right Controls */}
+          <div className="flex items-center gap-3">
+            {/* Audio Selector */}
+            {audioTracks.length > 0 && (
               <button
-                onClick={() => {
-                  setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1);
-                }}
+                onClick={() => setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1)}
                 className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
                 title="Trocar Idioma (A)"
               >
@@ -505,8 +531,23 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
                   {activeAudioIndex === -1 ? 'Áudio Nativo (0 Lag)' : audioTracks[activeAudioIndex].label}
                 </span>
               </button>
-            </div>
-          )}
+            )}
+
+            {/* Vocabulary Drawer Toggle */}
+            <button
+              onClick={() => {
+                setShowVocabDrawer(true);
+                if (videoRef.current) videoRef.current.pause();
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-brand-500/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+              title="Palavras Salvas"
+            >
+              <BookOpen size={16} className={videoWords.length > 0 ? "text-yellow-400" : "text-white/70"} />
+              <span className="text-sm font-medium">
+                {videoWords.length}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Play/Pause Center Button */}
@@ -582,11 +623,100 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
           text={dictState.word}
           pageContext={dictState.context}
           onClose={() => setDictState(null)}
-          onSaveHighlight={(color, note) => {
-            console.log("Saved word from video:", dictState.word, color, note);
-            // Here you can dispatch to save in a Global Vocabulary notebook
+          sourceType="video"
+          onSaveHighlight={async (color, note) => {
+            if (window.api?.sync) {
+              const newWord = {
+                id: crypto.randomUUID(),
+                video_id: video.id,
+                word: dictState.word,
+                context: dictState.context,
+                timestamp: videoRef.current?.currentTime || 0,
+                color,
+                note
+              };
+              await window.api.sync.upsertRow('video_words', newWord);
+              loadVideoWords();
+            }
           }}
         />
+      )}
+
+      {/* Vocabulary Drawer */}
+      {showVocabDrawer && (
+        <div className="absolute inset-y-0 right-0 w-96 max-w-full bg-dark-card border-l border-white/10 shadow-2xl z-50 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
+          <div className="flex items-center justify-between p-6 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <BookOpen size={20} className="text-brand-400" />
+              <h2 className="text-lg font-bold text-white">Vocabulário Salvo</h2>
+            </div>
+            <button 
+              onClick={() => {
+                setShowVocabDrawer(false);
+                if (videoRef.current) videoRef.current.play();
+              }}
+              className="p-2 hover:bg-white/10 rounded-full text-white/70 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+            {videoWords.length === 0 ? (
+              <div className="text-center text-white/50 py-10">
+                <BookOpen size={48} className="mx-auto mb-4 opacity-20" />
+                <p>Você ainda não salvou nenhuma palavra neste vídeo.</p>
+                <p className="text-sm mt-2">Clique nas legendas para salvar!</p>
+              </div>
+            ) : (
+              videoWords.sort((a, b) => a.timestamp - b.timestamp).map(vw => (
+                <div key={vw.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-2 group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: vw.color === 'yellow' ? '#facc15' : vw.color === 'green' ? '#4ade80' : vw.color === 'blue' ? '#60a5fa' : vw.color === 'purple' ? '#c084fc' : vw.color === 'pink' ? '#f472b6' : vw.color === 'red' ? '#f87171' : '#facc15' }} />
+                      <h4 className="text-white font-bold">{vw.word}</h4>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => {
+                          if (videoRef.current) {
+                            videoRef.current.currentTime = vw.timestamp;
+                            setShowVocabDrawer(false);
+                            videoRef.current.play();
+                          }
+                        }}
+                        className="text-xs font-mono bg-black/40 px-2 py-1 rounded text-white/70 hover:text-white hover:bg-brand-500 transition-colors"
+                      >
+                        {new Date(vw.timestamp * 1000).toISOString().substring(14, 19)}
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          if (window.api?.sync) {
+                            await window.api.sync.upsertRow('video_words', { ...vw, deleted_at: new Date().toISOString() });
+                            loadVideoWords();
+                          }
+                        }}
+                        className="text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-300 transition-all p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  {vw.context && (
+                    <p className="text-sm text-white/60 italic border-l-2 border-white/20 pl-3 py-1">
+                      "{vw.context}"
+                    </p>
+                  )}
+                  {vw.note && (
+                    <p className="text-sm text-brand-300 mt-1">
+                      {vw.note}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
