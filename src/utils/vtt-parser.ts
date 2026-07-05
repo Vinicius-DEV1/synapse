@@ -49,8 +49,17 @@ export function parseVtt(vttContent: string): SubtitleCue[] {
       
       // Look ahead to see if the next line is empty (end of cue)
       if (i === lines.length - 1 || lines[i + 1].trim() === '') {
-        // Strip HTML tags sometimes found in VTT (e.g. <b>, <i>)
-        const cleanText = currentCue.text.replace(/<[^>]+>/g, '');
+        // Strip HTML tags sometimes found in VTT (e.g. <b>, <i>, <c.color>)
+        currentCue.text = currentCue.text.replace(/<[^>]+>/g, '');
+        
+        // Also decode standard HTML entities just in case (e.g. &amp;, &lt;, &gt;, &quot;, &#39;)
+        currentCue.text = currentCue.text
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'");
+
         cues.push(currentCue as SubtitleCue);
         currentCue = {};
         isCueText = false;
