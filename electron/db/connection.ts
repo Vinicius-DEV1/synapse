@@ -4,7 +4,37 @@ import { app } from 'electron';
 import * as crypto from 'crypto';
 
 let db: sqlite3.Database | null = null;
-const CORE_STATIC_KEY = "caderno-core-vault-static-key";
+
+import * as fs from 'fs';
+import { safeStorage } from 'electron';
+
+function getOrCreateVaultKey(): string {
+  const vaultPath = path.join(app.getPath('userData'), 'caderno_vault.key');
+  
+  if (fs.existsSync(vaultPath)) {
+    const fileData = fs.readFileSync(vaultPath);
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        return safeStorage.decryptString(fileData);
+      } catch (err) {
+        console.error("Falha ao descriptografar vault key com safeStorage. O SO pode ter mudado a chave mestre.", err);
+        throw new Error("Vault decryption failed");
+      }
+    } else {
+      // Fallback sem encriptação (Linux sem libsecret/keychain)
+      return fileData.toString('utf-8');
+    }
+  } else {
+    const newKey = crypto.randomUUID() + crypto.randomBytes(32).toString('hex');
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(newKey);
+      fs.writeFileSync(vaultPath, encrypted);
+    } else {
+      fs.writeFileSync(vaultPath, newKey, 'utf-8');
+    }
+    return newKey;
+  }
+}
 
 export function getDb(): sqlite3.Database {
   if (!db) throw new Error("Database not initialized");
@@ -77,10 +107,17 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
     const culturePath = path.join(app.getPath('userData'), 'caderno_culture.sqlite').replace(/\\/g, '/');
     const ankiPath = path.join(app.getPath('userData'), 'caderno_anki.sqlite').replace(/\\/g, '/');
     
+    let coreKey: string;
+    try {
+      coreKey = getOrCreateVaultKey();
+    } catch (err) {
+      return reject(err);
+    }
+    
     const newDb = new sqlite3.Database(corePath, (err) => {
       if (err) return reject(err);
       
-      newDb.run(`PRAGMA key = '${CORE_STATIC_KEY}'`, () => {
+      newDb.run(`PRAGMA key = '${coreKey}'`, () => {
          newDb.get('SELECT count(*) FROM sqlite_master', (err2) => {
             if (err2) {
                newDb.close();

@@ -2,7 +2,6 @@ import { getWebDb } from './db-web';
 import { encryptText, decryptText } from './crypto';
 
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
-export const DRIVE_CLIENT_SECRET = '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'; // Seguro manter no client para SPA/Electron pessoais
 
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
@@ -16,27 +15,58 @@ export interface DriveToken {
   expires_at?: number;
 }
 
+let _inMemoryMasterKey: CryptoKey | null = null;
+
+export function setDriveMasterKey(key: CryptoKey | null) {
+  _inMemoryMasterKey = key;
+}
+
+// === PKCE Helpers ===
+function base64URLEncode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let str = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    str += String.fromCharCode(bytes[i]);
+  }
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+export function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return base64URLEncode(array);
+}
+
+export async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return base64URLEncode(digest);
+}
+// ====================
+
 /**
  * Gera a URL de login do Google (OAuth2)
  */
-export function getDriveAuthUrl(): string {
+export function getDriveAuthUrl(codeChallenge: string): string {
   const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
-  // Usa localhost mesmo se estivermos rodando no Electron ou Web
   const redirectUri = encodeURIComponent('http://localhost:5173'); 
-  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${DRIVE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+  return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${DRIVE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 }
 
 /**
  * Troca o código copiado pelo usuário por um par de tokens (Access + Refresh)
  */
-export async function exchangeCodeForToken(code: string): Promise<DriveToken> {
+export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
-  params.append('client_secret', DRIVE_CLIENT_SECRET);
   params.append('code', code);
   params.append('grant_type', 'authorization_code');
-  // IMPORTANTE: Tem que bater exatamente com o que foi usado na autorização
   params.append('redirect_uri', 'http://localhost:5173');
+  params.append('code_verifier', codeVerifier);
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -60,7 +90,6 @@ export async function exchangeCodeForToken(code: string): Promise<DriveToken> {
 export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
-  params.append('client_secret', DRIVE_CLIENT_SECRET);
   params.append('refresh_token', refresh_token);
   params.append('grant_type', 'refresh_token');
 
@@ -281,7 +310,12 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
     const val = config.data || config.value;
     if (val) {
       try {
-        return JSON.parse(val);
+        let decrypted = val;
+        // Se não iniciar com {, assumimos que está encriptado no IndexedDB
+        if (!val.startsWith('{') && _inMemoryMasterKey) {
+          decrypted = await decryptText(val, _inMemoryMasterKey);
+        }
+        return JSON.parse(decrypted);
       } catch (e) {
         return { token: null };
       }
@@ -312,9 +346,13 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
   }
   
   const db = await getWebDb();
+  let valToSave = JSON.stringify(dataPayload);
+  if (_inMemoryMasterKey) {
+    valToSave = await encryptText(valToSave, _inMemoryMasterKey);
+  }
   await db.put('config', { 
     id: 'drive_credentials', 
-    data: JSON.stringify(dataPayload),
+    data: valToSave,
     updated_at: new Date().toISOString()
   });
 }
@@ -344,6 +382,8 @@ export interface DriveFile {
   id: string;
   name: string;
   createdTime: string;
+  size?: string;
+  mimeType?: string;
 }
 
 /**
@@ -352,8 +392,8 @@ export interface DriveFile {
 export async function listFiles(accessToken: string, folderId: string): Promise<DriveFile[]> {
   // Query para pegar os arquivos da pasta que não estão na lixeira
   const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
-  // fields pede arquivos com id, name e data de criação
-  const url = `${DRIVE_API_URL}?q=${query}&fields=files(id,name,createdTime)&pageSize=1000`;
+  // fields pede arquivos com id, name, data de criação, tamanho e tipo
+  const url = `${DRIVE_API_URL}?q=${query}&fields=files(id,name,createdTime,size,mimeType)&pageSize=1000`;
 
   const res = await fetch(url, {
     headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -380,5 +420,71 @@ export async function deleteFromDrive(accessToken: string, fileId: string): Prom
   if (!res.ok && res.status !== 404) { // Ignora se já foi apagado (404)
     const errorText = await res.text();
     throw new Error(`Failed to delete file from Drive: ${res.status} - ${errorText}`);
+  }
+}
+
+export interface DriveStorageUsage {
+  total: number;
+  modules: {
+    library: number;
+    photos: number;
+    videos: number;
+    others: number;
+  }
+}
+
+/**
+ * Calcula o uso de armazenamento no Google Drive para os diferentes módulos do app.
+ */
+export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> {
+  const token = await getValidAccessToken();
+  if (!token) return null;
+
+  try {
+    const appFolderId = await getOrCreateAppFolder(token);
+    const photosFolderId = await getOrCreatePhotosFolder(token, appFolderId);
+
+    // Get files in main folder
+    const mainFiles = await listFiles(token, appFolderId);
+    // Get files in photos folder
+    const photoFiles = await listFiles(token, photosFolderId);
+
+    let library = 0;
+    let videos = 0;
+    let others = 0;
+    
+    for (const f of mainFiles) {
+      if (f.mimeType === 'application/vnd.google-apps.folder') continue;
+      
+      const size = parseInt(f.size || '0', 10);
+      
+      if (f.name.startsWith('Caderno_') && f.name.endsWith('.enc')) {
+        library += size;
+      } else if (f.name.endsWith('.mp4') || f.name.endsWith('.mkv') || f.name.endsWith('.vtt') || f.name.endsWith('.m4a') || f.name.includes(' - Legenda ') || f.name.includes(' - Audio ')) {
+        videos += size;
+      } else {
+        others += size;
+      }
+    }
+
+    let photos = 0;
+    for (const f of photoFiles) {
+      if (f.mimeType === 'application/vnd.google-apps.folder') continue;
+      const size = parseInt(f.size || '0', 10);
+      photos += size;
+    }
+
+    return {
+      total: library + videos + photos + others,
+      modules: {
+        library,
+        photos,
+        videos,
+        others
+      }
+    };
+  } catch (error) {
+    console.error("Failed to get drive storage usage:", error);
+    return null;
   }
 }
