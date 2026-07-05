@@ -40,7 +40,12 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const [activeCueText, setActiveCueText] = useState('');
   
   // Dictionary
-  const [dictState, setDictState] = useState<{ word: string; context: string; preloadedData?: any } | null>(null);
+  const [dictState, setDictState] = useState<{ 
+    word: string; 
+    context: string; 
+    preloadedData?: any;
+    video_clip?: { path: string; startMs: number; endMs: number };
+  } | null>(null);
 
   // Vocabulary
   const [videoWords, setVideoWords] = useState<any[]>([]);
@@ -402,7 +407,15 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       } catch(e) {}
     }
 
-    setDictState({ word, context: extendedContext, preloadedData });
+    let video_clip = undefined;
+    if (currentIndex !== -1) {
+      const cue = cues[currentIndex];
+      const startMs = Math.max(0, (cue.startTime - 1) * 1000);
+      const endMs = (cue.endTime + 1) * 1000;
+      video_clip = { path: video.local_path || src, startMs, endMs };
+    }
+
+    setDictState({ word, context: extendedContext, preloadedData, video_clip });
   };
 
   return (
@@ -631,6 +644,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
           text={dictState.word}
           pageContext={dictState.context}
           preloadedData={dictState.preloadedData}
+          videoClip={dictState.video_clip}
           onClose={() => setDictState(null)}
           sourceType="video"
           onSaveHighlight={async (color, note) => {
