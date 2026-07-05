@@ -100,8 +100,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
     return (
       <CardEditor
         draft={{
-          front: editingCard.front.replace(/<\/?b>/g, ''),
-          back: editingCard.back.replace(/<\/?b>/g, ''),
+          front: editingCard.front,
+          back: editingCard.back,
           extra_note: editingCard.extra_note,
           media_url: editingCard.media_url,
           card_type: editingCard.card_type,
@@ -226,8 +226,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                           className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
-                      <td className="p-3 text-sm text-dark-text max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.front.replace(/<\/?b>/g, '') }}></td>
-                      <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back.replace(/<\/?b>/g, '') }}></td>
+                      <td className="p-3 text-sm text-dark-text max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.front }}></td>
+                      <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back }}></td>
                       <td className="p-3 text-center">
                         {card.media_url && (
                           <button onClick={() => playAudio(card.media_url)} className="text-dark-subtext hover:text-indigo-400 p-1">
