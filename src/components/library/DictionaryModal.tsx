@@ -25,6 +25,10 @@ export interface DeepDive {
 export interface AnkiCard {
   front: string;
   back: string;
+  video_clip?: {
+    startMs: number;
+    endMs: number;
+  };
 }
 
 interface LanguageData {
@@ -148,8 +152,9 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
     },
     "anki_card": {
-      "front": "${pageContext ? 'USE EXATAMENTE o mesmo trecho do Contexto da página fornecido, apenas colocando a palavra-alvo em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
-      "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)"
+      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar a FRASE COMPLETA (lógica e gramatical) que contém a palavra. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
+      "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)",
+      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
     }
   }${isEnglishOnly ? '' : `,
   "portuguese": {
@@ -198,8 +203,9 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
     },
     "anki_card": {
-      "front": "${pageContext ? 'USE EXATAMENTE o mesmo trecho do Contexto da página fornecido, apenas colocando a palavra-alvo em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
-      "back": "Significado preciso em português."
+      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar a FRASE COMPLETA (lógica e gramatical) que contém a palavra. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
+      "back": "Significado preciso em português.",
+      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
     }
   }
 }
@@ -633,7 +639,11 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                 ? dictionaryData.english?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
                 : dictionaryData.portuguese?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
             ) : undefined,
-            video_clip: videoClip
+            video_clip: (sourceType === 'video' && dictionaryData.detected_language === 'en' && dictionaryData.english?.anki_card?.video_clip) 
+              ? { path: videoClip!.path, startMs: dictionaryData.english.anki_card.video_clip.startMs, endMs: dictionaryData.english.anki_card.video_clip.endMs }
+              : (sourceType === 'video' && dictionaryData.detected_language === 'pt' && dictionaryData.portuguese?.anki_card?.video_clip)
+                ? { path: videoClip!.path, startMs: dictionaryData.portuguese.anki_card.video_clip.startMs, endMs: dictionaryData.portuguese.anki_card.video_clip.endMs }
+                : videoClip
           }}
           onClose={() => setShowAnkiEditor(false)}
         />
