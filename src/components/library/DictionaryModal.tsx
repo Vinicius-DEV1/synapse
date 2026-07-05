@@ -152,7 +152,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
     },
     "anki_card": {
-      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar a FRASE COMPLETA (lógica e gramatical) que contém a palavra. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
+      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
       "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)",
       ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
     }
@@ -203,7 +203,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
     },
     "anki_card": {
-      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar a FRASE COMPLETA (lógica e gramatical) que contém a palavra. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
+      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
       "back": "Significado preciso em português.",
       ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
     }
