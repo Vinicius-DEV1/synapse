@@ -150,6 +150,8 @@ export function registerAnkiHandlers() {
         );
       });
     });
+  });
+
   ipcMain.handle('anki:get-all-cards', async (_, deckId?: string) => {
     return new Promise((resolve) => {
       let query = 'SELECT * FROM anki.anki_cards';
