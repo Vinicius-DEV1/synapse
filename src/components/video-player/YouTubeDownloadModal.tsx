@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { X, Youtube, Loader2, Download, Video, FolderPlus } from 'lucide-react';
+import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, MessageSquare } from 'lucide-react';
 import { downloadYouTubeAndSync } from '../../services/video-manager';
 
 interface YouTubeDownloadModalProps {
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface SubtitleOption {
+  lang: string;
+  name: string;
+  isAuto: boolean;
 }
 
 export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDownloadModalProps) {
@@ -21,6 +27,9 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
   const [isPlaylist, setIsPlaylist] = useState(false);
   const [collectionName, setCollectionName] = useState('');
 
+  const [availableSubs, setAvailableSubs] = useState<SubtitleOption[]>([]);
+  const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
+
   const handleFetchInfo = async () => {
     if (!url) return;
     setIsFetching(true);
@@ -31,7 +40,23 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
       
       setVideoInfo(info);
       
-      // Checa se é playlist (yt-dlp retorna _type: 'playlist')
+      // Parse subtitles
+      const subs: SubtitleOption[] = [];
+      if (info.subtitles) {
+        Object.keys(info.subtitles).forEach(lang => {
+          subs.push({ lang, name: info.subtitles[lang][0]?.name || lang, isAuto: false });
+        });
+      }
+      if (info.automatic_captions) {
+        Object.keys(info.automatic_captions).forEach(lang => {
+          if (!subs.find(s => s.lang === lang)) {
+            subs.push({ lang, name: info.automatic_captions[lang][0]?.name || lang, isAuto: true });
+          }
+        });
+      }
+      setAvailableSubs(subs);
+      setSelectedSubs([]);
+
       if (info._type === 'playlist' || info.entries) {
         setIsPlaylist(true);
         setCollectionName(info.title || 'Nova Playlist');
@@ -44,6 +69,12 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
     } finally {
       setIsFetching(false);
     }
+  };
+
+  const handleToggleSub = (lang: string) => {
+    setSelectedSubs(prev => 
+      prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
+    );
   };
 
   const handleDownload = async () => {
@@ -59,7 +90,6 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
         let completed = 0;
 
         for (const entry of videoInfo.entries) {
-          // Extrai informações seguras de cada entrada
           const entryTitle = entry.title || `Video_${completed+1}`;
           
           await downloadYouTubeAndSync({
@@ -69,8 +99,8 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
             youtubeInfo: entry,
             collectionId,
             collectionName: collectionName,
+            selectedSubs,
             onProgress: (p) => {
-              // Progresso global da playlist
               const basePercent = (completed / total) * 100;
               const itemPercent = (p / 100) * (100 / total);
               setProgress(basePercent + itemPercent);
@@ -84,6 +114,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
           quality: selectedQuality,
           filename: filename.replace(/[\\/:*?"<>|]/g, ''),
           youtubeInfo: videoInfo,
+          selectedSubs,
           onProgress: (p) => setProgress(p)
         });
       }
@@ -101,7 +132,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
       <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
           <h2 className="text-white font-medium flex items-center gap-2">
-            <Youtube size={18} className="text-red-500" />
+            <MonitorPlay size={18} className="text-red-500" />
             Baixar do YouTube
           </h2>
           <button onClick={onClose} className="text-dark-subtext hover:text-white transition-colors" disabled={isDownloading}>
@@ -175,6 +206,33 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                     <option value="bestaudio/best">Apenas Áudio (Menor tamanho)</option>
                   </select>
                 </div>
+
+                {availableSubs.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-white/70 flex items-center gap-2">
+                      <MessageSquare size={14} className="text-brand-400" />
+                      Legendas para Embutir
+                    </label>
+                    <div className="max-h-[120px] overflow-y-auto bg-black/20 border border-white/10 rounded-lg p-2 flex flex-col gap-1">
+                      {availableSubs.map(sub => (
+                        <label key={sub.lang} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-md cursor-pointer transition-colors group">
+                          <input 
+                            type="checkbox"
+                            checked={selectedSubs.includes(sub.lang)}
+                            onChange={() => handleToggleSub(sub.lang)}
+                            className="w-3.5 h-3.5 accent-brand-500 bg-black/30 border-white/20 rounded-sm cursor-pointer"
+                          />
+                          <span className="text-sm text-white group-hover:text-brand-300 transition-colors flex-1 flex items-center justify-between">
+                            {sub.name.toUpperCase()} ({sub.lang})
+                            {sub.isAuto && (
+                              <span className="text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded uppercase font-medium ml-2">Auto</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {isPlaylist ? (
                   <div className="flex flex-col gap-1.5">

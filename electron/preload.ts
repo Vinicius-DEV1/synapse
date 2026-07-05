@@ -149,7 +149,7 @@ contextBridge.exposeInMainWorld('api', {
   // YouTube API
   youtube: {
     fetchInfo: (url: string) => invokeWithSync('youtube:fetchInfo', url),
-    download: (url: string, filename: string, quality: string) => invokeWithSync('youtube:download', url, filename, quality),
+    download: (url: string, filename: string, quality: string, subs?: string[]) => invokeWithSync('youtube:download', url, filename, quality, subs),
     onProgress: (callback: (percent: number) => void) => {
       const listener = (_: any, percent: number) => callback(percent);
       ipcRenderer.on('youtube:download-progress', listener);

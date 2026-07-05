@@ -5,7 +5,7 @@ import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
 import YouTubeDownloadModal from './YouTubeDownloadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText, deleteVideoAndSync } from '../../services/video-manager';
-import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, Youtube } from 'lucide-react';
+import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, MonitorPlay } from 'lucide-react';
 
 export default function VideoView() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -172,7 +172,7 @@ export default function VideoView() {
               className="flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 text-white text-sm font-medium rounded-lg transition-colors border border-white/10"
               title="Baixar do YouTube"
             >
-              <Youtube size={16} className="text-red-500" />
+              <MonitorPlay size={16} className="text-red-500" />
               <span className="hidden sm:inline">YouTube</span>
             </button>
             <button 

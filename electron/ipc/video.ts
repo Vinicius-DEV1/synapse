@@ -239,25 +239,37 @@ export function setupVideoIpc() {
     }
   });
 
-  ipcMain.handle('youtube:download', async (event, url: string, filename: string, quality: string) => {
+  ipcMain.handle('youtube:download', async (event, url: string, filename: string, quality: string, subs?: string[]) => {
     const videosDir = await getVideosDir();
-    const destPath = path.join(videosDir, filename);
+    // Forçamos mkv se tiver legenda embutida, ou sempre mkv para melhor compatibilidade com as trilhas
+    const finalFilename = filename.replace(/\.mp4$/, '.mkv');
+    const destPath = path.join(videosDir, finalFilename);
     
     return new Promise((resolve, reject) => {
       try {
         const youtubedl = require('youtube-dl-exec');
         // Quality can be 'best', or specific format codes.
-        const formatCode = quality === 'best' ? 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' : quality;
+        const formatCode = quality === 'best' ? 'bestvideo+bestaudio/best' : quality;
         
-        const subprocess = youtubedl.exec(url, {
+        const ytdlOptions: any = {
           output: destPath,
           format: formatCode,
-          mergeOutputFormat: 'mp4',
+          mergeOutputFormat: 'mkv',
           noCheckCertificates: true,
           noWarnings: true,
           preferFreeFormats: true,
           addHeader: ['referer:youtube.com', 'user-agent:Mozilla/5.0']
-        });
+        };
+
+        if (subs && subs.length > 0) {
+          ytdlOptions.writeSubs = true;
+          ytdlOptions.writeAutoSubs = true;
+          ytdlOptions.subLangs = subs.join(',');
+          ytdlOptions.embedSubs = true;
+          ytdlOptions.compatOptions = 'no-keep-subs'; // limpa os VTT soltos
+        }
+        
+        const subprocess = youtubedl.exec(url, ytdlOptions);
 
         subprocess.stdout?.on('data', (data: Buffer) => {
           const str = data.toString();
