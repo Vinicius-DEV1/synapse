@@ -393,6 +393,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       <video
         ref={videoRef}
         src={src}
+        autoPlay
         className="w-full h-full object-contain"
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
