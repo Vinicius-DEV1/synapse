@@ -255,6 +255,7 @@ export function setupVideoIpc() {
           output: destPath,
           format: formatCode,
           mergeOutputFormat: 'mkv',
+          ffmpegLocation: ffmpegStatic || undefined,
           noCheckCertificates: true,
           noWarnings: true,
           preferFreeFormats: true,
