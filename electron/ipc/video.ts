@@ -252,10 +252,10 @@ export function setupVideoIpc() {
         const formatCode = quality === 'best' ? 'bestvideo+bestaudio/best' : quality;
         
         const ytdlOptions: any = {
-          output: destPath,
+          output: `"${destPath}"`,
           format: formatCode,
           mergeOutputFormat: 'mkv',
-          ffmpegLocation: ffmpegStatic || undefined,
+          ffmpegLocation: ffmpegStatic ? `"${ffmpegStatic}"` : undefined,
           noCheckCertificates: true,
           noWarnings: true,
           preferFreeFormats: true,
