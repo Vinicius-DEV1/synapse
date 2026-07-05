@@ -10,6 +10,7 @@ export interface AppSettings {
   hasOfflineDictionary: boolean;
   defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
   defaultTextWidth: 'narrow' | 'medium' | 'full';
+  aiDictionaryLanguage: 'bilingual' | 'english_only';
 }
 
 export function getSettings(): AppSettings {
@@ -24,7 +25,8 @@ export function getSettings(): AppSettings {
     dictionaryMode: 'offline',
     hasOfflineDictionary: false,
     defaultReadingMode: 'light',
-    defaultTextWidth: 'medium'
+    defaultTextWidth: 'medium',
+    aiDictionaryLanguage: 'bilingual'
   };
   
   try {

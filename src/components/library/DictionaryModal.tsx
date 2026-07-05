@@ -98,6 +98,8 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
           setLoading(false);
         }, 600);
       } else {
+        const isEnglishOnly = settings.aiDictionaryLanguage === 'english_only';
+        
         const prompt = `Você é um dicionário internacional renomado e um professor de idiomas experiente focado em estudantes brasileiros.
 Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
@@ -105,6 +107,7 @@ ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
 Identifique o idioma da palavra. Siga ESTAS REGRAS RÍGIDAS:
 1. Lexicografia: Retorne as definições separadas e numeradas (1. ..., 2. ...) baseadas em dicionários oficiais (Oxford/Cambridge/Michaelis). NUNCA resuma em um único texto se houver mais de um significado.
 2. Pedagogia: Na explicação de contexto, explique por que a palavra foi usada neste contexto, e sugira collocations (combinações comuns de palavras nativas).
+${isEnglishOnly ? '3. IMERSÃO TOTAL: Retorne TODAS as explicações exclusivamente em inglês. NUNCA traduza para o português.' : ''}
 
 Se a palavra for em INGLÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
@@ -134,7 +137,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       ],
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
     }
-  },
+  }${isEnglishOnly ? '' : `,
   "portuguese": {
     "translation": "Tradução direta e precisa para o português.",
     "is_rare_or_complex": true/false,
@@ -154,7 +157,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
       ],
       "progressive_examples": ["1. básico", "2. básico", "3. intermediário", "4. intermediário", "5. intermediário", "6. avançado", "7. avançado", "8. avançado"]
     }
-  }
+  }`}
 }
 
 Se a palavra for em PORTUGUÊS:
@@ -277,7 +280,7 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
             </div>
           )}
           
-          {dictionaryData && dictionaryData.detected_language === 'en' && (
+          {dictionaryData && dictionaryData.detected_language === 'en' && dictionaryData.portuguese && (
             <div className="flex items-center gap-4 mt-3">
               <button 
                 onClick={() => setLanguageTab('en')}
@@ -290,6 +293,15 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
                 className={`text-xs font-semibold pb-1 border-b-2 transition-colors ${languageTab === 'pt' ? 'border-brand-500 text-brand-500' : 'border-transparent text-dark-subtext hover:text-white'}`}
               >
                 🇧🇷 Português
+              </button>
+            </div>
+          )}
+          {dictionaryData && dictionaryData.detected_language === 'en' && !dictionaryData.portuguese && (
+            <div className="flex items-center gap-4 mt-3">
+              <button 
+                className={`text-xs font-semibold pb-1 border-b-2 border-brand-500 text-brand-500`}
+              >
+                🇺🇸 English (Immersion)
               </button>
             </div>
           )}

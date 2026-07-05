@@ -228,6 +228,21 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
       </div>
       
       <div className="border-t border-white/5 pt-4">
+        <label className="block text-sm font-medium text-white mb-2">Nível de Imersão (Dicionário IA)</label>
+        <select 
+          value={appSettings.aiDictionaryLanguage || 'bilingual'}
+          onChange={(e) => setAppSettings({ ...appSettings, aiDictionaryLanguage: e.target.value as 'bilingual' | 'english_only' })}
+          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+        >
+          <option value="bilingual">Bilíngue (Inglês + Português)</option>
+          <option value="english_only">100% Inglês (Foco e Economia)</option>
+        </select>
+        <p className="text-[11px] text-dark-subtext mt-1.5">
+          "Bilíngue" traz contexto extra em português. "100% Inglês" força a imersão e economiza sua cota de IA.
+        </p>
+      </div>
+
+      <div className="border-t border-white/5 pt-4">
         <label className="block text-sm font-medium text-white mb-2">Modo do Dicionário (PDF)</label>
         <select 
           value={appSettings.dictionaryMode || 'offline'}
