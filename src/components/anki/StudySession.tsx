@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, RotateCcw, X, Volume2, Edit3 } from 'lucide-react';
+import { Play, RotateCcw, X, Volume2, Edit3, Trash2 } from 'lucide-react';
 import CardEditor from './CardEditor';
 
 interface Card {
@@ -32,9 +32,22 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       const res = await window.api.anki.getDueCards(deckId);
       if (res.success && res.cards) {
         setCards(res.cards);
+        setCurrentIndex(0);
+        setShowingAnswer(false);
       }
     }
     setLoading(false);
+  };
+
+  const handleDeleteCard = async () => {
+    const card = cards[currentIndex];
+    if (!card) return;
+    if (window.confirm('Tem certeza que deseja excluir este cartão definitivamente?')) {
+      if (window.api?.anki) {
+        await window.api.anki.deleteCard(card.id);
+        loadDueCards();
+      }
+    }
   };
 
   const handleRating = async (rating: number) => {
@@ -160,7 +173,10 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           <button onClick={() => setEditingCard(cards[currentIndex])} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-colors" title="Editar Cartão">
             <Edit3 className="w-5 h-5" />
           </button>
-          <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={handleDeleteCard} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" title="Excluir Cartão">
+            <Trash2 className="w-5 h-5" />
+          </button>
+          <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors" title="Fechar Sessão">
             <X className="w-5 h-5" />
           </button>
         </div>
