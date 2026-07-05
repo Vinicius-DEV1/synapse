@@ -24,7 +24,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -178,7 +178,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
