@@ -167,121 +167,144 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
     
     for (const table of tables) {
       try {
-        let q = collection(db, table) as any;
-      if (lastPull > 0) {
-        // Usa a data ISO para filtrar no servidor e não gastar cota do Firebase atoa
-        const lastPullIso = new Date(lastPull).toISOString();
-        q = query(collection(db, table), where('updatedAt', '>', lastPullIso));
-      }
-      
-      const querySnapshot = await getDocs(q);
-      const localRows = await window.api.sync.getTable(table);
-      
-      const localMap = new Map(localRows.map((r: any) => [r.id, r]));
-
-      for (const docSnap of querySnapshot.docs) {
-        const cloudData = docSnap.data();
-        if (!cloudData.encryptedData) continue;
-        if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') continue;
-        
-        const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
-        if (cloudTime > highestCloudTime) {
-          highestCloudTime = cloudTime;
+        let qBase = collection(db, table) as any;
+        if (lastPull > 0) {
+          // Usa a data ISO para filtrar no servidor e não gastar cota do Firebase atoa
+          const lastPullIso = new Date(lastPull).toISOString();
+          qBase = query(collection(db, table), where('updatedAt', '>', lastPullIso));
         }
 
-        // Pula se não mudou desde o nosso último pull bem-sucedido, exceto se for o primeiro pull
-        if (lastPull > 0 && cloudTime <= lastPull) {
-          continue;
-        }
+        let hasMore = true;
+        let lastDocSnap: any = null;
+        const CHUNK_SIZE = 100;
         
-        const localRow = localMap.get(docSnap.id);
-        const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
-        
-        if (cloudTime !== localTime) {
-          try {
-            const decryptedJson = await decryptText(cloudData.encryptedData, key);
-            const parsed = JSON.parse(decryptedJson);
-            const rowToUpsert: any = {
-              id: docSnap.id,
-              ...parsed
-            };
-            if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
-            if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
+        const localRows = await window.api.sync.getTable(table);
+        const localMap = new Map(localRows.map((r: any) => [r.id, r]));
 
-            if (typeof window !== 'undefined' && (window as any).api?.log) {
-              (window as any).api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
+        while (hasMore) {
+          let q = qBase;
+          if (lastDocSnap) {
+            q = query(qBase, startAfter(lastDocSnap), limit(CHUNK_SIZE));
+          } else {
+            q = query(qBase, limit(CHUNK_SIZE));
+          }
+          
+          const querySnapshot = await getDocs(q);
+          if (querySnapshot.empty) {
+            hasMore = false;
+            break;
+          }
+          
+          lastDocSnap = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+          for (const docSnap of querySnapshot.docs) {
+            const cloudData = docSnap.data();
+            if (!cloudData.encryptedData) continue;
+            if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') continue;
+            
+            const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+            if (cloudTime > highestCloudTime) {
+              highestCloudTime = cloudTime;
             }
 
-            if (parsed.deleted_at) {
-              if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Hard deleting locally.`);
-              }
-              if (window.api?.sync?.deleteRow) {
-                await window.api.sync.deleteRow(table, docSnap.id);
-              }
+            // Pula se não mudou desde o nosso último pull bem-sucedido, exceto se for o primeiro pull
+            if (lastPull > 0 && cloudTime <= lastPull) {
               continue;
             }
-
-            // Merge CRDT Yjs se for uma página e ambos tiverem crdt_state
-            if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
+            
+            const localRow = localMap.get(docSnap.id);
+            const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
+            
+            if (cloudTime !== localTime) {
               try {
-                const Y = await import('yjs');
-                const { base64ToUint8Array, getYDocStateAsBase64 } = await import('../utils/yjs-utils');
-                const ydoc = new Y.Doc();
-                Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
-                Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
-                rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
-                
-                if (typeof window !== 'undefined' && (window as any).api?.log) {
-                  (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
-                }
-                
-                // Se o nosso local era mais novo, preservamos a data local 
-                // para garantir que o pushAllToCloud envie esse novo merge para a nuvem!
-                // Além disso, preservamos os campos LWW (Last Write Wins) que não são CRDT!
-                if (localTime > cloudTime) {
-                  rowToUpsert.updated_at = localRow.updated_at;
-                  if (localRow.content !== undefined) rowToUpsert.content = localRow.content;
-                  if (rowToUpsert.title !== undefined) rowToUpsert.title = localRow.title;
-                  if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
-                  if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
-                  if (rowToUpsert.sort_order !== undefined) rowToUpsert.sort_order = localRow.sort_order;
-                }
-              } catch (crdtErr) {
-                console.error("Erro no merge CRDT Yjs:", crdtErr);
-              }
-            } else if (localTime > cloudTime) {
-              // Se não tiver CRDT e o local for mais novo, Last Write Wins!
-              // Ignoramos o pull para não sobrescrever nossa edição.
-              if (parsed.deleted_at && !localRow?.deleted_at) {
-                Object.assign(rowToUpsert, localRow);
-                rowToUpsert.deleted_at = parsed.deleted_at;
-              } else {
-                skippedDocsCount++;
-                if (typeof window !== 'undefined' && (window as any).api?.log) {
-                  (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
-                }
-                continue;
-              }
-            }
+                const decryptedJson = await decryptText(cloudData.encryptedData, key);
+                const parsed = JSON.parse(decryptedJson);
+                const rowToUpsert: any = {
+                  id: docSnap.id,
+                  ...parsed
+                };
+                if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
+                if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
 
-            try {
-              pulledDocsCount++;
-              await window.api.sync.upsertRow(table, rowToUpsert);
-              if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+                if (typeof window !== 'undefined' && (window as any).api?.log) {
+                  (window as any).api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
+                }
+
+                if (parsed.deleted_at) {
+                  if (typeof window !== 'undefined' && (window as any).api?.log) {
+                    (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Hard deleting locally.`);
+                  }
+                  if (window.api?.sync?.deleteRow) {
+                    await window.api.sync.deleteRow(table, docSnap.id);
+                  }
+                  continue;
+                }
+
+                // Merge CRDT Yjs se for uma página e ambos tiverem crdt_state
+                if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
+                  try {
+                    const Y = await import('yjs');
+                    const { base64ToUint8Array, getYDocStateAsBase64 } = await import('../utils/yjs-utils');
+                    const ydoc = new Y.Doc();
+                    Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
+                    Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
+                    rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
+                    
+                    if (typeof window !== 'undefined' && (window as any).api?.log) {
+                      (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                    }
+                    
+                    // Se o nosso local era mais novo, preservamos a data local 
+                    // para garantir que o pushAllToCloud envie esse novo merge para a nuvem!
+                    // Além disso, preservamos os campos LWW (Last Write Wins) que não são CRDT!
+                    if (localTime > cloudTime) {
+                      rowToUpsert.updated_at = localRow.updated_at;
+                      if (localRow.content !== undefined) rowToUpsert.content = localRow.content;
+                      if (rowToUpsert.title !== undefined) rowToUpsert.title = localRow.title;
+                      if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
+                      if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
+                      if (rowToUpsert.sort_order !== undefined) rowToUpsert.sort_order = localRow.sort_order;
+                    }
+                  } catch (crdtErr) {
+                    console.error("Erro no merge CRDT Yjs:", crdtErr);
+                  }
+                } else if (localTime > cloudTime) {
+                  // Se não tiver CRDT e o local for mais novo, Last Write Wins!
+                  // Ignoramos o pull para não sobrescrever nossa edição.
+                  if (parsed.deleted_at && !localRow?.deleted_at) {
+                    Object.assign(rowToUpsert, localRow);
+                    rowToUpsert.deleted_at = parsed.deleted_at;
+                  } else {
+                    skippedDocsCount++;
+                    if (typeof window !== 'undefined' && (window as any).api?.log) {
+                      (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+                    }
+                    continue;
+                  }
+                }
+
+                try {
+                  pulledDocsCount++;
+                  await window.api.sync.upsertRow(table, rowToUpsert);
+                  if (typeof window !== 'undefined' && (window as any).api?.log) {
+                    (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+                  }
+                } catch (upsertErr) {
+                  console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
+                }
+              } catch (err: any) {
+                const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
+                console.error(msg);
+                (window.api as any).log?.(msg);
               }
-            } catch (upsertErr) {
-              console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
             }
-          } catch (err: any) {
-            const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
-            console.error(msg);
-            (window.api as any).log?.(msg);
+          }
+          
+          if (querySnapshot.docs.length < CHUNK_SIZE) {
+            hasMore = false;
           }
         }
-      }
-    } catch (err: any) {
+      } catch (err: any) {
       const msg = `PULL erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
       console.error(msg);
       (window.api as any).log?.(msg);
