@@ -98,8 +98,7 @@ export default function VideoView() {
       await window.api.app.showConfirm(`Tem certeza que deseja excluir '${video.title}' localmente? Ele ainda estará no Drive.`) 
       : 1;
       
-    if (confirm !== 1) return; // 1 é o botão "Sim", 0 é o Cancelar. Depende de como mapiei: 'Cancelar'(0), 'Sim, excluir'(1). 
-    // Wait, in main.ts: buttons: ['Cancelar', 'Sim, excluir']. So 1 means 'Sim, excluir'.
+    if (confirm !== 1) return;
 
     setIsDeletingId(video.id);
     try {
@@ -135,6 +134,70 @@ export default function VideoView() {
       console.error("Erro ao excluir da nuvem", e);
     } finally {
       setIsDeletingId(null);
+    }
+  };
+
+  // ===== Folder Management =====
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+
+  const loadFolders = async () => {
+    try {
+      if (window.api?.config) {
+        const data = await window.api.config.get('videoFolders');
+        if (Array.isArray(data)) setFolders(data);
+      }
+    } catch (e) {
+      console.error('Failed to load folders:', e);
+    }
+  };
+
+  const saveFolders = async (newFolders: { id: string; name: string }[]) => {
+    setFolders(newFolders);
+    if (window.api?.config) {
+      await window.api.config.set('videoFolders', newFolders);
+    }
+  };
+
+  useEffect(() => { loadFolders(); }, []);
+
+  const handleCreateFolder = (name: string) => {
+    const newFolder = { id: crypto.randomUUID(), name };
+    saveFolders([...folders, newFolder]);
+  };
+
+  const handleRenameFolder = async (id: string, newName: string) => {
+    saveFolders(folders.map(f => f.id === id ? { ...f, name: newName } : f));
+    // Also update videos inside this folder
+    const videosInFolder = videos.filter(v => v.collection_id === id);
+    for (const v of videosInFolder) {
+      if (window.api?.sync) {
+        await window.api.sync.upsertRow('videos', { ...v, collection_name: newName, updated_at: new Date().toISOString() });
+      }
+    }
+    await loadVideos();
+  };
+
+  const handleDeleteFolder = async (id: string) => {
+    saveFolders(folders.filter(f => f.id !== id));
+    // Move videos back to root
+    const videosInFolder = videos.filter(v => v.collection_id === id);
+    for (const v of videosInFolder) {
+      if (window.api?.sync) {
+        await window.api.sync.upsertRow('videos', { ...v, collection_id: undefined, collection_name: undefined, updated_at: new Date().toISOString() });
+      }
+    }
+    await loadVideos();
+  };
+
+  const handleMoveVideo = async (video: VideoItem, folderId: string | null, folderName: string | null) => {
+    if (window.api?.sync) {
+      await window.api.sync.upsertRow('videos', {
+        ...video,
+        collection_id: folderId || undefined,
+        collection_name: folderName || undefined,
+        updated_at: new Date().toISOString()
+      });
+      await loadVideos();
     }
   };
 
@@ -211,9 +274,14 @@ export default function VideoView() {
           onDownloadVideo={handleDownload}
           onDeleteLocal={handleDeleteLocal}
           onDeleteCloud={handleDeleteCloud}
+          onMoveVideo={handleMoveVideo}
           isDeletingId={isDeletingId}
           isDownloadingId={isDownloadingId}
           downloadProgress={downloadProgress}
+          folders={folders}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={handleRenameFolder}
+          onDeleteFolder={handleDeleteFolder}
         />
       </div>
 
