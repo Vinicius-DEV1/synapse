@@ -7,7 +7,7 @@ export default function ShortcutsTab() {
       title: "Gerais do Aplicativo",
       icon: <Layout size={16} className="text-brand-400" />,
       items: [
-        { keys: ["F11"], desc: "Alternar Tela Cheia (Fullscreen)" },
+        { keys: ["Shift", "F"], desc: "Alternar Tela Cheia (Ocultar Barra do Windows)" },
         { keys: ["Ctrl", "P"], desc: "Abrir Busca Global de Obras" },
         { keys: ["Esc"], desc: "Fechar modais abertos" }
       ]
@@ -16,7 +16,7 @@ export default function ShortcutsTab() {
       title: "Leitor de PDF e EPUB",
       icon: <BookOpen size={16} className="text-purple-400" />,
       items: [
-        { keys: ["F11"], desc: "Modo Foco do Leitor (Ocultar menus e barra lateral)" },
+        { keys: ["F"], desc: "Modo Foco do Leitor (Ocultar menus e barra lateral)" },
         { keys: ["M"], desc: "Alternar Temas (Claro, Sépia, Escuro, Nord, etc)" },
         { keys: ["+", "ou", "="], desc: "Aumentar o Zoom do texto" },
         { keys: ["-"], desc: "Reduzir o Zoom do texto" },

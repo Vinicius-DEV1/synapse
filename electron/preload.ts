@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('api', {
     quit: () => ipcRenderer.send('app:quit'),
     minimize: () => ipcRenderer.send('app:minimize'),
     maximize: () => ipcRenderer.send('app:maximize'),
+    toggleFullScreen: () => ipcRenderer.send('app:toggleFullScreen'),
     getPathForFile: (file: File) => webUtils.getPathForFile(file),
     showConfirm: (message: string) => invokeWithSync('app:showConfirm', message),
   },
