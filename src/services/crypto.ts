@@ -5,7 +5,7 @@
 
 // Parâmetros fixos para a derivação da chave e encriptação
 const SALT = new TextEncoder().encode("caderno-e2ee-salt-v1");
-const ITERATIONS = 100000;
+const ITERATIONS = 600000;
 const HASH_ALGORITHM = 'SHA-256';
 const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const IV_LENGTH = 12; // Recomendado para AES-GCM
