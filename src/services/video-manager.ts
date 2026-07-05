@@ -11,8 +11,13 @@ export async function getVideoStreamLink(driveFileId: string): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  // Usa o protocolo customizado do Electron. Colocamos o ID no pathname porque o hostname é convertido para minúsculo pelo URL parser
-  return `stream-drive://api/${driveFileId}?token=${token}`;
+  if (window.api?.video) {
+    // Usa o protocolo customizado do Electron. Colocamos o ID no pathname porque o hostname é convertido para minúsculo pelo URL parser
+    return `stream-drive://api/${driveFileId}?token=${token}`;
+  } else {
+    // Na Web, usa a API oficial do Google Drive para streaming
+    return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
+  }
 }
 
 /**

@@ -57,6 +57,8 @@ const EncryptedImageNodeView = (props: any) => {
           // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
           updateAttributes({ driveFileId: realDriveId });
           return; // A próxima renderização fará o download da URL limpa ou usará cache
+        } else {
+          throw new Error("Upload interrompido ou imagem perdida (fechou o app antes de concluir).");
         }
       }
 

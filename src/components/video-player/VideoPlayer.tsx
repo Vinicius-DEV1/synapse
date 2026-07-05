@@ -42,6 +42,9 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   // Dictionary
   const [dictState, setDictState] = useState<{ word: string; context: string } | null>(null);
 
+  // Errors
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   // Initialize tracks from JSON
   useEffect(() => {
     try {
@@ -330,6 +333,15 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       ref={containerRef} 
       className="relative w-full h-full bg-black flex flex-col justify-center items-center overflow-hidden font-sans group"
     >
+      {errorMsg && (
+        <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center text-white p-6 text-center">
+          <div className="bg-red-500/20 text-red-300 p-4 rounded-lg max-w-lg border border-red-500/30">
+            <h3 className="font-bold text-lg mb-2">Erro de Reprodução</h3>
+            <p>{errorMsg}</p>
+          </div>
+        </div>
+      )}
+
       {/* Video Element */}
       <video
         ref={videoRef}
@@ -338,11 +350,21 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onError={() => {
+          const err = videoRef.current?.error;
+          if (err && err.code === 4) {
+             if (!window.api?.video) {
+               setErrorMsg("Este formato de vídeo não é suportado pelo navegador Web. Por favor, assista na versão Desktop.");
+             } else {
+               setErrorMsg("Formato de vídeo não suportado nativamente.");
+             }
+          }
+        }}
         onPlay={() => {
           setIsPlaying(true);
           if (audioRef.current && activeAudioUrl) {
             audioRef.current.currentTime = videoRef.current?.currentTime || 0;
-            audioRef.current.play();
+            audioRef.current.play().catch(e => console.warn(e));
           }
         }}
         onPause={() => {
