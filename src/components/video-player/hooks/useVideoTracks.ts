@@ -1,0 +1,90 @@
+import { useState, useEffect, useRef } from 'react';
+import type { VideoItem, TrackItem } from '../../../types_video';
+
+export function useVideoTracks(
+  video: VideoItem,
+  isPlaying: boolean,
+  isMuted: boolean,
+  videoRef: React.RefObject<HTMLVideoElement>,
+  audioRef: React.RefObject<HTMLAudioElement>
+) {
+  const [audioTracks, setAudioTracks] = useState<TrackItem[]>([]);
+  const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>([]);
+  const [activeAudioIndex, setActiveAudioIndex] = useState<number>(-1);
+  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
+  
+  const syncLoopRef = useRef<number>();
+
+  useEffect(() => {
+    try {
+      if (video.audio_tracks_json) {
+        setAudioTracks(JSON.parse(video.audio_tracks_json));
+      }
+      if (video.subtitles_json) {
+        setSubtitleTracks(JSON.parse(video.subtitles_json));
+      }
+    } catch (e) {
+      console.error("Failed to parse tracks", e);
+    }
+  }, [video]);
+
+  useEffect(() => {
+    if (activeAudioIndex === -1) {
+      setActiveAudioUrl(null);
+      if (videoRef.current) videoRef.current.muted = isMuted;
+      return;
+    }
+    
+    const track = audioTracks[activeAudioIndex];
+    if (track) {
+      if (videoRef.current) videoRef.current.muted = true;
+      
+      const resolveUrl = async () => {
+        if (track.local_path && window.api?.video) {
+          const streamUrl = `file:///\${track.local_path.replace(/\\\\/g, '/')}`;
+          setActiveAudioUrl(streamUrl);
+        } else if (track.drive_id) {
+          const { getVideoStreamLink } = await import('../../../services/video-manager');
+          try {
+            const url = await getVideoStreamLink(track.drive_id);
+            setActiveAudioUrl(url);
+          } catch(e) { console.error(e); }
+        }
+      };
+      resolveUrl();
+    }
+  }, [activeAudioIndex, audioTracks, isMuted, videoRef]);
+
+  useEffect(() => {
+    const syncAudio = () => {
+      if (videoRef.current && audioRef.current && activeAudioUrl && isPlaying) {
+        const vTime = videoRef.current.currentTime;
+        const aTime = audioRef.current.currentTime;
+        const diff = Math.abs(vTime - aTime);
+        
+        if (diff > 0.1) {
+          audioRef.current.currentTime = vTime;
+        }
+      }
+      syncLoopRef.current = requestAnimationFrame(syncAudio);
+    };
+
+    if (isPlaying) {
+      syncLoopRef.current = requestAnimationFrame(syncAudio);
+    } else if (syncLoopRef.current) {
+      cancelAnimationFrame(syncLoopRef.current);
+    }
+
+    return () => {
+      if (syncLoopRef.current) cancelAnimationFrame(syncLoopRef.current);
+    };
+  }, [isPlaying, activeAudioUrl, videoRef, audioRef]);
+
+  return {
+    audioTracks,
+    subtitleTracks,
+    activeAudioIndex,
+    setActiveAudioIndex,
+    activeAudioUrl
+  };
+}
