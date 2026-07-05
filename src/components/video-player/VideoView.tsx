@@ -75,11 +75,15 @@ export default function VideoView() {
 
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   const handleDownload = async (video: VideoItem) => {
     setIsDownloadingId(video.id);
+    setDownloadProgress(0);
     try {
-      await downloadVideoToLocal(video);
+      await downloadVideoToLocal(video, (percent) => {
+        setDownloadProgress(Math.round(percent));
+      });
       await loadVideos();
     } catch (e) {
       console.error("Erro ao baixar:", e);
@@ -209,6 +213,7 @@ export default function VideoView() {
           onDeleteCloud={handleDeleteCloud}
           isDeletingId={isDeletingId}
           isDownloadingId={isDownloadingId}
+          downloadProgress={downloadProgress}
         />
       </div>
 

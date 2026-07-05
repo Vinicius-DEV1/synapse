@@ -13,6 +13,7 @@ interface VideoGridProps {
   onDeleteCloud: (video: VideoItem) => void;
   isDeletingId?: string | null;
   isDownloadingId?: string | null;
+  downloadProgress?: number;
 }
 
 interface VideoCollection {
@@ -23,7 +24,7 @@ interface VideoCollection {
   videos: VideoItem[];
 }
 
-export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, isDeletingId, isDownloadingId }: VideoGridProps) {
+export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, isDeletingId, isDownloadingId, downloadProgress }: VideoGridProps) {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [activeInfoVideo, setActiveInfoVideo] = useState<VideoItem | null>(null);
 
@@ -146,11 +147,18 @@ export default function VideoGrid({ videos, viewMode = 'grid', onPlayVideo, onDo
               </div>
             )}
             {isDownloadingId === video.id && (
-              <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-                <div className="flex flex-col items-center">
-                  <Download className="text-brand-400 mb-2 animate-bounce" size={24} />
-                  <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-medium mt-2 text-white shadow-black drop-shadow-md">Baixando do Drive...</span>
+              <div className={`absolute inset-0 z-50 bg-black/60 flex items-center justify-center backdrop-blur-sm ${isList ? 'flex-row gap-4 px-4' : 'flex-col'}`}>
+                <div className={`flex items-center justify-center ${isList ? 'flex-row gap-3' : 'flex-col'}`}>
+                  {!isList && <Download className="text-brand-400 mb-2 animate-bounce" size={24} />}
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin"></div>
+                    {typeof downloadProgress === 'number' && downloadProgress > 0 && (
+                      <span className="absolute text-[10px] font-bold text-white shadow-black drop-shadow-md">{downloadProgress}%</span>
+                    )}
+                  </div>
+                  <span className={`text-xs font-medium text-white shadow-black drop-shadow-md ${isList ? '' : 'mt-2'}`}>
+                    Baixando do Drive{typeof downloadProgress === 'number' && downloadProgress > 0 ? ` (${downloadProgress}%)` : '...'}
+                  </span>
                 </div>
               </div>
             )}
