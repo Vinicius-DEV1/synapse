@@ -144,6 +144,7 @@ contextBridge.exposeInMainWorld('api', {
     extractAudio: (localPath: string, trackIndex: string) => invokeWithSync('video:extractAudio', localPath, trackIndex),
     remuxDefaultTrack: (sourcePath: string, filename: string, trackIndex: string) => invokeWithSync('video:remuxDefaultTrack', sourcePath, filename, trackIndex),
     openFileDialog: () => invokeWithSync('video:openFileDialog'),
+    openFolderDialog: () => invokeWithSync('video:openFolderDialog'),
   },
 
   // YouTube API

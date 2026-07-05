@@ -7,8 +7,32 @@ interface GeneralTabProps {
 }
 
 export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabProps) {
+  const [videoPath, setVideoPath] = React.useState<string>('Padrão do Sistema (AppData)');
+  
+  React.useEffect(() => {
+    if (window.api?.config) {
+      window.api.config.get('videoStoragePath').then((path) => {
+        if (path && typeof path === 'string') {
+          setVideoPath(path);
+        }
+      });
+    }
+  }, []);
+
+  const handleSelectFolder = async () => {
+    if (!window.api?.video?.openFolderDialog) {
+      alert("Recurso não disponível nesta versão.");
+      return;
+    }
+    const newPath = await window.api.video.openFolderDialog();
+    if (newPath) {
+      setVideoPath(newPath);
+      window.api.config?.set('videoStoragePath', newPath);
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <label className="flex items-center justify-between cursor-pointer group">
         <div>
           <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
@@ -28,6 +52,28 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
           <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-200 ${appSettings.restoreTabsOnStartup ? 'bg-brand-500' : 'bg-white/20'}`}></label>
         </div>
       </label>
+
+      <div className="border-t border-white/10 pt-4">
+        <h4 className="text-sm font-medium text-white mb-3">Armazenamento Local</h4>
+        <div className="bg-black/20 border border-white/5 rounded-xl p-3">
+          <label className="block text-xs font-medium text-dark-subtext mb-1">Pasta de Download de Vídeos</label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-white/5 border border-white/10 text-white/80 text-xs px-3 py-2 rounded-lg font-mono truncate cursor-not-allowed">
+              {videoPath}
+            </div>
+            <button
+              type="button"
+              onClick={handleSelectFolder}
+              className="px-3 py-2 bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+              Alterar
+            </button>
+          </div>
+          <p className="text-[10px] text-white/40 mt-2">
+            Nota: Alterar a pasta fará com que novos vídeos sejam salvos no novo local. Vídeos antigos continuarão funcionando nos locais originais.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
