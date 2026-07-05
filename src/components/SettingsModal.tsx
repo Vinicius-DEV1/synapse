@@ -8,13 +8,14 @@ import GeneralTab from './settings/tabs/GeneralTab';
 import EditorTab from './settings/tabs/EditorTab';
 import SecurityTab from './settings/tabs/SecurityTab';
 import AiTab from './settings/tabs/AiTab';
+import ShortcutsTab from './settings/tabs/ShortcutsTab';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts'>('general');
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -73,6 +74,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             >
               IA
             </button>
+            <button 
+              onClick={() => setActiveTab('shortcuts')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'shortcuts' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
+            >
+              Atalhos
+            </button>
           </div>
         )}
 
@@ -97,6 +104,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
           {activeTab === 'ai' && !isChangingPassword && (
             <AiTab appSettings={appSettings} setAppSettings={setAppSettings} />
+          )}
+
+          {activeTab === 'shortcuts' && !isChangingPassword && (
+            <ShortcutsTab />
           )}
 
           {!isChangingPassword && (
