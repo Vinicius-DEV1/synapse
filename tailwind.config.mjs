@@ -23,6 +23,7 @@ export default {
         dark: {
           bg: '#0f0e17',
           card: '#1a1924',
+          surface: '#15141b',
           text: '#fffffe',
           subtext: '#a7a9be'
         }

@@ -184,7 +184,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
       {/* Card Area */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 pb-24 sm:pb-32 gap-8 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-dark-surface rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
+        <div className="w-full max-w-2xl bg-dark-card rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
           <div className="flex-1 p-10 flex flex-col items-center justify-center text-center relative">
@@ -208,7 +208,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
           {/* Back */}
           {showingAnswer && (
-            <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-dark-surface animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-dark-card animate-in fade-in slide-in-from-bottom-4 duration-300">
               {card.card_type === 'listening' && (
                 <div 
                   className="text-lg text-dark-text font-medium mb-4"
@@ -234,25 +234,25 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           {!showingAnswer ? (
             <button 
               onClick={() => setShowingAnswer(true)}
-              className="px-12 py-4 bg-dark-surface border border-white/10 rounded-xl text-base font-medium hover:bg-white/5 hover:border-indigo-500/50 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl"
+              className="px-12 py-4 bg-dark-card border border-white/10 rounded-xl text-base font-medium hover:bg-white/5 hover:border-indigo-500/50 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl"
             >
               Mostrar Resposta <span className="ml-2 text-dark-subtext text-sm">(Espaço)</span>
             </button>
           ) : (
             <div className="flex gap-4 w-full px-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <button onClick={() => handleRating(1)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-red-400 border border-white/5 hover:border-red-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button onClick={() => handleRating(1)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-red-400 border border-white/5 hover:border-red-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
                 <span>Errei</span>
                 <span className="text-xs opacity-50 font-normal">Again (1)</span>
               </button>
-              <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-orange-400 border border-white/5 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-orange-400 border border-white/5 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
                 <span>Difícil</span>
                 <span className="text-xs opacity-50 font-normal">Hard (2)</span>
               </button>
-              <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-green-400 border border-white/5 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-green-400 border border-white/5 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
                 <span>Bom</span>
                 <span className="text-xs opacity-50 font-normal">Good (3)</span>
               </button>
-              <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-dark-surface hover:bg-white/5 text-blue-400 border border-white/5 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-blue-400 border border-white/5 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
                 <span>Fácil</span>
                 <span className="text-xs opacity-50 font-normal">Easy (4)</span>
               </button>

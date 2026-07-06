@@ -8,6 +8,7 @@ import { registerFinanceHandlers } from './ipc/finance';
 import { registerSyncHandlers } from './ipc/sync';
 import { registerConfigHandlers } from './ipc/config';
 import { registerCultureHandlers } from './ipc/cultureIpc';
+import { registerBackupHandlers } from './ipc/backup';
 import { setupVideoIpc } from './ipc/video';
 import { registerAudioHandlers } from './api/audio-manager';
 import { registerAnkiHandlers } from './api/anki-manager';
@@ -106,6 +107,7 @@ app.whenReady().then(() => {
   setupVideoIpc();
   registerAudioHandlers();
   registerAnkiHandlers();
+  registerBackupHandlers();
 
   // Preferências
   ipcMain.handle('auth:set-preferences', async (_, prefs: { autoLockOnSuspend: boolean }) => {

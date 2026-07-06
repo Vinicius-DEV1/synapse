@@ -278,10 +278,10 @@ export default function LibraryGrid({
             <BookMarked size={40} className="text-brand-400" />
           </div>
           <h3 className="text-lg font-semibold text-dark-text mb-1">
-            Sua biblioteca estÃ¡ vazia
+            Sua biblioteca está vazia
           </h3>
           <p className="text-sm text-dark-subtext max-w-xs">
-            Importe seu primeiro PDF para comeÃ§ar a organizar sua leitura.
+            Importe seu primeiro PDF para começar a organizar sua leitura.
           </p>
         </div>
       )}

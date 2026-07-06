@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import InteractiveSubtitles from '../InteractiveSubtitles';
-import { parseVtt } from '../../../utils/vtt-parser';
-import type { SubtitleCue } from '../../../utils/vtt-parser';
-import DictionaryModal from '../../library/DictionaryModal';
-import type { VideoItem } from '../../../types_video';
+import InteractiveSubtitles from './InteractiveSubtitles';
+import { parseVtt } from '../../utils/vtt-parser';
+import type { SubtitleCue } from '../../utils/vtt-parser';
+import DictionaryModal from '../library/DictionaryModal';
+import type { VideoItem } from '../../types_video';
 
 import { useVideoProgress } from './hooks/useVideoProgress';
 import { useVideoTracks } from './hooks/useVideoTracks';
@@ -186,7 +186,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     const h = Math.floor(timeInSeconds / 3600);
     const m = Math.floor((timeInSeconds % 3600) / 60).toString().padStart(2, '0');
     const s = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
-    return h > 0 ? `\${h}:\${m}:\${s}` : `\${m}:\${s}`;
+    return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
   };
 
   const handleWordClick = (word: string, context: string) => {

@@ -118,8 +118,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-surface w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]">
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <div className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]">
         
         {/* Header */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between bg-dark-bg">
@@ -148,7 +148,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
         <div className="flex-1 flex flex-col overflow-hidden relative">
           
           {showSettings && (
-            <div className="absolute top-0 left-0 right-0 bg-dark-surface p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
+            <div className="absolute top-0 left-0 right-0 bg-dark-card p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
               <h3 className="text-lg font-medium mb-4 text-dark-text">Configurações do Baralho</h3>
               <div className="space-y-4 max-w-md">
                 <div>
@@ -176,7 +176,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                 placeholder="Buscar cartões..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-surface border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
+                className="w-full pl-10 pr-4 py-2 bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
               />
             </div>
             
@@ -217,7 +217,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {filteredCards.map(card => (
-                    <tr key={card.id} className="hover:bg-dark-surface transition-colors group">
+                    <tr key={card.id} className="hover:bg-dark-card transition-colors group">
                       <td className="p-3">
                         <input 
                           type="checkbox" 

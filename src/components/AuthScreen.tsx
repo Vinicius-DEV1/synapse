@@ -33,9 +33,10 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
     setError('');
 
     try {
+      const cloudCheck = await verifyCloudMasterPassword(password);
+
       if (isSetup) {
         // Validar na nuvem antes de permitir o setup local
-        const cloudCheck = await verifyCloudMasterPassword(password);
         if (!cloudCheck.isValid) {
           triggerError('Senha incompatível com a sua Nuvem (Firebase).');
           setLoading(false);
@@ -46,7 +47,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         const masterKey = await deriveMasterKey(password);
 
         if (!cloudCheck.isNew) {
-           const pulled = await pullModularKeysFromCloud(masterKey);
+           const keyToPull = cloudCheck.isLegacy && cloudCheck.legacyKey ? cloudCheck.legacyKey : masterKey;
+           const pulled = await pullModularKeysFromCloud(keyToPull);
            if (pulled) existingKeysToUse = pulled;
         }
 
@@ -55,11 +57,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           let rawKeys = res.keys;
           
           if (rawKeys) {
-            if (cloudCheck.isNew) {
+            if (cloudCheck.isNew || cloudCheck.isLegacy) {
               pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
             }
           } else {
-            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
+            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -74,8 +76,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
           }
+          if (cloudCheck.legacyKey) {
+            moduleKeys.legacyCore = cloudCheck.legacyKey;
+          }
           
-          if (cloudCheck.isNew) {
+          if (cloudCheck.isNew || cloudCheck.isLegacy) {
             await initializeCloudValidator(masterKey);
           }
           
@@ -97,8 +102,19 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           
           if (rawKeys) {
             pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
-          } else {
-            rawKeys = await pullModularKeysFromCloud(masterKey);
+          }
+          
+          // E2EE RECOVERY FIX: Always ensure we have the correct legacy keys from the cloud.
+          // Because of the 600k iterations migration, some users might have overwritten their local keychain.
+          const cloudKeys = await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
+          if (cloudKeys) {
+             rawKeys = cloudKeys;
+             // Força a atualização local para sincronizar com a nuvem (cura a corrupção)
+             if (window.api.auth.forceUpdateKeychain) {
+               await window.api.auth.forceUpdateKeychain(password, rawKeys);
+             }
+          } else if (!rawKeys) {
+             rawKeys = await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -112,6 +128,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.finance = masterKey;
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
+          }
+          if (cloudCheck.legacyKey) {
+            moduleKeys.legacyCore = cloudCheck.legacyKey;
           }
 
           

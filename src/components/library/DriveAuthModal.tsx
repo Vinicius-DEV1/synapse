@@ -165,7 +165,7 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
                       setCode(val);
                     }}
                     placeholder="URL ou código (4/0AeaY...)"
-                    className="w-full bg-dark-surface border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+                    className="w-full bg-dark-card border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
                   />
                   {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
                 </div>

@@ -47,6 +47,10 @@ export async function hardResetCloud(): Promise<void> {
     try {
       const snap = await getDocs(collection(db, table));
       for (const d of snap.docs) {
+        if (table === 'config' && (d.id === 'auth_validator' || d.id === 'module_keys' || d.id === 'sync_signal')) {
+          await deleteDoc(doc(db, table, d.id));
+          continue;
+        }
         await deleteDoc(doc(db, table, d.id));
       }
       console.log(`Tabela \${table} limpa na nuvem.`);
@@ -54,7 +58,15 @@ export async function hardResetCloud(): Promise<void> {
       console.error(`Erro ao limpar tabela \${table}:`, err);
     }
   }
-  console.log("Hard Reset concluído! A próxima sincronização enviará apenas os dados válidos atuais do seu Desktop.");
+  
+  // Limpar os docs fixos de config explicitamente (para garantir que a nuvem fique 100% virgem)
+  try {
+    await deleteDoc(doc(db, 'config', 'auth_validator'));
+    await deleteDoc(doc(db, 'config', 'module_keys'));
+    await deleteDoc(doc(db, 'config', 'sync_signal'));
+  } catch (err) {}
+
+  console.log("Hard Reset concluído! A nuvem está 100% limpa.");
 }
 
 if (typeof window !== 'undefined') {

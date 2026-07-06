@@ -27,7 +27,7 @@ export default function AnkiView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto" style={{ height: '100dvh' }}>
+    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto relative" style={{ height: '100dvh' }}>
       <div className="max-w-5xl mx-auto w-full space-y-8">
         <header className="flex justify-between items-center pb-8 border-b border-white/5">
           <div>
@@ -48,7 +48,7 @@ export default function AnkiView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {decks.map(deck => (
-            <div key={deck.id} className="bg-dark-surface p-6 rounded-2xl border border-white/5 flex flex-col cursor-pointer hover:border-indigo-500/50 hover:shadow-lg transition-all duration-300 group">
+            <div key={deck.id} className="bg-dark-card p-6 rounded-2xl border border-white/5 flex flex-col cursor-pointer hover:border-indigo-500/50 hover:shadow-lg transition-all duration-300 group">
               <h3 className="text-xl font-semibold mb-2 text-white/90 group-hover:text-white transition-colors">{deck.name}</h3>
               <p className="text-dark-subtext text-sm flex-1 leading-relaxed">{deck.description}</p>
               

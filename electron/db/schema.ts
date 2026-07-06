@@ -66,7 +66,10 @@ export function setupTables(): Promise<void> {
         
         const attached = rows.map(r => r.name);
 
-        const runSafe = (sql: string) => new Promise<void>(res => db.run(sql, () => res()));
+        const runSafe = (sql: string) => new Promise<void>(res => db.run(sql, (err) => {
+          if (err && !err.message.includes('duplicate column')) console.error("runSafe err:", err.message, "SQL:", sql);
+          res();
+        }));
         const promises: Promise<void>[] = [];
 
         // Migrate videos table
@@ -300,11 +303,13 @@ export function setupTables(): Promise<void> {
               synopsis TEXT,
               is_watched INTEGER DEFAULT 0,
               aired_at DATETIME DEFAULT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `));
           
           promises.push(runSafe("ALTER TABLE culture.episodes ADD COLUMN aired_at DATETIME DEFAULT NULL;"));
+          promises.push(runSafe("ALTER TABLE culture.episodes ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"));
         }
 
         // ANKI TABLES

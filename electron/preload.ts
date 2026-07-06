@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('api', {
     login: (password: string) => invokeWithSync('auth:login', password),
     setup: (password: string, existingKeys?: any) => invokeWithSync('auth:setup', password, existingKeys),
     changePassword: (newPassword: string) => invokeWithSync('auth:change-password', newPassword),
+    forceUpdateKeychain: (password: string, keys: any) => invokeWithSync('auth:force-update-keychain', password, keys),
     createVisitor: (visitorPassword: string, allowedModules: string[]) => invokeWithSync('auth:create-visitor', visitorPassword, allowedModules),
     getVisitors: () => invokeWithSync('auth:get-visitors'),
     deleteVisitor: (id: string) => invokeWithSync('auth:delete-visitor', id),
@@ -182,6 +183,18 @@ contextBridge.exposeInMainWorld('api', {
   audio: {
     generateTTS: (text: string, lang?: string) => invokeWithSync('audio:generate-tts', text, lang),
     extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => invokeWithSync('audio:extract-clip', videoPath, startTimeMs, endTimeMs),
+  },
+
+  // Backup
+  backup: {
+    selectFolder: () => invokeWithSync('backup:selectFolder'),
+    startBackup: (options: any) => invokeWithSync('backup:startBackup', options),
+    onLog: (callback: (data: { message: string, progress?: number }) => void) => {
+      ipcRenderer.on('backup:log', (_event, data) => callback(data));
+      return () => {
+        ipcRenderer.removeAllListeners('backup:log');
+      };
+    }
   },
 
   // Sync Trigger (internal hook for React)

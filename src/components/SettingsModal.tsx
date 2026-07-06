@@ -9,13 +9,15 @@ import EditorTab from './settings/tabs/EditorTab';
 import SecurityTab from './settings/tabs/SecurityTab';
 import AiTab from './settings/tabs/AiTab';
 import ShortcutsTab from './settings/tabs/ShortcutsTab';
+import StorageTab from './settings/tabs/StorageTab';
+import { BackupTab } from './settings/tabs/BackupTab';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts' | 'storage' | 'backup'>('general');
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -80,6 +82,18 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             >
               Atalhos
             </button>
+            <button 
+              onClick={() => setActiveTab('storage')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'storage' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
+            >
+              Uso
+            </button>
+            <button 
+              onClick={() => setActiveTab('backup')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'backup' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
+            >
+              Backup
+            </button>
           </div>
         )}
 
@@ -108,6 +122,14 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
           {activeTab === 'shortcuts' && !isChangingPassword && (
             <ShortcutsTab />
+          )}
+
+          {activeTab === 'storage' && !isChangingPassword && (
+            <StorageTab />
+          )}
+
+          {activeTab === 'backup' && !isChangingPassword && (
+            <BackupTab />
           )}
 
           {!isChangingPassword && (

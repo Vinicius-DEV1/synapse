@@ -126,7 +126,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="bg-dark-surface border border-dark-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-dark-card border border-dark-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         <header className="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-dark-bg/50">
           <h2 className="text-lg font-bold flex items-center gap-2">
