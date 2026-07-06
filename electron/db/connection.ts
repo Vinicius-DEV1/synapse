@@ -8,7 +8,7 @@ let db: sqlite3.Database | null = null;
 import * as fs from 'fs';
 import { safeStorage } from 'electron';
 
-function getOrCreateVaultKey(): string {
+export function getOrCreateVaultKey(): string {
   const vaultPath = path.join(app.getPath('userData'), 'caderno_vault.key');
   
   if (fs.existsSync(vaultPath)) {

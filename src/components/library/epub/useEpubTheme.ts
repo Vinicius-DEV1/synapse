@@ -11,7 +11,7 @@ export function useEpubTheme(
 
   useEffect(() => {
     if (rendition) {
-      rendition.themes.fontSize(`\${fontSize}%`);
+      rendition.themes.fontSize(`${fontSize}%`);
       const font = fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : 'Inter, sans-serif';
       
       const getEpubThemeColors = (mode: string) => {
@@ -30,24 +30,24 @@ export function useEpubTheme(
 
       const colors = getEpubThemeColors(readingMode);
       
-      const themeName = `custom-\${readingMode}-\${fontFamily}`;
+      const themeName = `custom-${readingMode}-${fontFamily}`;
       
       const isMobileView = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       const bottomPadding = isMobileView ? '60px' : '16px';
 
       const themeCss: any = {
-        [`body.\${themeName}`]: { 
-          'background': `\${colors.bg} !important`, 
-          'color': `\${colors.text} !important`,
-          'padding-bottom': `\${bottomPadding} !important`,
+        [`body.${themeName}`]: { 
+          'background': `${colors.bg} !important`, 
+          'color': `${colors.text} !important`,
+          'padding-bottom': `${bottomPadding} !important`,
           'padding-left': `20px !important`,
           'padding-right': `20px !important`,
           'margin-bottom': `0px !important`
         },
-        [`.\${themeName} body`]: { 
-          'background': `\${colors.bg} !important`, 
-          'color': `\${colors.text} !important`,
-          'padding-bottom': `\${bottomPadding} !important`,
+        [`.${themeName} body`]: { 
+          'background': `${colors.bg} !important`, 
+          'color': `${colors.text} !important`,
+          'padding-bottom': `${bottomPadding} !important`,
           'padding-left': `20px !important`,
           'padding-right': `20px !important`,
           'margin-bottom': `0px !important`
@@ -55,10 +55,10 @@ export function useEpubTheme(
       };
 
       if (fontFamily !== 'original') {
-        themeCss[`body.\${themeName}`]['font-family'] = `\${font} !important`;
-        themeCss[`.\${themeName} body`]['font-family'] = `\${font} !important`;
-        themeCss[`body.\${themeName} *`] = { 'font-family': `\${font} !important` };
-        themeCss[`.\${themeName} body *`] = { 'font-family': `\${font} !important` };
+        themeCss[`body.${themeName}`]['font-family'] = `${font} !important`;
+        themeCss[`.${themeName} body`]['font-family'] = `${font} !important`;
+        themeCss[`body.${themeName} *`] = { 'font-family': `${font} !important` };
+        themeCss[`.${themeName} body *`] = { 'font-family': `${font} !important` };
       }
           
       rendition.themes.register(themeName, themeCss);

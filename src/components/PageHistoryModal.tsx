@@ -50,9 +50,9 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
 
   return (
     <div className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6">
-      <div className="bg-dark-surface w-full max-w-6xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-dark-border flex flex-col overflow-hidden animate-slide-up">
+      <div className="bg-dark-card w-full max-w-6xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-dark-border flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border bg-dark-surface z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border bg-dark-card z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-500">
               <Clock size={20} />
@@ -90,7 +90,7 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
                     className={`text-left p-4 rounded-lg transition-all border ${
                       selectedIndex === index
                         ? 'bg-brand-500/10 border-brand-500/30 text-brand-400'
-                        : 'bg-dark-surface border-transparent hover:border-dark-border text-dark-text hover:bg-dark-bg'
+                        : 'bg-dark-card border-transparent hover:border-dark-border text-dark-text hover:bg-dark-bg'
                     }`}
                   >
                     <div className="text-sm font-medium mb-1">

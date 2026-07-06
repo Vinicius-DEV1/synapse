@@ -104,7 +104,7 @@ export function registerAuthHandlers() {
           const notEnc = encryptModuleKey(notKey, password);
           
           await new Promise<void>(res => {
-            db.run(`CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT)`, (e) => {
+            db.run(`CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT)`, (e) => {
               if (e) console.error('Setup CREATE TABLE err:', e);
               res();
             });
@@ -135,6 +135,61 @@ export function registerAuthHandlers() {
       });
     } catch (err: any) {
        return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('auth:change-password', async (_, newPassword) => {
+    if (isLocked) return { success: false, error: 'O cofre está trancado' };
+    try {
+      const db = getDb();
+      const authHash = hashAuthPassword(newPassword);
+      
+      const libEnc = currentUnlockedKeys.library ? encryptModuleKey(currentUnlockedKeys.library, newPassword) : null;
+      const finEnc = currentUnlockedKeys.finance ? encryptModuleKey(currentUnlockedKeys.finance, newPassword) : null;
+      const notEnc = currentUnlockedKeys.notes ? encryptModuleKey(currentUnlockedKeys.notes, newPassword) : null;
+      const culEnc = currentUnlockedKeys.culture ? encryptModuleKey(currentUnlockedKeys.culture, newPassword) : null;
+      const ankiEnc = currentUnlockedKeys.anki ? encryptModuleKey(currentUnlockedKeys.anki, newPassword) : null;
+      
+      return new Promise((resolve) => {
+        db.run(`
+          UPDATE keychain 
+          SET auth_hash = ?, library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?
+          WHERE id = 'master'
+        `, [authHash, libEnc, finEnc, notEnc, culEnc, ankiEnc], (err) => {
+          if (err) resolve({ success: false, error: err.message });
+          else {
+            currentAuthHash = authHash;
+            resolve({ success: true });
+          }
+        });
+      });
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('auth:force-update-keychain', async (_, password, keys: Record<string, string>) => {
+    try {
+      const authHash = hashAuthPassword(password);
+      const libEnc = encryptModuleKey(keys.library, password);
+      const finEnc = encryptModuleKey(keys.finance, password);
+      const notEnc = encryptModuleKey(keys.notes, password);
+      const culEnc = keys.culture ? encryptModuleKey(keys.culture, password) : notEnc;
+      const ankiEnc = keys.anki ? encryptModuleKey(keys.anki, password) : notEnc;
+
+      return new Promise((resolve) => {
+        getDb().run(`UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ? WHERE auth_hash = ?`,
+          [libEnc, finEnc, notEnc, culEnc, ankiEnc, authHash], async (err) => {
+            if (err) resolve({ success: false, error: err.message });
+            else {
+              currentUnlockedKeys = { library: keys.library, finance: keys.finance, notes: keys.notes, culture: keys.culture || keys.notes, anki: keys.anki || keys.notes };
+              await openCoreAndAttachModules(currentUnlockedKeys);
+              resolve({ success: true });
+            }
+          });
+      });
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
   });
 

@@ -68,9 +68,6 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     };
   }, [showMobileTools, dispatch]);
 
-    };
-  }, [showMobileTools, dispatch]);
-
   const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string, preloadedData?: any, selection?: any } | null>(null);
   const [activeHighlight, setActiveHighlight] = useState<{ highlight: LibraryHighlight, position: { x: number, y: number } } | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);

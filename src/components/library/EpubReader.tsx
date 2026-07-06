@@ -185,7 +185,17 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (rendition) {
+      rendition.on('keydown', handleKeyDown);
+      rendition.on('keyup', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rendition) {
+        rendition.off('keydown', handleKeyDown);
+        rendition.off('keyup', handleKeyDown);
+      }
+    };
   }, [rendition, setReadingMode, setFontSize, dispatch, state.isReadingModeFullScreen]);
 
   useEffect(() => {
@@ -245,7 +255,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
             </div>
             <h3 className="text-xl font-bold mb-2">Erro ao carregar EPUB</h3>
             <p className="opacity-80 max-w-md">{epubError}</p>
-            <button onClick={onBack} className="mt-6 px-6 py-2 bg-dark-surface hover:bg-dark-border rounded-lg text-dark-text transition-colors">
+            <button onClick={onBack} className="mt-6 px-6 py-2 bg-dark-card hover:bg-dark-border rounded-lg text-dark-text transition-colors">
               Voltar à Biblioteca
             </button>
           </div>
@@ -280,7 +290,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
           \${bottomBarClasses}
         `}>
         <div>
-           {locationsReady ? `Página \${currentPageSafe} de \${totalPagesSafe}` : 'Calculando páginas...'}
+           {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}
         </div>
 
         {locationsReady && totalPagesSafe > 1 && (
@@ -300,7 +310,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         )}
 
         <div>
-           {locationsReady ? `\${progressPercentage}%` : '...'}
+           {locationsReady ? `${progressPercentage}%` : '...'}
         </div>
       </div>
 

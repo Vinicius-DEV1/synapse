@@ -76,6 +76,73 @@ export default function SecurityTab({
     }
   };
 
+  const [visitors, setVisitors] = useState<Array<{ id: string; modules: string[] }>>([]);
+  const [showAddVisitor, setShowAddVisitor] = useState(false);
+  const [visitorPassword, setVisitorPassword] = useState('');
+  const [visitorModules, setVisitorModules] = useState<Record<string, boolean>>({
+    library: false,
+    finance: false,
+    notes: false
+  });
+  const [visitorLoading, setVisitorLoading] = useState(false);
+
+  const loadVisitors = async () => {
+    try {
+      const v = await window.api.auth.getVisitors();
+      setVisitors(v);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
+    loadVisitors();
+  }, []);
+
+  const handleCreateVisitor = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!visitorPassword.trim()) {
+      triggerError('A senha não pode ser vazia');
+      return;
+    }
+    const modules = Object.entries(visitorModules).filter(([_, v]) => v).map(([k]) => k);
+    if (modules.length === 0) {
+      triggerError('Selecione ao menos um módulo');
+      return;
+    }
+
+    setVisitorLoading(true);
+    try {
+      const res = await window.api.auth.createVisitor(visitorPassword, modules);
+      if (res.success) {
+        setVisitorPassword('');
+        setVisitorModules({ library: false, finance: false, notes: false });
+        setShowAddVisitor(false);
+        loadVisitors();
+      } else {
+        triggerError(res.error || 'Erro ao criar visitante');
+      }
+    } catch (err: any) {
+      triggerError(err.message);
+    } finally {
+      setVisitorLoading(false);
+    }
+  };
+
+  const handleDeleteVisitor = async (id: string) => {
+    if (!confirm('Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.')) return;
+    try {
+      const res = await window.api.auth.deleteVisitor(id);
+      if (res.success) {
+        loadVisitors();
+      } else {
+        alert(res.error || 'Erro ao deletar visitante');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   if (isChangingPassword) {
     if (pwdSuccess) {
       return (
@@ -144,73 +211,6 @@ export default function SecurityTab({
       </div>
     );
   }
-
-  const [visitors, setVisitors] = useState<Array<{ id: string; modules: string[] }>>([]);
-  const [showAddVisitor, setShowAddVisitor] = useState(false);
-  const [visitorPassword, setVisitorPassword] = useState('');
-  const [visitorModules, setVisitorModules] = useState<Record<string, boolean>>({
-    library: false,
-    finance: false,
-    notes: false
-  });
-  const [visitorLoading, setVisitorLoading] = useState(false);
-
-  React.useEffect(() => {
-    loadVisitors();
-  }, []);
-
-  const loadVisitors = async () => {
-    try {
-      const v = await window.api.auth.getVisitors();
-      setVisitors(v);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleCreateVisitor = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
-    if (!visitorPassword.trim()) {
-      triggerError('A senha não pode ser vazia');
-      return;
-    }
-    const modules = Object.entries(visitorModules).filter(([_, v]) => v).map(([k]) => k);
-    if (modules.length === 0) {
-      triggerError('Selecione ao menos um módulo');
-      return;
-    }
-
-    setVisitorLoading(true);
-    try {
-      const res = await window.api.auth.createVisitor(visitorPassword, modules);
-      if (res.success) {
-        setVisitorPassword('');
-        setVisitorModules({ library: false, finance: false, notes: false });
-        setShowAddVisitor(false);
-        loadVisitors();
-      } else {
-        triggerError(res.error || 'Erro ao criar visitante');
-      }
-    } catch (err: any) {
-      triggerError(err.message);
-    } finally {
-      setVisitorLoading(false);
-    }
-  };
-
-  const handleDeleteVisitor = async (id: string) => {
-    if (!confirm('Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.')) return;
-    try {
-      const res = await window.api.auth.deleteVisitor(id);
-      if (res.success) {
-        loadVisitors();
-      } else {
-        alert(res.error || 'Erro ao deletar visitante');
-      }
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
 
   return (
     <div className="space-y-5">

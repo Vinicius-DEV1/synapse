@@ -2,6 +2,7 @@ import { getWebDb } from './db-web';
 import { encryptText, decryptText } from './crypto';
 
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
+export const DRIVE_CLIENT_SECRET = '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'; // Google requires client_secret even with PKCE for Desktop apps
 
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
@@ -63,6 +64,7 @@ export function getDriveAuthUrl(codeChallenge: string): string {
 export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
+  params.append('client_secret', DRIVE_CLIENT_SECRET);
   params.append('code', code);
   params.append('grant_type', 'authorization_code');
   params.append('redirect_uri', 'http://localhost:5173');
@@ -90,6 +92,7 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
 export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
+  params.append('client_secret', DRIVE_CLIENT_SECRET);
   params.append('refresh_token', refresh_token);
   params.append('grant_type', 'refresh_token');
 

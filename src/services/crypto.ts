@@ -18,7 +18,6 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const passwordBuffer = encoder.encode(password);
 
-  // Importa a senha como material de chave base
   const baseKey = await crypto.subtle.importKey(
     'raw',
     passwordBuffer,
@@ -27,7 +26,6 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
     ['deriveKey']
   );
 
-  // Deriva a chave AES real
   return await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
@@ -37,7 +35,33 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
     },
     baseKey,
     { name: ENCRYPTION_ALGORITHM, length: 256 },
-    true, // Permite exportar (se necessário para sync entre devices, mas idealmente não)
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
+export async function deriveLegacyMasterKey(password: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const passwordBuffer = encoder.encode(password);
+
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    passwordBuffer,
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: SALT,
+      iterations: 100000,
+      hash: HASH_ALGORITHM
+    },
+    baseKey,
+    { name: ENCRYPTION_ALGORITHM, length: 256 },
+    true,
     ['encrypt', 'decrypt']
   );
 }

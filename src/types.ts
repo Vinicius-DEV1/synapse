@@ -355,6 +355,11 @@ declare global {
         generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
         extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       };
+      backup?: {
+        selectFolder: () => Promise<string | null>;
+        startBackup: (options: { destination: string, type: 'encrypted' | 'decrypted', includeMedia: boolean, driveToken?: string, rawKey?: string }) => Promise<{ success: boolean; error?: string }>;
+        onLog: (callback: (data: { message: string, progress?: number }) => void) => () => void;
+      };
     };
   }
 }

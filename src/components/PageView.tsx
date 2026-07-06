@@ -162,7 +162,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
         {!contentData ? (
            <div className="text-dark-subtext mt-8 flex justify-center">Carregando conteúdo...</div>
         ) : page.is_locked && !isUnlocked ? (
-           <form onSubmit={handleUnlock} className="mt-8 p-6 bg-dark-surface rounded-xl border border-dark-border text-center max-w-md mx-auto">
+           <form onSubmit={handleUnlock} className="mt-8 p-6 bg-dark-card rounded-xl border border-dark-border text-center max-w-md mx-auto">
              <div className="text-4xl mb-4">🔒</div>
              <h3 className="text-xl text-dark-text font-bold mb-2">Página Trancada</h3>
              <p className="text-dark-subtext text-sm mb-4">Esta página está protegida com criptografia ponta a ponta.</p>

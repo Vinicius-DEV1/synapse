@@ -77,7 +77,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             
             if (cloudTime !== localTime) {
               try {
-                const decryptedJson = await decryptText(cloudData.encryptedData, key);
+                let decryptedJson;
+                try {
+                  decryptedJson = await decryptText(cloudData.encryptedData, key);
+                } catch (decErr) {
+                  if (module === 'video' && effectiveModuleKeys['legacyCore']) {
+                    decryptedJson = await decryptText(cloudData.encryptedData, effectiveModuleKeys['legacyCore']);
+                  } else {
+                    throw decErr;
+                  }
+                }
                 const parsed = JSON.parse(decryptedJson);
                 const rowToUpsert: any = {
                   id: docSnap.id,
@@ -132,6 +141,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     skippedDocsCount++;
                     if (typeof window !== 'undefined' && (window as any).api?.log) {
                       (window as any).api.log(`[PULL SKIP] Doc \${docSnap.id} skipped (localTime > cloudTime).`);
+                      (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                     }
                     continue;
                   }
@@ -139,12 +149,21 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
                 try {
                   pulledDocsCount++;
-                  await window.api.sync.upsertRow(table, rowToUpsert);
+                  try {
+                    await window.api.sync.upsertRow(table, rowToUpsert);
+                  } catch (upsertErr: any) {
+                    if (upsertErr.message && upsertErr.message.includes('has no column named created_at')) {
+                      delete rowToUpsert.created_at;
+                      await window.api.sync.upsertRow(table, rowToUpsert);
+                    } else {
+                      throw upsertErr;
+                    }
+                  }
                   if (typeof window !== 'undefined' && (window as any).api?.log) {
-                    (window as any).api.log(`[PULL UPSERT] Doc \${docSnap.id} upserted.`);
+                    (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
                   }
                 } catch (upsertErr) {
-                  console.warn(`PULL erro doc \${docSnap.id} (\${table}):`, upsertErr);
+                  console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
                 }
               } catch (err: any) {
                 const msg = `PULL erro doc \${docSnap.id} (\${table}): \${err?.message}`;
