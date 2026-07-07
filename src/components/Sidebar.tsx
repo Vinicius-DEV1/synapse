@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -13,6 +13,18 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
+    const saved = localStorage.getItem('caderno_modules_expanded');
+    return saved ? JSON.parse(saved) : true;
+  });
+  
+  const toggleModules = () => {
+    setIsModulesExpanded((prev: boolean) => {
+      const next = !prev;
+      localStorage.setItem('caderno_modules_expanded', JSON.stringify(next));
+      return next;
+    });
+  };
   
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
@@ -372,91 +384,107 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       </div>
 
       {/* Module Switcher (Footer) */}
-      <div className="p-3 border-t border-white/5 flex flex-col gap-1">
+      <div className="border-t border-white/5 flex flex-col">
         <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'notes' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'notes'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
+          onClick={() => setIsModulesExpanded(!isModulesExpanded)}
+          className="flex items-center justify-between w-full p-3 text-xs font-semibold text-dark-subtext uppercase tracking-wider hover:bg-white/5 transition-colors group"
         >
-          <BookOpen size={16} />
-          <span>Caderno</span>
+          <span>Módulos</span>
+          {isModulesExpanded ? (
+            <ChevronDown size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+          ) : (
+            <ChevronUp size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+          )}
         </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'library' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'library'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <Library size={16} />
-          <span>Biblioteca</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'finance' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'finance'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <Wallet size={16} />
-          <span>Finanças</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'culture' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'culture'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <Film size={16} />
-          <span>Cultura</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'video' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'video'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <PlaySquare size={16} />
-          <span>Vídeos</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'anki' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'anki'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <BrainCircuit size={16} />
-          <span>Flashcards</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'focus' })}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-            activeModule === 'focus'
-              ? 'bg-brand-500/10 text-brand-400'
-              : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-          }`}
-        >
-          <Timer size={16} />
-          <span>Foco</span>
-        </button>
-        <button
-          onClick={() => setShowSettings(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
-        >
-          <Settings size={16} />
-          <span>Configurações</span>
-        </button>
+        
+        {isModulesExpanded && (
+          <div className="flex flex-col gap-1 px-3 pb-3">
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'notes' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'notes'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <BookOpen size={16} />
+              <span>Caderno</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'library' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'library'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Library size={16} />
+              <span>Biblioteca</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'finance' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'finance'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Wallet size={16} />
+              <span>Finanças</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'culture' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'culture'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Film size={16} />
+              <span>Cultura</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'video' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'video'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <PlaySquare size={16} />
+              <span>Vídeos</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'anki' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'anki'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <BrainCircuit size={16} />
+              <span>Flashcards</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'focus' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'focus'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Timer size={16} />
+              <span>Foco</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
+            >
+              <Settings size={16} />
+              <span>Configurações</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
