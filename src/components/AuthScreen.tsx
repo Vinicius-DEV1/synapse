@@ -45,10 +45,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
         let existingKeysToUse = undefined;
         const masterKey = await deriveMasterKey(password);
+        const legacyKeyFallback = await deriveLegacyMasterKey(password);
 
         if (!cloudCheck.isNew) {
            const keyToPull = cloudCheck.isLegacy && cloudCheck.legacyKey ? cloudCheck.legacyKey : masterKey;
-           const pulled = await pullModularKeysFromCloud(keyToPull);
+           const pulled = await pullModularKeysFromCloud(keyToPull, legacyKeyFallback);
            if (pulled) existingKeysToUse = pulled;
         }
 
@@ -61,7 +62,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
             }
           } else {
-            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
+            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -76,8 +77,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
           }
-          if (cloudCheck.legacyKey) {
-            moduleKeys.legacyCore = cloudCheck.legacyKey;
+          if (cloudCheck.legacyKey || legacyKeyFallback) {
+            moduleKeys.legacyCore = cloudCheck.legacyKey || legacyKeyFallback;
           }
           
           if (cloudCheck.isNew || cloudCheck.isLegacy) {
@@ -108,6 +109,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
         if (res.success) {
           const masterKey = await deriveMasterKey(password);
+          const legacyKeyFallback = await deriveLegacyMasterKey(password);
           let rawKeys = res.keys;
           
           if (rawKeys) {
@@ -116,7 +118,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           
           // E2EE RECOVERY FIX: Always ensure we have the correct legacy keys from the cloud.
           // Because of the 600k iterations migration, some users might have overwritten their local keychain.
-          const cloudKeys = await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
+          const cloudKeys = await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
           if (cloudKeys) {
              rawKeys = cloudKeys;
              // Força a atualização local para sincronizar com a nuvem (cura a corrupção)
@@ -124,7 +126,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
                await window.api.auth.forceUpdateKeychain(password, rawKeys);
              }
           } else if (!rawKeys) {
-             rawKeys = await pullModularKeysFromCloud(masterKey, cloudCheck.legacyKey);
+             rawKeys = await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -139,8 +141,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
           }
-          if (cloudCheck.legacyKey) {
-            moduleKeys.legacyCore = cloudCheck.legacyKey;
+          if (cloudCheck.legacyKey || legacyKeyFallback) {
+            moduleKeys.legacyCore = cloudCheck.legacyKey || legacyKeyFallback;
           }
 
           

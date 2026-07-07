@@ -81,7 +81,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 try {
                   decryptedJson = await decryptText(cloudData.encryptedData, key);
                 } catch (decErr) {
-                  if (module === 'video' && effectiveModuleKeys['legacyCore']) {
+                  if (effectiveModuleKeys['legacyCore']) {
                     decryptedJson = await decryptText(cloudData.encryptedData, effectiveModuleKeys['legacyCore']);
                   } else {
                     throw decErr;
