@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { deriveMasterKey, importHexKey, deriveLegacyMasterKey } from '../services/crypto';
+import { deriveMasterKey, importHexKey } from '../services/crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
 
@@ -45,11 +45,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
         let existingKeysToUse = undefined;
         const masterKey = await deriveMasterKey(password);
-        const legacyKeyFallback = await deriveLegacyMasterKey(password);
 
         if (!cloudCheck.isNew) {
-           const keyToPull = cloudCheck.isLegacy && cloudCheck.legacyKey ? cloudCheck.legacyKey : masterKey;
-           const pulled = await pullModularKeysFromCloud(keyToPull, legacyKeyFallback);
+           const pulled = await pullModularKeysFromCloud(masterKey);
            if (pulled) existingKeysToUse = pulled;
         }
 
@@ -58,11 +56,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           let rawKeys = res.keys;
           
           if (rawKeys) {
-            if (cloudCheck.isNew || cloudCheck.isLegacy) {
+            if (cloudCheck.isNew) {
               pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
             }
           } else {
-            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
+            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -77,11 +75,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
           }
-          if (cloudCheck.legacyKey || legacyKeyFallback) {
-            moduleKeys.legacyCore = cloudCheck.legacyKey || legacyKeyFallback;
-          }
           
-          if (cloudCheck.isNew || cloudCheck.isLegacy) {
+          if (cloudCheck.isNew) {
             await initializeCloudValidator(masterKey);
           }
           
@@ -109,24 +104,20 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
         if (res.success) {
           const masterKey = await deriveMasterKey(password);
-          const legacyKeyFallback = await deriveLegacyMasterKey(password);
           let rawKeys = res.keys;
           
           if (rawKeys) {
             pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
           }
           
-          // E2EE RECOVERY FIX: Always ensure we have the correct legacy keys from the cloud.
-          // Because of the 600k iterations migration, some users might have overwritten their local keychain.
-          const cloudKeys = await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
+          const cloudKeys = await pullModularKeysFromCloud(masterKey);
           if (cloudKeys) {
              rawKeys = cloudKeys;
-             // Força a atualização local para sincronizar com a nuvem (cura a corrupção)
              if (window.api.auth.forceUpdateKeychain) {
                await window.api.auth.forceUpdateKeychain(password, rawKeys);
              }
           } else if (!rawKeys) {
-             rawKeys = await pullModularKeysFromCloud(masterKey, legacyKeyFallback);
+             rawKeys = await pullModularKeysFromCloud(masterKey);
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -140,9 +131,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.finance = masterKey;
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
-          }
-          if (cloudCheck.legacyKey || legacyKeyFallback) {
-            moduleKeys.legacyCore = cloudCheck.legacyKey || legacyKeyFallback;
           }
 
           

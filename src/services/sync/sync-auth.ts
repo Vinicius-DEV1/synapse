@@ -1,8 +1,8 @@
 import { db } from '../firebase';
-import { encryptText, decryptText, deriveMasterKey, deriveLegacyMasterKey } from '../crypto';
+import { encryptText, decryptText, deriveMasterKey } from '../crypto';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean; isLegacy: boolean; legacyKey?: CryptoKey }> {
+export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
   try {
     const masterKey = await deriveMasterKey(password);
     
@@ -10,35 +10,22 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists() || !docSnap.data().encryptedData) {
-      return { isValid: true, isNew: true, isLegacy: false };
+      return { isValid: true, isNew: true };
     }
     
-    // Tenta primeiro com a chave atual de 600k iterations
     try {
       const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
       const parsed = JSON.parse(decryptedJson);
       if (parsed.validator === 'CADERNO_VALIDO') {
-        return { isValid: true, isNew: false, isLegacy: false };
+        return { isValid: true, isNew: false };
       }
     } catch {
-      // Falha ao descriptografar com a atual. Tenta a legacy.
+      // Falha ao descriptografar
     }
 
-    // Fallback para 100k iterations (Migração de AppSec)
-    try {
-      const legacyKey = await deriveLegacyMasterKey(password);
-      const decryptedJson = await decryptText(docSnap.data().encryptedData, legacyKey);
-      const parsed = JSON.parse(decryptedJson);
-      if (parsed.validator === 'CADERNO_VALIDO') {
-        return { isValid: true, isNew: false, isLegacy: true, legacyKey };
-      }
-    } catch {
-      // Falha com a legacy
-    }
-
-    return { isValid: false, isNew: false, isLegacy: false };
+    return { isValid: false, isNew: false };
   } catch {
-    return { isValid: false, isNew: false, isLegacy: false };
+    return { isValid: false, isNew: false };
   }
 }
 
@@ -73,7 +60,7 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
   }
 }
 
-export async function pullModularKeysFromCloud(masterKey: CryptoKey, legacyKey?: CryptoKey): Promise<Record<string, string> | null> {
+export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Record<string, string> | null> {
   if (!navigator.onLine) return null;
   try {
     const docSnap = await getDoc(doc(db, 'config', 'module_keys'));
@@ -82,14 +69,6 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey, legacyKey?:
         const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
         return JSON.parse(decryptedJson);
       } catch (err) {
-        if (legacyKey) {
-          try {
-            const decryptedLegacy = await decryptText(docSnap.data().encryptedData, legacyKey);
-            return JSON.parse(decryptedLegacy);
-          } catch (legacyErr) {
-            console.error("Erro ao decifrar chaves com legacyKey:", legacyErr);
-          }
-        }
         console.warn("Nao foi possivel decifrar as chaves modulares da nuvem. Usando chaves locais.");
         return null;
       }

@@ -77,16 +77,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             
             if (cloudTime !== localTime) {
               try {
-                let decryptedJson;
-                try {
-                  decryptedJson = await decryptText(cloudData.encryptedData, key);
-                } catch (decErr) {
-                  if (effectiveModuleKeys['legacyCore']) {
-                    decryptedJson = await decryptText(cloudData.encryptedData, effectiveModuleKeys['legacyCore']);
-                  } else {
-                    throw decErr;
-                  }
-                }
+                const decryptedJson = await decryptText(cloudData.encryptedData, key);
                 const parsed = JSON.parse(decryptedJson);
                 const rowToUpsert: any = {
                   id: docSnap.id,
