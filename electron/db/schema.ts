@@ -230,16 +230,19 @@ export function setupTables(): Promise<void> {
               id TEXT PRIMARY KEY,
               title TEXT NOT NULL,
               price REAL NOT NULL,
-              priority TEXT NOT NULL,
-              link TEXT,
+              priority TEXT CHECK(priority IN ('high', 'medium', 'low')) DEFAULT 'medium',
+              category TEXT DEFAULT 'Geral',
+              expected_date TEXT,
               description TEXT,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              link TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL
             )
           `));
           
           promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN description TEXT;"));
+          promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN category TEXT DEFAULT 'Geral';"));
         }
 
         // NOTES TABLES

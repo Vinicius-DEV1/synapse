@@ -52,10 +52,13 @@ export interface WishlistItem {
   id: string;
   title: string;
   price: number;
-  priority: 'low' | 'medium' | 'high';
+  priority: 'high' | 'medium' | 'low';
+  category?: string;
   expected_date: string | null;
-  description?: string | null;
+  description: string | null;
+  link: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 // ============ LIBRARY TYPES ============

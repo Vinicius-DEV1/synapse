@@ -1,9 +1,34 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, ArrowRightLeft, Gift, Plus, Trash2 } from 'lucide-react';
+import { LayoutDashboard, ArrowRightLeft, Gift, Plus, Trash2, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Transaction, WishlistItem } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
 import PaymentModal from './PaymentModal';
+
+const DescriptionRenderer = ({ text }: { text: string }) => {
+  const [elements, setElements] = useState<React.ReactNode[]>([]);
+  useEffect(() => {
+    const parse = async () => {
+      const parts = text.split(/(\!\[image\]\([a-zA-Z0-9_]+\))/g);
+      const newEls = await Promise.all(parts.map(async (part, i) => {
+        const match = part.match(/\!\[image\]\(([a-zA-Z0-9_]+)\)/);
+        if (match && window.api.imageCache) {
+          try {
+            const cacheItem = await window.api.imageCache.get(match[1]);
+            if (cacheItem) {
+              const blob = new Blob([cacheItem.data], { type: cacheItem.mimeType });
+              return <img key={i} src={URL.createObjectURL(blob)} className="max-w-full rounded-lg my-2 max-h-64 object-contain shadow-lg border border-white/10" alt="Pasted" />;
+            }
+          } catch(e) {}
+        }
+        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+      }));
+      setElements(newEls);
+    };
+    parse();
+  }, [text]);
+  return <div className="text-sm text-dark-subtext mt-4 leading-relaxed">{elements}</div>;
+};
 
 export default function FinanceView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'wishlist'>('dashboard');
@@ -13,7 +38,28 @@ export default function FinanceView() {
   
   const [showTxModal, setShowTxModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [wishlistToEdit, setWishlistToEdit] = useState<WishlistItem | null>(null);
+  const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
   const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
+
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('caderno_finance_collapsed_categories');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories(prev => {
+      // isCollapsed by default is true (undefined -> true)
+      const isCollapsed = prev[category] !== false;
+      const newState = { ...prev, [category]: !isCollapsed };
+      localStorage.setItem('caderno_finance_collapsed_categories', JSON.stringify(newState));
+      return newState;
+    });
+  };
 
   useEffect(() => {
     loadData();
@@ -53,16 +99,25 @@ export default function FinanceView() {
     }
   };
 
-  const handleCreateWishlist = async (item: Partial<WishlistItem>) => {
+  const handleSaveWishlist = async (item: Partial<WishlistItem>) => {
     if (window.api && window.api.finance) {
-      await window.api.finance.createWishlist(item);
+      if (wishlistToEdit) {
+        await window.api.finance.updateWishlist(wishlistToEdit.id, item);
+      } else {
+        await window.api.finance.createWishlist(item);
+      }
+      setWishlistToEdit(null);
+      setShowWishlistModal(false);
       await loadData();
     }
   };
 
-  const handleDeleteWishlist = async (id: string) => {
+  const handleDeleteWishlist = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Tem certeza que deseja apagar este desejo?')) return;
     if (window.api && window.api.finance) {
       await window.api.finance.deleteWishlist(id);
+      if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
       await loadData();
     }
   };
@@ -236,10 +291,10 @@ export default function FinanceView() {
             )}
             
             {activeTab === 'wishlist' && (
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-end mb-4">
+              <div className="flex flex-col gap-6">
+                <div className="flex justify-end mb-2">
                   <button
-                    onClick={() => setShowWishlistModal(true)}
+                    onClick={() => { setWishlistToEdit(null); setShowWishlistModal(true); }}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 text-dark-text transition-all"
                   >
                     <Plus size={14} />
@@ -252,26 +307,81 @@ export default function FinanceView() {
                     Lista de desejos vazia.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {wishlist.map(item => (
-                      <div key={item.id} className="bg-dark-bg border border-white/5 rounded-xl p-5 flex justify-between items-start group">
-                        <div className="flex flex-col gap-1">
-                          <h3 className="font-medium text-dark-text">{item.title}</h3>
-                          <span className="text-xl font-semibold text-brand-400">R$ {item.price?.toFixed(2) ?? '0.00'}</span>
-                          {item.expected_date && (
-                            <span className="text-xs text-dark-subtext mt-1">
-                              Meta: {new Date(item.expected_date).toLocaleDateString('pt-BR')}
+                  <div className="flex flex-col gap-6">
+                    {Object.entries(
+                      wishlist.reduce((acc, item) => {
+                        const cat = item.category || 'Geral';
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(item);
+                        return acc;
+                      }, {} as Record<string, WishlistItem[]>)
+                    )
+                    // Sort categories alphabetically
+                    .sort((a, b) => a[0].localeCompare(b[0]))
+                    .map(([category, items]) => {
+                      // By default, category is collapsed (true) if undefined in state
+                      const isCollapsed = collapsedCategories[category] !== false;
+                      const totalCategory = items.reduce((acc, item) => acc + (item.price || 0), 0);
+
+                      return (
+                        <div key={category} className="flex flex-col gap-3">
+                          <button 
+                            onClick={() => toggleCategory(category)}
+                            className="flex items-center justify-between text-left group w-full p-2 -mx-2 rounded-lg hover:bg-white/5 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 text-lg font-semibold text-dark-text">
+                              {isCollapsed ? <ChevronRight size={18} className="text-dark-subtext" /> : <ChevronDown size={18} className="text-dark-subtext" />}
+                              {category}
+                              <span className="text-xs font-normal text-dark-subtext bg-white/5 px-2 py-0.5 rounded-full ml-2">
+                                {items.length} {items.length === 1 ? 'item' : 'itens'}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium text-dark-subtext group-hover:text-dark-text transition-colors">
+                              R$ {totalCategory.toFixed(2)}
                             </span>
+                          </button>
+                          
+                          {!isCollapsed && (
+                            <div className="flex flex-col gap-3 pl-2 border-l border-white/5">
+                              {items.map(item => (
+                                <div 
+                                  key={item.id} 
+                                  onClick={() => setSelectedWishlistDetails(item)}
+                                  className="bg-dark-bg hover:bg-white/5 border border-white/5 rounded-xl p-4 flex justify-between items-center group cursor-pointer transition-colors"
+                                >
+                                  <div className="flex flex-col gap-1">
+                                    <h3 className="font-medium text-dark-text">{item.title}</h3>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-lg font-semibold text-brand-400">R$ {item.price?.toFixed(2) ?? '0.00'}</span>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                        item.priority === 'high' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                        item.priority === 'medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                        'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                      }`}>
+                                        {item.priority === 'high' ? 'Alta' : item.priority === 'medium' ? 'Média' : 'Baixa'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    {item.expected_date && (
+                                      <span className="text-xs text-dark-subtext">
+                                        Meta: {new Date(item.expected_date).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                    <button 
+                                      onClick={(e) => handleDeleteWishlist(item.id, e)}
+                                      className="p-2 text-dark-subtext opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-white/5 rounded transition-all"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                        <button 
-                          onClick={() => handleDeleteWishlist(item.id)}
-                          className="p-1.5 text-dark-subtext opacity-0 group-hover:opacity-100 hover:text-red-400 rounded transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -289,8 +399,9 @@ export default function FinanceView() {
 
       {showWishlistModal && (
         <WishlistModal 
-          onClose={() => setShowWishlistModal(false)} 
-          onSave={handleCreateWishlist} 
+          initialData={wishlistToEdit}
+          onClose={() => { setShowWishlistModal(false); setWishlistToEdit(null); }} 
+          onSave={handleSaveWishlist} 
         />
       )}
 
@@ -300,6 +411,78 @@ export default function FinanceView() {
           onClose={() => setSelectedTxForPayment(null)}
           onSave={handleUpdateTransaction}
         />
+      )}
+
+      {selectedWishlistDetails && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWishlistDetails(null)}>
+          <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-white/5">
+              <h2 className="text-lg font-semibold text-dark-text">Detalhes do Desejo</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    setWishlistToEdit(selectedWishlistDetails);
+                    setShowWishlistModal(true);
+                    setSelectedWishlistDetails(null);
+                  }} 
+                  className="p-1.5 text-brand-400 hover:text-brand-300 rounded-lg hover:bg-white/5 transition-colors"
+                  title="Editar"
+                >
+                  <Edit2 size={18} />
+                </button>
+                <button 
+                  onClick={() => handleDeleteWishlist(selectedWishlistDetails.id)} 
+                  className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-white/5 transition-colors"
+                  title="Apagar"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button onClick={() => setSelectedWishlistDetails(null)} className="p-1.5 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[70vh]">
+              <h1 className="text-2xl font-bold text-dark-text mb-2">{selectedWishlistDetails.title}</h1>
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Categoria</span>
+                  <span className="text-sm font-medium text-dark-text">{selectedWishlistDetails.category || 'Geral'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Custo Estimado</span>
+                  <span className="text-xl font-semibold text-brand-400">R$ {selectedWishlistDetails.price?.toFixed(2) ?? '0.00'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Prioridade</span>
+                  <span className={`text-sm font-medium ${
+                              selectedWishlistDetails.priority === 'high' ? 'text-red-400' :
+                              selectedWishlistDetails.priority === 'medium' ? 'text-amber-400' :
+                              'text-emerald-400'
+                            }`}>
+                    {selectedWishlistDetails.priority === 'high' ? 'Alta' : selectedWishlistDetails.priority === 'medium' ? 'Média' : 'Baixa'}
+                  </span>
+                </div>
+                {selectedWishlistDetails.expected_date && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Data Esperada</span>
+                    <span className="text-sm font-medium text-dark-text">{new Date(selectedWishlistDetails.expected_date).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="border-t border-white/5 pt-4">
+                <h3 className="text-sm font-medium text-dark-text">Descrição</h3>
+                {selectedWishlistDetails.description ? (
+                  <DescriptionRenderer text={selectedWishlistDetails.description} />
+                ) : (
+                  <p className="text-sm text-dark-subtext mt-2 italic">Nenhuma descrição adicionada.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
