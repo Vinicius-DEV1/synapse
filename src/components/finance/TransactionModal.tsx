@@ -24,6 +24,7 @@ export default function TransactionModal({ onClose, onSave }: TransactionModalPr
         type,
         amount: parseFloat(amount),
         description,
+        category: 'geral',
         date,
       });
       onClose();
