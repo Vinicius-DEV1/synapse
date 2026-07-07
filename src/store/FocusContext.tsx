@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import type { Session, Alarm } from '../components/focus/types';
 import type { LofiItem } from '../types_lofi';
 
@@ -139,7 +139,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${h} hour${h !== 1 ? 's' : ''} and ${m} minute${m !== 1 ? 's' : ''}`;
   };
 
-  const loadLofis = async () => {
+  const loadLofis = useCallback(async () => {
     if (window.api?.sync) {
       try {
         const rows = await window.api.sync.getTable('lofis');
@@ -148,9 +148,9 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.error('Failed to load lofis', err);
       }
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (window.api) {
       try {
         const data = await window.api.focus.getSessions();
@@ -174,7 +174,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.error('Failed to load data', err);
       }
     }
-  };
+  }, [loadLofis]);
 
   // loadData is called by AppContent when authenticated
 
