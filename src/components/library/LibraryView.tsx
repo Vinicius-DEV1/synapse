@@ -60,9 +60,18 @@ export default function LibraryView({ tabId }: { tabId: string }) {
   const [hasDriveAuth, setHasDriveAuth] = useState(false);
 
   useEffect(() => {
-    getDriveCredentials().then(creds => {
-      setHasDriveAuth(!!creds.token);
-    });
+    const checkDriveAuth = () => {
+      getDriveCredentials().then(creds => {
+        setHasDriveAuth(!!creds.token);
+      });
+    };
+    
+    // Check initially
+    checkDriveAuth();
+    
+    // Re-check when sync completes (e.g. pulled from cloud on incognito load)
+    window.addEventListener('caderno-sync-success', checkDriveAuth);
+    return () => window.removeEventListener('caderno-sync-success', checkDriveAuth);
   }, []);
 
   // --- Derived Data ---

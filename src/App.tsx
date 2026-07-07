@@ -112,6 +112,7 @@ function AppContent() {
   useEffect(() => {
     if (syncStatus === 'success') {
       syncSettingsFromDb();
+      window.dispatchEvent(new CustomEvent('caderno-sync-success'));
     }
   }, [syncStatus]);
 
