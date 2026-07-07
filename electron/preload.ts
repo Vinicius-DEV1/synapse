@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('api', {
     toggleFullScreen: () => ipcRenderer.send('app:toggleFullScreen'),
     getPathForFile: (file: File) => webUtils.getPathForFile(file),
     showConfirm: (message: string) => invokeWithSync('app:showConfirm', message),
+    openFocusWindow: () => invokeWithSync('app:open-focus-window'),
   },
 
   // Auth
@@ -182,7 +183,18 @@ contextBridge.exposeInMainWorld('api', {
   // Audio
   audio: {
     generateTTS: (text: string, lang?: string) => invokeWithSync('audio:generate-tts', text, lang),
-    extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => invokeWithSync('audio:extract-clip', videoPath, startTimeMs, endTimeMs),
+    extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => invokeWithSync('audio:extract-clip', videoPath, startTimeMs, endTimeMs)
+  },
+
+  // Focus
+  focus: {
+    getSessions: () => invokeWithSync('focus:get-sessions'),
+    createSession: (session: any) => invokeWithSync('focus:create-session', session),
+    getAlarms: () => invokeWithSync('focus:get-alarms'),
+    createAlarm: (alarm: any) => invokeWithSync('focus:create-alarm', alarm),
+    updateAlarm: (id: number, alarm: any) => invokeWithSync('focus:update-alarm', id, alarm),
+    deleteAlarm: (id: number) => invokeWithSync('focus:delete-alarm', id),
+    setAppIcon: (type: 'normal' | 'zzz') => ipcRenderer.invoke('app:set-icon', type),
   },
 
   // Backup
@@ -205,3 +217,4 @@ contextBridge.exposeInMainWorld('api', {
     };
   }
 });
+

@@ -95,7 +95,17 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           triggerError(res.error || 'Erro ao configurar senha');
         }
       } else {
-        const res = await window.api.auth.login(password);
+        let res = await window.api.auth.login(password);
+
+        // Auto-migration: se a senha funcionou na nuvem, mas falhou localmente, atualiza o hash local!
+        if (!res.success && navigator.onLine && cloudCheck.isValid && !cloudCheck.isNew) {
+          console.log("☁️ Senha validada na nuvem! Atualizando hash local desatualizado...");
+          const fixRes = await window.api.auth.setup(password);
+          if (fixRes.success) {
+            res = { success: true };
+          }
+        }
+
         if (res.success) {
           const masterKey = await deriveMasterKey(password);
           let rawKeys = res.keys;

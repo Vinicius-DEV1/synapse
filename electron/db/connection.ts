@@ -96,6 +96,7 @@ export interface UnlockedModules {
   notes?: string;
   culture?: string;
   anki?: string;
+  focus?: string;
 }
 
 export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise<void> {
@@ -106,6 +107,7 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
     const notesPath = path.join(app.getPath('userData'), 'caderno_notes.sqlite').replace(/\\/g, '/');
     const culturePath = path.join(app.getPath('userData'), 'caderno_culture.sqlite').replace(/\\/g, '/');
     const ankiPath = path.join(app.getPath('userData'), 'caderno_anki.sqlite').replace(/\\/g, '/');
+      const focusPath = path.join(app.getPath('userData'), 'caderno_focus.sqlite').replace(/\\/g, '/');
     
     let coreKey: string;
     try {
@@ -135,6 +137,7 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
               .then(() => attach(notesPath, 'notes', unlockedKeys.notes))
               .then(() => attach(culturePath, 'culture', unlockedKeys.culture))
               .then(() => attach(ankiPath, 'anki', unlockedKeys.anki))
+              .then(() => attach(focusPath, 'focus', unlockedKeys.focus))
               .then(() => {
                 db = newDb;
                 resolve();
@@ -144,3 +147,4 @@ export function openCoreAndAttachModules(unlockedKeys: UnlockedModules): Promise
     });
   });
 }
+

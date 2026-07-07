@@ -74,6 +74,25 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
           </p>
         </div>
       </div>
+
+      <div className="border-t border-white/10 pt-4">
+        <h4 className="text-sm font-medium text-white mb-3">Módulos Externos</h4>
+        <div className="bg-black/20 border border-white/5 rounded-xl p-3 flex justify-between items-center">
+          <div>
+            <label className="block text-xs font-medium text-dark-subtext mb-1">Módulo Focus</label>
+            <p className="text-[10px] text-white/40">
+              Abre o módulo de foco em uma janela separada.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.api?.app?.openFocusWindow?.()}
+            className="px-3 py-2 bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+          >
+            Abrir Focus
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

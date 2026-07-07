@@ -16,13 +16,15 @@ interface CadernoDBSchema extends DBSchema {
   videos: { key: string; value: any };
   items: { key: string; value: any };
   episodes: { key: string; value: any; indexes: { 'item_id': string } };
+  focus_sessions: { key: string; value: any };
+  focus_alarms: { key: number; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 4, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 5, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -74,6 +76,13 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('episodes')) {
           const store = db.createObjectStore('episodes', { keyPath: 'id' });
           store.createIndex('item_id', 'item_id');
+        }
+        // Focus stores
+        if (!db.objectStoreNames.contains('focus_sessions')) {
+          db.createObjectStore('focus_sessions', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('focus_alarms')) {
+          db.createObjectStore('focus_alarms', { keyPath: 'id' });
         }
       },
     });

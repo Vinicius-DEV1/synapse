@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { createLowlight, common } from 'lowlight';
+import 'highlight.js/styles/atom-one-dark.css';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Highlight } from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
@@ -28,6 +31,7 @@ import { LinkPreviewBlock } from './editor-extensions/LinkPreviewBlock';
 import { ResizableImage } from './editor-extensions/ResizableImage';
 import { EncryptedImage } from './editor-extensions/EncryptedImage';
 import { PageReference } from './editor-extensions/PageReference';
+import CodeBlockComponent from './editor-extensions/CodeBlockComponent';
 import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
 
 interface EditorProps {
@@ -76,11 +80,19 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
 
 
 
+  const lowlight = createLowlight(common);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         history: false, 
+        codeBlock: false,
       }),
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockComponent);
+        }
+      }).configure({ lowlight }),
       Placeholder.configure({ placeholder: "Digite '/' para comandos ou comece a escrever..." }),
       Highlight.configure({ multicolor: true }),
       Underline,

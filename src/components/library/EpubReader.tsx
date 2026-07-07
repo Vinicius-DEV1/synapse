@@ -22,10 +22,22 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const {
     rendition, readingMode, setReadingMode, fontSize, setFontSize,
     locationsReady, setProgress, setCurrentPage, selection,
-    textWidth, epubBook
+    textWidth, epubBook, fontFamily
   } = useEpub();
 
   const { state, dispatch } = useStore();
+
+  useEffect(() => {
+    const prefs = { fontSize, readingMode, fontFamily, textWidth };
+    const str = JSON.stringify(prefs);
+    if (str !== book.reading_preferences) {
+      const timeout = setTimeout(() => {
+        onUpdateBook({ reading_preferences: str });
+        book.reading_preferences = str;
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [fontSize, readingMode, fontFamily, textWidth, book, onUpdateBook]);
   const [loading, setLoading] = useState(true);
   const [epubError, setEpubError] = useState<string | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
@@ -201,7 +213,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!rendition) return;
     const timer = setTimeout(() => {
-      rendition.resize();
+      rendition.resize('100%', '100%');
     }, 350);
     return () => clearTimeout(timer);
   }, [textWidth, state.isReadingModeFullScreen, showMobileTools, rendition]);
@@ -270,10 +282,10 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
           </div>
         </button>
         
-        <div ref={viewerRef} className={`w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300 \${
-          textWidth === 'narrow' ? 'max-w-2xl' :
-          textWidth === 'medium' ? 'max-w-4xl' : 'max-w-[1400px]'
-        }`} />
+        <div ref={viewerRef} 
+          className="w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300"
+          style={{ maxWidth: textWidth === 'narrow' ? '700px' : textWidth === 'medium' ? '1000px' : '1400px' }}
+        />
 
         <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
           <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center \${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
@@ -331,3 +343,6 @@ export default function EpubReader({ book, onBack, onUpdateBook }: EpubReaderPro
     </EpubProvider>
   );
 }
+
+
+

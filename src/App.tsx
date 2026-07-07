@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { StoreProvider, useStore } from './store/useStore';
+import { FocusProvider, useFocusContext } from './store/FocusContext';
 import type { Page } from './types';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
@@ -11,6 +12,7 @@ import LibraryView from './components/library/LibraryView';
 import CultureView from './components/culture/CultureView';
 import VideoView from './components/video-player/VideoView';
 import AnkiView from './components/anki/AnkiView';
+import GlobalFocusOverlays from './components/focus/GlobalFocusOverlays';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
@@ -24,6 +26,14 @@ function AppContent() {
   const [isAuth, setIsAuth] = useState(false);
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
+  const { loadData: loadFocusData } = useFocusContext();
+
+  // Load focus data when authenticated
+  useEffect(() => {
+    if (isAuth) {
+      loadFocusData();
+    }
+  }, [isAuth, loadFocusData]);
 
   // Listen to settings changes
   useEffect(() => {
@@ -347,6 +357,7 @@ function AppContent() {
            syncStatus === 'error'   ? (!navigator.onLine ? 'Offline' : 'Erro') : ''}
         </span>
       </div>
+      <GlobalFocusOverlays />
     </div>
   );
 }
@@ -354,7 +365,9 @@ function AppContent() {
 export default function App() {
   return (
     <StoreProvider>
-      <AppContent />
+      <FocusProvider>
+        <AppContent />
+      </FocusProvider>
     </StoreProvider>
   );
 }

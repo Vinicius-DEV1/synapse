@@ -179,6 +179,7 @@ export function setupTables(): Promise<void> {
           // Migration patch for last_read_page
           promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN last_read_page TEXT;"));
           promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN epub_locations TEXT;"));
+          promises.push(runSafe("ALTER TABLE library.library_books ADD COLUMN reading_preferences TEXT;"));
         }
 
         // NOTES TABLES
@@ -370,3 +371,4 @@ export function setupTables(): Promise<void> {
     });
   });
 }
+

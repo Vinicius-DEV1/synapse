@@ -24,7 +24,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -178,7 +178,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -255,6 +255,7 @@ declare global {
         maximize: () => void;
         getPathForFile: (file: File) => string;
         showConfirm: (message: string) => Promise<number>;
+        openFocusWindow: () => Promise<void>;
       };
       _setMasterKey?: (key: CryptoKey | null) => void;
       onSyncTrigger?: (callback: () => void) => () => void;
@@ -351,6 +352,14 @@ declare global {
         updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
         deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
       };
+      focus?: {
+        getSessions: () => Promise<any[]>;
+        createSession: (session: any) => Promise<{ success: boolean; id?: number }>;
+        getAlarms: () => Promise<any[]>;
+        createAlarm: (alarm: any) => Promise<{ success: boolean; id?: number }>;
+        updateAlarm: (id: number, alarm: any) => Promise<{ success: boolean }>;
+        deleteAlarm: (id: number) => Promise<{ success: boolean }>;
+      };
       audio?: {
         generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
         extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => Promise<{ success: boolean; filePath?: string; error?: string }>;
@@ -363,3 +372,4 @@ declare global {
     };
   }
 }
+
