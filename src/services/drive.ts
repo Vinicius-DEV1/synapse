@@ -177,6 +177,37 @@ export async function getOrCreatePhotosFolder(accessToken: string, parentFolderI
   return createData.id;
 }
 
+export async function getOrCreateLofiFolder(accessToken: string, parentFolderId: string): Promise<string> {
+  const query = encodeURIComponent(`name = 'LOFI' and '${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+  const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  
+  if (res.ok) {
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      return data.files[0].id;
+    }
+  }
+
+  // Se não existir, cria a subpasta LOFI
+  const createRes = await fetch(DRIVE_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'LOFI',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentFolderId]
+    })
+  });
+
+  const createData = await createRes.json();
+  return createData.id;
+}
+
 /**
  * Faz upload do buffer (já criptografado) para o Google Drive
  */
@@ -184,12 +215,14 @@ export async function uploadToDrive(
   accessToken: string, 
   filename: string, 
   buffer: ArrayBuffer, 
-  usePhotosFolder: boolean = false,
+  targetFolder: 'root' | 'photos' | 'lofi' = 'root',
   onProgress?: (percent: number) => void
 ): Promise<string> {
   let folderId = await getOrCreateAppFolder(accessToken);
-  if (usePhotosFolder) {
+  if (targetFolder === 'photos') {
     folderId = await getOrCreatePhotosFolder(accessToken, folderId);
+  } else if (targetFolder === 'lofi') {
+    folderId = await getOrCreateLofiFolder(accessToken, folderId);
   }
 
   const metadata = {
@@ -432,6 +465,7 @@ export interface DriveStorageUsage {
     library: number;
     photos: number;
     videos: number;
+    lofi: number;
     others: number;
   }
 }
@@ -446,11 +480,14 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
   try {
     const appFolderId = await getOrCreateAppFolder(token);
     const photosFolderId = await getOrCreatePhotosFolder(token, appFolderId);
+    const lofiFolderId = await getOrCreateLofiFolder(token, appFolderId);
 
     // Get files in main folder
     const mainFiles = await listFiles(token, appFolderId);
     // Get files in photos folder
     const photoFiles = await listFiles(token, photosFolderId);
+    // Get files in lofi folder
+    const lofiFiles = await listFiles(token, lofiFolderId);
 
     let library = 0;
     let videos = 0;
@@ -477,12 +514,20 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
       photos += size;
     }
 
+    let lofi = 0;
+    for (const f of lofiFiles) {
+      if (f.mimeType === 'application/vnd.google-apps.folder') continue;
+      const size = parseInt(f.size || '0', 10);
+      lofi += size;
+    }
+
     return {
-      total: library + videos + photos + others,
+      total: library + videos + photos + lofi + others,
       modules: {
         library,
         photos,
         videos,
+        lofi,
         others
       }
     };

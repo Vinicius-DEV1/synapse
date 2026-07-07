@@ -14,6 +14,7 @@ interface CadernoDBSchema extends DBSchema {
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
   videos: { key: string; value: any };
+  lofis: { key: string; value: any };
   items: { key: string; value: any };
   episodes: { key: string; value: any; indexes: { 'item_id': string } };
   focus_sessions: { key: string; value: any };
@@ -68,6 +69,9 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('videos')) {
           db.createObjectStore('videos', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('lofis')) {
+          db.createObjectStore('lofis', { keyPath: 'id' });
         }
         // Culture stores
         if (!db.objectStoreNames.contains('items')) {

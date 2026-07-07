@@ -43,15 +43,18 @@ export interface Transaction {
   category: string;
   date: string;
   status: string;
+  is_paid?: number;
+  paid_amount?: number;
   created_at: string;
 }
 
 export interface WishlistItem {
   id: string;
   title: string;
-  estimated_cost: number;
+  price: number;
   priority: 'low' | 'medium' | 'high';
   expected_date: string | null;
+  description?: string | null;
   created_at: string;
 }
 
@@ -283,9 +286,11 @@ declare global {
       finance: {
         getTransactions: () => Promise<Transaction[]>;
         createTransaction: (tx: Partial<Transaction>) => Promise<Transaction>;
+        updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<{success: boolean}>;
         deleteTransaction: (id: string) => Promise<boolean>;
         getWishlist: () => Promise<WishlistItem[]>;
         createWishlist: (item: Partial<WishlistItem>) => Promise<WishlistItem>;
+        updateWishlist: (id: string, item: Partial<WishlistItem>) => Promise<{success: boolean}>;
         deleteWishlist: (id: string) => Promise<boolean>;
       };
       culture: {

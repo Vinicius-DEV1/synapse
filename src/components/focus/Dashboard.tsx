@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell } from 'lucide-react';
+import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { Session } from '../types';
 
@@ -8,10 +8,11 @@ interface DashboardProps {
   onStart: () => void;
   onOpenSettings: () => void;
   onOpenAlarms: () => void;
+  onOpenLofi: () => void;
   onDeleteSession: (id: number) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onDeleteSession }) => {
+const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onOpenLofi, onDeleteSession }) => {
   const [dailyGoal, setDailyGoal] = useState<number>(120);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('120');
@@ -107,6 +108,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={onOpenLofi} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Lofi">
+            <Music size={18} />
+          </button>
           <button onClick={onOpenAlarms} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Alarms">
             <Bell size={18} />
           </button>

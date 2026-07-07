@@ -3,6 +3,7 @@ import { LayoutDashboard, ArrowRightLeft, Gift, Plus, Trash2 } from 'lucide-reac
 import type { Transaction, WishlistItem } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
+import PaymentModal from './PaymentModal';
 
 export default function FinanceView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'wishlist'>('dashboard');
@@ -12,6 +13,7 @@ export default function FinanceView() {
   
   const [showTxModal, setShowTxModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
 
   useEffect(() => {
     loadData();
@@ -33,6 +35,13 @@ export default function FinanceView() {
   const handleCreateTransaction = async (tx: Partial<Transaction>) => {
     if (window.api && window.api.finance) {
       await window.api.finance.createTransaction(tx);
+      await loadData();
+    }
+  };
+
+  const handleUpdateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    if (window.api && window.api.finance) {
+      await window.api.finance.updateTransaction(id, updates);
       await loadData();
     }
   };
@@ -139,45 +148,89 @@ export default function FinanceView() {
             )}
             
             {activeTab === 'transactions' && (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-8">
                 {transactions.length === 0 ? (
                   <div className="text-center text-dark-subtext py-12">
                     Nenhuma transação registrada.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-dark-subtext text-sm">
-                          <th className="pb-3 font-medium">Data</th>
-                          <th className="pb-3 font-medium">Descrição</th>
-                          <th className="pb-3 font-medium">Tipo</th>
-                          <th className="pb-3 font-medium text-right">Valor</th>
-                          <th className="pb-3 font-medium"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {transactions.map(tx => (
-                          <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <td className="py-3 text-dark-subtext">{new Date(tx.date).toLocaleDateString('pt-BR')}</td>
-                            <td className="py-3 font-medium text-dark-text">{tx.description}</td>
-                            <td className={`py-3 ${typeLabels[tx.type]?.color}`}>{typeLabels[tx.type]?.label}</td>
-                            <td className={`py-3 text-right font-medium ${tx.type === 'expense' || tx.type === 'loan_made' ? 'text-red-400' : 'text-emerald-400'}`}>
-                              {tx.type === 'expense' || tx.type === 'loan_made' ? '-' : '+'} R$ {tx.amount.toFixed(2)}
-                            </td>
-                            <td className="py-3 text-right">
-                              <button 
-                                onClick={() => handleDeleteTransaction(tx.id)}
-                                className="p-1.5 text-dark-subtext hover:text-red-400 rounded transition-colors"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  Object.entries(
+                    transactions.reduce((acc, tx) => {
+                      const date = new Date(tx.date);
+                      const monthYear = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                      const capitalizedMonthYear = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+                      if (!acc[capitalizedMonthYear]) acc[capitalizedMonthYear] = [];
+                      acc[capitalizedMonthYear].push(tx);
+                      return acc;
+                    }, {} as Record<string, Transaction[]>)
+                  ).map(([month, monthTxs]) => (
+                    <div key={month} className="flex flex-col gap-3">
+                      <h3 className="text-lg font-semibold text-dark-text border-b border-white/5 pb-2">{month}</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/10 text-dark-subtext text-sm">
+                              <th className="pb-3 font-medium">Data</th>
+                              <th className="pb-3 font-medium">Descrição</th>
+                              <th className="pb-3 font-medium">Tipo</th>
+                              <th className="pb-3 font-medium text-right">Valor</th>
+                              <th className="pb-3 font-medium"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-sm">
+                            {monthTxs.map(tx => {
+                              const isLoan = tx.type === 'loan_made' || tx.type === 'loan_taken';
+                              const paidAmount = tx.paid_amount || 0;
+                              const progress = isLoan ? Math.min(100, (paidAmount / tx.amount) * 100) : 0;
+                              
+                              return (
+                                <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 text-dark-subtext">{new Date(tx.date).toLocaleDateString('pt-BR')}</td>
+                                  <td className="py-3">
+                                    <div className="font-medium text-dark-text">{tx.description}</div>
+                                    {isLoan && (
+                                      <div className="mt-1.5 w-48">
+                                        <div className="flex justify-between text-xs text-dark-subtext mb-1">
+                                          <span>Pago: R$ {paidAmount.toFixed(2)}</span>
+                                          <span>{tx.is_paid ? 'Concluído' : `${progress.toFixed(0)}%`}</span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-dark-bg rounded-full overflow-hidden">
+                                          <div 
+                                            className={`h-full rounded-full transition-all ${tx.is_paid ? 'bg-brand-500' : 'bg-brand-500/50'}`}
+                                            style={{ width: `${progress}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className={`py-3 ${typeLabels[tx.type]?.color}`}>{typeLabels[tx.type]?.label}</td>
+                                  <td className={`py-3 text-right font-medium ${tx.type === 'expense' || tx.type === 'loan_made' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {tx.type === 'expense' || tx.type === 'loan_made' ? '-' : '+'} R$ {tx.amount.toFixed(2)}
+                                  </td>
+                                  <td className="py-3 text-right flex justify-end gap-1">
+                                    {isLoan && !tx.is_paid && (
+                                      <button 
+                                        onClick={() => setSelectedTxForPayment(tx)}
+                                        className="px-2 py-1 text-xs bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 rounded transition-colors"
+                                      >
+                                        Pagar
+                                      </button>
+                                    )}
+                                    <button 
+                                      onClick={() => handleDeleteTransaction(tx.id)}
+                                      className="p-1.5 text-dark-subtext hover:text-red-400 rounded transition-colors"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
@@ -204,7 +257,7 @@ export default function FinanceView() {
                       <div key={item.id} className="bg-dark-bg border border-white/5 rounded-xl p-5 flex justify-between items-start group">
                         <div className="flex flex-col gap-1">
                           <h3 className="font-medium text-dark-text">{item.title}</h3>
-                          <span className="text-xl font-semibold text-brand-400">R$ {item.estimated_cost.toFixed(2)}</span>
+                          <span className="text-xl font-semibold text-brand-400">R$ {item.price?.toFixed(2) ?? '0.00'}</span>
                           {item.expected_date && (
                             <span className="text-xs text-dark-subtext mt-1">
                               Meta: {new Date(item.expected_date).toLocaleDateString('pt-BR')}
@@ -238,6 +291,14 @@ export default function FinanceView() {
         <WishlistModal 
           onClose={() => setShowWishlistModal(false)} 
           onSave={handleCreateWishlist} 
+        />
+      )}
+
+      {selectedTxForPayment && (
+        <PaymentModal
+          transaction={selectedTxForPayment}
+          onClose={() => setSelectedTxForPayment(null)}
+          onSave={handleUpdateTransaction}
         />
       )}
     </div>

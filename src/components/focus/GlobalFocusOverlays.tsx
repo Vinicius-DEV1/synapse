@@ -2,6 +2,7 @@ import React from 'react';
 import { useFocusContext } from '../../store/FocusContext';
 import AlarmTriggerModal from './AlarmTriggerModal';
 import SuccessModal from './SuccessModal';
+import { GlobalLofiPlayer } from './GlobalLofiPlayer';
 
 export default function GlobalFocusOverlays() {
   const { 
@@ -35,6 +36,8 @@ export default function GlobalFocusOverlays() {
           }}
         />
       )}
+      
+      <GlobalLofiPlayer />
     </>
   );
 }
