@@ -243,6 +243,8 @@ export function setupTables(): Promise<void> {
           
           promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN description TEXT;"));
           promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN category TEXT DEFAULT 'Geral';"));
+          promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN expected_date TEXT;"));
+          promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN link TEXT;"));
         }
 
         // NOTES TABLES
