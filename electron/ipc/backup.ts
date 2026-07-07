@@ -38,7 +38,7 @@ export function registerBackupHandlers() {
     try {
       log('Iniciando processo de backup...', 0);
       
-      const databases = ['core.sqlite', 'notes.sqlite', 'finance.sqlite', 'anki.sqlite'];
+      const databases = ['core.sqlite', 'notes.sqlite', 'finance.sqlite', 'anki.sqlite', 'focus.sqlite'];
 
       if (type === 'encrypted') {
         log('Preparando backup criptografado...', 5);
@@ -212,3 +212,4 @@ export function registerBackupHandlers() {
     }
   });
 }
+

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, powerMonitor, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, powerMonitor, dialog, protocol, net, nativeImage } from 'electron';
 import * as path from 'path';
 import { closeDb } from './db/connection';
 import { registerAuthHandlers } from './ipc/auth';
@@ -10,6 +10,7 @@ import { registerConfigHandlers } from './ipc/config';
 import { registerCultureHandlers } from './ipc/cultureIpc';
 import { registerBackupHandlers } from './ipc/backup';
 import { setupVideoIpc } from './ipc/video';
+import { setupFocusIpc } from './ipc/focus';
 import { registerAudioHandlers } from './api/audio-manager';
 import { registerAnkiHandlers } from './api/anki-manager';
 
@@ -105,9 +106,57 @@ app.whenReady().then(() => {
   registerSyncHandlers();
   registerConfigHandlers();
   setupVideoIpc();
+  setupFocusIpc();
   registerAudioHandlers();
   registerAnkiHandlers();
   registerBackupHandlers();
+
+  let focusWindowInstance: BrowserWindow | null = null;
+
+  ipcMain.handle('app:set-icon', async (_, type: 'normal' | 'zzz') => {
+    if (focusWindowInstance) {
+      if (type === 'zzz') {
+        const iconPath = path.join(__dirname, '../public/focus-icon-zzz.png');
+        focusWindowInstance.setIcon(nativeImage.createFromPath(iconPath));
+      } else {
+        const iconPath = path.join(__dirname, '../public/focus-icon.png');
+        focusWindowInstance.setIcon(nativeImage.createFromPath(iconPath));
+      }
+    }
+  });
+
+  ipcMain.handle('app:open-focus-window', async () => {
+    const focusWindow = new BrowserWindow({
+      width: 400,
+      height: 600,
+      minWidth: 320,
+      minHeight: 480,
+      icon: path.join(__dirname, '../public/focus-icon.png'),
+      backgroundColor: '#0f0e17',
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        nodeIntegration: false,
+        contextIsolation: true,
+      }
+    });
+
+    focusWindow.setMenuBarVisibility(false);
+    focusWindow.setMenu(null);
+      focusWindowInstance = focusWindow;
+      focusWindow.on('closed', () => { focusWindowInstance = null; });
+    
+    // Windows only: Detach icon in taskbar
+    if (process.platform === 'win32') {
+      focusWindow.setAppDetails({ appId: 'com.caderno.focus' });
+    }
+
+    if (isDev) {
+      focusWindow.loadURL('http://127.0.0.1:35174/#/focus-standalone');
+      // focusWindow.webContents.openDevTools();
+    } else {
+      focusWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/focus-standalone' });
+    }
+  });
 
   // Preferências
   ipcMain.handle('auth:set-preferences', async (_, prefs: { autoLockOnSuspend: boolean }) => {
@@ -194,3 +243,7 @@ app.on('window-all-closed', () => {
 });
 
 // Restart backend
+
+
+
+

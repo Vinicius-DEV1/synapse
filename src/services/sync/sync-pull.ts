@@ -101,7 +101,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
                 if (parsed.deleted_at) {
                   if (typeof window !== 'undefined' && (window as any).api?.log) {
-                    (window as any).api.log(`[PULL DELETED] Doc \${docSnap.id} deleted from cloud. Hard deleting locally.`);
+                    (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Hard deleting locally.`);
                   }
                   if (window.api?.sync?.deleteRow) {
                     await window.api.sync.deleteRow(table, docSnap.id);
@@ -119,7 +119,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
                     
                     if (typeof window !== 'undefined' && (window as any).api?.log) {
-                      (window as any).api.log(`[PULL MERGE] Doc \${docSnap.id} merged CRDT.`);
+                      (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
                     }
                     
                     if (localTime > cloudTime) {
@@ -140,7 +140,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   } else {
                     skippedDocsCount++;
                     if (typeof window !== 'undefined' && (window as any).api?.log) {
-                      (window as any).api.log(`[PULL SKIP] Doc \${docSnap.id} skipped (localTime > cloudTime).`);
+                      (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                       (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                     }
                     continue;
@@ -166,7 +166,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
                 }
               } catch (err: any) {
-                const msg = `PULL erro doc \${docSnap.id} (\${table}): \${err?.message}`;
+                const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
                 console.error(msg);
                 (window.api as any).log?.(msg);
               }
@@ -178,7 +178,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           }
         }
       } catch (err: any) {
-        const msg = `PULL erro tabela \${table}: \${err?.message}\\nStack: \${err?.stack}`;
+        const msg = `PULL erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
         console.error(msg);
         (window.api as any).log?.(msg);
       }
@@ -188,7 +188,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   if (highestCloudTime > lastPull) {
     setLastSyncTime('pull', highestCloudTime);
   }
-  console.log(`[Sync] PULL Concluído. Documentos processados: \${pulledDocsCount}, Ignorados (conflito): \${skippedDocsCount}.`);
+  console.log(`[Sync] PULL Concluído. Documentos processados: ${pulledDocsCount}, Ignorados (conflito): ${skippedDocsCount}.`);
 }
 
 export function listenForCloudSyncSignal(onSignal: () => void) {

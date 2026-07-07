@@ -69,8 +69,9 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [rendition, setRendition] = useState<Rendition | null>(null);
   const [epubBook, setEpubBook] = useState<Book | null>(null);
   
-  const [fontSize, setFontSize] = useState(100);
-  const [readingMode, setReadingModeState] = useState<ReadingMode>(getSettings().defaultReadingMode || 'light');
+  const prefs = book.reading_preferences ? JSON.parse(book.reading_preferences) : {};
+    const [fontSize, setFontSize] = useState(prefs.fontSize || 100);
+  const [readingMode, setReadingModeState] = useState<ReadingMode>(prefs.readingMode || getSettings().defaultReadingMode || 'light');
 
   const setReadingMode = (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => {
     setReadingModeState(prev => {
@@ -84,7 +85,7 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [detectedFontSizePx, setDetectedFontSizePx] = useState<string | null>(null);
   const [scrollMode, setScrollMode] = useState(false);
   
-  const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(getSettings().defaultTextWidth || 'medium');
+  const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(prefs.textWidth || getSettings().defaultTextWidth || 'medium');
   const setTextWidth = (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => {
     setTextWidthState(prev => {
       const newWidth = typeof w === 'function' ? w(prev) : w;
@@ -150,3 +151,4 @@ export function useEpub() {
   }
   return context;
 }
+
