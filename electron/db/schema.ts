@@ -46,6 +46,21 @@ export function setupTables(): Promise<void> {
       `);
 
       db.run(`
+        CREATE TABLE IF NOT EXISTS lofis (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          original_name TEXT NOT NULL,
+          duration REAL,
+          file_path TEXT,
+          drive_file_id TEXT,
+          is_local INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          deleted_at DATETIME DEFAULT NULL
+        )
+      `);
+
+      db.run(`
         CREATE TABLE IF NOT EXISTS video_words (
           id TEXT PRIMARY KEY,
           video_id TEXT NOT NULL,
@@ -208,8 +223,6 @@ export function setupTables(): Promise<void> {
             )
           `));
 
-          `));
-
           promises.push(runSafe("ALTER TABLE finance.transactions ADD COLUMN paid_amount REAL DEFAULT 0;"));
 
           promises.push(runSafe(`
@@ -219,11 +232,14 @@ export function setupTables(): Promise<void> {
               price REAL NOT NULL,
               priority TEXT NOT NULL,
               link TEXT,
+              description TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               deleted_at DATETIME DEFAULT NULL
             )
           `));
+          
+          promises.push(runSafe("ALTER TABLE finance.wishlist ADD COLUMN description TEXT;"));
         }
 
         // NOTES TABLES

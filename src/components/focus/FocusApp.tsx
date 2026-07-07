@@ -6,6 +6,7 @@ import CancelModal from './CancelModal';
 import SettingsModal from './SettingsModal';
 import AlarmsList from './AlarmsList';
 import AlarmSetupModal from './AlarmSetupModal';
+import { LofiView } from './LofiView';
 import { useFocusContext } from '../../store/FocusContext';
 
 export default function FocusApp() {
@@ -28,8 +29,12 @@ export default function FocusApp() {
           onStart={handleStartSetup} 
           onOpenSettings={() => setView('settings')} 
           onOpenAlarms={() => setView('alarms')} 
+          onOpenLofi={() => setView('lofi')}
           onDeleteSession={handleDeleteSession} 
         />
+      )}
+      {view === 'lofi' && (
+        <LofiView />
       )}
       {view === 'alarms' && (
         <AlarmsList 

@@ -69,9 +69,11 @@ contextBridge.exposeInMainWorld('api', {
   finance: {
     getTransactions: () => invokeWithSync('finance:get-transactions'),
     createTransaction: (tx: any) => invokeWithSync('finance:create-transaction', tx),
+    updateTransaction: (id: string, tx: any) => invokeWithSync('finance:update-transaction', id, tx),
     deleteTransaction: (id: string) => invokeWithSync('finance:delete-transaction', id),
     getWishlist: () => invokeWithSync('finance:get-wishlist'),
     createWishlist: (item: any) => invokeWithSync('finance:create-wishlist', item),
+    updateWishlist: (id: string, item: any) => invokeWithSync('finance:update-wishlist', id, item),
     deleteWishlist: (id: string) => invokeWithSync('finance:delete-wishlist', id),
   },
 
@@ -148,6 +150,14 @@ contextBridge.exposeInMainWorld('api', {
     remuxDefaultTrack: (sourcePath: string, filename: string, trackIndex: string) => invokeWithSync('video:remuxDefaultTrack', sourcePath, filename, trackIndex),
     openFileDialog: () => invokeWithSync('video:openFileDialog'),
     openFolderDialog: () => invokeWithSync('video:openFolderDialog'),
+  },
+
+  // Lofi API
+  lofi: {
+    getLocalPath: (filename: string) => invokeWithSync('lofi:get-local-path', filename),
+    deleteLocal: (filename: string) => invokeWithSync('lofi:delete-local', filename),
+    saveLocal: (filename: string, buffer: ArrayBuffer) => invokeWithSync('lofi:save-local', filename, buffer),
+    copyLocal: (sourcePath: string, filename: string) => invokeWithSync('lofi:copy-local', sourcePath, filename),
   },
 
   // YouTube API

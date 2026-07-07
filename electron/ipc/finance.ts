@@ -35,6 +35,25 @@ export function registerFinanceHandlers() {
     });
   });
 
+  ipcMain.handle('finance:update-transaction', async (_, id: string, tx: any) => {
+    if (!isModuleUnlocked('finance')) throw new Error('Módulo financeiro bloqueado');
+    return new Promise((resolve, reject) => {
+      const keys = Object.keys(tx);
+      if (keys.length === 0) return resolve({ success: true });
+      const updates = keys.map(k => `${k} = ?`).join(', ');
+      const values = keys.map(k => tx[k]);
+      values.push(id);
+      
+      getDb().run(
+        `UPDATE finance.transactions SET ${updates}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        values,
+        (err) => {
+          if (err) reject(err); else resolve({ success: true });
+        }
+      );
+    });
+  });
+
   ipcMain.handle('finance:get-wishlist', async () => {
     if (!isModuleUnlocked('finance')) throw new Error('Módulo financeiro bloqueado');
     return new Promise((resolve, reject) => {
@@ -48,9 +67,28 @@ export function registerFinanceHandlers() {
     if (!isModuleUnlocked('finance')) throw new Error('Módulo financeiro bloqueado');
     const id = 'wish_' + Date.now().toString(36);
     return new Promise((resolve, reject) => {
-      getDb().run(`INSERT INTO finance.wishlist (id, title, price, priority, link) VALUES (?, ?, ?, ?, ?)`, [id, item.title, item.estimated_cost, item.priority || 'medium', null], (err) => {
+      getDb().run(`INSERT INTO finance.wishlist (id, title, price, priority, link, description) VALUES (?, ?, ?, ?, ?, ?)`, [id, item.title, item.price, item.priority || 'medium', item.link || null, item.description || null], (err) => {
         if (err) reject(err); else resolve({ id, ...item });
       });
+    });
+  });
+
+  ipcMain.handle('finance:update-wishlist', async (_, id: string, item: any) => {
+    if (!isModuleUnlocked('finance')) throw new Error('Módulo financeiro bloqueado');
+    return new Promise((resolve, reject) => {
+      const keys = Object.keys(item);
+      if (keys.length === 0) return resolve({ success: true });
+      const updates = keys.map(k => `${k} = ?`).join(', ');
+      const values = keys.map(k => item[k]);
+      values.push(id);
+      
+      getDb().run(
+        `UPDATE finance.wishlist SET ${updates}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        values,
+        (err) => {
+          if (err) reject(err); else resolve({ success: true });
+        }
+      );
     });
   });
 

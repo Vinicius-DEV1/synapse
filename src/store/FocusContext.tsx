@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { Session, Alarm } from '../components/focus/types';
+import type { LofiItem } from '../types_lofi';
 
-type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms';
+type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi';
 
 interface FocusContextType {
   view: ViewState;
@@ -21,6 +22,16 @@ interface FocusContextType {
   timeLeft: number;
   isPaused: boolean;
   setIsPaused: (p: boolean) => void;
+
+  // Lofi State
+  lofis: LofiItem[];
+  activeLofi: LofiItem | null;
+  isPlayingLofi: boolean;
+  lofiVolume: number;
+  setActiveLofi: (lofi: LofiItem | null) => void;
+  setIsPlayingLofi: (play: boolean) => void;
+  setLofiVolume: (vol: number) => void;
+  loadLofis: () => Promise<void>;
   
   // Actions
   loadData: () => Promise<void>;
@@ -62,6 +73,15 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Timer state
   const [timeLeft, setTimeLeft] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Lofi state
+  const [lofis, setLofis] = useState<LofiItem[]>([]);
+  const [activeLofi, setActiveLofi] = useState<LofiItem | null>(null);
+  const [isPlayingLofi, setIsPlayingLofi] = useState(false);
+  const [lofiVolume, setLofiVolume] = useState(() => {
+    const saved = localStorage.getItem('lofi_volume');
+    return saved ? parseFloat(saved) : 0.5;
+  });
 
   const lastTriggeredTimeRef = useRef<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -119,6 +139,17 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${h} hour${h !== 1 ? 's' : ''} and ${m} minute${m !== 1 ? 's' : ''}`;
   };
 
+  const loadLofis = async () => {
+    if (window.api?.sync) {
+      try {
+        const rows = await window.api.sync.getTable('lofis');
+        setLofis(rows || []);
+      } catch (err) {
+        console.error('Failed to load lofis', err);
+      }
+    }
+  };
+
   const loadData = async () => {
     if (window.api) {
       try {
@@ -138,6 +169,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const alarmsData = await window.api.focus.getAlarms();
           setAlarms(alarmsData.alarms || alarmsData || []);
         }
+        await loadLofis();
       } catch (err) {
         console.error('Failed to load data', err);
       }
@@ -324,11 +356,17 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const handleAbortSetup = () => setView('dashboard');
 
+  useEffect(() => {
+    localStorage.setItem('lofi_volume', lofiVolume.toString());
+  }, [lofiVolume]);
+
   return (
     <FocusContext.Provider value={{
       view, setView, sessions, alarms, currentSession, setCurrentSession, resumeMinutes,
       triggeredAlarm, setTriggeredAlarm, showAlarmSetup, setShowAlarmSetup,
       toastMessage, timeLeft, isPaused, setIsPaused,
+      lofis, activeLofi, isPlayingLofi, lofiVolume,
+      setActiveLofi, setIsPlayingLofi, setLofiVolume, loadLofis,
       loadData, showToast, handleStartSetup, handleStartTimer,
       handleAddTimeFromSuccess, handleAddTotalTime, handleDeleteSession,
       handleSaveAlarm, handleToggleAlarm, handleDeleteAlarm,

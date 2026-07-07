@@ -11,6 +11,7 @@ import { registerCultureHandlers } from './ipc/cultureIpc';
 import { registerBackupHandlers } from './ipc/backup';
 import { setupVideoIpc } from './ipc/video';
 import { setupFocusIpc } from './ipc/focus';
+import { setupLofiIpc } from './ipc/lofi';
 import { registerAudioHandlers } from './api/audio-manager';
 import { registerAnkiHandlers } from './api/anki-manager';
 
@@ -107,6 +108,7 @@ app.whenReady().then(() => {
   registerConfigHandlers();
   setupVideoIpc();
   setupFocusIpc();
+  setupLofiIpc();
   registerAudioHandlers();
   registerAnkiHandlers();
   registerBackupHandlers();
