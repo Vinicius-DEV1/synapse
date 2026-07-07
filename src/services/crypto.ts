@@ -40,31 +40,6 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   );
 }
 
-export async function deriveLegacyMasterKey(password: string): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const passwordBuffer = encoder.encode(password);
-
-  const baseKey = await crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-
-  return await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: SALT,
-      iterations: 100000,
-      hash: HASH_ALGORITHM
-    },
-    baseKey,
-    { name: ENCRYPTION_ALGORITHM, length: 256 },
-    true,
-    ['encrypt', 'decrypt']
-  );
-}
 
 export async function importHexKey(hexString: string): Promise<CryptoKey> {
   const bytes = new Uint8Array(hexString.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
