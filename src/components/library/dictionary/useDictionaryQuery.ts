@@ -162,7 +162,7 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
       setError(err.message || 'Erro ao buscar definição.');
       setLoading(false);
     }
-  }, [settings, sourceType]);
+  }, [settings.hasOfflineDictionary, settings.aiDictionaryLanguage, sourceType]);
 
   return {
     loading,
