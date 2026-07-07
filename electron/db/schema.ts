@@ -208,6 +208,10 @@ export function setupTables(): Promise<void> {
             )
           `));
 
+          `));
+
+          promises.push(runSafe("ALTER TABLE finance.transactions ADD COLUMN paid_amount REAL DEFAULT 0;"));
+
           promises.push(runSafe(`
             CREATE TABLE IF NOT EXISTS finance.wishlist (
               id TEXT PRIMARY KEY,
