@@ -67,7 +67,7 @@ export function registerFinanceHandlers() {
     if (!isModuleUnlocked('finance')) throw new Error('Módulo financeiro bloqueado');
     const id = 'wish_' + Date.now().toString(36);
     return new Promise((resolve, reject) => {
-      getDb().run(`INSERT INTO finance.wishlist (id, title, price, priority, link, description) VALUES (?, ?, ?, ?, ?, ?)`, [id, item.title, item.price, item.priority || 'medium', item.link || null, item.description || null], (err) => {
+      getDb().run(`INSERT INTO finance.wishlist (id, title, price, priority, link, description, category, expected_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [id, item.title, item.price, item.priority || 'medium', item.link || null, item.description || null, item.category || 'Geral', item.expected_date || null], (err) => {
         if (err) reject(err); else resolve({ id, ...item });
       });
     });

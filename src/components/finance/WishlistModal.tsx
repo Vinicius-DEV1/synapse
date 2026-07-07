@@ -12,6 +12,7 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
   const [title, setTitle] = useState(initialData?.title || '');
   const [price, setPrice] = useState(initialData?.price ? String(initialData.price) : '');
   const [priority, setPriority] = useState<WishlistItem['priority']>(initialData?.priority || 'medium');
+  const [category, setCategory] = useState(initialData?.category || 'Geral');
   const [expectedDate, setExpectedDate] = useState(initialData?.expected_date || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
         title,
         price: parseFloat(price),
         priority,
+        category,
         expected_date: expectedDate || null,
         description: description || null,
       });
@@ -132,14 +134,27 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs text-dark-subtext mb-1.5">Data Esperada (Opcional)</label>
-            <input
-              type="date"
-              value={expectedDate}
-              onChange={(e) => setExpectedDate(e.target.value)}
-              className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-dark-subtext mb-1.5">Data Esperada (Opcional)</label>
+              <input
+                type="date"
+                value={expectedDate}
+                onChange={(e) => setExpectedDate(e.target.value)}
+                className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-dark-subtext mb-1.5">Categoria</label>
+              <input
+                type="text"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="Ex: Geral, Tecnologia, Casa..."
+                className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none"
+              />
+            </div>
           </div>
 
           <div>
