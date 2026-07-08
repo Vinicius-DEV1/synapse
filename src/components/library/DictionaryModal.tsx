@@ -206,41 +206,42 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
               </>
             )}
           </div>
-          
-          {onSaveHighlight && dictionaryData && !savedLocally && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const noteContent = `<!-- AI_DICT -->\${JSON.stringify(dictionaryData)}`;
-                onSaveHighlight('yellow', noteContent);
-                setSavedLocally(true);
-              }}
-              className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors"
-            >
-              <Database size={12} />
-              <span>{sourceType === 'video' ? 'Salvar no Vídeo' : 'Salvar no Livro'}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onSaveHighlight && dictionaryData && !savedLocally && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const noteContent = `<!-- AI_DICT -->\${JSON.stringify(dictionaryData)}`;
+                  onSaveHighlight('yellow', noteContent);
+                  setSavedLocally(true);
+                }}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors"
+              >
+                <Database size={12} />
+                <span>{sourceType === 'video' ? 'Salvar no Vídeo' : 'Salvar no Livro'}</span>
+              </button>
+            )}
 
-          {dictionaryData && (dictionaryData.english?.anki_card || dictionaryData.portuguese?.anki_card) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAnkiEditor(true);
-              }}
-              className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors ml-2"
-            >
-              <BrainCircuit size={12} />
-              <span>Salvar no Anki</span>
-            </button>
-          )}
+            {savedLocally && onSaveHighlight && (
+              <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400">
+                <Database size={12} />
+                <span>{sourceType === 'video' ? 'Salvo no Vídeo' : 'Salvo Localmente'}</span>
+              </div>
+            )}
 
-          {savedLocally && onSaveHighlight && (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-green-500/10 text-green-400 ml-2">
-              <Database size={12} />
-              <span>{sourceType === 'video' ? 'Salvo no Vídeo' : 'Salvo Localmente'}</span>
-            </div>
-          )}
+            {dictionaryData && (dictionaryData.english?.anki_card || dictionaryData.portuguese?.anki_card) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAnkiEditor(true);
+                }}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+              >
+                <BrainCircuit size={12} />
+                <span>Salvar no Anki</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
