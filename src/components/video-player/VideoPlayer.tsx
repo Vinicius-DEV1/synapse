@@ -46,7 +46,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef);
   const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
   const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
-  const { showControls, setShowControls } = useVideoControls(isPlaying, containerRef, !!dictState);
+  const { showControls, setShowControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef, !!dictState);
 
   useEffect(() => {
     if (subtitleContent) {
@@ -79,6 +79,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       videoRef.current.currentTime = newTime;
       if (audioRef.current) audioRef.current.currentTime = newTime;
       setProgress(newTime);
+      resetControls();
     }
   };
 
@@ -367,6 +368,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         setShowVocabDrawer={setShowVocabDrawer}
         onPauseForDrawer={() => { if (videoRef.current) videoRef.current.pause(); }}
         formatTime={formatTime}
+        setIsHoveringControls={setIsHoveringControls}
       />
 
       {dictState && (

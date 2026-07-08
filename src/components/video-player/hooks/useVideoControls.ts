@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useVideoControls(
   isPlaying: boolean,
@@ -6,33 +6,59 @@ export function useVideoControls(
   isDictOpen: boolean
 ) {
   const [showControls, setShowControls] = useState(true);
+  const [isHoveringControls, setIsHoveringControls] = useState(false);
+
+  const resetControlsTimeout = useCallback(() => {
+    setShowControls(true);
+  }, []);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    const resetControlsTimeout = () => {
-      setShowControls(true);
+
+    const startTimer = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        if (isPlaying && !isDictOpen) {
+        if (isPlaying && !isDictOpen && !isHoveringControls) {
           setShowControls(false);
         }
-      }, 2500);
+      }, 3500);
+    };
+
+    const handleMouseMove = () => {
+      setShowControls(true);
+      startTimer();
     };
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener('mousemove', resetControlsTimeout);
-      container.addEventListener('mouseleave', () => { if (isPlaying && !isDictOpen) setShowControls(false); });
+      container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('mouseleave', () => { 
+        if (isPlaying && !isDictOpen) setShowControls(false); 
+      });
     }
     
-    resetControlsTimeout();
+    // Initial start or when dependencies change
+    startTimer();
+    
     return () => {
       clearTimeout(timeout);
       if (container) {
-        container.removeEventListener('mousemove', resetControlsTimeout);
+        container.removeEventListener('mousemove', handleMouseMove);
       }
     };
-  }, [isPlaying, isDictOpen, containerRef]);
+  }, [isPlaying, isDictOpen, containerRef, isHoveringControls]);
 
-  return { showControls, setShowControls };
+  // If the user rests the mouse on controls while it was hiding, keep it shown
+  useEffect(() => {
+    if (isHoveringControls) {
+      setShowControls(true);
+    }
+  }, [isHoveringControls]);
+
+  return { 
+    showControls, 
+    setShowControls, 
+    setIsHoveringControls, 
+    resetControls: resetControlsTimeout 
+  };
 }
