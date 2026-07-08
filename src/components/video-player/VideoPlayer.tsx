@@ -199,14 +199,41 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     const currentIndex = cues.findIndex(c => time >= c.startTime && time <= c.endTime);
     let extendedContext = context;
     if (currentIndex !== -1) {
-      const startIdx = Math.max(0, currentIndex - 3);
-      const endIdx = Math.min(cues.length - 1, currentIndex + 3);
       const contextLines = [];
-      for (let i = startIdx; i <= endIdx; i++) {
-        const c = cues[i];
-        contextLines.push(`[\${(c.startTime * 1000).toFixed(0)}ms - \${(c.endTime * 1000).toFixed(0)}ms]: \${c.text.trim()}`);
+      let totalChars = 0;
+
+      // Pegar a própria frase atual
+      const currentCue = cues[currentIndex];
+      const currentLine = `[${(currentCue.startTime * 1000).toFixed(0)}ms - ${(currentCue.endTime * 1000).toFixed(0)}ms]: \n${currentCue.text.trim()}`;
+      totalChars += currentLine.length;
+
+      // Construir contexto para trás (até ~1600 caracteres)
+      const backwardLines = [];
+      let backChars = 0;
+      let backIdx = currentIndex - 1;
+      while (backIdx >= 0 && backChars < 1600) {
+        const c = cues[backIdx];
+        const line = `[${(c.startTime * 1000).toFixed(0)}ms - ${(c.endTime * 1000).toFixed(0)}ms]: \n${c.text.trim()}`;
+        backwardLines.unshift(line);
+        backChars += line.length;
+        backIdx--;
       }
-      extendedContext = "Contexto das Legendas (Tempo Mínimo e Máximo em ms):\\n" + contextLines.join('\\n');
+
+      // Construir contexto para frente (até ~1600 caracteres)
+      const forwardLines = [];
+      let fwdChars = 0;
+      let fwdIdx = currentIndex + 1;
+      while (fwdIdx < cues.length && fwdChars < 1600) {
+        const c = cues[fwdIdx];
+        const line = `[${(c.startTime * 1000).toFixed(0)}ms - ${(c.endTime * 1000).toFixed(0)}ms]: \n${c.text.trim()}`;
+        forwardLines.push(line);
+        fwdChars += line.length;
+        fwdIdx++;
+      }
+
+      contextLines.push(...backwardLines, currentLine, ...forwardLines);
+      
+      extendedContext = `Metadados do Vídeo:\nTítulo: "${title}"\n\nContexto das Legendas (Tempo Mínimo e Máximo em ms):\n${contextLines.join('\n')}`;
     }
 
     let preloadedData = null;
