@@ -24,19 +24,24 @@ interface VideoControlsOverlayProps {
   setShowVocabDrawer: (val: boolean) => void;
   onPauseForDrawer: () => void;
   formatTime: (t: number) => string;
+  setIsHoveringControls: (hovering: boolean) => void;
 }
 
 export function VideoControlsOverlay({
   title, isPlaying, progress, duration, volume, isMuted, isFullscreen, showControls,
   audioTracks, activeAudioIndex, videoWordsCount,
   onClose, togglePlay, toggleMute, handleVolumeChange, handleSeek, toggleFullscreen,
-  setActiveAudioIndex, setShowVocabDrawer, onPauseForDrawer, formatTime
+  setActiveAudioIndex, setShowVocabDrawer, onPauseForDrawer, formatTime, setIsHoveringControls
 }: VideoControlsOverlayProps) {
   return (
     <div 
-      className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 \${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 \${showControls ? 'opacity-100' : 'opacity-0'}`}
     >
-      <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-auto">
+      <div 
+        className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-auto"
+        onMouseEnter={() => setIsHoveringControls(true)}
+        onMouseLeave={() => setIsHoveringControls(false)}
+      >
         <div className="flex items-center gap-4">
           <button 
             onClick={onClose}
@@ -88,7 +93,11 @@ export function VideoControlsOverlay({
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
+      <div 
+        className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto"
+        onMouseEnter={() => setIsHoveringControls(true)}
+        onMouseLeave={() => setIsHoveringControls(false)}
+      >
         <div className="flex items-center w-full gap-4">
           <button 
             onClick={togglePlay}
