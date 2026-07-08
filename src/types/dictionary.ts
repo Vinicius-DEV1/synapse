@@ -40,6 +40,7 @@ export interface LanguageData {
 }
 
 export interface DictionaryData {
+  analyzed_word?: string;
   detected_language: 'en' | 'pt';
   english?: LanguageData;
   portuguese: LanguageData & { translation: string };

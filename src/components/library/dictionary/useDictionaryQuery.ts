@@ -48,6 +48,7 @@ Analise a palavra ou trecho selecionado: "${text}".
 ${pageContext ? `Contexto da página: "${pageContext}"\n` : ''}
 
 Identifique o idioma da palavra. Siga ESTAS REGRAS RÍGIDAS:
+0. MÁXIMA IMPORTÂNCIA: Se a palavra clicada fizer parte de um phrasal verb, expressão idiomática ou palavra composta presente no contexto (ex: o usuário selecionou 'up' e no contexto a frase era 'give up', ou 'fork' em 'breakfast fork'), você DEVE analisar a EXPRESSÃO COMPLETA e retornar todo o JSON sobre essa expressão, não apenas a palavra isolada.
 1. Lexicografia: Retorne as definições separadas e numeradas (1. ..., 2. ...) baseadas em dicionários oficiais (Oxford/Cambridge/Michaelis). NUNCA resuma em um único texto se houver mais de um significado.
 2. Pedagogia: Na explicação de contexto, explique por que a palavra foi usada neste contexto, e sugira collocations (combinações comuns de palavras nativas).
 ${isEnglishOnly ? '3. IMERSÃO TOTAL: Retorne TODAS as explicações exclusivamente em inglês. NUNCA traduza para o português.' : ''}
@@ -55,6 +56,7 @@ ${isEnglishOnly ? '3. IMERSÃO TOTAL: Retorne TODAS as explicações exclusivame
 Se a palavra for em INGLÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
 {
+  "analyzed_word": "a palavra ou expressão que você efetivamente analisou (ex: 'give up' ou 'breakfast fork')",
   "detected_language": "en",
   "english": {
     "is_rare_or_complex": true/false (true if C1/C2, archaic, highly formal, or rare),
@@ -111,6 +113,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
 Se a palavra for em PORTUGUÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
 {
+  "analyzed_word": "a palavra ou expressão que você efetivamente analisou",
   "detected_language": "pt",
   "portuguese": {
     "translation": "A própria palavra.",

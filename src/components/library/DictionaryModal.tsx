@@ -89,7 +89,7 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
         {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
           <div className="flex items-center gap-3 mb-0.5">
-            <p className="text-lg font-bold text-white">"{text}"</p>
+            <p className="text-lg font-bold text-white">"{(dictionaryData?.analyzed_word) || text}"</p>
             {dictionaryData && (languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)?.is_rare_or_complex && (
               <span className="flex items-center gap-1 text-[10px] bg-gradient-to-r from-purple-500/20 to-brand-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]">
                 <Sparkles size={10} className="text-purple-400" />

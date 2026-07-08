@@ -42,9 +42,25 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
 
   if (!currentSubtitle) return null;
 
+  const handleMouseUp = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+
+    const selectedText = sel.toString().trim();
+    if (selectedText.length > 0) {
+      // Clear selection so UI stays clean
+      sel.removeAllRanges();
+      onWordClick(selectedText, currentSubtitle);
+    }
+  };
+
   return (
     <div className="absolute bottom-16 left-0 right-0 flex justify-center w-full pointer-events-none z-10">
-      <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-xl max-w-[80%] text-center pointer-events-auto shadow-lg">
+      <div 
+        className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-xl max-w-[80%] text-center pointer-events-auto shadow-lg"
+        onMouseUp={handleMouseUp}
+        onTouchEnd={handleMouseUp}
+      >
         <p className="text-white text-2xl sm:text-3xl font-medium leading-relaxed drop-shadow-md">
           {tokens.map((token, index) => {
             if (token.isWord) {
@@ -57,7 +73,12 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
               return (
                 <span
                   key={index}
-                  onClick={() => onWordClick(token.text, currentSubtitle)}
+                  onClick={() => {
+                    const sel = window.getSelection();
+                    // Prevent single click firing if the user is selecting text
+                    if (sel && !sel.isCollapsed) return;
+                    onWordClick(token.text, currentSubtitle);
+                  }}
                   style={highlightStyle}
                   className={`cursor-pointer hover:bg-brand-500/40 hover:text-brand-100 px-0.5 rounded transition-colors duration-150 ${savedMatch ? 'font-semibold' : ''}`}
                 >
