@@ -14,6 +14,8 @@ export function useVideoControls(
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
+    let lastX = -1;
+    let lastY = -1;
 
     const startTimer = () => {
       clearTimeout(timeout);
@@ -24,7 +26,11 @@ export function useVideoControls(
       }, 3500);
     };
 
-    const handleMouseMove = () => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (lastX === e.clientX && lastY === e.clientY) return;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      
       setShowControls(true);
       startTimer();
     };
