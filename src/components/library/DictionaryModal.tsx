@@ -211,7 +211,7 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const noteContent = `<!-- AI_DICT -->\${JSON.stringify(dictionaryData)}`;
+                  const noteContent = `<!-- AI_DICT -->${JSON.stringify(dictionaryData)}`;
                   onSaveHighlight('yellow', noteContent);
                   setSavedLocally(true);
                 }}
