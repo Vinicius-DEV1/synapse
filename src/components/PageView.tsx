@@ -1,10 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import type { Page } from '../types';
 import Editor from './Editor';
 import SubPageGrid from './SubPageGrid';
 import EmptyState from './EmptyState';
-import { ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock, Image as ImageIcon, Link, Sparkles, X, Upload } from 'lucide-react';
 import EmojiPopover from './EmojiPopover';
 import PageHistoryModal from './PageHistoryModal';
 
@@ -19,6 +19,9 @@ interface PageViewProps {
 export default function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage }: PageViewProps) {
   const { state, dispatch } = useStore();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showCoverModal, setShowCoverModal] = useState(false);
+  const [coverUrlInput, setCoverUrlInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Build breadcrumb path
   const breadcrumbs = useMemo(() => {
@@ -79,11 +82,6 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     e.preventDefault();
     if (!contentData?.encrypted_content || !page.password_salt) return;
     try {
-      // Import the crypto service to decrypt here (since it's double encryption)
-      // Wait, we need a crypto function in the frontend.
-      // Let's assume there's a simple crypto utility or we can just send it to backend?
-      // No, RLE requires frontend encryption for zero knowledge!
-      // But let's simplify for now: mock the unlock or use a Web Crypto function.
       alert('Unlocked!');
       setIsUnlocked(true);
     } catch (err) {
@@ -91,12 +89,79 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Max width 1600px for cover to avoid huge base64 strings
+        if (width > 1600) {
+          height = Math.round((height * 1600) / width);
+          width = 1600;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        onUpdatePage(page.id, { cover_image: dataUrl });
+        setShowCoverModal(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <div className="h-full overflow-y-auto" id="page-view-scroll">
-      <div className="max-w-5xl mx-auto px-12 py-8 animate-fade-in">
+    <div className="h-full overflow-y-auto relative bg-dark-bg" id="page-view-scroll">
+      
+      {/* Cover Image Banner */}
+      {page.cover_image && (
+        <div className="w-full h-64 relative group border-b border-dark-border">
+          <img src={page.cover_image} alt="Capa" className="w-full h-full object-cover" />
+          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+            <button 
+              onClick={() => setShowCoverModal(true)}
+              className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <ImageIcon size={14} /> Trocar Capa
+            </button>
+            <button 
+              onClick={() => onUpdatePage(page.id, { cover_image: null })}
+              className="bg-black/50 hover:bg-red-500/80 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              Remover
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-5xl mx-auto px-12 pb-12 animate-fade-in ${page.cover_image ? 'pt-8' : 'pt-16'}`}>
+        
+        {/* Hover Controls (Add Cover) */}
+        {!page.cover_image && (
+          <div className="mb-2 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity h-8 flex items-end">
+            <button 
+              onClick={() => setShowCoverModal(true)}
+              className="text-dark-subtext hover:text-white flex items-center gap-1.5 text-sm font-medium px-2 py-1 hover:bg-white/5 rounded transition-colors"
+            >
+              <ImageIcon size={16} /> Adicionar capa
+            </button>
+          </div>
+        )}
+
         {/* Breadcrumbs */}
         {breadcrumbs.length > 1 && (
-          <div className="flex items-center gap-1 text-xs text-dark-subtext mb-4 flex-wrap">
+          <div className="flex items-center gap-1 text-xs text-dark-subtext mb-6 flex-wrap">
             {breadcrumbs.map((crumb, i) => (
               <span key={crumb.id} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight size={12} className="text-dark-subtext/50" />}
@@ -114,19 +179,19 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
         )}
 
         {/* Page Icon & Title */}
-        <div className="flex items-start gap-3 mb-6 group">
+        <div className="flex items-start gap-3 mb-2 group">
           <EmojiPopover onEmojiSelect={(emoji) => onUpdatePage(page.id, { icon: emoji })}>
-            <span className="text-4xl">{page.icon}</span>
+            <button className="text-5xl hover:bg-white/5 p-2 -ml-2 rounded-xl transition-colors">{page.icon}</button>
           </EmojiPopover>
-          <div className="flex-1 min-w-0 flex items-start justify-between">
+          <div className="flex-1 min-w-0 flex items-start justify-between pt-2">
             <h1
               contentEditable
               suppressContentEditableWarning
-              className="text-3xl font-bold text-dark-text outline-none flex-1 min-w-0 leading-tight"
+              className="text-4xl font-bold text-dark-text outline-none flex-1 min-w-0 leading-tight empty:before:content-['Sem_Título'] empty:before:text-dark-subtext/50"
               onBlur={(e) => {
                 const newTitle = e.currentTarget.textContent?.trim();
-                if (newTitle && newTitle !== page.title) {
-                  onUpdatePage(page.id, { title: newTitle });
+                if (newTitle !== undefined && newTitle !== page.title) {
+                  onUpdatePage(page.id, { title: newTitle || 'Sem Título' });
                 }
               }}
               onKeyDown={(e) => {
@@ -136,7 +201,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
                 }
               }}
             >
-              {page.title}
+              {page.title === 'Sem Título' ? '' : page.title}
             </h1>
             <button
               onClick={() => setShowHistoryModal(true)}
@@ -149,13 +214,38 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
           </div>
         </div>
 
+        {/* Page Description */}
+        <div className="ml-14 mb-8">
+          <p
+            contentEditable
+            suppressContentEditableWarning
+            className="text-base text-dark-subtext outline-none empty:before:content-['Adicionar_descrição...'] empty:before:text-dark-subtext/30 focus:empty:before:text-dark-subtext/50 transition-colors"
+            onBlur={(e) => {
+              const newDesc = e.currentTarget.textContent?.trim();
+              if (newDesc !== undefined && newDesc !== (page.description || '')) {
+                onUpdatePage(page.id, { description: newDesc });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                (e.target as HTMLElement).blur();
+              }
+            }}
+          >
+            {page.description || ''}
+          </p>
+        </div>
+
         {/* Sub-Pages Grid */}
         {childPages.length > 0 && (
-          <SubPageGrid
-            pages={childPages}
-            onNavigate={handleNavigate}
-            onCreatePage={() => onCreatePage(page.id)}
-          />
+          <div className="mb-10">
+            <SubPageGrid
+              pages={childPages}
+              onNavigate={handleNavigate}
+              onCreatePage={() => onCreatePage(page.id)}
+            />
+          </div>
         )}
 
         {/* Editor or Unlock Screen */}
@@ -184,6 +274,72 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
           <PageHistoryModal pageId={page.id} onClose={() => setShowHistoryModal(false)} />
         )}
       </div>
+
+      {/* Cover Modal */}
+      {showCoverModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+          <div className="bg-dark-card border border-dark-border p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
+            <button onClick={() => setShowCoverModal(false)} className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-bold mb-6 text-dark-text">Adicionar Capa</h3>
+            
+            <div className="space-y-4">
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-4 transition-colors text-white font-medium"
+              >
+                <Upload size={18} /> Fazer upload do computador
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-white/10"></div>
+                <span className="flex-shrink-0 mx-4 text-dark-subtext text-xs uppercase font-medium">ou</span>
+                <div className="flex-grow border-t border-white/10"></div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-dark-subtext mb-2 font-medium">Link da Imagem</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="https://..."
+                    value={coverUrlInput}
+                    onChange={e => setCoverUrlInput(e.target.value)}
+                    className="flex-1 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (coverUrlInput.trim()) {
+                        onUpdatePage(page.id, { cover_image: coverUrlInput.trim() });
+                        setShowCoverModal(false);
+                      }
+                    }}
+                    className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  onClick={() => {
+                    const randomUrl = `https://picsum.photos/1600/400?random=${Math.random()}`;
+                    onUpdatePage(page.id, { cover_image: randomUrl });
+                    setShowCoverModal(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors py-2"
+                >
+                  <Sparkles size={16} /> Gerar Capa Aleatória
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

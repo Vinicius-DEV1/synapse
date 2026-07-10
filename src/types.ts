@@ -13,6 +13,8 @@ export interface Page {
   encrypted_content?: string | null;
   is_pinned?: number;
   pinned_order?: number;
+  cover_image?: string | null;
+  description?: string | null;
 }
 
 export interface PageHistoryEntry {
@@ -284,7 +286,7 @@ declare global {
       getAllPages: () => Promise<Page[]>;
       getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null }>;
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
-      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null }) => Promise<number>;
+      updatePage: (page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; cover_image?: string | null; description?: string | null }) => Promise<number>;
       deletePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;

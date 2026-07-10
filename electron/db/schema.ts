@@ -307,6 +307,9 @@ export function setupTables(): Promise<void> {
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `));
+          
+          promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN cover_image TEXT`));
+          promises.push(runSafe(`ALTER TABLE notes.pages ADD COLUMN description TEXT`));
         }
 
         // CULTURE TABLES
