@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -174,6 +174,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Timer size={18} />
           </button>
           <button
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'calendar' })}
+            className={`p-2 rounded-lg transition-all active:scale-95 ${
+              activeModule === 'calendar' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+            }`}
+            title="Agenda"
+          >
+            <CalendarIcon size={18} />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
             title="Configurações"
@@ -212,11 +221,13 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <BrainCircuit size={20} className="text-brand-400" />
           ) : activeModule === 'focus' ? (
             <Timer size={20} className="text-brand-400" />
+          ) : activeModule === 'calendar' ? (
+            <CalendarIcon size={20} className="text-brand-400" />
           ) : (
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : 'Finanças'}
+            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : activeModule === 'calendar' ? 'Agenda' : 'Finanças'}
           </span>
         </div>
         <button
@@ -365,6 +376,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Foco</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie suas sessões de foco e cronômetros.</div>
           </div>
+        ) : activeModule === 'calendar' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Agenda</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus compromissos e tarefas diárias.</div>
+          </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
@@ -475,6 +491,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             >
               <Timer size={16} />
               <span>Foco</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'calendar' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'calendar'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <CalendarIcon size={16} />
+              <span>Agenda</span>
             </button>
             <button
               onClick={() => setShowSettings(true)}

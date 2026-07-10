@@ -19,13 +19,14 @@ interface CadernoDBSchema extends DBSchema {
   episodes: { key: string; value: any; indexes: { 'item_id': string } };
   focus_sessions: { key: string; value: any };
   focus_alarms: { key: number; value: any };
+  calendar_events: { key: string; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 5, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 6, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -87,6 +88,10 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('focus_alarms')) {
           db.createObjectStore('focus_alarms', { keyPath: 'id' });
+        }
+        // Calendar
+        if (!db.objectStoreNames.contains('calendar_events')) {
+          db.createObjectStore('calendar_events', { keyPath: 'id' });
         }
       },
     });

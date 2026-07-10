@@ -558,6 +558,41 @@ export const createWebApiMock = async () => {
       }
     },
 
+    // --- CALENDAR ---
+    calendar: {
+      getEvents: async () => {
+        const all = await db.getAll('calendar_events') || [];
+        return all.filter(e => !e.deleted_at);
+      },
+      createEvent: async (event: any) => {
+        const newEvent = {
+          ...event,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          deleted_at: null
+        };
+        await db.put('calendar_events', newEvent);
+        return newEvent;
+      },
+      updateEvent: async (id: string, event: any) => {
+        const existing = await db.get('calendar_events', id);
+        if (!existing) return { success: false };
+        const updated = { ...existing, ...event, updated_at: new Date().toISOString() };
+        await db.put('calendar_events', updated);
+        return { success: true };
+      },
+      deleteEvent: async (id: string) => {
+        const existing = await db.get('calendar_events', id);
+        if (existing) {
+          existing.deleted_at = new Date().toISOString();
+          existing.updated_at = new Date().toISOString();
+          await db.put('calendar_events', existing);
+          return true;
+        }
+        return false;
+      }
+    },
+
     // --- SYNC ENGINE ---
     sync: {
       getTable: async (tableName: string) => {

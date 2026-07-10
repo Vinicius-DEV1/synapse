@@ -75,6 +75,25 @@ export function setupTables(): Promise<void> {
         )
       `);
 
+      db.run(`
+        CREATE TABLE IF NOT EXISTS calendar_events (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          start_date TEXT,
+          end_date TEXT,
+          type TEXT DEFAULT 'event',
+          status TEXT DEFAULT 'pending',
+          color TEXT DEFAULT '#4F46E5',
+          recurrence_rule TEXT,
+          reminder_minutes INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          deleted_at DATETIME DEFAULT NULL
+        )
+      `);
+
+
       // Verifica quais bancos estão acoplados
       db.all('PRAGMA database_list', (err, rows: any[]) => {
         if (err) return reject(err);

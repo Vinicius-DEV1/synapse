@@ -24,7 +24,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -184,7 +184,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -249,6 +249,22 @@ export interface CultureEpisode {
   is_watched: boolean;
   aired_at?: string;
   updated_at?: string;
+}
+
+// ============ CALENDAR TYPES ============
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  type: 'event' | 'task';
+  status: 'pending' | 'completed';
+  color: string;
+  recurrence_rule?: string | null;
+  reminder_minutes?: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 declare global {
@@ -367,6 +383,12 @@ declare global {
         createAlarm: (alarm: any) => Promise<{ success: boolean; id?: number }>;
         updateAlarm: (id: number, alarm: any) => Promise<{ success: boolean }>;
         deleteAlarm: (id: number) => Promise<{ success: boolean }>;
+      };
+      calendar?: {
+        getEvents: () => Promise<CalendarEvent[]>;
+        createEvent: (event: Partial<CalendarEvent>) => Promise<CalendarEvent>;
+        updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<{success: boolean}>;
+        deleteEvent: (id: string) => Promise<boolean>;
       };
       audio?: {
         generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;

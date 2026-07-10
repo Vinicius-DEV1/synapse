@@ -14,7 +14,8 @@ export const MODULE_TABLES: Record<string, string[]> = {
     'library_reading_sessions'
   ],
   culture: ['items', 'episodes'],
-  video: ['videos']
+  video: ['videos'],
+  calendar: ['calendar_events']
 };
 
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_\${type}_time`;

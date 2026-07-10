@@ -14,6 +14,7 @@ import { setupFocusIpc } from './ipc/focus';
 import { setupLofiIpc } from './ipc/lofi';
 import { registerAudioHandlers } from './api/audio-manager';
 import { registerAnkiHandlers } from './api/anki-manager';
+import { registerCalendarHandlers } from './ipc/calendar';
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
@@ -112,6 +113,7 @@ app.whenReady().then(() => {
   registerAudioHandlers();
   registerAnkiHandlers();
   registerBackupHandlers();
+  registerCalendarHandlers();
 
   let focusWindowInstance: BrowserWindow | null = null;
 
