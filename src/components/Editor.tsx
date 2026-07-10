@@ -11,7 +11,8 @@ import { Highlight } from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
 import { Image } from '@tiptap/extension-image';
-import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
+import { TableCell } from './editor-extensions/TableCell';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Collaboration } from '@tiptap/extension-collaboration';
@@ -20,6 +21,7 @@ import { applyBase64StateToYDoc, getYDocStateAsBase64 } from '../utils/yjs-utils
 import { getSettings } from '../utils/settings';
 import SlashMenu from './SlashMenu';
 import FloatingToolbar from './FloatingToolbar';
+import TableToolbar from './TableToolbar';
 import ImageViewerModal from './ImageViewerModal';
 
 // Nossos blocos
@@ -301,6 +303,16 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'table': 
         editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
         break;
+      case 'table-week': 
+        editor.chain().focus().insertTable({ rows: 4, cols: 7, withHeaderRow: true }).run();
+        // Option to pre-fill headers? Just create the table for now.
+        break;
+      case 'table-day': 
+        editor.chain().focus().insertTable({ rows: 8, cols: 2, withHeaderRow: true }).run();
+        break;
+      case 'table-habit': 
+        editor.chain().focus().insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
+        break;
       default: break;
     }
   }, [editor, slashMenu]);
@@ -357,6 +369,20 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               }
             }}
           />
+        </BubbleMenu>
+      )}
+
+      {editor && (
+        <BubbleMenu 
+          editor={editor} 
+          tippyOptions={{ duration: 100, zIndex: 99998, placement: 'bottom' }} 
+          shouldShow={({ editor, state }) => {
+            const { selection } = state;
+            if (!selection.empty) return false; // Se tiver texto selecionado, não mostra esse
+            return editor.isActive('table');
+          }}
+        >
+          <TableToolbar editor={editor} />
         </BubbleMenu>
       )}
 
