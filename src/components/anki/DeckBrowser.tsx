@@ -16,6 +16,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [isCreatingCard, setIsCreatingCard] = useState(false);
   
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
@@ -96,10 +97,10 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     audio.play().catch(e => console.error("Audio error:", e));
   };
 
-  if (editingCard) {
+  if (editingCard || isCreatingCard) {
     return (
       <CardEditor
-        draft={{
+        draft={editingCard ? {
           front: editingCard.front,
           back: editingCard.back,
           extra_note: editingCard.extra_note,
@@ -107,10 +108,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           card_type: editingCard.card_type,
           source_module: editingCard.source_module,
           source_id: editingCard.source_id
+        } : {
+          front: '',
+          back: '',
+          card_type: 'reading',
+          source_module: 'manual'
         }}
-        editingCardId={editingCard.id}
+        editingCardId={editingCard ? editingCard.id : undefined}
         onClose={() => {
           setEditingCard(null);
+          setIsCreatingCard(false);
           loadCards();
         }}
       />
@@ -180,14 +187,23 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
               />
             </div>
             
-            {selectedIds.size > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-indigo-400 font-medium">{selectedIds.size} selecionados</span>
-                <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded text-sm transition-colors">
-                  <Trash2 size={16} /> Excluir
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 border-r border-white/10 pr-3">
+                  <span className="text-sm text-indigo-400 font-medium">{selectedIds.size} selecionados</span>
+                  <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded text-sm transition-colors">
+                    <Trash2 size={16} /> Excluir
+                  </button>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => setIsCreatingCard(true)}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                Novo Cartão
+              </button>
+            </div>
           </div>
 
           {/* Table */}
