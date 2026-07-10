@@ -344,7 +344,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       )}
 
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100, zIndex: 99999, maxWidth: 'calc(100vw - 32px)' }}>
+        <BubbleMenu 
+          editor={editor} 
+          tippyOptions={{ duration: 100, zIndex: 99999, maxWidth: 'calc(100vw - 32px)' }}
+          shouldShow={({ state }) => {
+            const { selection } = state;
+            const isCellSelection = selection && (selection.constructor.name === 'CellSelection' || ('forEachCell' in selection));
+            return !selection.empty && !isCellSelection;
+          }}
+        >
           <FloatingToolbar 
             formatState={{
               bold: editor.isActive('bold'),
