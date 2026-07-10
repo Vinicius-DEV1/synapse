@@ -7,6 +7,10 @@ export default function AnkiView() {
   const [decks, setDecks] = useState<any[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
   const [managingDeck, setManagingDeck] = useState<any | null>(null);
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newDeckName, setNewDeckName] = useState('');
+  const [newDeckDesc, setNewDeckDesc] = useState('');
 
   useEffect(() => {
     loadDecks();
@@ -19,9 +23,13 @@ export default function AnkiView() {
     }
   };
 
-  const handleCreateDefaultDeck = async () => {
+  const handleCreateDeck = async () => {
+    if (!newDeckName.trim()) return;
     if (window.api?.anki) {
-      await window.api.anki.createDeck('Vocabulário Geral', 'Baralho principal para idiomas');
+      await window.api.anki.createDeck(newDeckName, newDeckDesc);
+      setShowCreateModal(false);
+      setNewDeckName('');
+      setNewDeckDesc('');
       loadDecks();
     }
   };
@@ -38,7 +46,7 @@ export default function AnkiView() {
             <p className="text-dark-subtext mt-2">FSRS Spaced Repetition System</p>
           </div>
           <button 
-            onClick={handleCreateDefaultDeck}
+            onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -99,7 +107,59 @@ export default function AnkiView() {
             setManagingDeck(null);
             loadDecks();
           }} 
+          onDeckUpdated={(updatedDeck) => {
+            setManagingDeck(updatedDeck);
+            loadDecks();
+          }}
         />
+      )}
+
+      {showCreateModal && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-dark-card border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold mb-4">Novo Baralho</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-dark-subtext mb-1">Nome do Baralho</label>
+                <input 
+                  type="text" 
+                  value={newDeckName} 
+                  onChange={e => setNewDeckName(e.target.value)} 
+                  autoFocus
+                  placeholder="Ex: Inglês - Phrasal Verbs"
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição (opcional)</label>
+                <input 
+                  type="text" 
+                  value={newDeckDesc} 
+                  onChange={e => setNewDeckDesc(e.target.value)} 
+                  placeholder="Ex: Verbos úteis para conversação"
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors" 
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleCreateDeck}
+                disabled={!newDeckName.trim()}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium transition-colors"
+              >
+                Criar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

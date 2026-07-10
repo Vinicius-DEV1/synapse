@@ -6,9 +6,10 @@ interface DeckBrowserProps {
   deck: any;
   onClose: () => void;
   onDeckDeleted: () => void;
+  onDeckUpdated: (deck: any) => void;
 }
 
-export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowserProps) {
+export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdated }: DeckBrowserProps) {
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,8 +79,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted }: DeckBrowse
     if (window.api?.anki) {
       await window.api.anki.updateDeck(deck.id, deckName, deckDesc);
       setShowSettings(false);
-      deck.name = deckName;
-      deck.description = deckDesc;
+      onDeckUpdated({ ...deck, name: deckName, description: deckDesc });
     }
   };
 
