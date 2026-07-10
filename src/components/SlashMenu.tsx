@@ -78,12 +78,31 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
+  const MENU_MAX_HEIGHT = 320;
+  const CURSOR_OFFSET = 24; // A distância do top do cursor definida em Editor.tsx
+  
+  const willOverflowBottom = y + MENU_MAX_HEIGHT > viewportHeight;
+  
+  const positionStyle: React.CSSProperties = {
+    left: x,
+    maxHeight: MENU_MAX_HEIGHT
+  };
+
+  if (willOverflowBottom) {
+    // Menu ancora na parte inferior (cresce para cima), ficando acima do cursor
+    positionStyle.bottom = viewportHeight - (y - CURSOR_OFFSET);
+  } else {
+    // Menu ancora no topo (cresce para baixo)
+    positionStyle.top = y;
+  }
+
   if (filteredCommands.length === 0) {
     return (
       <div 
         ref={menuRef}
         className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden p-3 text-dark-subtext text-sm text-center"
-        style={{ left: x, top: y }}
+        style={positionStyle}
       >
         Nenhum bloco encontrado
       </div>
@@ -93,8 +112,8 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col max-h-[320px]"
-      style={{ left: x, top: y }}
+      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
+      style={positionStyle}
     >
       <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
         Blocos Básicos
