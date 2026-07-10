@@ -13,6 +13,7 @@ import CultureView from './components/culture/CultureView';
 import VideoView from './components/video-player/VideoView';
 import AnkiView from './components/anki/AnkiView';
 import FocusApp from './components/focus/FocusApp';
+import CalendarView from './components/calendar/CalendarView';
 import GlobalFocusOverlays from './components/focus/GlobalFocusOverlays';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
@@ -303,6 +304,8 @@ function AppContent() {
                   <AnkiView />
                 ) : tabModule === 'focus' ? (
                   <FocusApp />
+                ) : tabModule === 'calendar' ? (
+                  <CalendarView />
                 ) : (
                   <FinanceView />
                 )}

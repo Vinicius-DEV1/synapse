@@ -207,6 +207,14 @@ contextBridge.exposeInMainWorld('api', {
     setAppIcon: (type: 'normal' | 'zzz') => ipcRenderer.invoke('app:set-icon', type),
   },
 
+  // Calendar
+  calendar: {
+    getEvents: () => invokeWithSync('calendar:getEvents'),
+    createEvent: (event: any) => invokeWithSync('calendar:createEvent', event),
+    updateEvent: (id: string, event: any) => invokeWithSync('calendar:updateEvent', id, event),
+    deleteEvent: (id: string) => invokeWithSync('calendar:deleteEvent', id),
+  },
+
   // Backup
   backup: {
     selectFolder: () => invokeWithSync('backup:selectFolder'),
