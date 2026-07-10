@@ -378,7 +378,13 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           tippyOptions={{ duration: 100, zIndex: 99998, placement: 'bottom' }} 
           shouldShow={({ editor, state }) => {
             const { selection } = state;
-            if (!selection.empty) return false; // Se tiver texto selecionado, não mostra esse
+            
+            // Verifica se é uma seleção múltipla de células (drag)
+            const isCellSelection = selection && (selection.constructor.name === 'CellSelection' || ('forEachCell' in selection));
+            
+            if (isCellSelection) return true;
+            if (!selection.empty) return false; // Se tiver TEXTO selecionado, esconde para o menu normal brilhar
+            
             return editor.isActive('table');
           }}
         >
