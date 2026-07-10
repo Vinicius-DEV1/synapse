@@ -42,7 +42,7 @@ export function registerPagesHandlers() {
     });
   });
 
-  ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; sort_order?: number; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; is_pinned?: number; pinned_order?: number }) => {
+  ipcMain.handle('db:update-page', async (_, page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; sort_order?: number; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; is_pinned?: number; pinned_order?: number; cover_image?: string | null; description?: string | null }) => {
     if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
     const updates: string[] = [];
     const values: any[] = [];
