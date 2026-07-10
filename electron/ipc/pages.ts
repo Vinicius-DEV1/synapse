@@ -7,7 +7,7 @@ export function registerPagesHandlers() {
     if (!isModuleUnlocked('notes')) throw new Error('Módulo de notas bloqueado');
     return new Promise((resolve, reject) => {
       // Lazy load: content and encrypted_content are NOT fetched
-      getDb().all('SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, password_salt, is_pinned, pinned_order FROM notes.pages WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC', (err, rows) => {
+      getDb().all('SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, password_salt, is_pinned, pinned_order, cover_image, description FROM notes.pages WHERE deleted_at IS NULL ORDER BY sort_order ASC, updated_at DESC', (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -58,6 +58,8 @@ export function registerPagesHandlers() {
     if (page.parent_id !== undefined) { updates.push('parent_id = ?'); values.push(page.parent_id); }
     if (page.is_pinned !== undefined) { updates.push('is_pinned = ?'); values.push(page.is_pinned); }
     if (page.pinned_order !== undefined) { updates.push('pinned_order = ?'); values.push(page.pinned_order); }
+    if (page.cover_image !== undefined) { updates.push('cover_image = ?'); values.push(page.cover_image); }
+    if (page.description !== undefined) { updates.push('description = ?'); values.push(page.description); }
     
     if (updates.length === 0) return { success: true };
     
