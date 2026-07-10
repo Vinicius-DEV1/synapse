@@ -299,7 +299,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"><p></p></div>'); break;
       case 'divider': editor.commands.setHorizontalRule(); break;
       case 'table': 
-        editor.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true }); 
+        editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
         break;
       default: break;
     }
