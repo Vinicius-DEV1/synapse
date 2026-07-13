@@ -63,6 +63,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
         cmd_auth::auth_status,
         cmd_auth::auth_login,
+        cmd_auth::auth_setup,
         cmd_notes::notes_get_all_pages,
         cmd_notes::notes_get_page_content,
         cmd_notes::notes_create_page,
