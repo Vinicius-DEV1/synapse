@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import type { Tab, Page } from '../types';
 
-import PageView from './PageView';
-import FinanceView from './finance/FinanceView';
-import LibraryView from './library/LibraryView';
-import CultureView from './culture/CultureView';
-import VideoView from './video-player/VideoView';
-import AnkiView from './anki/AnkiView';
-import FocusApp from './focus/FocusApp';
-import CalendarView from './calendar/CalendarView';
+const PageView = lazy(() => import('./PageView'));
+const FinanceView = lazy(() => import('./finance/FinanceView'));
+const LibraryView = lazy(() => import('./library/LibraryView'));
+const CultureView = lazy(() => import('./culture/CultureView'));
+const VideoView = lazy(() => import('./video-player/VideoView'));
+const AnkiView = lazy(() => import('./anki/AnkiView'));
+const FocusApp = lazy(() => import('./focus/FocusApp'));
+const CalendarView = lazy(() => import('./calendar/CalendarView'));
 
 export interface ViewFactoryProps {
   tab: Tab;
@@ -29,31 +29,43 @@ export function ViewFactory({
 }: ViewFactoryProps) {
   const { module, id } = tab;
 
-  switch (module) {
-    case 'notes':
-      return (
-        <PageView
-          page={page}
-          onUpdateContent={onUpdateContent}
-          onCreatePage={onCreatePage}
-          onCreateLinkedPage={onCreateLinkedPage}
-          onUpdatePage={onUpdatePage}
-        />
-      );
-    case 'library':
-      return <LibraryView tabId={id} />;
-    case 'culture':
-      return <CultureView />;
-    case 'video':
-      return <VideoView />;
-    case 'anki':
-      return <AnkiView />;
-    case 'focus':
-      return <FocusApp />;
-    case 'calendar':
-      return <CalendarView />;
-    case 'finance':
-    default:
-      return <FinanceView />;
-  }
+  const renderModule = () => {
+    switch (module) {
+      case 'notes':
+        return (
+          <PageView
+            page={page}
+            onUpdateContent={onUpdateContent}
+            onCreatePage={onCreatePage}
+            onCreateLinkedPage={onCreateLinkedPage}
+            onUpdatePage={onUpdatePage}
+          />
+        );
+      case 'library':
+        return <LibraryView tabId={id} />;
+      case 'culture':
+        return <CultureView />;
+      case 'video':
+        return <VideoView />;
+      case 'anki':
+        return <AnkiView />;
+      case 'focus':
+        return <FocusApp />;
+      case 'calendar':
+        return <CalendarView />;
+      case 'finance':
+      default:
+        return <FinanceView />;
+    }
+  };
+
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full flex items-center justify-center bg-dark-bg text-dark-subtext">
+        <span className="animate-pulse">Carregando módulo...</span>
+      </div>
+    }>
+      {renderModule()}
+    </Suspense>
+  );
 }

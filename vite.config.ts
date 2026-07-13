@@ -7,5 +7,33 @@ export default defineConfig({
   server: {
     port: 35174,
     host: '127.0.0.1'
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@tiptap')) {
+              return 'tiptap';
+            }
+            if (id.includes('epubjs')) {
+              return 'epub';
+            }
+            if (id.includes('yjs') || id.includes('y-prosemirror')) {
+              return 'yjs';
+            }
+            if (id.includes('recharts')) {
+              return 'recharts';
+            }
+            if (id.includes('firebase')) {
+              return 'firebase';
+            }
+          }
+        }
+      }
+    }
   }
 })
