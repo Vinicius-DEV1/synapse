@@ -82,6 +82,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/ffprobe-static": "^2.0.3",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^24.12.3",
