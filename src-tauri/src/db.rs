@@ -4,11 +4,10 @@ use std::path::PathBuf;
 
 pub struct DbState {
     pub conn: Mutex<Option<Connection>>,
+    pub keys: Mutex<Option<crate::cmd_auth::UnlockedKeys>>,
 }
 
-pub fn init_db(app_data_dir: PathBuf) -> Result<Connection, String> {
-    let db_path = app_data_dir.join("caderno_migrated.sqlite");
-    
+pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let conn = Connection::open(&db_path)
         .map_err(|e| format!("Failed to open DB: {}", e))?;
         

@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"tsc -p tsconfig.electron.json -w\" \"wait-on tcp:127.0.0.1:35174 && cross-env NODE_ENV=development electron .\"",
-    "build": "tsc -p tsconfig.electron.json && tsc && vite build && electron-builder",
+    "dev": "vite",
+    "build": "tsc && vite build",
     "build:web": "vite build --outDir dist-web",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -36,6 +36,7 @@
     "@floating-ui/react": "^0.27.19",
     "@journeyapps/sqlcipher": "^5.3.1",
     "@radix-ui/react-dropdown-menu": "^2.1.19",
+    "@tauri-apps/api": "^2.11.1",
     "@tiptap/extension-bubble-menu": "^3.27.1",
     "@tiptap/extension-code-block-lowlight": "^3.27.1",
     "@tiptap/extension-collaboration": "^3.27.1",

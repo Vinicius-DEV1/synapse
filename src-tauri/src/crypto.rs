@@ -72,3 +72,55 @@ pub fn decrypt_module_key(encrypted_payload: &str, password: &str) -> Result<Str
         
     String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into())
 }
+
+pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String> {
+    let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
+    if key_bytes.len() != 32 { return Err("Key must be 32 bytes".into()); }
+    
+    let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
+    
+    let mut iv = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut iv);
+    let nonce = aes_gcm::Nonce::<U16>::from_slice(&iv);
+    
+    let ciphertext_with_tag = cipher.encrypt(nonce, plaintext.as_bytes())
+        .map_err(|e| format!("Encryption failed: {:?}", e))?;
+        
+    let tag_start = ciphertext_with_tag.len() - 16;
+    let ciphertext = &ciphertext_with_tag[..tag_start];
+    let tag = &ciphertext_with_tag[tag_start..];
+    
+    let encrypted_hex = hex::encode(ciphertext);
+    let auth_tag_hex = hex::encode(tag);
+    let iv_hex = hex::encode(iv);
+    
+    Ok(format!("{}:{}:{}", iv_hex, auth_tag_hex, encrypted_hex))
+}
+
+pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String, String> {
+    let parts: Vec<&str> = encrypted_payload.split(':').collect();
+    if parts.len() != 3 { return Err("Invalid payload".into()); }
+    
+    let iv_hex = parts[0];
+    let auth_tag_hex = parts[1];
+    let encrypted_hex = parts[2];
+    
+    let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
+    if key_bytes.len() != 32 { return Err("Key must be 32 bytes".into()); }
+    
+    let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
+    
+    let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
+    let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
+    let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
+    
+    let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
+    
+    let mut ciphertext_with_tag = encrypted_bytes.clone();
+    ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
+    
+    let decrypted_bytes = cipher.decrypt(nonce, ciphertext_with_tag.as_ref())
+        .map_err(|e| format!("Decryption failed: {:?}", e))?;
+        
+    String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into())
+}

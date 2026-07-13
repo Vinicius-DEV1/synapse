@@ -76,41 +76,58 @@ export function registerAuthHandlers() {
              const fs = require('fs');
              const logFile = require('path').join(__dirname, '../../export_log.txt');
              fs.writeFileSync(logFile, 'Iniciando exportacao...\n');
-             
-             const exportPath = require('path').join(require('electron').app.getPath('userData'), 'caderno_migrated.sqlite').replace(/\\/g, '/');
+             const path = require('path');
+             const { app } = require('electron');
+             const exportPath = path.join(app.getPath('userData'), 'caderno_migrated.sqlite').replace(/\\/g, '/');
              if (fs.existsSync(exportPath)) {
                  fs.unlinkSync(exportPath);
              }
              const freshDb = require('../db/connection').getDb();
-             const runDb = (sql: string) => new Promise<void>((res, rej) => freshDb.run(sql, (err) => err ? rej(err) : res()));
-             const allDb = (sql: string) => new Promise<any[]>((res, rej) => freshDb.all(sql, (err, rows) => err ? rej(err) : res(rows)));
+             const runDb = (sql: string) => new Promise<void>((res, rej) => freshDb.run(sql, (err: any) => err ? rej(err) : res()));
+             const allDb = (sql: string) => new Promise<any[]>((res, rej) => freshDb.all(sql, (err: any, rows: any) => err ? rej(err) : res(rows)));
 
              await runDb(`ATTACH DATABASE '${exportPath}' AS export_db KEY ''`);
              
-             const dbs = ['main', 'library', 'finance', 'notes', 'culture', 'anki', 'focus'];
-             for (const dbName of dbs) {
-                try {
-                    fs.appendFileSync(logFile, `Buscando tabelas de ${dbName}...\n`);
-                    const tables = await allDb(`SELECT name, sql FROM ${dbName}.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
-                    for (const t of tables) {
-                       if (t.sql) {
-                          fs.appendFileSync(logFile, `Exportando tabela ${t.name} de ${dbName}...\n`);
-                          let createSql = t.sql.replace(/CREATE TABLE( IF NOT EXISTS)?\s+"?[a-zA-Z0-9_]+"?\./i, 'CREATE TABLE IF NOT EXISTS export_db.');
-                          if (!createSql.includes('export_db.')) {
-                              createSql = createSql.replace(/CREATE TABLE( IF NOT EXISTS)?\s+"?([a-zA-Z0-9_]+)"?/i, 'CREATE TABLE IF NOT EXISTS export_db."$2"');
-                          }
-                          try {
-                             await runDb(createSql);
-                             await runDb(`INSERT INTO export_db."${t.name}" SELECT * FROM ${dbName}."${t.name}"`);
-                             fs.appendFileSync(logFile, `Sucesso na tabela ${t.name}.\n`);
-                          } catch(err) {
-                             fs.appendFileSync(logFile, `Erro ao criar/inserir tabela ${t.name}: ${err.message}\nSQL: ${createSql}\n`);
-                          }
-                       }
-                    }
-                } catch(e: any) {
-                    fs.appendFileSync(logFile, `Skipping db for export: ${dbName} - ${e.message}\n`);
-                }
+             // Cria as tabelas limpas no export_db...
+             const modules = [
+               { name: 'main', path: null },
+               { name: 'library', path: null },
+               { name: 'finance', path: null },
+               { name: 'notes', path: null },
+               { name: 'culture', path: null },
+               { name: 'anki', path: null },
+               { name: 'focus', path: null }
+             ];
+
+             const logFile = path.join(app.getAppPath(), '..', 'export_log.txt');
+             fs.writeFileSync(logFile, `Iniciando exportacao...\n`);
+
+             for (const mod of modules) {
+                 fs.appendFileSync(logFile, `Buscando tabelas de ${mod.name}...\n`);
+                 let tables = [];
+                 try {
+                     if (mod.name === 'main') {
+                         tables = await allDb(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
+                     } else {
+                         tables = await allDb(`SELECT name, sql FROM ${mod.name}.sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
+                     }
+                 } catch (e: any) {
+                     fs.appendFileSync(logFile, `Skipping db for export: ${mod.name} - ${e.message}\n`);
+                     continue;
+                 }
+                 
+                 for (const t of tables) {
+                     fs.appendFileSync(logFile, `Exportando tabela ${t.name} de ${mod.name}...\n`);
+                     try {
+                         const createSql = t.sql.replace(/CREATE TABLE "?([^" ]+)"?/, `CREATE TABLE IF NOT EXISTS export_db."${t.name}"`);
+                         await runDb(createSql);
+                         const prefix = mod.name === 'main' ? '' : `${mod.name}.`;
+                         await runDb(`INSERT INTO export_db."${t.name}" SELECT * FROM ${prefix}"${t.name}"`);
+                         fs.appendFileSync(logFile, `Sucesso na tabela ${t.name}.\n`);
+                     } catch (err: any) {
+                         fs.appendFileSync(logFile, `Erro ao criar/inserir tabela ${t.name}: ${err.message}\nSQL: ${t.sql}\n`);
+                     }
+                 }
              }
              await runDb('DETACH DATABASE export_db');
              fs.appendFileSync(logFile, `MIGRATION EXPORT SUCCESS: ${exportPath}\n`);
