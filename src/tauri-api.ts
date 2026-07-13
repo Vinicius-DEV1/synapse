@@ -126,11 +126,41 @@ export const createTauriApi = async () => {
       upsertRow: async (tableName: string, row: any) => await invoke('sync_upsert_row', { tableName, row })
     },
     
-    // --- MULTIMEDIA (Pending rust native implementations) ---
-    video: {},
-    lofi: {},
-    youtube: {},
-    audio: {},
+    // --- MULTIMEDIA (Native Rust Integrations) ---
+    video: {
+      getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
+      deleteLocal: async (filename: string) => await invoke('video_delete_local', { filename }),
+      scanTracks: async (localPath: string) => await invoke('video_scan_tracks', { localPath }),
+      extractSubtitles: async (localPath: string, trackIndex: string) => await invoke('video_extract_subtitles', { localPath, trackIndex }),
+      extractAudio: async (localPath: string, trackIndex: string) => await invoke('video_extract_audio', { localPath, trackIndex }),
+      remuxDefaultTrack: async (sourcePath: string, filename: string, trackIndex: string) => await invoke('video_remux_default_track', { sourcePath, filename, trackIndex }),
+      // Funções mockadas que dependem de Dialogos de sistema (podem ser implementadas depois se necessário)
+      saveLocal: async () => {},
+      copyLocal: async () => {},
+      openFileDialog: async () => {},
+      openFolderDialog: async () => {}
+    },
+    
+    lofi: {
+      getLocalPath: async (filename: string) => await invoke('lofi_get_local_path', { filename }),
+      deleteLocal: async (filename: string) => await invoke('lofi_delete_local', { filename }),
+      saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
+      copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename })
+    },
+    
+    youtube: {
+      fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
+      download: async (url: string, filename: string, quality: string, subs?: string[]) => await invoke('youtube_download', { url, filename, quality, subs }),
+      onProgress: (callback: (percent: number) => void) => {
+        // Usa tauri event listener (listen from @tauri-apps/api/event) no frontend real
+      }
+    },
+    
+    audio: {
+      generateTTS: async (text: string, lang?: string) => await invoke('audio_generate_tts', { text, lang }),
+      extractClip: async (videoPath: string, startTimeMs: number, endTimeMs: number) => await invoke('audio_extract_clip', { videoPath, startTimeMs, endTimeMs })
+    },
+    
     backup: {},
   };
 };
