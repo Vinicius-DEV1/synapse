@@ -92,7 +92,8 @@ pub fn notes_get_page_content(id: String, db_state: State<'_, DbState>) -> Resul
 
 #[derive(Deserialize)]
 pub struct CreatePagePayload {
-    pub parentId: Option<String>,
+    #[serde(rename = "parentId")]
+    pub parent_id: Option<String>,
     pub title: Option<String>,
     pub icon: Option<String>,
 }
@@ -108,12 +109,12 @@ pub fn notes_create_page(page: CreatePagePayload, db_state: State<'_, DbState>) 
     
     conn.execute(
         "INSERT INTO pages (id, parent_id, title, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
-        params![id, page.parentId, title, icon, 0.0]
+        params![id, page.parent_id, title, icon, 0.0]
     ).map_err(|e| e.to_string())?;
     
     Ok(PageMeta {
         id,
-        parent_id: page.parentId,
+        parent_id: page.parent_id,
         title,
         icon,
         sort_order: 0.0,
@@ -133,7 +134,9 @@ pub struct UpdatePagePayload {
     pub title: Option<String>,
     pub icon: Option<String>,
     pub content: Option<String>,
+    #[serde(rename = "crdtState")]
     pub crdt_state: Option<String>,
+    #[serde(rename = "parentId")]
     pub parent_id: Option<String>,
 }
 
@@ -207,7 +210,8 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
 #[derive(Serialize)]
 pub struct ImageCacheResult {
     pub data: Vec<u8>,
-    pub mimeType: String,
+    #[serde(rename = "mimeType")]
+    pub mime_type: String,
 }
 
 #[tauri::command]
@@ -221,7 +225,7 @@ pub fn image_cache_get(id: String, db_state: State<'_, DbState>) -> Result<Optio
     let result = stmt.query_row([&id], |row| {
         Ok(ImageCacheResult {
             data: row.get(0)?,
-            mimeType: row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "image/png".into()),
+            mime_type: row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "image/png".into()),
         })
     });
     

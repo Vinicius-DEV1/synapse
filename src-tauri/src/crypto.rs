@@ -23,6 +23,7 @@ pub fn hash_auth_password(password: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+#[allow(dead_code)]
 pub fn encrypt_module_key(module_key: &str, password: &str) -> Result<String, String> {
     let key = derive_key_from_password(password);
     let cipher = Aes256Gcm16::new(&key.into());

@@ -1,13 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use std::io::Write;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 const FFMPEG_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/win32-x64";
 const FFPROBE_URL: &str = "https://github.com/eugeneware/ffprobe-static/releases/latest/download/win32-x64";
 
-pub async fn ensure_binaries(app: &AppHandle) -> Result<(), String> {
+pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let bin_dir = app_data_dir.join("bin");
     
@@ -56,7 +56,7 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn check_binaries_status(app: AppHandle) -> Result<bool, String> {
+pub fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let bin_dir = app_data_dir.join("bin");
     
