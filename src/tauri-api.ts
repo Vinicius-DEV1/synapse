@@ -79,5 +79,58 @@ export const createTauriApi = async () => {
       updateEvent: async (e: any) => await invoke('calendar_update_event', { event: e }),
       deleteEvent: async (id: string) => await invoke('calendar_delete_event', { id })
     },
+    
+    // --- CULTURE ---
+    culture: {
+      getItems: async () => await invoke('culture_get_items'),
+      createItem: async (i: any) => await invoke('culture_create_item', { item: i }),
+      updateItem: async (id: string, i: any) => await invoke('culture_update_item', { id, item: i }),
+      deleteItem: async (id: string) => await invoke('culture_delete_item', { id }),
+      updateProgress: async (id: string, progress: number) => await invoke('culture_update_progress', { id, progress }),
+      getEpisodes: async (itemId: string) => await invoke('culture_get_episodes', { itemId }),
+      saveEpisodes: async (itemId: string, episodes: any[]) => await invoke('culture_save_episodes', { itemId, episodes }),
+      toggleEpisodeWatched: async (episodeId: string, isWatched: boolean) => await invoke('culture_toggle_episode_watched', { episodeId, isWatched }),
+      getRecentReleases: async () => [] // Placeholder for external API fetch in future
+    },
+    
+    // --- FOCUS ---
+    focus: {
+      getSessions: async () => await invoke('focus_get_sessions'),
+      createSession: async (s: any) => await invoke('focus_create_session', { session: s }),
+      deleteSessions: async () => {}, // mock
+      getAlarms: async () => await invoke('focus_get_alarms'),
+      createAlarm: async (a: any) => await invoke('focus_create_alarm', { alarm: a }),
+      updateAlarm: async (id: number, a: any) => await invoke('focus_update_alarm', { id: id.toString(), alarm: a }),
+      deleteAlarm: async (id: number) => await invoke('focus_delete_alarm', { id: id.toString() }),
+      setAppIcon: async (type: string) => {} // mock
+    },
+    
+    // --- ANKI ---
+    anki: {
+      getDecks: async () => await invoke('anki_get_decks'),
+      createDeck: async (name: string, desc?: string) => await invoke('anki_create_deck', { name, description: desc }),
+      saveCard: async (c: any) => await invoke('anki_save_card', { card: c }),
+      getDueCards: async (deckId: string) => await invoke('anki_get_due_cards', { deckId }),
+      reviewCard: async (cardId: string, rating: number) => await invoke('anki_review_card', { cardId, rating }),
+      getAllCards: async (deckId?: string) => await invoke('anki_get_all_cards', { deckId }),
+      deleteCard: async (cardId: string) => await invoke('anki_delete_card', { cardId }),
+      deleteCardsBulk: async (cardIds: string[]) => { for(let id of cardIds) await invoke('anki_delete_card', { cardId: id }); },
+      updateCard: async (cardId: string, c: any) => await invoke('anki_update_card', { cardId, card: c }),
+      moveCards: async () => {} // mock
+    },
+    
+    // --- SYNC ---
+    sync: {
+      getTable: async (tableName: string) => await invoke('sync_get_table', { tableName }),
+      deleteRow: async (tableName: string, id: string) => await invoke('sync_delete_row', { tableName, id }),
+      upsertRow: async (tableName: string, row: any) => await invoke('sync_upsert_row', { tableName, row })
+    },
+    
+    // --- MULTIMEDIA (Pending rust native implementations) ---
+    video: {},
+    lofi: {},
+    youtube: {},
+    audio: {},
+    backup: {},
   };
 };

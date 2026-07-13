@@ -5,6 +5,10 @@ mod cmd_notes;
 mod cmd_finance;
 mod cmd_library;
 mod cmd_calendar;
+mod cmd_culture;
+mod cmd_anki;
+mod cmd_focus;
+mod cmd_sync;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -78,7 +82,32 @@ pub fn run() {
         cmd_library::library_update_collection,
         cmd_library::library_delete_collection,
         cmd_library::library_add_book_to_collection,
-        cmd_library::library_remove_book_from_collection
+        cmd_library::library_remove_book_from_collection,
+        cmd_culture::culture_get_items,
+        cmd_culture::culture_create_item,
+        cmd_culture::culture_update_item,
+        cmd_culture::culture_delete_item,
+        cmd_culture::culture_update_progress,
+        cmd_culture::culture_get_episodes,
+        cmd_culture::culture_save_episodes,
+        cmd_culture::culture_toggle_episode_watched,
+        cmd_anki::anki_get_decks,
+        cmd_anki::anki_create_deck,
+        cmd_anki::anki_save_card,
+        cmd_anki::anki_get_due_cards,
+        cmd_anki::anki_review_card,
+        cmd_anki::anki_get_all_cards,
+        cmd_anki::anki_delete_card,
+        cmd_anki::anki_update_card,
+        cmd_focus::focus_get_alarms,
+        cmd_focus::focus_create_alarm,
+        cmd_focus::focus_update_alarm,
+        cmd_focus::focus_delete_alarm,
+        cmd_focus::focus_get_sessions,
+        cmd_focus::focus_create_session,
+        cmd_sync::sync_get_table,
+        cmd_sync::sync_delete_row,
+        cmd_sync::sync_upsert_row
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
