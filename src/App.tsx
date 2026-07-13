@@ -166,9 +166,8 @@ function AppContent() {
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
       await window.api.updatePage({ id, content, crdt_state: crdtState });
-      dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
       
-      // Auto-save to page history with 5s debounce (prevents too many entries during fast typing)
+      // Auto-save to page history with 5s debounce
       if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
       historyTimerRef.current[id] = setTimeout(() => {
         window.api?.savePageHistory?.(id, content).catch(console.error);
@@ -177,11 +176,17 @@ function AppContent() {
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {
           await window.api.updatePage({ id: embed.id, content: embed.content });
-          dispatch({ type: 'UPDATE_PAGE', page: { id: embed.id, content: embed.content } });
         }
       }
+      
+      // Dispara o evento de sincronização (debounce de 1.5s no useSync)
+      if (window.api.onSyncTrigger) {
+         // O preload cuida disso via ipcRenderer se necessário, ou usamos um evento
+      } else {
+         window.dispatchEvent(new CustomEvent('app-sync-trigger'));
+      }
     }
-  }, [dispatch]);
+  }, []);
 
   // Close context menu on click outside
   useEffect(() => {
