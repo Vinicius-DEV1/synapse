@@ -161,6 +161,10 @@ export const createTauriApi = async () => {
       extractClip: async (videoPath: string, startTimeMs: number, endTimeMs: number) => await invoke('audio_extract_clip', { videoPath, startTimeMs, endTimeMs })
     },
     
-    backup: {},
+    backup: {
+      onLog: (callback: (data: any) => void) => { return () => {}; },
+      selectFolder: async () => null,
+      startBackup: async (options: any) => ({ success: false, message: "Use o Google Drive Sync na aba Cloud" })
+    },
   };
 };
