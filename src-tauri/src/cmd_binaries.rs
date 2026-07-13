@@ -8,7 +8,7 @@ const FFMPEG_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/l
 const FFPROBE_URL: &str = "https://github.com/eugeneware/ffprobe-static/releases/latest/download/win32-x64";
 
 pub async fn ensure_binaries(app: &AppHandle) -> Result<(), String> {
-    let app_data_dir = app.path().app_data_dir().unwrap();
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let bin_dir = app_data_dir.join("bin");
     
     if !bin_dir.exists() {
@@ -57,7 +57,7 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
 
 #[tauri::command]
 pub fn check_binaries_status(app: AppHandle) -> Result<bool, String> {
-    let app_data_dir = app.path().app_data_dir().unwrap();
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let bin_dir = app_data_dir.join("bin");
     
     Ok(bin_dir.join("yt-dlp.exe").exists() && 

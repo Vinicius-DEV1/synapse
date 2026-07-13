@@ -1,10 +1,10 @@
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use std::path::PathBuf;
 use std::fs;
 use std::process::Command;
 
 fn get_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app.path().app_data_dir().unwrap();
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let audio_dir = app_data_dir.join("audio");
     if !audio_dir.exists() {
         fs::create_dir_all(&audio_dir).map_err(|e| e.to_string())?;
@@ -13,7 +13,7 @@ fn get_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn get_bin_path(app: &AppHandle, binary_name: &str) -> PathBuf {
-    app.path().app_data_dir().unwrap().join("bin").join(binary_name)
+    std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
 }
 
 #[tauri::command]
@@ -60,7 +60,7 @@ pub async fn audio_generate_tts(text: String, lang: Option<String>, app: AppHand
 
 // Comandos Lofi (que eram no lofi.ts)
 fn get_lofi_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app.path().app_data_dir().unwrap();
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let lofi_dir = app_data_dir.join("lofi");
     if !lofi_dir.exists() {
         fs::create_dir_all(&lofi_dir).map_err(|e| e.to_string())?;

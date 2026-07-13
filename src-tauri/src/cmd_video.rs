@@ -5,7 +5,7 @@ use std::process::Command;
 use serde_json::Value;
 
 fn get_videos_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app.path().app_data_dir().unwrap();
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let videos_dir = app_data_dir.join("videos");
     if !videos_dir.exists() {
         fs::create_dir_all(&videos_dir).map_err(|e| e.to_string())?;
@@ -14,7 +14,7 @@ fn get_videos_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn get_bin_path(app: &AppHandle, binary_name: &str) -> PathBuf {
-    app.path().app_data_dir().unwrap().join("bin").join(binary_name)
+    std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
 }
 
 #[tauri::command]
