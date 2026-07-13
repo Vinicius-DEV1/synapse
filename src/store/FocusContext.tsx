@@ -37,7 +37,7 @@ interface FocusContextType {
   loadData: () => Promise<void>;
   showToast: (msg: string) => void;
   handleStartSetup: () => void;
-  handleStartTimer: (tag: string, description: string, targetTime: number) => void;
+  handleStartTimer: (tag: string, description: string, targetTime: number, explicitId?: string) => string | void;
   handleAddTimeFromSuccess: (minutes: number) => void;
   handleAddTotalTime: (minutes: number) => void;
   handleDeleteSession: (id: number) => Promise<void>;
@@ -241,8 +241,10 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Actions
   const handleStartSetup = () => setView('setup');
   
-  const handleStartTimer = (tag: string, description: string, targetTime: number) => {
+  const handleStartTimer = (tag: string, description: string, targetTime: number, explicitId?: string) => {
+    const sessionId = explicitId || Date.now().toString();
     setCurrentSession({
+      id: sessionId as any, // using string as temp ID
       tag,
       description,
       target_time_minutes: targetTime,
@@ -253,6 +255,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setIsPaused(false);
     timerFinishedRef.current = false;
     setView('timer');
+    return sessionId;
   };
 
   const handleAddTimeFromSuccess = (minutes: number) => {
@@ -335,6 +338,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         status: 'completed',
         summary
       } as Session);
+      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: currentSession.id, status: 'completed' } }));
       setCurrentSession(null);
       loadData();
       setView('dashboard');
@@ -348,6 +352,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         status: 'cancelled',
         justification
       } as Session);
+      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: currentSession.id, status: 'cancelled' } }));
     }
     loadData();
     setView('dashboard');

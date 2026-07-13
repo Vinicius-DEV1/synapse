@@ -5,10 +5,11 @@ import type { Alarm } from '../types';
 interface AlarmSetupModalProps {
   onSave: (alarm: Alarm) => void;
   onCancel: () => void;
+  initialTimeStr?: string;
 }
 
-const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel }) => {
-  const [timeStr, setTimeStr] = useState('12:00');
+const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, initialTimeStr = '12:00' }) => {
+  const [timeStr, setTimeStr] = useState(initialTimeStr);
   const [label, setLabel] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

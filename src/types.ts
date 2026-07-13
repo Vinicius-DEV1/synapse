@@ -377,10 +377,12 @@ declare global {
         moveCards: (cardIds: string[], newDeckId: string) => Promise<{ success: boolean; error?: string }>;
         updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
         deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
+        resetDeckProgress: (deckId: string) => Promise<{ success: boolean; error?: string }>;
       };
       focus?: {
         getSessions: () => Promise<any[]>;
         createSession: (session: any) => Promise<{ success: boolean; id?: number }>;
+        deleteSessions: (options: { type: 'specific', id: number } | { type: 'all' }) => Promise<{ success: boolean; error?: string }>;
         getAlarms: () => Promise<any[]>;
         createAlarm: (alarm: any) => Promise<{ success: boolean; id?: number }>;
         updateAlarm: (id: number, alarm: any) => Promise<{ success: boolean }>;

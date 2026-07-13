@@ -13,6 +13,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterValidation, setFilterValidation] = useState<string>('all');
+  const [filterMedia, setFilterMedia] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const [editingCard, setEditingCard] = useState<any | null>(null);
@@ -38,10 +41,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     setLoading(false);
   };
 
-  const filteredCards = cards.filter(c => 
-    c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.back.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCards = cards.filter(c => {
+    const matchesSearch = c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          c.back.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || c.card_type === filterType;
+    const matchesValidation = filterValidation === 'all' || (c.validation_mode || 'exact') === filterValidation;
+    const matchesMedia = filterMedia === 'all' || (filterMedia === 'with_media' ? !!c.media_url : !c.media_url);
+    
+    return matchesSearch && matchesType && matchesValidation && matchesMedia;
+  });
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredCards.length) {
@@ -92,6 +100,19 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     }
   };
 
+  const handleResetProgress = async () => {
+    if (!window.confirm(`ATENÇÃO! Isso apagará o histórico de estudos e voltará TODOS os cartões para o estado "Novo". Deseja realmente resetar o progresso do baralho "${deck.name}"?`)) return;
+    if (window.api?.anki?.resetDeckProgress) {
+      const res = await window.api.anki.resetDeckProgress(deck.id);
+      if (res.success) {
+        window.alert('Progresso resetado com sucesso!');
+        loadCards();
+      } else {
+        window.alert('Erro ao resetar: ' + res.error);
+      }
+    }
+  };
+
   const playAudio = (url: string) => {
     const audio = new Audio(url);
     audio.play().catch(e => console.error("Audio error:", e));
@@ -106,6 +127,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           extra_note: editingCard.extra_note,
           media_url: editingCard.media_url,
           card_type: editingCard.card_type,
+          validation_mode: editingCard.validation_mode,
           source_module: editingCard.source_module,
           source_id: editingCard.source_id
         } : {
@@ -166,25 +188,50 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição</label>
                   <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
                 </div>
-                <div className="flex justify-between pt-4">
-                  <button onClick={handleDeleteDeck} className="text-red-400 hover:text-red-300 text-sm font-medium">Excluir Baralho Inteiro</button>
-                  <button onClick={handleUpdateDeck} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm transition-colors">Salvar Alterações</button>
+                <div className="flex justify-between items-center pt-4 border-t border-white/10">
+                  <div className="flex flex-col gap-2">
+                    <button onClick={handleResetProgress} className="text-orange-400 hover:text-orange-300 text-sm font-medium text-left">Resetar Progresso (FSRS)</button>
+                    <button onClick={handleDeleteDeck} className="text-red-400 hover:text-red-300 text-sm font-medium text-left">Excluir Baralho Inteiro</button>
+                  </div>
+                  <button onClick={handleUpdateDeck} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg">Salvar Alterações</button>
                 </div>
               </div>
             </div>
           )}
 
           {/* Toolbar */}
-          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-transparent">
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-subtext" />
-              <input 
-                type="text" 
-                placeholder="Buscar cartões..." 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
-              />
+          <div className="p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-transparent">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-subtext" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar cartões..." 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
+                />
+              </div>
+              
+              <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
+                <option value="all">Tipos (Todos)</option>
+                <option value="reading">Leitura</option>
+                <option value="listening">Escuta</option>
+                <option value="typing">Digitação</option>
+                <option value="cloze">Completar (Cloze)</option>
+              </select>
+
+              <select value={filterValidation} onChange={e => setFilterValidation(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
+                <option value="all">Validação (Todas)</option>
+                <option value="exact">Exata</option>
+                <option value="ai">Com IA</option>
+              </select>
+
+              <select value={filterMedia} onChange={e => setFilterMedia(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
+                <option value="all">Mídia (Ambos)</option>
+                <option value="with_media">Com Áudio</option>
+                <option value="without_media">Sem Áudio</option>
+              </select>
             </div>
             
             <div className="flex items-center gap-3">

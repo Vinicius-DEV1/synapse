@@ -30,7 +30,7 @@ export const GlobalLofiPlayer: React.FC = () => {
     if (audioRef.current) {
       audioRef.current.volume = lofiVolume;
     }
-  }, [lofiVolume]);
+  }, [lofiVolume, src]);
 
   useEffect(() => {
     if (audioRef.current && src) {
@@ -118,7 +118,7 @@ export const GlobalLofiPlayer: React.FC = () => {
               </button>
               
               <div className="flex-1 flex items-center gap-2">
-                <Volume2 size={12} className="text-dark-subtext" />
+                <Volume2 size={12} className="text-dark-subtext shrink-0" />
                 <input 
                   type="range" 
                   min="0" max="1" step="0.01"
@@ -126,6 +126,9 @@ export const GlobalLofiPlayer: React.FC = () => {
                   onChange={(e) => setLofiVolume(parseFloat(e.target.value))}
                   className="w-full h-1 bg-dark-bg rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand-500 hover:[&::-webkit-slider-thumb]:bg-brand-400"
                 />
+                <span className="text-[10px] text-dark-subtext font-mono w-7 text-right shrink-0">
+                  {Math.round(lofiVolume * 100)}%
+                </span>
               </div>
             </div>
           </div>

@@ -221,3 +221,34 @@ Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA
     throw new Error('A IA não retornou um JSON válido.');
   }
 }
+
+// Para avaliar flashcards do Anki
+export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string): Promise<{
+  verdict: 'Correto' | 'Parcial' | 'Incorreto';
+  feedback: string;
+}> {
+  const customPrompt = "O usuário está estudando com Flashcards. Você é um professor avaliando a resposta dele.\n" +
+"Frente do Cartão (Contexto): \"" + front + "\"\n" +
+"Resposta Correta Esperada: \"" + back + "\"\n" +
+"Resposta do Aluno: \"" + typedAnswer + "\"\n\n" +
+"Regra de Avaliação:\n" +
+"1. Se a resposta do aluno capta a essência semântica e gramatical, é 'Correto'.\n" +
+"2. Se há um erro ortográfico leve ou faltou uma pequena nuance, mas a ideia está certa, é 'Parcial'.\n" +
+"3. Se mudou o sentido ou está incorreto, é 'Incorreto'.\n\n" +
+"Responda ESTRITAMENTE em formato JSON com o seguinte schema:\n" +
+"{\n" +
+"  \"verdict\": \"Correto\" | \"Parcial\" | \"Incorreto\",\n" +
+"  \"feedback\": \"Uma breve frase (máx 20 palavras) explicando o motivo, focando em ajudar o aluno.\"\n" +
+"}\n" +
+"Não use blocos de código markdown (```json) na resposta. Apenas o JSON cru.";
+
+  const responseText = await promptGemini(customPrompt);
+  
+  try {
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
+  } catch (err) {
+    console.error('Failed to parse Gemini JSON for Anki evaluation:', responseText);
+    throw new Error('A IA não retornou um JSON válido na avaliação.');
+  }
+}

@@ -7,8 +7,8 @@ interface Card {
   front: string;
   back: string;
   media_url?: string;
-  card_type: 'reading' | 'listening';
-  card_type: 'reading' | 'listening';
+  card_type: 'reading' | 'listening' | 'typing' | 'cloze';
+  validation_mode?: 'exact' | 'ai';
   state: number;
   extra_note?: string;
   source_module?: string;
@@ -21,6 +21,10 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   const [showingAnswer, setShowingAnswer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [typedAnswer, setTypedAnswer] = useState('');
+  const [evaluating, setEvaluating] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<{verdict: string, feedback: string} | null>(null);
+  const [exactMatch, setExactMatch] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadDueCards();
@@ -34,9 +38,17 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
         setCards(res.cards);
         setCurrentIndex(0);
         setShowingAnswer(false);
+        resetCardState();
       }
     }
     setLoading(false);
+  };
+
+  const resetCardState = () => {
+    setTypedAnswer('');
+    setEvaluating(false);
+    setAiFeedback(null);
+    setExactMatch(null);
   };
 
   const handleDeleteCard = async () => {
@@ -60,6 +72,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
     if (currentIndex + 1 < cards.length) {
       setCurrentIndex(curr => curr + 1);
       setShowingAnswer(false);
+      resetCardState();
     } else {
       // Done
       onClose();
@@ -74,6 +87,11 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       }
       
       if (!showingAnswer) {
+        const card = cards[currentIndex];
+        if (card && (card.card_type === 'typing' || card.card_type === 'cloze')) {
+           // Em typing e cloze, Enter é lidado pelo form. Espaço digita espaço.
+           return;
+        }
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
           setShowingAnswer(true);
@@ -110,11 +128,44 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
        const card = cards[currentIndex];
        if (card.card_type === 'listening' && !showingAnswer) {
           playAudio();
-       } else if (showingAnswer && card.media_url && card.card_type !== 'listening') {
+        } else if (showingAnswer && card.media_url && card.card_type !== 'listening') {
           playAudio();
        }
     }
   }, [currentIndex, showingAnswer, loading]);
+
+  const handleAnswerSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!typedAnswer.trim()) {
+        setShowingAnswer(true);
+        return;
+    }
+
+    let expected = card.back;
+    if (card.card_type === 'cloze') {
+        const match = card.front.match(/\{\{(.*?)\}\}/);
+        if (match) expected = match[1];
+    }
+
+    if (card.validation_mode === 'ai') {
+        setEvaluating(true);
+        console.log(`[Flashcards] Iniciando validação por IA...`);
+        console.log(`[Flashcards] Resposta Esperada: "${expected}" | Resposta Digitada: "${typedAnswer}"`);
+        try {
+            const { promptGeminiForAnkiEvaluation } = await import('../../services/gemini');
+            const res = await promptGeminiForAnkiEvaluation(card.front, expected, typedAnswer);
+            console.log(`[Flashcards] IA retornou:`, res);
+            setAiFeedback(res as any);
+        } catch (err) {
+            console.error(`[Flashcards] Falha na IA:`, err);
+            setAiFeedback({ verdict: 'Incorreto', feedback: 'Erro de IA. Avalie manualmente.' });
+        }
+        setEvaluating(false);
+    } else {
+        setExactMatch(typedAnswer.trim().toLowerCase() === expected.trim().toLowerCase());
+    }
+    setShowingAnswer(true);
+  };
 
   if (editingCard) {
     return (
@@ -125,6 +176,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           extra_note: editingCard.extra_note,
           media_url: editingCard.media_url,
           card_type: editingCard.card_type,
+          validation_mode: editingCard.validation_mode,
           source_module: editingCard.source_module,
           source_id: editingCard.source_id
         }}
@@ -183,8 +235,9 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
       </header>
 
       {/* Card Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 pb-24 sm:pb-32 gap-8 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-dark-card rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
+      <main className="flex-1 flex flex-col p-6 sm:p-12 pb-24 sm:pb-32 overflow-y-auto">
+        <div className="m-auto w-full max-w-2xl flex flex-col items-center gap-8 shrink-0">
+          <div className="w-full bg-dark-card rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
           <div className="flex-1 p-10 flex flex-col items-center justify-center text-center relative">
@@ -195,11 +248,78 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
               >
                 <Volume2 className="w-10 h-10" />
               </button>
+            ) : card.card_type === 'cloze' ? (
+                <div className="text-3xl font-medium leading-relaxed text-dark-text text-center" style={{ lineHeight: '1.8' }}>
+                    {card.front.replace(/<\/?p[^>]*>/gi, '').split(/\{\{(.*?)\}\}/).map((part, i) => {
+                        if (i % 2 === 1) { // cloze word
+                            if (!showingAnswer) {
+                                return (
+                                   <form onSubmit={handleAnswerSubmit} key={i} className="inline-block align-middle mx-1">
+                                     <input 
+                                       autoFocus
+                                       type="text" 
+                                       value={typedAnswer}
+                                       onChange={e => setTypedAnswer(e.target.value)}
+                                       className="bg-transparent border-b-2 border-indigo-500 focus:outline-none focus:border-indigo-400 text-center text-indigo-400 pb-1 max-w-full"
+                                       style={{ width: `${Math.max(5, typedAnswer.length + 1)}ch` }} 
+                                     />
+                                   </form>
+                                );
+                            } else {
+                                if (card.validation_mode === 'exact') {
+                                    return (
+                                        <span key={i} className={`font-bold border-b-2 pb-1 px-2 mx-1 ${exactMatch ? 'text-green-400 border-green-500' : 'text-red-400 border-red-500'}`}>
+                                            {typedAnswer || '___'}
+                                        </span>
+                                    );
+                                } else {
+                                    return (
+                                        <span key={i} className="text-indigo-400 font-bold border-b-2 border-indigo-500 pb-1 px-2 mx-1">
+                                            {typedAnswer || '___'}
+                                        </span>
+                                    );
+                                }
+                            }
+                        } else {
+                            return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+                        }
+                    })}
+                </div>
             ) : (
-              <div 
-                className="text-3xl font-medium leading-relaxed text-dark-text"
-                dangerouslySetInnerHTML={{ __html: card.front }} 
-              />
+              <>
+                <div 
+                  className="text-3xl font-medium leading-relaxed text-dark-text"
+                  dangerouslySetInnerHTML={{ __html: card.front }} 
+                />
+                {card.card_type === 'typing' && !showingAnswer && (
+                    <form onSubmit={handleAnswerSubmit} className="mt-8 w-full max-w-sm">
+                        <input 
+                            autoFocus
+                            type="text"
+                            value={typedAnswer}
+                            onChange={e => setTypedAnswer(e.target.value)}
+                            placeholder="Digite a resposta..."
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-xl text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                    </form>
+                )}
+                {card.card_type === 'typing' && showingAnswer && card.validation_mode === 'exact' && (
+                    <div className={`mt-8 px-6 py-3 rounded-xl border ${exactMatch ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'} text-xl font-medium`}>
+                        Sua resposta: {typedAnswer || 'Em branco'}
+                    </div>
+                )}
+                {card.card_type === 'typing' && showingAnswer && card.validation_mode === 'ai' && (
+                    <div className={`mt-8 px-6 py-3 rounded-xl border bg-indigo-500/10 border-indigo-500/30 text-indigo-400 text-xl font-medium`}>
+                        Sua resposta: {typedAnswer || 'Em branco'}
+                    </div>
+                )}
+              </>
+            )}
+
+            {evaluating && (
+                <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-t-2xl z-10">
+                    <p className="text-indigo-300 font-medium animate-pulse">IA analisando sua resposta...</p>
+                </div>
             )}
           </div>
 
@@ -209,16 +329,49 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
           {/* Back */}
           {showingAnswer && (
             <div className="flex-1 p-8 flex flex-col items-center justify-center text-center bg-dark-card animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {aiFeedback && (
+                  <div className={`mb-6 w-full max-w-md p-4 rounded-xl border ${
+                      aiFeedback.verdict === 'Correto' ? 'bg-green-500/10 border-green-500/30 text-green-300' :
+                      aiFeedback.verdict === 'Parcial' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300' :
+                      'bg-red-500/10 border-red-500/30 text-red-300'
+                  }`}>
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                          <span className="font-bold text-lg">IA: {aiFeedback.verdict}</span>
+                      </div>
+                      <p className="text-sm opacity-90">{aiFeedback.feedback}</p>
+                  </div>
+              )}
+
+              {card.card_type === 'cloze' && card.validation_mode === 'exact' && !exactMatch && (
+                  <div className="mb-4 text-green-400 font-medium bg-green-500/10 px-4 py-2 rounded-lg">Resposta Esperada: {card.front.match(/\{\{(.*?)\}\}/)?.[1]}</div>
+              )}
+
+              {card.card_type === 'typing' && card.validation_mode === 'exact' && !exactMatch && (
+                  <div className="mb-4 text-green-400 font-medium bg-green-500/10 px-4 py-2 rounded-lg">Resposta Esperada: {card.back}</div>
+              )}
+
               {card.card_type === 'listening' && (
                 <div 
                   className="text-lg text-dark-text font-medium mb-4"
                   dangerouslySetInnerHTML={{ __html: card.front }}
                 />
               )}
-              <div 
-                className="text-base text-dark-subtext whitespace-pre-wrap leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: card.back }}
-              />
+              {card.card_type === 'cloze' ? (
+                card.back && card.back.trim() !== '' && (
+                  <div className="mt-4 flex flex-col items-center">
+                    <span className="text-xs text-dark-subtext uppercase tracking-wider mb-2 font-bold bg-white/5 px-3 py-1 rounded-full">Notas</span>
+                    <div 
+                      className="text-base text-dark-subtext whitespace-pre-wrap leading-relaxed max-w-lg bg-dark-bg p-4 rounded-xl border border-white/5"
+                      dangerouslySetInnerHTML={{ __html: card.back }}
+                    />
+                  </div>
+                )
+              ) : (
+                <div 
+                  className="text-base text-dark-subtext whitespace-pre-wrap leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: card.back }}
+                />
+              )}
               {card.media_url && (
                 <button onClick={playAudio} className="mt-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm">
                    <Volume2 className="w-4 h-4" /> Ouvir Novamente
@@ -258,6 +411,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
               </button>
             </div>
           )}
+        </div>
         </div>
       </main>
     </div>
