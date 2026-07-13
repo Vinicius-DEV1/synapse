@@ -46,10 +46,38 @@ export const createTauriApi = async () => {
       put: async (id: string, data: ArrayBuffer, mimeType: string) => 
         await invoke('image_cache_put', { id, data: Array.from(new Uint8Array(data)), mimeType })
     },
-    finance: { getTransactions: async () => [], getWishlist: async () => [] },
-    culture: { getItems: async () => [], getRecentReleases: async () => [] },
-    library: { getBooks: async () => [], getCollections: async () => [] },
-    focus: { getSessions: async () => [], getAlarms: async () => [] },
-    calendar: { getEvents: async () => [] }
+    // --- FINANCE ---
+    finance: {
+      getTransactions: async () => await invoke('finance_get_transactions'),
+      addTransaction: async (t: any) => await invoke('finance_add_transaction', { transaction: t }),
+      updateTransaction: async (t: any) => await invoke('finance_update_transaction', { transaction: t }),
+      deleteTransaction: async (id: string) => await invoke('finance_delete_transaction', { id }),
+      getWishlist: async () => await invoke('finance_get_wishlist'),
+      addWishlist: async (w: any) => await invoke('finance_add_wishlist', { item: w }),
+      updateWishlist: async (w: any) => await invoke('finance_update_wishlist', { item: w }),
+      deleteWishlist: async (id: string) => await invoke('finance_delete_wishlist', { id })
+    },
+    
+    // --- LIBRARY ---
+    library: {
+      getBooks: async () => await invoke('library_get_books'),
+      addBook: async (b: any) => await invoke('library_add_book', { book: b }),
+      updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
+      deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
+      getCollections: async () => await invoke('library_get_collections'),
+      addCollection: async (c: any) => await invoke('library_add_collection', { collection: c }),
+      updateCollection: async (c: any) => await invoke('library_update_collection', { collection: c }),
+      deleteCollection: async (id: string) => await invoke('library_delete_collection', { id }),
+      addBookToCollection: async (bookId: string, collectionId: string) => await invoke('library_add_book_to_collection', { bookId, collectionId }),
+      removeBookFromCollection: async (bookId: string, collectionId: string) => await invoke('library_remove_book_from_collection', { bookId, collectionId })
+    },
+    
+    // --- CALENDAR ---
+    calendar: {
+      getEvents: async () => await invoke('calendar_get_events'),
+      addEvent: async (e: any) => await invoke('calendar_add_event', { event: e }),
+      updateEvent: async (e: any) => await invoke('calendar_update_event', { event: e }),
+      deleteEvent: async (id: string) => await invoke('calendar_delete_event', { id })
+    },
   };
 };

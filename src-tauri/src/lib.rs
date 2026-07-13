@@ -2,6 +2,9 @@ mod crypto;
 mod db;
 mod cmd_auth;
 mod cmd_notes;
+mod cmd_finance;
+mod cmd_library;
+mod cmd_calendar;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -9,6 +12,7 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_log::Builder::new().build())
     .setup(|app| {
       let app_data_dir = app.path().app_data_dir().unwrap();
       std::fs::create_dir_all(&app_data_dir).unwrap();
@@ -52,7 +56,29 @@ pub fn run() {
         cmd_notes::notes_update_page,
         cmd_notes::notes_delete_page,
         cmd_notes::image_cache_get,
-        cmd_notes::image_cache_put
+        cmd_notes::image_cache_put,
+        cmd_finance::finance_get_transactions,
+        cmd_finance::finance_add_transaction,
+        cmd_finance::finance_update_transaction,
+        cmd_finance::finance_delete_transaction,
+        cmd_finance::finance_get_wishlist,
+        cmd_finance::finance_add_wishlist,
+        cmd_finance::finance_update_wishlist,
+        cmd_finance::finance_delete_wishlist,
+        cmd_calendar::calendar_get_events,
+        cmd_calendar::calendar_add_event,
+        cmd_calendar::calendar_update_event,
+        cmd_calendar::calendar_delete_event,
+        cmd_library::library_get_books,
+        cmd_library::library_add_book,
+        cmd_library::library_update_book,
+        cmd_library::library_delete_book,
+        cmd_library::library_get_collections,
+        cmd_library::library_add_collection,
+        cmd_library::library_update_collection,
+        cmd_library::library_delete_collection,
+        cmd_library::library_add_book_to_collection,
+        cmd_library::library_remove_book_from_collection
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
