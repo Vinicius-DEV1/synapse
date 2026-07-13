@@ -1,5 +1,13 @@
 import { getWebDb } from './db-web';
 import { encryptText, decryptText } from './crypto';
+import { NetworkResilience } from '../utils/NetworkResilience';
+
+const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  return NetworkResilience.fetchWithBackoff(
+    async (signal) => fetch(input, { ...init, signal }),
+    3, 1000, 30000
+  );
+};
 
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
 export const DRIVE_CLIENT_SECRET = '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'; // Google requires client_secret even with PKCE for Desktop apps
@@ -70,7 +78,7 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
   params.append('redirect_uri', 'http://localhost:5173');
   params.append('code_verifier', codeVerifier);
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await resilientFetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString()
@@ -96,7 +104,7 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   params.append('refresh_token', refresh_token);
   params.append('grant_type', 'refresh_token');
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await resilientFetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString()
@@ -118,7 +126,7 @@ const APP_FOLDER_NAME = 'Caderno - Biblioteca';
 
 export async function getOrCreateAppFolder(accessToken: string): Promise<string> {
   const query = encodeURIComponent(`name = '${APP_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-  const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
+  const res = await resilientFetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   
@@ -130,7 +138,7 @@ export async function getOrCreateAppFolder(accessToken: string): Promise<string>
   }
 
   // Se não existir, cria a pasta
-  const createRes = await fetch(DRIVE_API_URL, {
+  const createRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -148,7 +156,7 @@ export async function getOrCreateAppFolder(accessToken: string): Promise<string>
 
 export async function getOrCreatePhotosFolder(accessToken: string, parentFolderId: string): Promise<string> {
   const query = encodeURIComponent(`name = 'FOTOS' and '${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-  const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
+  const res = await resilientFetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   
@@ -160,7 +168,7 @@ export async function getOrCreatePhotosFolder(accessToken: string, parentFolderI
   }
 
   // Se não existir, cria a subpasta FOTOS
-  const createRes = await fetch(DRIVE_API_URL, {
+  const createRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -179,7 +187,7 @@ export async function getOrCreatePhotosFolder(accessToken: string, parentFolderI
 
 export async function getOrCreateLofiFolder(accessToken: string, parentFolderId: string): Promise<string> {
   const query = encodeURIComponent(`name = 'LOFI' and '${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-  const res = await fetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
+  const res = await resilientFetch(`${DRIVE_API_URL}?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   
@@ -191,7 +199,7 @@ export async function getOrCreateLofiFolder(accessToken: string, parentFolderId:
   }
 
   // Se não existir, cria a subpasta LOFI
-  const createRes = await fetch(DRIVE_API_URL, {
+  const createRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -231,7 +239,7 @@ export async function uploadToDrive(
   };
 
   // Passo 1: Criar o arquivo vazio (apenas metadados)
-  const metaRes = await fetch(DRIVE_API_URL, {
+  const metaRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -431,7 +439,7 @@ export async function listFiles(accessToken: string, folderId: string): Promise<
   // fields pede arquivos com id, name, data de criação, tamanho e tipo
   const url = `${DRIVE_API_URL}?q=${query}&fields=files(id,name,createdTime,size,mimeType)&pageSize=1000`;
 
-  const res = await fetch(url, {
+  const res = await resilientFetch(url, {
     headers: { 'Authorization': `Bearer ${accessToken}` }
   });
 
@@ -448,7 +456,7 @@ export async function listFiles(accessToken: string, folderId: string): Promise<
  * Deleta um arquivo definitivamente do Google Drive.
  */
 export async function deleteFromDrive(accessToken: string, fileId: string): Promise<void> {
-  const res = await fetch(`${DRIVE_API_URL}/${fileId}`, {
+  const res = await resilientFetch(`${DRIVE_API_URL}/${fileId}`, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${accessToken}` }
   });
