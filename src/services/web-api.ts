@@ -1,5 +1,6 @@
 import { getWebDb } from './db-web';
 import { uploadEncryptedPdf, getDecryptedPdf } from './storage';
+import { PayloadOptimizer } from '../utils/PayloadOptimizer';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -25,7 +26,8 @@ export const createWebApiMock = async () => {
   const originalDelete = db.delete.bind(db);
 
   db.put = async (storeName: string, val: any, key?: IDBValidKey) => {
-    const res = await originalPut(storeName, val, key);
+    const optimizedVal = PayloadOptimizer.optimize(val);
+    const res = await originalPut(storeName, optimizedVal, key);
     if (storeName !== 'config') triggerSync();
     return res;
   };

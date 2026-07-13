@@ -1,4 +1,5 @@
 import { getSettings } from '../utils/settings';
+import { NetworkResilience } from '../utils/NetworkResilience';
 
 export interface GeminiKeyEntry {
   id: string;
@@ -147,11 +148,19 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
     console.warn(`[DEBUG IA] Iniciando requisição com a chave: ${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)} | Modelo: ${fullModelId}`);
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+      const response = await NetworkResilience.fetchWithBackoff(
+        async (signal) => {
+          return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+            signal
+          });
+        },
+        4, // 4 retries
+        1500, // base 1.5s delay
+        30000 // 30s timeout
+      );
 
       const data = await response.json();
       if (!response.ok) {
