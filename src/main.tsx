@@ -2,12 +2,19 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { createWebApiMock } from './services/web-api'
 
 async function init() {
   if (!window.api) {
-    console.log("Web mode detected. Initializing Web API Mock with IndexedDB...");
-    const mockApi = await createWebApiMock() as any;
+    let mockApi;
+    if ((window as any).__TAURI_INTERNALS__) {
+      console.log("Tauri environment detected. Initializing Tauri API Bridge...");
+      const { createTauriApi } = await import('./tauri-api');
+      mockApi = await createTauriApi() as any;
+    } else {
+      console.log("Web mode detected. Initializing Web API Mock with IndexedDB...");
+      const { createWebApiMock } = await import('./services/web-api');
+      mockApi = await createWebApiMock() as any;
+    }
     
     const createApiProxy = (obj: any): any => {
       return new Proxy(obj, {
