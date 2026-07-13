@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { StoreProvider, useStore } from './store/useStore';
 import { FocusProvider, useFocusContext } from './store/FocusContext';
 import Sidebar from './components/Sidebar';
@@ -293,10 +294,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <StoreProvider>
-      <FocusProvider>
-        <AppContent />
-      </FocusProvider>
-    </StoreProvider>
+    <GlobalErrorBoundary>
+      <StoreProvider>
+        <FocusProvider>
+          <AppContent />
+        </FocusProvider>
+      </StoreProvider>
+    </GlobalErrorBoundary>
   );
 }
