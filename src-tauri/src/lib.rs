@@ -9,6 +9,10 @@ mod cmd_culture;
 mod cmd_anki;
 mod cmd_focus;
 mod cmd_sync;
+mod cmd_binaries;
+mod cmd_video;
+mod cmd_youtube;
+mod cmd_audio;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -40,6 +44,15 @@ pub fn run() {
       app.manage(db::DbState {
           conn: Mutex::new(conn),
           keys: Mutex::new(None),
+      });
+      
+      let app_handle = app.handle().clone();
+      tauri::async_runtime::spawn(async move {
+          if let Err(e) = cmd_binaries::ensure_binaries(&app_handle).await {
+              println!("Erro ao baixar binários: {}", e);
+          } else {
+              println!("Binários multimídia prontos!");
+          }
       });
 
       if cfg!(debug_assertions) {
@@ -107,7 +120,23 @@ pub fn run() {
         cmd_focus::focus_create_session,
         cmd_sync::sync_get_table,
         cmd_sync::sync_delete_row,
-        cmd_sync::sync_upsert_row
+        cmd_sync::sync_upsert_row,
+        cmd_binaries::check_binaries_status,
+        cmd_binaries::force_download_binaries,
+        cmd_video::video_get_local_path,
+        cmd_video::video_delete_local,
+        cmd_video::video_scan_tracks,
+        cmd_video::video_extract_subtitles,
+        cmd_video::video_extract_audio,
+        cmd_video::video_remux_default_track,
+        cmd_youtube::youtube_fetch_info,
+        cmd_youtube::youtube_download,
+        cmd_audio::audio_extract_clip,
+        cmd_audio::audio_generate_tts,
+        cmd_audio::lofi_get_local_path,
+        cmd_audio::lofi_delete_local,
+        cmd_audio::lofi_save_local,
+        cmd_audio::lofi_copy_local
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
