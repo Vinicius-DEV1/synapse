@@ -22,7 +22,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_log::Builder::new().build())
     .setup(|app| {
-      let app_data_dir = app.path().app_data_dir().unwrap();
+      let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
       std::fs::create_dir_all(&app_data_dir).unwrap();
       
       let db_path = app_data_dir.join("caderno.sqlite");
