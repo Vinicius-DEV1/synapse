@@ -4,8 +4,8 @@ use std::io::Write;
 use tauri::AppHandle;
 
 const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
-const FFMPEG_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/win32-x64";
-const FFPROBE_URL: &str = "https://github.com/eugeneware/ffprobe-static/releases/latest/download/win32-x64";
+const FFMPEG_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64";
+const FFPROBE_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-win32-x64";
 
 pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
