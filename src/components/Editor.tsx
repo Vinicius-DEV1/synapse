@@ -72,6 +72,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }, []);
 
   if (!ydocRef.current || ydocRef.current.guid !== pageId) {
+    if (ydocRef.current) {
+      ydocRef.current.destroy(); // Fix Memory Leak!
+    }
     ydocRef.current = new Y.Doc();
     ydocRef.current.guid = pageId || 'temp';
     if (initialCrdtState) {
@@ -83,14 +86,32 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }
   const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '';
 
-  // Se o CloudSync puxar algo novo do banco de dados no background, injetamos na tela!
+  // Escuta atualizações puramente remotas (do CloudSync) via evento customizado, 
+  // ignorando os updates locais que causavam lag.
   useEffect(() => {
-    if (ydocRef.current && initialCrdtState) {
-      applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
-    }
-  }, [initialCrdtState]);
+    const handleRemoteUpdate = (e: CustomEvent) => {
+      const { pageId: syncPageId, crdtState } = e.detail;
+      if (syncPageId === pageId && ydocRef.current && crdtState) {
+        applyBase64StateToYDoc(ydocRef.current, crdtState);
+      }
+    };
+    window.addEventListener('caderno-sync-update', handleRemoteUpdate as EventListener);
+    
+    // Cleanup de Memory Leak extra quando o componente for desmontado por completo
+    return () => {
+      window.removeEventListener('caderno-sync-update', handleRemoteUpdate as EventListener);
+    };
+  }, [pageId]);
 
-
+  useEffect(() => {
+    return () => {
+      // Destruição do documento ativo ao desmontar a view do editor
+      if (ydocRef.current) {
+         ydocRef.current.destroy();
+         ydocRef.current = null;
+      }
+    };
+  }, []);
 
   const lowlight = createLowlight(common);
 

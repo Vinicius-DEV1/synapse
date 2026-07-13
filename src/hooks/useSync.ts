@@ -42,14 +42,14 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           finishSync(false);
           return;
         }
-        console.log(`[Sync] doFullSync INICIADO às ${new Date().toLocaleTimeString()}`);
+        // console.log(`[Sync] doFullSync INICIADO às ${new Date().toLocaleTimeString()}`);
         startSync();
         try {
-          console.log('[Sync] Etapa 1: PULL From Cloud (Baixando alterações...)');
+          // console.log('[Sync] Etapa 1: PULL From Cloud (Baixando alterações...)');
           await withTimeout(pullWithSuppression(masterKey), 120_000);
-          console.log('[Sync] PULL concluído. Recarregando páginas na UI...');
+          // console.log('[Sync] PULL concluído. Recarregando páginas na UI...');
           loadPages();
-          console.log('[Sync] Etapa 2: PUSH To Cloud e sync de PDFs (Enviando alterações...)');
+          // console.log('[Sync] Etapa 2: PUSH To Cloud e sync de PDFs (Enviando alterações...)');
           await withTimeout(
             Promise.all([
               pushAllToCloud(masterKey),
@@ -58,7 +58,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             120_000
           );
           if (!isClosed) {
-            console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
+            // console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
             finishSync(true);
             // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
             syncChannel.postMessage('LOCAL_UPDATE');
@@ -77,7 +77,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 2. Cross-Device Real-time Firebase Sync
       const unsubRealTime = listenForCloudSyncSignal(() => {
         if (!navigator.onLine) return;
-        console.log('[Sync] Sinal Real-time recebido (Cross-device)! Sincronizando...');
+        // console.log('[Sync] Sinal Real-time recebido (Cross-device)! Sincronizando...');
         startSync();
         withTimeout(pullWithSuppression(masterKey), 30_000)
           .then(() => {
@@ -93,7 +93,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 3. Cross-Tab Sync (Same Browser)
       syncChannel.onmessage = (msg) => {
         if (msg.data === 'LOCAL_UPDATE') {
-          console.log('[Sync] Atualização recebida de outra aba. Recarregando UI...');
+          // console.log('[Sync] Atualização recebida de outra aba. Recarregando UI...');
           loadPages();
         }
       };
@@ -101,7 +101,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
-        console.log('[Sync] Gatilho de edição detectado! Agendando sync em 1.5s...');
+        // console.log('[Sync] Gatilho de edição detectado! Agendando sync em 1.5s...');
         clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
           doFullSync();
@@ -119,7 +119,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && !isSyncingOnFocus) {
-          console.log('[Sync] App ganhou foco novamente. Verificando por atualizações...');
+          // console.log('[Sync] App ganhou foco novamente. Verificando por atualizações...');
           isSyncingOnFocus = true;
           doFullSync().finally(() => { isSyncingOnFocus = false; });
         }

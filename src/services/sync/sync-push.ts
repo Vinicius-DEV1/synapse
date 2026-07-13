@@ -11,7 +11,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
-  console.log(`[Sync] PUSH Iniciado. (lastPush: \${new Date(lastPush).toISOString()})`);
+  // console.log(`[Sync] PUSH Iniciado. (lastPush: \${new Date(lastPush).toISOString()})`);
   let highestLocalTime = lastPush;
   let pushedCount = 0;
   let pushSkippedCount = 0;
@@ -109,7 +109,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   if (pushedCount > 0 || errors.length > 0) {
-    console.log(`[Sync] PUSH finalizou: \${pushedCount} docs enviados, \${errors.length} pulados/errados, \${pushSkippedCount} inalterados.`);
+    // console.log(`[Sync] PUSH finalizou: \${pushedCount} docs enviados, \${errors.length} pulados/errados, \${pushSkippedCount} inalterados.`);
     if (typeof window !== 'undefined' && (window as any).api?.log) {
       (window as any).api.log(`[PUSH] \${pushedCount} enviados, \${errors.length} pulados.`);
     }
@@ -127,6 +127,6 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
       }
     }
   } else {
-    console.log(`[Sync] PUSH concluído: Nada novo para enviar. (Ignorados: \${pushSkippedCount})`);
+    // console.log(`[Sync] PUSH concluído: Nada novo para enviar. (Ignorados: \${pushSkippedCount})`);
   }
 }

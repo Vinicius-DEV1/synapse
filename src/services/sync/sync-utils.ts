@@ -42,7 +42,7 @@ export function parseDateSafe(dateStr: string | undefined | null | number): numb
 }
 
 export async function hardResetCloud(): Promise<void> {
-  console.log("Iniciando Hard Reset da nuvem...");
+  // console.log("Iniciando Hard Reset da nuvem...");
   const allTables = Object.values(MODULE_TABLES).flat();
   for (const table of allTables) {
     try {
@@ -54,7 +54,7 @@ export async function hardResetCloud(): Promise<void> {
         }
         await deleteDoc(doc(db, table, d.id));
       }
-      console.log(`Tabela \${table} limpa na nuvem.`);
+      // console.log(`Tabela \${table} limpa na nuvem.`);
     } catch (err) {
       console.error(`Erro ao limpar tabela \${table}:`, err);
     }
@@ -67,7 +67,7 @@ export async function hardResetCloud(): Promise<void> {
     await deleteDoc(doc(db, 'config', 'sync_signal'));
   } catch (err) {}
 
-  console.log("Hard Reset concluído! A nuvem está 100% limpa.");
+  // console.log("Hard Reset concluído! A nuvem está 100% limpa.");
 }
 
 if (typeof window !== 'undefined') {

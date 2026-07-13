@@ -222,12 +222,12 @@ export const createWebApiMock = async () => {
           input.onchange = async (e: any) => {
             const file = e.target.files[0];
             if (!file) {
-              console.log("[Upload] Nenhum arquivo selecionado.");
+              // console.log("[Upload] Nenhum arquivo selecionado.");
               window.dispatchEvent(new Event('library-upload-end'));
               return resolve(null);
             }
             
-            console.log(`[Upload] Arquivo selecionado: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+            // console.log(`[Upload] Arquivo selecionado: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
             window.dispatchEvent(new Event('library-upload-start'));
             
             if (!_masterKey) {
@@ -238,16 +238,16 @@ export const createWebApiMock = async () => {
             }
             
             try {
-              console.log("[Upload] Lendo conteúdo do arquivo para a memória...");
+              // console.log("[Upload] Lendo conteúdo do arquivo para a memória...");
               const arrayBuffer = await file.arrayBuffer();
               const bookId = generateId();
               
-              console.log("[Upload] Criptografando e enviando para o Google Drive (E2EE)...");
+              // console.log("[Upload] Criptografando e enviando para o Google Drive (E2EE)...");
               const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
-              console.log(`[Upload] Sucesso na nuvem! Referência do arquivo: ${remotePath}`);
+              // console.log(`[Upload] Sucesso na nuvem! Referência do arquivo: ${remotePath}`);
               
               // 2. Salva os metadados no IndexedDB
-              console.log("[Upload] Salvando metadados no banco local...");
+              // console.log("[Upload] Salvando metadados no banco local...");
               const title = file.name.replace(/\.(pdf|epub)$/i, '');
               const book = {
                 id: bookId,
@@ -266,7 +266,7 @@ export const createWebApiMock = async () => {
               };
               
               await db.put('library_books', book);
-              console.log("[Upload] Processo concluído com sucesso!");
+              // console.log("[Upload] Processo concluído com sucesso!");
               resolve(book);
             } catch (err) {
               console.error("[Upload] ERRO ao importar arquivo:", err);

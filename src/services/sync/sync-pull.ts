@@ -10,7 +10,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   }
 
   const lastPull = getLastSyncTime('pull');
-  console.log(`[Sync] PULL Iniciado. (lastPull: \${new Date(lastPull).toISOString()})`);
+  // console.log(`[Sync] PULL Iniciado. (lastPull: \${new Date(lastPull).toISOString()})`);
   let highestCloudTime = lastPull;
   let pulledDocsCount = 0;
   let skippedDocsCount = 0;
@@ -109,8 +109,13 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
                     rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
                     
-                    if (typeof window !== 'undefined' && (window as any).api?.log) {
-                      (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                    if (typeof window !== 'undefined') {
+                      if ((window as any).api?.log) {
+                         (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                      }
+                      window.dispatchEvent(new CustomEvent('caderno-sync-update', {
+                        detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state }
+                      }));
                     }
                     
                     if (localTime > cloudTime) {
@@ -179,7 +184,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   if (highestCloudTime > lastPull) {
     setLastSyncTime('pull', highestCloudTime);
   }
-  console.log(`[Sync] PULL Concluído. Documentos processados: ${pulledDocsCount}, Ignorados (conflito): ${skippedDocsCount}.`);
+  // console.log(`[Sync] PULL Concluído. Documentos processados: ${pulledDocsCount}, Ignorados (conflito): ${skippedDocsCount}.`);
 }
 
 export function listenForCloudSyncSignal(onSignal: () => void) {
