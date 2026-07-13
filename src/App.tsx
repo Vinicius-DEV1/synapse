@@ -1,19 +1,10 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { StoreProvider, useStore } from './store/useStore';
 import { FocusProvider, useFocusContext } from './store/FocusContext';
-import type { Page } from './types';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
-import PageView from './components/PageView';
 import ContextMenu from './components/ContextMenu';
 import ConfirmModal from './components/ConfirmModal';
-import FinanceView from './components/finance/FinanceView';
-import LibraryView from './components/library/LibraryView';
-import CultureView from './components/culture/CultureView';
-import VideoView from './components/video-player/VideoView';
-import AnkiView from './components/anki/AnkiView';
-import FocusApp from './components/focus/FocusApp';
-import CalendarView from './components/calendar/CalendarView';
 import GlobalFocusOverlays from './components/focus/GlobalFocusOverlays';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
@@ -22,6 +13,8 @@ import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
 import { useSync } from './hooks/useSync';
 import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
+import { ViewFactory } from './components/ViewFactory';
+import { usePageActions } from './hooks/usePageActions';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -29,6 +22,14 @@ function AppContent() {
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const { loadData: loadFocusData } = useFocusContext();
+  
+  const {
+    handleCreatePage,
+    handleCreateLinkedPage,
+    handleDeletePage,
+    handleUpdatePage,
+    handleUpdateContent
+  } = usePageActions();
 
   // Load focus data when authenticated
   useEffect(() => {
@@ -124,70 +125,6 @@ function AppContent() {
     (window as any).__cadernoModuleKeys = state.moduleKeys;
   }, [state.moduleKeys]);
 
-  const handleCreatePage = useCallback(async (parentId: string | null) => {
-    if (window.api) {
-      const page = await window.api.createPage({ parentId });
-      dispatch({ type: 'ADD_PAGE', page });
-      dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id });
-      if (parentId && !state.expandedNodes.includes(parentId)) {
-        dispatch({ type: 'TOGGLE_NODE', nodeId: parentId });
-      }
-    }
-  }, [dispatch, state.expandedNodes]);
-
-  const handleCreateLinkedPage = useCallback(async (title: string, parentId: string | null = null) => {
-    if (window.api) {
-      const page = await window.api.createPage({ parentId });
-      await window.api.updatePage({ id: page.id, title });
-      page.title = title;
-      dispatch({ type: 'ADD_PAGE', page });
-      return page.id;
-    }
-    return '';
-  }, [dispatch]);
-
-  const handleDeletePage = useCallback(async (id: string) => {
-    if (window.api) {
-      await window.api.deletePage(id);
-      dispatch({ type: 'DELETE_PAGE', id });
-      dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
-    }
-  }, [dispatch]);
-
-  const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
-    if (window.api) {
-      await window.api.updatePage({ id, ...updates });
-      dispatch({ type: 'UPDATE_PAGE', page: { id, ...updates } });
-    }
-  }, [dispatch]);
-
-  const historyTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
-    if (window.api) {
-      await window.api.updatePage({ id, content, crdt_state: crdtState });
-      
-      // Auto-save to page history with 5s debounce
-      if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
-      historyTimerRef.current[id] = setTimeout(() => {
-        window.api?.savePageHistory?.(id, content).catch(console.error);
-      }, 5000);
-      
-      if (embeddedSaves && embeddedSaves.length > 0) {
-        for (const embed of embeddedSaves) {
-          await window.api.updatePage({ id: embed.id, content: embed.content });
-        }
-      }
-      
-      // Dispara o evento de sincronização (debounce de 1.5s no useSync)
-      if (window.api.onSyncTrigger) {
-         // O preload cuida disso via ipcRenderer se necessário, ou usamos um evento
-      } else {
-         window.dispatchEvent(new CustomEvent('app-sync-trigger'));
-      }
-    }
-  }, []);
-
   // Close context menu on click outside
   useEffect(() => {
     const handler = () => {
@@ -248,10 +185,6 @@ function AppContent() {
     }
   }, [activeModule, activeTab?.bookTitle]);
 
-  const activePage = activeTab?.pageId
-    ? state.pages.find((p) => p.id === activeTab.pageId) || null
-    : null;
-
   if (authStatus === null) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext" style={{ height: '100dvh' }}>
@@ -283,7 +216,6 @@ function AppContent() {
         <div className="flex-1 overflow-hidden relative">
           {state.tabs.map((tab) => {
             const isActive = tab.id === state.activeTabId;
-            const tabModule = tab.module;
             const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) || null : null;
             
             return (
@@ -291,29 +223,14 @@ function AppContent() {
                 key={tab.id} 
                 className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
               >
-                {tabModule === 'notes' ? (
-                  <PageView
-                    page={page}
-                    onUpdateContent={handleUpdateContent}
-                    onCreatePage={handleCreatePage}
-                    onCreateLinkedPage={handleCreateLinkedPage}
-                    onUpdatePage={handleUpdatePage}
-                  />
-                ) : tabModule === 'library' ? (
-                  <LibraryView tabId={tab.id} />
-                ) : tabModule === 'culture' ? (
-                  <CultureView />
-                ) : tabModule === 'video' ? (
-                  <VideoView />
-                ) : tabModule === 'anki' ? (
-                  <AnkiView />
-                ) : tabModule === 'focus' ? (
-                  <FocusApp />
-                ) : tabModule === 'calendar' ? (
-                  <CalendarView />
-                ) : (
-                  <FinanceView />
-                )}
+                <ViewFactory 
+                  tab={tab}
+                  page={page}
+                  onUpdateContent={handleUpdateContent}
+                  onCreatePage={handleCreatePage}
+                  onCreateLinkedPage={handleCreateLinkedPage}
+                  onUpdatePage={handleUpdatePage}
+                />
               </div>
             );
           })}
