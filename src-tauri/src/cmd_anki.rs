@@ -2,7 +2,7 @@ use tauri::State;
 use serde::{Deserialize, Serialize};
 use crate::db::DbState;
 use rusqlite::params;
-use chrono::{Utc, Duration, DateTime};
+use chrono::{Utc, Duration};
 
 #[derive(Serialize, Deserialize)]
 pub struct AnkiDeck {

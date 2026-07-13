@@ -1,11 +1,11 @@
-use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Emitter};
 use std::path::PathBuf;
 use std::fs;
 use std::process::{Command, Stdio};
 use serde_json::Value;
 use std::io::{BufReader, BufRead};
 
-fn get_videos_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let videos_dir = app_data_dir.join("videos");
     if !videos_dir.exists() {
@@ -14,7 +14,7 @@ fn get_videos_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(videos_dir)
 }
 
-fn get_bin_path(app: &AppHandle, binary_name: &str) -> PathBuf {
+fn get_bin_path(_app: &AppHandle, binary_name: &str) -> PathBuf {
     std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
 }
 

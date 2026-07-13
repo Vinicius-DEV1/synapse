@@ -1,8 +1,6 @@
 use tauri::State;
 use serde_json::Value;
 use crate::db::DbState;
-use rusqlite::types::ToSqlOutput;
-use rusqlite::ToSql;
 
 #[tauri::command]
 pub fn sync_get_table(table_name: String, db_state: State<'_, DbState>) -> Result<Vec<Value>, String> {

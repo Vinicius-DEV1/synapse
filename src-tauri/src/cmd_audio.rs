@@ -1,9 +1,9 @@
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use std::path::PathBuf;
 use std::fs;
 use std::process::Command;
 
-fn get_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let audio_dir = app_data_dir.join("audio");
     if !audio_dir.exists() {
@@ -12,7 +12,7 @@ fn get_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(audio_dir)
 }
 
-fn get_bin_path(app: &AppHandle, binary_name: &str) -> PathBuf {
+fn get_bin_path(_app: &AppHandle, binary_name: &str) -> PathBuf {
     std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
 }
 
@@ -53,13 +53,13 @@ pub fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i
 // Para o Edge TTS, usaremos uma lib ou chamada externa no futuro.
 // Por enquanto, placeholder pro frontend não quebrar:
 #[tauri::command]
-pub async fn audio_generate_tts(text: String, lang: Option<String>, app: AppHandle) -> Result<String, String> {
+pub async fn audio_generate_tts(_text: String, _lang: Option<String>, _app: AppHandle) -> Result<String, String> {
     // TODO: Implementar comunicação WebSocket pura com o Edge TTS.
     Err("Edge TTS via Rust not implemented yet. Wait for v2".to_string())
 }
 
 // Comandos Lofi (que eram no lofi.ts)
-fn get_lofi_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn get_lofi_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let lofi_dir = app_data_dir.join("lofi");
     if !lofi_dir.exists() {
