@@ -23,6 +23,12 @@ pub fn hash_auth_password(password: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+pub fn generate_module_key() -> String {
+    let mut key = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut key);
+    hex::encode(key)
+}
+
 #[allow(dead_code)]
 pub fn encrypt_module_key(module_key: &str, password: &str) -> Result<String, String> {
     let key = derive_key_from_password(password);
