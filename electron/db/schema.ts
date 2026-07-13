@@ -411,6 +411,8 @@ export function setupTables(): Promise<void> {
               review_time DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `));
+          
+          promises.push(runSafe("ALTER TABLE anki.anki_cards ADD COLUMN validation_mode TEXT DEFAULT 'exact';"));
         }
 
         Promise.all(promises).then(() => resolve()).catch(reject);

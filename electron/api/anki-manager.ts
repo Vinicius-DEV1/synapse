@@ -7,20 +7,7 @@ export function registerAnkiHandlers() {
     return new Promise((resolve) => {
       getDb().all('SELECT * FROM anki.anki_decks ORDER BY created_at DESC', (err, rows) => {
         if (err) return resolve({ success: false, error: err.message });
-        if (rows.length === 0) {
-          // Auto-create default deck
-          const id = crypto.randomUUID();
-          getDb().run(
-            'INSERT INTO anki.anki_decks (id, name, description) VALUES (?, ?, ?)',
-            [id, 'Vocabulário Geral', 'Baralho principal gerado automaticamente'],
-            (insertErr) => {
-              if (insertErr) return resolve({ success: false, error: insertErr.message });
-              resolve({ success: true, decks: [{ id, name: 'Vocabulário Geral', description: 'Baralho principal gerado automaticamente', created_at: new Date().toISOString() }] });
-            }
-          );
-        } else {
-          resolve({ success: true, decks: rows });
-        }
+        resolve({ success: true, decks: rows });
       });
     });
   });
@@ -42,16 +29,16 @@ export function registerAnkiHandlers() {
   ipcMain.handle('anki:save-card', async (_, cardData: any) => {
     return new Promise((resolve) => {
       const id = crypto.randomUUID();
-      const { deck_id, front, back, extra_note, source_module, source_id, media_url, card_type } = cardData;
+      const { deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode } = cardData;
       
       const db = getDb();
       db.run('BEGIN TRANSACTION');
 
       db.run(
         `INSERT INTO anki.anki_cards 
-        (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type],
+        (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode || 'exact'],
         (err) => {
           if (err) {
             db.run('ROLLBACK');
@@ -211,10 +198,10 @@ export function registerAnkiHandlers() {
 
   ipcMain.handle('anki:update-card', async (_, cardId: string, data: any) => {
     return new Promise((resolve) => {
-      const { front, back, extra_note, media_url } = data;
+      const { front, back, extra_note, media_url, validation_mode, card_type } = data;
       getDb().run(
-        'UPDATE anki.anki_cards SET front = ?, back = ?, extra_note = ?, media_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [front, back, extra_note || '', media_url || null, cardId],
+        'UPDATE anki.anki_cards SET front = ?, back = ?, extra_note = ?, media_url = ?, validation_mode = ?, card_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [front, back, extra_note || '', media_url || null, validation_mode || 'exact', card_type || 'reading', cardId],
         (err) => {
           if (err) return resolve({ success: false, error: err.message });
           resolve({ success: true });
@@ -283,6 +270,41 @@ export function registerAnkiHandlers() {
             db.run('COMMIT');
             resolve({ success: true });
           });
+        }
+      });
+    });
+  });
+  ipcMain.handle('anki:reset-deck-progress', async (_, deckId: string) => {
+    return new Promise((resolve) => {
+      const db = getDb();
+      db.run('BEGIN TRANSACTION');
+
+      db.all('SELECT id FROM anki.anki_cards WHERE deck_id = ?', [deckId], (err, rows) => {
+        if (err) { db.run('ROLLBACK'); return resolve({ success: false, error: err.message }); }
+        
+        const cardIds = rows.map((r: any) => r.id);
+        if (cardIds.length > 0) {
+          const placeholders = cardIds.map(() => '?').join(',');
+          
+          db.run(`DELETE FROM anki.anki_reviews WHERE card_id IN (${placeholders})`, cardIds, (err2) => {
+            if (err2) { db.run('ROLLBACK'); return resolve({ success: false, error: err2.message }); }
+            
+            const now = new Date().toISOString();
+            db.run(
+              `UPDATE anki.anki_srs_state 
+               SET due_date = ?, stability = 0, difficulty = 0, elapsed_days = 0, scheduled_days = 0, reps = 0, lapses = 0, state = 0
+               WHERE card_id IN (${placeholders})`,
+              [now, ...cardIds],
+              (err3) => {
+                if (err3) { db.run('ROLLBACK'); return resolve({ success: false, error: err3.message }); }
+                db.run('COMMIT');
+                resolve({ success: true });
+              }
+            );
+          });
+        } else {
+          db.run('COMMIT');
+          resolve({ success: true });
         }
       });
     });

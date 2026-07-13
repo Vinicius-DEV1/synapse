@@ -188,6 +188,7 @@ contextBridge.exposeInMainWorld('api', {
     moveCards: (cardIds: string[], newDeckId: string) => invokeWithSync('anki:move-cards', cardIds, newDeckId),
     updateDeck: (deckId: string, name: string, description: string) => invokeWithSync('anki:update-deck', deckId, name, description),
     deleteDeck: (deckId: string) => invokeWithSync('anki:delete-deck', deckId),
+    resetDeckProgress: (deckId: string) => invokeWithSync('anki:reset-deck-progress', deckId),
   },
 
   // Audio
@@ -200,6 +201,7 @@ contextBridge.exposeInMainWorld('api', {
   focus: {
     getSessions: () => invokeWithSync('focus:get-sessions'),
     createSession: (session: any) => invokeWithSync('focus:create-session', session),
+    deleteSessions: (options: any) => invokeWithSync('focus:delete-sessions', options),
     getAlarms: () => invokeWithSync('focus:get-alarms'),
     createAlarm: (alarm: any) => invokeWithSync('focus:create-alarm', alarm),
     updateAlarm: (id: number, alarm: any) => invokeWithSync('focus:update-alarm', id, alarm),

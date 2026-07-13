@@ -25,6 +25,19 @@ export function setupFocusIpc() {
     });
   });
 
+  ipcMain.handle('focus:delete-sessions', async (_, options) => {
+    return new Promise((resolve) => {
+      if (options.type === 'specific') {
+        getDb().run(`DELETE FROM focus.sessions WHERE id = ?`, [options.id], function(err) {
+          if (err) return resolve({ success: false, error: err.message });
+          resolve({ success: true });
+        });
+      } else {
+        resolve({ success: false, error: 'Unknown delete type' });
+      }
+    });
+  });
+
   ipcMain.handle('focus:get-alarms', async () => {
     return new Promise((resolve) => {
       getDb().all('SELECT * FROM focus.alarms ORDER BY time_str ASC', (err, rows) => {

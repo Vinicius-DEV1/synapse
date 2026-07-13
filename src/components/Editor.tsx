@@ -34,6 +34,11 @@ import { ResizableImage } from './editor-extensions/ResizableImage';
 import { EncryptedImage } from './editor-extensions/EncryptedImage';
 import { PageReference } from './editor-extensions/PageReference';
 import CodeBlockComponent from './editor-extensions/CodeBlockComponent';
+import { FocusWidgetBlock } from './editor-extensions/FocusWidgetBlock';
+import { AlarmWidgetBlock } from './editor-extensions/AlarmWidgetBlock';
+import SetupModal from './focus/SetupModal';
+import AlarmSetupModal from './focus/AlarmSetupModal';
+import { useFocusContext } from '../store/FocusContext';
 import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
 
 interface EditorProps {
@@ -54,6 +59,11 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
 
   // States para Image Viewer
   const [viewerState, setViewerState] = useState<{ isOpen: boolean, src: string, nodePos: number | null }>({ isOpen: false, src: '', nodePos: null });
+
+  // States para Foco e Alarme inline
+  const [focusModal, setFocusModal] = useState<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>(null);
+  const [alarmModal, setAlarmModal] = useState<{ isOpen: boolean, initialTimeStr?: string } | null>(null);
+  const { handleStartTimer, handleSaveAlarm } = useFocusContext();
 
   useEffect(() => {
     const handleSettingsChange = () => setSettings(getSettings());
@@ -110,7 +120,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       BlockquoteToggle,
       LinkPreviewBlock,
       EncryptedImage,
-      PageReference
+      PageReference,
+      FocusWidgetBlock,
+      AlarmWidgetBlock
     ],
     content: initialContent,
     editorProps: {
@@ -313,6 +325,46 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'table-habit': 
         editor.chain().focus().insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
         break;
+      case 'foco': {
+        const parts = slashMenu.query.trim().split(' ');
+        let initialTime = 30;
+        let initialTag = '';
+        let initialDesc = '';
+        
+        parts.shift(); // remove the 'foco' or whatever command text if it was part of it, wait!
+        // The query is what the user typed AFTER the slash, e.g. "foco 25 #Estudo Lendo"
+        // So parts[0] is "foco".
+        if (parts[0] && parts[0].toLowerCase() === 'foco') parts.shift();
+        
+        for (const p of parts) {
+          if (!isNaN(Number(p)) && Number(p) > 0) {
+            initialTime = Number(p);
+          } else if (p.startsWith('#')) {
+            initialTag = p.substring(1);
+          } else {
+            initialDesc += (initialDesc ? ' ' : '') + p;
+          }
+        }
+        
+        setFocusModal({ isOpen: true, initialTime, initialTag, initialDesc });
+        break;
+      }
+      case 'alarme': {
+        const parts = slashMenu.query.trim().split(' ');
+        let initialTimeStr = '12:00';
+        
+        if (parts[0] && parts[0].toLowerCase() === 'alarme') parts.shift();
+        
+        for (const p of parts) {
+          // If it matches HH:MM
+          if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(p)) {
+            initialTimeStr = p.padStart(5, '0');
+          }
+        }
+        
+        setAlarmModal({ isOpen: true, initialTimeStr });
+        break;
+      }
       default: break;
     }
   }, [editor, slashMenu]);
@@ -325,6 +377,40 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           query={slashMenu.query} 
           onSelect={executeSlashCommand} 
           onClose={() => setSlashMenu(null)} 
+        />,
+        document.body
+      )}
+
+      {focusModal?.isOpen && createPortal(
+        <SetupModal
+          initialTag={focusModal.initialTag}
+          initialDescription={focusModal.initialDesc}
+          initialTargetTime={focusModal.initialTime}
+          onStart={(tag, desc, time) => {
+            setFocusModal(null);
+            const sessionId = handleStartTimer(tag, desc, time);
+            if (sessionId && editor) {
+              editor.commands.insertFocusWidget({ sessionId, duration: time, tag, description: desc });
+            }
+          }}
+          onCancel={() => setFocusModal(null)}
+        />,
+        document.body
+      )}
+
+      {alarmModal?.isOpen && createPortal(
+        <AlarmSetupModal
+          initialTimeStr={alarmModal.initialTimeStr}
+          onSave={(alarm) => {
+            setAlarmModal(null);
+            const alarmId = Date.now().toString(); // local transient id for the widget
+            const alarmToSave = { ...alarm, id: Number(alarmId) };
+            handleSaveAlarm(alarmToSave);
+            if (editor) {
+              editor.commands.insertAlarmWidget({ alarmId, timeStr: alarm.time_str, label: alarm.label || '' });
+            }
+          }}
+          onCancel={() => setAlarmModal(null)}
         />,
         document.body
       )}
@@ -350,7 +436,16 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           shouldShow={({ state }) => {
             const { selection } = state;
             const isCellSelection = selection && (selection.constructor.name === 'CellSelection' || ('forEachCell' in selection));
-            return !selection.empty && !isCellSelection;
+            
+            let isWidgetSelection = false;
+            if (selection && 'node' in selection) {
+              const node = (selection as any).node;
+              if (node && (node.type.name === 'focusWidget' || node.type.name === 'alarmWidget')) {
+                isWidgetSelection = true;
+              }
+            }
+            
+            return !selection.empty && !isCellSelection && !isWidgetSelection;
           }}
         >
           <FloatingToolbar 

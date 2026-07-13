@@ -5,14 +5,17 @@ interface SetupModalProps {
   onStart: (tag: string, description: string, targetTime: number) => void;
   onCancel: () => void;
   existingTags?: string[];
+  initialTag?: string;
+  initialDescription?: string;
+  initialTargetTime?: number;
 }
 
 const PRESET_TIMES = [15, 25, 30, 45, 60];
 
-const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags = [] }) => {
-  const [tag, setTag] = useState('');
-  const [description, setDescription] = useState('');
-  const [targetTime, setTargetTime] = useState(30);
+const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags = [], initialTag = '', initialDescription = '', initialTargetTime = 30 }) => {
+  const [tag, setTag] = useState(initialTag);
+  const [description, setDescription] = useState(initialDescription);
+  const [targetTime, setTargetTime] = useState(initialTargetTime);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

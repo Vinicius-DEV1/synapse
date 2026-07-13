@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -21,6 +21,8 @@ const SLASH_COMMANDS = [
   { id: 'question', title: 'Questão', subtitle: 'Crie uma questão de múltipla escolha com IA.', icon: HelpCircle },
   { id: 'ia', title: 'Pedir à IA', subtitle: 'Peça para a IA escrever qualquer coisa.', icon: Sparkles },
   { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus },
+  { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock },
+  { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock },
 ];
 
 interface SlashMenuProps {
@@ -35,10 +37,12 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredCommands = SLASH_COMMANDS.filter(cmd => 
-    cmd.title.toLowerCase().includes(query.toLowerCase()) || 
-    cmd.id.includes(query.toLowerCase())
-  );
+  const filteredCommands = SLASH_COMMANDS.filter(cmd => {
+    const q = query.toLowerCase();
+    const cmdId = cmd.id.toLowerCase();
+    const cmdTitle = cmd.title.toLowerCase();
+    return cmdId.includes(q) || cmdTitle.includes(q) || q.startsWith(cmdId) || q.startsWith(cmdTitle);
+  });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

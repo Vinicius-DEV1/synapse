@@ -57,21 +57,15 @@ export async function uploadNewLofi(file: File, duration?: number, onProgress?: 
   let localPath: string | undefined = undefined;
   let mainFileId = '';
   
-  let sourcePath = (file as any).path;
-  if (!sourcePath && window.api?.app?.getPathForFile) {
-    try {
-      sourcePath = window.api.app.getPathForFile(file);
-    } catch (e) {
-      console.warn("Could not get path using webUtils", e);
-    }
-  }
   const baseName = file.name.replace(/\.[^/.]+$/, "");
   
   if (onProgress) onProgress(10); 
 
-  if (sourcePath && window.api?.lofi?.copyLocal) {
+  const buffer = await file.arrayBuffer();
+
+  if (window.api?.lofi?.saveLocal) {
     try {
-      localPath = await window.api.lofi.copyLocal(sourcePath, file.name);
+      localPath = await window.api.lofi.saveLocal(file.name, buffer);
       isLocal = true;
     } catch (e) {
       console.warn("Não foi possível processar o lofi localmente:", e);
@@ -80,7 +74,6 @@ export async function uploadNewLofi(file: File, duration?: number, onProgress?: 
 
   if (onProgress) onProgress(40);
   
-  const buffer = await file.arrayBuffer();
   mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
     if (onProgress) onProgress(40 + (p * 0.6));
   });

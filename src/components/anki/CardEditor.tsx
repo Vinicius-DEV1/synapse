@@ -5,7 +5,8 @@ export interface CardDraft {
   front: string;
   back: string;
   extra_note?: string;
-  card_type: 'reading' | 'listening';
+  card_type: 'reading' | 'listening' | 'typing' | 'cloze';
+  validation_mode?: 'exact' | 'ai';
   source_module: string;
   source_id?: string;
   media_url?: string; // Could be a local path or external URL
@@ -29,6 +30,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
   const [loading, setLoading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | undefined>(draft.media_url);
   const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [cardType, setCardType] = useState<CardDraft['card_type']>(draft.card_type);
+  const [validationMode, setValidationMode] = useState<'exact' | 'ai'>(draft.validation_mode || 'exact');
 
   useEffect(() => {
     loadDecks();
@@ -94,7 +97,9 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
              front,
              back,
              extra_note: extraNote,
-             media_url: finalMediaUrl
+             media_url: finalMediaUrl,
+             validation_mode: validationMode,
+             card_type: cardType
           });
           if (!res.success) throw new Error(res.error);
         } else {
@@ -106,7 +111,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
              source_module: draft.source_module,
              source_id: draft.source_id,
              media_url: finalMediaUrl,
-             card_type: draft.card_type
+             card_type: cardType,
+             validation_mode: validationMode
           });
           if (!res.success) throw new Error(res.error);
         }
@@ -126,7 +132,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="bg-dark-card border border-dark-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-dark-card border border-dark-border w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         <header className="px-6 py-4 border-b border-dark-border flex justify-between items-center bg-dark-bg/50">
           <h2 className="text-lg font-bold flex items-center gap-2">
@@ -155,26 +161,62 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
             </div>
           )}
 
+          <div className="flex gap-4 mb-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-dark-subtext mb-1">Tipo de Cartão</label>
+              <select 
+                value={cardType}
+                onChange={(e) => setCardType(e.target.value as any)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500 appearance-none"
+              >
+                <option value="reading">Leitura (Padrão)</option>
+                <option value="listening">Escuta (Áudio)</option>
+                <option value="typing">Digitação Livre</option>
+                <option value="cloze">Completar Frase (Cloze)</option>
+              </select>
+            </div>
+          </div>
+          
+          {(cardType === 'typing' || cardType === 'cloze') && (
+            <div className="mb-4 bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-300">Validar com Inteligência Artificial</p>
+                <p className="text-xs text-indigo-400/70 mt-1">A IA do Gemini irá julgar se a resposta tem o sentido correto, tolerando pequenos erros.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={validationMode === 'ai'}
+                  onChange={(e) => setValidationMode(e.target.checked ? 'ai' : 'exact')}
+                />
+                <div className="w-11 h-6 bg-dark-bg border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+          )}
+
           <div>
              <div className="flex justify-between items-center mb-1">
                <label className="block text-sm font-medium text-dark-subtext">Frente</label>
-               {draft.card_type === 'listening' && <Volume2 className="w-4 h-4 text-indigo-400" />}
+               {cardType === 'listening' && <Volume2 className="w-4 h-4 text-indigo-400" />}
              </div>
              <textarea 
                value={front}
                onChange={(e) => setFront(e.target.value)}
                className="w-full h-24 bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500 text-lg leading-relaxed"
-               placeholder="Texto principal ou frase..."
+               placeholder={cardType === 'cloze' ? "Ex: I {{go}} to school" : "Texto principal ou frase..."}
              />
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-dark-subtext mb-1">Verso (Resposta)</label>
+             <label className="block text-sm font-medium text-dark-subtext mb-1">
+               {cardType === 'cloze' ? 'Verso (Opcional - Explicação)' : 'Verso (Resposta)'}
+             </label>
              <textarea 
                value={back}
                onChange={(e) => setBack(e.target.value)}
                className="w-full h-24 bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500"
-               placeholder="Tradução, significado, IPA..."
+               placeholder={cardType === 'cloze' ? "Explicação opcional para a resposta..." : "Tradução, significado, IPA..."}
              />
           </div>
 
@@ -229,7 +271,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
           </button>
           <button 
             onClick={handleSave}
-            disabled={loading || !selectedDeck || !front || !back}
+            disabled={loading || !selectedDeck || !front || (cardType !== 'cloze' && !back)}
             className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
           >
             {loading ? (

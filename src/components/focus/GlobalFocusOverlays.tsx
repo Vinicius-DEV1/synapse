@@ -2,6 +2,7 @@ import React from 'react';
 import { useFocusContext } from '../../store/FocusContext';
 import AlarmTriggerModal from './AlarmTriggerModal';
 import SuccessModal from './SuccessModal';
+import CancelModal from './CancelModal';
 import { GlobalLofiPlayer } from './GlobalLofiPlayer';
 
 export default function GlobalFocusOverlays() {
@@ -13,7 +14,8 @@ export default function GlobalFocusOverlays() {
     currentSession,
     setCurrentSession,
     handleSaveSuccess,
-    handleAddTimeFromSuccess
+    handleAddTimeFromSuccess,
+    handleSaveCancel
   } = useFocusContext();
 
   return (
@@ -30,10 +32,24 @@ export default function GlobalFocusOverlays() {
           session={currentSession as any} 
           onSave={handleSaveSuccess} 
           onAddMoreTime={handleAddTimeFromSuccess}
+          onCancel={() => {
+            if (currentSession && window.api) {
+              window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: currentSession.id, status: 'cancelled' } }));
+            }
+            setView('dashboard');
+            setCurrentSession(null);
+          }}
+        />
+      )}
+
+      {view === 'cancel' && (
+        <CancelModal 
+          onSave={handleSaveCancel} 
           onDiscard={() => {
             setView('dashboard');
             setCurrentSession(null);
           }}
+          onBack={() => setView('timer')} 
         />
       )}
       
