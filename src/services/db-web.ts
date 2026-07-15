@@ -23,13 +23,16 @@ interface CadernoDBSchema extends DBSchema {
   vault_groups: { key: string; value: any };
   vault_items: { key: string; value: any; indexes: { 'group_id': string } };
   vault_password_history: { key: string; value: any; indexes: { 'item_id': string } };
+  tutor_sessions: { key: string; value: any };
+  tutor_messages: { key: string; value: any; indexes: { 'session_id': string } };
+  tutor_memories: { key: string; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 7, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 8, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -107,6 +110,17 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('vault_password_history')) {
           const store = db.createObjectStore('vault_password_history', { keyPath: 'id' });
           store.createIndex('item_id', 'item_id');
+        }
+        // Tutor
+        if (!db.objectStoreNames.contains('tutor_sessions')) {
+          db.createObjectStore('tutor_sessions', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('tutor_messages')) {
+          const store = db.createObjectStore('tutor_messages', { keyPath: 'id' });
+          store.createIndex('session_id', 'session_id');
+        }
+        if (!db.objectStoreNames.contains('tutor_memories')) {
+          db.createObjectStore('tutor_memories', { keyPath: 'id' });
         }
       },
     });
