@@ -46,6 +46,7 @@ export function usePageActions() {
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
       await window.api.updatePage({ id, content, crdt_state: crdtState });
+      dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
       
       if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
       historyTimerRef.current[id] = setTimeout(() => {
