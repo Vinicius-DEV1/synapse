@@ -107,7 +107,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     const ydoc = new Y.Doc();
                     Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
                     Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
-                    rowToUpsert.crdt_state = getYDocStateAsBase64(ydoc);
+                    const mergedCrdtState = getYDocStateAsBase64(ydoc);
+                    rowToUpsert.crdt_state = mergedCrdtState;
                     
                     if (typeof window !== 'undefined') {
                       if ((window as any).api?.log) {
@@ -119,12 +120,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     }
                     
                     if (localTime > cloudTime) {
-                      rowToUpsert.updated_at = localRow.updated_at;
-                      if (localRow.content !== undefined) rowToUpsert.content = localRow.content;
-                      if (rowToUpsert.title !== undefined) rowToUpsert.title = localRow.title;
-                      if (rowToUpsert.icon !== undefined) rowToUpsert.icon = localRow.icon;
-                      if (rowToUpsert.parent_id !== undefined) rowToUpsert.parent_id = localRow.parent_id;
-                      if (rowToUpsert.sort_order !== undefined) rowToUpsert.sort_order = localRow.sort_order;
+                      Object.assign(rowToUpsert, localRow);
+                      rowToUpsert.crdt_state = mergedCrdtState;
                     }
                   } catch (crdtErr) {
                     console.error("Erro no merge CRDT Yjs:", crdtErr);
