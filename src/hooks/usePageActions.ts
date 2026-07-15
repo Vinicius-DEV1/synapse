@@ -65,7 +65,7 @@ export function usePageActions() {
          window.dispatchEvent(new CustomEvent('app-sync-trigger'));
       }
     }
-  }, []);
+  }, [dispatch]);
 
   return {
     handleCreatePage,
