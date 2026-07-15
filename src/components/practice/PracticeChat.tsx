@@ -3,16 +3,15 @@ import { Mic, MicOff, Loader2, Pause, Play, AlertCircle } from 'lucide-react';
 import type { TutorSession, TutorMessage } from '../../types';
 
 // O modelo que suporta bidiGenerateContent (Áudio Nativo bidirecional)
-const GEMINI_MODEL = 'models/gemini-2.0-flash-exp';
+const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
 // Chave de API de teste fornecida pelo usuário
 const API_KEY = 'REDACTED_GEMINI_API_KEY'; 
 const HOST = 'generativelanguage.googleapis.com';
 
-const SYSTEM_INSTRUCTION = `You are a close human friend of the user, not a robotic tutor.
-Your language should be highly welcoming, proactive, and sentimental.
-Start conversations with dynamic phrases, like: "[Name], how was your day today?".
-Proactively recall facts from the past.
-Correct their English naturally in the flow of the conversation, without breaking the mood or emotion of the interaction.`;
+const SYSTEM_INSTRUCTION = `Você é um amigo humano próximo do usuário.
+Fale SEMPRE e APENAS em Português do Brasil (pt-BR).
+Sua linguagem deve ser muito acolhedora e natural, com sotaque brasileiro.
+Inicie a conversa perguntando de forma casual se o usuário está conseguindo te ouvir perfeitamente.`;
 
 interface PracticeChatProps {
   session: TutorSession;
@@ -22,7 +21,11 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [isInCall, setIsInCall] = useState(false);
+  const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -33,6 +36,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   // Fila para reproduzir áudio da IA sequencialmente
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isPlayingRef = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Analysers e refs para animação da UI
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const playbackAnalyserRef = useRef<AnalyserNode | null>(null);
+  const visualizerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const requestRef = useRef<number>();
+  const [micLabel, setMicLabel] = useState<string>('');
 
   const loadMessages = useCallback(async () => {
     if (!window.api?.practice) return;
@@ -72,9 +83,56 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   };
 
+  // Animação reativa do visualizador baseada no áudio real
+  useEffect(() => {
+    const updateVisualizer = () => {
+      if (!isInCall) return;
+      
+      let dataArray: Uint8Array | null = null;
+      let active = false;
+      
+      if (isPlayingRef.current && playbackAnalyserRef.current) {
+        dataArray = new Uint8Array(playbackAnalyserRef.current.frequencyBinCount);
+        playbackAnalyserRef.current.getByteFrequencyData(dataArray);
+        active = true;
+      } else if (isRecordingRef.current && analyserRef.current) {
+        dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        active = true;
+      }
+      
+      for (let i = 0; i < 6; i++) {
+        const el = visualizerRefs.current[i];
+        if (el) {
+          if (active && dataArray) {
+            // Pegamos algumas frequências intermediárias
+            const binValue = dataArray[4 + i * 8] / 255.0 || 0;
+            // Interpolação suave do CSS
+            const targetHeight = 12 + (binValue * 48); // max 60px
+            el.style.height = `${targetHeight}px`;
+          } else {
+            // Em repouso
+            const t = Date.now() / 1000;
+            const targetHeight = 12 + Math.sin(t * 2 + i) * 4;
+            el.style.height = `${targetHeight}px`;
+          }
+        }
+      }
+      
+      requestRef.current = requestAnimationFrame(updateVisualizer);
+    };
+    
+    if (isInCall) {
+      requestRef.current = requestAnimationFrame(updateVisualizer);
+    }
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [isInCall]);
+
   const connectWebSocket = useCallback(async () => {
     try {
-      const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
+      const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
       const ws = new WebSocket(url);
       
       ws.onopen = async () => {
@@ -231,8 +289,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   };
 
   const playNextAudio = async () => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
+      if (audioQueueRef.current.length === 0) setIsPlaying(false);
+      return;
+    }
     isPlayingRef.current = true;
+    setIsPlaying(true);
     
     if (!playbackContextRef.current) {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
@@ -245,9 +307,15 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     const buffer = ctx.createBuffer(1, pcmData.length, 24000);
     buffer.getChannelData(0).set(pcmData);
     
+    if (!playbackAnalyserRef.current) {
+      playbackAnalyserRef.current = ctx.createAnalyser();
+      playbackAnalyserRef.current.fftSize = 256;
+      playbackAnalyserRef.current.connect(ctx.destination);
+    }
+    
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    source.connect(playbackAnalyserRef.current);
     source.onended = () => {
       isPlayingRef.current = false;
       playNextAudio();
@@ -260,48 +328,59 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
       mediaStreamRef.current = stream;
       
+      const track = stream.getAudioTracks()[0];
+      if (track) setMicLabel(track.label);
+      
       const audioCtx = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioCtx;
       
+      await audioCtx.audioWorklet.addModule('/audio-worklet.js');
+      const workletNode = new AudioWorkletNode(audioCtx, 'pcm-extractor');
       const source = audioCtx.createMediaStreamSource(stream);
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       
-      processor.onaudioprocess = (e) => {
-        if (!isRecording) return;
-        const inputData = e.inputBuffer.getChannelData(0);
-        // Convert Float32 to Int16
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      
+      let pcmBuffer: number[] = []; // Not needed anymore since worklet buffers
+      workletNode.port.onmessage = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        
+        const inputData = e.data; // Float32Array of 4096
         const pcm16 = new Int16Array(inputData.length);
+        const recording = isRecordingRef.current;
+        
         for (let i = 0; i < inputData.length; i++) {
-          let s = Math.max(-1, Math.min(1, inputData[i]));
-          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          if (recording) {
+            let s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          } else {
+            pcm16[i] = 0; // Send digital silence when P is not held
+          }
         }
         
-        // Base64 encode
         const buffer = new Uint8Array(pcm16.buffer);
-        let binary = '';
-        for (let i = 0; i < buffer.byteLength; i++) {
-            binary += String.fromCharCode(buffer[i]);
-        }
+        const binary = String.fromCharCode.apply(null, Array.from(buffer));
         const b64 = window.btoa(binary);
         
-        // Send to Gemini
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            realtimeInput: {
-              mediaChunks: [{
-                mimeType: "audio/pcm;rate=16000",
-                data: b64
-              }]
-            }
-          }));
-        }
+        wsRef.current.send(JSON.stringify({
+          realtimeInput: {
+            mediaChunks: [{
+              mimeType: "audio/pcm;rate=16000",
+              data: b64
+            }]
+          }
+        }));
       };
       
-      source.connect(processor);
-      processor.connect(audioCtx.destination);
-      processorRef.current = processor;
+      source.connect(workletNode);
+      workletNode.connect(audioCtx.destination);
+      processorRef.current = workletNode as any;
       
-      setIsRecording(true);
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      console.log('🎤 Captura de áudio inicializada em modo mudo (Aguardando tecla P)');
     } catch (err: any) {
       console.error('Mic error:', err);
       setError('Erro ao acessar microfone.');
@@ -309,31 +388,43 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   };
 
   const stopAudioCapture = () => {
+    isRecordingRef.current = false;
     setIsRecording(false);
+    console.log('🛑 Captura de áudio encerrada');
     
-    // We send a clientContent turnComplete true when user finishes speaking to force a response
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        clientContent: {
-          turnComplete: true
-        }
-      }));
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      mediaStreamRef.current = null;
     }
-    
-    // As per user request, we need to extract transcription.
-    // In a real VAD/Live scenario, Gemini returns the transcription of user audio in serverContent.
-    // So we don't save our own text here, we wait for Gemini to echo our transcript.
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
   };
 
+  // Start capturing automatically when call starts, but it starts muted
+  useEffect(() => {
+    if (isConnected && isInCall && !mediaStreamRef.current) {
+      startAudioCapture();
+    }
+  }, [isConnected, isInCall]);
+
+  // Handle Push-To-Talk
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'KeyP' && !e.repeat && !isRecording && isConnected) {
-        startAudioCapture();
+      if (e.code === 'KeyP' && !e.repeat && isConnected && isInCall) {
+        isRecordingRef.current = true;
+        setIsRecording(true);
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'KeyP' && isRecording) {
-        stopAudioCapture();
+      if (e.code === 'KeyP') {
+        isRecordingRef.current = false;
+        setIsRecording(false);
       }
     };
 
@@ -343,10 +434,34 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isConnected, isRecording]);
+  }, [isConnected, isInCall]);
+
+  const startCall = () => {
+    setIsInCall(true);
+    setCallStartTime(Date.now());
+    connectWebSocket();
+  };
+
+  const endCall = () => {
+    setIsInCall(false);
+    stopAudioCapture();
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setIsConnected(false);
+    
+    if (callStartTime) {
+      const durationMs = Date.now() - callStartTime;
+      const minutes = Math.floor(durationMs / 60000);
+      const seconds = Math.floor((durationMs % 60000) / 1000);
+      const durationStr = `${minutes > 0 ? `${minutes}m ` : ''}${seconds}s`;
+      saveMessage('user', `[SISTEMA] 📞 Ligação encerrada (${durationStr})`);
+    }
+    setCallStartTime(null);
+  };
 
   useEffect(() => {
-    connectWebSocket();
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(t => t.stop());
@@ -362,9 +477,9 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">{session.title}</h2>
           <div className="flex items-center gap-2 mt-1">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${isInCall ? (isConnected ? 'bg-emerald-400' : 'bg-yellow-400') : 'bg-dark-subtext'}`}></span>
             <span className="text-xs text-dark-subtext font-medium uppercase tracking-wider">
-              {isConnected ? 'Conectado à IA' : 'Desconectado'}
+              {isInCall ? (isConnected ? 'Em chamada' : 'Conectando...') : 'Offline'}
             </span>
           </div>
         </div>
@@ -387,16 +502,19 @@ export default function PracticeChat({ session }: PracticeChatProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-        {!isConnected && !error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-dark-bg/50 backdrop-blur-sm z-20">
-            <div className="flex flex-col items-center text-dark-subtext gap-3">
-              <Loader2 size={24} className="animate-spin text-brand-500" />
-              <span className="text-sm font-medium tracking-wide">Conectando ao Gemini...</span>
-            </div>
-          </div>
-        )}
-
         {messages.map((msg, i) => {
+          const isSystem = msg.text_content.startsWith('[SISTEMA]');
+          
+          if (isSystem) {
+            return (
+              <div key={msg.id || i} className="flex justify-center my-2">
+                <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs text-dark-subtext font-medium tracking-wide">
+                  {msg.text_content.replace('[SISTEMA] ', '')}
+                </div>
+              </div>
+            );
+          }
+          
           const isModel = msg.role === 'model';
           return (
             <div key={msg.id || i} className={`flex flex-col ${isModel ? 'items-start' : 'items-end'}`}>
@@ -415,10 +533,118 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         })}
       </div>
 
-      {/* Footer Instructions */}
-      <div className="p-4 flex flex-col items-center justify-center text-xs text-dark-subtext border-t border-white/5 bg-dark-card/30">
-        Mantenha a tecla <kbd className="px-2 py-1 mx-1 bg-white/10 rounded font-mono border border-white/5 text-dark-text">P</kbd> pressionada para falar. Solte para enviar.
-      </div>
+      {/* Start Call Footer when not in call */}
+      {!isInCall && (
+        <div className="p-4 flex justify-center border-t border-white/5 bg-dark-card/30">
+          <button 
+            onClick={startCall} 
+            className="px-8 py-3 bg-brand-600 hover:bg-brand-500 rounded-full text-white font-medium shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2 active:scale-95"
+          >
+            <Play size={18} fill="currentColor" /> Iniciar Ligação
+          </button>
+        </div>
+      )}
+
+      {/* Modal/Overlay Call UI */}
+      {isInCall && (
+        <div className="absolute inset-0 z-50 bg-dark-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="absolute top-8 left-8">
+            <h2 className="text-xl font-bold tracking-tight text-white/90">{session.title}</h2>
+            <div className="text-brand-400 text-sm mt-1 flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
+              </span>
+              Chamada Ativa
+            </div>
+          </div>
+          
+          {/* Visualizer Orb */}
+          <div className="relative flex items-center justify-center w-64 h-64 mb-16">
+            {/* Glow rings */}
+            <div className={`absolute inset-0 rounded-full blur-3xl transition-all duration-700 ${isRecording ? 'bg-brand-500/30 scale-150 opacity-90' : isPlaying ? 'bg-sky-500/30 scale-125 opacity-80' : isConnected ? 'bg-brand-500/20 scale-110 opacity-40 animate-pulse' : 'bg-dark-card/50 scale-75 opacity-0'}`}></div>
+            
+            {/* Main Orb */}
+            <div className={`relative z-10 w-32 h-32 rounded-full border border-white/10 flex items-center justify-center transition-all duration-500 overflow-hidden ${
+              isRecording ? 'bg-brand-500 shadow-[0_0_50px_rgba(168,85,247,0.6)] scale-110' : 
+              isPlaying ? 'bg-sky-500 shadow-[0_0_50px_rgba(14,165,233,0.6)] scale-105' :
+              isConnected ? 'bg-dark-card shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 
+              'bg-dark-card/50'
+            }`}>
+              {isRecording ? (
+                <div className="flex gap-1 h-12 items-center">
+                  {[0, 1, 2, 3, 4, 5].map(i => (
+                    <div 
+                      key={i}
+                      ref={el => visualizerRefs.current[i] = el}
+                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
+                      style={{ height: '12px' }}
+                    ></div>
+                  ))}
+                </div>
+              ) : isPlaying ? (
+                <div className="flex gap-1 h-12 items-center">
+                  {[0, 1, 2, 3, 4, 5].map(i => (
+                    <div 
+                      key={i}
+                      ref={el => visualizerRefs.current[i] = el}
+                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
+                      style={{ height: '12px' }}
+                    ></div>
+                  ))}
+                </div>
+              ) : !isConnected ? (
+                <Loader2 size={40} className="text-brand-500 animate-spin" />
+              ) : (
+                <div className="flex gap-1 h-12 items-center">
+                  {[0, 1, 2, 3, 4, 5].map(i => (
+                    <div 
+                      key={i}
+                      ref={el => visualizerRefs.current[i] = el}
+                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
+                      style={{ height: '12px' }}
+                    ></div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="text-center mb-16 h-20">
+            <h3 className="text-2xl font-semibold text-white tracking-tight mb-3">
+              {!isConnected ? 'Conectando ao servidor...' : isRecording ? 'Ouvindo você...' : isPlaying ? 'IA Falando...' : 'Fale comigo'}
+            </h3>
+            <p className="text-sm text-dark-subtext max-w-[280px] mx-auto">
+              {isConnected ? (
+                <span className="flex flex-col items-center gap-1">
+                  <span className="flex items-center gap-2">Mantenha pressionado <kbd className="px-2 py-1 bg-white/10 rounded font-mono border border-white/10 text-white shadow-sm">P</kbd> para falar</span>
+                  {micLabel && <span className="text-xs text-white/40 truncate w-full" title={micLabel}>{micLabel}</span>}
+                </span>
+              ) : (
+                'Estabelecendo comunicação segura de baixa latência.'
+              )}
+            </p>
+          </div>
+          
+          {/* End Call Button */}
+          <button 
+            onClick={endCall} 
+            className="w-16 h-16 rounded-full bg-red-500/20 hover:bg-red-500 hover:text-white text-red-500 border border-red-500/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/10 group"
+            title="Encerrar Ligação"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-[135deg] group-hover:rotate-0 transition-transform duration-300">
+              <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-7-7 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
+            </svg>
+          </button>
+          
+          {error && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 text-sm shadow-xl">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+};
