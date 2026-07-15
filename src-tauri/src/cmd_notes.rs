@@ -136,6 +136,8 @@ pub struct UpdatePagePayload {
     pub content: Option<String>,
     pub crdt_state: Option<String>,
     pub parent_id: Option<serde_json::Value>,
+    pub is_pinned: Option<i32>,
+    pub pinned_order: Option<i32>,
 }
 
 #[tauri::command]
@@ -191,6 +193,14 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
                 params_vec.push(s.to_string().into());
             }
         }
+    }
+    if let Some(pinned) = page.is_pinned {
+        query.push_str(", is_pinned = ?");
+        params_vec.push(pinned.into());
+    }
+    if let Some(order) = page.pinned_order {
+        query.push_str(", pinned_order = ?");
+        params_vec.push(order.into());
     }
     
     query.push_str(" WHERE id = ?");
