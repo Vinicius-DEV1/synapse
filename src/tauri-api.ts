@@ -1,8 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+import { copyFile, readFile, mkdir } from '@tauri-apps/plugin-fs';
+import { BaseDirectory } from '@tauri-apps/api/path';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
   const triggerSync = () => syncCallbacks.forEach(cb => cb());
+
+  window.addEventListener('app-sync-trigger', triggerSync);
 
   return {
     onSyncTrigger: (callback: () => void) => {
@@ -29,8 +34,33 @@ export const createTauriApi = async () => {
       setPreferences: async () => {}
     },
 
-    // Mock das outras chamadas até que o Rust as implemente
-    config: { get: async () => null, set: async () => ({ success: true }) },
+    // Configurações e Chaves usando a tabela config do DB
+    config: { 
+      get: async (key: string) => {
+        try {
+          const rows = await invoke<any[]>('sync_get_table', { tableName: 'config' });
+          const row = rows.find(r => r.id === key);
+          if (row && row.data) {
+            return JSON.parse(row.data);
+          }
+        } catch (e) {
+          console.error("Config get error:", e);
+        }
+        return null;
+      }, 
+      set: async (key: string, value: any) => {
+        try {
+          await invoke('sync_upsert_row', { 
+            tableName: 'config', 
+            row: { id: key, data: JSON.stringify(value), updated_at: new Date().toISOString() } 
+          });
+          return { success: true };
+        } catch (e) {
+          console.error("Config set error:", e);
+          return { success: false };
+        }
+      } 
+    },
     // --- PAGES ---
     getAllPages: async () => await invoke('notes_get_all_pages'),
     getPageContent: async (id: string) => await invoke('notes_get_page_content', { id }),
@@ -60,6 +90,49 @@ export const createTauriApi = async () => {
     
     // --- LIBRARY ---
     library: {
+      importBook: async () => {
+        try {
+          const selected = await open({
+            multiple: false,
+            filters: [{ name: 'Books', extensions: ['pdf', 'epub'] }]
+          });
+          if (selected && typeof selected === 'string') {
+            const bookId = crypto.randomUUID();
+            const ext = selected.split('.').pop() || 'pdf';
+            const localPath = `library/${bookId}.${ext}.enc`; // Always save as .enc
+            
+            await invoke('library_import_and_encrypt_book', {
+                sourcePath: selected,
+                destPath: localPath
+            });
+            
+            const title = selected.split('\\').pop()?.replace(/\.(pdf|epub)$/i, '') || 'Livro';
+            const book = {
+              id: bookId, title, author: 'Desconhecido', file_path: localPath, cover_image: '',
+              total_pages: 0, last_read_page: '1', reading_status: 'not_started',
+              created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+            };
+            await invoke('library_add_book', { book });
+            return book;
+          }
+        } catch(e) { console.error("Error importing book", e); }
+        return null;
+      },
+      getBookFile: async (id: string) => {
+        try {
+          const books = await invoke<any[]>('library_get_books');
+          const book = books.find((b: any) => b.id === id);
+          if (!book || !book.file_path) return null;
+          
+          const buffer = await readFile(book.file_path, { baseDir: BaseDirectory.AppData });
+          let binary = '';
+          const bytes = new Uint8Array(buffer);
+          for (let i = 0; i < bytes.byteLength; i++) {
+              binary += String.fromCharCode(bytes[i]);
+          }
+          return window.btoa(binary);
+        } catch(e) { console.error("Error getting book file", e); return null; }
+      },
       getBooks: async () => await invoke('library_get_books'),
       addBook: async (b: any) => await invoke('library_add_book', { book: b }),
       updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
@@ -69,7 +142,23 @@ export const createTauriApi = async () => {
       updateCollection: async (c: any) => await invoke('library_update_collection', { collection: c }),
       deleteCollection: async (id: string) => await invoke('library_delete_collection', { id }),
       addBookToCollection: async (bookId: string, collectionId: string) => await invoke('library_add_book_to_collection', { bookId, collectionId }),
-      removeBookFromCollection: async (bookId: string, collectionId: string) => await invoke('library_remove_book_from_collection', { bookId, collectionId })
+      removeBookFromCollection: async (bookId: string, collectionId: string) => await invoke('library_remove_book_from_collection', { bookId, collectionId }),
+      getBookCollections: async (bookId: string) => await invoke('library_get_book_collections', { bookId }),
+      setBookCollections: async (bookId: string, collectionIds: string[]) => await invoke('library_set_book_collections', { bookId, collectionIds }),
+      createCollection: async (c: any) => await invoke('library_create_collection', { collection: c }),
+      getHighlights: async (bookId: string) => await invoke('library_get_highlights', { bookId }),
+      createHighlight: async (h: any) => await invoke('library_create_highlight', { highlight: h }),
+      updateHighlight: async (h: any) => await invoke('library_update_highlight', { highlight: h }),
+      deleteHighlight: async (id: string) => await invoke('library_delete_highlight', { id }),
+      getBookmarks: async (bookId: string) => await invoke('library_get_bookmarks', { bookId }),
+      createBookmark: async (b: any) => await invoke('library_create_bookmark', { bookmark: b }),
+      updateBookmark: async (b: any) => await invoke('library_update_bookmark', { bookmark: b }),
+      deleteBookmark: async (id: string) => await invoke('library_delete_bookmark', { id }),
+      getOcrCache: async (bookId: string, pageNumber: number) => await invoke('library_get_ocr_cache', { bookId, pageNumber }),
+      saveOcrCache: async (cache: any) => await invoke('library_save_ocr_cache', { cache }),
+      startReadingSession: async (data: any) => await invoke('library_start_reading_session', { session: data }),
+      endReadingSession: async (data: any) => await invoke('library_end_reading_session', { session: data }),
+      getReadingStats: async () => await invoke('library_get_reading_stats')
     },
     
     // --- CALENDAR ---
@@ -126,6 +215,13 @@ export const createTauriApi = async () => {
       upsertRow: async (tableName: string, row: any) => await invoke('sync_upsert_row', { tableName, row })
     },
     
+    // --- DRIVE ---
+    drive: {
+      openExternalUrl: async (url: string) => await invoke('drive_open_url', { url }),
+      getCredentials: async () => await invoke('drive_get_credentials'),
+      saveCredentials: async (data: any) => await invoke('drive_save_credentials', { data })
+    },
+    
     // --- MULTIMEDIA (Native Rust Integrations) ---
     video: {
       getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
@@ -134,9 +230,10 @@ export const createTauriApi = async () => {
       extractSubtitles: async (localPath: string, trackIndex: string) => await invoke('video_extract_subtitles', { localPath, trackIndex }),
       extractAudio: async (localPath: string, trackIndex: string) => await invoke('video_extract_audio', { localPath, trackIndex }),
       remuxDefaultTrack: async (sourcePath: string, filename: string, trackIndex: string) => await invoke('video_remux_default_track', { sourcePath, filename, trackIndex }),
-      // Funções mockadas que dependem de Dialogos de sistema (podem ser implementadas depois se necessário)
-      saveLocal: async () => {},
-      copyLocal: async () => {},
+      convertToMp4: async (sourcePath: string, filename: string) => await invoke('video_convert_mp4', { sourcePath, filename }),
+      getStreamPort: async () => await invoke('video_get_stream_port'),
+      saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
+      copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
       openFileDialog: async () => {},
       openFolderDialog: async () => {}
     },
@@ -157,8 +254,22 @@ export const createTauriApi = async () => {
     },
     
     audio: {
-      generateTTS: async (text: string, lang?: string) => await invoke('audio_generate_tts', { text, lang }),
-      extractClip: async (videoPath: string, startTimeMs: number, endTimeMs: number) => await invoke('audio_extract_clip', { videoPath, startTimeMs, endTimeMs })
+      generateTTS: async (text: string, lang?: string) => {
+        try {
+          const path = await invoke('audio_generate_tts', { text, lang });
+          return { success: true, filePath: path };
+        } catch (e) {
+          return { success: false, error: e };
+        }
+      },
+      extractClip: async (videoPath: string, startTimeMs: number, endTimeMs: number) => {
+        try {
+          const path = await invoke('audio_extract_clip', { videoPath, startTimeMs, endTimeMs });
+          return { success: true, filePath: path };
+        } catch (e) {
+          return { success: false, error: e };
+        }
+      }
     },
     
     backup: {
@@ -166,5 +277,48 @@ export const createTauriApi = async () => {
       selectFolder: async () => null,
       startBackup: async (options: any) => ({ success: false, message: "Use o Google Drive Sync na aba Cloud" })
     },
+    
+    // --- FILES ---
+    files: {
+      getAll: async () => await invoke('files_get_all'),
+      getById: async (id: string) => await invoke('files_get_by_id', { id }),
+      create: async (file: Omit<FileItem, 'id' | 'created_at' | 'updated_at'>) => await invoke('files_create', { file }),
+      update: async (id: string, file: Partial<FileItem>) => await invoke('files_update', { id, file }),
+      delete: async (id: string) => await invoke('files_delete', { id }),
+      move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
+      saveLocal: async (filename: string, data: number[]) => await invoke('files_save_local', { filename, data }),
+      getLocal: async (id: string) => `http://encrypted.localhost/files/${encodeURIComponent(id)}`,
+      
+      folders: {
+        getAll: async () => await invoke('file_folders_get_all'),
+        create: async (folder: any) => await invoke('file_folders_create', { folder }),
+        update: async (folder: any) => await invoke('file_folders_update', { folder }),
+        delete: async (id: string) => await invoke('file_folders_delete', { id })
+      },
+      
+      links: {
+        getByPage: async (pageId: string) => await invoke('file_links_get_by_page', { pageId }),
+        getByFile: async (fileId: string) => await invoke('file_links_get_by_file', { fileId }),
+        create: async (link: any) => await invoke('file_links_create', { link }),
+        delete: async (id: string) => await invoke('file_links_delete', { id })
+      }
+    },
+    
+    // --- VAULT ---
+    vault: {
+      getGroups: async () => await invoke('vault_get_groups'),
+      upsertGroup: async (group: any) => await invoke('vault_upsert_group', { group }),
+      deleteGroup: async (id: string) => await invoke('vault_delete_group', { id }),
+      reorderGroups: async (updates: any) => await invoke('vault_reorder_groups', { updates }),
+      getItems: async (groupId?: string) => await invoke('vault_get_items', { groupId }),
+      getItem: async (id: string) => await invoke('vault_get_item', { id }),
+      upsertItem: async (item: any) => await invoke('vault_upsert_item', { item }),
+      deleteItem: async (id: string) => await invoke('vault_delete_item', { id }),
+      searchItems: async (query: string) => await invoke('vault_search_items', { query }),
+      getPasswordHistory: async (itemId: string) => await invoke('vault_get_password_history', { itemId }),
+      generatePassword: async (opts: any) => await invoke('vault_generate_password', { options: opts }),
+      checkBreach: async (password: string) => await invoke('vault_check_breach', { password }),
+      checkStrength: async (password: string) => await invoke('vault_check_strength', { password }),
+    }
   };
 };

@@ -15,6 +15,7 @@ import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
 import { TableCell } from './editor-extensions/TableCell';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
+
 import { Collaboration } from '@tiptap/extension-collaboration';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc, getYDocStateAsBase64 } from '../utils/yjs-utils';
@@ -28,6 +29,7 @@ import ImageViewerModal from './ImageViewerModal';
 import { GroupBlock } from './editor-extensions/GroupBlock';
 import { QuestionBlock } from './editor-extensions/QuestionBlock';
 import { ToggleBlock } from './editor-extensions/ToggleBlock';
+import { ColorBlockquote } from './editor-extensions/ColorBlockquote';
 import { BlockquoteToggle } from './editor-extensions/BlockquoteToggle';
 import { LinkPreviewBlock } from './editor-extensions/LinkPreviewBlock';
 import { ResizableImage } from './editor-extensions/ResizableImage';
@@ -36,10 +38,14 @@ import { PageReference } from './editor-extensions/PageReference';
 import CodeBlockComponent from './editor-extensions/CodeBlockComponent';
 import { FocusWidgetBlock } from './editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from './editor-extensions/AlarmWidgetBlock';
+import { FileWidgetBlock } from './editor-extensions/FileWidgetBlock';
 import SetupModal from './focus/SetupModal';
 import AlarmSetupModal from './focus/AlarmSetupModal';
 import { useFocusContext } from '../store/FocusContext';
 import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
+import FileUploadModal from './files/FileUploadModal';
+import FileSelectModal from './files/FileSelectModal';
+import FileWidgetNodeView from './editor-extensions/FileWidgetNodeView';
 
 interface EditorProps {
   pageId: string | null;
@@ -63,7 +69,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   // States para Foco e Alarme inline
   const [focusModal, setFocusModal] = useState<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>(null);
   const [alarmModal, setAlarmModal] = useState<{ isOpen: boolean, initialTimeStr?: string } | null>(null);
+  const [fileUploadModal, setFileUploadModal] = useState<{ isOpen: boolean, isLink: boolean } | null>(null);
+  const [fileSelectModal, setFileSelectModal] = useState(false);
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
+
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<boolean>(false);
+  const onSaveRef = useRef(onSave);
+  const editorInstanceRef = useRef<any>(null);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   useEffect(() => {
     const handleSettingsChange = () => setSettings(getSettings());
@@ -105,6 +122,14 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
 
   useEffect(() => {
     return () => {
+      // Flush any pending save synchronously before destroying the document
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (pendingSaveRef.current && ydocRef.current && editorInstanceRef.current) {
+        const html = editorInstanceRef.current.getHTML();
+        const crdtState = getYDocStateAsBase64(ydocRef.current);
+        onSaveRef.current(html, crdtState, []);
+      }
+
       // Destruição do documento ativo ao desmontar a view do editor
       if (ydocRef.current) {
          ydocRef.current.destroy();
@@ -120,7 +145,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       StarterKit.configure({
         history: false, 
         codeBlock: false,
+        blockquote: false,
       }),
+      ColorBlockquote,
       CodeBlockLowlight.extend({
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
@@ -143,7 +170,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       EncryptedImage,
       PageReference,
       FocusWidgetBlock,
-      AlarmWidgetBlock
+      AlarmWidgetBlock,
+      FileWidgetBlock
     ],
     content: initialContent,
     editorProps: {
@@ -296,11 +324,21 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         }
       });
 
-      const html = editor.getHTML();
-      const crdtState = getYDocStateAsBase64(ydocRef.current);
-      onSave(html, crdtState, []); // Embeds saves serão tratados depois se necessário
+      pendingSaveRef.current = true;
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        if (!ydocRef.current || !editorInstanceRef.current) return;
+        const html = editorInstanceRef.current.getHTML();
+        const crdtState = getYDocStateAsBase64(ydocRef.current);
+        onSaveRef.current(html, crdtState, []); // Embeds saves serão tratados depois se necessário
+        pendingSaveRef.current = false;
+      }, 500); // Debounce de 500ms
     },
   }, [pageId]);
+
+  useEffect(() => {
+    editorInstanceRef.current = editor;
+  }, [editor]);
 
   useEffect(() => {
     if (editor && needsLegacyHydration && editor.isEmpty) {
@@ -309,6 +347,19 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     // Only run once when editor first mounts for this page
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
+
+  useEffect(() => {
+    if (editor && editor.view) {
+      editor.setOptions({
+        editorProps: {
+          attributes: {
+            class: `editor-content min-h-[300px] leading-relaxed text-dark-text/90 focus:outline-none ${settings.fontSize} ai-highlight-${settings.aiChatHighlight || 'glow'}`,
+            spellcheck: settings.spellcheck ? 'true' : 'false',
+          }
+        }
+      });
+    }
+  }, [editor, settings.spellcheck, settings.fontSize, settings.aiChatHighlight]);
 
   const executeSlashCommand = useCallback((commandId: string) => {
     if (!editor || !slashMenu) return;
@@ -386,6 +437,14 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         setAlarmModal({ isOpen: true, initialTimeStr });
         break;
       }
+      case 'documento': {
+        setFileUploadModal({ isOpen: true, isLink: false });
+        break;
+      }
+      case 'documento-link': {
+        setFileSelectModal(true);
+        break;
+      }
       default: break;
     }
   }, [editor, slashMenu]);
@@ -436,6 +495,73 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         document.body
       )}
 
+      {fileUploadModal?.isOpen && createPortal(
+        <FileUploadModal
+          currentFolderId={null}
+          onClose={() => setFileUploadModal(null)}
+          onUploadComplete={async (file) => {
+            setFileUploadModal(null);
+            if (editor) {
+              editor.commands.insertFileWidget({ 
+                fileId: file.id, 
+                name: file.name, 
+                fileType: file.file_type, 
+                isLink: fileUploadModal.isLink 
+              });
+              
+              // Register the link in the backend
+              if (window.api && window.api.files && window.api.files.links && pageId) {
+                try {
+                  await window.api.files.links.create({
+                    id: crypto.randomUUID(),
+                    file_id: file.id,
+                    page_id: pageId,
+                    link_type: fileUploadModal.isLink ? 'link' : 'embed',
+                    widget_id: null
+                  });
+                } catch (e) {
+                  console.error("Failed to link file to page", e);
+                }
+              }
+            }
+          }}
+        />,
+        document.body
+      )}
+
+      {fileSelectModal && createPortal(
+        <FileSelectModal
+          onClose={() => setFileSelectModal(false)}
+          onSelect={async (item) => {
+            setFileSelectModal(false);
+            if (editor) {
+              editor.commands.insertFileWidget({ 
+                fileId: item.id, 
+                name: item.name, 
+                fileType: item.type, 
+                isLink: true 
+              });
+              
+              // Register the link in the backend
+              if (window.api && window.api.files && window.api.files.links && pageId) {
+                try {
+                  await window.api.files.links.create({
+                    id: crypto.randomUUID(),
+                    file_id: item.id,
+                    page_id: pageId,
+                    link_type: 'link',
+                    widget_id: null
+                  });
+                } catch (e) {
+                  console.error("Failed to link item to page", e);
+                }
+              }
+            }
+          }}
+        />,
+        document.body
+      )}
+
       {viewerState.isOpen && (
         <ImageViewerModal
           isOpen={viewerState.isOpen}
@@ -461,7 +587,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             let isWidgetSelection = false;
             if (selection && 'node' in selection) {
               const node = (selection as any).node;
-              if (node && (node.type.name === 'focusWidget' || node.type.name === 'alarmWidget')) {
+              if (node && (node.type.name === 'focusWidget' || node.type.name === 'alarmWidget' || node.type.name === 'fileWidget')) {
                 isWidgetSelection = true;
               }
             }
