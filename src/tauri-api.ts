@@ -319,6 +319,17 @@ export const createTauriApi = async () => {
       generatePassword: async (opts: any) => await invoke('vault_generate_password', { options: opts }),
       checkBreach: async (password: string) => await invoke('vault_check_breach', { password }),
       checkStrength: async (password: string) => await invoke('vault_check_strength', { password }),
+    },
+    
+    // --- PRACTICE ---
+    practice: {
+      getSessions: async () => await invoke('practice_get_sessions'),
+      createSession: async (session: any) => await invoke('practice_create_session', { session }),
+      updateSession: async (session: any) => await invoke('practice_update_session', { session }),
+      getMessages: async (sessionId: string) => await invoke('practice_get_messages', { sessionId }),
+      createMessage: async (msg: any) => await invoke('practice_create_message', { message: msg }),
+      getMemories: async () => await invoke('practice_get_memories'),
+      createMemory: async (memory: any) => await invoke('practice_create_memory', { memory }),
     }
   };
 };

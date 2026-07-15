@@ -141,6 +141,20 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 }
 
                 try {
+                  // Proteção contra race condition: re-ler o timestamp local ANTES do upsert
+                  // para evitar sobrescrever dados que foram salvos enquanto o sync rodava
+                  try {
+                    const freshRows = await window.api.sync.getTable(table);
+                    const freshRow = freshRows.find((r: any) => r.id === docSnap.id);
+                    if (freshRow) {
+                      const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
+                      if (freshTime > cloudTime) {
+                        skippedDocsCount++;
+                        continue;
+                      }
+                    }
+                  } catch (e) { /* proceed if re-read fails */ }
+
                   pulledDocsCount++;
                   try {
                     await window.api.sync.upsertRow(table, rowToUpsert);

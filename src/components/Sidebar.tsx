@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon, FolderOpen, Shield } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon, FolderOpen, Shield, Mic } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -249,6 +249,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Shield size={18} />
           </button>
           <button
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'practice' })}
+            className={`p-2 rounded-lg transition-all active:scale-95 ${
+              activeModule === 'practice' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+            }`}
+            title="Prática"
+          >
+            <Mic size={18} />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
             title="Configurações"
@@ -293,11 +302,13 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <FolderOpen size={20} className="text-brand-400" />
           ) : activeModule === 'vault' ? (
             <Shield size={20} className="text-brand-400" />
+          ) : activeModule === 'practice' ? (
+            <Mic size={20} className="text-brand-400" />
           ) : (
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : activeModule === 'calendar' ? 'Agenda' : activeModule === 'files' ? 'Arquivos' : activeModule === 'vault' ? 'Cofre' : 'Finanças'}
+            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : activeModule === 'calendar' ? 'Agenda' : activeModule === 'files' ? 'Arquivos' : activeModule === 'vault' ? 'Cofre' : activeModule === 'practice' ? 'Prática' : 'Finanças'}
           </span>
         </div>
         <button
@@ -443,6 +454,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Cofre de Senhas</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Proteja suas credenciais e senhas com segurança máxima.</div>
           </div>
+        ) : activeModule === 'practice' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Prática de Inglês</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Converse fluentemente com o seu parceiro IA e aperfeiçoe seu idioma.</div>
+          </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
@@ -586,6 +602,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             >
               <Shield size={16} />
               <span>Cofre</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'practice' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'practice'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Mic size={16} />
+              <span>Prática</span>
             </button>
             <button
               onClick={() => setShowSettings(true)}

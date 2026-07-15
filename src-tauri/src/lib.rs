@@ -19,6 +19,7 @@ mod cmd_audio;
 mod cmd_drive;
 mod cmd_files;
 mod cmd_vault;
+mod cmd_practice;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -207,7 +208,14 @@ pub fn run() {
         cmd_vault::vault_generate_password,
         cmd_vault::vault_check_breach,
         cmd_vault::vault_check_strength,
-        cmd_vault::vault_reorder_groups
+        cmd_vault::vault_reorder_groups,
+        cmd_practice::practice_get_sessions,
+        cmd_practice::practice_create_session,
+        cmd_practice::practice_update_session,
+        cmd_practice::practice_get_messages,
+        cmd_practice::practice_create_message,
+        cmd_practice::practice_get_memories,
+        cmd_practice::practice_create_memory
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

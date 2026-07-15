@@ -28,7 +28,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -188,7 +188,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -442,7 +442,39 @@ declare global {
         checkBreach: (password: string) => Promise<BreachCheckResult>;
         checkStrength: (password: string) => Promise<number>;
       };
+      practice?: {
+        getSessions: () => Promise<TutorSession[]>;
+        createSession: (session: Partial<TutorSession>) => Promise<TutorSession>;
+        updateSession: (session: Partial<TutorSession>) => Promise<number>;
+        getMessages: (sessionId: string) => Promise<TutorMessage[]>;
+        createMessage: (msg: Partial<TutorMessage>) => Promise<TutorMessage>;
+        getMemories: () => Promise<TutorMemory[]>;
+        createMemory: (memory: Partial<TutorMemory>) => Promise<TutorMemory>;
+      };
     };
   }
+}
+
+export interface TutorSession {
+  id: string;
+  title: string;
+  started_at: string;
+  ended_at: string | null;
+  deleted_at: string | null;
+}
+
+export interface TutorMessage {
+  id: string;
+  session_id: string;
+  role: string;
+  text_content: string;
+  created_at: string | null;
+}
+
+export interface TutorMemory {
+  id: string;
+  category: string;
+  fact: string;
+  created_at: string | null;
 }
 

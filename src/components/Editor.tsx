@@ -107,6 +107,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     const backup = (window as any).__cadernoEditorBackup?.get(pageId);
     if (backup?.crdt) {
       applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+      // Backup aplicado com sucesso — agora pode ser limpo
+      (window as any).__cadernoEditorBackup.delete(pageId);
     }
   }
   const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
@@ -136,10 +138,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         // Sempre tenta salvar se houver conteúdo capturado, independente de pendingSaveRef
         const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
         if (result && typeof result.catch === 'function') {
-          result.then(() => {
-            // Save confirmado: limpar backup
-            if (pageId) (window as any).__cadernoEditorBackup?.delete(pageId);
-          }).catch((err: any) => {
+          result.catch((err: any) => {
             console.error('[Caderno] Flush save falhou - backup em memória preservado:', err);
           });
         }
@@ -357,7 +356,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         if (saveResult && typeof saveResult.then === 'function') {
           saveResult.then(() => {
             pendingSaveRef.current = false;
-            if (pageId) (window as any).__cadernoEditorBackup.delete(pageId);
+            // NÃO limpar backup aqui — o sync-pull pode sobrescrever o DB depois.
+            // O backup será limpo quando o Editor remontar e aplicá-lo.
           }).catch((err: any) => {
             console.error('[Caderno] Debounced save falhou:', err);
             // Mantém pendingSaveRef true para o flush retry no unmount
