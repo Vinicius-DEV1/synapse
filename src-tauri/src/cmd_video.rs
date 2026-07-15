@@ -39,11 +39,78 @@ pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, Stri
 }
 
 #[tauri::command]
+pub fn video_import_and_encrypt(
+    source_path: String,
+    dest_filename: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app_handle: AppHandle
+) -> Result<String, String> {
+    let videos_dir = get_videos_dir(&app_handle)?;
+    let dest_filename_enc = format!("{}.enc", dest_filename);
+    let dest_full_path = videos_dir.join(&dest_filename_enc);
+    
+    let keys_guard = db_state.keys.lock().unwrap();
+    let master_key = if let Some(keys) = keys_guard.as_ref() {
+        if let Some(ref k) = keys.culture {
+            k.clone()
+        } else {
+            return Err("Culture key not found".into());
+        }
+    } else {
+        return Err("Keys not unlocked".into());
+    };
+    
+    crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_full_path, &master_key)?;
+    
+    Ok(dest_full_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+    let videos_dir = get_videos_dir(&app)?;
+    let filename_enc = format!("{}.enc", filename);
+    let path = videos_dir.join(&filename_enc);
+    let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
+    
+    fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
+    
+    let keys_guard = db_state.keys.lock().unwrap();
+    let master_key = if let Some(keys) = keys_guard.as_ref() {
+        if let Some(ref k) = keys.culture {
+            k.clone()
+        } else {
+            let _ = fs::remove_file(&temp_path);
+            return Err("Culture key not found".into());
+        }
+    } else {
+        let _ = fs::remove_file(&temp_path);
+        return Err("Keys not unlocked".into());
+    };
+    
+    if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &path, &master_key) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(e);
+    }
+    
+    let _ = fs::remove_file(&temp_path);
+    
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
     let ffprobe_path = get_bin_path(&app, "ffprobe.exe");
     
+    let input_path = if local_path.ends_with(".enc") {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
+        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+    } else {
+        local_path.clone()
+    };
+    
     let output = Command::new(ffprobe_path)
-        .args(["-v", "quiet", "-print_format", "json", "-show_streams", &local_path])
+        .args(["-v", "quiet", "-print_format", "json", "-show_streams", &input_path])
         .output()
         .map_err(|e| e.to_string())?;
         
@@ -62,10 +129,18 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
     let videos_dir = get_videos_dir(&app)?;
     let vtt_out_path = videos_dir.join(format!("temp_sub_{}.vtt", uuid::Uuid::new_v4()));
     
+    let input_path = if local_path.ends_with(".enc") {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
+        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+    } else {
+        local_path.clone()
+    };
+    
     let output = Command::new(ffmpeg_path)
         .args([
             "-y", // overwrite
-            "-i", &local_path,
+            "-i", &input_path,
             "-map", &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean map
             "-c:s", "webvtt",
             &vtt_out_path.to_string_lossy().to_string()
@@ -83,54 +158,158 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
 }
 
 #[tauri::command]
-pub fn video_extract_audio(local_path: String, track_index: String, app: AppHandle) -> Result<String, String> {
+pub fn video_extract_audio(local_path: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let videos_dir = get_videos_dir(&app)?;
     
     let track_clean = track_index.replace(":", "");
-    let audio_out_path = format!("{}_{}.m4a", local_path, track_clean);
+    let temp_audio = videos_dir.join(format!("temp_audio_{}.m4a", track_clean));
+    let final_enc = videos_dir.join(format!("{}_{}.m4a.enc", uuid::Uuid::new_v4(), track_clean));
+    
+    let input_path = if local_path.ends_with(".enc") {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
+        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+    } else {
+        local_path.clone()
+    };
     
     let output = Command::new(ffmpeg_path)
         .args([
             "-y",
-            "-i", &local_path,
+            "-i", &input_path,
             "-map", &track_index,
             "-c:a", "aac",
             "-b:a", "128k",
-            &audio_out_path
+            &temp_audio.to_string_lossy().to_string()
         ])
         .output()
         .map_err(|e| e.to_string())?;
         
-    if output.status.success() || PathBuf::from(&audio_out_path).exists() {
-        Ok(audio_out_path)
+    if output.status.success() || temp_audio.exists() {
+        let keys_guard = db_state.keys.lock().unwrap();
+        let master_key = if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
+        } else {
+            return Err("Keys not unlocked".into());
+        };
+        
+        crate::crypto_stream::encrypt_file_chunked(&temp_audio, &final_enc, &master_key)?;
+        let _ = fs::remove_file(&temp_audio);
+        
+        Ok(final_enc.to_string_lossy().to_string())
     } else {
+        let _ = fs::remove_file(&temp_audio);
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
 }
 
 #[tauri::command]
-pub fn video_remux_default_track(source_path: String, filename: String, track_index: String, app: AppHandle) -> Result<String, String> {
+pub fn video_remux_default_track(source_path: String, filename: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
     let videos_dir = get_videos_dir(&app)?;
-    let dest_path = videos_dir.join(&filename).to_string_lossy().to_string();
+    let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
+    let final_dest = videos_dir.join(format!("{}.enc", filename));
+    
+    let input_path = if source_path.ends_with(".enc") {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let fname = std::path::Path::new(&source_path).file_name().unwrap().to_str().unwrap();
+        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(fname))
+    } else {
+        source_path.clone()
+    };
     
     let output = Command::new(ffmpeg_path)
         .args([
             "-y",
-            "-i", &source_path,
+            "-i", &input_path,
             "-map", "0:v",
             "-map", &track_index,
             "-map", "0:a",
             "-map", "0:s?",
             "-c", "copy",
-            &dest_path
+            &temp_dest.to_string_lossy().to_string()
         ])
         .output()
         .map_err(|e| e.to_string())?;
         
-    if output.status.success() || PathBuf::from(&dest_path).exists() {
-        Ok(dest_path)
+    if output.status.success() || temp_dest.exists() {
+        let keys_guard = db_state.keys.lock().unwrap();
+        let master_key = if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
+        } else {
+            return Err("Keys not unlocked".into());
+        };
+        
+        crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
+        let _ = fs::remove_file(&temp_dest);
+        
+        Ok(final_dest.to_string_lossy().to_string())
     } else {
+        let _ = fs::remove_file(&temp_dest);
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+pub fn video_convert_mp4(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let videos_dir = get_videos_dir(&app)?;
+    
+    let temp_dest = videos_dir.join(format!("temp_mp4_{}.mp4", uuid::Uuid::new_v4()));
+    
+    let mut final_dest = videos_dir.join(&filename);
+    final_dest.set_extension("mp4.enc");
+    let dest_path_str = final_dest.to_string_lossy().to_string();
+    
+    if final_dest.exists() {
+        return Ok(dest_path_str);
+    }
+    
+    let input_path = if source_path.ends_with(".enc") {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let fname = std::path::Path::new(&source_path).file_name().unwrap().to_str().unwrap();
+        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(fname))
+    } else {
+        source_path.clone()
+    };
+    
+    let output = Command::new(ffmpeg_path)
+        .args([
+            "-y",
+            "-i", &input_path,
+            "-c", "copy",
+            &temp_dest.to_string_lossy().to_string()
+        ])
+        .output()
+        .map_err(|e| e.to_string())?;
+        
+    if output.status.success() || temp_dest.exists() {
+        let keys_guard = db_state.keys.lock().unwrap();
+        let master_key = if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
+        } else {
+            return Err("Keys not unlocked".into());
+        };
+        
+        crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
+        let _ = fs::remove_file(&temp_dest);
+        
+        Ok(dest_path_str)
+    } else {
+        let _ = fs::remove_file(&temp_dest);
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
 }

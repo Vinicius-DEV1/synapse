@@ -2,7 +2,7 @@
  * image-drive.ts
  *
  * Serviço responsável por upload de imagens criptografadas no Google Drive
- * e cache local (IndexedDB na web, IPC no Electron).
+ * e cache local (IndexedDB na web, IPC no Tauri).
  */
 
 import { encryptFile, decryptFile } from './storage';
@@ -20,10 +20,10 @@ interface CachedImage {
 }
 
 /**
- * Verifica se estamos rodando no Electron (window.api existe) ou na web.
- * No Electron usa IPC handlers; na web usa IndexedDB diretamente.
+ * Verifica se estamos rodando no Desktop (window.api existe) ou na web.
+ * No Desktop usa comandos do Tauri; na web usa IndexedDB diretamente.
  */
-function isElectron(): boolean {
+function isDesktopApp(): boolean {
   return typeof window !== 'undefined' && !!(window as any).api && !!(window as any).api.imageCache;
 }
 
@@ -32,16 +32,27 @@ function isElectron(): boolean {
  * Retorna o registro cacheado ou undefined se não existir.
  */
 export async function getCachedImage(id: string): Promise<CachedImage | undefined> {
-  if (isElectron()) {
-    // Electron — usa IPC para acessar o cache de imagens
-    const result = await (window as any).api.imageCache.get(id);
+  if (isDesktopApp()) {
+    // Desktop - usa comandos nativos do Tauri para acessar o cache
+    try {
+      const cached = await (window as any).api.imageCache.get(id);
+      if (cached) {
+        return {
+          id: cached.id,
+          data: new Uint8Array(cached.data).buffer,
+          mimeType: cached.mimeType
+        };
+      }
+    } catch (e) {
+      console.error('Erro ao ler cache local via Tauri:', e);
+    }
+    return undefined;
+  } else {
+    // Web - usa IndexedDB
+    const db = await getWebDb();
+    const result = await db.get('image_cache', id);
     return result ?? undefined;
   }
-
-  // Web — acessa IndexedDB diretamente (usa idb, API Promise-based)
-  const db = await getWebDb();
-  const result = await db.get('image_cache', id);
-  return result ?? undefined;
 }
 
 /**
@@ -52,15 +63,18 @@ export async function setCachedImage(
   data: ArrayBuffer,
   mimeType: string
 ): Promise<void> {
-  if (isElectron()) {
-    // Electron — usa IPC para gravar no cache de imagens
-    await (window as any).api.imageCache.put(id, data, mimeType);
-    return;
+  if (isDesktopApp()) {
+    // Desktop - usa comandos nativos do Tauri
+    try {
+      await (window as any).api.imageCache.put(id, data, mimeType);
+    } catch (e) {
+      console.error('Erro ao salvar no cache local via Tauri:', e);
+    }
+  } else {
+    // Web - grava diretamente no IndexedDB (usa idb, API Promise-based)
+    const db = await getWebDb();
+    await db.put('image_cache', { id, data, mimeType });
   }
-
-  // Web — grava diretamente no IndexedDB (usa idb, API Promise-based)
-  const db = await getWebDb();
-  await db.put('image_cache', { id, data, mimeType });
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +122,7 @@ export async function uploadEncryptedImage(
 
 /**
  * Obtém uma imagem pelo ID do arquivo no Google Drive.
- * Primeiro verifica o cache local (IndexedDB / Electron IPC).
+ * Primeiro verifica o cache local (IndexedDB / Tauri IPC).
  * Se não encontrar, baixa do Drive, descriptografa, salva no cache e retorna.
  * Retorna uma object URL (blob://) para uso em tags <img>.
  * O chamador é responsável por revogar a URL quando não precisar mais.

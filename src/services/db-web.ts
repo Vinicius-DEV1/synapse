@@ -20,13 +20,16 @@ interface CadernoDBSchema extends DBSchema {
   focus_sessions: { key: string; value: any };
   focus_alarms: { key: number; value: any };
   calendar_events: { key: string; value: any };
+  vault_groups: { key: string; value: any };
+  vault_items: { key: string; value: any; indexes: { 'group_id': string } };
+  vault_password_history: { key: string; value: any; indexes: { 'item_id': string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 6, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 7, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -92,6 +95,18 @@ export async function getWebDb() {
         // Calendar
         if (!db.objectStoreNames.contains('calendar_events')) {
           db.createObjectStore('calendar_events', { keyPath: 'id' });
+        }
+        // Vault
+        if (!db.objectStoreNames.contains('vault_groups')) {
+          db.createObjectStore('vault_groups', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('vault_items')) {
+          const store = db.createObjectStore('vault_items', { keyPath: 'id' });
+          store.createIndex('group_id', 'group_id');
+        }
+        if (!db.objectStoreNames.contains('vault_password_history')) {
+          const store = db.createObjectStore('vault_password_history', { keyPath: 'id' });
+          store.createIndex('item_id', 'item_id');
         }
       },
     });

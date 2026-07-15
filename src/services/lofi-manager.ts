@@ -38,10 +38,8 @@ export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent:
 
 export async function resolveLofiUrl(lofi: LofiItem): Promise<string> {
   if (window.api?.lofi && lofi.is_local) {
-    const localPath = await window.api.lofi.getLocalPath(lofi.original_name);
-    if (localPath) {
-      return `file://${localPath.replace(/\\/g, '/')}`;
-    }
+    const filename_enc = `${lofi.original_name}.enc`;
+    return `http://encrypted.localhost/focus/${encodeURIComponent(filename_enc)}`;
   }
   if (lofi.drive_file_id) {
     return getLofiStreamLink(lofi.drive_file_id);
@@ -72,11 +70,24 @@ export async function uploadNewLofi(file: File, duration?: number, onProgress?: 
     }
   }
 
-  if (onProgress) onProgress(40);
-  
-  mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
-    if (onProgress) onProgress(40 + (p * 0.6));
-  });
+  if (localPath) {
+    try {
+      const req = await fetch('http://asset.localhost/' + encodeURIComponent(localPath));
+      const encryptedBuffer = await req.arrayBuffer();
+      mainFileId = await uploadToDrive(token, file.name + '.enc', encryptedBuffer, 'lofi', (p) => {
+        if (onProgress) onProgress(40 + (p * 0.6));
+      });
+    } catch (e) {
+      console.error("Erro ao ler arquivo criptografado", e);
+      mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
+        if (onProgress) onProgress(40 + (p * 0.6));
+      });
+    }
+  } else {
+    mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
+      if (onProgress) onProgress(40 + (p * 0.6));
+    });
+  }
 
   const newLofi: LofiItem = {
     id: crypto.randomUUID(),

@@ -38,16 +38,18 @@ pub async fn youtube_fetch_info(url: String, app: AppHandle) -> Result<Value, St
 }
 
 #[tauri::command]
-pub async fn youtube_download(url: String, filename: String, quality: String, subs: Option<Vec<String>>, app: AppHandle) -> Result<bool, String> {
+pub async fn youtube_download(url: String, filename: String, quality: String, subs: Option<Vec<String>>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ytdlp_path = get_bin_path(&app, "yt-dlp.exe");
     let ffmpeg_dir = get_bin_path(&app, "ffmpeg.exe").parent().unwrap().to_path_buf();
     let videos_dir = get_videos_dir(&app)?;
-    let dest_path = videos_dir.join(&filename);
+    
+    let temp_filename = format!("temp_{}_{}", uuid::Uuid::new_v4(), filename);
+    let temp_path = videos_dir.join(&temp_filename);
     
     let mut args = vec![
         url.clone(),
         "-f".to_string(), quality,
-        "-o".to_string(), dest_path.to_string_lossy().to_string(),
+        "-o".to_string(), temp_path.to_string_lossy().to_string(),
         "--ffmpeg-location".to_string(), ffmpeg_dir.to_string_lossy().to_string()
     ];
     
@@ -92,8 +94,24 @@ pub async fn youtube_download(url: String, filename: String, quality: String, su
     let status = child.wait().map_err(|e| e.to_string())?;
     
     if status.success() {
-        Ok(true)
+        let keys_guard = db_state.keys.lock().unwrap();
+        let master_key = if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
+        } else {
+            return Err("Keys not unlocked".into());
+        };
+        
+        let enc_dest_path = videos_dir.join(format!("{}.enc", filename));
+        crate::crypto_stream::encrypt_file_chunked(&temp_path, &enc_dest_path, &master_key)?;
+        let _ = fs::remove_file(&temp_path);
+        
+        Ok(enc_dest_path.to_string_lossy().to_string())
     } else {
+        let _ = fs::remove_file(&temp_path);
         Err("Download failed".to_string())
     }
 }

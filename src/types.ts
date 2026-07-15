@@ -1,3 +1,5 @@
+import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry, PasswordGenOptions, BreachCheckResult } from './types_vault';
+
 export interface Page {
   id: string;
   parent_id: string | null;
@@ -26,7 +28,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -186,7 +188,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -402,6 +404,43 @@ declare global {
         selectFolder: () => Promise<string | null>;
         startBackup: (options: { destination: string, type: 'encrypted' | 'decrypted', includeMedia: boolean, driveToken?: string, rawKey?: string }) => Promise<{ success: boolean; error?: string }>;
         onLog: (callback: (data: { message: string, progress?: number }) => void) => () => void;
+      };
+      files?: {
+        getAll: () => Promise<any[]>;
+        getById: (id: string) => Promise<any>;
+        create: (file: any) => Promise<any>;
+        update: (file: any) => Promise<number>;
+        delete: (id: string) => Promise<boolean>;
+        move: (id: string, folderId: string | null) => Promise<boolean>;
+        saveLocal: (fileData: any) => Promise<string>;
+        getLocal: (id: string) => Promise<string>;
+        folders: {
+          getAll: () => Promise<any[]>;
+          create: (folder: any) => Promise<any>;
+          update: (folder: any) => Promise<number>;
+          delete: (id: string) => Promise<boolean>;
+        };
+        links: {
+          getByPage: (pageId: string) => Promise<any[]>;
+          getByFile: (fileId: string) => Promise<any[]>;
+          create: (link: any) => Promise<any>;
+          delete: (id: string) => Promise<boolean>;
+        };
+      };
+      vault?: {
+        getGroups: () => Promise<VaultGroup[]>;
+        upsertGroup: (group: VaultGroup) => Promise<void>;
+        deleteGroup: (id: string) => Promise<void>;
+        reorderGroups: (updates: {id: string, position: number}[]) => Promise<void>;
+        getItems: (groupId?: string) => Promise<VaultItem[]>;
+        getItem: (id: string) => Promise<VaultItem>;
+        upsertItem: (item: VaultItem) => Promise<void>;
+        deleteItem: (id: string) => Promise<void>;
+        searchItems: (query: string) => Promise<VaultItem[]>;
+        getPasswordHistory: (itemId: string) => Promise<VaultPasswordHistoryEntry[]>;
+        generatePassword: (opts: PasswordGenOptions) => Promise<string>;
+        checkBreach: (password: string) => Promise<BreachCheckResult>;
+        checkStrength: (password: string) => Promise<number>;
       };
     };
   }

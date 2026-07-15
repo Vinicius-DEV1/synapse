@@ -7,8 +7,8 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   const masterKey = moduleKeys['library'];
   if (!masterKey) return; 
   
-  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
-  if (!isElectron) {
+  const isDesktopApp = navigator.userAgent.toLowerCase().includes('Desktop');
+  if (!isDesktopApp) {
     return;
   }
   

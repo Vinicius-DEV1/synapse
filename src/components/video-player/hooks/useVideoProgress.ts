@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { VideoItem } from '../../../types_video';
 
 export function useVideoProgress(
@@ -7,7 +7,12 @@ export function useVideoProgress(
   videoRef: React.RefObject<HTMLVideoElement>
 ) {
   const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const progressRef = useRef(0);
+  const setProgressWithRef = (p: number) => {
+    progressRef.current = p;
+    setProgress(p);
+  };
+  const [duration, setDuration] = useState(video.duration || 0);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedProgress] = useState(video.progress || 0);
 
@@ -34,16 +39,14 @@ export function useVideoProgress(
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
-      if (videoRef.current) {
-        saveProgress(videoRef.current.currentTime);
-      }
+       saveProgress(progressRef.current);
     }, 10000);
     return () => clearInterval(interval);
-  }, [isPlaying, video, videoRef]);
+  }, [isPlaying, video]);
 
   return {
     progress,
-    setProgress,
+    setProgress: setProgressWithRef,
     duration,
     setDuration,
     showResumePrompt,

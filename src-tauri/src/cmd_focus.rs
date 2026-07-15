@@ -15,11 +15,14 @@ pub struct FocusAlarm {
 
 #[derive(Serialize, Deserialize)]
 pub struct FocusSession {
-    pub id: String,
-    pub started_at: String,
-    pub duration: i32,
-    pub task_id: Option<String>,
-    pub type_: String,
+    pub id: Option<i64>,
+    pub tag: String,
+    pub description: String,
+    pub target_time_minutes: i32,
+    pub status: String,
+    pub justification: Option<String>,
+    pub summary: Option<String>,
+    pub created_at: Option<String>,
 }
 
 #[tauri::command]
@@ -92,16 +95,19 @@ pub fn focus_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<FocusSessi
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT id, started_at, duration, task_id, type FROM sessions")
+    let mut stmt = conn.prepare("SELECT id, tag, description, target_time_minutes, status, justification, summary, created_at FROM focus_sessions")
         .map_err(|e| e.to_string())?;
         
     let iter = stmt.query_map([], |row| {
         Ok(FocusSession {
             id: row.get(0)?,
-            started_at: row.get(1)?,
-            duration: row.get(2)?,
-            task_id: row.get(3)?,
-            type_: row.get(4)?,
+            tag: row.get(1)?,
+            description: row.get(2)?,
+            target_time_minutes: row.get(3)?,
+            status: row.get(4)?,
+            justification: row.get(5)?,
+            summary: row.get(6)?,
+            created_at: row.get(7)?,
         })
     }).map_err(|e| e.to_string())?;
     
@@ -113,18 +119,14 @@ pub fn focus_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<FocusSessi
 }
 
 #[tauri::command]
-pub fn focus_create_session(session: FocusSession, db_state: State<'_, DbState>) -> Result<FocusSession, String> {
+pub fn focus_create_session(session: FocusSession, db_state: State<'_, DbState>) -> Result<i64, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let id = if session.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { session.id.clone() };
-    
     conn.execute(
-        "INSERT INTO sessions (id, started_at, duration, task_id, type) VALUES (?, ?, ?, ?, ?)",
-        params![id, session.started_at, session.duration, session.task_id, session.type_]
+        "INSERT INTO focus_sessions (tag, description, target_time_minutes, status, justification, summary) VALUES (?, ?, ?, ?, ?, ?)",
+        params![session.tag, session.description, session.target_time_minutes, session.status, session.justification, session.summary]
     ).map_err(|e| e.to_string())?;
     
-    let mut ret = session;
-    ret.id = id;
-    Ok(ret)
+    Ok(conn.last_insert_rowid())
 }

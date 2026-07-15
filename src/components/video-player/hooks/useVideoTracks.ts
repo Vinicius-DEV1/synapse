@@ -41,7 +41,8 @@ export function useVideoTracks(
       
       const resolveUrl = async () => {
         if (track.local_path && window.api?.video) {
-          const streamUrl = `file:///\${track.local_path.replace(/\\\\/g, '/')}`;
+          const { convertFileSrc } = await import('@tauri-apps/api/core');
+          const streamUrl = convertFileSrc(track.local_path);
           setActiveAudioUrl(streamUrl);
         } else if (track.drive_id) {
           const { getVideoStreamLink } = await import('../../../services/video-manager');

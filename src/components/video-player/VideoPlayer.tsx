@@ -43,6 +43,14 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [streamOffset, setStreamOffset] = useState(0);
+  const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+    setStreamOffset(0);
+  }, [src]);
+
   const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef);
   const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
   const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
@@ -109,7 +117,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      const time = videoRef.current.currentTime;
+      const time = videoRef.current.currentTime + streamOffset;
       setProgress(time);
       if (cues.length > 0) {
         const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
@@ -120,14 +128,19 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-      if (onDurationLoaded) onDurationLoaded(videoRef.current.duration);
+      let vidDur = videoRef.current.duration;
+      // Para streams transcodificados, o duration retornado será o do chunk atual ou Infinity
+      if (!Number.isFinite(vidDur) || vidDur < (video.duration || 0)) {
+        vidDur = video.duration || vidDur;
+      }
+      setDuration(vidDur);
+      if (onDurationLoaded) onDurationLoaded(vidDur);
     }
   };
 
   const handleClose = async () => {
     if (videoRef.current) {
-      await saveProgress(videoRef.current.currentTime);
+      await saveProgress(videoRef.current.currentTime + streamOffset);
     }
     onClose();
   };
@@ -135,8 +148,18 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = Number(e.target.value);
     if (videoRef.current) {
-      videoRef.current.currentTime = time;
-      if (audioRef.current) audioRef.current.currentTime = time;
+      if (currentSrc.includes('/stream?')) {
+        const baseSrc = currentSrc.split('&start=')[0];
+        setStreamOffset(time);
+        setCurrentSrc(`${baseSrc}&start=${time}`);
+        // O navegador dará autoPlay ou o vídeo recarregará
+        if (!isPlaying) {
+          setIsPlaying(true);
+        }
+      } else {
+        videoRef.current.currentTime = time;
+        if (audioRef.current) audioRef.current.currentTime = time;
+      }
       setProgress(time);
     }
   };
@@ -196,7 +219,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       if (audioRef.current) audioRef.current.pause();
       setIsPlaying(false);
     }
-    const time = videoRef.current ? videoRef.current.currentTime : 0;
+    const time = videoRef.current ? videoRef.current.currentTime + streamOffset : 0;
     const currentIndex = cues.findIndex(c => time >= c.startTime && time <= c.endTime);
     let extendedContext = context;
     if (currentIndex !== -1) {
@@ -266,7 +289,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
       <video
         ref={videoRef}
-        src={src}
+        src={currentSrc}
         autoPlay
         className="w-full h-full object-contain"
         onClick={togglePlay}

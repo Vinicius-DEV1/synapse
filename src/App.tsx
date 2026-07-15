@@ -166,8 +166,8 @@ function AppContent() {
 
   // Update document title based on active module and platform
   useEffect(() => {
-    const isElectron = navigator.userAgent.toLowerCase().includes('electron');
-    if (isElectron) {
+    const isDesktopApp = navigator.userAgent.toLowerCase().includes('Desktop');
+    if (isDesktopApp) {
       document.title = 'Caderno Desktop';
     } else {
       if (activeModule === 'notes') {
@@ -210,8 +210,8 @@ function AppContent() {
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Tab Bar - Only show in Electron */}
-        {!state.isReadingModeFullScreen && navigator.userAgent.toLowerCase().includes('electron') && <TabBar />}
+        {/* Tab Bar - Only show in Desktop */}
+        {!state.isReadingModeFullScreen && navigator.userAgent.toLowerCase().includes('Desktop') && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">

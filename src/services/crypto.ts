@@ -113,7 +113,7 @@ function bufferToBase64(buffer: Uint8Array): string {
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return btoa(binary); // Função global do navegador/electron
+  return btoa(binary); // Função global do navegador/Tauri
 }
 
 function base64ToBuffer(base64: string): Uint8Array {

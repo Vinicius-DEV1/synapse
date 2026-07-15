@@ -38,6 +38,8 @@
     "@journeyapps/sqlcipher": "^5.3.1",
     "@radix-ui/react-dropdown-menu": "^2.1.19",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@tiptap/extension-bubble-menu": "^3.27.1",
     "@tiptap/extension-code-block-lowlight": "^3.27.1",
     "@tiptap/extension-collaboration": "^3.27.1",
