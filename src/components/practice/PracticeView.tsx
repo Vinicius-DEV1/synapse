@@ -39,7 +39,7 @@ export default function PracticeView() {
     e.stopPropagation();
     if (!window.api?.practice) return;
     
-    const confirm = await window.api.app.showConfirm('Deseja excluir esta sessão de prática?');
+    const confirm = window.confirm('Deseja excluir esta sessão de prática?');
     if (!confirm) return;
 
     try {
