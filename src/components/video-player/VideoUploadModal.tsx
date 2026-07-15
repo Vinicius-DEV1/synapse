@@ -122,7 +122,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                       const fileReq = await fetch('file:///' + res.path.replace(/\\/g, '/'));
                       const blob = await fileReq.blob();
                       const file = new File([blob], res.name, { type: res.type });
-                      (file as any).electronPath = res.path;
+                      (file as any).TauriPath = res.path;
                       
                       setVideoFile(file);
                       setError(null);
@@ -149,11 +149,18 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                           if (scanRes.error) {
                             console.error('ffprobe error:', scanRes.error);
                           }
-                          setEmbeddedSubs(scanRes.subtitles || []);
-                          setEmbeddedAudios(scanRes.audioTracks || []);
+                          const streams = scanRes?.streams || [];
+                          const subs = streams
+                            .filter((s: any) => s.codec_type === 'subtitle')
+                            .map((s: any, i: number) => ({ index: `0:s:${i}`, label: s.tags?.language || `Sub ${i}` }));
+                          const audios = streams
+                            .filter((s: any) => s.codec_type === 'audio')
+                            .map((s: any, i: number) => ({ index: `0:a:${i}`, label: s.tags?.language || `Audio ${i}` }));
+                          setEmbeddedSubs(subs);
+                          setEmbeddedAudios(audios);
                           
-                          if (scanRes.audioTracks && scanRes.audioTracks.length > 0) {
-                            setPrimaryAudioTrack(scanRes.audioTracks[0].index); // Default to first track
+                          if (audios.length > 0) {
+                            setPrimaryAudioTrack(audios[0].index);
                           }
                         } catch (err: any) {
                           alert('Falha ao rodar o escâner: ' + err.message);

@@ -36,57 +36,81 @@ export function useEpubLoader(
       try {
         setLoading(true);
         let arrayBuffer: ArrayBuffer | null = null;
+        let assetUrl: string | null = null;
         
+        let originalAbsPath = '';
         try {
-          const res = await window.api.library.getBookFile(book.id);
-          if (res) {
-            if (typeof res === 'string') {
-              const binaryString = atob(res);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                  bytes[i] = binaryString.charCodeAt(i);
-              }
-              arrayBuffer = bytes.buffer;
-            } else {
-              arrayBuffer = res;
-            }
+          if (book.file_path && !book.file_path.startsWith('http')) {
+             let absPath = book.file_path;
+             if (!absPath.startsWith('file://') && !absPath.match(/^[a-zA-Z]:/)) {
+                 const { appDataDir, join } = await import('@tauri-apps/api/path');
+                 const dataDir = await appDataDir();
+                 absPath = await join(dataDir, absPath);
+             }
+             if (absPath.startsWith('file://')) {
+                 absPath = absPath.replace('file://', '');
+             }
+             if (absPath.startsWith('/')) {
+                 absPath = absPath.substring(1);
+             }
+             originalAbsPath = absPath;
+             
+             let encPath = absPath;
+             if (!encPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
+                 encPath = encPath + '.enc';
+             }
+             assetUrl = `http://encrypted.localhost/library/${encodeURIComponent(encPath)}`;
           }
         } catch (localErr) {
-          console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
+          console.log("Erro ao formatar path local", localErr);
         }
 
-        if (!arrayBuffer && book.drive_file_id) {
-          const token = await getValidAccessToken();
-          if (!token) throw new Error('Não autenticado no Google Drive');
-          const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-          if (masterKey) {
-            arrayBuffer = await decryptFile(encryptedData, masterKey);
-          } else {
-            // Fallback: try using it directly (unencrypted legacy)
-            arrayBuffer = encryptedData;
+        let fetchFailed = false;
+        if (!arrayBuffer && assetUrl) {
+           try {
+             const res = await fetch(assetUrl);
+             if (!res.ok) throw new Error(`Status: ${res.status}`);
+             arrayBuffer = await res.arrayBuffer();
+           } catch (fetchErr) {
+             console.log("Falha ao buscar versão criptografada.", fetchErr);
+             fetchFailed = true;
+           }
+        }
+
+        if (!arrayBuffer && (fetchFailed || (!assetUrl && book.drive_file_id))) {
+          if (book.drive_file_id) {
+            console.log("Tentando baixar do Drive...");
+            const token = await getValidAccessToken();
+            if (!token) throw new Error('Não autenticado no Google Drive');
+            const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+            if (masterKey) {
+              arrayBuffer = await decryptFile(encryptedData, masterKey);
+            } else {
+              arrayBuffer = encryptedData;
+            }
           }
-        } else if (!arrayBuffer && book.file_path) {
+        } else if (!arrayBuffer && book.file_path && !assetUrl) {
+          // Fallback final para base64 do banco (obsoleto)
           if (book.file_path.startsWith('file://')) {
             const res = await window.api.library.getBookFile(book.id);
             if (!res) throw new Error("Arquivo não encontrado no banco");
             const binaryString = atob(res);
             const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
+            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
             arrayBuffer = bytes.buffer;
           } else {
             const bytes = await decryptFile(book.file_path);
             arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
           }
         }
-        
+
         if (!arrayBuffer) {
           throw new Error('Nenhum arquivo encontrado para este livro.');
         }
 
         if (!active) return;
 
+        // Use arrayBuffer directly to avoid ePub.js misidentifying the .enc extension as a directory
         const newEpubBook = ePub(arrayBuffer);
         setEpubBook(newEpubBook);
 

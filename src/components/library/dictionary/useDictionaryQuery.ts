@@ -68,7 +68,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "collocations": [
       {"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3", "example 4", "example 5"]}
     ],
-    "context_explanation": "Extensive didactic explanation in ENGLISH about the usage of the word in this specific context.",
+    "context_explanation": "Do NOT give a grammar lesson. Explain what is happening in the scene/story based on the provided context. You MUST explicitly mention the analyzed word/expression and explain why it was used in this specific situation and how it contributes to the plot/character's action.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English", "Example 4 in English", "Example 5 in English"],
     "deep_dive": {
       "etymology": "historical roots of the word",
@@ -97,7 +97,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "collocations": [
       {"expression": "combinação 1", "meaning": "significado da combinação", "examples": ["exemplo 1", "exemplo 2", "exemplo 3", "exemplo 4", "exemplo 5"]}
     ],
-    "context_explanation": "Extensa explicação didática em PORTUGUÊS detalhando o uso da palavra neste contexto.",
+    "context_explanation": "NÃO dê aula de gramática. Explique o que está acontecendo na cena/história com base no contexto. Você DEVE citar explicitamente a palavra/expressão analisada e explicar por que ela foi usada nessa situação específica e como ela contribui para a ação ou sentimento do personagem.",
     "examples": ["Exemplo 1 original em inglês", "Exemplo 2 original em inglês", "Exemplo 3 original em inglês", "Exemplo 4 original em inglês", "Exemplo 5 original em inglês"],
     "deep_dive": {
       "etymology": "origem e raízes históricas",

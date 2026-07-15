@@ -47,6 +47,12 @@ import FileUploadModal from './files/FileUploadModal';
 import FileSelectModal from './files/FileSelectModal';
 import FileWidgetNodeView from './editor-extensions/FileWidgetNodeView';
 
+// Backup síncrono em memória: sobrevive ao unmount do componente.
+// Se o save assíncrono falhar ou não completar, o backup é usado como fallback.
+if (!(window as any).__cadernoEditorBackup) {
+  (window as any).__cadernoEditorBackup = new Map<string, { html: string; crdt: string }>();
+}
+
 interface EditorProps {
   pageId: string | null;
   initialContent: string;
@@ -76,7 +82,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<boolean>(false);
   const onSaveRef = useRef(onSave);
-  const editorInstanceRef = useRef<any>(null);
+  const latestContentRef = useRef<{ html: string, crdt: string } | null>(null);
 
   useEffect(() => {
     onSaveRef.current = onSave;
@@ -97,11 +103,13 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     if (initialCrdtState) {
       applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
     }
-    // For legacy pages that have HTML content but no CRDT state,
-    // we need to seed the Y.Doc AFTER the editor mounts.
-    // This is handled by the immediatelyAfterCreate flag below.
+    // Recuperar edições não salvas do backup em memória (Y.js merge é seguro)
+    const backup = (window as any).__cadernoEditorBackup?.get(pageId);
+    if (backup?.crdt) {
+      applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+    }
   }
-  const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '';
+  const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
 
   // Escuta atualizações puramente remotas (do CloudSync) via evento customizado, 
   // ignorando os updates locais que causavam lag.
@@ -122,12 +130,19 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
 
   useEffect(() => {
     return () => {
-      // Flush any pending save synchronously before destroying the document
+      // Flush any pending save before destroying the document
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      if (pendingSaveRef.current && ydocRef.current && editorInstanceRef.current) {
-        const html = editorInstanceRef.current.getHTML();
-        const crdtState = getYDocStateAsBase64(ydocRef.current);
-        onSaveRef.current(html, crdtState, []);
+      if (latestContentRef.current) {
+        // Sempre tenta salvar se houver conteúdo capturado, independente de pendingSaveRef
+        const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
+        if (result && typeof result.catch === 'function') {
+          result.then(() => {
+            // Save confirmado: limpar backup
+            if (pageId) (window as any).__cadernoEditorBackup?.delete(pageId);
+          }).catch((err: any) => {
+            console.error('[Caderno] Flush save falhou - backup em memória preservado:', err);
+          });
+        }
       }
 
       // Destruição do documento ativo ao desmontar a view do editor
@@ -324,21 +339,35 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         }
       });
 
+      const html = editor.getHTML();
+      const crdtState = getYDocStateAsBase64(ydocRef.current);
+      latestContentRef.current = { html, crdt: crdtState };
+
+      // Backup síncrono em memória - sobrevive ao unmount mesmo se o save async falhar
+      if (pageId) {
+        (window as any).__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
+      }
+      
       pendingSaveRef.current = true;
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        if (!ydocRef.current || !editorInstanceRef.current) return;
-        const html = editorInstanceRef.current.getHTML();
-        const crdtState = getYDocStateAsBase64(ydocRef.current);
-        onSaveRef.current(html, crdtState, []); // Embeds saves serão tratados depois se necessário
-        pendingSaveRef.current = false;
+        if (!latestContentRef.current) return;
+        const saveResult = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
+        // Só marca como salvo DEPOIS do IPC confirmar
+        if (saveResult && typeof saveResult.then === 'function') {
+          saveResult.then(() => {
+            pendingSaveRef.current = false;
+            if (pageId) (window as any).__cadernoEditorBackup.delete(pageId);
+          }).catch((err: any) => {
+            console.error('[Caderno] Debounced save falhou:', err);
+            // Mantém pendingSaveRef true para o flush retry no unmount
+          });
+        } else {
+          pendingSaveRef.current = false;
+        }
       }, 500); // Debounce de 500ms
     },
   }, [pageId]);
-
-  useEffect(() => {
-    editorInstanceRef.current = editor;
-  }, [editor]);
 
   useEffect(() => {
     if (editor && needsLegacyHydration && editor.isEmpty) {

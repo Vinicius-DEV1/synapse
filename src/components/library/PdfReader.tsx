@@ -104,24 +104,25 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         setLoading(true);
         setPdfError(null);
         let fileData: any;
+        let assetUrl: string | null = null;
         try {
-          const res = await window.api.library.getBookFile(book.id);
-          if (res) {
-            if (typeof res === 'string') {
-              const binaryString = atob(res);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                  bytes[i] = binaryString.charCodeAt(i);
-              }
-              fileData = bytes;
-            } else {
-              fileData = res;
-            }
+          if (book.file_path && !book.file_path.startsWith('http')) {
+             const { appDataDir, join } = await import('@tauri-apps/api/path');
+             
+             const dataDir = await appDataDir();
+             let absPath = await join(dataDir, book.file_path);
+             
+             if (!absPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
+                 absPath = absPath + '.enc';
+             }
+             
+             assetUrl = `http://encrypted.localhost/library/${encodeURIComponent(absPath)}`;
           }
         } catch (localErr) {
-          console.log("Arquivo local não encontrado. Tentando nuvem...", localErr);
+          console.log("Arquivo local não encontrado ou erro. Tentando nuvem...", localErr);
         }
-        if (!fileData && book.drive_file_id) {
+
+        if (!assetUrl && book.drive_file_id) {
           console.log("Baixando do Google Drive: ", book.drive_file_id);
           const token = await getValidAccessToken();
           if (token) {
@@ -130,18 +131,18 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
              if (masterKey) {
                fileData = await decryptFile(encryptedData, masterKey);
              } else {
-               throw new Error("Chave mestra não encontrada para descriptografar.");
+               fileData = encryptedData;
              }
           } else {
              throw new Error("Você precisa conectar sua conta do Google Drive primeiro para baixar este livro.");
           }
         }
 
-        if (!fileData) {
+        if (!fileData && !assetUrl) {
           throw new Error("Arquivo PDF vazio ou não encontrado. Verifique se o arquivo existe na nuvem.");
         }
         
-        const loadingTask = pdfjsLib.getDocument({ data: fileData });
+        const loadingTask = assetUrl ? pdfjsLib.getDocument(assetUrl) : pdfjsLib.getDocument({ data: fileData });
         const pdf = await loadingTask.promise;
         
         if (!active) return;

@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -23,6 +23,8 @@ const SLASH_COMMANDS = [
   { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus },
   { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock },
   { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock },
+  { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive },
+  { id: 'documento-link', title: 'Vincular Arquivo', subtitle: 'Vincular um arquivo existente do módulo.', icon: Link },
 ];
 
 interface SlashMenuProps {

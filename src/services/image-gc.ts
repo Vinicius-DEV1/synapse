@@ -1,7 +1,7 @@
 import { getValidAccessToken, listFiles, deleteFromDrive, getOrCreatePhotosFolder, getOrCreateAppFolder } from './drive';
 import { getWebDb } from './db-web';
-function isElectron(): boolean {
-  return navigator.userAgent.toLowerCase().includes('electron') || 
+function isDesktopApp(): boolean {
+  return navigator.userAgent.toLowerCase().includes('Desktop') || 
          (typeof window !== 'undefined' && !!(window as any).api);
 }
 
@@ -61,14 +61,14 @@ export async function runImageGarbageCollector(): Promise<void> {
 }
 
 /**
- * Busca todas as páginas do banco de dados (Web ou Electron)
+ * Busca todas as páginas do banco de dados (Web ou Desktop)
  * e extrai os IDs do Google Drive usados nas tags <encrypted-image>.
  */
 async function extractUsedDriveFileIds(): Promise<Set<string>> {
   const usedIds = new Set<string>();
   let pages: any[] = [];
 
-  if (isElectron()) {
+  if (isDesktopApp()) {
     pages = await window.api.sync.getTable('pages');
   } else {
     const db = await getWebDb();
@@ -95,7 +95,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
  * Remove a imagem órfã do cache local (IndexedDB ou SQLite)
  */
 async function removeFromLocalCache(fileId: string): Promise<void> {
-  if (isElectron()) {
+  if (isDesktopApp()) {
      // Faltaria adicionar o método delete no IPC do imageCache se estivéssemos preocupados 
      // com o cache SQLite (atualmente não temos o método 'delete' no IPC, mas podemos apenas ignorar 
      // pois a nuvem é o que importa para espaço principal).

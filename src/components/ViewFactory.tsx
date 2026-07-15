@@ -9,6 +9,8 @@ const VideoView = lazy(() => import('./video-player/VideoView'));
 const AnkiView = lazy(() => import('./anki/AnkiView'));
 const FocusApp = lazy(() => import('./focus/FocusApp'));
 const CalendarView = lazy(() => import('./calendar/CalendarView'));
+const FilesView = lazy(() => import('./files/FilesView'));
+const VaultView = lazy(() => import('./vault/VaultView'));
 
 export interface ViewFactoryProps {
   tab: Tab;
@@ -53,6 +55,10 @@ export function ViewFactory({
         return <FocusApp />;
       case 'calendar':
         return <CalendarView />;
+      case 'files':
+        return <FilesView />;
+      case 'vault':
+        return <VaultView />;
       case 'finance':
       default:
         return <FinanceView />;

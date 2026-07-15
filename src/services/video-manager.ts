@@ -12,7 +12,7 @@ export async function getVideoStreamLink(driveFileId: string): Promise<string> {
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
   if (window.api?.video) {
-    // Usa o protocolo customizado do Electron. Colocamos o ID no pathname porque o hostname é convertido para minúsculo pelo URL parser
+    // Usa o protocolo customizado do Tauri. Colocamos o ID no pathname porque o hostname é convertido para minúsculo pelo URL parser
     return `stream-drive://api/${driveFileId}?token=${token}`;
   } else {
     // Na Web, usa a API oficial do Google Drive para streaming
@@ -51,12 +51,36 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
  * Verifica se um vídeo está disponível localmente.
  * Se sim, retorna a URL com protocolo file://. Se não, retorna link do Drive.
  */
+import { convertFileSrc } from '@tauri-apps/api/core';
+
 export async function resolveVideoUrl(video: VideoItem): Promise<string> {
   if (window.api?.video && video.is_local) {
-    const localPath = await window.api.video.getLocalPath(video.original_name);
+    // Primeiro tenta usar o file_path absoluto salvo no banco de dados
+    let localPath = video.file_path || await window.api.video.getLocalPath(video.original_name);
+    
+    // Fallback: se o localPath existe, mudamos a extensão para .enc (se aplicável ao migration)
+    if (!localPath) {
+      localPath = await window.api.video.getLocalPath(video.original_name + ".enc");
+    }
+    
     if (localPath) {
-      // Para Electron carregar vídeos locais, precisamos usar o protocolo file://
-      return `file://${localPath.replace(/\\/g, '/')}`;
+      // Remove .enc if present to get the real extension
+      const cleanPath = localPath.endsWith('.enc') ? localPath.slice(0, -4) : localPath;
+      const cleanName = video.original_name.endsWith('.enc') ? video.original_name.slice(0, -4) : video.original_name;
+      
+      const ext = (cleanPath || cleanName).split('.').pop()?.toLowerCase();
+      // Se for formato que o Chromium não toca nativamente, usaremos o nosso FFmpeg Streamer
+      if (ext && ['mkv', 'avi', 'flv', 'wmv'].includes(ext)) {
+          try {
+             const port = await (window.api.video as any).getStreamPort();
+             return `http://127.0.0.1:${port}/stream?file=culture/${encodeURIComponent(localPath)}&start=0`;
+          } catch(e) {
+             console.error("Erro ao obter porta do stream:", e);
+          }
+      }
+      
+      // Retorna a URI customizada de criptografia. Em Tauri v2 Windows, usa-se http://scheme.localhost/
+      return `http://encrypted.localhost/files/${encodeURIComponent(localPath)}`;
     }
   }
 
@@ -94,34 +118,21 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
   let localPath: string | undefined = undefined;
   let mainFileId = '';
   
-  const sourcePath = (file as any).electronPath;
+  const sourcePath = (file as any).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
   
   if (onProgress) onProgress(5); 
 
   if (sourcePath && window.api?.video) {
     try {
-      if (primaryAudioTrack && (window.api.video as any).remuxDefaultTrack) {
-        if (onProgress) onProgress(15); 
-        // 1. Remux the video
-        localPath = await (window.api.video as any).remuxDefaultTrack(sourcePath, file.name, primaryAudioTrack);
-        isLocal = true;
-        
-        if (onProgress) onProgress(40);
-        // Upload the remuxed video instead of the original
-        mainFileId = await uploadLocalFileToDrive(token, localPath, file.name, (p) => {
-          if (onProgress) onProgress(40 + (p * 0.3)); // 40 to 70%
-        });
-      } else if (window.api.video.copyLocal) {
-        // Fallback or no primary track selected
-        localPath = await window.api.video.copyLocal(sourcePath, file.name);
-        isLocal = true;
-        
-        if (onProgress) onProgress(40);
-        const buffer = await file.arrayBuffer();
-        mainFileId = await uploadToDrive(token, file.name, buffer, false, (p) => {
-          if (onProgress) onProgress(40 + (p * 0.3));
-        });
+      localPath = await window.api.video.copyLocal(sourcePath, file.name);
+      isLocal = true;
+      
+      if (localPath) {
+          if (onProgress) onProgress(40);
+          mainFileId = await uploadLocalFileToDrive(token, localPath, file.name + ".enc", (p) => {
+            if (onProgress) onProgress(40 + (p * 0.3));
+          });
       }
     } catch (e) {
       console.warn("Não foi possível processar o vídeo localmente:", e);
@@ -237,7 +248,12 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
       const buffer = await downloadFromDrive(token, driveSubtitleId);
       return new TextDecoder().decode(buffer);
     }
-    // Lógica para ler legenda local via Electron se necessário
+    // Ler legenda local via fetch file://
+    if (localSubtitlePath) {
+      const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
+      const res = await fetch(fileUrl);
+      if (res.ok) return await res.text();
+    }
     return null;
   } catch (e) {
     console.error("Falha ao ler legendas", e);
@@ -289,8 +305,10 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
     if (selectedSubs && selectedSubs.length > 0) {
       try {
         const scanResult = await window.api.video.scanTracks(localPath);
-        if (scanResult.subtitles && scanResult.subtitles.length > 0) {
-          const firstSubIndex = scanResult.subtitles[0].index;
+        const streams = scanResult?.streams || [];
+        const subtitleStreams = streams.filter((s: any) => s.codec_type === 'subtitle');
+        if (subtitleStreams.length > 0) {
+          const firstSubIndex = String(subtitleStreams[0].index);
           const vttContent = await window.api.video.extractSubtitles(localPath, firstSubIndex);
           if (vttContent) {
             const subFilename = `${finalFilename}_sub.vtt`;
@@ -347,6 +365,7 @@ import { deleteFromDrive } from './drive';
  * 2. Remove todos os arquivos vinculados no Google Drive
  * 3. Remove do banco de dados local (e sincroniza a exclusão)
  */
+
 export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
   // 1. Excluir localmente (se for local)
   if (video.is_local && window.api?.video) {
