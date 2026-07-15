@@ -1,5 +1,84 @@
 import { Plus, X, FileText, Library, Wallet } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useMouseDrag } from '../hooks/useMouseDrag';
+
+interface TabItemProps {
+  tab: any;
+  index: number;
+  isActive: boolean;
+  page: any;
+  onSelect: (id: string) => void;
+  onClose: (e: React.MouseEvent, id: string) => void;
+  onDropTab: (sourceIndex: number, targetIndex: number) => void;
+  tabCount: number;
+}
+
+function TabItem({ tab, index, isActive, page, onSelect, onClose, onDropTab, tabCount }: TabItemProps) {
+  let title = 'Nova Aba';
+  let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+
+  if (tab.module === 'notes') {
+    title = page?.title || 'Nova Página';
+    icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+  } else if (tab.module === 'library') {
+    title = tab.bookTitle || 'Biblioteca';
+    icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
+  } else if (tab.module === 'finance') {
+    title = 'Finanças';
+    icon = <Wallet size={13} className="flex-shrink-0 text-dark-subtext" />;
+  } else if (tab.module === 'culture') {
+    title = 'Cultura';
+    icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+  }
+
+  const { handleMouseDown } = useMouseDrag({
+    id: index.toString(),
+    type: 'tab',
+    getGhostContent: () => {
+      const el = document.createElement('div');
+      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-1.5 shadow-xl text-xs font-medium';
+      el.innerHTML = `<span>${title}</span>`;
+      return el;
+    },
+    onDrop: (targetId) => {
+      if (targetId !== null) {
+        const targetIdx = parseInt(targetId, 10);
+        if (!isNaN(targetIdx) && targetIdx !== index) {
+          onDropTab(index, targetIdx);
+        }
+      }
+    }
+  });
+
+  return (
+    <button
+      data-droppable-type="tab"
+      data-droppable-id={index.toString()}
+      onMouseDown={handleMouseDown}
+      onClick={() => onSelect(tab.id)}
+      className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] transition-all ${
+        isActive
+          ? 'bg-dark-bg text-dark-text border-t-2 border-x border-brand-500 border-x-white/5'
+          : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+      }`}
+    >
+      {icon}
+      <span className="truncate flex-1 text-left">{title}</span>
+      {tabCount > 1 && (
+        <span
+          onClick={(e) => onClose(e, tab.id)}
+          className={`p-0.5 rounded-md transition-all flex-shrink-0 ${
+            isActive
+              ? 'hover:bg-white/10 text-dark-subtext hover:text-dark-text'
+              : 'opacity-0 group-hover:opacity-100 hover:bg-white/10 text-dark-subtext hover:text-dark-text'
+          }`}
+        >
+          <X size={12} />
+        </span>
+      )}
+    </button>
+  );
+}
 
 export default function TabBar() {
   const { state, dispatch } = useStore();
@@ -21,70 +100,27 @@ export default function TabBar() {
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    e.dataTransfer.setData('tabIndex', index.toString());
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    const dragIndex = parseInt(e.dataTransfer.getData('tabIndex'), 10);
-    if (!isNaN(dragIndex) && dragIndex !== dropIndex) {
-      dispatch({ type: 'REORDER_TABS', sourceIndex: dragIndex, targetIndex: dropIndex });
-    }
+  const handleDropTab = (sourceIndex: number, targetIndex: number) => {
+    dispatch({ type: 'REORDER_TABS', sourceIndex, targetIndex });
   };
 
   return (
     <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
       {state.tabs.map((tab, index) => {
         const isActive = tab.id === state.activeTabId;
-        
-        let title = 'Nova Aba';
-        let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
-
-        if (tab.module === 'notes') {
-          const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) : null;
-          title = page?.title || 'Nova Página';
-          icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
-        } else if (tab.module === 'library') {
-          title = tab.bookTitle || 'Biblioteca';
-          icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
-        } else if (tab.module === 'finance') {
-          title = 'Finanças';
-          icon = <Wallet size={13} className="flex-shrink-0 text-dark-subtext" />;
-        } else if (tab.module === 'culture') {
-          title = 'Cultura';
-          icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
-        }
-
+        const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) : null;
         return (
-          <button
+          <TabItem
             key={tab.id}
-            draggable={true}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDrop(e, index)}
-            onClick={() => handleSelectTab(tab.id)}
-            className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] transition-all ${
-              isActive
-                ? 'bg-dark-bg text-dark-text border-t-2 border-x border-brand-500 border-x-white/5'
-                : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-            }`}
-          >
-            {icon}
-            <span className="truncate flex-1 text-left">{title}</span>
-            {state.tabs.length > 1 && (
-              <span
-                onClick={(e) => handleCloseTab(e, tab.id)}
-                className={`p-0.5 rounded-md transition-all flex-shrink-0 ${
-                  isActive
-                    ? 'hover:bg-white/10 text-dark-subtext hover:text-dark-text'
-                    : 'opacity-0 group-hover:opacity-100 hover:bg-white/10 text-dark-subtext hover:text-dark-text'
-                }`}
-              >
-                <X size={12} />
-              </span>
-            )}
-          </button>
+            tab={tab}
+            index={index}
+            isActive={isActive}
+            page={page}
+            onSelect={handleSelectTab}
+            onClose={handleCloseTab}
+            onDropTab={handleDropTab}
+            tabCount={state.tabs.length}
+          />
         );
       })}
 

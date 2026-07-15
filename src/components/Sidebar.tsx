@@ -3,6 +3,43 @@ import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, Lay
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
+import { useMouseDrag } from '../hooks/useMouseDrag';
+
+function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index, onDropPinned }: any) {
+  const { handleMouseDown } = useMouseDrag({
+    id: page.id,
+    type: 'pinned-page',
+    getGhostContent: () => {
+      const el = document.createElement('div');
+      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium';
+      el.innerHTML = `<span>${page.icon || '📄'}</span><span>${page.title}</span>`;
+      return el;
+    },
+    onDrop: (targetId) => {
+      if (targetId) {
+        onDropPinned(page.id, targetId);
+      }
+    }
+  });
+
+  return (
+    <div
+      data-droppable-type="pinned-page"
+      data-droppable-id={page.id}
+      onMouseDownCapture={handleMouseDown}
+    >
+      <SidebarItem
+        page={page}
+        depth={0}
+        activePageId={activeTab?.pageId || null}
+        onCreatePage={onCreatePage}
+        onUpdatePage={onUpdatePage}
+        isSearchResult={false}
+        disableHierarchyDnD={true}
+      />
+    </div>
+  );
+}
 
 interface SidebarProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
@@ -43,17 +80,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       )
     : rootPages;
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('text/plain', id);
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-  
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData('text/plain');
+  const handleDropPinned = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
     
     const currentPinned = [...pinnedPages];
@@ -322,24 +349,16 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                 <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
                   <Pin size={12} /> Fixados
                 </div>
-                {pinnedPages.slice(0, visiblePinnedCount).map((page) => (
-                  <div
+                {pinnedPages.slice(0, visiblePinnedCount).map((page, index) => (
+                  <PinnedSidebarItem
                     key={page.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, page.id)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, page.id)}
-                  >
-                    <SidebarItem
-                      page={page}
-                      depth={0}
-                      activePageId={activeTab?.pageId || null}
-                      onCreatePage={onCreatePage}
-                      onUpdatePage={onUpdatePage}
-                      isSearchResult={false}
-                      disableHierarchyDnD={true}
-                    />
-                  </div>
+                    page={page}
+                    index={index}
+                    activeTab={activeTab}
+                    onCreatePage={onCreatePage}
+                    onUpdatePage={onUpdatePage}
+                    onDropPinned={handleDropPinned}
+                  />
                 ))}
                 {!searchQuery && pinnedPages.length > visiblePinnedCount && (
                   <button
