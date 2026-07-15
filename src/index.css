@@ -272,8 +272,6 @@
   table-layout: fixed;
   width: 100%;
   margin: 1rem 0;
-  overflow: hidden;
-  border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
@@ -905,7 +903,7 @@ ul[data-type="taskList"] input[type="checkbox"]:checked {
 }
 
 ul[data-type="taskList"] input[type="checkbox"]:checked::after {
-  content: '?';
+  content: '\2714';
   color: white;
   font-size: 14px;
   font-weight: bold;
