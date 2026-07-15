@@ -134,10 +134,8 @@ pub struct UpdatePagePayload {
     pub title: Option<String>,
     pub icon: Option<String>,
     pub content: Option<String>,
-    #[serde(rename = "crdtState")]
     pub crdt_state: Option<String>,
-    #[serde(rename = "parentId")]
-    pub parent_id: Option<String>,
+    pub parent_id: Option<serde_json::Value>,
 }
 
 #[tauri::command]
@@ -182,9 +180,17 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         query.push_str(", crdt_state = ?");
         params_vec.push(crdt.into());
     }
-    if let Some(pid) = page.parent_id {
+    if let Some(pid_val) = page.parent_id {
         query.push_str(", parent_id = ?");
-        params_vec.push(pid.into());
+        if pid_val.is_null() {
+            params_vec.push(rusqlite::types::Value::Null);
+        } else if let Some(s) = pid_val.as_str() {
+            if s.is_empty() {
+                params_vec.push(rusqlite::types::Value::Null);
+            } else {
+                params_vec.push(s.to_string().into());
+            }
+        }
     }
     
     query.push_str(" WHERE id = ?");

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon, FolderOpen, Shield } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
@@ -35,7 +35,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   const rootPages = state.pages
     .filter((p) => p.parent_id === null && !p.is_pinned)
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const filteredPages = searchQuery.trim()
     ? state.pages.filter((p) =>
@@ -74,6 +74,27 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module;
+
+  // Listen for mouse-based drag drops on empty sidebar area (unparent page)
+  useEffect(() => {
+    const onDragDrop = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const treeEl = document.getElementById('sidebar-page-tree');
+      if (!treeEl) return;
+      
+      // Check if dropped on the tree container but NOT on any SidebarItem
+      const targetEl = document.elementFromPoint(detail.x, detail.y);
+      if (!targetEl) return;
+      
+      // If the target is the tree container itself (empty area), unparent
+      if (targetEl === treeEl || targetEl.id === 'sidebar-page-tree') {
+        onUpdatePage(detail.pageId, { parent_id: null });
+      }
+    };
+    
+    window.addEventListener('caderno-drag-drop', onDragDrop);
+    return () => window.removeEventListener('caderno-drag-drop', onDragDrop);
+  }, [onUpdatePage]);
 
   if (state.sidebarCollapsed) {
     return (
@@ -183,6 +204,24 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <CalendarIcon size={18} />
           </button>
           <button
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'files' })}
+            className={`p-2 rounded-lg transition-all active:scale-95 ${
+              activeModule === 'files' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+            }`}
+            title="Arquivos"
+          >
+            <FolderOpen size={18} />
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'vault' })}
+            className={`p-2 rounded-lg transition-all active:scale-95 ${
+              activeModule === 'vault' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+            }`}
+            title="Cofre"
+          >
+            <Shield size={18} />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
             title="Configurações"
@@ -223,11 +262,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Timer size={20} className="text-brand-400" />
           ) : activeModule === 'calendar' ? (
             <CalendarIcon size={20} className="text-brand-400" />
+          ) : activeModule === 'files' ? (
+            <FolderOpen size={20} className="text-brand-400" />
+          ) : activeModule === 'vault' ? (
+            <Shield size={20} className="text-brand-400" />
           ) : (
             <Wallet size={20} className="text-brand-400" />
           )}
           <span className="font-semibold text-sm">
-            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : activeModule === 'calendar' ? 'Agenda' : 'Finanças'}
+            {activeModule === 'notes' ? 'Caderno' : activeModule === 'library' ? 'Biblioteca' : activeModule === 'culture' ? 'Cultura' : activeModule === 'video' ? 'Vídeos' : activeModule === 'anki' ? 'Flashcards' : activeModule === 'focus' ? 'Foco' : activeModule === 'calendar' ? 'Agenda' : activeModule === 'files' ? 'Arquivos' : activeModule === 'vault' ? 'Cofre' : 'Finanças'}
           </span>
         </div>
         <button
@@ -270,17 +313,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       {/* Tree */}
       <div 
         className="flex-1 overflow-y-auto px-2 py-1 pb-20"
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('application/caderno-page')) {
-            e.preventDefault();
-          }
-        }}
-        onDrop={(e) => {
-          const draggedId = e.dataTransfer.getData('application/caderno-page');
-          if (draggedId) {
-            onUpdatePage(draggedId, { parent_id: null });
-          }
-        }}
+        id="sidebar-page-tree"
       >
         {activeModule === 'notes' ? (
           <>
@@ -380,6 +413,16 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <div className="flex flex-col gap-1 mt-2">
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Agenda</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus compromissos e tarefas diárias.</div>
+          </div>
+        ) : activeModule === 'files' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Arquivos</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus arquivos, PDFs e documentos.</div>
+          </div>
+        ) : activeModule === 'vault' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Cofre de Senhas</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Proteja suas credenciais e senhas com segurança máxima.</div>
           </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
@@ -502,6 +545,28 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             >
               <CalendarIcon size={16} />
               <span>Agenda</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'files' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'files'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <FolderOpen size={16} />
+              <span>Arquivos</span>
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'vault' })}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                activeModule === 'vault'
+                  ? 'bg-brand-500/10 text-brand-400'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+              }`}
+            >
+              <Shield size={16} />
+              <span>Cofre</span>
             </button>
             <button
               onClick={() => setShowSettings(true)}
