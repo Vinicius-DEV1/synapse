@@ -10,6 +10,7 @@ pub struct TutorSession {
     pub title: String,
     pub started_at: String,
     pub ended_at: Option<String>,
+    pub custom_prompt: Option<String>,
     pub deleted_at: Option<String>,
 }
 
@@ -37,7 +38,7 @@ pub fn practice_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<TutorSe
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT id, title, started_at, ended_at, deleted_at FROM tutor_sessions WHERE deleted_at IS NULL ORDER BY started_at DESC")
+    let mut stmt = conn.prepare("SELECT id, title, started_at, ended_at, custom_prompt, deleted_at FROM tutor_sessions WHERE deleted_at IS NULL ORDER BY started_at DESC")
         .map_err(|e| e.to_string())?;
         
     let iter = stmt.query_map([], |row| {
@@ -46,7 +47,8 @@ pub fn practice_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<TutorSe
             title: row.get(1)?,
             started_at: row.get(2)?,
             ended_at: row.get(3)?,
-            deleted_at: row.get(4)?,
+            custom_prompt: row.get(4)?,
+            deleted_at: row.get(5)?,
         })
     }).map_err(|e| e.to_string())?;
     
@@ -68,8 +70,8 @@ pub fn practice_create_session(session: TutorSession, db_state: State<'_, DbStat
     let id = if session.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { session.id.clone() };
     
     conn.execute(
-        "INSERT INTO tutor_sessions (id, title, started_at, ended_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
-        params![id, session.title, session.started_at, session.ended_at, session.deleted_at]
+        "INSERT INTO tutor_sessions (id, title, started_at, ended_at, custom_prompt, deleted_at) VALUES (?, ?, ?, ?, ?, ?)",
+        params![id, session.title, session.started_at, session.ended_at, session.custom_prompt, session.deleted_at]
     ).map_err(|e| e.to_string())?;
     
     let mut ret = session;
@@ -83,8 +85,8 @@ pub fn practice_update_session(session: TutorSession, db_state: State<'_, DbStat
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "UPDATE tutor_sessions SET title = ?, started_at = ?, ended_at = ?, deleted_at = ? WHERE id = ?",
-        params![session.title, session.started_at, session.ended_at, session.deleted_at, session.id]
+        "UPDATE tutor_sessions SET title = ?, started_at = ?, ended_at = ?, custom_prompt = ?, deleted_at = ? WHERE id = ?",
+        params![session.title, session.started_at, session.ended_at, session.custom_prompt, session.deleted_at, session.id]
     ).map_err(|e| e.to_string())?;
         
     Ok(count as i32)
