@@ -133,7 +133,7 @@ const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
 const API_KEY = 'AIzaSyCDasLgSKUycf9-p4Ar9Wch3gq-E6-wGbw'; 
 const HOST = 'generativelanguage.googleapis.com';
 
-const SYSTEM_INSTRUCTION = `Você é um amigo humano próximo do usuário.
+const DEFAULT_SYSTEM_INSTRUCTION = `Você é um amigo humano próximo do usuário.
 Fale SEMPRE e APENAS em Português do Brasil (pt-BR).
 Sua linguagem deve ser muito acolhedora e natural, com sotaque brasileiro.
 Inicie a conversa perguntando de forma casual se o usuário está conseguindo te ouvir perfeitamente.`;
@@ -147,6 +147,11 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [memories, setMemories] = useState<TutorMemory[]>([]);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSessionSettingsOpen, setIsSessionSettingsOpen] = useState(false);
+  
+  const [globalSystemPrompt, setGlobalSystemPrompt] = useState(() => localStorage.getItem('globalSystemPrompt') || DEFAULT_SYSTEM_INSTRUCTION);
+  const [customPrompt, setCustomPrompt] = useState(session.custom_prompt || '');
+  
   const [aiVoice, setAiVoice] = useState(() => localStorage.getItem('aiVoice') || 'Puck');
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -407,7 +412,11 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         setIsConnected(true);
         setError(null);
         
-        let systemPrompt = SYSTEM_INSTRUCTION;
+        let systemPrompt = globalSystemPrompt;
+        if (session.custom_prompt && session.custom_prompt.trim().length > 0) {
+          systemPrompt = session.custom_prompt.trim();
+        }
+        
         if (memories.length > 0) {
           systemPrompt += "\n\nVocê tem as seguintes memórias globais de longo prazo sobre o usuário, extraídas de conversas anteriores. Use-as de forma sutil para personalizar a conversa quando for apropriado e relevante:\n";
           memories.forEach(m => {
@@ -479,7 +488,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     } catch (err: any) {
       setError(err.message);
     }
-  }, [session.id, memories, aiVoice]);
+  }, [session.id, memories, aiVoice, globalSystemPrompt, session.custom_prompt]);
 
   const handleWsMessage = async (dataStr: string, ws: WebSocket) => {
     try {
@@ -889,6 +898,25 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     };
   }, []);
 
+  const saveGlobalPrompt = (newPrompt: string) => {
+    setGlobalSystemPrompt(newPrompt);
+    localStorage.setItem('globalSystemPrompt', newPrompt);
+  };
+
+  const saveCustomPrompt = async () => {
+    try {
+      const val = customPrompt.trim() === '' ? null : customPrompt;
+      await window.api.practice.updateSession({
+        ...session,
+        custom_prompt: val
+      });
+      session.custom_prompt = val; // update local ref
+      setIsSessionSettingsOpen(false);
+    } catch (err) {
+      console.error('Failed to update session prompt', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-dark-bg/80 relative">
       {/* Header */}
@@ -900,10 +928,24 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             <span className="text-xs text-dark-subtext font-medium uppercase tracking-wider">
               {isInCall ? (isConnected ? 'Em chamada' : 'Conectando...') : 'Offline'}
             </span>
+            {session.custom_prompt && (
+              <>
+                <span className="text-dark-subtext mx-1">•</span>
+                <span className="text-xs text-brand-400 font-medium tracking-wider">Instruções Customizadas Ativas</span>
+              </>
+            )}
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsSessionSettingsOpen(true)}
+            className={`p-1.5 rounded-md transition-colors ${session.custom_prompt ? 'bg-brand-500/20 text-brand-400 hover:bg-brand-500/30' : 'bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white'}`}
+            title="Instruções desta Sessão"
+          >
+            <Settings size={16} />
+          </button>
+          
           <button 
             onClick={() => setIsSettingsOpen(true)}
             className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md text-brand-400 hover:text-brand-300 transition-colors"
@@ -1199,7 +1241,28 @@ export default function PracticeChat({ session }: PracticeChatProps) {
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+            
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
+              
+              {/* Global Prompt Config */}
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-1">Prompt Base da IA (Global)</h4>
+                <p className="text-xs text-dark-subtext mb-3">Essa é a instrução padrão que a IA recebe em todas as conversas. Ela dita a personalidade, o idioma principal e o tom geral do seu professor.</p>
+                <textarea 
+                  value={globalSystemPrompt}
+                  onChange={(e) => saveGlobalPrompt(e.target.value)}
+                  placeholder="Escreva como a IA deve agir globalmente..."
+                  className="w-full h-40 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none"
+                />
+                <button 
+                  onClick={() => saveGlobalPrompt(DEFAULT_SYSTEM_INSTRUCTION)}
+                  className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
+                >
+                  Restaurar padrão
+                </button>
+              </div>
+              
+              {/* Voice Config */}
               <div>
                 <h4 className="text-sm font-semibold text-white mb-1">Voz da IA</h4>
                 <p className="text-xs text-dark-subtext mb-4">Configuração do modelo de áudio bidirecional.</p>
@@ -1221,6 +1284,50 @@ export default function PracticeChat({ session }: PracticeChatProps) {
                     Ouvir Amostra
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Settings Panel UI */}
+      {isSessionSettingsOpen && (
+        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
+          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-brand-400">
+                <Settings size={20} />
+                <h3 className="font-semibold text-white">Opções da Sessão</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setCustomPrompt(session.custom_prompt || '');
+                  setIsSessionSettingsOpen(false);
+                }}
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-1">Instruções Específicas</h4>
+                <p className="text-xs text-dark-subtext mb-4">Se você preencher este campo, o <strong>Prompt Global será totalmente ignorado</strong> e a IA seguirá apenas estas instruções para esta conversa. Útil para praticar idiomas específicos ou criar situações focadas.</p>
+                
+                <textarea 
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="Ex: Você é um garçom em Paris. Fale apenas em Francês..."
+                  className="w-full h-64 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
+                />
+                
+                <button 
+                  onClick={saveCustomPrompt}
+                  className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors"
+                >
+                  Salvar Instruções
+                </button>
               </div>
             </div>
           </div>

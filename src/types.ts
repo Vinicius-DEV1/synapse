@@ -461,6 +461,7 @@ export interface TutorSession {
   title: string;
   started_at: string;
   ended_at: string | null;
+  custom_prompt?: string | null;
   deleted_at: string | null;
 }
 
