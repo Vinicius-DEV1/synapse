@@ -86,7 +86,7 @@ const EncryptedImageNodeView = (props: any) => {
 
   // ─── Lógica de redimensionamento (idêntica ao ResizableImage) ──────────────
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent, direction: 'left' | 'right') => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
@@ -97,7 +97,7 @@ const EncryptedImageNodeView = (props: any) => {
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const currentX = moveEvent.clientX;
       const diff = currentX - startX;
-      const newWidth = Math.max(50, startWidth + diff);
+      const newWidth = Math.max(50, startWidth + (direction === 'right' ? diff : -diff));
       updateAttributes({ width: newWidth });
     };
 
@@ -228,17 +228,23 @@ const EncryptedImageNodeView = (props: any) => {
         src={blobUrl!}
         alt={alt || ''}
         style={{ width: width ? `${width}px` : 'auto', height: 'auto', maxWidth: '100%' }}
-        className={`rounded cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
+        className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
         draggable="true"
         data-drag-handle
       />
 
-      {/* Alça de redimensionamento */}
+      {/* Alças de redimensionamento */}
       {(selected || isResizing) && (
-        <div
-          className="absolute right-0 bottom-0 w-4 h-4 bg-brand-500 rounded-full border-2 border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm"
-          onMouseDown={handleMouseDown}
-        />
+        <>
+          {/* Top-Left */}
+          <div className="absolute left-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
+          {/* Top-Right */}
+          <div className="absolute right-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+          {/* Bottom-Left */}
+          <div className="absolute left-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 -translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
+          {/* Bottom-Right */}
+          <div className="absolute right-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+        </>
       )}
     </NodeViewWrapper>
   );

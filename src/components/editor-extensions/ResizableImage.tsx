@@ -7,7 +7,7 @@ const ResizableImageNodeView = (props: any) => {
   const [isResizing, setIsResizing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent, direction: 'left' | 'right') => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
@@ -18,8 +18,9 @@ const ResizableImageNodeView = (props: any) => {
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const currentX = moveEvent.clientX;
       const diff = currentX - startX;
-      // We are dragging the right handle, so moving right increases width
-      const newWidth = Math.max(50, startWidth + diff); 
+      // Se for a alça da direita, arrastar para a direita aumenta (diff positivo)
+      // Se for a alça da esquerda, arrastar para a esquerda aumenta (diff negativo)
+      const newWidth = Math.max(50, startWidth + (direction === 'right' ? diff : -diff)); 
       updateAttributes({ width: newWidth });
     };
 
@@ -41,19 +42,23 @@ const ResizableImageNodeView = (props: any) => {
         alt={node.attrs.alt}
         title={node.attrs.title}
         width={node.attrs.width}
-        // Applying width via style to ensure it overrides max-w-full if needed, but keeps aspect ratio
         style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', height: 'auto', maxWidth: '100%' }}
-        className={`rounded cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
+        className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
         draggable="true"
         data-drag-handle
       />
 
-      {/* Resize Handle */}
       {(selected || isResizing) && (
-        <div
-          className="absolute right-0 bottom-0 w-4 h-4 bg-brand-500 rounded-full border-2 border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm"
-          onMouseDown={handleMouseDown}
-        />
+        <>
+          {/* Top-Left */}
+          <div className="absolute left-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
+          {/* Top-Right */}
+          <div className="absolute right-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+          {/* Bottom-Left */}
+          <div className="absolute left-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 -translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
+          {/* Bottom-Right */}
+          <div className="absolute right-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+        </>
       )}
     </NodeViewWrapper>
   );
