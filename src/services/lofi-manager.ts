@@ -7,11 +7,7 @@ export async function getLofiStreamLink(driveFileId: string): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  if (window.api?.lofi) {
-    return `stream-drive://api/${driveFileId}?token=${token}`;
-  } else {
-    return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
-  }
+  return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
 }
 
 export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent: number) => void): Promise<string> {
