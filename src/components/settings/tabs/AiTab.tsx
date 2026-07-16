@@ -153,9 +153,15 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             onChange={(e) => setNewKey(e.target.value)}
             className="flex-1 bg-dark-bg border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
             placeholder="Adicionar nova chave..."
-            onKeyDown={(e) => e.key === 'Enter' && handleAddKey()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddKey();
+              }
+            }}
           />
           <button 
+            type="button"
             onClick={handleAddKey}
             disabled={!newKey.trim()}
             className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
