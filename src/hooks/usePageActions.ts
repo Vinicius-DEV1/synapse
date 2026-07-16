@@ -45,7 +45,9 @@ export function usePageActions() {
 
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
+      console.log(`[Caderno:IPC] updatePage START id=${id}, content.length=${content?.length}, crdt_state.length=${crdtState?.length || 0}`);
       await window.api.updatePage({ id, content, crdt_state: crdtState });
+      console.log(`[Caderno:IPC] updatePage DONE id=${id} ✅`);
       dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
       
       if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
