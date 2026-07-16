@@ -492,7 +492,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </button>
         
         {isModulesExpanded && (
-          <div className="flex flex-col gap-1 px-3 pb-3">
+          <div className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto max-h-[40vh] custom-scrollbar">
             <button
               onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'notes' })}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
