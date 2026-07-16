@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle, Settings, Volume2 } from 'lucide-react';
 import type { TutorSession, TutorMessage, TutorMemory } from '../../types';
 import { encodeWAV } from '../../utils/audioUtils';
 
@@ -146,6 +146,9 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [memories, setMemories] = useState<TutorMemory[]>([]);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [aiVoice, setAiVoice] = useState(() => localStorage.getItem('aiVoice') || 'Puck');
+  const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -162,7 +165,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const playbackContextRef = useRef<AudioContext | null>(null);
   
   // Fila para reproduzir áudio da IA sequencialmente
-  const audioQueueRef = useRef<Float32Array[]>([]);
+  const nextAudioTimeRef = useRef<number>(0);
   const isPlayingRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -242,6 +245,95 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   };
 
+  const previewVoice = (voiceName: string) => {
+    if (previewingVoice) return; // Wait until current preview is done
+    setPreviewingVoice(voiceName);
+    
+    try {
+      const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
+      const ws = new WebSocket(url);
+      
+      const audioCtx = new AudioContext({ sampleRate: 24000 });
+      let nextTime = audioCtx.currentTime;
+      
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          setup: {
+            model: GEMINI_MODEL,
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }
+            },
+            systemInstruction: { parts: [{ text: `Diga apenas a seguinte frase: "Olá, eu sou a voz ${voiceName}."` }] }
+          }
+        }));
+      };
+      
+      ws.onmessage = async (e) => {
+        try {
+          const res = JSON.parse(e.data.toString());
+          if (res.setupComplete) {
+            ws.send(JSON.stringify({
+              clientContent: { turns: [{ role: 'user', parts: [{ text: "Apresente-se" }] }], turnComplete: true }
+            }));
+          } else if (res.serverContent?.modelTurn) {
+            const parts = res.serverContent.modelTurn.parts;
+            for (const part of parts) {
+              if (part.inlineData) {
+                const base64Audio = part.inlineData.data;
+                const binaryStr = window.atob(base64Audio);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+                
+                const int16 = new Int16Array(bytes.buffer);
+                const float32 = new Float32Array(int16.length);
+                for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
+                
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                if (nextTime < audioCtx.currentTime) nextTime = audioCtx.currentTime;
+                
+                const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+                buffer.getChannelData(0).set(float32);
+                
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start(nextTime);
+                nextTime += buffer.duration;
+              }
+            }
+          } else if (res.serverContent?.turnComplete) {
+            ws.close();
+            setPreviewingVoice(null);
+          }
+        } catch(err) {
+          console.error("Preview WS msg error:", err);
+        }
+      };
+      
+      ws.onerror = () => setPreviewingVoice(null);
+      ws.onclose = () => setPreviewingVoice(null);
+      
+    } catch (err) {
+      console.error(err);
+      setPreviewingVoice(null);
+    }
+  };
+
+  const changeVoiceAndReconnect = (newVoice: string) => {
+    setAiVoice(newVoice);
+    localStorage.setItem('aiVoice', newVoice);
+    
+    if (isInCall) {
+      // Disconnect and reconnect to apply new voice setup
+      if (wsRef.current) wsRef.current.close();
+      setIsConnected(false);
+      setTimeout(() => {
+        connectWebSocket(newVoice);
+      }, 500);
+    }
+  };
+
   // Animação reativa do visualizador baseada no áudio real
   useEffect(() => {
     const updateVisualizer = () => {
@@ -278,6 +370,19 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         }
       }
       
+      // Update isPlaying React state based on accurate audio scheduling
+      if (playbackContextRef.current && nextAudioTimeRef.current > playbackContextRef.current.currentTime) {
+        if (!isPlayingRef.current) {
+          isPlayingRef.current = true;
+          setIsPlaying(true);
+        }
+      } else {
+        if (isPlayingRef.current) {
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+        }
+      }
+      
       requestRef.current = requestAnimationFrame(updateVisualizer);
     };
     
@@ -289,7 +394,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     };
   }, [isInCall]);
 
-  const connectWebSocket = useCallback(async () => {
+  const connectWebSocket = useCallback(async (overrideVoice?: string) => {
     try {
       const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
       const ws = new WebSocket(url);
@@ -312,6 +417,13 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             model: GEMINI_MODEL,
             generationConfig: {
               responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: overrideVoice || aiVoice
+                  }
+                }
+              }
             },
             realtimeInputConfig: {
               // Enable VAD so the API handles turn completion naturally
@@ -370,7 +482,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     } catch (err: any) {
       setError(err.message);
     }
-  }, [session.id, memories]);
+  }, [session.id, memories, aiVoice]);
 
   const handleWsMessage = async (dataStr: string, ws: WebSocket) => {
     try {
@@ -497,28 +609,21 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       float32[i] = int16[i] / 32768.0;
     }
     
-    audioQueueRef.current.push(float32);
-    playNextAudio();
-  };
-
-  const playNextAudio = async () => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
-      if (audioQueueRef.current.length === 0) setIsPlaying(false);
-      return;
-    }
-    isPlayingRef.current = true;
-    setIsPlaying(true);
-    
     if (!playbackContextRef.current || playbackContextRef.current.state === 'closed') {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      nextAudioTimeRef.current = playbackContextRef.current.currentTime;
     }
     
     const ctx = playbackContextRef.current;
     if (ctx.state === 'suspended') await ctx.resume();
 
-    const pcmData = audioQueueRef.current.shift()!;
-    const buffer = ctx.createBuffer(1, pcmData.length, 24000);
-    buffer.getChannelData(0).set(pcmData);
+    // If the queue fell behind the current time (i.e. we ran out of audio or it's the first chunk), reset the timer
+    if (nextAudioTimeRef.current < ctx.currentTime) {
+      nextAudioTimeRef.current = ctx.currentTime;
+    }
+
+    const buffer = ctx.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
     
     if (!playbackAnalyserRef.current) {
       playbackAnalyserRef.current = ctx.createAnalyser();
@@ -529,11 +634,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(playbackAnalyserRef.current);
-    source.onended = () => {
-      isPlayingRef.current = false;
-      playNextAudio();
-    };
-    source.start();
+    
+    // Schedule exactly at the end of the previous chunk for gapless playback
+    source.start(nextAudioTimeRef.current);
+    
+    // Increment the next start time by the duration of this chunk
+    nextAudioTimeRef.current += buffer.duration;
   };
 
   const startAudioCapture = async () => {
@@ -802,6 +908,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         
         <div className="flex items-center gap-3">
           <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md text-brand-400 hover:text-brand-300 transition-colors"
+            title="Configurações de Voz"
+          >
+            <Settings size={16} />
+          </button>
+          
+          <button 
             onClick={() => setIsMemoryOpen(true)}
             className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md text-brand-400 hover:text-brand-300 transition-colors mr-2"
             title="Ver Memórias da IA"
@@ -1067,6 +1181,67 @@ export default function PracticeChat({ session }: PracticeChatProps) {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Settings Panel UI */}
+      {isSettingsOpen && (
+        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
+          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-brand-400">
+                <Settings size={20} />
+                <h3 className="font-semibold text-white">Configurações de Voz</h3>
+              </div>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-1">Voz da IA</h4>
+                <p className="text-xs text-dark-subtext mb-4">Escolha a voz que o seu professor de idiomas irá utilizar.</p>
+                
+                <div className="flex flex-col gap-3">
+                  {[
+                    { id: 'Puck', desc: 'Masculino, amigável' },
+                    { id: 'Charon', desc: 'Masculino, profundo' },
+                    { id: 'Kore', desc: 'Feminino, calmo' },
+                    { id: 'Fenrir', desc: 'Masculino, enérgico' },
+                    { id: 'Aoede', desc: 'Feminino, envolvente' }
+                  ].map(v => (
+                    <div 
+                      key={v.id} 
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${aiVoice === v.id ? 'bg-brand-500/10 border-brand-500/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                      onClick={() => {
+                        if (aiVoice !== v.id) changeVoiceAndReconnect(v.id);
+                      }}
+                    >
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-medium ${aiVoice === v.id ? 'text-brand-400' : 'text-white/90'}`}>{v.id}</span>
+                        <span className="text-xs text-dark-subtext">{v.desc}</span>
+                      </div>
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          previewVoice(v.id);
+                        }}
+                        disabled={previewingVoice !== null}
+                        className={`p-2 rounded-full transition-all ${previewingVoice === v.id ? 'bg-brand-500 text-white animate-pulse' : 'bg-black/20 text-white/50 hover:text-white hover:bg-black/40'} disabled:opacity-50`}
+                        title="Ouvir"
+                      >
+                        {previewingVoice === v.id ? <Loader2 size={16} className="animate-spin" /> : <Volume2 size={16} />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
