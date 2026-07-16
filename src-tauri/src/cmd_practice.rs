@@ -178,3 +178,16 @@ pub fn practice_create_memory(memory: TutorMemory, db_state: State<'_, DbState>)
     ret.id = id;
     Ok(ret)
 }
+
+#[tauri::command]
+pub fn practice_delete_memory(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    
+    let count = conn.execute(
+        "DELETE FROM tutor_memories WHERE id = ?",
+        params![id]
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(count > 0)
+}

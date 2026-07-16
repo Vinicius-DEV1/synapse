@@ -450,6 +450,7 @@ declare global {
         createMessage: (msg: Partial<TutorMessage>) => Promise<TutorMessage>;
         getMemories: () => Promise<TutorMemory[]>;
         createMemory: (memory: Partial<TutorMemory>) => Promise<TutorMemory>;
+        deleteMemory: (id: string) => Promise<boolean>;
       };
     };
   }

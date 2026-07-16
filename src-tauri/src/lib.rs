@@ -215,7 +215,8 @@ pub fn run() {
         cmd_practice::practice_get_messages,
         cmd_practice::practice_create_message,
         cmd_practice::practice_get_memories,
-        cmd_practice::practice_create_memory
+        cmd_practice::practice_create_memory,
+        cmd_practice::practice_delete_memory
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
