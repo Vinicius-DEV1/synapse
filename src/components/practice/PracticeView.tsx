@@ -39,8 +39,15 @@ export default function PracticeView() {
     e.stopPropagation();
     if (!window.api?.practice) return;
     
-    const confirm = window.confirm('Deseja excluir esta sessão de prática?');
-    if (!confirm) return;
+    let isConfirm = false;
+    if (window.api.app?.showConfirm) {
+      const res = await window.api.app.showConfirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados)');
+      isConfirm = res === 1;
+    } else {
+      isConfirm = confirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)');
+    }
+    
+    if (!isConfirm) return;
 
     try {
       const sessionToUpdate = sessions.find(s => s.id === id);
@@ -123,7 +130,7 @@ export default function PracticeView() {
       {/* Main Area */}
       <div className="flex-1 flex flex-col relative overflow-hidden bg-dark-bg/50">
         {activeSession ? (
-          <PracticeChat session={activeSession} />
+          <PracticeChat key={activeSession.id} session={activeSession} />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center opacity-40 select-none">
             <Mic size={64} className="text-brand-500 mb-4" />

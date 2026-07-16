@@ -330,6 +330,7 @@ export const createTauriApi = async () => {
       createMessage: async (msg: any) => await invoke('practice_create_message', { message: msg }),
       getMemories: async () => await invoke('practice_get_memories'),
       createMemory: async (memory: any) => await invoke('practice_create_memory', { memory }),
+      deleteMemory: async (id: string) => await invoke('practice_delete_memory', { id }),
     }
   };
 };

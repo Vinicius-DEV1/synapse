@@ -1,6 +1,131 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Pause, Play, AlertCircle } from 'lucide-react';
-import type { TutorSession, TutorMessage } from '../../types';
+import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle } from 'lucide-react';
+import type { TutorSession, TutorMessage, TutorMemory } from '../../types';
+import { encodeWAV } from '../../utils/audioUtils';
+
+// Typings para Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+function AudioMessagePlayer({ src }: { src: string }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggle = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  if (!src) return null;
+
+  return (
+    <div className="mt-2 inline-flex items-center gap-2 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full cursor-pointer transition-colors" onClick={toggle}>
+      {isPlaying ? <Square size={14} className="text-brand-400" /> : <Play size={14} className="text-brand-400" />}
+      <span className="text-xs font-medium text-white/80">Ouvir áudio</span>
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        onEnded={() => setIsPlaying(false)} 
+        onPause={() => setIsPlaying(false)} 
+        onPlay={() => setIsPlaying(true)} 
+        className="hidden" 
+      />
+    </div>
+  );
+}
+
+function MicTestWidget() {
+  const [state, setState] = useState<'idle' | 'recording' | 'playing'>('idle');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const startTest = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+      
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setState('recording');
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao acessar microfone para teste.');
+    }
+  };
+
+  const stopTest = () => {
+    if (mediaRecorderRef.current && state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setState('idle');
+    }
+  };
+
+  const playTest = () => {
+    if (audioRef.current && audioUrl) {
+      setState('playing');
+      audioRef.current.play();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {state === 'idle' && (
+        <button onClick={startTest} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-dark-subtext hover:text-white transition-colors" title="Testar microfone antes da ligação">
+          <Mic size={14} />
+        </button>
+      )}
+      {state === 'idle' && audioUrl && (
+        <button onClick={playTest} className="p-2 bg-brand-600/20 text-brand-400 hover:bg-brand-600 hover:text-white rounded-full transition-colors" title="Ouvir áudio gravado">
+          <Play size={14} fill="currentColor" />
+        </button>
+      )}
+      {state === 'recording' && (
+        <button onClick={stopTest} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-full text-[11px] font-medium transition-all flex items-center gap-1.5 animate-pulse">
+          <Square size={10} fill="currentColor" /> Gravando teste...
+        </button>
+      )}
+      {state === 'playing' && (
+        <span className="px-3 py-1.5 text-brand-400 text-[11px] font-medium flex items-center gap-1.5">
+          <Play size={10} fill="currentColor" /> Ouvindo teste
+        </span>
+      )}
+      {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setState('idle')} className="hidden" />}
+    </div>
+  );
+}
 
 // O modelo que suporta bidiGenerateContent (Áudio Nativo bidirecional)
 const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
@@ -19,6 +144,8 @@ interface PracticeChatProps {
 
 export default function PracticeChat({ session }: PracticeChatProps) {
   const [messages, setMessages] = useState<TutorMessage[]>([]);
+  const [memories, setMemories] = useState<TutorMemory[]>([]);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -45,6 +172,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const requestRef = useRef<number>();
   const [micLabel, setMicLabel] = useState<string>('');
 
+  // Transcrição e Salvamento
+  const recognitionRef = useRef<any>(null);
+  const userTranscriptRef = useRef<string>('');
+  const userAudioChunksRef = useRef<Float32Array[]>([]);
+  
+  const aiTurnTextRef = useRef<string>('');
+  const aiTurnAudioChunksRef = useRef<Float32Array[]>([]);
+
   const loadMessages = useCallback(async () => {
     if (!window.api?.practice) return;
     try {
@@ -55,9 +190,20 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   }, [session.id]);
 
+  const loadMemories = useCallback(async () => {
+    if (!window.api?.practice) return;
+    try {
+      const mems = await window.api.practice.getMemories();
+      setMemories(mems);
+    } catch (err) {
+      console.error('Failed to load memories', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadMessages();
-  }, [loadMessages]);
+    loadMemories();
+  }, [loadMessages, loadMemories]);
 
   const saveMessage = async (role: string, text: string) => {
     if (!window.api?.practice || !text.trim()) return;
@@ -76,10 +222,21 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const saveMemory = async (fact: string, category: string) => {
     if (!window.api?.practice) return;
     try {
-      await window.api.practice.createMemory({ fact, category });
+      const newMem = await window.api.practice.createMemory({ fact, category });
+      setMemories(prev => [newMem, ...prev]);
       console.log('Saved core memory:', { fact, category });
     } catch (err) {
       console.error('Failed to save memory', err);
+    }
+  };
+
+  const deleteMemory = async (id: string) => {
+    if (!window.api?.practice) return;
+    try {
+      await window.api.practice.deleteMemory(id);
+      setMemories(prev => prev.filter(m => m.id !== id));
+    } catch (err) {
+      console.error('Failed to delete memory', err);
     }
   };
 
@@ -139,6 +296,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         setIsConnected(true);
         setError(null);
         
+        let systemPrompt = SYSTEM_INSTRUCTION;
+        if (memories.length > 0) {
+          systemPrompt += "\n\nVocê tem as seguintes memórias globais de longo prazo sobre o usuário, extraídas de conversas anteriores. Use-as de forma sutil para personalizar a conversa quando for apropriado e relevante:\n";
+          memories.forEach(m => {
+            systemPrompt += `- [${m.category}]: ${m.fact}\n`;
+          });
+        }
+        
         // Setup initial config and tools
         const setupMsg = {
           setup: {
@@ -147,7 +312,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
               responseModalities: ["AUDIO"],
             },
             systemInstruction: {
-              parts: [{ text: SYSTEM_INSTRUCTION }]
+              parts: [{ text: systemPrompt }]
             },
             tools: [
               {
@@ -199,7 +364,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     } catch (err: any) {
       setError(err.message);
     }
-  }, [session.id]);
+  }, [session.id, memories]);
 
   const handleWsMessage = async (dataStr: string, ws: WebSocket) => {
     try {
@@ -209,10 +374,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         // Inject history (hydrate) if not first time
         const past = await window.api?.practice?.getMessages(session.id);
         if (past && past.length > 0) {
-          const contents = past.map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.text_content }]
-          }));
+          const contents = past.map(m => {
+            // Limpa as tags de áudio gigantes para economizar tokens na memória local
+            const cleanText = m.text_content.replace(/\[audio:data:audio\/wav;base64,.+?\]/g, '').trim();
+            return {
+              role: m.role === 'user' ? 'user' : 'model',
+              parts: [{ text: cleanText || '(mensagem sem texto)' }]
+            };
+          });
           const clientContent = {
             clientContent: {
               turns: contents,
@@ -227,14 +396,50 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         const parts = response.serverContent.modelTurn.parts;
         for (const part of parts) {
           if (part.text) {
-            // IA is speaking text (can happen even if modality is AUDIO, as transcript)
-            saveMessage('model', part.text);
+            aiTurnTextRef.current += part.text;
           }
           if (part.inlineData) {
-            // Audio data
             const base64Audio = part.inlineData.data;
+            
+            // Decodificar base64 e acumular Float32
+            const binaryStr = window.atob(base64Audio);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const int16 = new Int16Array(bytes.buffer);
+            const float32 = new Float32Array(int16.length);
+            for (let i = 0; i < int16.length; i++) {
+              float32[i] = int16[i] / 32768.0;
+            }
+            aiTurnAudioChunksRef.current.push(float32);
+            
             playAudioData(base64Audio);
           }
+        }
+      }
+      
+      if (response.serverContent?.turnComplete) {
+        if (aiTurnTextRef.current || aiTurnAudioChunksRef.current.length > 0) {
+          // Gerar WAV e salvar
+          let text = aiTurnTextRef.current;
+          if (aiTurnAudioChunksRef.current.length > 0) {
+            const totalLen = aiTurnAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
+            const combined = new Float32Array(totalLen);
+            let offset = 0;
+            for (const chunk of aiTurnAudioChunksRef.current) {
+              combined.set(chunk, offset);
+              offset += chunk.length;
+            }
+            const wavBuffer = encodeWAV(combined, 24000); // Gemini returns 24kHz
+            const b64 = arrayBufferToBase64(wavBuffer);
+            text += ` [audio:data:audio/wav;base64,${b64}]`;
+          }
+          saveMessage('model', text);
+          
+          aiTurnTextRef.current = '';
+          aiTurnAudioChunksRef.current = [];
         }
       }
 
@@ -296,7 +501,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     isPlayingRef.current = true;
     setIsPlaying(true);
     
-    if (!playbackContextRef.current) {
+    if (!playbackContextRef.current || playbackContextRef.current.state === 'closed') {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
     }
     
@@ -343,6 +548,23 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       source.connect(analyser);
       analyserRef.current = analyser;
       
+      // Initialize STT
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.lang = 'pt-BR';
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        
+        recognitionRef.current.onresult = (event: any) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          userTranscriptRef.current = transcript;
+        };
+      }
+      
       let pcmBuffer: number[] = []; // Not needed anymore since worklet buffers
       workletNode.port.onmessage = (e) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -358,6 +580,10 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           } else {
             pcm16[i] = 0; // Send digital silence when P is not held
           }
+        }
+        
+        if (recording) {
+          userAudioChunksRef.current.push(inputData.slice());
         }
         
         const buffer = new Uint8Array(pcm16.buffer);
@@ -419,12 +645,55 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       if (e.code === 'KeyP' && !e.repeat && isConnected && isInCall) {
         isRecordingRef.current = true;
         setIsRecording(true);
+        
+        userAudioChunksRef.current = [];
+        userTranscriptRef.current = '';
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            // Already started? Ignore
+          }
+        }
       }
     };
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = async (e: KeyboardEvent) => {
       if (e.code === 'KeyP') {
         isRecordingRef.current = false;
         setIsRecording(false);
+        
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
+        
+        // Save user turn after a delay for STT to finalize
+        setTimeout(async () => {
+          let text = userTranscriptRef.current.trim();
+          if (!text) return; // Ignore if nothing heard
+          
+          if (userAudioChunksRef.current.length > 0) {
+            try {
+              const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
+              const combined = new Float32Array(totalLen);
+              let offset = 0;
+              for (const chunk of userAudioChunksRef.current) {
+                combined.set(chunk, offset);
+                offset += chunk.length;
+              }
+              const wavBuffer = encodeWAV(combined, 16000); // Mic is 16kHz
+              const b64 = arrayBufferToBase64(wavBuffer);
+              text += ` [audio:data:audio/wav;base64,${b64}]`;
+            } catch (err) {
+              console.error('Falha ao gerar audio do usuario:', err);
+            }
+          } else {
+            console.warn('userAudioChunksRef.length era 0 ao tentar salvar.');
+          }
+          
+          saveMessage('user', text);
+          userTranscriptRef.current = '';
+          userAudioChunksRef.current = [];
+        }, 800); // Wait 800ms to allow STT to finalize
       }
     };
 
@@ -465,8 +734,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      if (audioContextRef.current) audioContextRef.current.close();
-      if (playbackContextRef.current) playbackContextRef.current.close();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        try { audioContextRef.current.close(); } catch(e) {}
+      }
+      audioContextRef.current = null;
+      if (playbackContextRef.current && playbackContextRef.current.state !== 'closed') {
+        try { playbackContextRef.current.close(); } catch(e) {}
+      }
+      playbackContextRef.current = null;
     };
   }, [connectWebSocket]);
 
@@ -484,19 +759,47 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsMemoryOpen(true)}
+            className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md text-brand-400 hover:text-brand-300 transition-colors mr-2"
+            title="Ver Memórias da IA"
+          >
+            <Brain size={16} />
+          </button>
+          
           {error && (
             <div className="flex items-center gap-1.5 text-red-400 text-xs px-3 py-1 bg-red-400/10 rounded-full">
               <AlertCircle size={14} />
               {error}
             </div>
           )}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRecording ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse' : 'border-white/10 text-dark-subtext'}`}>
-            {isRecording ? <Mic size={14} /> : <MicOff size={14} />}
-            <span className="text-xs font-semibold uppercase tracking-wider">
-              {isRecording ? 'Ouvindo...' : 'Segure "P"'}
-            </span>
-          </div>
+          
+          {!isInCall && <MicTestWidget />}
+          
+          {!isInCall && (
+            <button 
+              onClick={startCall} 
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 rounded-full text-white text-xs font-semibold shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2 active:scale-95"
+            >
+              <Play size={14} fill="currentColor" /> INICIAR LIGAÇÃO
+            </button>
+          )}
+
+          {isInCall && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRecording ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse' : 'border-white/10 text-dark-subtext'}`}>
+              {isRecording ? <Mic size={14} /> : <MicOff size={14} />}
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                {isRecording ? 'Ouvindo...' : 'Segure "P"'}
+              </span>
+            </div>
+          )}
+
+          {isInCall && (
+            <button onClick={endCall} className="px-4 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-full text-sm font-medium transition-colors flex items-center gap-2">
+              <PhoneOff size={16} /> Encerrar
+            </button>
+          )}
         </div>
       </div>
 
@@ -515,7 +818,10 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             );
           }
           
+          const audioMatch = msg.text_content.match(/\[audio:(data:audio\/wav;base64,.+?)\]/);
+          const textWithoutAudio = msg.text_content.replace(/\[audio:data:audio\/wav;base64,.+?\]/g, '').trim();
           const isModel = msg.role === 'model';
+          
           return (
             <div key={msg.id || i} className={`flex flex-col ${isModel ? 'items-start' : 'items-end'}`}>
               <span className="text-[10px] text-dark-subtext uppercase tracking-widest font-bold mb-1 ml-1">
@@ -526,24 +832,19 @@ export default function PracticeChat({ session }: PracticeChatProps) {
                   ? 'bg-dark-card border border-white/5 text-dark-text rounded-tl-sm' 
                   : 'bg-brand-600 text-white rounded-tr-sm'
               }`}>
-                {msg.text_content}
+                {textWithoutAudio}
+                {audioMatch && (
+                  <div className="mt-1">
+                    <AudioMessagePlayer src={audioMatch[1]} />
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Start Call Footer when not in call */}
-      {!isInCall && (
-        <div className="p-4 flex justify-center border-t border-white/5 bg-dark-card/30">
-          <button 
-            onClick={startCall} 
-            className="px-8 py-3 bg-brand-600 hover:bg-brand-500 rounded-full text-white font-medium shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2 active:scale-95"
-          >
-            <Play size={18} fill="currentColor" /> Iniciar Ligação
-          </button>
-        </div>
-      )}
+
 
       {/* Modal/Overlay Call UI */}
       {isInCall && (
@@ -643,6 +944,55 @@ export default function PracticeChat({ session }: PracticeChatProps) {
               {error}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Memory Panel UI */}
+      {isMemoryOpen && (
+        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
+          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-brand-400">
+                <Brain size={20} />
+                <h3 className="font-semibold text-white">Memória da IA</h3>
+              </div>
+              <button 
+                onClick={() => setIsMemoryOpen(false)}
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+              <p className="text-sm text-dark-subtext mb-2">
+                A IA pode extrair fatos importantes sobre você durante as conversas. Esses fatos são lembrados permanentemente em todas as sessões.
+              </p>
+              
+              {memories.length === 0 ? (
+                <div className="text-center py-10 opacity-50 flex flex-col items-center">
+                  <Brain size={32} className="mb-2 text-dark-subtext" />
+                  <p className="text-sm">A IA ainda não possui memórias globais salvas.</p>
+                </div>
+              ) : (
+                memories.map(mem => (
+                  <div key={mem.id} className="p-4 bg-white/5 border border-white/5 rounded-xl group relative">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-500 mb-1 block">
+                      {mem.category}
+                    </span>
+                    <p className="text-sm text-white/90 pr-8">{mem.fact}</p>
+                    <button
+                      onClick={() => deleteMemory(mem.id)}
+                      className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 text-dark-subtext hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
+                      title="Apagar memória"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
