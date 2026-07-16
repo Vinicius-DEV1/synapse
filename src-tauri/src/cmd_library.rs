@@ -154,7 +154,6 @@ pub fn library_import_and_encrypt_book(
     db_state: State<'_, DbState>,
     app_handle: tauri::AppHandle
 ) -> Result<bool, String> {
-    use std::path::PathBuf;
     
     let keys_guard = db_state.keys.lock().unwrap();
     let master_key = if let Some(keys) = keys_guard.as_ref() {
