@@ -641,6 +641,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               underline: editor.isActive('underline'),
               code: editor.isActive('code'),
               highlight: editor.isActive('highlight'),
+              link: editor.isActive('link'),
             }}
             onFormat={(cmd, value) => {
               if (cmd === 'bold') editor.commands.toggleBold();
@@ -648,6 +649,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               if (cmd === 'strike') editor.commands.toggleStrike();
               if (cmd === 'underline') editor.commands.toggleUnderline();
               if (cmd === 'code') editor.commands.toggleCode();
+              if (cmd === 'link' && value) editor.commands.setLink({ href: value });
+              if (cmd === 'unlink') editor.commands.unsetLink();
               if (cmd === 'highlight') {
                 if (value) {
                   editor.commands.toggleHighlight({ color: value });

@@ -213,7 +213,7 @@ function AppContent() {
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Tab Bar - Only show in Desktop */}
-        {!state.isReadingModeFullScreen && navigator.userAgent.toLowerCase().includes('Desktop') && <TabBar />}
+        {!state.isReadingModeFullScreen && (window as any).__TAURI__ && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
