@@ -84,5 +84,23 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("DROP TABLE IF EXISTS alarms", []);
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS alarms (id INTEGER PRIMARY KEY AUTOINCREMENT, time TEXT NOT NULL, label TEXT, sound TEXT DEFAULT 'bell', enabled BOOLEAN DEFAULT 1, days TEXT)", []);
     
+    // Migrations for culture module
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN access_link TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN total_progress INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN is_goal INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN goal_note TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_source TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN last_sync_at TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN volumes INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN chapters INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN episodes_count INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN deleted_at DATETIME DEFAULT NULL", []);
+
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN season_number INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN episode_in_season INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN aired_at TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN updated_at TEXT", []);
+    
     Ok(conn)
 }
