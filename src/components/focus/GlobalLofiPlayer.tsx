@@ -61,9 +61,37 @@ export const GlobalLofiPlayer: React.FC = () => {
         <audio 
           ref={audioRef} 
           src={src} 
-          loop 
+          loop={false}
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-          onEnded={() => { /* loop nativo já trata */ }}
+          onEnded={() => {
+            // Se for loop, em vez de depender do HTML5 native loop (que falha se o token expirar),
+            // tentamos dar play novamente ou re-resolver a URL.
+            if (activeLofi) {
+              resolveLofiUrl(activeLofi)
+                .then(url => {
+                  if (url !== src) setSrc(url);
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.warn("Lofi play interrupted after loop", e));
+                  }
+                })
+                .catch(() => {
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.warn("Lofi play interrupted after loop fallback", e));
+                  }
+                });
+            }
+          }}
+          onError={(e) => {
+            console.error("Audio playback error", e.currentTarget.error);
+            // Tenta recarregar se houver erro (ex: token expirou no meio)
+            if (activeLofi && isPlayingLofi) {
+              resolveLofiUrl(activeLofi).then(url => {
+                if (url !== src) setSrc(url);
+              });
+            }
+          }}
         />
       )}
       
