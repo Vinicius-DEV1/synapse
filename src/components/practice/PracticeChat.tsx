@@ -271,7 +271,11 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       
       ws.onmessage = async (e) => {
         try {
-          const res = JSON.parse(e.data.toString());
+          let textData = typeof e.data === 'string' ? e.data : '';
+          if (e.data instanceof Blob) {
+            textData = await e.data.text();
+          }
+          const res = JSON.parse(textData);
           if (res.setupComplete) {
             ws.send(JSON.stringify({
               clientContent: { turns: [{ role: 'user', parts: [{ text: "Apresente-se" }] }], turnComplete: true }
@@ -417,13 +421,6 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             model: GEMINI_MODEL,
             generationConfig: {
               responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: {
-                    voiceName: overrideVoice || aiVoice
-                  }
-                }
-              }
             },
             realtimeInputConfig: {
               // Enable VAD so the API handles turn completion naturally
@@ -1205,41 +1202,24 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
               <div>
                 <h4 className="text-sm font-semibold text-white mb-1">Voz da IA</h4>
-                <p className="text-xs text-dark-subtext mb-4">Escolha a voz que o seu professor de idiomas irá utilizar.</p>
+                <p className="text-xs text-dark-subtext mb-4">Configuração do modelo de áudio bidirecional.</p>
                 
-                <div className="flex flex-col gap-3">
-                  {[
-                    { id: 'Puck', desc: 'Masculino, amigável' },
-                    { id: 'Charon', desc: 'Masculino, profundo' },
-                    { id: 'Kore', desc: 'Feminino, calmo' },
-                    { id: 'Fenrir', desc: 'Masculino, enérgico' },
-                    { id: 'Aoede', desc: 'Feminino, envolvente' }
-                  ].map(v => (
-                    <div 
-                      key={v.id} 
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${aiVoice === v.id ? 'bg-brand-500/10 border-brand-500/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                      onClick={() => {
-                        if (aiVoice !== v.id) changeVoiceAndReconnect(v.id);
-                      }}
-                    >
-                      <div className="flex flex-col">
-                        <span className={`text-sm font-medium ${aiVoice === v.id ? 'text-brand-400' : 'text-white/90'}`}>{v.id}</span>
-                        <span className="text-xs text-dark-subtext">{v.desc}</span>
-                      </div>
-                      
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          previewVoice(v.id);
-                        }}
-                        disabled={previewingVoice !== null}
-                        className={`p-2 rounded-full transition-all ${previewingVoice === v.id ? 'bg-brand-500 text-white animate-pulse' : 'bg-black/20 text-white/50 hover:text-white hover:bg-black/40'} disabled:opacity-50`}
-                        title="Ouvir"
-                      >
-                        {previewingVoice === v.id ? <Loader2 size={16} className="animate-spin" /> : <Volume2 size={16} />}
-                      </button>
-                    </div>
-                  ))}
+                <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-sm font-semibold text-brand-400">Áudio Nativo (Latência Zero)</span>
+                  </div>
+                  <p className="text-xs text-white/70 leading-relaxed mb-3">
+                    Para alcançar uma conversa em tempo real sem nenhum atraso, o sistema utiliza um modelo de IA cujo processamento de áudio é nativo e unificado (em vez de traduzir texto para fala). Por causa dessa arquitetura de ponta, a voz da IA é <strong>única e embutida diretamente na rede neural</strong>, não sendo possível alterá-la.
+                  </p>
+                  
+                  <button 
+                    onClick={() => previewVoice('Puck')}
+                    disabled={previewingVoice !== null}
+                    className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium text-white transition-all disabled:opacity-50"
+                  >
+                    {previewingVoice === 'Puck' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                    Ouvir Amostra
+                  </button>
                 </div>
               </div>
             </div>
