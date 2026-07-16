@@ -57,7 +57,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, group_id TEXT, label TEXT NOT NULL, username TEXT, email TEXT, password TEXT, url TEXT, notes TEXT, custom_fields TEXT, is_favorite INTEGER DEFAULT 0, password_changed_at TEXT, password_strength INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
          CREATE TABLE IF NOT EXISTS vault_password_history (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, password TEXT NOT NULL, changed_at TEXT NOT NULL, deleted_at TEXT);
          
-         CREATE TABLE IF NOT EXISTS tutor_sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME, deleted_at DATETIME);
+         CREATE TABLE IF NOT EXISTS tutor_sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME, custom_prompt TEXT, deleted_at DATETIME);
          CREATE TABLE IF NOT EXISTS tutor_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL, text_content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS tutor_memories (id TEXT PRIMARY KEY, category TEXT NOT NULL, fact TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          "
@@ -72,6 +72,8 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN is_pinned INTEGER DEFAULT 0", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN pinned_order REAL DEFAULT 0.0", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN is_locked INTEGER DEFAULT 0", []);
+    
+    let _ = conn.execute("ALTER TABLE tutor_sessions ADD COLUMN custom_prompt TEXT", []);
     
     // Drop old focus_sessions if it has the old schema (text id)
     let _ = conn.execute("DROP TABLE IF EXISTS sessions", []);
