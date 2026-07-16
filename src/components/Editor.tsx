@@ -139,7 +139,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     return () => {
       // Flush any pending save before component unmounts
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      if (latestContentRef.current) {
+      if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
+        // Só flush se o crdt_state NÃO for vazio (AAA= = 4 chars).
+        // StrictMode pode causar um flush com crdt vazio durante inicialização.
         console.log(`[Caderno:Flush] Unmount flush for pageId=${pageId}, html.length=${latestContentRef.current.html.length}, crdt.length=${latestContentRef.current.crdt.length}`);
         const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
         if (result && typeof result.catch === 'function') {
@@ -148,7 +150,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           });
         }
       } else {
-        console.log(`[Caderno:Flush] Unmount but NO latestContentRef for pageId=${pageId}`);
+        console.log(`[Caderno:Flush] Skipped - ${!latestContentRef.current ? 'no content' : 'empty crdt'} for pageId=${pageId}`);
       }
       // ⚠️ NÃO destruir ydocRef.current aqui!
       // React StrictMode chama este cleanup durante o double-render.
