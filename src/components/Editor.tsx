@@ -281,8 +281,10 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         return false;
       },
       handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
-        if (node.type.name === 'image') {
-          const src = node.attrs.src;
+        if (node.type.name === 'image' || node.type.name === 'encryptedImage') {
+          // Extraímos a src do elemento clicado (pois no encryptedImage a src não está nos attrs do node, e sim gerada dinamicamente)
+          const target = event.target as HTMLImageElement;
+          const src = target?.src || node.attrs.src;
           if (src) {
             setViewerState({ isOpen: true, src, nodePos });
           }
