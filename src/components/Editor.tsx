@@ -280,6 +280,17 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         }
         return false;
       },
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest('a');
+        if (link && link.href) {
+          // No Tauri, se window.open não abrir no navegador, o usuário pode configurar depois.
+          // Geralmente, target='_blank' abre no navegador padrão.
+          window.open(link.href, '_blank');
+          return true; // Previne comportamento padrão que não faz nada no Tiptap
+        }
+        return false;
+      },
       handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
         if (node.type.name === 'image' || node.type.name === 'encryptedImage') {
           // Extraímos a src do elemento clicado (pois no encryptedImage a src não está nos attrs do node, e sim gerada dinamicamente)
@@ -642,6 +653,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               code: editor.isActive('code'),
               highlight: editor.isActive('highlight'),
               link: editor.isActive('link'),
+              linkHref: editor.isActive('link') ? editor.getAttributes('link').href : undefined,
             }}
             onFormat={(cmd, value) => {
               if (cmd === 'bold') editor.commands.toggleBold();
