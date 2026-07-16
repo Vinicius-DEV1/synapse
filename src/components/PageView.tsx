@@ -62,6 +62,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     if (page?.id) {
       window.api.getPageContent(page.id).then((data) => {
         if (mounted) {
+          console.log(`[Caderno:PageView] getPageContent(${page.id}) returned: content.length=${data?.content?.length || 0}, encrypted=${!!data?.encrypted_content}, page.crdt_state=${page.crdt_state ? page.crdt_state.substring(0, 30) + '...' : 'NULL'}`);
           setContentData(data);
           if (!page.is_locked) setIsUnlocked(true);
         }

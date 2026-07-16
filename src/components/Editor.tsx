@@ -94,24 +94,29 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
   }, []);
 
+  // Um crdt_state "AAA=" (≤8 chars) é um Y.Doc vazio - tratar como null
+  const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+
   if (!ydocRef.current || ydocRef.current.guid !== pageId) {
     if (ydocRef.current) {
       ydocRef.current.destroy(); // Fix Memory Leak!
     }
     ydocRef.current = new Y.Doc();
     ydocRef.current.guid = pageId || 'temp';
-    if (initialCrdtState) {
-      applyBase64StateToYDoc(ydocRef.current, initialCrdtState);
+    console.log(`[Caderno:Mount] pageId=${pageId}, initialCrdtState=${initialCrdtState ? initialCrdtState.substring(0, 30) + '...' : 'NULL'} (meaningful=${hasMeaningfulCrdt}), initialContent.length=${initialContent?.length || 0}`);
+    if (hasMeaningfulCrdt) {
+      applyBase64StateToYDoc(ydocRef.current, initialCrdtState!);
     }
     // Recuperar edições não salvas do backup em memória (Y.js merge é seguro)
     const backup = (window as any).__cadernoEditorBackup?.get(pageId);
-    if (backup?.crdt) {
+    console.log(`[Caderno:Mount] backup exists=${!!backup}, backup crdt=${backup?.crdt ? backup.crdt.substring(0, 30) + '...' : 'NULL'}`);
+    if (backup?.crdt && backup.crdt.length > 8) {
       applyBase64StateToYDoc(ydocRef.current, backup.crdt);
-      // Backup aplicado com sucesso — agora pode ser limpo
       (window as any).__cadernoEditorBackup.delete(pageId);
+      console.log(`[Caderno:Mount] backup applied and cleared for ${pageId}`);
     }
   }
-  const needsLegacyHydration = !initialCrdtState && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
+  const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
 
   // Escuta atualizações puramente remotas (do CloudSync) via evento customizado, 
   // ignorando os updates locais que causavam lag.
@@ -132,23 +137,24 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
 
   useEffect(() => {
     return () => {
-      // Flush any pending save before destroying the document
+      // Flush any pending save before component unmounts
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       if (latestContentRef.current) {
-        // Sempre tenta salvar se houver conteúdo capturado, independente de pendingSaveRef
+        console.log(`[Caderno:Flush] Unmount flush for pageId=${pageId}, html.length=${latestContentRef.current.html.length}, crdt.length=${latestContentRef.current.crdt.length}`);
         const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
         if (result && typeof result.catch === 'function') {
-          result.catch((err: any) => {
-            console.error('[Caderno] Flush save falhou - backup em memória preservado:', err);
+          result.then(() => console.log(`[Caderno:Flush] ✅ Flush save SUCCEEDED for ${pageId}`)).catch((err: any) => {
+            console.error(`[Caderno:Flush] ❌ Flush save FAILED for ${pageId}:`, err);
           });
         }
+      } else {
+        console.log(`[Caderno:Flush] Unmount but NO latestContentRef for pageId=${pageId}`);
       }
-
-      // Destruição do documento ativo ao desmontar a view do editor
-      if (ydocRef.current) {
-         ydocRef.current.destroy();
-         ydocRef.current = null;
-      }
+      // ⚠️ NÃO destruir ydocRef.current aqui!
+      // React StrictMode chama este cleanup durante o double-render.
+      // Se destruirmos o Y.Doc, o editor (do useState no useEditor) fica
+      // conectado a um Y.Doc destruído, e getYDocStateAsBase64() retorna AAA= (vazio).
+      // A destruição do Y.Doc é feita no corpo do render quando um novo pageId chega.
     };
   }, []);
 
@@ -351,19 +357,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
         if (!latestContentRef.current) return;
+        console.log(`[Caderno:Debounce] Saving pageId=${pageId}, html.length=${latestContentRef.current.html.length}`);
         const saveResult = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
-        // Só marca como salvo DEPOIS do IPC confirmar
         if (saveResult && typeof saveResult.then === 'function') {
           saveResult.then(() => {
             pendingSaveRef.current = false;
-            // NÃO limpar backup aqui — o sync-pull pode sobrescrever o DB depois.
-            // O backup será limpo quando o Editor remontar e aplicá-lo.
+            console.log(`[Caderno:Debounce] ✅ Save SUCCEEDED for ${pageId}`);
           }).catch((err: any) => {
-            console.error('[Caderno] Debounced save falhou:', err);
-            // Mantém pendingSaveRef true para o flush retry no unmount
+            console.error(`[Caderno:Debounce] ❌ Save FAILED for ${pageId}:`, err);
           });
         } else {
           pendingSaveRef.current = false;
+          console.warn(`[Caderno:Debounce] ⚠️ onSave did NOT return a Promise for ${pageId}`);
         }
       }, 500); // Debounce de 500ms
     },

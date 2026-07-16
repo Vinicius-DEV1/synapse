@@ -103,6 +103,8 @@ function AppContent() {
     if (window.api) {
       try {
         const pages = await window.api.getAllPages();
+        const pagesWithCrdt = pages.filter((p: any) => !!p.crdt_state).length;
+        console.log(`[Caderno:LoadPages] SET_PAGES with ${pages.length} pages (${pagesWithCrdt} have crdt_state)`);
         dispatch({ type: 'SET_PAGES', pages });
       } catch (err) {
         console.error('Failed to load pages', err);
