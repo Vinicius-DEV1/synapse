@@ -70,6 +70,29 @@
   cursor: grabbing;
 }
 
+/* List Styles */
+.editor-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor-content li {
+  margin-bottom: 0.25rem;
+}
+
+.editor-content li p {
+  margin-bottom: 0;
+}
+
 /* Heading Styles */
 .editor-content h1 {
   font-size: 2em;
