@@ -10,6 +10,7 @@ import FileInfoModal from './FileInfoModal';
 import FileViewer from './FileViewer';
 import RenameModal from './RenameModal';
 import MoveModal from './MoveModal';
+import { getValidAccessToken } from '../../services/drive';
 
 export default function FilesView() {
   const [folders, setFolders] = useState<FileFolder[]>([]);
@@ -24,12 +25,16 @@ export default function FilesView() {
   const [itemToInfo, setItemToInfo] = useState<FileItem | null>(null);
   const [itemToRename, setItemToRename] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
   const [itemToMove, setItemToMove] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
+  const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   
   const loadData = () => {
     if (window.api && window.api.files) {
       window.api.files.folders.getAll().then(setFolders).catch(console.error);
       window.api.files.getAll().then(setFiles).catch(console.error);
     }
+    getValidAccessToken()
+      .then(token => setDriveStatus(token ? 'connected' : 'disconnected'))
+      .catch(() => setDriveStatus('disconnected'));
   };
 
   useEffect(() => {
@@ -107,7 +112,11 @@ export default function FilesView() {
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-500/50"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border ${driveStatus === 'connected' ? 'bg-green-500/10 text-green-400 border-green-500/20' : driveStatus === 'disconnected' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-white/5 text-dark-subtext border-white/10'}`} title="Status de Conexão com o Google Drive">
+              <div className={`w-2 h-2 rounded-full ${driveStatus === 'connected' ? 'bg-green-400' : driveStatus === 'disconnected' ? 'bg-red-400' : 'bg-gray-400 animate-pulse'}`}></div>
+              <span>{driveStatus === 'connected' ? 'Drive Conectado' : driveStatus === 'disconnected' ? 'Drive Desconectado' : 'Verificando...'}</span>
+            </div>
             <button 
               onClick={() => setShowUploadModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm transition-colors"
