@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle, Settings, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle, Settings, Volume2, FileText, Sliders } from 'lucide-react';
 import type { TutorSession, TutorMessage, TutorMemory } from '../../types';
 import { encodeWAV } from '../../utils/audioUtils';
 
@@ -151,6 +151,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState(() => localStorage.getItem('globalSystemPrompt') || DEFAULT_SYSTEM_INSTRUCTION);
   const [customPrompt, setCustomPrompt] = useState(session.custom_prompt || '');
+  const [presets, setPresets] = useState<{id: string, name: string, prompt: string}[]>([]);
   
   const [aiVoice, setAiVoice] = useState(() => localStorage.getItem('aiVoice') || 'Puck');
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
@@ -917,6 +918,48 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   };
 
+  useEffect(() => {
+    const loadPresets = async () => {
+      if (!window.api?.config) return;
+      try {
+        const stored = await window.api.config.get('practice_presets');
+        if (stored && Array.isArray(stored)) {
+          setPresets(stored);
+        }
+      } catch (err) {
+        console.error('Failed to load presets', err);
+      }
+    };
+    loadPresets();
+  }, []);
+
+  const saveAsNewPreset = async () => {
+    if (!window.api?.config) return;
+    const name = prompt('Nome para este novo Preset de Instruções:');
+    if (!name || name.trim() === '') return;
+    
+    const newPreset = { id: Date.now().toString(), name, prompt: customPrompt };
+    const newPresets = [...presets, newPreset];
+    try {
+      await window.api.config.set('practice_presets', newPresets);
+      setPresets(newPresets);
+    } catch (err) {
+      console.error('Failed to save preset', err);
+    }
+  };
+
+  const deletePreset = async (id: string) => {
+    if (!window.api?.config) return;
+    const newPresets = presets.filter(p => p.id !== id);
+    try {
+      await window.api.config.set('practice_presets', newPresets);
+      setPresets(newPresets);
+    } catch (err) {
+      console.error('Failed to delete preset', err);
+    }
+  };
+
+
   return (
     <div className="flex flex-col h-full bg-dark-bg/80 relative">
       {/* Header */}
@@ -943,7 +986,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             className={`p-1.5 rounded-md transition-colors ${session.custom_prompt ? 'bg-brand-500/20 text-brand-400 hover:bg-brand-500/30' : 'bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white'}`}
             title="Instruções desta Sessão"
           >
-            <Settings size={16} />
+            <FileText size={16} />
           </button>
           
           <button 
@@ -951,7 +994,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md text-brand-400 hover:text-brand-300 transition-colors"
             title="Configurações de Voz"
           >
-            <Settings size={16} />
+            <Sliders size={16} />
           </button>
           
           <button 
@@ -1230,7 +1273,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2 text-brand-400">
-                <Settings size={20} />
+                <Sliders size={20} />
                 <h3 className="font-semibold text-white">Configurações de Voz</h3>
               </div>
               <button 
@@ -1296,7 +1339,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2 text-brand-400">
-                <Settings size={20} />
+                <FileText size={20} />
                 <h3 className="font-semibold text-white">Opções da Sessão</h3>
               </div>
               <button 
@@ -1319,15 +1362,46 @@ export default function PracticeChat({ session }: PracticeChatProps) {
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   placeholder="Ex: Você é um garçom em Paris. Fale apenas em Francês..."
-                  className="w-full h-64 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
+                  className="w-full h-48 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
                 />
                 
-                <button 
-                  onClick={saveCustomPrompt}
-                  className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors"
-                >
-                  Salvar Instruções
-                </button>
+                {presets.length > 0 && (
+                  <div className="mb-4">
+                    <label className="text-xs text-dark-subtext mb-1 block">Carregar Preset Salvo</label>
+                    <div className="flex gap-2">
+                      <select 
+                        className="flex-1 bg-black/20 border border-white/10 rounded-lg text-sm text-white/90 p-2 focus:outline-none focus:border-brand-500/50"
+                        onChange={(e) => {
+                          const p = presets.find(x => x.id === e.target.value);
+                          if (p) setCustomPrompt(p.prompt);
+                          e.target.value = '';
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Selecione um preset...</option>
+                        {presets.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex flex-col gap-2">
+                  <button 
+                    onClick={saveCustomPrompt}
+                    className="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors text-sm"
+                  >
+                    Salvar na Sessão Atual
+                  </button>
+                  <button 
+                    onClick={saveAsNewPreset}
+                    disabled={!customPrompt.trim()}
+                    className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm disabled:opacity-50 disabled:hover:bg-white/5"
+                  >
+                    Salvar como Novo Preset
+                  </button>
+                </div>
               </div>
             </div>
           </div>
