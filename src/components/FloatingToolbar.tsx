@@ -1,4 +1,4 @@
-import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X } from 'lucide-react';
+import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X, Trash } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../utils/colors';
 
@@ -11,6 +11,7 @@ interface FloatingToolbarProps {
     code: boolean;
     highlight: boolean;
     link?: boolean;
+    linkHref?: string;
   };
   onFormat?: (command: string, value?: string) => void;
   onAiClick?: () => void;
@@ -76,8 +77,17 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
             placeholder="Cole o link aqui..."
             className="w-48 bg-black/20 border border-white/10 rounded-md text-sm px-2 py-1 focus:outline-none focus:border-brand-500/50 text-white placeholder-white/30"
           />
-          <button onClick={submitLink} className="p-1 hover:bg-white/10 rounded text-brand-400"><Check size={16} /></button>
-          <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-white/10 rounded text-red-400"><X size={16} /></button>
+          <button onClick={submitLink} className="p-1 hover:bg-white/10 rounded text-brand-400" title="Salvar"><Check size={16} /></button>
+          {formatState?.link && (
+            <button 
+              onClick={() => { handleFormat('unlink'); setShowLinkInput(false); }} 
+              className="p-1 hover:bg-white/10 rounded text-red-400"
+              title="Remover Link"
+            >
+              <Trash size={15} />
+            </button>
+          )}
+          <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-white/10 rounded text-dark-subtext" title="Cancelar"><X size={16} /></button>
         </div>
       ) : (
         <>
@@ -119,14 +129,15 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
 
           <button
             onClick={() => {
-              if (formatState?.link) {
-                handleFormat('unlink');
+              if (formatState?.linkHref) {
+                setLinkUrl(formatState.linkHref);
               } else {
-                setShowLinkInput(true);
+                setLinkUrl('');
               }
+              setShowLinkInput(true);
             }}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.link ? activeClass : inactiveClass}`}
-            title={formatState?.link ? "Remover Link" : "Adicionar Link"}
+            title={formatState?.link ? "Editar/Remover Link" : "Adicionar Link"}
           >
             <LinkIcon size={15} />
           </button>
