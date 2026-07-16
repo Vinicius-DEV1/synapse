@@ -149,6 +149,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   
   const [isInCall, setIsInCall] = useState(false);
@@ -175,6 +176,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   // Transcrição e Salvamento
   const recognitionRef = useRef<any>(null);
   const userTranscriptRef = useRef<string>('');
+  const finalTranscriptRef = useRef<string>('');
   const userAudioChunksRef = useRef<Float32Array[]>([]);
   
   const aiTurnTextRef = useRef<string>('');
@@ -311,6 +313,10 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             generationConfig: {
               responseModalities: ["AUDIO"],
             },
+            realtimeInputConfig: {
+              // Enable VAD so the API handles turn completion naturally
+              // We will manually trigger it by sending a burst of silence on keyup
+            },
             systemInstruction: {
               parts: [{ text: systemPrompt }]
             },
@@ -349,9 +355,9 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         setIsConnected(false);
-        console.log('WebSocket closed');
+        console.log('WebSocket closed:', ev.code, ev.reason);
       };
 
       ws.onerror = (e) => {
@@ -393,6 +399,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       }
 
       if (response.serverContent?.modelTurn) {
+        setLiveTranscript(''); // Apaga o texto do usuário quando a IA começa a responder
         const parts = response.serverContent.modelTurn.parts;
         for (const part of parts) {
           if (part.text) {
@@ -440,6 +447,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           
           aiTurnTextRef.current = '';
           aiTurnAudioChunksRef.current = [];
+          setLiveTranscript('');
         }
       }
 
@@ -557,11 +565,18 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         recognitionRef.current.interimResults = true;
         
         recognitionRef.current.onresult = (event: any) => {
-          let transcript = '';
+          let interimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
+            const chunk = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscriptRef.current += chunk + ' ';
+            } else {
+              interimTranscript += chunk;
+            }
           }
-          userTranscriptRef.current = transcript;
+          const fullTranscript = finalTranscriptRef.current + interimTranscript;
+          userTranscriptRef.current = fullTranscript;
+          setLiveTranscript(fullTranscript);
         };
       }
       
@@ -570,34 +585,11 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
         
         const inputData = e.data; // Float32Array of 4096
-        const pcm16 = new Int16Array(inputData.length);
         const recording = isRecordingRef.current;
         
-        for (let i = 0; i < inputData.length; i++) {
-          if (recording) {
-            let s = Math.max(-1, Math.min(1, inputData[i]));
-            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          } else {
-            pcm16[i] = 0; // Send digital silence when P is not held
-          }
-        }
+        if (!recording) return; // Não envia/grava áudio se não estiver segurando o P
         
-        if (recording) {
-          userAudioChunksRef.current.push(inputData.slice());
-        }
-        
-        const buffer = new Uint8Array(pcm16.buffer);
-        const binary = String.fromCharCode.apply(null, Array.from(buffer));
-        const b64 = window.btoa(binary);
-        
-        wsRef.current.send(JSON.stringify({
-          realtimeInput: {
-            mediaChunks: [{
-              mimeType: "audio/pcm;rate=16000",
-              data: b64
-            }]
-          }
-        }));
+        userAudioChunksRef.current.push(inputData.slice());
       };
       
       source.connect(workletNode);
@@ -642,12 +634,15 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   // Handle Push-To-Talk
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'KeyP' && !e.repeat && isConnected && isInCall) {
+      if (e.key.toLowerCase() === 'p' && !isRecordingRef.current && isConnected && isInCall) {
         isRecordingRef.current = true;
         setIsRecording(true);
         
         userAudioChunksRef.current = [];
         userTranscriptRef.current = '';
+        finalTranscriptRef.current = '';
+        setLiveTranscript('');
+        
         if (recognitionRef.current) {
           try {
             recognitionRef.current.start();
@@ -658,12 +653,60 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       }
     };
     const handleKeyUp = async (e: KeyboardEvent) => {
-      if (e.code === 'KeyP') {
+      if (e.key.toLowerCase() === 'p') {
         isRecordingRef.current = false;
         setIsRecording(false);
         
         if (recognitionRef.current) {
           recognitionRef.current.stop();
+        }
+        
+        // Burst-send all accumulated audio as realtimeInput, then send 2 seconds of silence to trigger VAD
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          if (userAudioChunksRef.current.length > 0) {
+            const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
+            const combined = new Float32Array(totalLen);
+            let offset = 0;
+            for (const chunk of userAudioChunksRef.current) {
+              combined.set(chunk, offset);
+              offset += chunk.length;
+            }
+            
+            const pcm16 = new Int16Array(combined.length);
+            for (let i = 0; i < combined.length; i++) {
+              let s = Math.max(-1, Math.min(1, combined[i]));
+              pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            const buffer = new Uint8Array(pcm16.buffer);
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < buffer.length; i += chunkSize) {
+              binary += String.fromCharCode.apply(null, Array.from(buffer.slice(i, i + chunkSize)));
+            }
+            const b64 = window.btoa(binary);
+            
+            // 1. Send the user's actual audio burst
+            wsRef.current.send(JSON.stringify({
+              realtimeInput: {
+                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }]
+              }
+            }));
+            
+            // 2. Send 2 seconds of pure silence to force Google's VAD to end the turn
+            const silenceBuffer = new Uint8Array(16000 * 2 * 2); // 16kHz * 2 bytes * 2 seconds
+            let silenceBinary = '';
+            for (let i = 0; i < silenceBuffer.length; i += chunkSize) {
+              silenceBinary += String.fromCharCode.apply(null, Array.from(silenceBuffer.slice(i, i + chunkSize)));
+            }
+            const silenceB64 = window.btoa(silenceBinary);
+            
+            wsRef.current.send(JSON.stringify({
+              realtimeInput: {
+                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: silenceB64 }]
+              }
+            }));
+          }
         }
         
         // Save user turn after a delay for STT to finalize
@@ -686,8 +729,6 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             } catch (err) {
               console.error('Falha ao gerar audio do usuario:', err);
             }
-          } else {
-            console.warn('userAudioChunksRef.length era 0 ao tentar salvar.');
           }
           
           saveMessage('user', text);
@@ -743,7 +784,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       }
       playbackContextRef.current = null;
     };
-  }, [connectWebSocket]);
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-dark-bg/80 relative">
@@ -848,8 +889,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
 
       {/* Modal/Overlay Call UI */}
       {isInCall && (
-        <div className="absolute inset-0 z-50 bg-dark-bg/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="absolute top-8 left-8">
+        <div className="absolute inset-0 z-50 overflow-hidden bg-dark-bg/95 flex flex-col items-center justify-center animate-in fade-in duration-300">
+          
+          {/* Fundo dinâmico */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-brand-500/10 via-dark-bg/90 to-dark-bg/95 pointer-events-none"></div>
+
+          <div className="absolute top-8 left-8 z-10">
             <h2 className="text-xl font-bold tracking-tight text-white/90">{session.title}</h2>
             <div className="text-brand-400 text-sm mt-1 flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -860,86 +905,117 @@ export default function PracticeChat({ session }: PracticeChatProps) {
             </div>
           </div>
           
-          {/* Visualizer Orb */}
-          <div className="relative flex items-center justify-center w-64 h-64 mb-16">
-            {/* Glow rings */}
-            <div className={`absolute inset-0 rounded-full blur-3xl transition-all duration-700 ${isRecording ? 'bg-brand-500/30 scale-150 opacity-90' : isPlaying ? 'bg-sky-500/30 scale-125 opacity-80' : isConnected ? 'bg-brand-500/20 scale-110 opacity-40 animate-pulse' : 'bg-dark-card/50 scale-75 opacity-0'}`}></div>
+          {/* Centro da Tela: Aura e Transcrição */}
+          <div className="relative z-10 flex flex-col items-center justify-center flex-1 w-full max-w-4xl px-8 pb-40">
             
-            {/* Main Orb */}
-            <div className={`relative z-10 w-32 h-32 rounded-full border border-white/10 flex items-center justify-center transition-all duration-500 overflow-hidden ${
-              isRecording ? 'bg-brand-500 shadow-[0_0_50px_rgba(168,85,247,0.6)] scale-110' : 
-              isPlaying ? 'bg-sky-500 shadow-[0_0_50px_rgba(14,165,233,0.6)] scale-105' :
-              isConnected ? 'bg-dark-card shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 
-              'bg-dark-card/50'
-            }`}>
-              {isRecording ? (
-                <div className="flex gap-1 h-12 items-center">
-                  {[0, 1, 2, 3, 4, 5].map(i => (
-                    <div 
-                      key={i}
-                      ref={el => visualizerRefs.current[i] = el}
-                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
-                      style={{ height: '12px' }}
-                    ></div>
-                  ))}
-                </div>
-              ) : isPlaying ? (
-                <div className="flex gap-1 h-12 items-center">
-                  {[0, 1, 2, 3, 4, 5].map(i => (
-                    <div 
-                      key={i}
-                      ref={el => visualizerRefs.current[i] = el}
-                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
-                      style={{ height: '12px' }}
-                    ></div>
-                  ))}
-                </div>
-              ) : !isConnected ? (
-                <Loader2 size={40} className="text-brand-500 animate-spin" />
-              ) : (
-                <div className="flex gap-1 h-12 items-center">
-                  {[0, 1, 2, 3, 4, 5].map(i => (
-                    <div 
-                      key={i}
-                      ref={el => visualizerRefs.current[i] = el}
-                      className="w-2 bg-white rounded-full transition-all duration-[50ms]" 
-                      style={{ height: '12px' }}
-                    ></div>
-                  ))}
-                </div>
+            {/* Status Text */}
+            <div className={`mb-12 transition-opacity duration-500 ${liveTranscript ? 'opacity-0' : 'opacity-100'}`}>
+              <h3 className="text-xl font-medium text-white/50 tracking-widest uppercase">
+                {!isConnected ? 'Conectando ao servidor...' : isRecording ? 'Ouvindo...' : isPlaying ? 'IA Falando...' : 'Fale comigo'}
+              </h3>
+            </div>
+
+            {/* Visualizer Orb (Glassmorphism) */}
+            <div className="relative flex items-center justify-center w-48 h-48 mb-8">
+              {/* Glow rings */}
+              <div className={`absolute inset-0 rounded-full blur-3xl transition-all duration-700 ${isRecording ? 'bg-brand-500/40 scale-150 opacity-100' : isPlaying ? 'bg-sky-500/40 scale-125 opacity-90' : isConnected ? 'bg-white/10 scale-110 opacity-50 animate-pulse' : 'bg-transparent scale-75 opacity-0'}`}></div>
+              
+              {/* Main Orb */}
+              <div className={`relative z-10 w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden backdrop-blur-xl border border-white/20 ${
+                isRecording ? 'bg-white/10 shadow-[0_0_80px_rgba(168,85,247,0.5)] scale-110' : 
+                isPlaying ? 'bg-white/10 shadow-[0_0_80px_rgba(14,165,233,0.5)] scale-105' :
+                isConnected ? 'bg-white/5 shadow-[0_0_40px_rgba(255,255,255,0.05)]' : 
+                'bg-transparent border-white/5'
+              }`}>
+                {isRecording ? (
+                  <div className="flex gap-1.5 h-12 items-center">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div 
+                        key={i}
+                        ref={el => visualizerRefs.current[i] = el}
+                        className="w-1.5 bg-gradient-to-t from-brand-300 to-brand-100 rounded-full transition-all duration-[50ms]" 
+                        style={{ height: '12px' }}
+                      ></div>
+                    ))}
+                  </div>
+                ) : isPlaying ? (
+                  <div className="flex gap-1.5 h-12 items-center">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div 
+                        key={i}
+                        ref={el => visualizerRefs.current[i] = el}
+                        className="w-1.5 bg-gradient-to-t from-sky-300 to-sky-100 rounded-full transition-all duration-[50ms]" 
+                        style={{ height: '12px' }}
+                      ></div>
+                    ))}
+                  </div>
+                ) : !isConnected ? (
+                  <Loader2 size={32} className="text-white/50 animate-spin" />
+                ) : (
+                  <div className="flex gap-1.5 h-12 items-center">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div 
+                        key={i}
+                        ref={el => visualizerRefs.current[i] = el}
+                        className="w-1.5 bg-white/40 rounded-full transition-all duration-[50ms]" 
+                        style={{ height: '12px' }}
+                      ></div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Live Transcript (Huge & Immersive) */}
+            <div className="min-h-[120px] flex items-center justify-center w-full">
+              {liveTranscript && (
+                <p className="text-3xl md:text-4xl font-bold text-center leading-tight tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white via-white/90 to-white/50 animate-in fade-in slide-in-from-bottom-4 drop-shadow-lg max-w-3xl">
+                  {liveTranscript}
+                </p>
               )}
             </div>
           </div>
           
-          <div className="text-center mb-16 h-20">
-            <h3 className="text-2xl font-semibold text-white tracking-tight mb-3">
-              {!isConnected ? 'Conectando ao servidor...' : isRecording ? 'Ouvindo você...' : isPlaying ? 'IA Falando...' : 'Fale comigo'}
-            </h3>
-            <p className="text-sm text-dark-subtext max-w-[280px] mx-auto">
-              {isConnected ? (
-                <span className="flex flex-col items-center gap-1">
-                  <span className="flex items-center gap-2">Mantenha pressionado <kbd className="px-2 py-1 bg-white/10 rounded font-mono border border-white/10 text-white shadow-sm">P</kbd> para falar</span>
-                  {micLabel && <span className="text-xs text-white/40 truncate w-full" title={micLabel}>{micLabel}</span>}
-                </span>
-              ) : (
-                'Estabelecendo comunicação segura de baixa latência.'
+          {/* Bottom Dock (Controles Glassmorphism) */}
+          <div className="absolute bottom-10 z-20 flex flex-col items-center w-full max-w-sm px-4">
+            
+            {!isConnected && (
+              <p className="text-sm text-dark-subtext mb-4">Estabelecendo comunicação segura de baixa latência...</p>
+            )}
+
+            <div className="flex flex-col items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-2xl shadow-2xl w-full">
+              
+              {isConnected && (
+                <>
+                  {/* Instruções P to Talk */}
+                  <div className={`flex flex-col items-center gap-2 transition-opacity duration-300 ${isRecording ? 'opacity-20' : 'opacity-100'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white/60">Mantenha pressionado</span>
+                      <kbd className="px-3 py-1 bg-black/40 border border-white/10 rounded-lg text-white font-mono text-sm shadow-inner">P</kbd>
+                      <span className="text-sm font-medium text-white/60">para falar</span>
+                    </div>
+                    {micLabel && <span className="text-[11px] font-semibold tracking-wider uppercase text-white/30">{micLabel}</span>}
+                  </div>
+                  
+                  {/* Divisor */}
+                  <div className="w-full h-px bg-white/5"></div>
+                </>
               )}
-            </p>
+              
+              {/* End Call Button ALWAYS VISIBLE */}
+              <button 
+                onClick={endCall} 
+                className="w-full py-3 px-8 rounded-xl bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                title="Encerrar Ligação"
+              >
+                <PhoneOff size={18} />
+                <span className="font-semibold text-sm tracking-wide">Encerrar Chamada</span>
+              </button>
+            </div>
           </div>
           
-          {/* End Call Button */}
-          <button 
-            onClick={endCall} 
-            className="w-16 h-16 rounded-full bg-red-500/20 hover:bg-red-500 hover:text-white text-red-500 border border-red-500/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/10 group"
-            title="Encerrar Ligação"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-[135deg] group-hover:rotate-0 transition-transform duration-300">
-              <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-7-7 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
-            </svg>
-          </button>
-          
           {error && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 text-sm shadow-xl">
+            <div className="absolute top-8 right-8 flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 text-sm shadow-xl z-50">
               <AlertCircle size={16} />
               {error}
             </div>
