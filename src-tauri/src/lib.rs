@@ -74,12 +74,6 @@ pub fn run() {
           }
       });
 
-      if cfg!(debug_assertions) {
-        // Automatically open devtools in debug mode
-        if let Some(window) = app.get_webview_window("main") {
-            window.open_devtools();
-        }
-      }
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![

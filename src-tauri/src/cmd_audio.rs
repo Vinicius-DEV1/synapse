@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::fs;
 use std::process::Command;
 
+#[allow(dead_code)]
 fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let audio_dir = app_data_dir.join("audio");

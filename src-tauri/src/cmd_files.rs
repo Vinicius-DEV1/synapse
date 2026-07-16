@@ -252,7 +252,7 @@ pub fn files_save_local(filename: String, data: Vec<u8>, db_state: State<'_, DbS
 }
 
 #[tauri::command]
-pub fn files_get_local(filename: String, app_handle: AppHandle) -> Result<Vec<u8>, String> {
+pub fn files_get_local(_filename: String, _app_handle: AppHandle) -> Result<Vec<u8>, String> {
     Err("Obsoleto. Use http://encrypted.localhost/files/ em vez desta API.".to_string())
 }
 
