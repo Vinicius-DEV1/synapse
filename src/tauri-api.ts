@@ -29,6 +29,9 @@ export const createTauriApi = async () => {
         return await invoke('auth_setup', { password, existingKeys });
       },
       changePassword: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
+      getVisitors: async () => [],
+      createVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
+      deleteVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
       onLock: () => () => {},
       lock: async () => {},
       setPreferences: async () => {}
