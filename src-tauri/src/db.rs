@@ -77,6 +77,26 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     
     // Drop old focus_sessions if it has the old schema (text id)
     let _ = conn.execute("DROP TABLE IF EXISTS sessions", []);
+    let _ = conn.execute("ALTER TABLE keychain ADD COLUMN vault_key_enc TEXT", []);
+    
+    // Auto-migrate tables to have sync columns
+    let tables_with_sync = vec![
+        "videos", "lofis", "video_words", "calendar_events", "culture_items", "culture_episodes",
+        "anki_decks", "anki_cards", "anki_srs_state", "anki_reviews", "focus_sessions", "alarms",
+        "page_history", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
+        "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
+        "transactions", "wishlist", "pages"
+    ];
+    for t in tables_with_sync {
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);
+        let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN deleted_at DATETIME DEFAULT NULL", t), []);
+    }
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN is_local INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE lofis ADD COLUMN drive_file_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE lofis ADD COLUMN is_local INTEGER DEFAULT 0", []);
+
     let _ = conn.execute("DROP TABLE IF EXISTS focus_sessions", []);
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 

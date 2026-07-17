@@ -31,7 +31,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         if (localRows.length === 0) continue;
 
         const rowsToPush = lastPush > 0 
-          ? localRows.filter((r: any) => parseDateSafe(r.updated_at || r.created_at || 0) >= lastPush)
+          ? localRows.filter((r: any) => Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0)) >= lastPush)
           : localRows;
 
         if (rowsToPush.length === 0) continue;
@@ -40,7 +40,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
         
         for (const row of rowsToPush) {
-          const localTime = parseDateSafe(row.updated_at || row.created_at || 0);
+          const localTime = Math.max(parseDateSafe(row.updated_at || row.created_at || 0), parseDateSafe(row.deleted_at || 0));
           if (localTime > highestLocalTime) highestLocalTime = localTime;
           
           const isDeleted = !!row.deleted_at;
