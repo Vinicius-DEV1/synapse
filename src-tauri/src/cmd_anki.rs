@@ -172,7 +172,7 @@ pub fn anki_review_card(card_id: String, rating: i32, db_state: State<'_, DbStat
     conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
     
     if let Err(e) = conn.execute(
-        "UPDATE anki_srs_state SET due_date = ?, scheduled_days = ?, state = ?, reps = reps + 1 WHERE card_id = ?",
+        "UPDATE anki_srs_state SET due_date = ?, scheduled_days = ?, state = ?, reps = reps + 1, updated_at = CURRENT_TIMESTAMP WHERE card_id = ?",
         params![due_date_str, next_interval_days, new_state, card_id]
     ) {
         let _ = conn.execute("ROLLBACK", []);

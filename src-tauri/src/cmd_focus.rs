@@ -15,7 +15,7 @@ pub struct FocusAlarm {
 
 #[derive(Serialize, Deserialize)]
 pub struct FocusSession {
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub tag: String,
     pub description: String,
     pub target_time_minutes: i32,
@@ -85,8 +85,9 @@ pub fn focus_update_alarm(id: String, alarm: FocusAlarm, db_state: State<'_, DbS
 pub fn focus_delete_alarm(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
     
-    conn.execute("DELETE FROM alarms WHERE id = ?", [&id]).map_err(|e| e.to_string())?;
+    conn.execute("UPDATE alarms SET deleted_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", params![now, id]).map_err(|e| e.to_string())?;
     Ok(true)
 }
 
@@ -119,14 +120,16 @@ pub fn focus_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<FocusSessi
 }
 
 #[tauri::command]
-pub fn focus_create_session(session: FocusSession, db_state: State<'_, DbState>) -> Result<i64, String> {
+pub fn focus_create_session(session: FocusSession, db_state: State<'_, DbState>) -> Result<String, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
+    let id = session.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    
     conn.execute(
-        "INSERT INTO focus_sessions (tag, description, target_time_minutes, status, justification, summary) VALUES (?, ?, ?, ?, ?, ?)",
-        params![session.tag, session.description, session.target_time_minutes, session.status, session.justification, session.summary]
+        "INSERT INTO focus_sessions (id, tag, description, target_time_minutes, status, justification, summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        params![id, session.tag, session.description, session.target_time_minutes, session.status, session.justification, session.summary]
     ).map_err(|e| e.to_string())?;
     
-    Ok(conn.last_insert_rowid())
+    Ok(id)
 }
