@@ -299,6 +299,7 @@ declare global {
         setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         status: () => Promise<{ status: 'new' | 'encrypted' | 'unencrypted' }>;
+        wipeLocalData: () => Promise<void>;
         changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
         createVisitor: (visitorPassword: string, allowedModules: string[]) => Promise<{ success: boolean; error?: string; visitorId?: string }>;
         getVisitors: () => Promise<Array<{ id: string; modules: string[] }>>;

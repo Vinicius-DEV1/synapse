@@ -212,6 +212,15 @@ export default function SecurityTab({
     );
   }
 
+  const handleWipeLocalData = async () => {
+    if (!confirm('ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)?\n\nIsso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.')) return;
+    try {
+      await window.api.auth.wipeLocalData();
+    } catch (err: any) {
+      alert('Erro ao limpar dados locais: ' + err.message);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <label className="flex items-center justify-between cursor-pointer group">
@@ -379,6 +388,20 @@ export default function SecurityTab({
         </button>
         <p className="text-[11px] text-dark-subtext mt-1.5 text-center">
           Cria uma cópia física do banco de dados (também criptografada).
+        </p>
+      </div>
+
+      <div className="border-t border-red-500/20 pt-4 mt-8">
+        <button 
+          type="button"
+          onClick={handleWipeLocalData}
+          className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+        >
+          <ShieldAlert size={16} />
+          APAGAR DADOS LOCAIS (FORÇAR SYNC)
+        </button>
+        <p className="text-[11px] text-red-400/70 mt-1.5 text-center">
+          Deleta o banco local e mídias. O app reiniciará e baixará tudo da nuvem novamente.
         </p>
       </div>
     </div>
