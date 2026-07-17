@@ -243,8 +243,8 @@ pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageM
             updated_at: row.get(7)?,
             deleted_at: row.get(8)?,
             is_locked: row.get(9)?,
-            is_pinned: row.get(10).unwrap_or(false),
-            pinned_order: row.get(11).unwrap_or(0),
+            is_pinned: row.get(10).unwrap_or(0),
+            pinned_order: row.get(11).unwrap_or(0.0),
         })
     }).map_err(|e| e.to_string())?;
     
