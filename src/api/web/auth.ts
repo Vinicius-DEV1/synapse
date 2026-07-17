@@ -36,6 +36,10 @@ export const webAuthApi = (db: any) => ({
     return { success: true };
   },
   changePassword: async () => ({ success: false, error: "Alteração de senha requer o app Desktop" }),
+  wipeLocalData: async () => {
+    indexedDB.deleteDatabase('caderno-db');
+    window.location.reload();
+  },
   getVisitors: async () => [],
   createVisitor: async () => ({ success: false, error: "Not implemented in Web yet" }),
   deleteVisitor: async () => ({ success: false, error: "Not implemented in Web yet" }),
