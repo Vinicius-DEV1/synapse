@@ -43,12 +43,29 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           return;
         }
 
-        let existingKeysToUse = undefined;
         const masterKey = await deriveMasterKey(password);
+        const { exportKeyToHex } = await import('../services/crypto');
+        const masterHex = await exportKeyToHex(masterKey);
+        
+        let existingKeysToUse: Record<string, string> = {
+          library: masterHex,
+          finance: masterHex,
+          notes: masterHex,
+          core: masterHex,
+          focus: masterHex,
+          vault: masterHex,
+          culture: masterHex,
+          anki: masterHex,
+          files: masterHex,
+          calendar: masterHex,
+          practice: masterHex
+        };
 
         if (!cloudCheck.isNew) {
            const pulled = await pullModularKeysFromCloud(masterKey);
-           if (pulled) existingKeysToUse = pulled;
+           if (pulled) {
+             existingKeysToUse = { ...existingKeysToUse, ...pulled };
+           }
         }
 
         const res = await window.api.auth.setup(password, existingKeysToUse);
@@ -69,11 +86,25 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
             moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
             moduleKeys.core = masterKey;
+            moduleKeys.focus = masterKey;
+            moduleKeys.vault = masterKey;
+            moduleKeys.culture = masterKey;
+            moduleKeys.anki = masterKey;
+            moduleKeys.files = masterKey;
+            moduleKeys.calendar = masterKey;
+            moduleKeys.practice = masterKey;
           } else {
             moduleKeys.library = masterKey;
             moduleKeys.finance = masterKey;
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
+            moduleKeys.focus = masterKey;
+            moduleKeys.vault = masterKey;
+            moduleKeys.culture = masterKey;
+            moduleKeys.anki = masterKey;
+            moduleKeys.files = masterKey;
+            moduleKeys.calendar = masterKey;
+            moduleKeys.practice = masterKey;
           }
           
           if (cloudCheck.isNew) {
@@ -126,11 +157,25 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
             moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
             moduleKeys.core = masterKey;
+            moduleKeys.focus = masterKey;
+            moduleKeys.vault = masterKey;
+            moduleKeys.culture = masterKey;
+            moduleKeys.anki = masterKey;
+            moduleKeys.files = masterKey;
+            moduleKeys.calendar = masterKey;
+            moduleKeys.practice = masterKey;
           } else {
             moduleKeys.library = masterKey;
             moduleKeys.finance = masterKey;
             moduleKeys.notes = masterKey;
             moduleKeys.core = masterKey;
+            moduleKeys.focus = masterKey;
+            moduleKeys.vault = masterKey;
+            moduleKeys.culture = masterKey;
+            moduleKeys.anki = masterKey;
+            moduleKeys.files = masterKey;
+            moduleKeys.calendar = masterKey;
+            moduleKeys.practice = masterKey;
           }
 
           
