@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
-import { collection, doc, setDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 
 export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
@@ -11,7 +11,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
-  // console.log(`[Sync] PUSH Iniciado. (lastPush: \${new Date(lastPush).toISOString()})`);
+  // console.log(`[Sync] PUSH Iniciado. (lastPush: ${new Date(lastPush).toISOString()})`);
   let highestLocalTime = lastPush;
   let pushedCount = 0;
   let pushSkippedCount = 0;
@@ -35,16 +35,15 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           : localRows;
 
         if (rowsToPush.length === 0) continue;
-
-        const cloudSnap = await getDocs(collection(db, table));
-        const cloudMap = new Map(cloudSnap.docs.map(d => [d.id, d.data()]));
         
         for (const row of rowsToPush) {
+          const docRef = doc(db, table, row.id);
           const localTime = Math.max(parseDateSafe(row.updated_at || row.created_at || 0), parseDateSafe(row.deleted_at || 0));
           if (localTime > highestLocalTime) highestLocalTime = localTime;
           
           const isDeleted = !!row.deleted_at;
-          const cloudData = cloudMap.get(row.id);
+          const cloudSnap = await getDoc(docRef);
+          const cloudData = cloudSnap.exists() ? cloudSnap.data() : undefined;
 
           if (cloudData) {
             const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
@@ -52,7 +51,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             if (!isDeleted && localTime <= cloudTime) {
               pushSkippedCount++;
               if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(`[PUSH SKIP] Doc \${row.id}. localTime=\${localTime} <= cloudTime=\${cloudTime}`);
+                (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
               }
               continue;
             }
