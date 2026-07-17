@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { deriveMasterKey, importHexKey } from '../services/crypto';
+import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
 
@@ -44,7 +44,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
 
         const masterKey = await deriveMasterKey(password);
-        const { exportKeyToHex } = await import('../services/crypto');
         const masterHex = await exportKeyToHex(masterKey);
         
         let existingKeysToUse: Record<string, string> = {
