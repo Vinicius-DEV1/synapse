@@ -3,7 +3,8 @@ export class PayloadOptimizer {
    * Recursively removes null and undefined properties to minimize payload size.
    */
   static optimize(obj: any): any {
-    if (obj === null || obj === undefined) return undefined;
+    if (obj === undefined) return undefined;
+    if (obj === null) return null;
     if (typeof obj !== 'object') return obj;
     
     // Do not optimize standard classes like Date or Buffer/Uint8Array
