@@ -25,7 +25,10 @@ const EncryptedImageNodeView = (props: any) => {
 
   // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
   const loadImage = useCallback(async () => {
-    if (!driveFileId || !masterKey) return;
+    if (!driveFileId || !masterKey) {
+      setState('error');
+      return;
+    }
 
     setState('loading');
 
@@ -47,6 +50,10 @@ const EncryptedImageNodeView = (props: any) => {
           if (cached) {
             file = new File([cached.data], 'image-recovered', { type: cached.mimeType });
           }
+        }
+
+        if (!file) {
+          throw new Error('File lost from memory and cache.');
         }
 
         if (file) {

@@ -37,43 +37,47 @@ export default function CalendarView() {
         await window.api.calendar.updateEvent(editingEvent.id, eventData);
       } else {
         const recRule = eventData.recurrence_rule;
-        if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
-          const groupId = `group_${crypto.randomUUID()}`;
-          const copies: any[] = [];
-          const start = new Date(eventData.start_date!);
-          const end = new Date(eventData.end_date!);
-          const duration = end.getTime() - start.getTime();
-          
-          let count = 0;
-          if (recRule === 'daily') count = 90;
-          else if (recRule === 'weekly') count = 52;
-          else if (recRule === 'monthly') count = 12;
-          else if (recRule === 'yearly') count = 5;
-
-          for (let i = 0; i < count; i++) {
-            const currentStart = new Date(start);
-            if (recRule === 'daily') currentStart.setDate(start.getDate() + i);
-            else if (recRule === 'weekly') currentStart.setDate(start.getDate() + (i * 7));
-            else if (recRule === 'monthly') currentStart.setMonth(start.getMonth() + i);
-            else if (recRule === 'yearly') currentStart.setFullYear(start.getFullYear() + i);
-
-            const currentEnd = new Date(currentStart.getTime() + duration);
+        try {
+          if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
+            const groupId = `group_${crypto.randomUUID()}`;
+            const copies: any[] = [];
+            const start = new Date(eventData.start_date!);
+            const end = new Date(eventData.end_date!);
+            const duration = end.getTime() - start.getTime();
             
-            copies.push({
-              ...eventData,
-              id: crypto.randomUUID(),
-              start_date: currentStart.toISOString(),
-              end_date: currentEnd.toISOString(),
-              recurrence_rule: groupId
-            });
+            let count = 0;
+            if (recRule === 'daily') count = 90;
+            else if (recRule === 'weekly') count = 52;
+            else if (recRule === 'monthly') count = 12;
+            else if (recRule === 'yearly') count = 5;
+
+            for (let i = 0; i < count; i++) {
+              const currentStart = new Date(start);
+              if (recRule === 'daily') currentStart.setDate(start.getDate() + i);
+              else if (recRule === 'weekly') currentStart.setDate(start.getDate() + (i * 7));
+              else if (recRule === 'monthly') currentStart.setMonth(start.getMonth() + i);
+              else if (recRule === 'yearly') currentStart.setFullYear(start.getFullYear() + i);
+
+              const currentEnd = new Date(currentStart.getTime() + duration);
+              
+              copies.push({
+                ...eventData,
+                id: crypto.randomUUID(),
+                start_date: currentStart.toISOString(),
+                end_date: currentEnd.toISOString(),
+                recurrence_rule: groupId
+              });
+            }
+            
+            for (const copy of copies) {
+              await window.api.calendar.createEvent(copy);
+            }
+          } else {
+            const newEvent = { ...eventData, id: crypto.randomUUID() };
+            await window.api.calendar.createEvent(newEvent);
           }
-          
-          for (const copy of copies) {
-            await window.api.calendar.createEvent(copy);
-          }
-        } else {
-          const newEvent = { ...eventData, id: crypto.randomUUID() };
-          await window.api.calendar.createEvent(newEvent);
+        } catch (e) {
+          console.error("Erro ao salvar eventos:", e);
         }
       }
       setIsModalOpen(false);
@@ -84,14 +88,18 @@ export default function CalendarView() {
 
   const handleDeleteEvent = async (id: string, deleteAll: boolean = false) => {
     if (window.api?.calendar) {
-      const ev = events.find(e => e.id === id);
-      if (deleteAll && ev?.recurrence_rule?.startsWith('group_')) {
-        const groupEvents = events.filter(e => e.recurrence_rule === ev.recurrence_rule);
-        for (const ge of groupEvents) {
-          await window.api.calendar.deleteEvent(ge.id);
+      try {
+        const ev = events.find(e => e.id === id);
+        if (deleteAll && ev?.recurrence_rule?.startsWith('group_')) {
+          const groupEvents = events.filter(e => e.recurrence_rule === ev.recurrence_rule);
+          for (const ge of groupEvents) {
+            await window.api.calendar.deleteEvent(ge.id);
+          }
+        } else {
+          await window.api.calendar.deleteEvent(id);
         }
-      } else {
-        await window.api.calendar.deleteEvent(id);
+      } catch (e) {
+        console.error("Erro ao deletar eventos:", e);
       }
       loadEvents();
     }

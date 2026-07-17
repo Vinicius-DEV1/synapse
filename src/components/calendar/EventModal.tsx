@@ -32,17 +32,31 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       setType(event.type);
       setColor(event.color || COLORS[0]);
 
-      const start = new Date(event.start_date);
-      setStartDate(format(start, 'yyyy-MM-dd'));
-      setStartTime(format(start, 'HH:mm'));
+      if (event.start_date) {
+        const start = new Date(event.start_date);
+        if (!isNaN(start.getTime())) {
+          setStartDate(format(start, 'yyyy-MM-dd'));
+          setStartTime(format(start, 'HH:mm'));
+        }
+      }
 
-      const end = new Date(event.end_date);
-      setEndDate(format(end, 'yyyy-MM-dd'));
-      setEndTime(format(end, 'HH:mm'));
+      if (event.end_date) {
+        const end = new Date(event.end_date);
+        if (!isNaN(end.getTime())) {
+          setEndDate(format(end, 'yyyy-MM-dd'));
+          setEndTime(format(end, 'HH:mm'));
+        }
+      }
       
       // Se for de 00:00 até 23:59, consideramos "Dia Inteiro"
-      if (format(start, 'HH:mm') === '00:00' && format(end, 'HH:mm') === '23:59') {
-        setIsAllDay(true);
+      if (event.start_date && event.end_date) {
+        const start = new Date(event.start_date);
+        const end = new Date(event.end_date);
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+          if (format(start, 'HH:mm') === '00:00' && format(end, 'HH:mm') === '23:59') {
+            setIsAllDay(true);
+          }
+        }
       } else {
         setIsAllDay(false);
       }

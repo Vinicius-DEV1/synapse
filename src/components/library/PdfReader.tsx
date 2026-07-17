@@ -192,7 +192,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             onDeleteBookmark={(id) => {
               window.api.library.deleteBookmark(id).then(() => {
                 setBookmarks(prev => prev.filter(b => b.id !== id));
-              });
+              }).catch(console.error);
             }}
           />
         </div>

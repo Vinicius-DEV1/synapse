@@ -71,12 +71,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const extensions = useEditorExtensions(ydocRef.current);
 
   // 3. Save Logic
-  const { handleUpdate } = useEditorSave({
+  const { handleUpdate, cleanupSave } = useEditorSave({
     pageId,
     ydocRef,
     onSaveRef,
     latestContentRef
   });
+
+  useEffect(() => {
+    return () => {
+      cleanupSave();
+    };
+  }, [pageId, cleanupSave]);
 
   // 4. Slash Commands
   const {
@@ -156,12 +162,16 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
                 (window as any).__pendingImageUploads.set(tempId, file);
                 file.arrayBuffer().then(buffer => {
                   setCachedImage(tempId, buffer, file.type).catch(console.error);
-                });
+                }).catch(console.error);
                 editor.chain().focus().insertContent({
                   type: 'encryptedImage',
                   attrs: { driveFileId: tempId }
                 }).run();
               } else {
+                if (file.size > 2 * 1024 * 1024) {
+                  alert('Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.');
+                  return true;
+                }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                   const src = e.target?.result;

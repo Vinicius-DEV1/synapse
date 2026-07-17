@@ -54,7 +54,7 @@ export default function VideoView() {
       // Fallback: try subtitles_json tracks (legendas extraídas durante o upload)
       if (!subText && video.subtitles_json) {
         try {
-          const tracks = JSON.parse(video.subtitles_json);
+          const tracks = JSON.parse(video.subtitles_json) || [];
           if (tracks.length > 0) {
             const firstTrack = tracks[0];
             // Tenta local primeiro, depois Drive
@@ -127,7 +127,6 @@ export default function VideoView() {
       await loadVideos();
     } catch (e) {
       console.error("Erro ao baixar:", e);
-      alert("Erro ao baixar o vídeo para uso local.");
     } finally {
       setIsDownloadingId(null);
     }
@@ -209,11 +208,13 @@ export default function VideoView() {
     saveFolders(folders.map(f => f.id === id ? { ...f, name: newName } : f));
     // Also update videos inside this folder
     const videosInFolder = videos.filter(v => v.collection_id === id);
-    for (const v of videosInFolder) {
-      if (window.api?.sync) {
-        await window.api.sync.upsertRow('videos', { ...v, collection_name: newName, updated_at: new Date().toISOString() });
+    try {
+      for (const v of videosInFolder) {
+        if (window.api?.sync) {
+          await window.api.sync.upsertRow('videos', { ...v, collection_name: newName, updated_at: new Date().toISOString() });
+        }
       }
-    }
+    } catch (e) { console.error('Error renaming folder videos', e); }
     await loadVideos();
   };
 
@@ -221,11 +222,13 @@ export default function VideoView() {
     saveFolders(folders.filter(f => f.id !== id));
     // Move videos back to root
     const videosInFolder = videos.filter(v => v.collection_id === id);
-    for (const v of videosInFolder) {
-      if (window.api?.sync) {
-        await window.api.sync.upsertRow('videos', { ...v, collection_id: undefined, collection_name: undefined, updated_at: new Date().toISOString() });
+    try {
+      for (const v of videosInFolder) {
+        if (window.api?.sync) {
+          await window.api.sync.upsertRow('videos', { ...v, collection_id: undefined, collection_name: undefined, updated_at: new Date().toISOString() });
+        }
       }
-    }
+    } catch (e) { console.error('Error deleting folder videos', e); }
     await loadVideos();
   };
 

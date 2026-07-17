@@ -25,12 +25,17 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
     }
     
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    
+    const currentOnSave = onSaveRef.current;
+    const currentContent = { ...latestContentRef.current };
+    const currentPageId = pageId;
+
     saveTimeoutRef.current = setTimeout(() => {
-      if (!latestContentRef.current) return;
-      const saveResult = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
+      if (!currentContent) return;
+      const saveResult = currentOnSave(currentContent.html, currentContent.crdt, []) as any;
       if (saveResult && typeof saveResult.then === 'function') {
         saveResult.catch((err: any) => {
-          console.error(`[Caderno:Debounce] Save FAILED for ${pageId}:`, err);
+          console.error(`[Caderno:Debounce] Save FAILED for ${currentPageId}:`, err);
         });
       }
     }, 500);
