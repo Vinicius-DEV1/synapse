@@ -85,7 +85,7 @@ pub fn practice_update_session(session: TutorSession, db_state: State<'_, DbStat
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "UPDATE tutor_sessions SET title = ?, started_at = ?, ended_at = ?, custom_prompt = ?, deleted_at = ? WHERE id = ?",
+        "UPDATE tutor_sessions SET title = ?, started_at = ?, ended_at = ?, custom_prompt = ?, deleted_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![session.title, session.started_at, session.ended_at, session.custom_prompt, session.deleted_at, session.id]
     ).map_err(|e| e.to_string())?;
         
