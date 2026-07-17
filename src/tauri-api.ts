@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { copyFile, readFile, mkdir } from '@tauri-apps/plugin-fs';
 import { BaseDirectory } from '@tauri-apps/api/path';
+import { tauriFinanceApi } from './api/tauri/finance';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
@@ -80,16 +81,7 @@ export const createTauriApi = async () => {
         await invoke('image_cache_put', { id, data: Array.from(new Uint8Array(data)), mimeType })
     },
     // --- FINANCE ---
-    finance: {
-      getTransactions: async () => await invoke('finance_get_transactions'),
-      addTransaction: async (t: any) => await invoke('finance_add_transaction', { transaction: t }),
-      updateTransaction: async (t: any) => await invoke('finance_update_transaction', { transaction: t }),
-      deleteTransaction: async (id: string) => await invoke('finance_delete_transaction', { id }),
-      getWishlist: async () => await invoke('finance_get_wishlist'),
-      addWishlist: async (w: any) => await invoke('finance_add_wishlist', { item: w }),
-      updateWishlist: async (w: any) => await invoke('finance_update_wishlist', { item: w }),
-      deleteWishlist: async (id: string) => await invoke('finance_delete_wishlist', { id })
-    },
+    finance: tauriFinanceApi,
     
     // --- LIBRARY ---
     library: {
