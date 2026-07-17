@@ -5,8 +5,8 @@ const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
 
   const handleClick = () => {
-    // Dispatch um evento global que o PageView pode capturar para navegar
-    window.dispatchEvent(new CustomEvent('navigate-to-page', { detail: { pageId } }));
+    // Dispatch um evento global para abrir o modal flutuante
+    window.dispatchEvent(new CustomEvent('open-floating-page', { detail: { pageId } }));
   };
 
   return (

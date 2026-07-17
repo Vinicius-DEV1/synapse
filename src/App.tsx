@@ -16,12 +16,14 @@ import { useSync } from './hooks/useSync';
 import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
+import FloatingPageModal from './components/FloatingPageModal';
 
 function AppContent() {
   const { state, dispatch } = useStore();
   const [isAuth, setIsAuth] = useState(false);
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
+  const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
   const { loadData: loadFocusData } = useFocusContext();
   
   const {
@@ -136,6 +138,17 @@ function AppContent() {
     window.addEventListener('click', handler);
     return () => window.removeEventListener('click', handler);
   }, [state.contextMenu, dispatch]);
+
+  // Open Floating Page
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail?.pageId) {
+        setFloatingPageId(e.detail.pageId);
+      }
+    };
+    window.addEventListener('open-floating-page', handler);
+    return () => window.removeEventListener('open-floating-page', handler);
+  }, []);
 
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module;
@@ -289,7 +302,24 @@ function AppContent() {
            syncStatus === 'error'   ? (!navigator.onLine ? 'Offline' : 'Erro') : ''}
         </span>
       </div>
+      {/* Focus Overlays */}
       <GlobalFocusOverlays />
+
+      {/* Floating Page Modal */}
+      {floatingPageId && (
+        <FloatingPageModal
+          pageId={floatingPageId}
+          onClose={() => setFloatingPageId(null)}
+          onExpand={(id) => {
+            setFloatingPageId(null);
+            dispatch({ type: 'NAVIGATE_IN_TAB', pageId: id });
+          }}
+          onUpdateContent={handleUpdateContent}
+          onCreatePage={handleCreatePage}
+          onCreateLinkedPage={handleCreateLinkedPage}
+          onUpdatePage={handleUpdatePage}
+        />
+      )}
     </div>
   );
 }

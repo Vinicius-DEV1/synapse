@@ -24,6 +24,7 @@ import SlashMenu from './SlashMenu';
 import FloatingToolbar from './FloatingToolbar';
 import TableToolbar from './TableToolbar';
 import ImageViewerModal from './ImageViewerModal';
+import PageSearchMenu from './PageSearchMenu';
 
 // Nossos blocos
 import { GroupBlock } from './editor-extensions/GroupBlock';
@@ -77,6 +78,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const [alarmModal, setAlarmModal] = useState<{ isOpen: boolean, initialTimeStr?: string } | null>(null);
   const [fileUploadModal, setFileUploadModal] = useState<{ isOpen: boolean, isLink: boolean } | null>(null);
   const [fileSelectModal, setFileSelectModal] = useState(false);
+  const [pageSearchMenu, setPageSearchMenu] = useState<{ isOpen: boolean, x: number, y: number, query: string } | null>(null);
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -432,6 +434,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       case 'question': editor.commands.insertContent('<div class="question-block"></div>'); break;
       case 'toggle': editor.commands.insertContent('<div class="toggle-block"><p></p></div>'); break;
       case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"><p></p></div>'); break;
+      case 'page': 
+        setPageSearchMenu({ isOpen: true, x: slashMenu.x, y: slashMenu.y, query: slashMenu.query.replace(/^page\s*/i, '') }); 
+        break;
       case 'divider': editor.commands.setHorizontalRule(); break;
       case 'table': 
         editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
@@ -623,6 +628,27 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             setViewerState({ isOpen: false, src: '', nodePos: null });
           }}
         />
+      )}
+
+      {pageSearchMenu?.isOpen && createPortal(
+        <PageSearchMenu
+          x={pageSearchMenu.x}
+          y={pageSearchMenu.y}
+          query={pageSearchMenu.query}
+          onSelect={(pageId, pageTitle) => {
+            if (editor && pageId !== 'new') {
+              editor.commands.insertContent({
+                type: 'pageReference',
+                attrs: { pageId, title: pageTitle }
+              });
+              // insert a trailing space after the node
+              editor.commands.insertContent(' ');
+            }
+            setPageSearchMenu(null);
+          }}
+          onClose={() => setPageSearchMenu(null)}
+        />,
+        document.body
       )}
 
       {editor && (
