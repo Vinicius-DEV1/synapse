@@ -4,6 +4,12 @@ import App from './App.tsx'
 import './index.css'
 
 async function init() {
+  if (!localStorage.getItem('wiped_for_test_1')) {
+    localStorage.clear();
+    localStorage.setItem('wiped_for_test_1', '1');
+    console.log("🔥 LOCALSTORAGE LIMPO PARA TESTE DE SYNC 🔥");
+  }
+
   if (!window.api) {
     let mockApi;
     if ((window as any).__TAURI_INTERNALS__) {
