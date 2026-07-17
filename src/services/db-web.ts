@@ -153,7 +153,7 @@ export async function getWebDb() {
           store.createIndex('deck_id', 'deck_id');
         }
         if (!db.objectStoreNames.contains('anki_srs_state')) {
-          db.createObjectStore('anki_srs_state', { keyPath: 'card_id' }); // note: anki srs state uses card_id as primary key
+          db.createObjectStore('anki_srs_state', { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains('anki_reviews')) {
           const store = db.createObjectStore('anki_reviews', { keyPath: 'id' });

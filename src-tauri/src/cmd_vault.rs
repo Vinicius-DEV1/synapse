@@ -139,11 +139,11 @@ pub fn vault_delete_group(id: String, db_state: State<'_, DbState>) -> Result<()
     
     let now = chrono::Utc::now().to_rfc3339();
     
-    conn.execute("UPDATE vault_groups SET deleted_at = ? WHERE id = ?", rusqlite::params![now, id])
+    conn.execute("UPDATE vault_groups SET deleted_at = ?, updated_at = ? WHERE id = ?", rusqlite::params![now, now, id])
         .map_err(|e| e.to_string())?;
         
     // Deleta credenciais associadas
-    conn.execute("UPDATE vault_items SET deleted_at = ? WHERE group_id = ?", rusqlite::params![now, id])
+    conn.execute("UPDATE vault_items SET deleted_at = ?, updated_at = ? WHERE group_id = ?", rusqlite::params![now, now, id])
         .map_err(|e| e.to_string())?;
         
     Ok(())
@@ -271,7 +271,7 @@ pub fn vault_delete_item(id: String, db_state: State<'_, DbState>) -> Result<(),
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let now = chrono::Utc::now().to_rfc3339();
     
-    conn.execute("UPDATE vault_items SET deleted_at = ? WHERE id = ?", rusqlite::params![now, id])
+    conn.execute("UPDATE vault_items SET deleted_at = ?, updated_at = ? WHERE id = ?", rusqlite::params![now, now, id])
         .map_err(|e| e.to_string())?;
         
     Ok(())

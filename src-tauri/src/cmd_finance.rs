@@ -90,7 +90,7 @@ pub fn finance_delete_transaction(id: String, db_state: State<'_, DbState>) -> R
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("DELETE FROM transactions WHERE id = ?", [&id])
+    conn.execute("UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
@@ -159,7 +159,7 @@ pub fn finance_delete_wishlist(id: String, db_state: State<'_, DbState>) -> Resu
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("DELETE FROM wishlist WHERE id = ?", [&id])
+    conn.execute("UPDATE wishlist SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)

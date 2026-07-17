@@ -88,7 +88,7 @@ pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<St
     
     let now = Utc::now().to_rfc3339();
     if let Err(e) = conn.execute(
-        "INSERT INTO anki_srs_state (card_id, due_date, stability, difficulty, state) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO anki_srs_state (id, due_date, stability, difficulty, state) VALUES (?, ?, ?, ?, ?)",
         params![id, now, 0.0, 0.0, 0]
     ) {
         let _ = conn.execute("ROLLBACK", []);
@@ -108,7 +108,7 @@ pub fn anki_get_due_cards(deck_id: String, db_state: State<'_, DbState>) -> Resu
     
     let mut stmt = conn.prepare(
         "SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode, s.state, s.due_date 
-         FROM anki_cards c JOIN anki_srs_state s ON c.id = s.card_id 
+         FROM anki_cards c JOIN anki_srs_state s ON c.id = s.id 
          WHERE c.deck_id = ? AND s.due_date <= ? ORDER BY s.due_date ASC"
     ).map_err(|e| e.to_string())?;
     
@@ -143,7 +143,7 @@ pub fn anki_review_card(card_id: String, rating: i32, db_state: State<'_, DbStat
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT scheduled_days FROM anki_srs_state WHERE card_id = ?").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT scheduled_days FROM anki_srs_state WHERE id = ?").map_err(|e| e.to_string())?;
     let scheduled_days: f64 = stmt.query_row([&card_id], |row| row.get(0)).unwrap_or(0.0);
     
     let mut next_interval_days = 1.0;
@@ -172,7 +172,7 @@ pub fn anki_review_card(card_id: String, rating: i32, db_state: State<'_, DbStat
     conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
     
     if let Err(e) = conn.execute(
-        "UPDATE anki_srs_state SET due_date = ?, scheduled_days = ?, state = ?, reps = reps + 1, updated_at = CURRENT_TIMESTAMP WHERE card_id = ?",
+        "UPDATE anki_srs_state SET due_date = ?, scheduled_days = ?, state = ?, reps = reps + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![due_date_str, next_interval_days, new_state, card_id]
     ) {
         let _ = conn.execute("ROLLBACK", []);
@@ -237,9 +237,9 @@ pub fn anki_delete_card(card_id: String, db_state: State<'_, DbState>) -> Result
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
-    let _ = conn.execute("DELETE FROM anki_reviews WHERE card_id = ?", [&card_id]);
-    let _ = conn.execute("DELETE FROM anki_srs_state WHERE card_id = ?", [&card_id]);
-    if let Err(e) = conn.execute("DELETE FROM anki_cards WHERE id = ?", [&card_id]) {
+    let _ = conn.execute("UPDATE anki_reviews SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE card_id = ?", [&card_id]);
+    let _ = conn.execute("UPDATE anki_srs_state SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&card_id]);
+    if let Err(e) = conn.execute("UPDATE anki_cards SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&card_id]) {
         let _ = conn.execute("ROLLBACK", []);
         return Err(e.to_string());
     }

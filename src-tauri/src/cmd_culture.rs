@@ -1,4 +1,4 @@
-﻿use tauri::State;
+use tauri::State;
 use serde::{Deserialize, Serialize};
 use crate::db::DbState;
 use rusqlite::params;
@@ -119,7 +119,7 @@ pub fn culture_delete_item(id: String, db_state: State<'_, DbState>) -> Result<b
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("UPDATE culture_items SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE culture_items SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
