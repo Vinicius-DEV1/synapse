@@ -217,7 +217,7 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("UPDATE pages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
