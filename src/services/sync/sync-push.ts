@@ -17,22 +17,12 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   let pushSkippedCount = 0;
   const errors: string[] = [];
 
-  const effectiveModuleKeys = { ...moduleKeys };
-  if (effectiveModuleKeys['notes']) {
-    effectiveModuleKeys['culture'] = effectiveModuleKeys['notes'];
-  }
-  if (effectiveModuleKeys['core']) {
-    effectiveModuleKeys['video'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['vault'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['calendar'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['practice'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['focus'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['anki'] = effectiveModuleKeys['core'];
-    effectiveModuleKeys['files'] = effectiveModuleKeys['core'];
-  }
-
-  for (const module of Object.keys(effectiveModuleKeys)) {
-    const key = effectiveModuleKeys[module];
+  for (const module of Object.keys(MODULE_TABLES)) {
+    const key = moduleKeys[module] || moduleKeys['core'];
+    if (!key) {
+      console.warn(`[Sync PUSH] Nenhuma chave encontrada para o módulo ${module}. Pulando...`);
+      continue;
+    }
     const tables = MODULE_TABLES[module] || [];
     
     for (const table of tables) {
