@@ -86,6 +86,8 @@ pub fn run() {
         cmd_notes::notes_create_page,
         cmd_notes::notes_update_page,
         cmd_notes::notes_delete_page,
+        cmd_notes::notes_get_deleted_pages,
+        cmd_notes::notes_restore_page,
         cmd_notes::image_cache_get,
         cmd_notes::image_cache_put,
         cmd_finance::finance_get_transactions,

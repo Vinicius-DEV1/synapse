@@ -67,6 +67,8 @@ export const createTauriApi = async () => {
     createPage: async (page: any) => await invoke('notes_create_page', { page }),
     updatePage: async (page: any) => await invoke('notes_update_page', { page }),
     deletePage: async (id: string) => await invoke('notes_delete_page', { id }),
+    getDeletedPages: async () => await invoke('notes_get_deleted_pages'),
+    restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
     reorderPages: async () => true, // TODO
     getPageHistory: async () => [],
     
