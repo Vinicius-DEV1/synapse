@@ -92,7 +92,10 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
       return null;
     }
   },
-  getCollections: async () => await db.getAll('library_collections'),
+  getCollections: async () => {
+    const all = await db.getAll('library_collections') || [];
+    return all.filter((c: any) => !c.deleted_at);
+  },
   createCollection: async (c: any) => {
     const col = { id: generateId(), ...c, created_at: new Date().toISOString() };
     await db.put('library_collections', col);
@@ -104,7 +107,12 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     return 1;
   },
   deleteCollection: async (id: string) => {
-    await db.delete('library_collections', id);
+    const existing = await db.get('library_collections', id);
+    if (existing) {
+      existing.deleted_at = new Date().toISOString();
+      existing.updated_at = new Date().toISOString();
+      await db.put('library_collections', existing);
+    }
     return true;
   },
   setBookCollections: async (bookId: string, collectionIds: string[]) => {

@@ -74,7 +74,7 @@ pub fn focus_update_alarm(id: String, alarm: FocusAlarm, db_state: State<'_, DbS
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     conn.execute(
-        "UPDATE alarms SET time = ?, label = ?, sound = ?, enabled = ?, days = ? WHERE id = ?",
+        "UPDATE alarms SET time = ?, label = ?, sound = ?, enabled = ?, days = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![alarm.time, alarm.label, alarm.sound, alarm.enabled, alarm.days, id]
     ).map_err(|e| e.to_string())?;
         

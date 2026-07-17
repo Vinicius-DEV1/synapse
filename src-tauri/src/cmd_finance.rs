@@ -78,7 +78,7 @@ pub fn finance_update_transaction(transaction: Transaction, db_state: State<'_, 
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "UPDATE transactions SET description = ?, amount = ?, type = ?, category = ?, date = ?, is_recurring = ?, recurrence_period = ? WHERE id = ?",
+        "UPDATE transactions SET description = ?, amount = ?, type = ?, category = ?, date = ?, is_recurring = ?, recurrence_period = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![transaction.description, transaction.amount, transaction.type_, transaction.category, transaction.date, transaction.is_recurring, transaction.recurrence_period, transaction.id]
     ).map_err(|e| e.to_string())?;
         
@@ -147,7 +147,7 @@ pub fn finance_update_wishlist(item: WishlistItem, db_state: State<'_, DbState>)
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "UPDATE wishlist SET title = ?, price = ?, priority = ?, category = ?, expected_date = ?, description = ?, link = ? WHERE id = ?",
+        "UPDATE wishlist SET title = ?, price = ?, priority = ?, category = ?, expected_date = ?, description = ?, link = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![item.title, item.price, item.priority, item.category, item.expected_date, item.description, item.link, item.id]
     ).map_err(|e| e.to_string())?;
         

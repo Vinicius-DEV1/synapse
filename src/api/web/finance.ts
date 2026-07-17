@@ -31,6 +31,7 @@ export const webFinanceApi = (db: any, generateId: () => string) => ({
     const existing = await db.get('transactions', id);
     if (existing) {
       existing.deleted_at = new Date().toISOString();
+      existing.updated_at = new Date().toISOString();
       await db.put('transactions', existing);
       return true;
     }
@@ -68,6 +69,7 @@ export const webFinanceApi = (db: any, generateId: () => string) => ({
     const existing = await db.get('wishlist', id);
     if (existing) {
       existing.deleted_at = new Date().toISOString();
+      existing.updated_at = new Date().toISOString();
       await db.put('wishlist', existing);
       return true;
     }
