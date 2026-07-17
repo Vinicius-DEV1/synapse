@@ -35,7 +35,16 @@ export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent:
 export async function resolveLofiUrl(lofi: LofiItem): Promise<string> {
   if (window.api?.lofi && lofi.is_local) {
     const filename_enc = `${lofi.original_name}.enc`;
-    return `http://encrypted.localhost/focus/${encodeURIComponent(filename_enc)}`;
+    try {
+      const localPath = await window.api.lofi.getLocalPath(filename_enc);
+      if (localPath) {
+        return `http://encrypted.localhost/focus/${encodeURIComponent(filename_enc)}`;
+      } else {
+        console.warn(`Local lofi file missing for ${lofi.original_name}, falling back to Drive.`);
+      }
+    } catch (e) {
+      console.warn("Failed to check local lofi path", e);
+    }
   }
   if (lofi.drive_file_id) {
     return getLofiStreamLink(lofi.drive_file_id);
