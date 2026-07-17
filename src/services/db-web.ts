@@ -3,6 +3,7 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 
 interface CadernoDBSchema extends DBSchema {
   pages: { key: string; value: any; indexes: { 'parent_id': string } };
+  page_history: { key: string; value: any; indexes: { 'page_id': string } };
   transactions: { key: string; value: any; indexes: { 'date': string } };
   wishlist: { key: string; value: any };
   library_books: { key: string; value: any; indexes: { 'reading_status': string } };
@@ -14,11 +15,12 @@ interface CadernoDBSchema extends DBSchema {
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
   videos: { key: string; value: any };
+  video_words: { key: string; value: any; indexes: { 'video_id': string } };
   lofis: { key: string; value: any };
-  items: { key: string; value: any };
-  episodes: { key: string; value: any; indexes: { 'item_id': string } };
+  culture_items: { key: string; value: any };
+  culture_episodes: { key: string; value: any; indexes: { 'item_id': string } };
   focus_sessions: { key: string; value: any };
-  focus_alarms: { key: number; value: any };
+  alarms: { key: number; value: any };
   calendar_events: { key: string; value: any };
   vault_groups: { key: string; value: any };
   vault_items: { key: string; value: any; indexes: { 'group_id': string } };
@@ -26,17 +28,33 @@ interface CadernoDBSchema extends DBSchema {
   tutor_sessions: { key: string; value: any };
   tutor_messages: { key: string; value: any; indexes: { 'session_id': string } };
   tutor_memories: { key: string; value: any };
+  anki_decks: { key: string; value: any };
+  anki_cards: { key: string; value: any; indexes: { 'deck_id': string } };
+  anki_srs_state: { key: string; value: any };
+  anki_reviews: { key: string; value: any; indexes: { 'card_id': string } };
+  files: { key: string; value: any };
+  file_folders: { key: string; value: any };
+  file_page_links: { key: string; value: any; indexes: { 'file_id': string, 'page_id': string } };
+  
+  // Legacy tables for migration safety
+  items: { key: string; value: any };
+  episodes: { key: string; value: any; indexes: { 'item_id': string } };
+  focus_alarms: { key: number; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 8, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 9, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
           store.createIndex('parent_id', 'parent_id');
+        }
+        if (!db.objectStoreNames.contains('page_history')) {
+          const store = db.createObjectStore('page_history', { keyPath: 'id' });
+          store.createIndex('page_id', 'page_id');
         }
         if (!db.objectStoreNames.contains('transactions')) {
           const store = db.createObjectStore('transactions', { keyPath: 'id' });
@@ -77,23 +95,27 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('videos')) {
           db.createObjectStore('videos', { keyPath: 'id' });
         }
+        if (!db.objectStoreNames.contains('video_words')) {
+          const store = db.createObjectStore('video_words', { keyPath: 'id' });
+          store.createIndex('video_id', 'video_id');
+        }
         if (!db.objectStoreNames.contains('lofis')) {
           db.createObjectStore('lofis', { keyPath: 'id' });
         }
         // Culture stores
-        if (!db.objectStoreNames.contains('items')) {
-          db.createObjectStore('items', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('culture_items')) {
+          db.createObjectStore('culture_items', { keyPath: 'id' });
         }
-        if (!db.objectStoreNames.contains('episodes')) {
-          const store = db.createObjectStore('episodes', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('culture_episodes')) {
+          const store = db.createObjectStore('culture_episodes', { keyPath: 'id' });
           store.createIndex('item_id', 'item_id');
         }
         // Focus stores
         if (!db.objectStoreNames.contains('focus_sessions')) {
           db.createObjectStore('focus_sessions', { keyPath: 'id' });
         }
-        if (!db.objectStoreNames.contains('focus_alarms')) {
-          db.createObjectStore('focus_alarms', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('alarms')) {
+          db.createObjectStore('alarms', { keyPath: 'id' });
         }
         // Calendar
         if (!db.objectStoreNames.contains('calendar_events')) {
@@ -121,6 +143,45 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('tutor_memories')) {
           db.createObjectStore('tutor_memories', { keyPath: 'id' });
+        }
+        // Anki
+        if (!db.objectStoreNames.contains('anki_decks')) {
+          db.createObjectStore('anki_decks', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('anki_cards')) {
+          const store = db.createObjectStore('anki_cards', { keyPath: 'id' });
+          store.createIndex('deck_id', 'deck_id');
+        }
+        if (!db.objectStoreNames.contains('anki_srs_state')) {
+          db.createObjectStore('anki_srs_state', { keyPath: 'card_id' }); // note: anki srs state uses card_id as primary key
+        }
+        if (!db.objectStoreNames.contains('anki_reviews')) {
+          const store = db.createObjectStore('anki_reviews', { keyPath: 'id' });
+          store.createIndex('card_id', 'card_id');
+        }
+        // Files
+        if (!db.objectStoreNames.contains('files')) {
+          db.createObjectStore('files', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('file_folders')) {
+          db.createObjectStore('file_folders', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('file_page_links')) {
+          const store = db.createObjectStore('file_page_links', { keyPath: 'id' });
+          store.createIndex('file_id', 'file_id');
+          store.createIndex('page_id', 'page_id');
+        }
+
+        // Keep legacy tables for now to avoid errors if any code still uses them locally
+        if (!db.objectStoreNames.contains('items')) {
+          db.createObjectStore('items', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('episodes')) {
+          const store = db.createObjectStore('episodes', { keyPath: 'id' });
+          store.createIndex('item_id', 'item_id');
+        }
+        if (!db.objectStoreNames.contains('focus_alarms')) {
+          db.createObjectStore('focus_alarms', { keyPath: 'id' });
         }
       },
     });
