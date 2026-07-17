@@ -16,13 +16,14 @@ export default function FileViewer({ item, onClose }: FileViewerProps) {
 
   useEffect(() => {
     let url: string | null = null;
+    const isTextFallback = item.file_type === 'text' || (item.file_type === 'other' && !!item.name.match(/\.(txt|md|json|csv|xml|js|ts|jsx|tsx|css|html)$/i));
     
     // Load local file content via backend or drive
     if (['image', 'pdf', 'text', 'other'].includes(item.file_type)) {
       getDecryptedFileUrl(item, state.moduleKeys['files']).then(async url => {
         if (url && typeof url === 'string') {
           setObjectUrl(url);
-          if (item.file_type === 'text') {
+          if (isTextFallback) {
             try {
               const res = await fetch(url);
               const txt = await res.text();
@@ -57,7 +58,7 @@ export default function FileViewer({ item, onClose }: FileViewerProps) {
 
   const isImage = item.file_type === 'image';
   const isPdf = item.file_type === 'pdf';
-  const isText = item.file_type === 'text';
+  const isText = item.file_type === 'text' || (item.file_type === 'other' && !!item.name.match(/\.(txt|md|json|csv|xml|js|ts|jsx|tsx|css|html)$/i));
   
   if (item.file_type === 'video' || item.file_type === 'epub' || item.file_type === 'slide') {
     return (
