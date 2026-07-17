@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, ExternalLink, Download, FileText, File } from 'lucide-react';
 import type { FileItem } from '../../types_files';
 import { useStore } from '../../store/useStore';
+import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 
 interface FileViewerProps {
   item: FileItem;
@@ -9,34 +10,32 @@ interface FileViewerProps {
 }
 
 export default function FileViewer({ item, onClose }: FileViewerProps) {
-  const { dispatch } = useStore();
+  const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
 
   useEffect(() => {
     let url: string | null = null;
     
-    // Load local file content via backend
+    // Load local file content via backend or drive
     if (['image', 'pdf', 'text', 'other'].includes(item.file_type)) {
-      if (item.local_path) {
-        window.api.files.getLocal(item.local_path).then(async url => {
-          if (url && typeof url === 'string') {
-            setObjectUrl(url);
-            if (item.file_type === 'text') {
-              try {
-                const res = await fetch(url);
-                const txt = await res.text();
-                setTextContent(txt);
-              } catch(e) {
-                console.error("Failed to fetch text", e);
-                setTextContent("Erro ao carregar texto.");
-              }
+      getDecryptedFileUrl(item, state.moduleKeys['files']).then(async url => {
+        if (url && typeof url === 'string') {
+          setObjectUrl(url);
+          if (item.file_type === 'text') {
+            try {
+              const res = await fetch(url);
+              const txt = await res.text();
+              setTextContent(txt);
+            } catch(e) {
+              console.error("Failed to fetch text", e);
+              setTextContent("Erro ao carregar texto.");
             }
           }
-        }).catch(console.error);
-      } else {
-        console.warn("No local path for this file");
-      }
+        } else {
+          console.warn("Nenhum arquivo local ou no Drive disponível");
+        }
+      }).catch(console.error);
     }
     
     return () => {

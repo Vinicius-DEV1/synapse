@@ -11,6 +11,7 @@ import FileViewer from './FileViewer';
 import RenameModal from './RenameModal';
 import MoveModal from './MoveModal';
 import { getValidAccessToken } from '../../services/drive';
+import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 
 export default function FilesView() {
   const [folders, setFolders] = useState<FileFolder[]>([]);
@@ -37,23 +38,23 @@ export default function FilesView() {
   };
 
   const handleDownload = async (item: FileItem) => {
-    if (item.local_path && window.api?.files) {
-      try {
-        const url = await window.api.files.getLocal(item.local_path);
-        if (url && typeof url === 'string') {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = item.name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (err) {
-        console.error("Failed to download", err);
+    try {
+      const url = await getDecryptedFileUrl(item, state.moduleKeys['files']);
+      
+      if (url && typeof url === 'string') {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = item.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        alert("Arquivo não está disponível para download.");
       }
-    } else {
-      alert("Arquivo não está disponível localmente para download.");
+    } catch (err) {
+      console.error("Failed to download", err);
+      alert("Erro ao tentar baixar o arquivo.");
     }
   };
 
