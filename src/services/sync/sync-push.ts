@@ -23,6 +23,9 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
   if (effectiveModuleKeys['core']) {
     effectiveModuleKeys['video'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['vault'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['calendar'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['practice'] = effectiveModuleKeys['core'];
   }
 
   for (const module of Object.keys(effectiveModuleKeys)) {
