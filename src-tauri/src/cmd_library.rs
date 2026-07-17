@@ -545,7 +545,7 @@ pub fn library_end_reading_session(session: ReadingSession, db_state: State<'_, 
     let now = chrono::Utc::now().to_rfc3339();
     
     conn.execute(
-        "UPDATE library_reading_sessions SET ended_at = ?, pages_read = ?, end_page = ? WHERE id = ?",
+        "UPDATE library_reading_sessions SET ended_at = ?, pages_read = ?, end_page = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![now, session.pages_read.unwrap_or(0), session.end_page.unwrap_or(1), session.id]
     ).map_err(|e| e.to_string())?;
     

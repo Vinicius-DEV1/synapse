@@ -23,7 +23,7 @@ export const webPracticeApi = (db: any, generateId: () => string) => ({
   },
   getMessages: async (sessionId: string) => {
     const all = await db.getAllFromIndex('tutor_messages', 'session_id', sessionId) || [];
-    return all.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return all.filter((m: any) => !m.deleted_at).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   },
   createMessage: async (msg: any) => {
     const newMsg = {
@@ -36,7 +36,7 @@ export const webPracticeApi = (db: any, generateId: () => string) => ({
   },
   getMemories: async () => {
     const all = await db.getAll('tutor_memories') || [];
-    return all.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return all.filter((m: any) => !m.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
   createMemory: async (memory: any) => {
     const newMemory = {

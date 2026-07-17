@@ -69,7 +69,7 @@ pub fn calendar_update_event(event: CalendarEvent, db_state: State<'_, DbState>)
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "UPDATE calendar_events SET title = ?, description = ?, start_date = ?, end_date = ?, type = ?, status = ?, color = ? WHERE id = ?",
+        "UPDATE calendar_events SET title = ?, description = ?, start_date = ?, end_date = ?, type = ?, status = ?, color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![event.title, event.description, event.start_date, event.end_date, event.type_, event.status, event.color, event.id]
     ).map_err(|e| e.to_string())?;
         

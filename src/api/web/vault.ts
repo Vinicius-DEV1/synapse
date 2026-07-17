@@ -42,7 +42,8 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     return all.filter((i: any) => !i.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
   getItem: async (id: string) => {
-    return await db.get('vault_items', id);
+    const item = await db.get('vault_items', id);
+    return item && !item.deleted_at ? item : null;
   },
   upsertItem: async (item: any) => {
     const id = item.id || generateId();
