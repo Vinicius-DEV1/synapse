@@ -223,6 +223,50 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
     Ok(true)
 }
 
+#[tauri::command]
+pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    
+    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
+        .map_err(|e| e.to_string())?;
+        
+    let page_iter = stmt.query_map([], |row| {
+        Ok(PageMeta {
+            id: row.get(0)?,
+            parent_id: row.get(1)?,
+            title: row.get(2)?,
+            icon: row.get(3)?,
+            sort_order: row.get(4)?,
+            crdt_state: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+            deleted_at: row.get(8)?,
+            is_locked: row.get(9)?,
+            is_pinned: row.get(10).unwrap_or(false),
+            pinned_order: row.get(11).unwrap_or(0),
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    let mut pages = Vec::new();
+    for page in page_iter {
+        pages.push(page.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(pages)
+}
+
+#[tauri::command]
+pub fn notes_restore_page(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    
+    conn.execute("UPDATE pages SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+        .map_err(|e| e.to_string())?;
+        
+    Ok(true)
+}
+
 #[derive(Serialize)]
 pub struct ImageCacheResult {
     pub data: Vec<u8>,

@@ -291,6 +291,8 @@ declare global {
       createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
       updatePage: (page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; cover_image?: string | null; description?: string | null }) => Promise<number>;
       deletePage: (id: string) => Promise<boolean>;
+      getDeletedPages: () => Promise<PageMeta[]>;
+      restorePage: (id: string) => Promise<boolean>;
       reorderPages: (updates: { id: string; sort_order: number }[]) => Promise<boolean>;
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
       savePageHistory: (pageId: string, content: string) => Promise<{ success: boolean; id: string }>;

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon, FolderOpen, Shield, Mic } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, LayoutDashboard, ArrowRightLeft, Gift, Settings, Pin, Film, PlaySquare, BrainCircuit, Timer, ChevronUp, ChevronDown, Calendar as CalendarIcon, FolderOpen, Shield, Mic, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
+import TrashModal from './TrashModal';
 import { useMouseDrag } from '../hooks/useMouseDrag';
 
 function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index, onDropPinned }: any) {
@@ -50,6 +51,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
@@ -271,6 +273,13 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Mic size={18} />
           </button>
           <button
+            onClick={() => setShowTrash(true)}
+            className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+            title="Lixeira"
+          >
+            <Trash2 size={18} />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
             title="Configurações"
@@ -278,6 +287,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <Settings size={18} />
           </button>
         </div>
+        {showTrash && (
+          <TrashModal 
+            onClose={() => setShowTrash(false)} 
+            onPageRestored={() => dispatch({ type: 'LOAD_PAGES_REQUEST' })} 
+          />
+        )}
         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
         </div>
       </>
@@ -628,6 +643,16 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <span>Prática</span>
             </button>
             <button
+              onClick={() => {
+                setShowTrash(true);
+                dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
+            >
+              <Trash2 size={16} />
+              <span>Lixeira</span>
+            </button>
+            <button
               onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
             >
@@ -638,6 +663,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         )}
       </div>
 
+      {showTrash && (
+        <TrashModal 
+          onClose={() => setShowTrash(false)} 
+          onPageRestored={() => dispatch({ type: 'LOAD_PAGES_REQUEST' })} 
+        />
+      )}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       </div>
     </>

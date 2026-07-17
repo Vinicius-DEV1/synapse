@@ -112,6 +112,18 @@ export const createWebApiMock = async () => {
       await db.put('pages', existing);
       return true;
     },
+    getDeletedPages: async () => {
+      const all = await db.getAll('pages');
+      return all.filter(p => p.deleted_at).sort((a, b) => new Date(b.deleted_at!).getTime() - new Date(a.deleted_at!).getTime());
+    },
+    restorePage: async (id: string) => {
+      const existing = await db.get('pages', id);
+      if (!existing) return false;
+      existing.deleted_at = null;
+      existing.updated_at = new Date().toISOString();
+      await db.put('pages', existing);
+      return true;
+    },
     reorderPages: async (updates: any[]) => {
       const tx = db.transaction('pages', 'readwrite');
       for (const update of updates) {
