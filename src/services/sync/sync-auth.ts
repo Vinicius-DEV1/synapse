@@ -29,6 +29,81 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
   }
 }
 
+// --- ANTI-BRUTE FORCE / SECURITY LOCK ---
+
+export interface SecurityLock {
+  failedAttempts: number;
+  lastFailedAt: number;
+}
+
+export async function getSecurityLock(): Promise<SecurityLock> {
+  let failedAttempts = 0;
+  let lastFailedAt = 0;
+
+  // 1. Tentar ler da nuvem (mais forte)
+  if (navigator.onLine) {
+    try {
+      const docRef = doc(db, 'config', 'security_lock');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        failedAttempts = data.failedAttempts || 0;
+        lastFailedAt = data.lastFailedAt || 0;
+      }
+    } catch {
+      // Ignora erro de leitura
+    }
+  }
+
+  // 2. Tentar ler do local (fallback / tauri)
+  try {
+    const localLockStr = localStorage.getItem('caderno_security_lock');
+    if (localLockStr) {
+      const localLock = JSON.parse(localLockStr);
+      // Se o local for mais recente ou mais restritivo, usa ele
+      if (localLock.lastFailedAt > lastFailedAt || localLock.failedAttempts > failedAttempts) {
+        failedAttempts = localLock.failedAttempts;
+        lastFailedAt = localLock.lastFailedAt;
+      }
+    }
+  } catch {}
+
+  return { failedAttempts, lastFailedAt };
+}
+
+export async function recordFailedAttempt(): Promise<SecurityLock> {
+  const currentLock = await getSecurityLock();
+  const newLock: SecurityLock = {
+    failedAttempts: currentLock.failedAttempts + 1,
+    lastFailedAt: Date.now()
+  };
+
+  // Salvar Localmente
+  localStorage.setItem('caderno_security_lock', JSON.stringify(newLock));
+
+  // Salvar na Nuvem
+  if (navigator.onLine) {
+    try {
+      await setDoc(doc(db, 'config', 'security_lock'), newLock, { merge: true });
+    } catch {
+      // Ignorar erro de escrita
+    }
+  }
+
+  return newLock;
+}
+
+export async function clearFailedAttempts(): Promise<void> {
+  localStorage.removeItem('caderno_security_lock');
+  if (navigator.onLine) {
+    try {
+      await setDoc(doc(db, 'config', 'security_lock'), { failedAttempts: 0, lastFailedAt: 0 }, { merge: true });
+    } catch {}
+  }
+}
+
+// --- FIM DA SESSÃO DE SEGURANÇA ---
+
 export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
   const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });
   const encryptedData = await encryptText(payload, masterKey);
