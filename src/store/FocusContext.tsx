@@ -83,13 +83,24 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return saved ? parseFloat(saved) : 0.5;
   });
 
+  useEffect(() => {
+    if (window.api?.config) {
+      window.api.config.get('lofi_volume').then(saved => {
+        if (saved !== null && saved !== undefined) {
+          setLofiVolume(parseFloat(saved));
+        }
+      }).catch(console.error);
+    }
+  }, []);
+
   const lastTriggeredTimeRef = useRef<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(Date.now());
   const timerFinishedRef = useRef<boolean>(false);
 
   const playAlarmSound = () => {
-    if (localStorage.getItem('soundEnabled') === 'false') return;
+    const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+    if (!isSoundEnabled) return;
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -363,6 +374,9 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     localStorage.setItem('lofi_volume', lofiVolume.toString());
+    if (window.api?.config) {
+      window.api.config.set('lofi_volume', lofiVolume.toString()).catch(console.error);
+    }
   }, [lofiVolume]);
 
   return (

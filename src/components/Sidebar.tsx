@@ -54,11 +54,24 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
   });
+
+  useEffect(() => {
+    if (window.api?.config) {
+      window.api.config.get('caderno_modules_expanded').then(saved => {
+        if (saved !== null && saved !== undefined) {
+          setIsModulesExpanded(saved);
+        }
+      }).catch(console.error);
+    }
+  }, []);
   
   const toggleModules = () => {
     setIsModulesExpanded((prev: boolean) => {
       const next = !prev;
       localStorage.setItem('caderno_modules_expanded', JSON.stringify(next));
+      if (window.api?.config) {
+        window.api.config.set('caderno_modules_expanded', next).catch(console.error);
+      }
       return next;
     });
   };

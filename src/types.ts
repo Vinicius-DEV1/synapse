@@ -213,7 +213,8 @@ export type Action =
   | { type: 'CLEAR_AI_CHATS' }
   | { type: 'TOGGLE_AI_SIDEBAR' }
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
-  | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> };
+  | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
+  | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };
 
 
 // ============ CULTURE TYPES ============

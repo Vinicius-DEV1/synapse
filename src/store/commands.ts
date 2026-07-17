@@ -228,6 +228,12 @@ class SetReadingModeFullScreenCommand implements StoreCommand<Extract<Action, { 
   }
 }
 
+class MergeDbStateCommand implements StoreCommand<Extract<Action, { type: 'MERGE_DB_STATE' }>> {
+  execute(state: AppState, action: Extract<Action, { type: 'MERGE_DB_STATE' }>): AppState {
+    return { ...state, ...action.payload };
+  }
+}
+
 export const commandHandlers: Record<string, StoreCommand<any>> = {
   'UPDATE_TAB_MODULE': new UpdateTabModuleCommand(),
   'OPEN_LIBRARY_BOOK': new OpenLibraryBookCommand(),
@@ -256,4 +262,5 @@ export const commandHandlers: Record<string, StoreCommand<any>> = {
   'OPEN_AI_CHAT': new OpenAiChatCommand(),
   'SET_MODULE_KEYS': new SetModuleKeysCommand(),
   'SET_READING_MODE_FULLSCREEN': new SetReadingModeFullScreenCommand(),
+  'MERGE_DB_STATE': new MergeDbStateCommand(),
 };
