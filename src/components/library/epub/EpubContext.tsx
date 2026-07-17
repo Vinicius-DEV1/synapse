@@ -74,11 +74,17 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [readingMode, setReadingModeState] = useState<ReadingMode>(prefs.readingMode || getSettings().defaultReadingMode || 'light');
 
   const setReadingMode = (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => {
+    let newModeValue: ReadingMode;
     setReadingModeState(prev => {
-      const newMode = typeof mode === 'function' ? mode(prev) : mode;
-      saveSettings({ ...getSettings(), defaultReadingMode: newMode });
-      return newMode;
+      newModeValue = typeof mode === 'function' ? mode(prev) : mode;
+      return newModeValue;
     });
+    // Use setTimeout to ensure this side-effect runs outside the React render cycle
+    setTimeout(() => {
+      if (newModeValue) {
+        saveSettings({ ...getSettings(), defaultReadingMode: newModeValue });
+      }
+    }, 0);
   };
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic' | 'original'>('original');
   const [originalFontName, setOriginalFontName] = useState<string | null>(null);
@@ -87,11 +93,16 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   
   const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(prefs.textWidth || getSettings().defaultTextWidth || 'medium');
   const setTextWidth = (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => {
+    let newWidthValue: 'narrow' | 'medium' | 'full';
     setTextWidthState(prev => {
-      const newWidth = typeof w === 'function' ? w(prev) : w;
-      saveSettings({ ...getSettings(), defaultTextWidth: newWidth });
-      return newWidth;
+      newWidthValue = typeof w === 'function' ? w(prev) : w;
+      return newWidthValue;
     });
+    setTimeout(() => {
+      if (newWidthValue) {
+        saveSettings({ ...getSettings(), defaultTextWidth: newWidthValue });
+      }
+    }, 0);
   };
   
   const [progress, setProgress] = useState(0);

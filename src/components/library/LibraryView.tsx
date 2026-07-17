@@ -174,8 +174,11 @@ export default function LibraryView({ tabId }: { tabId: string }) {
   const handleUpdateBook = async (id: string, updates: Partial<LibraryBook>) => {
     if (!window.api?.library) return;
     try {
-      await window.api.library.updateBook({ id, ...updates } as any);
-      await loadData();
+      const book = books.find(b => b.id === id);
+      if (book) {
+        await window.api.library.updateBook({ ...book, ...updates } as any);
+        await loadData();
+      }
     } catch (err) {
       console.error('Book update failed', err);
     }

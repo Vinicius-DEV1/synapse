@@ -79,7 +79,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         if (!navigator.onLine) return;
         // console.log('[Sync] Sinal Real-time recebido (Cross-device)! Sincronizando...');
         startSync();
-        withTimeout(pullWithSuppression(masterKey), 30_000)
+        withTimeout(pullWithSuppression(masterKey), 60_000)
           .then(() => {
             loadPages();
             finishSync(true);
