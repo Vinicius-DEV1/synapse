@@ -1,5 +1,5 @@
 import { useRef, MutableRefObject, useCallback } from 'react';
-import { getYDocStateAsBase64 } from '../../utils/yjs-utils';
+import { getYDocStateAsBase64 } from '../../../utils/yjs-utils';
 import * as Y from 'yjs';
 import { Editor } from '@tiptap/core';
 
