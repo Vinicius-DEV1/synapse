@@ -86,15 +86,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   (window as any).api.log(`[PULL] Doc \${docSnap.id}. localTime=\${localTime}, cloudTime=\${cloudTime}`);
                 }
 
+                // We no longer hard-delete locally. We just upsert the document 
+                // so that the local DB stores the deleted_at flag (for the Trash feature).
+                /*
                 if (parsed.deleted_at) {
                   if (typeof window !== 'undefined' && (window as any).api?.log) {
-                    (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Hard deleting locally.`);
+                    (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Soft deleting locally.`);
                   }
-                  if (window.api?.sync?.deleteRow) {
-                    await window.api.sync.deleteRow(table, docSnap.id);
-                  }
-                  continue;
+                  // We let the upsertRow below handle it, which will update the local row with deleted_at
                 }
+                */
 
                 if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
                   try {
