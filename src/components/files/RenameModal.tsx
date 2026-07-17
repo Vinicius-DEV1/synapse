@@ -29,7 +29,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
         inputRef.current.select();
       }
     }
-  }, [isFolder, name]);
+  }, [isFolder]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
