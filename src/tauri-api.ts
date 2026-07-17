@@ -6,6 +6,16 @@ import { tauriAuthApi } from './api/tauri/auth';
 import { tauriFinanceApi } from './api/tauri/finance';
 import { tauriLibraryApi } from './api/tauri/library';
 import { tauriCultureApi } from './api/tauri/culture';
+import { tauriCalendarApi } from './api/tauri/calendar';
+import { tauriFocusApi } from './api/tauri/focus';
+import { tauriAnkiApi } from './api/tauri/anki';
+import { tauriSyncApi } from './api/tauri/sync';
+import { tauriVaultApi } from './api/tauri/vault';
+import { tauriPracticeApi } from './api/tauri/practice';
+import { tauriDriveApi } from './api/tauri/drive';
+import { tauriVideoApi, tauriLofiApi, tauriYoutubeApi, tauriAudioApi, tauriTranscribeApi, tauriOsApi } from './api/tauri/multimedia';
+import { tauriBackupApi } from './api/tauri/backup';
+import { tauriFilesApi } from './api/tauri/files';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
@@ -73,165 +83,45 @@ export const createTauriApi = async () => {
     library: tauriLibraryApi,
     
     // --- CALENDAR ---
-    calendar: {
-      getEvents: async () => await invoke('calendar_get_events'),
-      addEvent: async (e: any) => await invoke('calendar_add_event', { event: e }),
-      updateEvent: async (e: any) => await invoke('calendar_update_event', { event: e }),
-      deleteEvent: async (id: string) => await invoke('calendar_delete_event', { id })
-    },
+    calendar: tauriCalendarApi,
     
     // --- CULTURE ---
     culture: tauriCultureApi,
     
     // --- FOCUS ---
-    focus: {
-      getSessions: async () => await invoke('focus_get_sessions'),
-      createSession: async (s: any) => await invoke('focus_create_session', { session: s }),
-      deleteSessions: async () => {}, // mock
-      getAlarms: async () => await invoke('focus_get_alarms'),
-      createAlarm: async (a: any) => await invoke('focus_create_alarm', { alarm: a }),
-      updateAlarm: async (id: number, a: any) => await invoke('focus_update_alarm', { id: id.toString(), alarm: a }),
-      deleteAlarm: async (id: number) => await invoke('focus_delete_alarm', { id: id.toString() }),
-      setAppIcon: async (type: string) => {} // mock
-    },
+    focus: tauriFocusApi,
     
     // --- ANKI ---
-    anki: {
-      getDecks: async () => await invoke('anki_get_decks'),
-      createDeck: async (name: string, desc?: string) => await invoke('anki_create_deck', { name, description: desc }),
-      saveCard: async (c: any) => await invoke('anki_save_card', { card: c }),
-      getDueCards: async (deckId: string) => await invoke('anki_get_due_cards', { deckId }),
-      reviewCard: async (cardId: string, rating: number) => await invoke('anki_review_card', { cardId, rating }),
-      getAllCards: async (deckId?: string) => await invoke('anki_get_all_cards', { deckId }),
-      deleteCard: async (cardId: string) => await invoke('anki_delete_card', { cardId }),
-      deleteCardsBulk: async (cardIds: string[]) => { for(let id of cardIds) await invoke('anki_delete_card', { cardId: id }); },
-      updateCard: async (cardId: string, c: any) => await invoke('anki_update_card', { cardId, card: c }),
-      moveCards: async () => {} // mock
-    },
+    anki: tauriAnkiApi,
     
     // --- SYNC ---
-    sync: {
-      getTable: async (tableName: string) => await invoke('sync_get_table', { tableName }),
-      deleteRow: async (tableName: string, id: string) => await invoke('sync_delete_row', { tableName, id }),
-      upsertRow: async (tableName: string, row: any) => await invoke('sync_upsert_row', { tableName, row })
-    },
+    sync: tauriSyncApi,
     
     // --- DRIVE ---
-    drive: {
-      openExternalUrl: async (url: string) => await invoke('drive_open_url', { url }),
-      getCredentials: async () => await invoke('drive_get_credentials'),
-      saveCredentials: async (data: any) => await invoke('drive_save_credentials', { data })
-    },
+    drive: tauriDriveApi,
     
     // --- MULTIMEDIA (Native Rust Integrations) ---
-    video: {
-      getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
-      deleteLocal: async (filename: string) => await invoke('video_delete_local', { filename }),
-      scanTracks: async (localPath: string) => await invoke('video_scan_tracks', { localPath }),
-      extractSubtitles: async (localPath: string, trackIndex: string) => await invoke('video_extract_subtitles', { localPath, trackIndex }),
-      extractAudio: async (localPath: string, trackIndex: string) => await invoke('video_extract_audio', { localPath, trackIndex }),
-      remuxDefaultTrack: async (sourcePath: string, filename: string, trackIndex: string) => await invoke('video_remux_default_track', { sourcePath, filename, trackIndex }),
-      convertToMp4: async (sourcePath: string, filename: string) => await invoke('video_convert_mp4', { sourcePath, filename }),
-      getStreamPort: async () => await invoke('video_get_stream_port'),
-      saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
-      copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
-      openFileDialog: async () => {},
-      openFolderDialog: async () => {}
-    },
+    video: tauriVideoApi,
     
-    lofi: {
-      getLocalPath: async (filename: string) => await invoke('lofi_get_local_path', { filename }),
-      deleteLocal: async (filename: string) => await invoke('lofi_delete_local', { filename }),
-      saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
-      copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename })
-    },
+    lofi: tauriLofiApi,
     
-    youtube: {
-      fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
-      download: async (url: string, filename: string, quality: string, subs?: string[]) => await invoke('youtube_download', { url, filename, quality, subs }),
-      onProgress: (callback: (percent: number) => void) => {
-        // Usa tauri event listener (listen from @tauri-apps/api/event) no frontend real
-      }
-    },
+    youtube: tauriYoutubeApi,
     
-    audio: {
-      generateTTS: async (text: string, lang?: string) => {
-        try {
-          const path = await invoke('audio_generate_tts', { text, lang });
-          return { success: true, filePath: path };
-        } catch (e) {
-          return { success: false, error: e };
-        }
-      },
-      extractClip: async (videoPath: string, startTimeMs: number, endTimeMs: number) => {
-        try {
-          const path = await invoke('audio_extract_clip', { videoPath, startTimeMs, endTimeMs });
-          return { success: true, filePath: path };
-        } catch (e) {
-          return { success: false, error: e };
-        }
-      }
-    },
+    audio: tauriAudioApi,
     
-    backup: {
-      onLog: (callback: (data: any) => void) => { return () => {}; },
-      selectFolder: async () => null,
-      startBackup: async (options: any) => ({ success: false, message: "Use o Google Drive Sync na aba Cloud" })
-    },
+    transcribe: tauriTranscribeApi,
+    
+    os: tauriOsApi,
+    
+    backup: tauriBackupApi,
     
     // --- FILES ---
-    files: {
-      getAll: async () => await invoke('files_get_all'),
-      getById: async (id: string) => await invoke('files_get_by_id', { id }),
-      create: async (file: Omit<FileItem, 'id' | 'created_at' | 'updated_at'>) => await invoke('files_create', { file }),
-      update: async (id: string, file: Partial<FileItem>) => await invoke('files_update', { id, file }),
-      delete: async (id: string) => await invoke('files_delete', { id }),
-      move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
-      saveLocal: async (filename: string, data: number[]) => await invoke('files_save_local', { filename, data }),
-      getLocal: async (id: string) => `http://encrypted.localhost/files/${encodeURIComponent(id)}`,
-      
-      folders: {
-        getAll: async () => await invoke('file_folders_get_all'),
-        create: async (folder: any) => await invoke('file_folders_create', { folder }),
-        update: async (folder: any) => await invoke('file_folders_update', { folder }),
-        delete: async (id: string) => await invoke('file_folders_delete', { id })
-      },
-      
-      links: {
-        getByPage: async (pageId: string) => await invoke('file_links_get_by_page', { pageId }),
-        getByFile: async (fileId: string) => await invoke('file_links_get_by_file', { fileId }),
-        create: async (link: any) => await invoke('file_links_create', { link }),
-        delete: async (id: string) => await invoke('file_links_delete', { id })
-      }
-    },
+    files: tauriFilesApi,
     
     // --- VAULT ---
-    vault: {
-      getGroups: async () => await invoke('vault_get_groups'),
-      upsertGroup: async (group: any) => await invoke('vault_upsert_group', { group }),
-      deleteGroup: async (id: string) => await invoke('vault_delete_group', { id }),
-      reorderGroups: async (updates: any) => await invoke('vault_reorder_groups', { updates }),
-      getItems: async (groupId?: string) => await invoke('vault_get_items', { groupId }),
-      getItem: async (id: string) => await invoke('vault_get_item', { id }),
-      upsertItem: async (item: any) => await invoke('vault_upsert_item', { item }),
-      deleteItem: async (id: string) => await invoke('vault_delete_item', { id }),
-      searchItems: async (query: string) => await invoke('vault_search_items', { query }),
-      getPasswordHistory: async (itemId: string) => await invoke('vault_get_password_history', { itemId }),
-      generatePassword: async (opts: any) => await invoke('vault_generate_password', { options: opts }),
-      checkBreach: async (password: string) => await invoke('vault_check_breach', { password }),
-      checkStrength: async (password: string) => await invoke('vault_check_strength', { password }),
-    },
+    vault: tauriVaultApi,
     
     // --- PRACTICE ---
-    practice: {
-      getSessions: async () => await invoke('practice_get_sessions'),
-      createSession: async (session: any) => await invoke('practice_create_session', { session }),
-      updateSession: async (session: any) => await invoke('practice_update_session', { session }),
-      getMessages: async (sessionId: string) => await invoke('practice_get_messages', { sessionId }),
-      createMessage: async (msg: any) => await invoke('practice_create_message', { message: msg }),
-      getMemories: async () => await invoke('practice_get_memories'),
-      createMemory: async (memory: any) => await invoke('practice_create_memory', { memory }),
-      deleteMemory: async (id: string) => await invoke('practice_delete_memory', { id }),
-    }
+    practice: tauriPracticeApi
   };
 };
