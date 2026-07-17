@@ -1,11 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
-import { FileItem } from '../../types';
 
 export const tauriFilesApi = {
   getAll: async () => await invoke('files_get_all'),
   getById: async (id: string) => await invoke('files_get_by_id', { id }),
-  create: async (file: Omit<FileItem, 'id' | 'created_at' | 'updated_at'>) => await invoke('files_create', { file }),
-  update: async (id: string, file: Partial<FileItem>) => await invoke('files_update', { id, file }),
+  create: async (file: any) => await invoke('files_create', { file }),
+  update: async (id: string, file: any) => await invoke('files_update', { id, file }),
   delete: async (id: string) => await invoke('files_delete', { id }),
   move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
   saveLocal: async (filename: string, data: number[]) => await invoke('files_save_local', { filename, data }),

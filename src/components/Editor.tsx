@@ -1,24 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { StarterKit } from '@tiptap/starter-kit';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { createLowlight, common } from 'lowlight';
-import 'highlight.js/styles/atom-one-dark.css';
-import { Placeholder } from '@tiptap/extension-placeholder';
-import { Highlight } from '@tiptap/extension-highlight';
-import Underline from '@tiptap/extension-underline';
-import { Link } from '@tiptap/extension-link';
-import { Image } from '@tiptap/extension-image';
-import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
-import { TableCell } from './editor-extensions/TableCell';
-import { TaskList } from '@tiptap/extension-task-list';
-import { TaskItem } from '@tiptap/extension-task-item';
 
-import { Collaboration } from '@tiptap/extension-collaboration';
-import * as Y from 'yjs';
-import { applyBase64StateToYDoc, getYDocStateAsBase64 } from '../utils/yjs-utils';
 import { getSettings } from '../utils/settings';
 import SlashMenu from './SlashMenu';
 import FloatingToolbar from './FloatingToolbar';
@@ -26,33 +9,17 @@ import TableToolbar from './TableToolbar';
 import ImageViewerModal from './ImageViewerModal';
 import PageSearchMenu from './PageSearchMenu';
 
-// Nossos blocos
-import { GroupBlock } from './editor-extensions/GroupBlock';
-import { QuestionBlock } from './editor-extensions/QuestionBlock';
-import { ToggleBlock } from './editor-extensions/ToggleBlock';
-import { ColorBlockquote } from './editor-extensions/ColorBlockquote';
-import { BlockquoteToggle } from './editor-extensions/BlockquoteToggle';
-import { LinkPreviewBlock } from './editor-extensions/LinkPreviewBlock';
-import { ResizableImage } from './editor-extensions/ResizableImage';
-import { EncryptedImage } from './editor-extensions/EncryptedImage';
-import { PageReference } from './editor-extensions/PageReference';
-import CodeBlockComponent from './editor-extensions/CodeBlockComponent';
-import { FocusWidgetBlock } from './editor-extensions/FocusWidgetBlock';
-import { AlarmWidgetBlock } from './editor-extensions/AlarmWidgetBlock';
-import { FileWidgetBlock } from './editor-extensions/FileWidgetBlock';
 import SetupModal from './focus/SetupModal';
 import AlarmSetupModal from './focus/AlarmSetupModal';
 import { useFocusContext } from '../store/FocusContext';
 import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
 import FileUploadModal from './files/FileUploadModal';
 import FileSelectModal from './files/FileSelectModal';
-import FileWidgetNodeView from './editor-extensions/FileWidgetNodeView';
 
-// Backup síncrono em memória: sobrevive ao unmount do componente.
-// Se o save assíncrono falhar ou não completar, o backup é usado como fallback.
-if (!(window as any).__cadernoEditorBackup) {
-  (window as any).__cadernoEditorBackup = new Map<string, { html: string; crdt: string }>();
-}
+import { useEditorSync } from './editor/hooks/useEditorSync';
+import { useEditorSave } from './editor/hooks/useEditorSave';
+import { useSlashCommand } from './editor/hooks/useSlashCommand';
+import { useEditorExtensions } from './editor/hooks/useEditorExtensions';
 
 interface EditorProps {
   pageId: string | null;
@@ -64,25 +31,20 @@ interface EditorProps {
 
 export default function Editor({ pageId, initialContent, initialCrdtState, onSave, onCreateLinkedPage }: EditorProps) {
   const [settings, setSettings] = useState(getSettings());
-  const ydocRef = useRef<Y.Doc | null>(null);
-
-  // States para Slash Menu manual
-  const [slashMenu, setSlashMenu] = useState<{ query: string, startPos: number, x: number, y: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // States para Image Viewer
+  // Viewer State
   const [viewerState, setViewerState] = useState<{ isOpen: boolean, src: string, nodePos: number | null }>({ isOpen: false, src: '', nodePos: null });
 
-  // States para Foco e Alarme inline
+  // Modals States
   const [focusModal, setFocusModal] = useState<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>(null);
   const [alarmModal, setAlarmModal] = useState<{ isOpen: boolean, initialTimeStr?: string } | null>(null);
   const [fileUploadModal, setFileUploadModal] = useState<{ isOpen: boolean, isLink: boolean } | null>(null);
   const [fileSelectModal, setFileSelectModal] = useState(false);
   const [pageSearchMenu, setPageSearchMenu] = useState<{ isOpen: boolean, x: number, y: number, query: string } | null>(null);
+  
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
 
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<boolean>(false);
   const onSaveRef = useRef(onSave);
   const latestContentRef = useRef<{ html: string, crdt: string } | null>(null);
 
@@ -96,107 +58,43 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
   }, []);
 
-  // Um crdt_state "AAA=" (≤8 chars) é um Y.Doc vazio - tratar como null
-  const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+  // 1. Sync & Collab
+  const { ydocRef, needsLegacyHydration } = useEditorSync({
+    pageId,
+    initialCrdtState,
+    initialContent,
+    onSaveRef,
+    latestContentRef
+  });
 
-  if (!ydocRef.current || ydocRef.current.guid !== pageId) {
-    if (ydocRef.current) {
-      ydocRef.current.destroy(); // Fix Memory Leak!
-    }
-    ydocRef.current = new Y.Doc();
-    ydocRef.current.guid = pageId || 'temp';
-    console.log(`[Caderno:Mount] pageId=${pageId}, initialCrdtState=${initialCrdtState ? initialCrdtState.substring(0, 30) + '...' : 'NULL'} (meaningful=${hasMeaningfulCrdt}), initialContent.length=${initialContent?.length || 0}`);
-    if (hasMeaningfulCrdt) {
-      applyBase64StateToYDoc(ydocRef.current, initialCrdtState!);
-    }
-    // Recuperar edições não salvas do backup em memória (Y.js merge é seguro)
-    const backup = (window as any).__cadernoEditorBackup?.get(pageId);
-    console.log(`[Caderno:Mount] backup exists=${!!backup}, backup crdt=${backup?.crdt ? backup.crdt.substring(0, 30) + '...' : 'NULL'}`);
-    if (backup?.crdt && backup.crdt.length > 8) {
-      applyBase64StateToYDoc(ydocRef.current, backup.crdt);
-      (window as any).__cadernoEditorBackup.delete(pageId);
-      console.log(`[Caderno:Mount] backup applied and cleared for ${pageId}`);
-    }
-  }
-  const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
+  // 2. Extensions
+  const extensions = useEditorExtensions(ydocRef.current);
 
-  // Escuta atualizações puramente remotas (do CloudSync) via evento customizado, 
-  // ignorando os updates locais que causavam lag.
-  useEffect(() => {
-    const handleRemoteUpdate = (e: CustomEvent) => {
-      const { pageId: syncPageId, crdtState } = e.detail;
-      if (syncPageId === pageId && ydocRef.current && crdtState) {
-        applyBase64StateToYDoc(ydocRef.current, crdtState);
-      }
-    };
-    window.addEventListener('caderno-sync-update', handleRemoteUpdate as EventListener);
-    
-    // Cleanup de Memory Leak extra quando o componente for desmontado por completo
-    return () => {
-      window.removeEventListener('caderno-sync-update', handleRemoteUpdate as EventListener);
-    };
-  }, [pageId]);
+  // 3. Save Logic
+  const { handleUpdate } = useEditorSave({
+    pageId,
+    ydocRef,
+    onSaveRef,
+    latestContentRef
+  });
 
-  useEffect(() => {
-    return () => {
-      // Flush any pending save before component unmounts
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        // Só flush se o crdt_state NÃO for vazio (AAA= = 4 chars).
-        // StrictMode pode causar um flush com crdt vazio durante inicialização.
-        console.log(`[Caderno:Flush] Unmount flush for pageId=${pageId}, html.length=${latestContentRef.current.html.length}, crdt.length=${latestContentRef.current.crdt.length}`);
-        const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
-        if (result && typeof result.catch === 'function') {
-          result.then(() => console.log(`[Caderno:Flush] ✅ Flush save SUCCEEDED for ${pageId}`)).catch((err: any) => {
-            console.error(`[Caderno:Flush] ❌ Flush save FAILED for ${pageId}:`, err);
-          });
-        }
-      } else {
-        console.log(`[Caderno:Flush] Skipped - ${!latestContentRef.current ? 'no content' : 'empty crdt'} for pageId=${pageId}`);
-      }
-      // ⚠️ NÃO destruir ydocRef.current aqui!
-      // React StrictMode chama este cleanup durante o double-render.
-      // Se destruirmos o Y.Doc, o editor (do useState no useEditor) fica
-      // conectado a um Y.Doc destruído, e getYDocStateAsBase64() retorna AAA= (vazio).
-      // A destruição do Y.Doc é feita no corpo do render quando um novo pageId chega.
-    };
-  }, []);
-
-  const lowlight = createLowlight(common);
+  // 4. Slash Commands
+  const {
+    slashMenu,
+    setSlashMenu,
+    handleSlashKeyDown,
+    updateSlashMenuOnUpdate,
+    executeSlashCommand
+  } = useSlashCommand({
+    setPageSearchMenu,
+    setFocusModal,
+    setAlarmModal,
+    setFileUploadModal,
+    setFileSelectModal
+  });
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        history: false, 
-        codeBlock: false,
-        blockquote: false,
-      }),
-      ColorBlockquote,
-      CodeBlockLowlight.extend({
-        addNodeView() {
-          return ReactNodeViewRenderer(CodeBlockComponent);
-        }
-      }).configure({ lowlight }),
-      Placeholder.configure({ placeholder: "Digite '/' para comandos ou comece a escrever..." }),
-      Highlight.configure({ multicolor: true }),
-      Underline,
-      Link.configure({ openOnClick: false }),
-      ResizableImage.configure({ inline: true }),
-      Table.configure({ resizable: true }),
-      TableRow, TableHeader, TableCell,
-      TaskList, TaskItem.configure({ nested: true }),
-      Collaboration.configure({ document: ydocRef.current }),
-      GroupBlock,
-      QuestionBlock,
-      ToggleBlock,
-      BlockquoteToggle,
-      LinkPreviewBlock,
-      EncryptedImage,
-      PageReference,
-      FocusWidgetBlock,
-      AlarmWidgetBlock,
-      FileWidgetBlock
-    ],
+    extensions,
     content: initialContent,
     editorProps: {
       attributes: {
@@ -213,10 +111,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             return true;
           }
         }
+        const targetElement = event.target as HTMLElement;
+        const link = targetElement.closest('a');
+        if (link && link.href) {
+          window.open(link.href, '_blank');
+          return true;
+        }
         return false;
       },
       handlePaste: (view, event, slice) => {
-        // Handle URL paste for Link Preview
         const textPasted = event.clipboardData?.getData('text/plain');
         if (textPasted) {
           const urlStr = textPasted.trim();
@@ -227,7 +130,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           } catch (e) { isUrl = false; }
           
           if (isUrl && view.state.selection.empty) {
-            editor.chain().focus().insertContent({
+            editor?.chain().focus().insertContent({
               type: 'linkPreview',
               attrs: { url: urlStr, isLoading: true }
             }).run();
@@ -245,20 +148,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             const file = item.getAsFile();
             if (file && editor) {
               const masterKey = (window as any).__cadernoModuleKeys?.['notes'];
-              
               if (masterKey) {
                 const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-                
                 if (!(window as any).__pendingImageUploads) {
                   (window as any).__pendingImageUploads = new Map();
                 }
                 (window as any).__pendingImageUploads.set(tempId, file);
-
-                // Cache local imediato: a imagem será exibida rápido e não será perdida se a página recarregar/renderizar
                 file.arrayBuffer().then(buffer => {
                   setCachedImage(tempId, buffer, file.type).catch(console.error);
                 });
-
                 editor.chain().focus().insertContent({
                   type: 'encryptedImage',
                   attrs: { driveFileId: tempId }
@@ -282,20 +180,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         }
         return false;
       },
-      handleClick: (view, pos, event) => {
-        const target = event.target as HTMLElement;
-        const link = target.closest('a');
-        if (link && link.href) {
-          // No Tauri, se window.open não abrir no navegador, o usuário pode configurar depois.
-          // Geralmente, target='_blank' abre no navegador padrão.
-          window.open(link.href, '_blank');
-          return true; // Previne comportamento padrão que não faz nada no Tiptap
-        }
-        return false;
-      },
       handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
         if (node.type.name === 'image' || node.type.name === 'encryptedImage') {
-          // Extraímos a src do elemento clicado (pois no encryptedImage a src não está nos attrs do node, e sim gerada dinamicamente)
           const target = event.target as HTMLImageElement;
           const src = target?.src || node.attrs.src;
           if (src) {
@@ -305,97 +191,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         }
         return false;
       },
-      handleKeyDown: (view, event) => {
-        if (event.key === '/') {
-          const startPos = view.state.selection.$head.pos;
-          const coords = view.coordsAtPos(startPos);
-          const x = coords.left;
-          const y = coords.top + 24; // 24px below cursor
-          setSlashMenu({ query: '', startPos, x, y });
-          return false;
-        }
-        if (slashMenu) {
-          if (event.key === 'Escape' || event.key === ' ') {
-            setSlashMenu(null);
-            if (event.key === ' ') return false;
-            return true;
-          }
-          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            setSlashMenu(null);
-            return false; // let the cursor move
-          }
-          if (event.key === 'Backspace' && slashMenu.query.length === 0) {
-            setSlashMenu(null);
-            return false;
-          }
-          return false;
-        }
-        return false;
-      }
+      handleKeyDown: handleSlashKeyDown
     },
-    onUpdate: ({ editor }) => {
-      if (!ydocRef.current) return;
-      
-      setSlashMenu(prev => {
-        try {
-          const currentPos = editor.state.selection.$head.pos;
-          if (prev) {
-            if (currentPos <= prev.startPos) return null; // fechou o menu apagando a barra
-            const rawQuery = editor.state.doc.textBetween(prev.startPos, currentPos);
-            const query = rawQuery.startsWith('/') ? rawQuery.substring(1) : rawQuery;
-            const coords = editor.view.coordsAtPos(prev.startPos);
-            return { ...prev, query, x: coords.left, y: coords.top + 24 };
-          } else {
-            // Mobile fallback: Check if user just typed a slash
-            const { $head } = editor.state.selection;
-            const textBefore = $head.parent.textBetween(0, $head.parentOffset);
-            if (textBefore.endsWith(' /') || textBefore === '/') {
-              const startPos = currentPos - 1;
-              const coords = editor.view.coordsAtPos(startPos);
-              return { query: '', startPos, x: coords.left, y: coords.top + 24 };
-            }
-            return null;
-          }
-        } catch (e) {
-          return null;
-        }
-      });
-
-      const html = editor.getHTML();
-      const crdtState = getYDocStateAsBase64(ydocRef.current);
-      latestContentRef.current = { html, crdt: crdtState };
-
-      // Backup síncrono em memória - sobrevive ao unmount mesmo se o save async falhar
-      if (pageId) {
-        (window as any).__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
-      }
-      
-      pendingSaveRef.current = true;
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => {
-        if (!latestContentRef.current) return;
-        console.log(`[Caderno:Debounce] Saving pageId=${pageId}, html.length=${latestContentRef.current.html.length}`);
-        const saveResult = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
-        if (saveResult && typeof saveResult.then === 'function') {
-          saveResult.then(() => {
-            pendingSaveRef.current = false;
-            console.log(`[Caderno:Debounce] ✅ Save SUCCEEDED for ${pageId}`);
-          }).catch((err: any) => {
-            console.error(`[Caderno:Debounce] ❌ Save FAILED for ${pageId}:`, err);
-          });
-        } else {
-          pendingSaveRef.current = false;
-          console.warn(`[Caderno:Debounce] ⚠️ onSave did NOT return a Promise for ${pageId}`);
-        }
-      }, 500); // Debounce de 500ms
-    },
+    onUpdate: (props) => {
+      handleUpdate(props);
+      updateSlashMenuOnUpdate(props.editor);
+    }
   }, [pageId]);
 
   useEffect(() => {
     if (editor && needsLegacyHydration && editor.isEmpty) {
       editor.commands.setContent(initialContent);
     }
-    // Only run once when editor first mounts for this page
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
@@ -412,316 +219,149 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     }
   }, [editor, settings.spellcheck, settings.fontSize, settings.aiChatHighlight]);
 
-  const executeSlashCommand = useCallback((commandId: string) => {
-    if (!editor || !slashMenu) return;
-    
-    const startPos = slashMenu.startPos;
-    const endPos = startPos + slashMenu.query.length + 1; 
-    
-    setSlashMenu(null);
-    editor.commands.deleteRange({ from: startPos, to: endPos });
-
-    switch (commandId) {
-      case 'text': editor.commands.setParagraph(); break;
-      case 'h1': editor.commands.toggleHeading({ level: 1 }); break;
-      case 'h2': editor.commands.toggleHeading({ level: 2 }); break;
-      case 'h3': editor.commands.toggleHeading({ level: 3 }); break;
-      case 'todo': editor.commands.toggleTaskList(); break;
-      case 'bullet': editor.commands.toggleBulletList(); break;
-      case 'callout': editor.commands.toggleBlockquote(); break;
-      case 'code': editor.commands.toggleCodeBlock(); break;
-      case 'group': editor.commands.insertContent('<div class="group-collection"></div>'); break;
-      case 'question': editor.commands.insertContent('<div class="question-block"></div>'); break;
-      case 'toggle': editor.commands.insertContent('<div class="toggle-block"><p></p></div>'); break;
-      case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"><p></p></div>'); break;
-      case 'page': 
-        setPageSearchMenu({ isOpen: true, x: slashMenu.x, y: slashMenu.y, query: slashMenu.query.replace(/^page\s*/i, '') }); 
-        break;
-      case 'divider': editor.commands.setHorizontalRule(); break;
-      case 'table': 
-        editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-        break;
-      case 'table-week': 
-        editor.chain().focus().insertTable({ rows: 4, cols: 7, withHeaderRow: true }).run();
-        // Option to pre-fill headers? Just create the table for now.
-        break;
-      case 'table-day': 
-        editor.chain().focus().insertTable({ rows: 8, cols: 2, withHeaderRow: true }).run();
-        break;
-      case 'table-habit': 
-        editor.chain().focus().insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
-        break;
-      case 'foco': {
-        const parts = slashMenu.query.trim().split(' ');
-        let initialTime = 30;
-        let initialTag = '';
-        let initialDesc = '';
-        
-        parts.shift(); // remove the 'foco' or whatever command text if it was part of it, wait!
-        // The query is what the user typed AFTER the slash, e.g. "foco 25 #Estudo Lendo"
-        // So parts[0] is "foco".
-        if (parts[0] && parts[0].toLowerCase() === 'foco') parts.shift();
-        
-        for (const p of parts) {
-          if (!isNaN(Number(p)) && Number(p) > 0) {
-            initialTime = Number(p);
-          } else if (p.startsWith('#')) {
-            initialTag = p.substring(1);
-          } else {
-            initialDesc += (initialDesc ? ' ' : '') + p;
-          }
-        }
-        
-        setFocusModal({ isOpen: true, initialTime, initialTag, initialDesc });
-        break;
-      }
-      case 'alarme': {
-        const parts = slashMenu.query.trim().split(' ');
-        let initialTimeStr = '12:00';
-        
-        if (parts[0] && parts[0].toLowerCase() === 'alarme') parts.shift();
-        
-        for (const p of parts) {
-          // If it matches HH:MM
-          if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(p)) {
-            initialTimeStr = p.padStart(5, '0');
-          }
-        }
-        
-        setAlarmModal({ isOpen: true, initialTimeStr });
-        break;
-      }
-      case 'documento': {
-        setFileUploadModal({ isOpen: true, isLink: false });
-        break;
-      }
-      case 'documento-link': {
-        setFileSelectModal(true);
-        break;
-      }
-      default: break;
-    }
-  }, [editor, slashMenu]);
-
   return (
-    <div className="relative tiptap-wrapper" ref={wrapperRef}>
-      {editor && slashMenu && createPortal(
-        <SlashMenu 
-          x={slashMenu.x} y={slashMenu.y} 
-          query={slashMenu.query} 
-          onSelect={executeSlashCommand} 
-          onClose={() => setSlashMenu(null)} 
-        />,
-        document.body
-      )}
-
-      {focusModal?.isOpen && createPortal(
-        <SetupModal
-          initialTag={focusModal.initialTag}
-          initialDescription={focusModal.initialDesc}
-          initialTargetTime={focusModal.initialTime}
-          onStart={(tag, desc, time) => {
-            setFocusModal(null);
-            const sessionId = handleStartTimer(tag, desc, time);
-            if (sessionId && editor) {
-              editor.commands.insertFocusWidget({ sessionId, duration: time, tag, description: desc });
-            }
-          }}
-          onCancel={() => setFocusModal(null)}
-        />,
-        document.body
-      )}
-
-      {alarmModal?.isOpen && createPortal(
-        <AlarmSetupModal
-          initialTimeStr={alarmModal.initialTimeStr}
-          onSave={(alarm) => {
-            setAlarmModal(null);
-            const alarmId = Date.now().toString(); // local transient id for the widget
-            const alarmToSave = { ...alarm, id: Number(alarmId) };
-            handleSaveAlarm(alarmToSave);
-            if (editor) {
-              editor.commands.insertAlarmWidget({ alarmId, timeStr: alarm.time_str, label: alarm.label || '' });
-            }
-          }}
-          onCancel={() => setAlarmModal(null)}
-        />,
-        document.body
-      )}
-
-      {fileUploadModal?.isOpen && createPortal(
-        <FileUploadModal
-          currentFolderId={null}
-          onClose={() => setFileUploadModal(null)}
-          onUploadComplete={async (file) => {
-            setFileUploadModal(null);
-            if (editor) {
-              editor.commands.insertFileWidget({ 
-                fileId: file.id, 
-                name: file.name, 
-                fileType: file.file_type, 
-                isLink: fileUploadModal.isLink 
-              });
-              
-              // Register the link in the backend
-              if (window.api && window.api.files && window.api.files.links && pageId) {
-                try {
-                  await window.api.files.links.create({
-                    id: crypto.randomUUID(),
-                    file_id: file.id,
-                    page_id: pageId,
-                    link_type: fileUploadModal.isLink ? 'link' : 'embed',
-                    widget_id: null
-                  });
-                } catch (e) {
-                  console.error("Failed to link file to page", e);
-                }
-              }
-            }
-          }}
-        />,
-        document.body
-      )}
-
-      {fileSelectModal && createPortal(
-        <FileSelectModal
-          onClose={() => setFileSelectModal(false)}
-          onSelect={async (item) => {
-            setFileSelectModal(false);
-            if (editor) {
-              editor.commands.insertFileWidget({ 
-                fileId: item.id, 
-                name: item.name, 
-                fileType: item.type, 
-                isLink: true 
-              });
-              
-              // Register the link in the backend
-              if (window.api && window.api.files && window.api.files.links && pageId) {
-                try {
-                  await window.api.files.links.create({
-                    id: crypto.randomUUID(),
-                    file_id: item.id,
-                    page_id: pageId,
-                    link_type: 'link',
-                    widget_id: null
-                  });
-                } catch (e) {
-                  console.error("Failed to link item to page", e);
-                }
-              }
-            }
-          }}
-        />,
-        document.body
-      )}
-
-      {viewerState.isOpen && (
-        <ImageViewerModal
-          isOpen={viewerState.isOpen}
-          imageSrc={viewerState.src}
-          onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null })}
-          onSave={(croppedSrc) => {
-            if (editor && viewerState.nodePos !== null) {
-              editor.chain().focus().setNodeSelection(viewerState.nodePos).setImage({ src: croppedSrc }).run();
-            }
-            setViewerState({ isOpen: false, src: '', nodePos: null });
-          }}
-        />
-      )}
-
-      {pageSearchMenu?.isOpen && createPortal(
-        <PageSearchMenu
-          x={pageSearchMenu.x}
-          y={pageSearchMenu.y}
-          query={pageSearchMenu.query}
-          onSelect={(pageId, pageTitle) => {
-            if (editor && pageId !== 'new') {
-              editor.commands.insertContent({
-                type: 'pageReference',
-                attrs: { pageId, title: pageTitle }
-              });
-              // insert a trailing space after the node
-              editor.commands.insertContent(' ');
-            }
-            setPageSearchMenu(null);
-          }}
-          onClose={() => setPageSearchMenu(null)}
-        />,
-        document.body
-      )}
-
+    <div className="relative" ref={wrapperRef}>
       {editor && (
         <BubbleMenu 
           editor={editor} 
-          tippyOptions={{ duration: 100, zIndex: 99999, maxWidth: 'calc(100vw - 32px)' }}
-          shouldShow={({ state }) => {
-            const { selection } = state;
-            const isCellSelection = selection && (selection.constructor.name === 'CellSelection' || ('forEachCell' in selection));
-            
-            let isWidgetSelection = false;
-            if (selection && 'node' in selection) {
-              const node = (selection as any).node;
-              if (node && (node.type.name === 'focusWidget' || node.type.name === 'alarmWidget' || node.type.name === 'fileWidget')) {
-                isWidgetSelection = true;
-              }
-            }
-            
-            return !selection.empty && !isCellSelection && !isWidgetSelection;
-          }}
+          tippyOptions={{ 
+            duration: 150, 
+            maxWidth: 800,
+            placement: 'top',
+            offset: [0, 8]
+          }} 
+          className="flex shadow-elevated rounded-xl overflow-visible border border-white/5 bg-dark-bg/80 backdrop-blur-xl"
         >
-          <FloatingToolbar 
-            formatState={{
-              bold: editor.isActive('bold'),
-              italic: editor.isActive('italic'),
-              strike: editor.isActive('strike'),
-              underline: editor.isActive('underline'),
-              code: editor.isActive('code'),
-              highlight: editor.isActive('highlight'),
-              link: editor.isActive('link'),
-              linkHref: editor.isActive('link') ? editor.getAttributes('link').href : undefined,
-            }}
-            onFormat={(cmd, value) => {
-              if (cmd === 'bold') editor.commands.toggleBold();
-              if (cmd === 'italic') editor.commands.toggleItalic();
-              if (cmd === 'strike') editor.commands.toggleStrike();
-              if (cmd === 'underline') editor.commands.toggleUnderline();
-              if (cmd === 'code') editor.commands.toggleCode();
-              if (cmd === 'link' && value) editor.commands.setLink({ href: value });
-              if (cmd === 'unlink') editor.commands.unsetLink();
-              if (cmd === 'highlight') {
-                if (value) {
-                  editor.commands.toggleHighlight({ color: value });
-                } else {
-                  editor.commands.toggleHighlight();
-                }
-              }
-            }}
-          />
+          <FloatingToolbar editor={editor} />
         </BubbleMenu>
       )}
 
       {editor && (
         <BubbleMenu 
           editor={editor} 
-          tippyOptions={{ duration: 100, zIndex: 99998, placement: 'bottom' }} 
-          shouldShow={({ editor, state }) => {
-            const { selection } = state;
-            
-            // Verifica se é uma seleção múltipla de células (drag)
-            const isCellSelection = selection && (selection.constructor.name === 'CellSelection' || ('forEachCell' in selection));
-            
-            if (isCellSelection) return true;
-            if (!selection.empty) return false; // Se tiver TEXTO selecionado, esconde para o menu normal brilhar
-            
-            return editor.isActive('table');
-          }}
+          tippyOptions={{ duration: 150, placement: 'bottom' }} 
+          pluginKey="tableBubbleMenu"
+          shouldShow={({ editor }) => editor.isActive('table')}
+          className="flex shadow-elevated rounded-xl overflow-hidden border border-white/5 bg-dark-bg/80 backdrop-blur-xl mt-2"
         >
           <TableToolbar editor={editor} />
         </BubbleMenu>
       )}
 
-      {editor && <EditorContent editor={editor} />}
+      <div className="editor-container relative z-0">
+        <EditorContent editor={editor} />
+      </div>
+
+      {slashMenu && (
+        <SlashMenu 
+          query={slashMenu.query}
+          x={slashMenu.x}
+          y={slashMenu.y}
+          onSelect={(id) => executeSlashCommand(id, editor)}
+          onClose={() => setSlashMenu(null)}
+        />
+      )}
+
+      {pageSearchMenu && (
+        <PageSearchMenu
+          query={pageSearchMenu.query}
+          x={pageSearchMenu.x}
+          y={pageSearchMenu.y}
+          onClose={() => setPageSearchMenu(null)}
+          onSelect={async (selectedPageId, title) => {
+            let finalId = selectedPageId;
+            if (selectedPageId === 'NEW' && onCreateLinkedPage) {
+              finalId = await onCreateLinkedPage(title);
+            }
+            if (finalId && editor) {
+              const startPos = slashMenu ? slashMenu.startPos : editor.state.selection.$head.pos - pageSearchMenu.query.length - 1;
+              const endPos = editor.state.selection.$head.pos;
+              
+              editor.commands.deleteRange({ from: startPos, to: endPos });
+              editor.chain().focus().insertContent({
+                type: 'pageReference',
+                attrs: { pageId: finalId, pageTitle: title }
+              }).run();
+            }
+            setPageSearchMenu(null);
+            setSlashMenu(null);
+          }}
+        />
+      )}
+
+      {viewerState.isOpen && (
+        <ImageViewerModal
+          src={viewerState.src}
+          onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null })}
+          onSaveSize={(width, height) => {
+            if (viewerState.nodePos !== null && editor) {
+              editor.commands.setNodeSelection(viewerState.nodePos);
+              editor.commands.updateAttributes('resizableImage', { width, height });
+              editor.commands.updateAttributes('encryptedImage', { width, height });
+              editor.commands.updateAttributes('image', { width, height });
+            }
+          }}
+        />
+      )}
+
+      {focusModal?.isOpen && (
+        <SetupModal
+          isOpen={true}
+          onClose={() => setFocusModal(null)}
+          onStart={(t, tag, d) => {
+            handleStartTimer(t, tag, d);
+            setFocusModal(null);
+          }}
+          initialTime={focusModal.initialTime}
+          initialTag={focusModal.initialTag}
+          initialDesc={focusModal.initialDesc}
+        />
+      )}
+
+      {alarmModal?.isOpen && (
+        <AlarmSetupModal
+          isOpen={true}
+          onClose={() => setAlarmModal(null)}
+          onSave={(t, days, tag, l, o) => {
+            handleSaveAlarm(t, days, tag, l, o);
+            setAlarmModal(null);
+          }}
+          initialTimeStr={alarmModal.initialTimeStr}
+        />
+      )}
+
+      {fileUploadModal?.isOpen && (
+        <FileUploadModal
+          isOpen={true}
+          onClose={() => setFileUploadModal(null)}
+          onUploaded={(fileId, fileName, fileType, isEncrypted) => {
+            if (editor) {
+              editor.chain().focus().insertContent({
+                type: 'fileWidget',
+                attrs: { fileId, fileName, fileType, isEncrypted }
+              }).run();
+            }
+            setFileUploadModal(null);
+          }}
+          isLink={fileUploadModal.isLink}
+        />
+      )}
+
+      {fileSelectModal && (
+        <FileSelectModal
+          isOpen={true}
+          onClose={() => setFileSelectModal(false)}
+          onSelect={(fileId, fileName, fileType, isEncrypted) => {
+            if (editor) {
+              editor.chain().focus().insertContent({
+                type: 'fileWidget',
+                attrs: { fileId, fileName, fileType, isEncrypted }
+              }).run();
+            }
+            setFileSelectModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
