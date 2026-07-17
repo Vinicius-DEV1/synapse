@@ -61,11 +61,28 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
+  const MENU_MAX_HEIGHT = 320;
+  const CURSOR_OFFSET = 24;
+  
+  const willOverflowBottom = y + MENU_MAX_HEIGHT > viewportHeight;
+  
+  const positionStyle: React.CSSProperties = {
+    left: x,
+    maxHeight: MENU_MAX_HEIGHT
+  };
+
+  if (willOverflowBottom) {
+    positionStyle.bottom = viewportHeight - (y - CURSOR_OFFSET);
+  } else {
+    positionStyle.top = y;
+  }
+
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col max-h-[320px]"
-      style={{ left: x, top: y }}
+      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
+      style={positionStyle}
     >
       <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
         Referenciar Página
