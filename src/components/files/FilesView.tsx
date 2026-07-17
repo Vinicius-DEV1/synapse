@@ -14,6 +14,7 @@ import { getValidAccessToken } from '../../services/drive';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 
 export default function FilesView() {
+  const { state } = useStore();
   const [folders, setFolders] = useState<FileFolder[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
