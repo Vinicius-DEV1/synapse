@@ -11,22 +11,23 @@ interface PageSearchMenuProps {
 
 export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageSearchMenuProps) {
   const { state } = useStore();
+  const [localQuery, setLocalQuery] = useState(query || '');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const filteredPages = state.pages.filter(p => 
-    p.title.toLowerCase().includes(query.toLowerCase())
+    p.title.toLowerCase().includes(localQuery.toLowerCase())
   );
 
   const options = [
     ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
-    { id: 'new', title: `Criar página "${query || 'Nova'}"`, icon: '✨' }
+    ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery}"`, icon: '✨' }] : [])
   ];
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
-  }, [query]);
+  }, [localQuery]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,7 +40,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (options[selectedIndex]) {
-          onSelect(options[selectedIndex].id, options[selectedIndex].id === 'new' ? query : options[selectedIndex].title);
+          onSelect(options[selectedIndex].id, options[selectedIndex].id === 'new' ? localQuery : options[selectedIndex].title);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -87,26 +88,41 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
       <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
         Referenciar Página
       </div>
+      <div className="p-2 border-b border-white/5 bg-dark-card/30">
+        <input
+          type="text"
+          autoFocus
+          value={localQuery}
+          onChange={(e) => setLocalQuery(e.target.value)}
+          placeholder="Buscar página..."
+          className="w-full bg-transparent text-sm text-dark-text outline-none placeholder-dark-subtext"
+        />
+      </div>
       <div className="overflow-y-auto custom-scrollbar p-1">
-        {options.map((opt, index) => {
-          const isSelected = index === selectedIndex;
-          
-          return (
-            <button
-              key={opt.id}
-              onClick={() => onSelect(opt.id, opt.id === 'new' ? query : opt.title)}
-              onMouseEnter={() => setSelectedIndex(index)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}`}
-            >
-              <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-dark-text text-sm">
-                {opt.icon}
-              </div>
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium text-dark-text truncate">{opt.title}</span>
-              </div>
-            </button>
-          );
-        })}
+        {options.length === 0 ? (
+          <div className="px-3 py-3 text-sm text-dark-subtext text-center">
+            Nenhuma página encontrada
+          </div>
+        ) : options.map((opt, index) => {
+            const isSelected = index === selectedIndex;
+            
+            return (
+              <button
+                key={opt.id}
+                onClick={() => onSelect(opt.id, opt.id === 'new' ? localQuery : opt.title)}
+                onMouseEnter={() => setSelectedIndex(index)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              >
+                <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-dark-text text-sm">
+                  {opt.icon}
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-sm font-medium text-dark-text truncate">{opt.title}</span>
+                </div>
+              </button>
+            );
+          })
+        }
       </div>
     </div>
   );
