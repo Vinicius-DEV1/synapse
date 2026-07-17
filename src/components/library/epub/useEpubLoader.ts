@@ -40,7 +40,7 @@ export function useEpubLoader(
         
         let originalAbsPath = '';
         try {
-          if (book.file_path && !book.file_path.startsWith('http')) {
+          if (window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
              let absPath = book.file_path;
              if (!absPath.startsWith('file://') && !absPath.match(/^[a-zA-Z]:/)) {
                  const { appDataDir, join } = await import('@tauri-apps/api/path');

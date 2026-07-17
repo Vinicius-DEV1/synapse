@@ -3,6 +3,7 @@ import { X, UploadCloud, File, AlertCircle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { FileItem } from '../../types_files';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
+import { encryptFile } from '../../services/storage';
 
 interface FileUploadModalProps {
   onClose: () => void;
@@ -11,6 +12,8 @@ interface FileUploadModalProps {
 }
 
 export default function FileUploadModal({ onClose, onUploadComplete, currentFolderId }: FileUploadModalProps) {
+  const { state } = useStore();
+  const masterKey = state.moduleKeys['files'];
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -37,16 +40,34 @@ export default function FileUploadModal({ onClose, onUploadComplete, currentFold
       
       setProgress(20);
       
-      const localPath = await window.api.files.saveLocal(selectedFile.name, Array.from(bytes));
+      let localPath = "";
+      let isEncrypted = false;
+      let driveFileName = selectedFile.name;
+      let uploadBuffer = arrayBuffer;
+
+      if (window.api?.files?.saveLocal) {
+        localPath = await window.api.files.saveLocal(selectedFile.name, Array.from(bytes));
+        // Se processou localmente com o saveLocal do rust, o arquivo original nao foi criptografado aqui ainda, 
+        // mas o saveLocal CRIA a versao .enc no disco local. Para o upload via Web, vamos criptografar em memória.
+      }
       
       setProgress(40);
       
+      // Sempre criptografar para o Drive se não for criptografado no JS ainda
+      if (masterKey) {
+        uploadBuffer = await encryptFile(arrayBuffer, masterKey);
+        driveFileName = selectedFile.name + '.enc';
+        isEncrypted = true;
+      } else {
+        throw new Error("Master key is required for uploading securely.");
+      }
+
       // 2. Upload to Drive
       let driveId: string | undefined = undefined;
       try {
         const token = await getValidAccessToken();
         if (token) {
-          driveId = await uploadToDrive(token, selectedFile.name, arrayBuffer, 'root', (p) => {
+          driveId = await uploadToDrive(token, driveFileName, uploadBuffer, 'root', (p) => {
             setProgress(40 + (p * 0.5)); // 40-90%
           });
         }

@@ -7,11 +7,29 @@ const VIDEO_TABLE = 'videos';
 /**
  * Obtém link de streaming a partir do ID do Drive.
  */
-export async function getVideoStreamLink(driveFileId: string): Promise<string> {
+export async function getVideoStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
+  if (!masterKey) {
+    // Se não tivermos chave (ex: modo público?), caímos para o stream direto (só vai funcionar se não estiver criptografado)
+    return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
+  }
+
+  // Na Web, como TUDO é criptografado, e não temos Service Worker pra fazer chunking on-the-fly de AES-GCM,
+  // baixamos o arquivo inteiro em memória, descriptografamos e criamos um Blob.
+  // IMPORTANTE: Isso vai usar RAM proporcional ao tamanho do vídeo!
+  const buffer = await downloadFromDrive(token, driveFileId);
+  try {
+    const { decryptFile } = await import('./storage');
+    const decryptedBuffer = await decryptFile(buffer, masterKey);
+    const blob = new Blob([decryptedBuffer], { type: 'video/mp4' });
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.warn("Could not decrypt video. Maybe it is not encrypted?", e);
+    const blob = new Blob([buffer], { type: 'video/mp4' });
+    return URL.createObjectURL(blob);
+  }
 }
 
 /**
@@ -47,7 +65,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
  */
 import { convertFileSrc } from '@tauri-apps/api/core';
 
-export async function resolveVideoUrl(video: VideoItem): Promise<string> {
+export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): Promise<string> {
   if (window.api?.video && video.is_local) {
     // Primeiro tenta usar o file_path absoluto salvo no banco de dados
     let localPath = video.file_path || await window.api.video.getLocalPath(video.original_name);
@@ -79,7 +97,7 @@ export async function resolveVideoUrl(video: VideoItem): Promise<string> {
   }
 
   if (video.drive_file_id) {
-    return getVideoStreamLink(video.drive_file_id);
+    return getVideoStreamLink(video.drive_file_id, masterKey);
   }
 
   throw new Error("Vídeo não foi encontrado nem localmente nem na nuvem.");
@@ -135,8 +153,18 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
 
   // If local processing failed or it's a pure web file
   if (!mainFileId) {
-    const buffer = await file.arrayBuffer();
-    mainFileId = await uploadToDrive(token, file.name, buffer, false, (p) => {
+    let bufferToUpload = await file.arrayBuffer();
+    let driveFileName = file.name;
+    
+    if (options.masterKey) {
+      const { encryptFile } = await import('./storage');
+      bufferToUpload = await encryptFile(bufferToUpload, options.masterKey);
+      driveFileName = file.name + '.enc';
+    } else {
+      throw new Error("Master key is required for uploading securely on the Web.");
+    }
+
+    mainFileId = await uploadToDrive(token, driveFileName, bufferToUpload, false as any, (p) => {
       if (onProgress) onProgress(10 + (p * 0.6));
     });
   }
@@ -174,8 +202,16 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
   let mainSubtitleId = null;
   if (subtitleText) {
     const enc = new TextEncoder();
-    const subBuffer = enc.encode(subtitleText).buffer;
-    mainSubtitleId = await uploadToDrive(token, `${file.name}.vtt`, subBuffer, false);
+    let subBuffer = enc.encode(subtitleText).buffer as ArrayBuffer;
+    let driveFileName = `${file.name}.vtt`;
+    
+    if (options.masterKey) {
+      const { encryptFile } = await import('./storage');
+      subBuffer = await encryptFile(subBuffer, options.masterKey);
+      driveFileName += '.enc';
+    }
+    
+    mainSubtitleId = await uploadToDrive(token, driveFileName, subBuffer, false as any);
   }
 
   // Embedded extra subtitles
@@ -185,9 +221,16 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
         const vttText = await window.api.video.extractSubtitles(sourcePath, track);
         if (vttText) {
           const enc = new TextEncoder();
-          const subBuffer = enc.encode(vttText).buffer;
-          const driveFileName = `${baseName} - Legenda ${track.replace(/:/g, '')}.vtt`;
-          const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false);
+          let subBuffer = enc.encode(vttText).buffer as ArrayBuffer;
+          let driveFileName = `${baseName} - Legenda ${track.replace(/:/g, '')}.vtt`;
+          
+          if (options.masterKey) {
+            const { encryptFile } = await import('./storage');
+            subBuffer = await encryptFile(subBuffer, options.masterKey);
+            driveFileName += '.enc';
+          }
+          
+          const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false as any);
           
           subtitleTracksList.push({
             id: track,

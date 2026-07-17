@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Volume2, Play, Pause, VolumeX, SkipForward, X } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { resolveLofiUrl } from '../../services/lofi-manager';
+import { useStore } from '../../store/useStore';
 
 export const GlobalLofiPlayer: React.FC = () => {
   const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
+  const { state } = useStore();
+  const masterKey = state.moduleKeys['focus'];
   const [isExpanded, setIsExpanded] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -13,7 +16,7 @@ export const GlobalLofiPlayer: React.FC = () => {
 
   useEffect(() => {
     if (activeLofi) {
-      resolveLofiUrl(activeLofi)
+      resolveLofiUrl(activeLofi, masterKey)
         .then(url => {
           setSrc(url);
         })
@@ -67,7 +70,7 @@ export const GlobalLofiPlayer: React.FC = () => {
             // Se for loop, em vez de depender do HTML5 native loop (que falha se o token expirar),
             // tentamos dar play novamente ou re-resolver a URL.
             if (activeLofi) {
-              resolveLofiUrl(activeLofi)
+              resolveLofiUrl(activeLofi, masterKey)
                 .then(url => {
                   if (url !== src) setSrc(url);
                   if (audioRef.current) {
@@ -87,7 +90,7 @@ export const GlobalLofiPlayer: React.FC = () => {
             console.error("Audio playback error", e.currentTarget.error);
             // Tenta recarregar se houver erro (ex: token expirou no meio)
             if (activeLofi && isPlayingLofi) {
-              resolveLofiUrl(activeLofi).then(url => {
+              resolveLofiUrl(activeLofi, masterKey).then(url => {
                 if (url !== src) setSrc(url);
               });
             }
