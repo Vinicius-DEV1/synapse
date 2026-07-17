@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { copyFile, readFile, mkdir } from '@tauri-apps/plugin-fs';
 import { BaseDirectory } from '@tauri-apps/api/path';
+import { tauriAuthApi } from './api/tauri/auth';
 import { tauriFinanceApi } from './api/tauri/finance';
 
 export const createTauriApi = async () => {
@@ -19,24 +20,7 @@ export const createTauriApi = async () => {
     },
 
     // --- AUTH ---
-    auth: {
-      status: async () => {
-        return await invoke('auth_status');
-      },
-      login: async (password: string) => {
-        return await invoke('auth_login', { password });
-      },
-      setup: async (password: string, existingKeys?: any) => {
-        return await invoke('auth_setup', { password, existingKeys });
-      },
-      changePassword: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
-      getVisitors: async () => [],
-      createVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
-      deleteVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
-      onLock: () => () => {},
-      lock: async () => {},
-      setPreferences: async () => {}
-    },
+    auth: tauriAuthApi,
 
     // Configurações e Chaves usando a tabela config do DB
     config: { 
