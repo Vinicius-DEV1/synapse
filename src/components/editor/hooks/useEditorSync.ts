@@ -1,4 +1,4 @@
-import { useEffect, useRef, MutableRefObject } from 'react';
+import React, { useEffect, useRef, MutableRefObject } from 'react';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 
@@ -10,35 +10,31 @@ interface UseEditorSyncProps {
   latestContentRef: MutableRefObject<{ html: string, crdt: string } | null>;
 }
 
+if (!(window as any).__cadernoEditorBackup) { (window as any).__cadernoEditorBackup = new Map(); }
 export function useEditorSync({ pageId, initialCrdtState, initialContent, onSaveRef, latestContentRef }: UseEditorSyncProps) {
-  const ydocRef = useRef<Y.Doc | null>(null);
-
-  // Backup em memória
-  if (!(window as any).__cadernoEditorBackup) {
-    (window as any).__cadernoEditorBackup = new Map<string, { html: string; crdt: string }>();
-  }
-
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
-  if (!ydocRef.current || ydocRef.current.guid !== pageId) {
-    if (ydocRef.current) {
-      ydocRef.current.destroy();
-    }
-    ydocRef.current = new Y.Doc();
-    ydocRef.current.guid = pageId || 'temp';
-    
-    // console.log(`[Caderno:Mount] pageId=${pageId}`);
+  const [ydoc] = React.useState(() => {
+    const doc = new Y.Doc();
+    doc.guid = pageId || 'temp';
     
     if (hasMeaningfulCrdt) {
-      applyBase64StateToYDoc(ydocRef.current, initialCrdtState!);
+      applyBase64StateToYDoc(doc, initialCrdtState!);
     }
     
     const backup = (window as any).__cadernoEditorBackup?.get(pageId);
     if (backup?.crdt && backup.crdt.length > 8) {
-      applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+      applyBase64StateToYDoc(doc, backup.crdt);
       (window as any).__cadernoEditorBackup.delete(pageId);
     }
-  }
+    return doc;
+  });
+  
+  const ydocRef = useRef<Y.Doc>(ydoc);
+    
+    // console.log(`[Caderno:Mount] pageId=${pageId}`);
+    
+
 
   const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
 
@@ -72,3 +68,4 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
 
   return { ydocRef, needsLegacyHydration };
 }
+

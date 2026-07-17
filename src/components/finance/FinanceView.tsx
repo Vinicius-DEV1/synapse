@@ -1,9 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, ArrowRightLeft, Gift, Plus, Trash2, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Transaction, WishlistItem } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
 import PaymentModal from './PaymentModal';
+
+const ImageRenderer = ({ cacheItem }: { cacheItem: any }) => {
+  const [url, setUrl] = useState<string>('');
+  useEffect(() => {
+    const blob = new Blob([cacheItem.data], { type: cacheItem.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [cacheItem]);
+  if (!url) return null;
+  return <img src={url} className="max-w-full rounded-lg my-2 max-h-64 object-contain shadow-lg border border-white/10" alt="Pasted" />;
+};
 
 const DescriptionRenderer = ({ text }: { text: string }) => {
   const [elements, setElements] = useState<React.ReactNode[]>([]);
@@ -16,8 +28,7 @@ const DescriptionRenderer = ({ text }: { text: string }) => {
           try {
             const cacheItem = await window.api.imageCache.get(match[1]);
             if (cacheItem) {
-              const blob = new Blob([cacheItem.data], { type: cacheItem.mimeType });
-              return <img key={i} src={URL.createObjectURL(blob)} className="max-w-full rounded-lg my-2 max-h-64 object-contain shadow-lg border border-white/10" alt="Pasted" />;
+              return <ImageRenderer key={i} cacheItem={cacheItem} />;
             }
           } catch(e) {}
         }
@@ -123,9 +134,11 @@ export default function FinanceView() {
   };
 
   // Dashboard calculations
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-  const balance = totalIncome - totalExpense;
+  const { totalIncome, totalExpense, balance } = useMemo(() => {
+    const inc = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const exp = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    return { totalIncome: inc, totalExpense: exp, balance: inc - exp };
+  }, [transactions]);
 
   const typeLabels: Record<string, { label: string, color: string }> = {
     income: { label: 'Entrada', color: 'text-emerald-400' },

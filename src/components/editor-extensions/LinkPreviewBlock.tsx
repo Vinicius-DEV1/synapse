@@ -40,7 +40,8 @@ const LinkPreviewComponent = (props: any) => {
           const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
           if (!res.ok) throw new Error('AllOrigins failed');
           const data = await res.json();
-          const match = (data.contents as string).match(/<title[^>]*>([^<]+)<\/title>/i);
+          const html = typeof data?.contents === 'string' ? data.contents : '';
+          const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
           if (match && match[1]) {
             return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
           }

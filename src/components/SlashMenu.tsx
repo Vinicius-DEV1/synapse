@@ -81,7 +81,14 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', onClose);
+    window.addEventListener('scroll', onClose, true); // true catches scroll on any container
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', onClose);
+      window.removeEventListener('scroll', onClose, true);
+    };
   }, [onClose]);
 
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
@@ -150,3 +157,4 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     </div>
   );
 }
+
