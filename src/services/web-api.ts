@@ -74,6 +74,8 @@ export const createWebApiMock = async () => {
       const all = await db.getAll('pages');
       return all.filter(p => !p.deleted_at).map(p => {
         const { content, encrypted_content, ...rest } = p;
+        if (rest.parent_id === undefined) rest.parent_id = null;
+        if (rest.is_pinned === undefined) rest.is_pinned = 0;
         return rest;
       });
     },
