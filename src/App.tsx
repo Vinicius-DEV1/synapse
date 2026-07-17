@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
-import { StoreProvider, useStore } from './store/useStore';
+import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
 import { FocusProvider, useFocusContext } from './store/FocusContext';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
@@ -120,9 +120,10 @@ function AppContent() {
   useEffect(() => {
     if (syncStatus === 'success') {
       syncSettingsFromDb();
+      syncLayoutFromDb(dispatch);
       window.dispatchEvent(new CustomEvent('caderno-sync-success'));
     }
-  }, [syncStatus]);
+  }, [syncStatus, dispatch]);
 
   // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
   // (handlers do ProseMirror não têm acesso ao contexto React)

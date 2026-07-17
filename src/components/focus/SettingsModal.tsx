@@ -14,12 +14,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem('soundEnabled') !== 'false');
     setAlarmType(localStorage.getItem('defaultAlarmType') || 'beep');
+    if (window.api?.config) {
+      window.api.config.get('soundEnabled').then(v => {
+        if (v !== null && v !== undefined) setSoundEnabled(v !== 'false');
+      }).catch(console.error);
+      window.api.config.get('defaultAlarmType').then(v => {
+        if (v !== null && v !== undefined) setAlarmType(v as string);
+      }).catch(console.error);
+    }
   }, []);
 
   const toggleSound = () => {
     const newVal = !soundEnabled;
     setSoundEnabled(newVal);
     localStorage.setItem('soundEnabled', newVal.toString());
+    if (window.api?.config) {
+      window.api.config.set('soundEnabled', newVal.toString()).catch(console.error);
+    }
     
     if (newVal) {
       playTestSound();
@@ -88,6 +99,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                     onChange={(e) => {
                       setAlarmType(e.target.value);
                       localStorage.setItem('defaultAlarmType', e.target.value);
+                      if (window.api?.config) {
+                        window.api.config.set('defaultAlarmType', e.target.value).catch(console.error);
+                      }
                     }}
                     className="bg-dark-bg text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-500"
                   >

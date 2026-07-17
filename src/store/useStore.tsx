@@ -93,6 +93,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       aiChatSessions: state.aiChatSessions,
     };
     localStorage.setItem('appLayoutState', JSON.stringify(stateToSave));
+    
+    if (window.api?.config) {
+      const dbState = {
+        activeModule: state.activeModule,
+        sidebarCollapsed: state.sidebarCollapsed,
+        expandedNodes: state.expandedNodes,
+        aiChatSessions: state.aiChatSessions,
+      };
+      window.api.config.set('appLayoutState', dbState).catch(console.error);
+    }
   }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions]);
 
   return (
@@ -106,4 +116,16 @@ export function useStore(): StoreContextType {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error('useStore must be used within StoreProvider');
   return ctx;
+}
+
+export async function syncLayoutFromDb(dispatch: React.Dispatch<Action>) {
+  if (!window.api?.config) return;
+  try {
+    const dbState = await window.api.config.get('appLayoutState');
+    if (dbState && typeof dbState === 'object') {
+      dispatch({ type: 'MERGE_DB_STATE', payload: dbState });
+    }
+  } catch (err) {
+    console.error('Failed to load layout from DB:', err);
+  }
 }
