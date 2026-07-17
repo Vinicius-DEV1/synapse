@@ -42,14 +42,25 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
 
 
 export async function importHexKey(hexString: string): Promise<CryptoKey> {
-  const bytes = new Uint8Array(hexString.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-  return await crypto.subtle.importKey(
+  const bytes = new Uint8Array(Math.ceil(hexString.length / 2));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hexString.substr(i * 2, 2), 16);
+  }
+  return crypto.subtle.importKey(
     'raw',
     bytes,
-    { name: ENCRYPTION_ALGORITHM },
+    'AES-GCM',
     true,
     ['encrypt', 'decrypt']
   );
+}
+
+export async function exportKeyToHex(key: CryptoKey): Promise<string> {
+  const exported = await crypto.subtle.exportKey('raw', key);
+  const buffer = new Uint8Array(exported);
+  return Array.from(buffer)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
