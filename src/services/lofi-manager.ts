@@ -3,11 +3,26 @@ import type { LofiItem } from '../types_lofi';
 
 const LOFI_TABLE = 'lofis';
 
-export async function getLofiStreamLink(driveFileId: string): Promise<string> {
+export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
+  // No Web, o <audio> com URL do Drive + access_token costuma falhar por CORS/Range.
+  // Baixamos o ArrayBuffer e descriptografamos (se necessário).
+  const buffer = await downloadFromDrive(token, driveFileId);
+  let finalBuffer = buffer;
+  
+  if (masterKey) {
+    try {
+      const { decryptFile } = await import('./storage');
+      finalBuffer = await decryptFile(buffer, masterKey);
+    } catch (e) {
+      console.warn("Lofi might not be encrypted (uploaded from Web), using raw bytes.", e);
+    }
+  }
+
+  const blob = new Blob([finalBuffer], { type: 'audio/mpeg' }); // Usando tipo genérico de áudio
+  return URL.createObjectURL(blob);
 }
 
 export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent: number) => void): Promise<string> {
@@ -32,7 +47,7 @@ export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent:
   return localPath;
 }
 
-export async function resolveLofiUrl(lofi: LofiItem): Promise<string> {
+export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Promise<string> {
   if (window.api?.lofi && lofi.is_local) {
     const filename_enc = `${lofi.original_name}.enc`;
     try {
@@ -47,12 +62,12 @@ export async function resolveLofiUrl(lofi: LofiItem): Promise<string> {
     }
   }
   if (lofi.drive_file_id) {
-    return getLofiStreamLink(lofi.drive_file_id);
+    return getLofiStreamLink(lofi.drive_file_id, masterKey);
   }
   throw new Error("Lofi não foi encontrado nem localmente nem na nuvem.");
 }
 
-export async function uploadNewLofi(file: File, duration?: number, onProgress?: (percent: number) => void): Promise<LofiItem> {
+export async function uploadNewLofi(file: File, duration?: number, masterKey?: CryptoKey, onProgress?: (percent: number) => void): Promise<LofiItem> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
@@ -75,24 +90,34 @@ export async function uploadNewLofi(file: File, duration?: number, onProgress?: 
     }
   }
 
+  let finalBufferToUpload = buffer;
+  let finalFileName = file.name;
+  let isEncrypted = false;
+
   if (localPath) {
     try {
       const req = await fetch('http://asset.localhost/' + encodeURIComponent(localPath));
-      const encryptedBuffer = await req.arrayBuffer();
-      mainFileId = await uploadToDrive(token, file.name + '.enc', encryptedBuffer, 'lofi', (p) => {
-        if (onProgress) onProgress(40 + (p * 0.6));
-      });
+      finalBufferToUpload = await req.arrayBuffer();
+      finalFileName = file.name + '.enc';
+      isEncrypted = true;
     } catch (e) {
-      console.error("Erro ao ler arquivo criptografado", e);
-      mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
-        if (onProgress) onProgress(40 + (p * 0.6));
-      });
+      console.error("Erro ao ler arquivo criptografado localmente", e);
     }
-  } else {
-    mainFileId = await uploadToDrive(token, file.name, buffer, 'lofi', (p) => {
-      if (onProgress) onProgress(40 + (p * 0.6));
-    });
   }
+
+  if (!isEncrypted) {
+    if (masterKey) {
+      const { encryptFile } = await import('./storage');
+      finalBufferToUpload = await encryptFile(buffer, masterKey);
+      finalFileName = file.name + '.enc';
+    } else {
+      throw new Error("Master key is required for uploading securely on the Web.");
+    }
+  }
+
+  mainFileId = await uploadToDrive(token, finalFileName, finalBufferToUpload, 'lofi', (p) => {
+    if (onProgress) onProgress(40 + (p * 0.6));
+  });
 
   const newLofi: LofiItem = {
     id: crypto.randomUUID(),

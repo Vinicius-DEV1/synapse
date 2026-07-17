@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, FileVideo, FileText, Loader2, Settings2 } from 'lucide-react';
 import { processSubtitleFile } from '../../utils/subtitles';
+import { useStore } from '../../store/useStore';
 
 export interface UploadOptions {
   videoFile: File;
@@ -9,6 +10,7 @@ export interface UploadOptions {
   primaryAudioTrack?: string;
   extraAudioTracks?: string[];
   extraSubtitleTracks?: string[];
+  masterKey?: CryptoKey;
   onProgress?: (percent: number) => void;
 }
 
@@ -18,6 +20,10 @@ interface VideoUploadModalProps {
 }
 
 export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModalProps) {
+  const { state } = useStore();
+  // We use culture or whatever the active module is, assuming videos are tied to Culture.
+  // Actually videos use the 'culture' key since they are embedded in culture items.
+  const masterKey = state.moduleKeys['culture'];
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -78,6 +84,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
         primaryAudioTrack: primaryAudioTrack || undefined,
         extraAudioTracks: Array.from(extraAudioTracks),
         extraSubtitleTracks: Array.from(extraSubtitleTracks),
+        masterKey,
         onProgress: (percent) => setUploadProgress(percent)
       });
       onClose();

@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { ArrowLeft, Plus, Music, Trash2, Cloud, UploadCloud, Clock } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { uploadNewLofi, deleteLofiCompletely, deleteLofiLocal } from '../../services/lofi-manager';
+import { useStore } from '../../store/useStore';
 
 export const LofiView: React.FC = () => {
   const { view, setView, lofis, activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, loadLofis } = useFocusContext();
+  const { state } = useStore();
+  const masterKey = state.moduleKeys['focus'];
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -25,25 +28,22 @@ export const LofiView: React.FC = () => {
       setIsUploading(true);
       setProgress(0);
       try {
-        // Extract duration
-        let duration: number | undefined = undefined;
+        let duration: number | undefined;
         try {
           const url = URL.createObjectURL(file);
-          const audio = new Audio(url);
-          await new Promise<void>((resolve) => {
-            audio.addEventListener('loadedmetadata', () => {
-              duration = audio.duration;
-              resolve();
-            });
-            audio.addEventListener('error', () => resolve());
-            setTimeout(resolve, 3000); // fallback timeout
+          duration = await new Promise((resolve) => {
+            const audio = new Audio(url);
+            audio.onloadedmetadata = () => {
+              resolve(audio.duration);
+              URL.revokeObjectURL(url);
+            };
+            audio.onerror = () => resolve(undefined);
           });
-          URL.revokeObjectURL(url);
-        } catch(e) {
+        } catch (e) {
           console.warn("Could not extract duration", e);
         }
 
-        await uploadNewLofi(file, duration, (p) => setProgress(p));
+        await uploadNewLofi(file, duration, masterKey, (p) => setProgress(p));
         await loadLofis();
       } catch (err) {
         console.error("Erro ao importar Lofi", err);

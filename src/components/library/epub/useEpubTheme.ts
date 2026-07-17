@@ -80,7 +80,7 @@ export function useEpubTheme(
           try {
             rendition.annotations.clear();
           } catch (e) {
-            console.warn("EpubJS clear annotations error:", e);
+            // Ignore if there are no annotations to clear or view isn't ready
           }
           
           try {

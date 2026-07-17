@@ -10,6 +10,7 @@ import { webSyncApi } from '../api/web/sync';
 import { webCalendarApi } from '../api/web/calendar';
 import { webVaultApi } from '../api/web/vault';
 import { webPracticeApi } from '../api/web/practice';
+import { webFilesApi } from '../api/web/files';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -162,6 +163,9 @@ export const createWebApiMock = async () => {
 
     // --- VAULT ---
     vault: webVaultApi(db, generateId),
+
+    // --- FILES ---
+    files: webFilesApi(db, generateId),
 
     // --- SYNC ---
     sync: webSyncApi(db, originalDelete, originalPut),
