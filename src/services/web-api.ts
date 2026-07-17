@@ -5,6 +5,11 @@ import { webFinanceApi } from '../api/web/finance';
 import { webAuthApi } from '../api/web/auth';
 import { webLibraryApi } from '../api/web/library';
 import { webCultureApi } from '../api/web/culture';
+import { webFocusApi } from '../api/web/focus';
+import { webSyncApi } from '../api/web/sync';
+import { webCalendarApi } from '../api/web/calendar';
+import { webVaultApi } from '../api/web/vault';
+import { webPracticeApi } from '../api/web/practice';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -136,244 +141,18 @@ export const createWebApiMock = async () => {
     culture: webCultureApi(db, generateId),
 
     // --- FOCUS ---
-    focus: {
-      getSessions: async () => {
-        const all = await db.getAll('focus_sessions') || [];
-        return all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      },
-      createSession: async (session: any) => {
-        const id = session.id || generateId();
-        const newSession = {
-          ...session,
-          id,
-          created_at: session.created_at || new Date().toISOString()
-        };
-        await db.put('focus_sessions', newSession);
-        return newSession;
-      },
-      getAlarms: async () => {
-        const all = await db.getAll('focus_alarms') || [];
-        return all;
-      },
-      createAlarm: async (alarm: any) => {
-        const id = alarm.id || Date.now();
-        const newAlarm = { ...alarm, id };
-        await db.put('focus_alarms', newAlarm);
-        return newAlarm;
-      },
-      updateAlarm: async (id: number, alarm: any) => {
-        const existing = await db.get('focus_alarms', id);
-        if (!existing) return null;
-        const updated = { ...existing, ...alarm };
-        await db.put('focus_alarms', updated);
-        return updated;
-      },
-      deleteAlarm: async (id: number) => {
-        await db.delete('focus_alarms', id);
-        return true;
-      },
-      setAppIcon: async () => {
-        // App icon does not apply to web
-      }
-    },
+    focus: webFocusApi(db, generateId),
 
     // --- CALENDAR ---
-    calendar: {
-      getEvents: async () => {
-        const all = await db.getAll('calendar_events') || [];
-        return all.filter(e => !e.deleted_at);
-      },
-      createEvent: async (event: any) => {
-        const newEvent = {
-          ...event,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        await db.put('calendar_events', newEvent);
-        return newEvent;
-      },
-      updateEvent: async (id: string, event: any) => {
-        const existing = await db.get('calendar_events', id);
-        if (!existing) return { success: false };
-        const updated = { ...existing, ...event, updated_at: new Date().toISOString() };
-        await db.put('calendar_events', updated);
-        return { success: true };
-      },
-      deleteEvent: async (id: string) => {
-        const existing = await db.get('calendar_events', id);
-        if (existing) {
-          existing.deleted_at = new Date().toISOString();
-          existing.updated_at = new Date().toISOString();
-          await db.put('calendar_events', existing);
-          return true;
-        }
-        return false;
-      }
-    },
+    calendar: webCalendarApi(db),
 
     // --- VAULT ---
-    vault: {
-      getGroups: async () => {
-        const all = await db.getAll('vault_groups') || [];
-        return all.filter(g => !g.deleted_at).sort((a, b) => a.position - b.position);
-      },
-      upsertGroup: async (group: any) => {
-        const id = group.id || generateId();
-        const newGroup = {
-          ...group,
-          id,
-          created_at: group.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        await db.put('vault_groups', newGroup);
-      },
-      deleteGroup: async (id: string) => {
-        const existing = await db.get('vault_groups', id);
-        if (existing) {
-          existing.deleted_at = new Date().toISOString();
-          existing.updated_at = new Date().toISOString();
-          await db.put('vault_groups', existing);
-        }
-      },
-      reorderGroups: async (updates: any[]) => {
-        for (const update of updates) {
-          const existing = await db.get('vault_groups', update.id);
-          if (existing) {
-            existing.position = update.position;
-            existing.updated_at = new Date().toISOString();
-            await db.put('vault_groups', existing);
-          }
-        }
-      },
-      getItems: async (groupId?: string) => {
-        let all: any[] = [];
-        if (groupId) {
-          all = await db.getAllFromIndex('vault_items', 'group_id', groupId);
-        } else {
-          all = await db.getAll('vault_items');
-        }
-        return all.filter(i => !i.deleted_at).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      },
-      getItem: async (id: string) => {
-        return await db.get('vault_items', id);
-      },
-      upsertItem: async (item: any) => {
-        const id = item.id || generateId();
-        const newItem = {
-          ...item,
-          id,
-          created_at: item.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        await db.put('vault_items', newItem);
-      },
-      deleteItem: async (id: string) => {
-        const existing = await db.get('vault_items', id);
-        if (existing) {
-          existing.deleted_at = new Date().toISOString();
-          existing.updated_at = new Date().toISOString();
-          await db.put('vault_items', existing);
-        }
-      },
-      searchItems: async (query: string) => {
-        const all = await db.getAll('vault_items');
-        const q = query.toLowerCase();
-        return all.filter(i => !i.deleted_at && (
-          (i.label && i.label.toLowerCase().includes(q)) ||
-          (i.username && i.username.toLowerCase().includes(q)) ||
-          (i.url && i.url.toLowerCase().includes(q))
-        ));
-      },
-      getPasswordHistory: async (itemId: string) => {
-        const all = await db.getAllFromIndex('vault_password_history', 'item_id', itemId);
-        return all.filter(h => !h.deleted_at).sort((a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime());
-      },
-      generatePassword: async (opts: any) => {
-        // mock implementation
-        return "mock-password-123";
-      },
-      checkBreach: async (password: string) => {
-        // mock implementation
-        return { breached: false, count: 0 };
-      },
-      checkStrength: async (password: string) => {
-         return 3;
-      }
-    },
+    vault: webVaultApi(db, generateId),
 
-    // --- SYNC ENGINE ---
-    sync: {
-      getTable: async (tableName: string) => {
-        if (!db.objectStoreNames.contains(tableName as any)) return [];
-        return await db.getAll(tableName as any);
-      },
-      deleteRow: async (tableName: string, id: string) => {
-        if (db.objectStoreNames.contains(tableName as any)) {
-          await originalDelete(tableName as any, id);
-        }
-        return { success: true };
-      },
-      upsertRow: async (tableName: string, row: any) => {
-        if (db.objectStoreNames.contains(tableName as any)) {
-          await originalPut(tableName as any, row);
-        }
-        return { success: true };
-      }
-    },
+    // --- SYNC ---
+    sync: webSyncApi(db, originalDelete, originalPut),
 
     // --- PRACTICE ---
-    practice: {
-      getSessions: async () => {
-        const all = await db.getAll('tutor_sessions') || [];
-        return all.filter(s => !s.deleted_at).sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
-      },
-      createSession: async (session: any) => {
-        const newSession = {
-          ...session,
-          id: session.id || generateId(),
-          created_at: new Date().toISOString()
-        };
-        await db.put('tutor_sessions', newSession);
-        return newSession;
-      },
-      updateSession: async (session: any) => {
-        const existing = await db.get('tutor_sessions', session.id);
-        if (existing) {
-          const updated = { ...existing, ...session };
-          await db.put('tutor_sessions', updated);
-          return 1;
-        }
-        return 0;
-      },
-      getMessages: async (sessionId: string) => {
-        const all = await db.getAllFromIndex('tutor_messages', 'session_id', sessionId) || [];
-        return all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      },
-      createMessage: async (msg: any) => {
-        const newMsg = {
-          ...msg,
-          id: msg.id || generateId(),
-          created_at: new Date().toISOString()
-        };
-        await db.put('tutor_messages', newMsg);
-        return newMsg;
-      },
-      getMemories: async () => {
-        const all = await db.getAll('tutor_memories') || [];
-        return all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      },
-      createMemory: async (memory: any) => {
-        const newMemory = {
-          ...memory,
-          id: memory.id || generateId(),
-          created_at: new Date().toISOString()
-        };
-        await db.put('tutor_memories', newMemory);
-        return newMemory;
-      }
-    }
+    practice: webPracticeApi(db, generateId)
   };
 };
