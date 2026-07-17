@@ -141,19 +141,24 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
 }
 
 export async function deleteLofiCompletely(lofi: LofiItem): Promise<void> {
-  if (lofi.is_local && window.api?.lofi) {
-    await window.api.lofi.deleteLocal(lofi.original_name).catch((e: any) => console.warn("Failed to delete local", e));
+    if (lofi.is_local && window.api?.lofi) {
+      await window.api.lofi.deleteLocal(lofi.original_name).catch((e: any) => console.warn("Failed to delete local", e));
+    }
+  
+    const token = await getValidAccessToken();
+    if (token && lofi.drive_file_id) {
+      await deleteFromDrive(token, lofi.drive_file_id).catch((e: any) => console.warn("Falha ao apagar lofi do Drive", e));
+    }
+  
+    // Soft-delete: marcamos deleted_at para que o sync propague a exclusão para outros dispositivos
+    if (window.api?.sync) {
+      await window.api.sync.upsertRow(LOFI_TABLE, {
+        ...lofi,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
   }
-
-  const token = await getValidAccessToken();
-  if (token && lofi.drive_file_id) {
-    await deleteFromDrive(token, lofi.drive_file_id).catch((e: any) => console.warn("Falha ao apagar lofi do Drive", e));
-  }
-
-  if (window.api?.sync) {
-    await window.api.sync.deleteRow(LOFI_TABLE, lofi.id);
-  }
-}
 
 export async function deleteLofiLocal(lofi: LofiItem): Promise<void> {
   if (lofi.is_local && window.api?.lofi) {

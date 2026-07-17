@@ -52,7 +52,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          
          CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, name TEXT NOT NULL, file_type TEXT NOT NULL, file_size INTEGER DEFAULT 0, local_path TEXT, drive_file_id TEXT, folder_id TEXT, mime_type TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS file_folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, parent_id TEXT, color TEXT DEFAULT '#6366f1', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
-         CREATE TABLE IF NOT EXISTS file_page_links (id TEXT PRIMARY KEY, file_id TEXT NOT NULL, page_id TEXT NOT NULL, link_type TEXT DEFAULT 'upload', widget_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS file_page_links (id TEXT PRIMARY KEY, file_id TEXT NOT NULL, page_id TEXT NOT NULL, link_type TEXT DEFAULT 'upload', widget_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS vault_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, icon TEXT, color TEXT, position INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
          CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, group_id TEXT, label TEXT NOT NULL, username TEXT, email TEXT, password TEXT, url TEXT, notes TEXT, custom_fields TEXT, is_favorite INTEGER DEFAULT 0, password_changed_at TEXT, password_strength INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
          CREATE TABLE IF NOT EXISTS vault_password_history (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, password TEXT NOT NULL, changed_at TEXT NOT NULL, deleted_at TEXT);
@@ -83,9 +83,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let tables_with_sync = vec![
         "videos", "lofis", "video_words", "calendar_events", "culture_items", "culture_episodes",
         "anki_decks", "anki_cards", "anki_srs_state", "anki_reviews", "focus_sessions", "alarms",
-        "page_history", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
+        "page_history", "tutor_sessions", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
         "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
-        "transactions", "wishlist", "pages"
+        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links"
     ];
     for t in tables_with_sync {
         let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);

@@ -40,7 +40,8 @@ export function useEpubLoader(
         
         let originalAbsPath = '';
         try {
-          if (window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
+          // Apenas tenta stream local HTTP se estiver rodando no Tauri (Desktop)
+          if (window.__TAURI_INTERNALS__ && window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
              let absPath = book.file_path;
              if (!absPath.startsWith('file://') && !absPath.match(/^[a-zA-Z]:/)) {
                  const { appDataDir, join } = await import('@tauri-apps/api/path');
@@ -62,46 +63,35 @@ export function useEpubLoader(
              assetUrl = `http://encrypted.localhost/library/${encodeURIComponent(encPath)}`;
           }
         } catch (localErr) {
-          console.log("Erro ao formatar path local", localErr);
+          console.log("Erro ao formatar path local (ignorado na Web)", localErr);
         }
 
-        let fetchFailed = false;
-        if (!arrayBuffer && assetUrl) {
+        if (assetUrl) {
            try {
              const res = await fetch(assetUrl);
-             if (!res.ok) throw new Error(`Status: ${res.status}`);
-             arrayBuffer = await res.arrayBuffer();
+             if (res.ok) {
+               arrayBuffer = await res.arrayBuffer();
+             }
            } catch (fetchErr) {
-             console.log("Falha ao buscar versão criptografada.", fetchErr);
-             fetchFailed = true;
+             console.log("Falha ao buscar versão criptografada via stream HTTP.", fetchErr);
            }
         }
 
-        if (!arrayBuffer && (fetchFailed || (!assetUrl && book.drive_file_id))) {
-          if (book.drive_file_id) {
-            console.log("Tentando baixar do Drive...");
-            const token = await getValidAccessToken();
-            if (!token) throw new Error('Não autenticado no Google Drive');
-            const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-            if (masterKey) {
-              arrayBuffer = await decryptFile(encryptedData, masterKey);
-            } else {
-              arrayBuffer = encryptedData;
-            }
-          }
-        } else if (!arrayBuffer && book.file_path && !assetUrl) {
-          // Fallback final para base64 do banco (obsoleto)
-          if (book.file_path.startsWith('file://')) {
+        // Se não conseguiu via stream local (seja Web ou falha no Desktop), 
+        // usa o getBookFile que lida nativamente com Drive/Storage/Base64.
+        if (!arrayBuffer && window.api?.library) {
+            console.log("Obtendo arquivo do livro via API nativa/web...");
             const res = await window.api.library.getBookFile(book.id);
-            if (!res) throw new Error("Arquivo não encontrado no banco");
-            const binaryString = atob(res);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            arrayBuffer = bytes.buffer;
-          } else {
-            const bytes = await decryptFile(book.file_path);
-            arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-          }
+            if (!res) throw new Error("Arquivo não encontrado no banco de dados nem na nuvem.");
+            
+            if (res instanceof ArrayBuffer) {
+              arrayBuffer = res;
+            } else if (typeof res === 'string') {
+              const binaryString = atob(res);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+              arrayBuffer = bytes.buffer;
+            }
         }
 
         if (!arrayBuffer) {

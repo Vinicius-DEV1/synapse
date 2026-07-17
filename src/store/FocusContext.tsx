@@ -154,7 +154,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (window.api?.sync) {
       try {
         const rows = await window.api.sync.getTable('lofis');
-        setLofis(rows || []);
+        setLofis((rows || []).filter((r: any) => !r.deleted_at));
       } catch (err) {
         console.error('Failed to load lofis', err);
       }

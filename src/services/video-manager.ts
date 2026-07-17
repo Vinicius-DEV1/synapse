@@ -446,8 +446,12 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
     }
   }
 
-  // 3. Excluir do Banco de Dados
+  // 3. Excluir do Banco de Dados (soft-delete para sincronizar a exclusão entre dispositivos)
   if (window.api?.sync) {
-    await window.api.sync.deleteRow('videos', video.id);
+    await window.api.sync.upsertRow('videos', {
+      ...video,
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
   }
 }
