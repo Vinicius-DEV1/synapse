@@ -101,7 +101,7 @@ pub fn library_delete_book(id: String, db_state: State<'_, DbState>) -> Result<b
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
@@ -196,7 +196,7 @@ pub fn library_delete_collection(id: String, db_state: State<'_, DbState>) -> Re
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
@@ -222,7 +222,7 @@ pub fn library_remove_book_from_collection(book_id: String, collection_id: Strin
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     conn.execute(
-        "DELETE FROM library_book_collections WHERE book_id = ? AND collection_id = ?",
+        "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND collection_id = ?",
         params![book_id, collection_id]
     ).map_err(|e| e.to_string())?;
     
@@ -422,7 +422,7 @@ pub fn library_set_book_collections(book_id: String, collection_ids: Vec<String>
     
     // Soft-delete existing associations
     conn.execute(
-        "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP WHERE book_id = ? AND deleted_at IS NULL",
+        "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND deleted_at IS NULL",
         [&book_id]
     ).map_err(|e| e.to_string())?;
     

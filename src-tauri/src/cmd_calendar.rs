@@ -81,7 +81,7 @@ pub fn calendar_delete_event(id: String, db_state: State<'_, DbState>) -> Result
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("DELETE FROM calendar_events WHERE id = ?", [&id])
+    conn.execute("UPDATE calendar_events SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)

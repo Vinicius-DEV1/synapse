@@ -189,7 +189,7 @@ pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, St
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)
@@ -315,11 +315,11 @@ pub fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<b
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     // soft delete folder
-    conn.execute("UPDATE file_folders SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE file_folders SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
     
     // move files to root (folder_id = NULL)
-    conn.execute("UPDATE files SET folder_id = NULL WHERE folder_id = ?", [&id])
+    conn.execute("UPDATE files SET folder_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE folder_id = ?", [&id])
         .map_err(|e| e.to_string())?;
         
     Ok(true)

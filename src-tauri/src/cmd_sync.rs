@@ -49,7 +49,7 @@ pub fn sync_delete_row(table_name: String, id: String, db_state: State<'_, DbSta
         return Err("Invalid table name".into());
     }
     
-    let query = format!("DELETE FROM {} WHERE id = ?", table_name);
+    let query = format!("UPDATE {} SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", table_name);
     conn.execute(&query, [&id]).map_err(|e| e.to_string())?;
     
     Ok(true)
@@ -94,8 +94,13 @@ pub fn sync_upsert_row(table_name: String, row: Value, db_state: State<'_, DbSta
     
     let cols_str = columns.join(", ");
     let placeholders_str = placeholders.join(", ");
+    let update_str = columns.iter().filter(|c| *c != "id").map(|c| format!("{} = excluded.{}", c, c)).collect::<Vec<_>>().join(", ");
     
-    let query = format!("INSERT OR REPLACE INTO {} ({}) VALUES ({})", table_name, cols_str, placeholders_str);
+    let query = if update_str.is_empty() {
+        format!("INSERT OR IGNORE INTO {} ({}) VALUES ({})", table_name, cols_str, placeholders_str)
+    } else {
+        format!("INSERT INTO {} ({}) VALUES ({}) ON CONFLICT(id) DO UPDATE SET {}", table_name, cols_str, placeholders_str, update_str)
+    };
     
     let params_iter = rusqlite::params_from_iter(params_vec.iter());
     conn.execute(&query, params_iter).map_err(|e| e.to_string())?;
