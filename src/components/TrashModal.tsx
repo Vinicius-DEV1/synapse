@@ -19,8 +19,8 @@ export default function TrashModal({ onClose, onPageRestored }: TrashModalProps)
   const loadDeletedPages = async () => {
     try {
       setLoading(true);
-      if (window.api?.notes) {
-        const pages = await window.api.notes.getDeletedPages();
+      if (window.api) {
+        const pages = await window.api.getDeletedPages();
         setDeletedPages(pages || []);
       }
     } catch (e) {
@@ -33,8 +33,8 @@ export default function TrashModal({ onClose, onPageRestored }: TrashModalProps)
   const handleRestore = async (id: string) => {
     try {
       setRestoringId(id);
-      if (window.api?.notes) {
-        await window.api.notes.restorePage(id);
+      if (window.api) {
+        await window.api.restorePage(id);
         await loadDeletedPages();
         onPageRestored();
       }
