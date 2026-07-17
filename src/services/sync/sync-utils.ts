@@ -3,7 +3,7 @@ import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
 export const MODULE_TABLES: Record<string, string[]> = {
   core: ['config'],
-  notes: ['pages'],
+  notes: ['pages', 'page_history'],
   finance: ['transactions', 'wishlist'],
   library: [
     'library_books', 
@@ -13,11 +13,14 @@ export const MODULE_TABLES: Record<string, string[]> = {
     'library_book_collections',
     'library_reading_sessions'
   ],
-  culture: ['items', 'episodes'],
-  video: ['videos'],
+  culture: ['culture_items', 'culture_episodes'],
+  video: ['videos', 'video_words'],
   calendar: ['calendar_events'],
   vault: ['vault_groups', 'vault_items', 'vault_password_history'],
-  practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories']
+  practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories'],
+  focus: ['focus_sessions', 'alarms', 'lofis'],
+  anki: ['anki_decks', 'anki_cards', 'anki_srs_state', 'anki_reviews'],
+  files: ['files', 'file_folders', 'file_page_links']
 };
 
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_\${type}_time`;

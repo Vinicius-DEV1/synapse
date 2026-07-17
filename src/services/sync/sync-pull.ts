@@ -24,6 +24,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
     effectiveModuleKeys['vault'] = effectiveModuleKeys['core'];
     effectiveModuleKeys['calendar'] = effectiveModuleKeys['core'];
     effectiveModuleKeys['practice'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['focus'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['anki'] = effectiveModuleKeys['core'];
+    effectiveModuleKeys['files'] = effectiveModuleKeys['core'];
   }
 
   for (const module of Object.keys(effectiveModuleKeys)) {
