@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { LibraryBook } from '../../../../types';
+import type { LibraryBook } from '../../../../types';
 
 interface UsePdfRendererProps {
   totalPages: number;

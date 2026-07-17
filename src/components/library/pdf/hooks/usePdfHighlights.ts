@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LibraryBook, LibraryHighlight } from '../../../../types';
+import type { LibraryBook, LibraryHighlight } from '../../../../types';
 
 interface UsePdfHighlightsProps {
   book: LibraryBook;
