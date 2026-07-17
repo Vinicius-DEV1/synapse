@@ -122,9 +122,10 @@ function AppContent() {
     if (syncStatus === 'success') {
       syncSettingsFromDb();
       syncLayoutFromDb(dispatch);
+      loadFocusData();
       window.dispatchEvent(new CustomEvent('caderno-sync-success'));
     }
-  }, [syncStatus, dispatch]);
+  }, [syncStatus, dispatch, loadFocusData]);
 
   // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
   // (handlers do ProseMirror não têm acesso ao contexto React)

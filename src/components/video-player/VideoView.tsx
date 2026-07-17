@@ -37,7 +37,7 @@ export default function VideoView() {
     try {
       if (window.api?.sync) {
         const rows = await window.api.sync.getTable('videos');
-        setVideos(rows as VideoItem[]);
+        setVideos((rows as VideoItem[]).filter((v: any) => !v.deleted_at));
       }
     } catch (e) {
       console.error('Failed to load videos:', e);

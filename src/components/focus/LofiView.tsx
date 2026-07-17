@@ -15,8 +15,6 @@ export const LofiView: React.FC = () => {
   if (view !== 'lofi') return null;
 
   const handleImport = async () => {
-    if (!window.api?.video) return; // Reusing video.openFileDialog is fine since it's just opening a generic dialog, or we can use an <input type="file" />
-    
     // Using standard HTML input for simplicity in this React component
     const input = document.createElement('input');
     input.type = 'file';
@@ -45,6 +43,7 @@ export const LofiView: React.FC = () => {
 
         await uploadNewLofi(file, duration, masterKey, (p) => setProgress(p));
         await loadLofis();
+        window.dispatchEvent(new Event('app-sync-trigger')); // Força push para o Firebase
       } catch (err) {
         console.error("Erro ao importar Lofi", err);
         alert("Erro ao importar Lofi");
@@ -60,6 +59,7 @@ export const LofiView: React.FC = () => {
     try {
       await deleteLofiCompletely(lofi);
       await loadLofis();
+      window.dispatchEvent(new Event('app-sync-trigger')); // Força push para o Firebase
       if (activeLofi?.id === lofi.id) {
         setActiveLofi(null);
         setIsPlayingLofi(false);

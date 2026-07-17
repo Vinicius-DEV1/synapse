@@ -49,7 +49,7 @@ export const webFilesApi = (db: any, generateId: () => string) => {
     },
     folders: {
       getAll: async () => {
-        const all = await db.getAll('files_folders');
+        const all = await db.getAll('file_folders');
         return all.filter((f: any) => !f.deleted_at);
       },
       create: async (folder: any) => {
@@ -59,31 +59,31 @@ export const webFilesApi = (db: any, generateId: () => string) => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        await db.put('files_folders', newFolder);
+        await db.put('file_folders', newFolder);
         return newFolder;
       },
       update: async (folder: any) => {
-        const existing = await db.get('files_folders', folder.id);
+        const existing = await db.get('file_folders', folder.id);
         if (!existing) return 0;
-        await db.put('files_folders', { ...existing, ...folder, updated_at: new Date().toISOString() });
+        await db.put('file_folders', { ...existing, ...folder, updated_at: new Date().toISOString() });
         return 1;
       },
       delete: async (id: string) => {
-        const existing = await db.get('files_folders', id);
+        const existing = await db.get('file_folders', id);
         if (!existing) return false;
         existing.deleted_at = new Date().toISOString();
         existing.updated_at = new Date().toISOString();
-        await db.put('files_folders', existing);
+        await db.put('file_folders', existing);
         return true;
       }
     },
     links: {
       getByPage: async (pageId: string) => {
-        const all = await db.getAll('files_links');
+        const all = await db.getAll('file_page_links');
         return all.filter((l: any) => l.page_id === pageId);
       },
       getByFile: async (fileId: string) => {
-        const all = await db.getAll('files_links');
+        const all = await db.getAll('file_page_links');
         return all.filter((l: any) => l.file_id === fileId);
       },
       create: async (link: any) => {
@@ -92,11 +92,11 @@ export const webFilesApi = (db: any, generateId: () => string) => {
           id: link.id || generateId(),
           created_at: new Date().toISOString(),
         };
-        await db.put('files_links', newLink);
+        await db.put('file_page_links', newLink);
         return newLink;
       },
       delete: async (id: string) => {
-        await db.delete('files_links', id);
+        await db.delete('file_page_links', id);
         return true;
       }
     }
