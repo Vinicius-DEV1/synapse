@@ -168,7 +168,7 @@ function AppContent() {
 
   // Update document title based on active module and platform
   useEffect(() => {
-    const isDesktopApp = navigator.userAgent.toLowerCase().includes('Desktop');
+    const isDesktopApp = !!(window as any).__TAURI_INTERNALS__;
     if (isDesktopApp) {
       document.title = 'Caderno Desktop';
     } else {
@@ -213,7 +213,7 @@ function AppContent() {
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Tab Bar - Only show in Desktop */}
-        {!state.isReadingModeFullScreen && (window as any).__TAURI__ && <TabBar />}
+        {!state.isReadingModeFullScreen && !!(window as any).__TAURI_INTERNALS__ && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
