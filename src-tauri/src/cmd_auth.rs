@@ -29,6 +29,35 @@ pub fn auth_status(db_state: State<'_, DbState>) -> Result<AuthStatus, String> {
     }
 }
 
+#[tauri::command]
+pub fn auth_wipe_local_data(app: tauri::AppHandle, db_state: tauri::State<'_, crate::db::DbState>) -> Result<(), String> {
+    {
+        let mut guard = db_state.conn.lock().unwrap();
+        *guard = None; // Drop SQLite connection
+    }
+    
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    
+    if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
+        for entry in entries {
+            if let Ok(e) = entry {
+                let path = e.path();
+                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                if file_name != "bin" {
+                    if path.is_dir() {
+                        let _ = std::fs::remove_dir_all(&path);
+                    } else {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                }
+            }
+        }
+    }
+    
+    app.restart();
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UnlockedKeys {
     pub library: Option<String>,
