@@ -3,7 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { getValidAccessToken, downloadFromDrive } from '../../../../services/drive';
 import { decryptFile } from '../../../../services/storage';
 import { useStore } from '../../../../store/useStore';
-import { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../../types';
+import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../../types';
 
 export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partial<LibraryBook>) => void, currentPage: number) {
   const { state } = useStore();
