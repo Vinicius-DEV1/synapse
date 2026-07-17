@@ -1,6 +1,8 @@
 import { getWebDb } from './db-web';
 import { uploadEncryptedPdf, getDecryptedPdf } from './storage';
 import { PayloadOptimizer } from '../utils/PayloadOptimizer';
+import { webFinanceApi } from '../api/web/finance';
+import { webAuthApi } from '../api/web/auth';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -120,94 +122,10 @@ export const createWebApiMock = async () => {
     exportBackup: async () => ({ success: false, error: "Backup não suportado na versão Web" }),
 
     // --- AUTH ---
-    auth: {
-      status: async () => {
-        const config = await db.get('config', 'masterHash');
-        if (!config) return { status: 'new' };
-        return { status: 'encrypted' };
-      },
-      login: async (password: string) => {
-        const stored = await db.get('config', 'masterHash');
-        if (!stored) return { success: false, error: 'Banco não configurado' };
-        
-        const currentHash = await hashLocalPassword(password);
-        
-        // Migração para usuários web antigos que não tinham hash local salvo
-        if (stored.value === 'setup-done') {
-          await db.put('config', { id: 'masterHash', value: currentHash });
-          return { success: true };
-        }
-        
-        if (stored.value === currentHash) {
-          return { success: true };
-        }
-        
-        return { success: false, error: 'Senha incorreta' };
-      },
-      setup: async (password: string, existingKeys?: any) => {
-        const hash = await hashLocalPassword(password);
-        await db.put('config', { id: 'masterHash', value: hash });
-        return { success: true };
-      },
-      changePassword: async () => ({ success: false, error: "Alteração de senha requer o app Desktop" }),
-      onLock: () => () => {},
-      lock: async () => {},
-      setPreferences: async () => {}
-    },
+    auth: webAuthApi(db),
 
     // --- FINANCE ---
-    finance: {
-      getTransactions: async () => {
-        const all = await db.getAll('transactions');
-        return all.filter(t => !t.deleted_at).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      },
-      createTransaction: async (tx: any) => {
-        const transaction = {
-          id: generateId(),
-          ...tx,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        await db.put('transactions', transaction);
-        return transaction;
-      },
-      deleteTransaction: async (id: string) => {
-        const existing = await db.get('transactions', id);
-        if (existing) {
-          existing.deleted_at = new Date().toISOString();
-          existing.updated_at = new Date().toISOString();
-          await db.put('transactions', existing);
-          return true;
-        }
-        return false;
-      },
-      getWishlist: async () => {
-        const all = await db.getAll('wishlist');
-        return all.filter(w => !w.deleted_at);
-      },
-      createWishlist: async (item: any) => {
-        const wishlist = {
-          id: generateId(),
-          ...item,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        await db.put('wishlist', wishlist);
-        return wishlist;
-      },
-      deleteWishlist: async (id: string) => {
-        const existing = await db.get('wishlist', id);
-        if (existing) {
-          existing.deleted_at = new Date().toISOString();
-          existing.updated_at = new Date().toISOString();
-          await db.put('wishlist', existing);
-          return true;
-        }
-        return false;
-      }
-    },
+    finance: webFinanceApi(db, generateId),
 
     // --- LIBRARY ---
     library: {
