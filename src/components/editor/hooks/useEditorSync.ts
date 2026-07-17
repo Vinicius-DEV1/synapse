@@ -1,6 +1,6 @@
 import { useEffect, useRef, MutableRefObject } from 'react';
 import * as Y from 'yjs';
-import { applyBase64StateToYDoc } from '../../utils/yjs-utils';
+import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 
 interface UseEditorSyncProps {
   pageId: string | null;
