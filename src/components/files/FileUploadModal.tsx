@@ -85,6 +85,7 @@ export default function FileUploadModal({ onClose, onUploadComplete, currentFold
       else if (nameLower.match(/\.(mp4|mkv|webm)$/)) fileType = 'video';
       else if (nameLower.endsWith('.epub')) fileType = 'epub';
       else if (nameLower.match(/\.(pptx?|key|odp)$/)) fileType = 'slide';
+      else if (nameLower.match(/\.(txt|md|json|csv|xml|js|ts|jsx|tsx|css|html)$/)) fileType = 'text';
       
       const fileRecord = {
         id: crypto.randomUUID(),

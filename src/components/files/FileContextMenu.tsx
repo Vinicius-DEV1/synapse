@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { FileItem, FileFolder } from '../../types_files';
-import { Eye, Info, Trash2, ArrowRightCircle } from 'lucide-react';
+import { Eye, Info, Trash2, ArrowRightCircle, Download } from 'lucide-react';
 
 interface FileContextMenuProps {
   x: number;
@@ -13,9 +13,10 @@ interface FileContextMenuProps {
   onRename: (item: FileItem) => void;
   onMove: (item: FileItem) => void;
   onGoToOrigin?: (item: FileItem) => void;
+  onDownload: (item: FileItem) => void;
 }
 
-export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, onDelete, onRename, onMove, onGoToOrigin }: FileContextMenuProps) {
+export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, onDelete, onRename, onMove, onGoToOrigin, onDownload }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +57,14 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
       >
         <Eye size={16} className="text-brand-400" />
         <span>Visualizar</span>
+      </button>
+
+      <button 
+        onClick={() => { onDownload(item); onClose(); }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+      >
+        <Download size={16} className="text-emerald-400" />
+        <span>Baixar Descriptografado</span>
       </button>
 
       <button 

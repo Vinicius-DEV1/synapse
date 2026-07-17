@@ -27,17 +27,41 @@ export default function FilesView() {
   const [itemToMove, setItemToMove] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
   const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   
-  const loadData = () => {
+  const loadData = async () => {
     if (window.api && window.api.files) {
-      window.api.files.folders.getAll().then(setFolders).catch(console.error);
-      window.api.files.getAll().then(setFiles).catch(console.error);
+      const fs = await window.api.files.getAll();
+      const fds = await window.api.files.folders.getAll();
+      setFiles(fs);
+      setFolders(fds);
     }
-    getValidAccessToken()
-      .then(token => setDriveStatus(token ? 'connected' : 'disconnected'))
-      .catch(() => setDriveStatus('disconnected'));
+  };
+
+  const handleDownload = async (item: FileItem) => {
+    if (item.local_path && window.api?.files) {
+      try {
+        const url = await window.api.files.getLocal(item.local_path);
+        if (url && typeof url === 'string') {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = item.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (err) {
+        console.error("Failed to download", err);
+      }
+    } else {
+      alert("Arquivo não está disponível localmente para download.");
+    }
   };
 
   useEffect(() => {
+    loadData();
+    getValidAccessToken()
+      .then(token => setDriveStatus(token ? 'connected' : 'disconnected'))
+      .catch(() => setDriveStatus('disconnected'));
     loadData();
     
     const handleNavigateFolder = (e: any) => {
@@ -227,6 +251,7 @@ export default function FilesView() {
           onDelete={(item) => setItemToDelete({ item, isFolder: contextMenu.isFolder })}
           onRename={(item) => setItemToRename({ item, isFolder: contextMenu.isFolder })}
           onMove={(item) => setItemToMove({ item, isFolder: contextMenu.isFolder })}
+          onDownload={(item) => handleDownload(item as FileItem)}
         />
       )}
 
