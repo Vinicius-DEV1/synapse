@@ -17,6 +17,7 @@ import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
 import FloatingPageModal from './components/FloatingPageModal';
+import SyncErrorModal from './components/SyncErrorModal';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -303,6 +304,10 @@ function AppContent() {
            syncStatus === 'error'   ? (!navigator.onLine ? 'Offline' : 'Erro') : ''}
         </span>
       </div>
+
+      {/* Sync Error Modal */}
+      <SyncErrorModal />
+
       {/* Focus Overlays */}
       <GlobalFocusOverlays />
 

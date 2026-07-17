@@ -66,6 +66,11 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         } catch (err: any) {
           if (!isClosed) {
             console.warn(`[Sync] doFullSync FALHOU: ${err.message}`, err);
+            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
+              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
+                detail: { message: err.message, code: err.code } 
+              }));
+            }
             finishSync(false);
           }
         }
@@ -84,8 +89,13 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             loadPages();
             finishSync(true);
           })
-          .catch(err => {
+          .catch((err: any) => {
             console.warn('[Sync] Falha no Pull em Tempo Real:', err.message);
+            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
+              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
+                detail: { message: err.message, code: err.code } 
+              }));
+            }
             finishSync(false);
           });
       });
