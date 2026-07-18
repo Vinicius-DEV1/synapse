@@ -31,7 +31,7 @@ const PageReferenceComponent = (props: any) => {
         contentEditable={false}
       >
         <span className="text-brand-400 text-sm">📄</span>
-        <span className="page-name font-medium">{pageTitle}</span>
+        <span className="page-name font-medium border-l border-brand-500/20 pl-2">{pageTitle}</span>
       </span>
     </NodeViewWrapper>
   );
