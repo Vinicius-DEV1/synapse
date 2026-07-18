@@ -1,7 +1,8 @@
 export const webAnkiApi = (db: any, generateId: () => string) => ({
   getDecks: async () => {
     const all = await db.getAll('anki_decks') || [];
-    return all.filter((d: any) => !d.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const decks = all.filter((d: any) => !d.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return { success: true, decks };
   },
   createDeck: async (name: string, description?: string, parentId?: string) => {
     const deck = {
