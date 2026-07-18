@@ -40,19 +40,14 @@ const BlockquoteToggleComponent = (props: any) => {
     const { editor } = props;
     const currentColor = props.node.attrs.color || 'default';
 
-    // Get the content as JSON from the current node
-    const contentJSON = props.node.toJSON();
-    const childContent = contentJSON.content || [];
+    // Get the HTML content of the current toggle (excluding the header)
+    const htmlContent = editor.getHTML(props.node.pos, props.node.pos + props.node.node.nodeSize);
 
-    // Replace with regular blockquote (callout) using the child content
+    // Replace with regular blockquote (callout) using HTML content
     editor.chain()
       .focus()
       .deleteRange({ from: props.node.pos, to: props.node.pos + props.node.node.nodeSize })
-      .insertContent({
-        type: 'blockquote',
-        attrs: { color: currentColor },
-        content: childContent
-      })
+      .insertContent(`<blockquote data-color="${currentColor}">${htmlContent}</blockquote>`)
       .run();
   };
 
