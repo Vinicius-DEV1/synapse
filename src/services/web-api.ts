@@ -11,6 +11,7 @@ import { webCalendarApi } from '../api/web/calendar';
 import { webVaultApi } from '../api/web/vault';
 import { webPracticeApi } from '../api/web/practice';
 import { webFilesApi } from '../api/web/files';
+import { webAnkiApi } from '../api/web/anki';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -103,7 +104,23 @@ export const createWebApiMock = async () => {
     updatePage: async (page: any) => {
       const existing = await db.get('pages', page.id);
       if (!existing) return 0;
-      const updated = { ...existing, ...page, updated_at: new Date().toISOString() };
+
+      // Verifica se há mudanças reais antes de atualizar updated_at
+      const fieldsToCheck = ['title', 'icon', 'content', 'encrypted_content', 'crdt_state', 'parent_id', 'is_pinned', 'pinned_order'];
+      let hasChanges = false;
+
+      for (const field of fieldsToCheck) {
+        if (page[field] !== undefined && page[field] !== existing[field]) {
+          hasChanges = true;
+          break;
+        }
+      }
+
+      const updated = { ...existing, ...page };
+      if (hasChanges) {
+        updated.updated_at = new Date().toISOString();
+      }
+
       await db.put('pages', updated);
       return 1;
     },
@@ -171,6 +188,9 @@ export const createWebApiMock = async () => {
     sync: webSyncApi(db, originalDelete, originalPut),
 
     // --- PRACTICE ---
-    practice: webPracticeApi(db, generateId)
+    practice: webPracticeApi(db, generateId),
+
+    // --- ANKI ---
+    anki: webAnkiApi(db, generateId)
   };
 };
