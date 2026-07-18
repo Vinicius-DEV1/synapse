@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MessageCircle, Clock, Trash2, Mic } from 'lucide-react';
+import { Plus, MessageCircle, Clock, Trash2, Mic, Menu, X } from 'lucide-react';
 import type { TutorSession } from '../../types';
 import PracticeChat from './PracticeChat';
 
 export default function PracticeView() {
   const [sessions, setSessions] = useState<TutorSession[]>([]);
   const [activeSession, setActiveSession] = useState<TutorSession | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const loadSessions = async () => {
     if (!window.api?.practice) return;
@@ -19,6 +21,22 @@ export default function PracticeView() {
 
   useEffect(() => {
     loadSessions();
+  }, []);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                            window.innerWidth < 768;
+      setIsMobile(isMobileDevice);
+      if (isMobileDevice) {
+        setShowSidebar(false); // Hide sidebar by default on mobile
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleCreateSession = async () => {
@@ -67,20 +85,52 @@ export default function PracticeView() {
   };
 
   return (
-    <div className="flex h-full bg-dark-bg text-dark-text">
+    <div className="flex h-full bg-dark-bg text-dark-text relative">
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <button
+          onClick={() => setShowSidebar(true)}
+          className="absolute top-4 left-4 z-20 p-2 bg-dark-card/80 backdrop-blur-sm border border-white/10 rounded-lg text-dark-subtext hover:text-white transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
+      {/* Mobile Overlay */}
+      {isMobile && showSidebar && (
+        <div
+          onClick={() => setShowSidebar(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-10"
+        />
+      )}
+
       {/* Sidebar de Sessões */}
-      <div className="w-64 border-r border-white/5 flex flex-col bg-dark-card/30">
+      <div className={`${
+        isMobile 
+          ? `fixed inset-y-0 left-0 z-20 w-72 bg-dark-card border-r border-white/5 transform transition-transform duration-300 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`
+          : 'w-64 border-r border-white/5 flex flex-col bg-dark-card/30'
+      } flex flex-col`}>
         <div className="p-4 border-b border-white/5 flex justify-between items-center">
           <h2 className="text-sm font-semibold tracking-wide text-brand-400 flex items-center gap-2">
             <Mic size={16} /> Histórico
           </h2>
-          <button
-            onClick={handleCreateSession}
-            className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors active:scale-95"
-            title="Nova Sessão"
-          >
-            <Plus size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCreateSession}
+              className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors active:scale-95"
+              title="Nova Sessão"
+            >
+              <Plus size={16} />
+            </button>
+            {isMobile && (
+              <button
+                onClick={() => setShowSidebar(false)}
+                className="p-1.5 rounded-lg bg-white/5 text-dark-subtext hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
@@ -98,7 +148,10 @@ export default function PracticeView() {
             return (
               <div
                 key={session.id}
-                onClick={() => setActiveSession(session)}
+                onClick={() => {
+                  setActiveSession(session);
+                  if (isMobile) setShowSidebar(false);
+                }}
                 className={`group relative p-3 rounded-xl cursor-pointer transition-all border ${
                   activeSession?.id === session.id
                     ? 'bg-white/10 border-brand-500/30'
@@ -128,7 +181,7 @@ export default function PracticeView() {
       </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden bg-dark-bg/50">
+      <div className={`flex-1 flex flex-col relative overflow-hidden bg-dark-bg/50 ${isMobile ? '' : 'ml-0'}`}>
         {activeSession ? (
           <PracticeChat key={activeSession.id} session={activeSession} />
         ) : (
