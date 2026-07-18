@@ -19,9 +19,10 @@ interface CardEditorProps {
   onClose: () => void;
   onSaveSuccess?: () => void;
   editingCardId?: string;
+  parentDeckId?: string; // Pre-select this deck when creating new card
 }
 
-export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardId }: CardEditorProps) {
+export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardId, parentDeckId }: CardEditorProps) {
   const [front, setFront] = useState(draft.front);
   const [back, setBack] = useState(draft.back);
   const [extraNote, setExtraNote] = useState(draft.extra_note || '');
@@ -65,7 +66,12 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       const res = await window.api.anki.getDecks();
       if (res.success && res.decks && res.decks.length > 0) {
         setDecks(res.decks);
-        setSelectedDeck(res.decks[0].id);
+        // Pre-select parentDeckId if provided, otherwise select first deck
+        if (parentDeckId && res.decks.find((d: any) => d.id === parentDeckId)) {
+          setSelectedDeck(parentDeckId);
+        } else {
+          setSelectedDeck(res.decks[0].id);
+        }
       }
     }
   };

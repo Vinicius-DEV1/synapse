@@ -137,6 +137,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           source_module: 'manual'
         }}
         editingCardId={editingCard ? editingCard.id : undefined}
+        parentDeckId={deck.id}
         onClose={() => {
           setEditingCard(null);
           setIsCreatingCard(false);
