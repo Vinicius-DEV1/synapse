@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Page } from '../types';
 import EmojiPopover from './EmojiPopover';
+import RenamePageModal from './RenamePageModal';
 
 interface SidebarItemProps {
   page: Page;
@@ -33,10 +34,8 @@ export default function SidebarItem({
 }: SidebarItemProps) {
   const { state, dispatch } = useStore();
   const [isHovered, setIsHovered] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(page.title);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const itemRef = useRef<HTMLDivElement>(null);
 
   const isExpanded = state.expandedNodes.includes(page.id);
@@ -46,16 +45,9 @@ export default function SidebarItem({
   const hasChildren = children.length > 0;
   const isActive = activePageId === page.id;
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
   // Mouse-based drag and drop
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (disableHierarchyDnD || isEditing) return;
+    if (disableHierarchyDnD) return;
     // Only left click
     if (e.button !== 0) return;
     // Don't start drag on buttons or inputs
@@ -184,7 +176,7 @@ export default function SidebarItem({
   }, [page.id, disableHierarchyDnD, isExpanded, onUpdatePage, dispatch]);
 
   const handleClick = () => {
-    if (!isEditing && !dragState.dragging) {
+    if (!dragState.dragging) {
       dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id });
     }
   };
@@ -202,24 +194,11 @@ export default function SidebarItem({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
-    setEditTitle(page.title);
+    setShowRenameModal(true);
   };
 
-  const handleRenameSubmit = () => {
-    const trimmed = editTitle.trim();
-    if (trimmed && trimmed !== page.title) {
-      onUpdatePage(page.id, { title: trimmed });
-    }
-    setIsEditing(false);
-  };
-
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleRenameSubmit();
-    if (e.key === 'Escape') {
-      setEditTitle(page.title);
-      setIsEditing(false);
-    }
+  const handleRenameSubmit = (newTitle: string) => {
+    onUpdatePage(page.id, { title: newTitle });
   };
 
   return (
@@ -259,22 +238,10 @@ export default function SidebarItem({
         </EmojiPopover>
 
         {/* Title */}
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleRenameSubmit}
-            onKeyDown={handleRenameKeyDown}
-            className="flex-1 min-w-0 bg-white/10 border border-brand-500/50 rounded px-1.5 py-0.5 text-xs text-dark-text outline-none"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span className="flex-1 truncate">{page.title}</span>
-        )}
+        <span className="flex-1 truncate">{page.title}</span>
 
         {/* Action buttons (visible on hover) */}
-        {isHovered && !isEditing && (
+        {isHovered && (
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <button
               onClick={(e) => {
@@ -316,6 +283,14 @@ export default function SidebarItem({
           ))}
         </div>
       )}
+
+      {/* Rename Modal */}
+      <RenamePageModal
+        isOpen={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        currentTitle={page.title}
+        onRename={handleRenameSubmit}
+      />
     </div>
   );
 }
