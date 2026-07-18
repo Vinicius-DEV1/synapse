@@ -1,8 +1,21 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { useStore } from '../../store/useStore';
+import { useEffect, useState } from 'react';
 
 const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
+  const { state } = useStore();
+  const [pageTitle, setPageTitle] = useState(title);
+
+  useEffect(() => {
+    if (pageId) {
+      const page = state.pages.find(p => p.id === pageId);
+      if (page && page.title) {
+        setPageTitle(page.title);
+      }
+    }
+  }, [pageId, state.pages]);
 
   const handleClick = () => {
     // Dispatch um evento global para abrir o modal flutuante
@@ -18,7 +31,7 @@ const PageReferenceComponent = (props: any) => {
         contentEditable={false}
       >
         <span className="text-brand-400">📄</span>
-        <span className="page-name font-semibold">{title}</span>
+        <span className="page-name font-semibold">{pageTitle}</span>
       </span>
     </NodeViewWrapper>
   );
