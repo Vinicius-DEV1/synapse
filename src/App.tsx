@@ -228,8 +228,9 @@ function AppContent() {
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Tab Bar - Show if enabled in settings */}
-        {!state.isReadingModeFullScreen && settings.enableTabs && <TabBar />}
+        {/* Tab Bar - Show if enabled in settings for current platform */}
+        {!state.isReadingModeFullScreen && 
+         ((window as any).__TAURI_INTERNALS__ ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
