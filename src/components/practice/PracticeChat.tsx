@@ -164,6 +164,23 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [isInCall, setIsInCall] = useState(false);
   const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
+  // Detect mobile device
+  const [isMobile, setIsMobile] = useState(false);
+  const micButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Detect mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                            window.innerWidth < 768;
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -744,10 +761,10 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   }, [isConnected, isInCall]);
 
-  // Handle Push-To-Talk
+  // Handle Push-To-Talk (Desktop: P key, Mobile: Touch-and-hold)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'p' && !isRecordingRef.current && isConnected && isInCall) {
+      if (e.key.toLowerCase() === 'p' && !isRecordingRef.current && isConnected && isInCall && !isMobile) {
         isRecordingRef.current = true;
         setIsRecording(true);
         
@@ -766,17 +783,103 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       }
     };
     const handleKeyUp = async (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'p') {
-        isRecordingRef.current = false;
-        setIsRecording(false);
+      if (e.key.toLowerCase() === 'p' && !isMobile) {
+        await stopRecordingAndSend();
+      }
+    };
+
+    // Mobile touch handlers
+    const handleTouchStart = (e: TouchEvent) => {
+      if (isMobile && isConnected && isInCall && !isRecordingRef.current) {
+        e.preventDefault();
+        isRecordingRef.current = true;
+        setIsRecording(true);
+        
+        userAudioChunksRef.current = [];
+        userTranscriptRef.current = '';
+        finalTranscriptRef.current = '';
+        setLiveTranscript('');
         
         if (recognitionRef.current) {
-          recognitionRef.current.stop();
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            // Already started? Ignore
+          }
         }
+      }
+    };
+
+    const handleTouchEnd = async (e: TouchEvent) => {
+      if (isMobile) {
+        e.preventDefault();
+        await stopRecordingAndSend();
+      }
+    };
+
+    const stopRecordingAndSend = async () => {
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      
+      // Burst-send all accumulated audio as realtimeInput, then send 2 seconds of silence to trigger VAD
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        if (userAudioChunksRef.current.length > 0) {
+          const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
+          const combined = new Float32Array(totalLen);
+          let offset = 0;
+          for (const chunk of userAudioChunksRef.current) {
+            combined.set(chunk, offset);
+            offset += chunk.length;
+          }
+          
+          const pcm16 = new Int16Array(combined.length);
+          for (let i = 0; i < combined.length; i++) {
+            let s = Math.max(-1, Math.min(1, combined[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          
+          const buffer = new Uint8Array(pcm16.buffer);
+          let binary = '';
+          const chunkSize = 8192;
+          for (let i = 0; i < buffer.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, Array.from(buffer.slice(i, i + chunkSize)));
+          }
+          const b64 = window.btoa(binary);
+          
+          // 1. Send the user's actual audio burst
+          wsRef.current.send(JSON.stringify({
+            realtimeInput: {
+              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }]
+            }
+          }));
+          
+          // 2. Send 2 seconds of pure silence to force Google's VAD to end the turn
+          const silenceBuffer = new Uint8Array(16000 * 2 * 2); // 16kHz * 2 bytes * 2 seconds
+          let silenceBinary = '';
+          for (let i = 0; i < silenceBuffer.length; i += chunkSize) {
+            silenceBinary += String.fromCharCode.apply(null, Array.from(silenceBuffer.slice(i, i + chunkSize)));
+          }
+          const silenceB64 = window.btoa(silenceBinary);
+          
+          wsRef.current.send(JSON.stringify({
+            realtimeInput: {
+              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: silenceB64 }]
+            }
+          }));
+        }
+      }
+      
+      // Save user turn after a delay for STT to finalize
+      setTimeout(async () => {
+        let text = userTranscriptRef.current.trim();
+        if (!text) return; // Ignore if nothing heard
         
-        // Burst-send all accumulated audio as realtimeInput, then send 2 seconds of silence to trigger VAD
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          if (userAudioChunksRef.current.length > 0) {
+        if (userAudioChunksRef.current.length > 0) {
+          try {
             const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
             const combined = new Float32Array(totalLen);
             let offset = 0;
@@ -784,80 +887,41 @@ export default function PracticeChat({ session }: PracticeChatProps) {
               combined.set(chunk, offset);
               offset += chunk.length;
             }
-            
-            const pcm16 = new Int16Array(combined.length);
-            for (let i = 0; i < combined.length; i++) {
-              let s = Math.max(-1, Math.min(1, combined[i]));
-              pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-            }
-            
-            const buffer = new Uint8Array(pcm16.buffer);
-            let binary = '';
-            const chunkSize = 8192;
-            for (let i = 0; i < buffer.length; i += chunkSize) {
-              binary += String.fromCharCode.apply(null, Array.from(buffer.slice(i, i + chunkSize)));
-            }
-            const b64 = window.btoa(binary);
-            
-            // 1. Send the user's actual audio burst
-            wsRef.current.send(JSON.stringify({
-              realtimeInput: {
-                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }]
-              }
-            }));
-            
-            // 2. Send 2 seconds of pure silence to force Google's VAD to end the turn
-            const silenceBuffer = new Uint8Array(16000 * 2 * 2); // 16kHz * 2 bytes * 2 seconds
-            let silenceBinary = '';
-            for (let i = 0; i < silenceBuffer.length; i += chunkSize) {
-              silenceBinary += String.fromCharCode.apply(null, Array.from(silenceBuffer.slice(i, i + chunkSize)));
-            }
-            const silenceB64 = window.btoa(silenceBinary);
-            
-            wsRef.current.send(JSON.stringify({
-              realtimeInput: {
-                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: silenceB64 }]
-              }
-            }));
+            const wavBuffer = encodeWAV(combined, 16000); // Mic is 16kHz
+            const b64 = arrayBufferToBase64(wavBuffer);
+            text += ` [audio:data:audio/wav;base64,${b64}]`;
+          } catch (err) {
+            console.error('Falha ao gerar audio do usuario:', err);
           }
         }
         
-        // Save user turn after a delay for STT to finalize
-        setTimeout(async () => {
-          let text = userTranscriptRef.current.trim();
-          if (!text) return; // Ignore if nothing heard
-          
-          if (userAudioChunksRef.current.length > 0) {
-            try {
-              const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
-              const combined = new Float32Array(totalLen);
-              let offset = 0;
-              for (const chunk of userAudioChunksRef.current) {
-                combined.set(chunk, offset);
-                offset += chunk.length;
-              }
-              const wavBuffer = encodeWAV(combined, 16000); // Mic is 16kHz
-              const b64 = arrayBufferToBase64(wavBuffer);
-              text += ` [audio:data:audio/wav;base64,${b64}]`;
-            } catch (err) {
-              console.error('Falha ao gerar audio do usuario:', err);
-            }
-          }
-          
-          saveMessage('user', text);
-          userTranscriptRef.current = '';
-          userAudioChunksRef.current = [];
-        }, 800); // Wait 800ms to allow STT to finalize
-      }
+        saveMessage('user', text);
+        userTranscriptRef.current = '';
+        userAudioChunksRef.current = [];
+      }, 800); // Wait 800ms to allow STT to finalize
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    
+    // Add touch handlers to mic button on mobile
+    if (micButtonRef.current && isMobile) {
+      micButtonRef.current.addEventListener('touchstart', handleTouchStart);
+      micButtonRef.current.addEventListener('touchend', handleTouchEnd);
+      micButtonRef.current.addEventListener('touchcancel', handleTouchEnd);
+    }
+    
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      
+      if (micButtonRef.current && isMobile) {
+        micButtonRef.current.removeEventListener('touchstart', handleTouchStart);
+        micButtonRef.current.removeEventListener('touchend', handleTouchEnd);
+        micButtonRef.current.removeEventListener('touchcancel', handleTouchEnd);
+      }
     };
-  }, [isConnected, isInCall]);
+  }, [isConnected, isInCall, isMobile]);
 
   const startCall = () => {
     setIsInCall(true);
@@ -1024,12 +1088,30 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           )}
 
           {isInCall && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRecording ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse' : 'border-white/10 text-dark-subtext'}`}>
-              {isRecording ? <Mic size={14} /> : <MicOff size={14} />}
-              <span className="text-xs font-semibold uppercase tracking-wider">
-                {isRecording ? 'Ouvindo...' : 'Segure "P"'}
-              </span>
-            </div>
+            <>
+              {isMobile ? (
+                <button
+                  ref={micButtonRef}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all active:scale-95 ${
+                    isRecording 
+                      ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse' 
+                      : 'border-white/10 text-dark-subtext'
+                  }`}
+                >
+                  {isRecording ? <Mic size={16} /> : <MicOff size={16} />}
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    {isRecording ? 'Ouvindo...' : 'Toque e segure'}
+                  </span>
+                </button>
+              ) : (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRecording ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse' : 'border-white/10 text-dark-subtext'}`}>
+                  {isRecording ? <Mic size={14} /> : <MicOff size={14} />}
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    {isRecording ? 'Ouvindo...' : 'Segure "P"'}
+                  </span>
+                </div>
+              )}
+            </>
           )}
 
           {isInCall && (
