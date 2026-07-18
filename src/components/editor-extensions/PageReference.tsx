@@ -26,12 +26,12 @@ const PageReferenceComponent = (props: any) => {
     <NodeViewWrapper as="span" className="inline-block mx-1 align-baseline">
       <span 
         onClick={handleClick}
-        className="page-reference inline-flex items-center gap-1.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-md cursor-pointer transition-colors text-[1.05em] border border-brand-500/20 shadow-sm"
+        className="page-reference inline-flex items-center gap-1.5 bg-brand-500/5 hover:bg-brand-500/15 text-brand-300 px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-200 text-[1.05em] border border-brand-500/30 hover:border-brand-500/50 hover:shadow-lg hover:shadow-brand-500/10 hover:-translate-y-0.5"
         data-page-id={pageId}
         contentEditable={false}
       >
-        <span className="text-brand-400">📄</span>
-        <span className="page-name font-semibold">{pageTitle}</span>
+        <span className="text-brand-400 text-sm">📄</span>
+        <span className="page-name font-medium">{pageTitle}</span>
       </span>
     </NodeViewWrapper>
   );
