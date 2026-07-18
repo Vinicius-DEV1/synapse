@@ -1,93 +1,107 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, Video, MessageCircle, Code2 } from 'lucide-react';
+import { Link2, Globe, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const LinkPreviewComponent = (props: any) => {
   const { url, title, isLoading } = props.node.attrs;
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
   const [loading, setLoading] = useState(isLoading);
+  const [isReloading, setIsReloading] = useState(false);
 
-  useEffect(() => {
-    if (fetchedTitle || !loading) return;
+  const fetchTitle = async (forceReload = false) => {
+    if (!forceReload && (fetchedTitle || !loading)) return;
 
     let isMounted = true;
-    
-    const fetchTitle = async () => {
-      const proxies = [
-        async () => {
-          // Microlink (Excelente para extrair Título, Imagem e Logo. Limite por IP do usuário)
-          const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('Microlink failed');
-          const json = await res.json();
-          if (json.data && json.data.title) {
-            return json.data.title as string;
-          }
-          throw new Error('No title in Microlink response');
-        },
-        async () => {
-          // JSONLink (Alternativa gratuita e sem chave para extração)
-          const res = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('JSONLink failed');
-          const json = await res.json();
-          if (json.title) {
-            return json.title as string;
-          }
-          throw new Error('No title in JSONLink response');
-        },
-        async () => {
-          // Fallback final: proxy genérico do allorigins lendo o HTML cru
-          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-          if (!res.ok) throw new Error('AllOrigins failed');
-          const data = await res.json();
-          const html = typeof data?.contents === 'string' ? data.contents : '';
-          const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-          if (match && match[1]) {
-            return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-          }
-          throw new Error('Regex failed on AllOrigins HTML');
-        }
-      ];
+    setIsReloading(true);
 
-      let fetchedTitleStr = '';
-      let success = false;
-
-      for (const proxyFn of proxies) {
-        try {
-          fetchedTitleStr = await proxyFn();
-          if (fetchedTitleStr) {
-            success = true;
-            break;
-          }
-        } catch (e) {
-          // ignore and try next
+    const proxies = [
+      async () => {
+        // Microlink (Excelente para extrair Título, Imagem e Logo. Limite por IP do usuário)
+        const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('Microlink failed');
+        const json = await res.json();
+        if (json.data && json.data.title) {
+          return json.data.title as string;
         }
+        throw new Error('No title in Microlink response');
+      },
+      async () => {
+        // JSONLink (Alternativa gratuita e sem chave para extração)
+        const res = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('JSONLink failed');
+        const json = await res.json();
+        if (json.title) {
+          return json.title as string;
+        }
+        throw new Error('No title in JSONLink response');
+      },
+      async () => {
+        // Fallback final: proxy genérico do allorigins lendo o HTML cru
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('AllOrigins failed');
+        const data = await res.json();
+        const html = typeof data?.contents === 'string' ? data.contents : '';
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (match && match[1]) {
+          return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        }
+        throw new Error('Regex failed on AllOrigins HTML');
       }
+    ];
 
+    let fetchedTitleStr = '';
+    let success = false;
+
+    for (const proxyFn of proxies) {
       try {
-        if (!success) throw new Error('All proxies failed');
-        
-        const newTitle = fetchedTitleStr;
-        if (isMounted) {
-          setFetchedTitle(newTitle);
-          props.updateAttributes({ title: newTitle, isLoading: false });
-          setLoading(false);
+        fetchedTitleStr = await proxyFn();
+        if (fetchedTitleStr) {
+          success = true;
+          break;
         }
-      } catch (err) {
-        console.error('Failed to fetch link title:', err);
-        if (isMounted) {
-          const fallbackTitle = new URL(url).hostname;
-          setFetchedTitle(fallbackTitle);
-          props.updateAttributes({ title: fallbackTitle, isLoading: false });
-          setLoading(false);
-        }
+      } catch (e) {
+        // ignore and try next
       }
-    };
+    }
 
-    fetchTitle();
+    try {
+      if (!success) throw new Error('All proxies failed');
+
+      const newTitle = fetchedTitleStr;
+      if (isMounted) {
+        setFetchedTitle(newTitle);
+        props.updateAttributes({ title: newTitle, isLoading: false });
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Failed to fetch link title:', err);
+      if (isMounted) {
+        const fallbackTitle = new URL(url).hostname;
+        setFetchedTitle(fallbackTitle);
+        props.updateAttributes({ title: fallbackTitle, isLoading: false });
+        setLoading(false);
+      }
+    } finally {
+      if (isMounted) {
+        setIsReloading(false);
+      }
+    }
 
     return () => { isMounted = false; };
-  }, [url, fetchedTitle, loading, props]);
+  };
+
+  useEffect(() => {
+    fetchTitle();
+  }, [url]);
+
+  const handleReload = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFetchedTitle(null);
+    setLoading(true);
+    fetchTitle(true);
+  };
 
   const [faviconError, setFaviconError] = useState(false);
   
@@ -127,7 +141,7 @@ const LinkPreviewComponent = (props: any) => {
             {renderIcon()}
           </div>
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {loading ? (
+            {loading || isReloading ? (
               <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
             ) : (
               <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover:text-brand-400 transition-colors">
@@ -139,6 +153,13 @@ const LinkPreviewComponent = (props: any) => {
               {url}
             </div>
           </div>
+          <button
+            onClick={handleReload}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white"
+            title="Recarregar título"
+          >
+            <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </a>
     </NodeViewWrapper>
