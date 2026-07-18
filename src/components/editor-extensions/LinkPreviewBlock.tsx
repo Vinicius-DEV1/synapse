@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const LinkPreviewComponent = (props: any) => {
@@ -162,6 +162,12 @@ const LinkPreviewComponent = (props: any) => {
     fetchTitle(true);
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    props.deleteNode();
+  };
+
   const [faviconError, setFaviconError] = useState(false);
   
   const domain = (() => {
@@ -215,13 +221,22 @@ const LinkPreviewComponent = (props: any) => {
             </div>
           </div>
         </a>
-        <button
-          onClick={handleReload}
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
-          title="Recarregar título"
-        >
-          <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
-        </button>
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleReload}
+            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+            title="Recarregar título"
+          >
+            <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={handleDelete}
+            className="p-1.5 rounded hover:bg-red-500/20 text-dark-subtext hover:text-red-400 bg-dark-card/80 backdrop-blur-sm border border-white/5"
+            title="Remover link"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
     </NodeViewWrapper>
   );
