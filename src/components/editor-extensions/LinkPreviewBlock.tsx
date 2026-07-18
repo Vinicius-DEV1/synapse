@@ -25,8 +25,9 @@ const LinkPreviewComponent = (props: any) => {
           const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
           if (!res.ok) throw new Error('Noembed failed');
           const json = await res.json();
-          if (json.title) {
-            return json.title as string;
+          // noembed returns {error: "..."} on failure — must check it's a plain string
+          if (json.title && typeof json.title === 'string') {
+            return json.title;
           }
           throw new Error('No title in Noembed response');
         },
@@ -37,8 +38,8 @@ const LinkPreviewComponent = (props: any) => {
           const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
           if (!res.ok) throw new Error('YouTube oEmbed failed');
           const json = await res.json();
-          if (json.title) {
-            return json.title as string;
+          if (json.title && typeof json.title === 'string') {
+            return json.title;
           }
           throw new Error('No title in YouTube oEmbed response');
         }
@@ -49,8 +50,8 @@ const LinkPreviewComponent = (props: any) => {
         const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
         if (!res.ok) throw new Error('Microlink failed');
         const json = await res.json();
-        if (json.data && json.data.title) {
-          return json.data.title as string;
+        if (json.data && json.data.title && typeof json.data.title === 'string') {
+          return json.data.title;
         }
         throw new Error('No title in Microlink response');
       },
@@ -59,8 +60,8 @@ const LinkPreviewComponent = (props: any) => {
         const res = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
         if (!res.ok) throw new Error('JSONLink failed');
         const json = await res.json();
-        if (json.title) {
-          return json.title as string;
+        if (json.title && typeof json.title === 'string') {
+          return json.title;
         }
         throw new Error('No title in JSONLink response');
       },
@@ -69,8 +70,8 @@ const LinkPreviewComponent = (props: any) => {
         const res = await fetch(`https://api.linkpreview.net/?key=${encodeURIComponent(url)}&q=${encodeURIComponent(url)}`);
         if (!res.ok) throw new Error('LinkPreview failed');
         const json = await res.json();
-        if (json.title) {
-          return json.title as string;
+        if (json.title && typeof json.title === 'string') {
+          return json.title;
         }
         throw new Error('No title in LinkPreview response');
       },
@@ -128,7 +129,7 @@ const LinkPreviewComponent = (props: any) => {
     try {
       if (!success) throw new Error('All proxies failed');
 
-      const newTitle = fetchedTitleStr;
+      const newTitle = typeof fetchedTitleStr === 'string' ? fetchedTitleStr : String(fetchedTitleStr);
       if (isMounted) {
         setFetchedTitle(newTitle);
         props.updateAttributes({ title: newTitle, isLoading: false });
@@ -206,7 +207,7 @@ const LinkPreviewComponent = (props: any) => {
                 <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
               ) : (
                 <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover:text-brand-400 transition-colors">
-                  {fetchedTitle || url}
+                  {typeof fetchedTitle === 'string' ? fetchedTitle : url}
                 </div>
               )}
               <div className="text-xs text-white/40 truncate flex items-center gap-1">
