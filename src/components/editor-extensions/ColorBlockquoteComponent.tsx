@@ -1,5 +1,5 @@
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { Palette, X } from 'lucide-react';
+import { Palette, X, ListTree } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { BG_COLORS } from '../../utils/colors';
 
@@ -30,6 +30,23 @@ export default function ColorBlockquoteComponent(props: any) {
     setShowColors(false);
   };
 
+  const handleConvertToToggle = () => {
+    const { editor } = props;
+    const currentContent = props.node.content;
+    const currentColor = props.node.attrs.color || 'default';
+
+    // Replace with blockquoteToggle
+    editor.chain()
+      .focus()
+      .deleteRange({ from: props.node.pos, to: props.node.pos + props.node.node.nodeSize })
+      .insertContent({
+        type: 'blockquoteToggle',
+        attrs: { color: currentColor, title: '' },
+        content: currentContent
+      })
+      .run();
+  };
+
   const currentColor = props.node.attrs.color || 'default';
 
   // O index.css já estliza o blockquote, aqui apenas aplicamos as cores customizadas
@@ -49,6 +66,14 @@ export default function ColorBlockquoteComponent(props: any) {
         contentEditable={false}
       >
         <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
+          <button
+            onClick={handleConvertToToggle}
+            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+            title="Converter em Toggle"
+          >
+            <ListTree size={14} />
+          </button>
+          <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
           <button
             onClick={() => {
               setShowConfirm(false);
