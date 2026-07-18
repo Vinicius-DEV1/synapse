@@ -38,18 +38,20 @@ const BlockquoteToggleComponent = (props: any) => {
 
   const handleConvertToCallout = () => {
     const { editor } = props;
-    const currentContent = props.node.content;
     const currentColor = props.node.attrs.color || 'default';
-    const currentTitle = props.node.attrs.title || '';
 
-    // Replace with regular blockquote (callout)
+    // Get the content as JSON from the current node
+    const contentJSON = props.node.toJSON();
+    const childContent = contentJSON.content || [];
+
+    // Replace with regular blockquote (callout) using the child content
     editor.chain()
       .focus()
       .deleteRange({ from: props.node.pos, to: props.node.pos + props.node.node.nodeSize })
       .insertContent({
         type: 'blockquote',
         attrs: { color: currentColor },
-        content: currentContent
+        content: childContent
       })
       .run();
   };
