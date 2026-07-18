@@ -2,7 +2,8 @@ export interface AppSettings {
   autoLockOnSuspend: boolean;
   inactivityTimeoutMinutes: number; // 0 = disabled
   restoreTabsOnStartup: boolean;
-  enableTabs: boolean; // Enable/disable tab system
+  enableTabsWeb: boolean; // Enable/disable tab system on web
+  enableTabsDesktop: boolean; // Enable/disable tab system on desktop
   fontSize: 'text-sm' | 'text-base' | 'text-lg';
   spellcheck: boolean;
   geminiModel: string;
@@ -19,7 +20,8 @@ export function getSettings(): AppSettings {
     autoLockOnSuspend: true,
     inactivityTimeoutMinutes: 60,
     restoreTabsOnStartup: true,
-    enableTabs: true,
+    enableTabsWeb: true,
+    enableTabsDesktop: true,
     fontSize: 'text-base',
     spellcheck: true,
     geminiModel: 'gemini-1.5-pro',
