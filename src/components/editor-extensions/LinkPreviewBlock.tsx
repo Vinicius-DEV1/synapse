@@ -15,7 +15,35 @@ const LinkPreviewComponent = (props: any) => {
     let isMounted = true;
     setIsReloading(true);
 
+    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+
     const proxies = [
+      // YouTube-specific proxies (tried first if URL is YouTube)
+      ...(isYouTube ? [
+        async () => {
+          // noembed.com - Specialized for YouTube and other video platforms
+          const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+          if (!res.ok) throw new Error('Noembed failed');
+          const json = await res.json();
+          if (json.title) {
+            return json.title as string;
+          }
+          throw new Error('No title in Noembed response');
+        },
+        async () => {
+          // YouTube oEmbed API
+          const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
+          if (!videoId) throw new Error('No YouTube video ID found');
+          const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+          if (!res.ok) throw new Error('YouTube oEmbed failed');
+          const json = await res.json();
+          if (json.title) {
+            return json.title as string;
+          }
+          throw new Error('No title in YouTube oEmbed response');
+        }
+      ] : []),
+      // General-purpose proxies
       async () => {
         // Microlink (Excelente para extrair Título, Imagem e Logo. Limite por IP do usuário)
         const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
@@ -35,6 +63,38 @@ const LinkPreviewComponent = (props: any) => {
           return json.title as string;
         }
         throw new Error('No title in JSONLink response');
+      },
+      async () => {
+        // LinkPreview.net
+        const res = await fetch(`https://api.linkpreview.net/?key=${encodeURIComponent(url)}&q=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('LinkPreview failed');
+        const json = await res.json();
+        if (json.title) {
+          return json.title as string;
+        }
+        throw new Error('No title in LinkPreview response');
+      },
+      async () => {
+        // Codetabs API
+        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('Codetabs failed');
+        const html = await res.text();
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (match && match[1]) {
+          return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        }
+        throw new Error('Regex failed on Codetabs HTML');
+      },
+      async () => {
+        // CORS Proxy with direct fetch
+        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('CORSProxy failed');
+        const html = await res.text();
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (match && match[1]) {
+          return match[1].trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        }
+        throw new Error('Regex failed on CORSProxy HTML');
       },
       async () => {
         // Fallback final: proxy genérico do allorigins lendo o HTML cru
