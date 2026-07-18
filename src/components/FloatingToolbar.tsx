@@ -1,23 +1,14 @@
 import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X, Trash } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { TEXT_COLORS, BG_COLORS } from '../utils/colors';
+import { BG_COLORS } from '../utils/colors';
+import type { Editor } from '@tiptap/react';
 
 interface FloatingToolbarProps {
-  formatState?: {
-    bold: boolean;
-    italic: boolean;
-    strike: boolean;
-    underline: boolean;
-    code: boolean;
-    highlight: boolean;
-    link?: boolean;
-    linkHref?: string;
-  };
-  onFormat?: (command: string, value?: string) => void;
+  editor: Editor;
   onAiClick?: () => void;
 }
 
-export default function FloatingToolbar({ formatState, onFormat, onAiClick }: FloatingToolbarProps) {
+export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarProps) {
   const [showColors, setShowColors] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -41,10 +32,39 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
   }, [showColors, showLinkInput]);
 
   const handleFormat = (command: string, value?: string) => {
-    if (onFormat) {
-      onFormat(command, value);
-    } else {
-      document.execCommand(command, false, value);
+    if (!editor) return;
+
+    switch (command) {
+      case 'bold':
+        editor.chain().focus().toggleBold().run();
+        break;
+      case 'italic':
+        editor.chain().focus().toggleItalic().run();
+        break;
+      case 'underline':
+        editor.chain().focus().toggleUnderline().run();
+        break;
+      case 'strike':
+        editor.chain().focus().toggleStrike().run();
+        break;
+      case 'code':
+        editor.chain().focus().toggleCode().run();
+        break;
+      case 'link':
+        if (value) {
+          editor.chain().focus().setLink({ href: value }).run();
+        }
+        break;
+      case 'unlink':
+        editor.chain().focus().unsetLink().run();
+        break;
+      case 'highlight':
+        if (value) {
+          editor.chain().focus().toggleHighlight({ color: value }).run();
+        } else {
+          editor.chain().focus().unsetHighlight().run();
+        }
+        break;
     }
   };
 
@@ -59,6 +79,17 @@ export default function FloatingToolbar({ formatState, onFormat, onAiClick }: Fl
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') submitLink();
     if (e.key === 'Escape') setShowLinkInput(false);
+  };
+
+  const formatState = {
+    bold: editor.isActive('bold'),
+    italic: editor.isActive('italic'),
+    strike: editor.isActive('strike'),
+    underline: editor.isActive('underline'),
+    code: editor.isActive('code'),
+    highlight: editor.isActive('highlight'),
+    link: editor.isActive('link'),
+    linkHref: editor.getAttributes('link').href,
   };
 
   const activeClass = "bg-white/10 text-brand-400";
