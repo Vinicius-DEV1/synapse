@@ -32,17 +32,20 @@ export default function ColorBlockquoteComponent(props: any) {
 
   const handleConvertToToggle = () => {
     const { editor } = props;
-    const currentContent = props.node.content;
     const currentColor = props.node.attrs.color || 'default';
 
-    // Replace with blockquoteToggle
+    // Get the content as JSON from the current node
+    const contentJSON = props.node.toJSON();
+    const childContent = contentJSON.content || [];
+
+    // Replace with blockquoteToggle using the child content
     editor.chain()
       .focus()
       .deleteRange({ from: props.node.pos, to: props.node.pos + props.node.node.nodeSize })
       .insertContent({
         type: 'blockquoteToggle',
         attrs: { color: currentColor, title: '' },
-        content: currentContent
+        content: childContent
       })
       .run();
   };
