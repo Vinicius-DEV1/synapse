@@ -18,6 +18,7 @@ import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
 import FloatingPageModal from './components/FloatingPageModal';
 import SyncErrorModal from './components/SyncErrorModal';
+import RenamePageModal from './components/RenamePageModal';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -25,6 +26,7 @@ function AppContent() {
   const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
+  const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const { loadData: loadFocusData } = useFocusContext();
   
   const {
@@ -272,7 +274,7 @@ function AppContent() {
               isPinned={!!contextPage?.is_pinned}
               onCreateSubPage={handleCreatePage}
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
-              onRename={(id, title) => handleUpdatePage(id, { title })}
+              onRename={(id) => setRenamePageId(id)}
               onTogglePin={(id) => handleUpdatePage(id, { is_pinned: contextPage?.is_pinned ? 0 : 1 })}
               onClose={() => dispatch({ type: 'HIDE_CONTEXT_MENU' })}
             />
@@ -288,6 +290,16 @@ function AppContent() {
           pageName={state.pages.find((p) => p.id === state.confirmDelete)?.title || 'esta página'}
           onConfirm={() => handleDeletePage(state.confirmDelete!)}
           onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
+        />
+      )}
+
+      {/* Rename Page Modal */}
+      {renamePageId && (
+        <RenamePageModal
+          isOpen={!!renamePageId}
+          onClose={() => setRenamePageId(null)}
+          currentTitle={state.pages.find((p) => p.id === renamePageId)?.title || ''}
+          onRename={(newTitle) => handleUpdatePage(renamePageId, { title: newTitle })}
         />
       )}
 
