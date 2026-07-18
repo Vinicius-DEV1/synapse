@@ -9,6 +9,7 @@ pub struct AnkiDeck {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    pub parent_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -37,14 +38,15 @@ pub fn anki_get_decks(db_state: State<'_, DbState>) -> Result<Vec<AnkiDeck>, Str
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT id, name, description FROM anki_decks ORDER BY created_at DESC")
+    let mut stmt = conn.prepare("SELECT id, name, description, parent_id FROM anki_decks ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
-        
+
     let iter = stmt.query_map([], |row| {
         Ok(AnkiDeck {
             id: row.get(0)?,
             name: row.get(1)?,
             description: row.get(2)?,
+            parent_id: row.get(3)?,
         })
     }).map_err(|e| e.to_string())?;
     
@@ -56,16 +58,16 @@ pub fn anki_get_decks(db_state: State<'_, DbState>) -> Result<Vec<AnkiDeck>, Str
 }
 
 #[tauri::command]
-pub fn anki_create_deck(name: String, description: Option<String>, db_state: State<'_, DbState>) -> Result<String, String> {
+pub fn anki_create_deck(name: String, description: Option<String>, parent_id: Option<String>, db_state: State<'_, DbState>) -> Result<String, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let id = uuid::Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO anki_decks (id, name, description) VALUES (?, ?, ?)",
-        params![id, name, description.unwrap_or_default()]
+        "INSERT INTO anki_decks (id, name, description, parent_id) VALUES (?, ?, ?, ?)",
+        params![id, name, description.unwrap_or_default(), parent_id]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(id)
 }
 
