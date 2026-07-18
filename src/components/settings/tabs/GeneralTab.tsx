@@ -36,6 +36,26 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       <label className="flex items-center justify-between cursor-pointer group">
         <div>
           <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
+            Sistema de Abas
+          </span>
+          <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
+            Ativa ou desativa o sistema de abas para navegação entre páginas.
+          </span>
+        </div>
+        <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+          <input 
+            type="checkbox" 
+            checked={appSettings.enableTabs}
+            onChange={(e) => setAppSettings({ ...appSettings, enableTabs: e.target.checked })}
+            className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-dark-card appearance-none cursor-pointer checked:right-0 checked:border-brand-500 transition-all duration-200"
+          />
+          <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-200 ${appSettings.enableTabs ? 'bg-brand-500' : 'bg-white/20'}`}></label>
+        </div>
+      </label>
+
+      <label className="flex items-center justify-between cursor-pointer group">
+        <div>
+          <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
             Salvar estado das abas
           </span>
           <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
