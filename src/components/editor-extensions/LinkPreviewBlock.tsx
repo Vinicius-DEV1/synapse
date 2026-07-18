@@ -130,38 +130,40 @@ const LinkPreviewComponent = (props: any) => {
 
   return (
     <NodeViewWrapper className="link-preview-block block my-4" contentEditable={false}>
-      <a 
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all rounded-lg p-3 group cursor-pointer no-underline"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
-            {renderIcon()}
-          </div>
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {loading || isReloading ? (
-              <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
-            ) : (
-              <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover:text-brand-400 transition-colors">
-                {fetchedTitle || url}
+      <div className="relative group">
+        <a 
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all rounded-lg p-3 cursor-pointer no-underline"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
+              {renderIcon()}
+            </div>
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+              {loading || isReloading ? (
+                <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
+              ) : (
+                <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover:text-brand-400 transition-colors">
+                  {fetchedTitle || url}
+                </div>
+              )}
+              <div className="text-xs text-white/40 truncate flex items-center gap-1">
+                <Link2 size={12} />
+                {url}
               </div>
-            )}
-            <div className="text-xs text-white/40 truncate flex items-center gap-1">
-              <Link2 size={12} />
-              {url}
             </div>
           </div>
-          <button
-            onClick={handleReload}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white"
-            title="Recarregar título"
-          >
-            <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </a>
+        </a>
+        <button
+          onClick={handleReload}
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+          title="Recarregar título"
+        >
+          <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
+        </button>
+      </div>
     </NodeViewWrapper>
   );
 };
