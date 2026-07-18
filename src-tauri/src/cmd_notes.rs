@@ -145,16 +145,20 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut query = String::from("UPDATE pages SET updated_at = CURRENT_TIMESTAMP");
+    let mut query = String::from("UPDATE pages SET");
     let mut params_vec: Vec<rusqlite::types::Value> = Vec::new();
+    let mut has_updates = false;
     
     if let Some(t) = page.title {
-        query.push_str(", title = ?");
+        query.push_str(" title = ?");
         params_vec.push(t.into());
+        has_updates = true;
     }
     if let Some(i) = page.icon {
-        query.push_str(", icon = ?");
+        if has_updates { query.push_str(","); }
+        query.push_str(" icon = ?");
         params_vec.push(i.into());
+        has_updates = true;
     }
     if let Some(c) = page.content {
         let mut encrypted = None;
@@ -170,20 +174,25 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
             }
         }
         
+        if has_updates { query.push_str(","); }
         if let Some(enc) = encrypted {
-            query.push_str(", content = '', encrypted_content = ?");
+            query.push_str(" content = '', encrypted_content = ?");
             params_vec.push(enc.into());
         } else {
-            query.push_str(", content = ?, encrypted_content = NULL");
+            query.push_str(" content = ?, encrypted_content = NULL");
             params_vec.push(c.into());
         }
+        has_updates = true;
     }
     if let Some(crdt) = page.crdt_state {
-        query.push_str(", crdt_state = ?");
+        if has_updates { query.push_str(","); }
+        query.push_str(" crdt_state = ?");
         params_vec.push(crdt.into());
+        has_updates = true;
     }
     if let Some(pid_val) = page.parent_id {
-        query.push_str(", parent_id = ?");
+        if has_updates { query.push_str(","); }
+        query.push_str(" parent_id = ?");
         if pid_val.is_null() {
             params_vec.push(rusqlite::types::Value::Null);
         } else if let Some(s) = pid_val.as_str() {
@@ -193,14 +202,27 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
                 params_vec.push(s.to_string().into());
             }
         }
+        has_updates = true;
     }
     if let Some(pinned) = page.is_pinned {
-        query.push_str(", is_pinned = ?");
+        if has_updates { query.push_str(","); }
+        query.push_str(" is_pinned = ?");
         params_vec.push(pinned.into());
+        has_updates = true;
     }
     if let Some(order) = page.pinned_order {
-        query.push_str(", pinned_order = ?");
+        if has_updates { query.push_str(","); }
+        query.push_str(" pinned_order = ?");
         params_vec.push(order.into());
+        has_updates = true;
+    }
+    
+    // Só atualiza updated_at se houver mudanças reais
+    if has_updates {
+        query.push_str(", updated_at = CURRENT_TIMESTAMP");
+    } else {
+        // Se não houver mudanças, não faz nada
+        return Ok(0);
     }
     
     query.push_str(" WHERE id = ?");
