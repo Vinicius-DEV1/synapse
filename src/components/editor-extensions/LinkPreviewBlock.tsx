@@ -32,10 +32,8 @@ const LinkPreviewComponent = (props: any) => {
           throw new Error('No title in Noembed response');
         },
         async () => {
-          // YouTube oEmbed API
-          const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
-          if (!videoId) throw new Error('No YouTube video ID found');
-          const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+          // YouTube oEmbed API — supports videos, playlists and shorts natively
+          const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
           if (!res.ok) throw new Error('YouTube oEmbed failed');
           const json = await res.json();
           if (json.title && typeof json.title === 'string') {
