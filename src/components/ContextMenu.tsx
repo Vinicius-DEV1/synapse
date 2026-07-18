@@ -7,7 +7,7 @@ interface ContextMenuProps {
   isPinned?: boolean;
   onCreateSubPage: (parentId: string) => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, title: string) => void;
+  onRename: (id: string) => void;
   onTogglePin?: (id: string) => void;
   onClose: () => void;
 }
@@ -51,12 +51,7 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
 
       <button
         onClick={() => {
-          // Trigger double click on the item somehow, or handle rename globally
-          // For now, we'll just prompt (not ideal, but functional as fallback)
-          const newTitle = prompt('Novo nome:');
-          if (newTitle && newTitle.trim()) {
-            onRename(pageId, newTitle.trim());
-          }
+          onRename(pageId);
           onClose();
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
