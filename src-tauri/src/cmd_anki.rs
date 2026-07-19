@@ -1,4 +1,4 @@
-﻿use tauri::State;
+use tauri::State;
 use serde::{Deserialize, Serialize};
 use crate::db::DbState;
 use rusqlite::params;
@@ -24,6 +24,7 @@ pub struct AnkiCard {
     pub media_url: Option<String>,
     pub card_type: String,
     pub validation_mode: String,
+    pub tags: Option<Vec<String>>,
     pub due_date: Option<String>,
     pub state: Option<String>,
     pub stability: Option<f64>,
@@ -140,8 +141,8 @@ pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<St
     conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
     
     if let Err(e) = conn.execute(
-        "INSERT INTO anki_cards (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![id, card.deck_id, card.front, card.back, card.extra_note, card.source_module, card.source_id, card.media_url, card.card_type, card.validation_mode]
+        "INSERT INTO anki_cards (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![id, card.deck_id, card.front, card.back, card.extra_note, card.source_module, card.source_id, card.media_url, card.card_type, card.validation_mode, card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()).unwrap_or_else(|| "[]".to_string())]
     ) {
         let _ = conn.execute("ROLLBACK", []);
         return Err(e.to_string());
@@ -167,7 +168,7 @@ pub fn anki_get_all_cards(deck_id: Option<String>, db_state: State<'_, DbState>)
     
     let mut query = "
         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at
+               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
         FROM anki_cards c 
         LEFT JOIN anki_srs_state s ON c.id = s.id 
         WHERE c.deleted_at IS NULL".to_string();
@@ -183,7 +184,7 @@ pub fn anki_get_all_cards(deck_id: Option<String>, db_state: State<'_, DbState>)
             WHERE d.deleted_at IS NULL
          )
          SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-                s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at
+                s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
          FROM anki_cards c 
          LEFT JOIN anki_srs_state s ON c.id = s.id 
          WHERE c.deleted_at IS NULL AND c.deck_id IN (SELECT id FROM subdecks)".to_string();
@@ -199,6 +200,7 @@ pub fn anki_get_all_cards(deck_id: Option<String>, db_state: State<'_, DbState>)
             source_module: row.get(5)?, source_id: row.get(6)?, media_url: row.get(7)?, card_type: row.get(8)?, validation_mode: row.get(9)?,
             due_date: row.get(10)?, state: row.get(11)?, stability: row.get(12)?, difficulty: row.get(13)?, elapsed_days: row.get(14)?,
             scheduled_days: row.get(15)?, reps: row.get(16)?, lapses: row.get(17)?, last_review: row.get(18)?, created_at: row.get(19)?,
+            tags: row.get::<_, Option<String>>(20)?.and_then(|s| serde_json::from_str(&s).ok()),
         })
     }).map_err(|e| e.to_string())?;
     
@@ -214,7 +216,7 @@ pub fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<An
     
     let mut stmt = conn.prepare("
         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at
+               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
         FROM anki_cards c 
         LEFT JOIN anki_srs_state s ON c.id = s.id 
         WHERE c.id = ? AND c.deleted_at IS NULL
@@ -226,6 +228,7 @@ pub fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<An
             source_module: row.get(5)?, source_id: row.get(6)?, media_url: row.get(7)?, card_type: row.get(8)?, validation_mode: row.get(9)?,
             due_date: row.get(10)?, state: row.get(11)?, stability: row.get(12)?, difficulty: row.get(13)?, elapsed_days: row.get(14)?,
             scheduled_days: row.get(15)?, reps: row.get(16)?, lapses: row.get(17)?, last_review: row.get(18)?, created_at: row.get(19)?,
+            tags: row.get::<_, Option<String>>(20)?.and_then(|s| serde_json::from_str(&s).ok()),
         })
     }).map_err(|e| e.to_string())
 }
@@ -278,8 +281,8 @@ pub fn anki_update_card(card_id: String, card: AnkiCard, db_state: State<'_, DbS
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     conn.execute(
-        "UPDATE anki_cards SET front = ?, back = ?, extra_note = ?, media_url = ?, validation_mode = ?, card_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![card.front, card.back, card.extra_note, card.media_url, card.validation_mode, card.card_type, card_id]
+        "UPDATE anki_cards SET front = ?, back = ?, extra_note = ?, media_url = ?, validation_mode = ?, card_type = ?, tags = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        params![card.front, card.back, card.extra_note, card.media_url, card.validation_mode, card.card_type, card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()).unwrap_or_else(|| "[]".to_string()), card_id]
     ).map_err(|e| e.to_string())?;
     Ok(true)
 }

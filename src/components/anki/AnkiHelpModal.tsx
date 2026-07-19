@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, BrainCircuit, Keyboard, Settings, Activity, Target, Database, Clock, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, BrainCircuit, Keyboard, Settings, Activity, Target, Database, Clock, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Tag, Search } from 'lucide-react';
 import { getWebDb } from '../../services/db-web';
 
 interface AnkiHelpModalProps {
@@ -7,7 +7,7 @@ interface AnkiHelpModalProps {
 }
 
 export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
-  const [activeTab, setActiveTab] = useState<'intro' | 'shortcuts' | 'fsrs' | 'ai' | 'ai_logs'>('intro');
+  const [activeTab, setActiveTab] = useState<'intro' | 'shortcuts' | 'fsrs' | 'ai' | 'tags' | 'ai_logs'>('intro');
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -48,6 +48,7 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
           <TabButton active={activeTab === 'shortcuts'} onClick={() => setActiveTab('shortcuts')} icon={<Keyboard size={18} />} label="Atalhos" />
           <TabButton active={activeTab === 'fsrs'} onClick={() => setActiveTab('fsrs')} icon={<Activity size={18} />} label="Algoritmo FSRS" />
           <TabButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} icon={<Settings size={18} />} label="Correção com IA" />
+          <TabButton active={activeTab === 'tags'} onClick={() => setActiveTab('tags')} icon={<Tag size={18} />} label="Sistema de Tags" />
           <TabButton active={activeTab === 'ai_logs'} onClick={() => setActiveTab('ai_logs')} icon={<Database size={18} />} label="Auditoria IA" />
         </div>
 
@@ -118,6 +119,13 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
                   <ShortcutRow keys={['4']} description="Avaliar como: Fácil (Aumenta bastante o intervalo)" color="text-blue-400" />
                   <ShortcutRow keys={['Esc']} description="Sair da sessão de estudos" />
                 </div>
+                
+                <h4 className="text-lg font-bold text-white mt-8 mb-4 border-t border-white/10 pt-6">Modal de Pré-visualização (Olhinho)</h4>
+                <div className="space-y-3">
+                  <ShortcutRow keys={['Seta Direita (>)']} description="Avançar rapidamente para o próximo cartão da lista atual." />
+                  <ShortcutRow keys={['Seta Esquerda (<)']} description="Voltar para o cartão anterior." />
+                  <ShortcutRow keys={['Espaço / Enter']} description="Mostrar a resposta ou fechar a resposta do cartão atual." />
+                </div>
               </div>
             )}
 
@@ -186,6 +194,43 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
               </div>
             )}
             
+            {activeTab === 'tags' && (
+              <div className="space-y-6 animate-fade-in">
+                <h3 className="text-2xl font-bold text-white mb-2">Sistema Transversal de Tags</h3>
+                <p className="text-dark-subtext text-sm leading-relaxed">
+                  As tags permitem que você categorize cartões muito além das limitações de pastas ou subbaralhos. Elas são transversais e extremamente úteis para filtros.
+                </p>
+
+                <div className="space-y-4 mt-6">
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-indigo-400" />
+                      Como Criar
+                    </h4>
+                    <p className="text-sm text-dark-subtext">No editor de cartões, há um campo específico para Tags. Digite uma palavra e pressione `Enter` ou `,` (vírgula) para transformá-la em uma pílula roxa.</p>
+                  </div>
+                  
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                      <Search className="w-4 h-4 text-indigo-400" />
+                      Filtros Inteligentes
+                    </h4>
+                    <p className="text-sm text-dark-subtext">Ao navegar pelo seu baralho, um menu suspenso de Tags será mostrado. Ele exibe apenas as tags que realmente existem naqueles cartões. Perfeito para estudar contextos como `#urgente` ou `#phrasal_verbs` separadamente.</p>
+                  </div>
+
+                  <div className="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20 mt-4">
+                    <h4 className="font-semibold text-indigo-300 mb-1 flex items-center gap-2">
+                      <BrainCircuit className="w-4 h-4" />
+                      Tags Automáticas via IA
+                    </h4>
+                    <p className="text-sm text-indigo-200/70">
+                      Sempre que você utilizar o Assistente de IA para gerar novos flashcards a partir de um texto, a inteligência artificial não apenas criará os cartões, mas também aplicará tags cirúrgicas a cada um deles automaticamente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'ai_logs' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between mb-4">

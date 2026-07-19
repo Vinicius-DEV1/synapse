@@ -521,6 +521,7 @@ export interface AnkiCard {
   front: string;
   back: string;
   extra_note?: string;
+  tags?: string[];
   card_type?: string;
   validation_mode?: string;
   media_url?: string;
