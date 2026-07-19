@@ -25,6 +25,56 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
     loadPlaylist();
   }, [url]);
 
+  const parseISO8601Duration = (duration: string) => {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    if (!match) return 0;
+    const h = parseInt(match[1]?.replace('H', '')) || 0;
+    const m = parseInt(match[2]?.replace('M', '')) || 0;
+    const s = parseInt(match[3]?.replace('S', '')) || 0;
+    return h * 3600 + m * 60 + s;
+  };
+
+  const fetchWebPlaylist = async (playlistId: string) => {
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    if (!apiKey) throw new Error('API Key não encontrada');
+    
+    let pageToken = '';
+    const entries = [];
+    
+    // Fetch up to 50 items (first page)
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
+    if (!res.ok) throw new Error('Falha ao buscar playlist');
+    
+    const data = await res.json();
+    for (const item of data.items) {
+      if (item.snippet.title === 'Private video' || item.snippet.title === 'Deleted video') continue;
+      entries.push({
+        id: item.contentDetails.videoId,
+        title: item.snippet.title,
+        uploader: item.snippet.videoOwnerChannelTitle || '',
+        duration: null, 
+      });
+    }
+    
+    // Fetch durations
+    if (entries.length > 0) {
+      const videoIds = entries.map(e => e.id);
+      const batchIds = videoIds.join(',');
+      const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${batchIds}&key=${apiKey}`);
+      if (vidRes.ok) {
+        const vidData = await vidRes.json();
+        for (const v of vidData.items) {
+          const entry = entries.find(e => e.id === v.id);
+          if (entry) {
+            entry.duration = parseISO8601Duration(v.contentDetails.duration);
+          }
+        }
+      }
+    }
+    
+    return { entries };
+  };
+
   const loadPlaylist = async () => {
     try {
       setLoading(true);
@@ -39,8 +89,32 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           setWatchedSet(new Set(watchedIds));
         }
       } else {
-        // Web mode fallback
-        setPlaylist({ _error: 'web_limitation' });
+        // Web mode fallback using Firebase API Key
+        const urlObj = new URL(url);
+        const listId = urlObj.searchParams.get('list');
+        if (listId) {
+          try {
+            const data = await fetchWebPlaylist(listId);
+            setPlaylist(data);
+            
+            // In web mode, fetch watched status from local/web db
+            if (window.api && window.api.db) {
+              const videoIds = data.entries.map((e: any) => e.id);
+              // Fallback to query watched from web indexedDB if possible
+              // But for now let's just initialize empty or use a web api
+              const watched = await window.api.db.getAll('youtube_watched');
+              if (watched) {
+                const watchedIds = watched.filter((w: any) => videoIds.includes(w.id)).map((w: any) => w.id);
+                setWatchedSet(new Set(watchedIds));
+              }
+            }
+          } catch (webErr) {
+            console.error('Web playlist fetch failed', webErr);
+            setPlaylist({ _error: 'web_limitation' });
+          }
+        } else {
+          setPlaylist({ _error: 'web_limitation' });
+        }
       }
     } catch (e) {
       console.error('Failed to fetch playlist', e);
@@ -60,6 +134,21 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
       await window.api.youtube.setWatched(video.id, isWatched, video.title, video.uploader);
       if (window.api.sync && window.api.sync.push) {
         window.api.sync.push('youtube_watched'); // trigger sync for nuvem
+      }
+    } else if (window.api && window.api.db) {
+      // Web mode fallback
+      if (isWatched) {
+        await window.api.db.put('youtube_watched', {
+          id: video.id,
+          title: video.title,
+          uploader: video.uploader,
+          watched_at: new Date().toISOString()
+        });
+      } else {
+        await window.api.db.delete('youtube_watched', video.id);
+      }
+      if (window.api.sync && window.api.sync.push) {
+        window.api.sync.push('youtube_watched'); 
       }
     }
   };
