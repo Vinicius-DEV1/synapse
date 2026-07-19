@@ -111,10 +111,6 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
   if (history && history.length > 0) {
     const formattedHistory = JSON.parse(JSON.stringify(history)); // deep copy
-    if (formattedHistory[0].role === 'user') {
-      const originalText = formattedHistory[0].parts[0].text;
-      formattedHistory[0].parts[0].text = `${systemInstruction}\n\n${originalText}`;
-    }
     contents.push(...formattedHistory);
     
     const userParts: any[] = [{ text: prompt }];
@@ -128,7 +124,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
     }
     contents.push({ role: 'user', parts: userParts });
   } else {
-    const userParts: any[] = [{ text: `${systemInstruction}\n\nPedido do usuário:\n${prompt}` }];
+    const userParts: any[] = [{ text: prompt }];
     if (imageBase64) {
       const mimeTypeMatch = imageBase64.match(/^data:(image\/[a-zA-Z]*);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
@@ -140,7 +136,13 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
     contents.push({ role: 'user', parts: userParts });
   }
 
-  const requestBody = { contents };
+  const requestBody: any = { 
+    contents,
+    generationConfig: { maxOutputTokens: 8192 }
+  };
+  if (customSystemInstruction) {
+    requestBody.system_instruction = { parts: { text: customSystemInstruction } };
+  }
 
   // Failover loop
   for (const currentKeyEntry of activeKeys) {
@@ -362,7 +364,8 @@ EXCEÇÃO: A única exceção é se a quantidade pedida for EXTREMAMENTE exagera
 Não retorne NADA ALÉM do JSON válido.`;
 
   const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO (USE OS IDs PARA EDIT/DELETE) ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
-  const finalPrompt = history.length === 0 ? `${contextStr}\nPedido do usuário: ${userPrompt}` : userPrompt;
+  const finalSystemInstruction = systemInstruction + contextStr;
+  const finalPrompt = userPrompt;
 
   let fullLogPrompt = systemInstruction + '\n\n' + contextStr;
   if (history && history.length > 0) {
@@ -373,7 +376,7 @@ Não retorne NADA ALÉM do JSON válido.`;
   fullLogPrompt += '\nPedido atual do usuário: ' + userPrompt;
 
   try {
-    const response = await promptGemini(finalPrompt, undefined, history, customModelId, systemInstruction);
+    const response = await promptGemini(finalPrompt, undefined, history, customModelId, finalSystemInstruction);
     const responseText = response.text;
     logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, responseText, undefined, response.usage);
     
