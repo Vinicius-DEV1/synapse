@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, AlertTriangle, Check, Edit3, Trash2, RefreshCw } from 'lucide-react';
 import { promptGeminiForChatAnalysis } from '../../services/gemini';
-import { useAIActions, ChatMessage } from '../../hooks/useAIActions';
+import { useAIActions } from '../../hooks/useAIActions';
+import type { ChatMessage } from '../../hooks/useAIActions';
 
 interface AIChatAnalysisViewProps {
   deckId: string;
