@@ -3,6 +3,14 @@ import { processReview } from '../../services/fsrs';
 
 export const tauriAnkiApi = {
   getDecks: async () => await invoke('anki_get_decks'),
+  getReviews: async () => {
+    try {
+      const res: any = await invoke('anki_get_reviews');
+      return { success: true, reviews: res || [] };
+    } catch {
+      return { success: true, reviews: [] };
+    }
+  },
   createDeck: async (name: string, desc?: string, parentId?: string) => await invoke('anki_create_deck', { name, description: desc, parent_id: parentId }),
   saveCard: async (c: any) => await invoke('anki_save_card', { card: c }),
   

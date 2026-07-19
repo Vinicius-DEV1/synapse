@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Play, Plus, Trash2, Edit3, Settings, BrainCircuit, X, Layers } from 'lucide-react';
+import { Play, Plus, Trash2, Edit3, Settings, BrainCircuit, X, Layers, HelpCircle, BarChart2 } from 'lucide-react';
 import StudySession from './StudySession';
 import DeckBrowser from './DeckBrowser';
+import AnkiStats from './AnkiStats';
 
 export default function AnkiView() {
   const [decks, setDecks] = useState<any[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
   const [managingDeck, setManagingDeck] = useState<any | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [newDeckName, setNewDeckName] = useState('');
   const [newDeckDesc, setNewDeckDesc] = useState('');
   const [parentDeckId, setParentDeckId] = useState<string | null>(null);
@@ -41,19 +44,21 @@ export default function AnkiView() {
         if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
         else if (Array.isArray(dueRes)) dueCards = dueRes;
 
-        const allRes = await window.api.anki.getAllCards(d.id);
-        let allCards = [];
-        if (allRes && allRes.success && allRes.cards) allCards = allRes.cards;
-        else if (Array.isArray(allRes)) allCards = allRes;
+        let novos = 0;
+        let aprender = 0;
+        let revisar = 0;
 
-        const novos = allCards.filter((c: any) => c.state === 0 || c.state === 'new' || c.srs_state === null || c.srs_state === undefined || c.state === undefined).length;
-        const revisar = dueCards.length;
-        const feitas = allCards.length - novos - revisar;
+        dueCards.forEach((c: any) => {
+          const state = Number(c.state) || 0;
+          if (state === 0) novos++;
+          else if (state === 1 || state === 3) aprender++;
+          else if (state === 2) revisar++;
+        });
 
-        stats[d.id] = { novos, revisar, feitas: feitas > 0 ? feitas : 0 };
+        stats[d.id] = { novos, aprender, revisar };
       } catch (err) {
         console.warn('Failed to load stats for deck', d.id, err);
-        stats[d.id] = { novos: 0, revisar: 0, feitas: 0 };
+        stats[d.id] = { novos: 0, aprender: 0, revisar: 0 };
       }
     }
     setDeckStats(stats);
@@ -111,13 +116,13 @@ export default function AnkiView() {
               <span className="w-2 h-2 rounded-full bg-blue-400/50"></span>
               {deckStats[deck.id]?.novos || 0}
             </div>
-            <div className="text-orange-400/80 flex items-center gap-1" title="Para Revisar">
+            <div className="text-orange-400/80 flex items-center gap-1" title="Aprendendo">
               <span className="w-2 h-2 rounded-full bg-orange-400/50"></span>
-              {deckStats[deck.id]?.revisar || 0}
+              {deckStats[deck.id]?.aprender || 0}
             </div>
-            <div className="text-green-400/80 flex items-center gap-1" title="Revisões Feitas/Aprendizado">
+            <div className="text-green-400/80 flex items-center gap-1" title="A Revisar Hoje">
               <span className="w-2 h-2 rounded-full bg-green-400/50"></span>
-              {deckStats[deck.id]?.feitas || 0}
+              {deckStats[deck.id]?.revisar || 0}
             </div>
           </div>
 
@@ -159,20 +164,39 @@ export default function AnkiView() {
               <BrainCircuit className="w-8 h-8 text-indigo-500" />
               Flashcards
             </h1>
-            <p className="text-dark-subtext mt-2">FSRS Spaced Repetition System</p>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-dark-subtext">FSRS Spaced Repetition System</p>
+              <button 
+                onClick={() => setShowHelpModal(true)}
+                className="text-dark-subtext hover:text-indigo-400 transition-colors p-1 rounded-full hover:bg-white/5 flex items-center justify-center cursor-pointer"
+                title="Como funciona o algoritmo?"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Criar Baralho
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowStats(true)}
+              className="flex items-center gap-2 bg-dark-card hover:bg-white/5 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <BarChart2 className="w-4 h-4 text-indigo-400" />
+              Estatísticas
+            </button>
+            <button 
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Criar Baralho
+            </button>
+          </div>
         </header>
 
-        <div className="flex flex-col w-full pb-20">
-          {deckTree.length > 0 && (
-            <div className="flex items-center justify-between px-4 pb-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider border-b border-white/5 mb-2">
+        {!showStats ? (
+          <div className="flex flex-col w-full pb-20">
+            {deckTree.length > 0 && (
+              <div className="flex items-center justify-between px-4 pb-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider border-b border-white/5 mb-2">
               <span>Baralho</span>
               <div className="flex gap-16 mr-[200px]">
                 <span>Estatísticas</span>
@@ -191,7 +215,10 @@ export default function AnkiView() {
             </div>
           )}
         </div>
-      </div>
+      ) : (
+        <AnkiStats onBack={() => setShowStats(false)} />
+      )}
+    </div>
       
       {studyingDeckId && (
         <StudySession deckId={studyingDeckId} onClose={() => setStudyingDeckId(null)} />
@@ -257,6 +284,69 @@ export default function AnkiView() {
                 className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium transition-colors"
               >
                 {parentDeckId ? 'Criar Subbaralho' : 'Criar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHelpModal && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-dark-card border border-white/10 p-8 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-3 text-white">
+                <BrainCircuit className="w-6 h-6 text-indigo-500" />
+                Como funciona o algoritmo (FSRS)?
+              </h2>
+              <button onClick={() => setShowHelpModal(false)} className="text-dark-subtext hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-6 text-dark-subtext text-sm leading-relaxed">
+              <p>
+                Este módulo utiliza o algoritmo <strong>FSRS (Free Spaced Repetition Scheduler)</strong>, uma evolução moderna e mais precisa dos algoritmos tradicionais de repetição espaçada.
+              </p>
+
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                <h3 className="text-white font-semibold mb-2">O Ciclo de Estudo</h3>
+                <p className="mb-3">Quando você estuda um cartão, você avalia o quão difícil foi lembrar a resposta:</p>
+                <ul className="space-y-2 list-disc list-inside">
+                  <li><strong className="text-red-400">Errei (Again):</strong> Você não lembrou. O cartão voltará em breve para reforço.</li>
+                  <li><strong className="text-orange-400">Difícil (Hard):</strong> Lembrou, mas com muito esforço.</li>
+                  <li><strong className="text-green-400">Bom (Good):</strong> Lembrou normalmente. O intervalo até a próxima revisão aumentará.</li>
+                  <li><strong className="text-blue-400">Fácil (Easy):</strong> Lembrou perfeitamente. O intervalo aumentará consideravelmente.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-white font-semibold mb-2 text-base">A Mágica do FSRS</h3>
+                <p className="mb-2">
+                  Ao contrário de sistemas antigos que multiplicam intervalos por um valor fixo, o FSRS utiliza um modelo matemático (baseado em redes neurais) para prever a curva de esquecimento do seu cérebro.
+                </p>
+                <p>
+                  Ele calcula três métricas essenciais para cada cartão:
+                </p>
+                <ul className="mt-2 space-y-1 list-disc list-inside">
+                  <li><strong>Dificuldade (D):</strong> Quão inerentemente difícil é este cartão para você.</li>
+                  <li><strong>Estabilidade (S):</strong> Quanto tempo a memória durará antes que você tenha 10% de chance de esquecer.</li>
+                  <li><strong>Recuperabilidade (R):</strong> A probabilidade estimada de você lembrar do cartão no momento atual.</li>
+                </ul>
+              </div>
+
+              <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-indigo-200">
+                <p>
+                  <strong>Em resumo:</strong> O algoritmo foca em otimizar o seu tempo. Ele só te mostrará um cartão quando você estiver prestes a esquecê-lo, garantindo que você construa memórias de longo prazo com o menor número possível de revisões!
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-8 pt-4 border-t border-white/5">
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="bg-white/10 hover:bg-white/15 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Entendi
               </button>
             </div>
           </div>
