@@ -47,9 +47,13 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
       const payload = JSON.parse(text);
       if (window.api?.anki?.importDeck) {
         const res = await window.api.anki.importDeck(payload);
-        if (res.success) {
+        if (res.success && res.stats) {
+          const { stats } = res;
+          alert(`Resumo da Importação:\n\nSub-baralhos:\nCriados: ${stats.decksCreated} | Atualizados: ${stats.decksUpdated} | Iguais (Ignorados): ${stats.decksIgnored}\n\nCartões:\nCriados: ${stats.cardsCreated} | Atualizados: ${stats.cardsUpdated} | Iguais (Ignorados): ${stats.cardsIgnored}`);
+          window.location.reload(); 
+        } else if (res.success) {
           alert('Baralho importado com sucesso!');
-          window.location.reload(); // Quick way to refresh all Anki views and tree
+          window.location.reload(); 
         } else {
           alert('Erro ao importar: ' + res.error);
         }
