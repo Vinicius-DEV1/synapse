@@ -14,6 +14,7 @@ export interface CardDraft {
   video_clip?: { path: string, startMs: number, endMs: number }; // For video extraction
   tts_text?: string; // For Edge TTS generation
   deck_id?: string;
+  tags?: string[];
 }
 
 interface CardEditorProps {
@@ -36,6 +37,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
   const [cardType, setCardType] = useState<CardDraft['card_type']>(draft.card_type);
   const [validationMode, setValidationMode] = useState<'exact' | 'ai'>(draft.validation_mode || 'exact');
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [tags, setTags] = useState<string[]>(draft.tags || []);
+  const [tagInput, setTagInput] = useState('');
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
@@ -94,6 +97,23 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
     }
   };
 
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newTag = tagInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      if (newTag && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+      }
+      setTagInput('');
+    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
+      setTags(tags.slice(0, -1));
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   const handleSave = async () => {
     if (!selectedDeck) return;
     setLoading(true);
@@ -124,7 +144,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
              media_url: finalMediaUrl,
              validation_mode: validationMode,
              card_type: cardType,
-             deck_id: selectedDeck
+             deck_id: selectedDeck,
+             tags
           });
           if (!res.success) throw new Error(res.error);
         } else {
@@ -137,7 +158,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
              source_id: draft.source_id,
              media_url: finalMediaUrl,
              card_type: cardType,
-             validation_mode: validationMode
+             validation_mode: validationMode,
+             tags
           });
           if (!res.success) throw new Error(res.error);
         }
@@ -164,7 +186,8 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
           back: card.back || '',
           card_type: card.type || 'reading',
           source_module: 'manual',
-          validation_mode: card.validation_mode || 'exact'
+          validation_mode: card.validation_mode || 'exact',
+          tags: card.tags || []
         };
         const res = await window.api.anki.saveNote(payload);
         if (res.success) successCount++;
@@ -177,6 +200,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
         setFront('');
         setBack('');
         setExtraNote('');
+        setTags([]);
         if (frontRef.current) frontRef.current.style.height = 'auto';
         if (backRef.current) backRef.current.style.height = 'auto';
       }
@@ -288,8 +312,30 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                value={extraNote}
                onChange={(e) => setExtraNote(e.target.value)}
                className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500"
-               placeholder="Contexto adicional, tags, etc."
+               placeholder="Contexto adicional, etc."
              />
+          </div>
+
+          <div>
+             <label className="block text-sm font-medium text-dark-subtext mb-1">Tags</label>
+             <div className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 flex flex-wrap gap-2 items-center focus-within:border-indigo-500 transition-colors">
+               {tags.map(tag => (
+                 <span key={tag} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md text-xs font-medium">
+                   {tag}
+                   <button onClick={() => removeTag(tag)} className="hover:text-indigo-100 focus:outline-none ml-1">
+                     <X className="w-3 h-3" />
+                   </button>
+                 </span>
+               ))}
+               <input 
+                 type="text"
+                 value={tagInput}
+                 onChange={(e) => setTagInput(e.target.value)}
+                 onKeyDown={handleTagKeyDown}
+                 className="flex-1 bg-transparent border-none text-sm text-dark-text focus:outline-none min-w-[100px]"
+                 placeholder={tags.length === 0 ? "Ex: dificil, phrasal_verbs (Pressione Enter)" : ""}
+               />
+             </div>
           </div>
 
           {(draft.video_clip || draft.tts_text || mediaUrl) && (

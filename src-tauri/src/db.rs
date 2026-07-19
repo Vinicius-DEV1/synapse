@@ -43,7 +43,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS culture_episodes (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, episode_number INTEGER, title TEXT, synopsis TEXT, is_watched BOOLEAN DEFAULT 0, watched_at DATETIME);
          
          CREATE TABLE IF NOT EXISTS anki_decks (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, parent_id TEXT, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-         CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, tags TEXT DEFAULT '[]', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME);
          CREATE TABLE IF NOT EXISTS anki_reviews (id TEXT PRIMARY KEY, card_id TEXT NOT NULL, rating INTEGER NOT NULL, duration INTEGER DEFAULT 0, review_time DATETIME DEFAULT CURRENT_TIMESTAMP);
          
@@ -100,6 +100,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     // Migration for anki_decks parent_id
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);
+    
+    // Migration for anki tags
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'", []);
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 

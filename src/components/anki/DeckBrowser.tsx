@@ -24,6 +24,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [filterMedia, setFilterMedia] = useState<string>('all');
   const [filterState, setFilterState] = useState<string>('all');
   const [filterDeck, setFilterDeck] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const [editingCard, setEditingCard] = useState<any | null>(null);
@@ -77,10 +78,19 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
       
       const matchesState = filterState === 'all' || stateStr === filterState;
       const matchesDeck = filterDeck === 'all' || c.deck_id === filterDeck;
+      const matchesTag = filterTag === 'all' || (c.tags && c.tags.includes(filterTag));
       
-      return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck;
+      return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck && matchesTag;
     });
-  }, [cards, searchQuery, filterType, filterValidation, filterMedia, filterState, filterDeck]);
+  }, [cards, searchQuery, filterType, filterValidation, filterMedia, filterState, filterDeck, filterTag]);
+
+  const allTags = React.useMemo(() => {
+    const tagsSet = new Set<string>();
+    cards.forEach(c => {
+      if (c.tags) c.tags.forEach((t: string) => tagsSet.add(t));
+    });
+    return Array.from(tagsSet).sort();
+  }, [cards]);
 
   const groupedCards = React.useMemo(() => {
     const groups = new Map<string, any[]>();
@@ -344,6 +354,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
+
+              {allTags.length > 0 && (
+                <select value={filterTag} onChange={e => setFilterTag(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors max-w-[150px] truncate">
+                  <option value="all">Tags (Todas)</option>
+                  {allTags.map(tag => (
+                    <option key={tag} value={tag}>#{tag}</option>
+                  ))}
+                </select>
+              )}
                 </>
               )}
             </div>
@@ -468,6 +487,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                             {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
                           </span>
                         )}
+                        {card.tags && card.tags.map((t: string) => (
+                          <span key={t} className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-bold uppercase tracking-wider align-middle border border-indigo-500/20 whitespace-nowrap">#{t}</span>
+                        ))}
                         {group.length > 1 && (
                           <span className="inline-flex items-center justify-center bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 border border-indigo-500/30 align-middle" title={`${group.length} cartões nesta nota`}>
                             [{group.length}]
@@ -524,6 +546,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                               {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
                             </span>
                           )}
+                          {card.tags && card.tags.map((t: string) => (
+                            <span key={t} className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-300 text-[10px] border border-indigo-500/20 font-bold uppercase tracking-wider">#{t}</span>
+                          ))}
                           {group.length > 1 && (
                             <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-500/30" title={`${group.length} cartões nesta nota`}>
                               [{group.length}]
