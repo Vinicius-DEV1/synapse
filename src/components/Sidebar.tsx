@@ -258,7 +258,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </button>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => dispatch({ type: 'SET_CURRENT_MODULE', payload: 'practice' })}
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'practice' })}
               className={`p-2 rounded-lg transition-all active:scale-95 ${
                 state.currentModule === 'practice' 
                   ? 'bg-brand-500/20 text-brand-400' 
@@ -269,7 +269,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <Mic size={18} />
             </button>
             <button
-              onClick={() => dispatch({ type: 'SET_CURRENT_MODULE', payload: 'trash' })}
+              onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'trash' })}
               className={`p-2 rounded-lg transition-all active:scale-95 ${
                 state.currentModule === 'trash'
                   ? 'bg-red-500/20 text-red-400'
@@ -632,7 +632,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             </button>
               <button
                 onClick={() => {
-                  dispatch({ type: 'SET_CURRENT_MODULE', payload: 'trash' });
+                  dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'trash' });
                   dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
                 }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mt-2 ${
