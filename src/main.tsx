@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import 'highlight.js/styles/atom-one-dark.css'
 
 async function init() {
   if (!localStorage.getItem('wiped_for_test_1')) {

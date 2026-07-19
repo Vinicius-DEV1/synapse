@@ -1,7 +1,8 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { ChevronDown, ChevronRight, Palette, X, Type } from 'lucide-react';
+import { ChevronDown, ChevronRight, Palette, X, Type, Copy } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { DOMSerializer } from 'prosemirror-model';
 import { BG_COLORS } from '../../utils/colors';
 
 const BlockquoteToggleComponent = (props: any) => {
@@ -37,18 +38,36 @@ const BlockquoteToggleComponent = (props: any) => {
   };
 
   const handleConvertToCallout = () => {
-    const { editor } = props;
-    const currentColor = props.node.attrs.color || 'default';
+    const { editor, node, getPos } = props;
+    const currentColor = node.attrs.color || 'default';
+    const pos = getPos();
+    const content = node.content.toJSON();
 
-    // Get the HTML content of the current toggle (excluding the header)
-    const htmlContent = editor.getHTML(props.node.pos, props.node.pos + props.node.node.nodeSize);
-
-    // Replace with regular blockquote (callout) using HTML content
-    editor.chain()
+    editor
+      .chain()
       .focus()
-      .deleteRange({ from: props.node.pos, to: props.node.pos + props.node.node.nodeSize })
-      .insertContent(`<blockquote data-color="${currentColor}">${htmlContent}</blockquote>`)
+      .deleteRange({ from: pos, to: pos + node.nodeSize })
+      .insertContentAt(pos, {
+        type: 'blockquote',
+        attrs: { color: currentColor },
+        content,
+      })
       .run();
+  };
+
+  const handleCopy = () => {
+    const { node, editor } = props;
+    try {
+      const serializer = DOMSerializer.fromSchema(editor.schema);
+      const div = document.createElement('div');
+      div.appendChild(serializer.serializeNode(node));
+      const html = div.innerHTML;
+      navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })
+      ]).catch(() => navigator.clipboard.writeText(div.textContent || ''));
+    } catch (e) {
+      console.error('Copy failed', e);
+    }
   };
 
   const currentColor = props.node.attrs.color || 'default';
@@ -73,6 +92,13 @@ const BlockquoteToggleComponent = (props: any) => {
             title="Converter em Callout"
           >
             <Type size={14} />
+          </button>
+          <button
+            onClick={handleCopy}
+            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+            title="Copiar toggle callout"
+          >
+            <Copy size={14} />
           </button>
           <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
           <button
