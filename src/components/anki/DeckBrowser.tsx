@@ -490,12 +490,27 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                             </span>
                           )}
                         </div>
-                        <input 
-                          type="checkbox" 
-                          checked={isSelected}
-                          onChange={() => toggleSelectGroup(group)}
-                          className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500 scale-125"
-                        />
+                        <div className="flex items-center gap-3">
+                          {card.media_url && (
+                            <button onClick={() => playAudio(card.media_url)} className="p-1.5 bg-black/40 hover:bg-black/60 text-indigo-400 rounded-lg transition-colors" title="Ouvir Áudio">
+                              <Volume2 size={14} />
+                            </button>
+                          )}
+                          <div className="flex items-center gap-1 border-r border-white/10 pr-3 mr-1">
+                            <button onClick={() => setEditingCard(card)} className="p-1.5 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar">
+                              <Edit3 size={16} />
+                            </button>
+                            <button onClick={() => handleDeleteCard(card.id)} className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors" title="Excluir">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => toggleSelectGroup(group)}
+                            className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500 scale-125 cursor-pointer"
+                          />
+                        </div>
                       </div>
                       
                       {/* Content */}
@@ -510,25 +525,6 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                         <div className={`${viewMode === 'list' ? 'flex-1' : ''}`}>
                           <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Verso</div>
                           <div className={`text-sm text-dark-subtext whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar ${viewMode === 'list' ? '' : 'max-h-48'}`} dangerouslySetInnerHTML={{ __html: card.back }}></div>
-                        </div>
-                      </div>
-                      
-                      {/* Footer */}
-                      <div className="mt-5 flex justify-between items-center border-t border-white/5 pt-4">
-                        <div>
-                          {card.media_url && (
-                            <button onClick={() => playAudio(card.media_url)} className="flex items-center gap-2 bg-black/40 hover:bg-black/60 text-indigo-400 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                              <Volume2 size={14} /> Ouvir Áudio
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => setEditingCard(card)} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar">
-                            <Edit3 size={16} />
-                          </button>
-                          <button onClick={() => handleDeleteCard(card.id)} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors" title="Excluir">
-                            <Trash2 size={16} />
-                          </button>
                         </div>
                       </div>
                     </div>
