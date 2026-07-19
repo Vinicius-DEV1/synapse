@@ -32,9 +32,13 @@ export function useMouseDrag({
     if (disabled) return;
     if (e.button !== 0) return; // Only left click
     
-    // Don't start drag on buttons or inputs
+    // Don't start drag on child buttons or inputs — but allow dragging
+    // the element itself even if it IS a button (e.g. tab items)
     const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input')) return;
+    const currentTarget = e.currentTarget as HTMLElement;
+    const closestButton = target.closest('button');
+    const closestInput = target.closest('input');
+    if ((closestButton && closestButton !== currentTarget) || closestInput) return;
 
     const startX = e.clientX;
     const startY = e.clientY;
