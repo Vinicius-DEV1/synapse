@@ -152,28 +152,37 @@ pub fn anki_review_card(card_id: String, rating: i32, db_state: State<'_, DbStat
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT scheduled_days FROM anki_srs_state WHERE id = ?").map_err(|e| e.to_string())?;
-    let scheduled_days: f64 = stmt.query_row([&card_id], |row| row.get(0)).unwrap_or(0.0);
+    let mut stmt = conn.prepare("SELECT stability, difficulty, state FROM anki_srs_state WHERE id = ?").map_err(|e| e.to_string())?;
+    let (mut stability, mut difficulty, current_state): (f64, f64, String) = stmt.query_row([&card_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))).unwrap_or((0.0, 0.0, "0".to_string()));
     
-    let mut next_interval_days = 1.0;
-    let mut new_state = 2;
+    let state_num = current_state.parse::<i32>().unwrap_or(0);
+    let mut new_state = 2; // review
     
-    if rating == 1 {
-        next_interval_days = 0.0;
-        new_state = 1;
-    } else if rating == 2 {
-        next_interval_days = 1.0_f64.max(scheduled_days * 1.2);
-    } else if rating == 3 {
-        next_interval_days = 1.0_f64.max(scheduled_days * 2.5);
-    } else if rating == 4 {
-        next_interval_days = 4.0_f64.max(scheduled_days * 3.5);
+    if state_num == 0 {
+        // New card
+        match rating {
+            1 => { stability = 0.5; difficulty = 8.0; new_state = 1; },
+            2 => { stability = 1.0; difficulty = 6.0; },
+            3 => { stability = 2.0; difficulty = 5.0; },
+            _ => { stability = 4.0; difficulty = 4.0; },
+        }
+    } else {
+        // Review or Learning
+        match rating {
+            1 => { stability *= 0.2; difficulty = (difficulty + 2.0).min(10.0); new_state = 1; },
+            2 => { stability *= 1.2; difficulty = (difficulty + 1.0).min(10.0); },
+            3 => { stability *= 2.5; difficulty = (difficulty - 0.5).max(1.0); },
+            _ => { stability *= 3.5; difficulty = (difficulty - 2.0).max(1.0); },
+        }
     }
+    
+    stability = stability.max(0.1);
     
     let now = Utc::now();
     let next_due = if rating == 1 {
         now + Duration::minutes(5)
     } else {
-        now + Duration::seconds((next_interval_days * 86400.0) as i64)
+        now + Duration::seconds((stability * 86400.0) as i64)
     };
     
     let due_date_str = next_due.to_rfc3339();
@@ -181,8 +190,8 @@ pub fn anki_review_card(card_id: String, rating: i32, db_state: State<'_, DbStat
     conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
     
     if let Err(e) = conn.execute(
-        "UPDATE anki_srs_state SET due_date = ?, scheduled_days = ?, state = ?, reps = reps + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![due_date_str, next_interval_days, new_state, card_id]
+        "UPDATE anki_srs_state SET due_date = ?, stability = ?, difficulty = ?, state = ?, reps = reps + 1, last_review = CURRENT_TIMESTAMP WHERE id = ?",
+        params![due_date_str, stability, difficulty, new_state.to_string(), card_id]
     ) {
         let _ = conn.execute("ROLLBACK", []);
         return Err(e.to_string());
