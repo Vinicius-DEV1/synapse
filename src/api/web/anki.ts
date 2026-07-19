@@ -51,8 +51,40 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
   reviewCard: async (cardId: string, rating: number) => {
     const card = await db.get('anki_cards', cardId);
     if (card) {
-      // Simplified SRS update - in real implementation would use FSRS algorithm
-      const updated = { ...card, updated_at: new Date().toISOString() };
+      const stateNum = parseInt(card.state) || 0;
+      let stability = parseFloat(card.stability) || 0.0;
+      let difficulty = parseFloat(card.difficulty) || 0.0;
+      let newState = 2; // review
+      
+      if (stateNum === 0 || card.state === 'new') {
+        if (rating === 1) { stability = 0.5; difficulty = 8.0; newState = 1; }
+        else if (rating === 2) { stability = 1.0; difficulty = 6.0; }
+        else if (rating === 3) { stability = 2.0; difficulty = 5.0; }
+        else { stability = 4.0; difficulty = 4.0; }
+      } else {
+        if (rating === 1) { stability *= 0.2; difficulty = Math.min(10.0, difficulty + 2.0); newState = 1; }
+        else if (rating === 2) { stability *= 1.2; difficulty = Math.min(10.0, difficulty + 1.0); }
+        else if (rating === 3) { stability *= 2.5; difficulty = Math.max(1.0, difficulty - 0.5); }
+        else { stability *= 3.5; difficulty = Math.max(1.0, difficulty - 2.0); }
+      }
+      
+      stability = Math.max(0.1, stability);
+      
+      const nextDue = new Date();
+      if (rating === 1) {
+        nextDue.setMinutes(nextDue.getMinutes() + 5);
+      } else {
+        nextDue.setSeconds(nextDue.getSeconds() + (stability * 86400));
+      }
+
+      const updated = { 
+        ...card, 
+        state: newState,
+        stability,
+        difficulty,
+        due_date: nextDue.toISOString(),
+        updated_at: new Date().toISOString() 
+      };
       await db.put('anki_cards', updated);
       
       // Log the review
