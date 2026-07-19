@@ -159,7 +159,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
     try {
       for (const card of cards) {
         const payload = {
-          deck_id: selectedDeck,
+          deck_id: card.suggested_deck_id || selectedDeck,
           front: card.front,
           back: card.back || '',
           card_type: card.type || 'reading',
