@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive } from 'lucide-react';
+import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye } from 'lucide-react';
 import CardEditor from './CardEditor';
 
 interface DeckBrowserProps {
@@ -11,15 +11,22 @@ interface DeckBrowserProps {
 
 export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdated }: DeckBrowserProps) {
   const [cards, setCards] = useState<any[]>([]);
+  const [decks, setDecks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterValidation, setFilterValidation] = useState<string>('all');
   const [filterMedia, setFilterMedia] = useState<string>('all');
+  const [filterState, setFilterState] = useState<string>('all');
+  const [filterDeck, setFilterDeck] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const [editingCard, setEditingCard] = useState<any | null>(null);
   const [isCreatingCard, setIsCreatingCard] = useState(false);
+  
+  // Preview
+  const [previewCard, setPreviewCard] = useState<any | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
   
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
@@ -34,7 +41,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   useEffect(() => {
     loadCards();
     loadSettings();
+    loadDecks();
   }, [deck.id]);
+
+  const loadDecks = async () => {
+    if (window.api?.anki) {
+      const res = await window.api.anki.getDecks();
+      if (res?.success && res.decks) setDecks(res.decks);
+      else if (Array.isArray(res)) setDecks(res);
+    }
+  };
 
   const loadSettings = async () => {
     if (window.api?.anki?.getDeckSettings) {
@@ -67,7 +83,14 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     const matchesValidation = filterValidation === 'all' || (c.validation_mode || 'exact') === filterValidation;
     const matchesMedia = filterMedia === 'all' || (filterMedia === 'with_media' ? !!c.media_url : !c.media_url);
     
-    return matchesSearch && matchesType && matchesValidation && matchesMedia;
+    let stateStr = 'new';
+    if (c.state === 1 || c.state === 3) stateStr = 'learning';
+    else if (c.state === 2) stateStr = 'review';
+    
+    const matchesState = filterState === 'all' || stateStr === filterState;
+    const matchesDeck = filterDeck === 'all' || c.deck_id === filterDeck;
+    
+    return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck;
   });
 
   const toggleSelectAll = () => {
@@ -278,6 +301,20 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 <option value="with_media">Com Áudio</option>
                 <option value="without_media">Sem Áudio</option>
               </select>
+
+              <select value={filterState} onChange={e => setFilterState(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
+                <option value="all">Estado (Todos)</option>
+                <option value="new">Novos</option>
+                <option value="learning">Aprendendo</option>
+                <option value="review">Revisão</option>
+              </select>
+
+              <select value={filterDeck} onChange={e => setFilterDeck(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors max-w-[150px] truncate">
+                <option value="all">Baralho (Todos)</option>
+                {decks.filter(d => d.id === deck.id || d.parent_id === deck.id).map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
             </div>
             
             <div className="flex items-center gap-3">
@@ -335,7 +372,14 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                           className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
-                      <td className="p-3 text-sm text-dark-text max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.front }}></td>
+                      <td className="p-3 text-sm text-dark-text max-w-xs truncate">
+                        {card.deck_id !== deck.id && (
+                          <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30 whitespace-nowrap align-middle">
+                            {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
+                          </span>
+                        )}
+                        <span dangerouslySetInnerHTML={{ __html: card.front }}></span>
+                      </td>
                       <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back }}></td>
                       <td className="p-3 text-center">
                         {card.media_url && (
@@ -349,6 +393,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setPreviewCard(card); setShowAnswer(false); }} className="p-1.5 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded" title="Visualizar">
+                            <Eye size={16} />
+                          </button>
                           <button onClick={() => setEditingCard(card)} className="p-1.5 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded" title="Editar">
                             <Edit3 size={16} />
                           </button>
@@ -364,6 +411,32 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
             )}
           </div>
         </div>
+
+        {/* Preview Modal */}
+        {previewCard && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-[200] p-4 animate-fade-in">
+            <button onClick={() => setPreviewCard(null)} className="absolute top-6 right-6 p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+              <X size={24} />
+            </button>
+            <div className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center">
+              <div className="text-xl text-center text-white min-h-[100px] flex items-center justify-center break-words w-full" dangerouslySetInnerHTML={{ __html: previewCard.front }}></div>
+              
+              {showAnswer ? (
+                <>
+                  <div className="w-full h-px bg-white/10 my-8"></div>
+                  <div className="text-lg text-center text-dark-subtext min-h-[100px] flex items-center justify-center break-words w-full" dangerouslySetInnerHTML={{ __html: previewCard.back }}></div>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setShowAnswer(true)} 
+                  className="mt-8 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+                >
+                  Mostrar Resposta
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

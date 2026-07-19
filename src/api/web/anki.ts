@@ -7,6 +7,11 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     const decks = all.filter((d: any) => !d.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return { success: true, decks };
   },
+  getReviews: async () => {
+    const all = await db.getAll('anki_reviews') || [];
+    const reviews = all.filter((r: any) => !r.deleted_at);
+    return { success: true, reviews };
+  },
   createDeck: async (name: string, description?: string, parentId?: string) => {
     const deck = {
       id: generateId(),

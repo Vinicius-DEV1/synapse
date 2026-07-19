@@ -33,6 +33,7 @@ interface CadernoDBSchema extends DBSchema {
   anki_cards: { key: string; value: any; indexes: { 'deck_id': string } };
   anki_srs_state: { key: string; value: any };
   anki_reviews: { key: string; value: any; indexes: { 'card_id': string } };
+  anki_deck_settings: { key: string; value: any; indexes: { 'deck_id': string } };
   files: { key: string; value: any };
   file_folders: { key: string; value: any };
   file_page_links: { key: string; value: any; indexes: { 'file_id': string, 'page_id': string } };
@@ -47,7 +48,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 10, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 12, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -163,6 +164,10 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('anki_reviews')) {
           const store = db.createObjectStore('anki_reviews', { keyPath: 'id' });
           store.createIndex('card_id', 'card_id');
+        }
+        if (!db.objectStoreNames.contains('anki_deck_settings')) {
+          const store = db.createObjectStore('anki_deck_settings', { keyPath: 'id' });
+          store.createIndex('deck_id', 'deck_id');
         }
         // Files
         if (!db.objectStoreNames.contains('files')) {
