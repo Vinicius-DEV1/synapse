@@ -30,13 +30,15 @@ interface CadernoDBSchema extends DBSchema {
   tutor_messages: { key: string; value: any; indexes: { 'session_id': string } };
   tutor_memories: { key: string; value: any };
   anki_decks: { key: string; value: any };
-  anki_cards: { key: string; value: any; indexes: { 'deck_id': string } };
+  anki_notes: { key: string; value: any; indexes: { 'deck_id': string } };
+  anki_cards: { key: string; value: any; indexes: { 'deck_id': string, 'note_id': string } };
   anki_srs_state: { key: string; value: any };
   anki_reviews: { key: string; value: any; indexes: { 'card_id': string } };
   anki_deck_settings: { key: string; value: any; indexes: { 'deck_id': string } };
   files: { key: string; value: any };
   file_folders: { key: string; value: any };
   file_page_links: { key: string; value: any; indexes: { 'file_id': string, 'page_id': string } };
+  ai_logs: { key: string; value: any; indexes: { 'module': string } };
   
   // Legacy tables for migration safety
   items: { key: string; value: any };
@@ -48,7 +50,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 12, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 14, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -154,9 +156,19 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('anki_decks')) {
           db.createObjectStore('anki_decks', { keyPath: 'id' });
         }
+        if (!db.objectStoreNames.contains('anki_notes')) {
+          const store = db.createObjectStore('anki_notes', { keyPath: 'id' });
+          store.createIndex('deck_id', 'deck_id');
+        }
         if (!db.objectStoreNames.contains('anki_cards')) {
           const store = db.createObjectStore('anki_cards', { keyPath: 'id' });
           store.createIndex('deck_id', 'deck_id');
+          store.createIndex('note_id', 'note_id');
+        } else {
+          const store = db.transaction.objectStore('anki_cards');
+          if (!store.indexNames.contains('note_id')) {
+             store.createIndex('note_id', 'note_id');
+          }
         }
         if (!db.objectStoreNames.contains('anki_srs_state')) {
           db.createObjectStore('anki_srs_state', { keyPath: 'id' });
@@ -180,6 +192,11 @@ export async function getWebDb() {
           const store = db.createObjectStore('file_page_links', { keyPath: 'id' });
           store.createIndex('file_id', 'file_id');
           store.createIndex('page_id', 'page_id');
+        }
+        // AI Logs
+        if (!db.objectStoreNames.contains('ai_logs')) {
+          const store = db.createObjectStore('ai_logs', { keyPath: 'id' });
+          store.createIndex('module', 'module');
         }
 
         // Keep legacy tables for now to avoid errors if any code still uses them locally

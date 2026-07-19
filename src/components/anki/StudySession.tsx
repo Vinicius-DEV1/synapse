@@ -148,7 +148,9 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
     let expected = card.back;
     if (card.card_type === 'cloze') {
-        const match = card.front.match(/\{\{(.*?)\}\}/);
+        const targetC = card.ord + 1;
+        const regex = new RegExp(`\\{\\{c${targetC}::(.*?)\\}\\}`);
+        const match = card.front.match(regex);
         if (match) expected = match[1];
     }
 
@@ -255,40 +257,50 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
               </button>
             ) : card.card_type === 'cloze' ? (
                 <div className="text-3xl font-medium leading-relaxed text-dark-text text-center" style={{ lineHeight: '1.8' }}>
-                    {card.front.replace(/<\/?p[^>]*>/gi, '').split(/\{\{(.*?)\}\}/).map((part, i) => {
-                        if (i % 2 === 1) { // cloze word
-                            if (!showingAnswer) {
-                                return (
-                                   <form onSubmit={handleAnswerSubmit} key={i} className="inline-block align-middle mx-1">
-                                     <input 
-                                       autoFocus
-                                       type="text" 
-                                       value={typedAnswer}
-                                       onChange={e => setTypedAnswer(e.target.value)}
-                                       className="bg-transparent border-b-2 border-indigo-500 focus:outline-none focus:border-indigo-400 text-center text-indigo-400 pb-1 max-w-full"
-                                       style={{ width: `${Math.max(5, typedAnswer.length + 1)}ch` }} 
-                                     />
-                                   </form>
-                                );
-                            } else {
-                                if (card.validation_mode === 'exact') {
-                                    return (
-                                        <span key={i} className={`font-bold border-b-2 pb-1 px-2 mx-1 ${exactMatch ? 'text-green-400 border-green-500' : 'text-red-400 border-red-500'}`}>
-                                            {typedAnswer || '___'}
-                                        </span>
-                                    );
+                    {(() => {
+                        const targetC = card.ord + 1;
+                        const parts = card.front.replace(/<\/?p[^>]*>/gi, '').split(/(\{\{c\d+::.*?\}\})/);
+                        return parts.map((part: string, i: number) => {
+                            const match = part.match(/^\{\{c(\d+)::(.*?)\}\}$/);
+                            if (match) {
+                                const cNum = parseInt(match[1], 10);
+                                const word = match[2];
+                                if (cNum === targetC) {
+                                    if (!showingAnswer) {
+                                        return (
+                                           <form onSubmit={handleAnswerSubmit} key={i} className="inline-block align-middle mx-1">
+                                             <input 
+                                               autoFocus
+                                               type="text" 
+                                               value={typedAnswer}
+                                               onChange={e => setTypedAnswer(e.target.value)}
+                                               className="bg-transparent border-b-2 border-indigo-500 focus:outline-none focus:border-indigo-400 text-center text-indigo-400 pb-1 max-w-full"
+                                               style={{ width: `${Math.max(5, typedAnswer.length + 1)}ch` }} 
+                                             />
+                                           </form>
+                                        );
+                                    } else {
+                                        if (card.validation_mode === 'exact') {
+                                            return (
+                                                <span key={i} className={`font-bold border-b-2 pb-1 px-2 mx-1 ${exactMatch ? 'text-green-400 border-green-500' : 'text-red-400 border-red-500'}`}>
+                                                    {typedAnswer || '___'}
+                                                </span>
+                                            );
+                                        } else {
+                                            return (
+                                                <span key={i} className="text-indigo-400 font-bold border-b-2 border-indigo-500 pb-1 px-2 mx-1">
+                                                    {typedAnswer || '___'}
+                                                </span>
+                                            );
+                                        }
+                                    }
                                 } else {
-                                    return (
-                                        <span key={i} className="text-indigo-400 font-bold border-b-2 border-indigo-500 pb-1 px-2 mx-1">
-                                            {typedAnswer || '___'}
-                                        </span>
-                                    );
+                                    return <span key={i} className="text-indigo-300 font-medium">{word}</span>;
                                 }
                             }
-                        } else {
                             return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
-                        }
-                    })}
+                        });
+                    })()}
                 </div>
             ) : (
               <>
@@ -391,7 +403,13 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
         <div className="w-full max-w-2xl flex justify-center mt-2">
           {!showingAnswer ? (
             <button 
-              onClick={() => setShowingAnswer(true)}
+              onClick={() => {
+                if (card.card_type === 'typing' || card.card_type === 'cloze') {
+                  handleAnswerSubmit();
+                } else {
+                  setShowingAnswer(true);
+                }
+              }}
               className="px-12 py-4 bg-dark-card border border-white/10 rounded-xl text-base font-medium hover:bg-white/5 hover:border-indigo-500/50 transition-all duration-300 w-full max-w-md shadow-lg hover:shadow-xl"
             >
               Mostrar Resposta <span className="ml-2 text-dark-subtext text-sm">(Espaço)</span>

@@ -41,13 +41,17 @@ export const createWebApiMock = async () => {
   db.put = async (storeName: string, val: any, key?: IDBValidKey) => {
     const optimizedVal = PayloadOptimizer.optimize(val);
     const res = await originalPut(storeName, optimizedVal, key);
-    if (storeName !== 'config') triggerSync();
+    if (storeName !== 'config' || (val && !['sync_signal', 'auth_validator', 'module_keys'].includes(val.id))) {
+      triggerSync();
+    }
     return res;
   };
   
   db.delete = async (storeName: string, key: IDBValidKey | IDBKeyRange) => {
     const res = await originalDelete(storeName, key);
-    if (storeName !== 'config') triggerSync();
+    if (storeName !== 'config' || !['sync_signal', 'auth_validator', 'module_keys'].includes(key as string)) {
+      triggerSync();
+    }
     return res;
   };
 

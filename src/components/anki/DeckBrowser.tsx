@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye } from 'lucide-react';
 import CardEditor from './CardEditor';
+import DeckSettingsPanel from './DeckSettingsPanel';
 
 interface DeckBrowserProps {
   deck: any;
@@ -30,17 +31,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
-  const [deckName, setDeckName] = useState(deck.name);
-  const [deckDesc, setDeckDesc] = useState(deck.description || '');
-  
-  // Settings
-  const [newLimit, setNewLimit] = useState(20);
-  const [reviewLimit, setReviewLimit] = useState(200);
-  const [fsrsWeights, setFsrsWeights] = useState('');
 
   useEffect(() => {
     loadCards();
-    loadSettings();
     loadDecks();
   }, [deck.id]);
 
@@ -49,17 +42,6 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
       const res = await window.api.anki.getDecks();
       if (res?.success && res.decks) setDecks(res.decks);
       else if (Array.isArray(res)) setDecks(res);
-    }
-  };
-
-  const loadSettings = async () => {
-    if (window.api?.anki?.getDeckSettings) {
-      const s = await window.api.anki.getDeckSettings(deck.id);
-      if (s) {
-        setNewLimit(s.new_limit || 20);
-        setReviewLimit(s.review_limit || 200);
-        setFsrsWeights(s.fsrs_weights || '');
-      }
     }
   };
 
@@ -93,6 +75,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck;
   });
 
+  const groupedCards = React.useMemo(() => {
+    const groups = new Map<string, any[]>();
+    for (const c of filteredCards) {
+      if (!groups.has(c.note_id)) groups.set(c.note_id, []);
+      groups.get(c.note_id)!.push(c);
+    }
+    return Array.from(groups.values());
+  }, [filteredCards]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredCards.length) {
       setSelectedIds(new Set());
@@ -101,10 +92,13 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     }
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelectGroup = (group: any[]) => {
     const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
+    const allSelected = group.every(c => newSet.has(c.id));
+    for (const c of group) {
+      if (allSelected) newSet.delete(c.id);
+      else newSet.add(c.id);
+    }
     setSelectedIds(newSet);
   };
 
@@ -118,28 +112,40 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     }
   };
 
+  const handleMoveSelected = async (targetDeckId: string) => {
+    if (!window.confirm(`Mover ${selectedIds.size} cartões para o baralho selecionado?`)) return;
+    
+    if (window.api?.anki) {
+      for (const id of selectedIds) {
+        await window.api.anki.updateCard(id, { deck_id: targetDeckId });
+      }
+      setSelectedIds(new Set());
+      loadCards();
+    }
+  };
+
   const handleDeleteCard = async (id: string) => {
-    if (!window.confirm('Excluir este cartão?')) return;
+    if (!window.confirm('ATENÇÃO: A exclusão de um cartão do tipo "Completar" (Cloze) apagará também todos os outros cartões criados a partir do mesmo texto original.\n\nDeseja excluir a nota original inteira?')) return;
     if (window.api?.anki) {
       await window.api.anki.deleteCard(id);
       loadCards();
     }
   };
 
-  const handleUpdateDeck = async () => {
+  const handleUpdateDeck = async (name: string, desc: string, newLim: number, revLim: number, weights: string) => {
     if (window.api?.anki) {
-      await window.api.anki.updateDeck(deck.id, deckName, deckDesc);
+      await window.api.anki.updateDeck(deck.id, name, desc);
       
       if (window.api.anki.updateDeckSettings) {
         await window.api.anki.updateDeckSettings(deck.id, {
-          new_limit: Number(newLimit),
-          review_limit: Number(reviewLimit),
-          fsrs_weights: fsrsWeights.trim() || null
+          new_limit: newLim,
+          review_limit: revLim,
+          fsrs_weights: weights.trim() || null
         });
       }
       
       setShowSettings(false);
-      onDeckUpdated({ ...deck, name: deckName, description: deckDesc });
+      onDeckUpdated({ ...deck, name, description: desc });
     }
   };
 
@@ -180,7 +186,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           card_type: editingCard.card_type,
           validation_mode: editingCard.validation_mode,
           source_module: editingCard.source_module,
-          source_id: editingCard.source_id
+          source_id: editingCard.source_id,
+          deck_id: editingCard.deck_id
         } : {
           front: '',
           back: '',
@@ -229,43 +236,12 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         <div className="flex-1 flex flex-col overflow-hidden relative">
           
           {showSettings && (
-            <div className="absolute top-0 left-0 right-0 bg-dark-card p-8 border-b border-white/5 z-10 animate-fade-in shadow-2xl">
-              <h3 className="text-lg font-medium mb-4 text-dark-text">Configurações do Baralho</h3>
-              <div className="space-y-4 max-w-md">
-                <div>
-                  <label className="block text-xs font-medium text-dark-subtext mb-1">Nome do Baralho</label>
-                  <input type="text" value={deckName} onChange={e => setDeckName(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição</label>
-                  <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-dark-subtext mb-1">Limite Diário (Novos)</label>
-                    <input type="number" min="0" value={newLimit} onChange={e => setNewLimit(Number(e.target.value))} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-dark-subtext mb-1">Limite Diário (Revisão)</label>
-                    <input type="number" min="0" value={reviewLimit} onChange={e => setReviewLimit(Number(e.target.value))} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors" />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-medium text-dark-subtext mb-1">Pesos FSRS (Opcional - JSON Array)</label>
-                  <input type="text" placeholder="Ex: [0.4, 1.1, 3.1, ...]" value={fsrsWeights} onChange={e => setFsrsWeights(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text font-mono focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
-                </div>
-                
-                <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                  <div className="flex flex-col gap-2">
-                    <button onClick={handleResetProgress} className="text-orange-400 hover:text-orange-300 text-sm font-medium text-left">Resetar Progresso (FSRS)</button>
-                    <button onClick={handleDeleteDeck} className="text-red-400 hover:text-red-300 text-sm font-medium text-left">Excluir Baralho Inteiro</button>
-                  </div>
-                  <button onClick={handleUpdateDeck} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg">Salvar Alterações</button>
-                </div>
-              </div>
-            </div>
+            <DeckSettingsPanel 
+              deck={deck} 
+              onSave={handleUpdateDeck} 
+              onDelete={handleDeleteDeck} 
+              onResetProgress={handleResetProgress} 
+            />
           )}
 
           {/* Toolbar */}
@@ -321,7 +297,24 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
               {selectedIds.size > 0 && (
                 <div className="flex items-center gap-3 border-r border-white/10 pr-3">
                   <span className="text-sm text-indigo-400 font-medium">{selectedIds.size} selecionados</span>
-                  <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded text-sm transition-colors">
+                  
+                  <select
+                     className="bg-dark-card border border-white/10 rounded-lg px-3 py-1.5 text-sm text-dark-text focus:outline-none cursor-pointer max-w-[150px] truncate"
+                     onChange={(e) => {
+                       if (e.target.value) {
+                         handleMoveSelected(e.target.value);
+                         e.target.value = '';
+                       }
+                     }}
+                     value=""
+                  >
+                     <option value="" disabled>Mover para...</option>
+                     {decks.map(d => (
+                         <option key={d.id} value={d.id}>{d.name}</option>
+                     ))}
+                  </select>
+
+                  <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-lg text-sm transition-colors">
                     <Trash2 size={16} /> Excluir
                   </button>
                 </div>
@@ -362,13 +355,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filteredCards.map(card => (
-                    <tr key={card.id} className="hover:bg-dark-card transition-colors group">
+                  {groupedCards.map(group => {
+                    const card = group[0];
+                    const isSelected = group.every(c => selectedIds.has(c.id));
+                    return (
+                    <tr key={card.note_id} className="hover:bg-dark-card transition-colors group">
                       <td className="p-3">
                         <input 
                           type="checkbox" 
-                          checked={selectedIds.has(card.id)}
-                          onChange={() => toggleSelect(card.id)}
+                          checked={isSelected}
+                          onChange={() => toggleSelectGroup(group)}
                           className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
@@ -376,6 +372,11 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                         {card.deck_id !== deck.id && (
                           <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30 whitespace-nowrap align-middle">
                             {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
+                          </span>
+                        )}
+                        {group.length > 1 && (
+                          <span className="inline-flex items-center justify-center bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 border border-indigo-500/30 align-middle" title={`${group.length} cartões nesta nota`}>
+                            [{group.length}]
                           </span>
                         )}
                         <span dangerouslySetInnerHTML={{ __html: card.front }}></span>
@@ -405,7 +406,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             )}

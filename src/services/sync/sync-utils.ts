@@ -19,7 +19,7 @@ export const MODULE_TABLES: Record<string, string[]> = {
   vault: ['vault_groups', 'vault_items', 'vault_password_history'],
   practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories'],
   focus: ['focus_sessions', 'alarms', 'lofis'],
-  anki: ['anki_decks', 'anki_cards', 'anki_srs_state', 'anki_reviews'],
+  anki: ['anki_decks', 'anki_notes', 'anki_cards', 'anki_srs_state', 'anki_reviews'],
   files: ['files', 'file_folders', 'file_page_links']
 };
 
