@@ -1,3 +1,23 @@
+// Helper to parse ISO8601 duration
+const parseISO8601Duration = (duration: string) => {
+  const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+  if (!match) return 0;
+  const h = parseInt(match[1]?.replace('H', '')) || 0;
+  const m = parseInt(match[2]?.replace('M', '')) || 0;
+  const s = parseInt(match[3]?.replace('S', '')) || 0;
+  return h * 3600 + m * 60 + s;
+};
+
+// Helper to extract IDs
+const extractVideoId = (url: string) => {
+  const match = url.match(/(?:v=|youtu\.be\/|embed\/)([^&?]+)/);
+  return match ? match[1] : null;
+};
+const extractPlaylistId = (url: string) => {
+  const match = url.match(/[?&]list=([^&]+)/);
+  return match ? match[1] : null;
+};
+
 export const webYoutubeApi = (db: any, generateId: () => string) => ({
   getWatched: async (videoIds: string[]) => {
     if (!videoIds || videoIds.length === 0) return [];
@@ -39,5 +59,75 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
       }
     }
     return true;
+  },
+  fetchPlaylistInfo: async (url: string) => {
+    // In Vite, import.meta.env might not be fully available in this context if it's outside components,
+    // but assuming it is injected globally by Vite:
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    if (!apiKey) throw new Error('API Key não encontrada');
+
+    const playlistId = extractPlaylistId(url);
+    const videoId = extractVideoId(url);
+
+    if (playlistId) {
+      // Fetch playlist details
+      const listRes = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${apiKey}`);
+      const listData = await listRes.json();
+      const listTitle = listData.items?.[0]?.snippet?.title || 'Playlist';
+      const listUploader = listData.items?.[0]?.snippet?.channelTitle || '';
+
+      // Fetch items
+      const itemsRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
+      const itemsData = await itemsRes.json();
+      
+      const entries = [];
+      for (const item of itemsData.items || []) {
+        if (item.snippet.title === 'Private video' || item.snippet.title === 'Deleted video') continue;
+        entries.push({
+          id: item.contentDetails.videoId,
+          title: item.snippet.title,
+          uploader: item.snippet.videoOwnerChannelTitle || '',
+          duration: null,
+        });
+      }
+
+      // Fetch durations in batch
+      if (entries.length > 0) {
+        const videoIds = entries.map(e => e.id).join(',');
+        const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${apiKey}`);
+        if (vidRes.ok) {
+          const vidData = await vidRes.json();
+          for (const v of vidData.items || []) {
+            const entry = entries.find(e => e.id === v.id);
+            if (entry) {
+              entry.duration = parseISO8601Duration(v.contentDetails.duration);
+            }
+          }
+        }
+      }
+
+      return {
+        _type: 'playlist',
+        title: listTitle,
+        uploader: listUploader,
+        entries
+      };
+
+    } else if (videoId) {
+      // Fetch single video
+      const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`);
+      const vidData = await vidRes.json();
+      const item = vidData.items?.[0];
+      if (!item) throw new Error('Vídeo não encontrado');
+
+      return {
+        _type: 'video',
+        title: item.snippet.title,
+        uploader: item.snippet.channelTitle,
+        duration: parseISO8601Duration(item.contentDetails.duration)
+      };
+    }
+
+    throw new Error('URL inválida');
   }
 });
