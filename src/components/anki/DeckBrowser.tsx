@@ -92,6 +92,14 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }, [filteredCards]);
 
   useEffect(() => {
+    // Lock body scroll when modal opens
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+  useEffect(() => {
     if (!previewCard) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -238,7 +246,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={onClose}>
       <div 
         className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]"
         onMouseDown={e => e.stopPropagation()}
