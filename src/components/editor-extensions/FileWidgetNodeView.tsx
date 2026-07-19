@@ -10,6 +10,11 @@ export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
   const { fileId, name, fileType, isLink } = node.attrs;
   
+  // Backward compatibility for corrupted data where fileId was saved as an object {id, name, type}
+  const actualFileId = typeof fileId === 'object' && fileId !== null ? fileId.id : fileId;
+  const actualName = typeof fileId === 'object' && fileId !== null ? fileId.name : name;
+  const actualFileType = typeof fileId === 'object' && fileId !== null ? fileId.type : fileType;
+  
   const { dispatch } = useStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [keepInDrive, setKeepInDrive] = useState(false);
@@ -20,13 +25,13 @@ export default function FileWidgetNodeView(props: any) {
 
   useEffect(() => {
     // Fetch file data if needed for viewer
-    if (window.api && window.api.files && fileId) {
-      window.api.files.getById(fileId).then(setFileItem).catch(console.error);
+    if (window.api && window.api.files && actualFileId) {
+      window.api.files.getById(actualFileId).then(setFileItem).catch(console.error);
     }
-  }, [fileId]);
+  }, [actualFileId]);
 
   const getIcon = () => {
-    switch(fileType) {
+    switch(actualFileType) {
       case 'pdf': return <FileText size={16} className="text-blue-400" />;
       case 'image': return <ImageIcon size={16} className="text-green-400" />;
       case 'video': return <Film size={16} className="text-purple-400" />;
@@ -91,8 +96,8 @@ export default function FileWidgetNodeView(props: any) {
           if (fileType === 'folder') {
             dispatch({ type: 'SET_CURRENT_MODULE', payload: 'files' });
             // Should probably emit an event to navigate to that folder inside the module
-            window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
-          } else if (fileType === 'pdf' && fileItem) {
+            window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: actualFileId } }));
+          } else if (actualFileType === 'pdf' && fileItem) {
             setShowFloatingViewer(true);
           } else {
             if (fileItem) setShowViewer(true);
@@ -100,9 +105,11 @@ export default function FileWidgetNodeView(props: any) {
           }
         }}
       >
-        {getIcon()}
-        <span className={`text-sm font-medium ${isLink ? 'text-blue-300' : 'text-brand-300'} truncate max-w-[150px]`}>
-          {name || fileItem?.name || 'Arquivo'}
+        <div className="flex items-center justify-center p-2 bg-dark-bg rounded-lg border border-white/5 mr-1">
+          {getIcon()}
+        </div>
+        <span className="flex-1 truncate group-hover:text-white transition-colors">
+          {actualName || fileItem?.name || 'Arquivo'}
         </span>
         <button 
           onClick={(e) => { e.stopPropagation(); handleDelete(); }}
@@ -147,19 +154,22 @@ export default function FileWidgetNodeView(props: any) {
         </div>
       )}
 
-      {showFloatingViewer && fileItem && (
-        <FloatingPdfViewer 
+      {showViewer && fileItem && (
+        <FileViewer 
           item={fileItem} 
-          onClose={() => setShowFloatingViewer(false)} 
+          onClose={() => setShowViewer(false)} 
+        />
+      )}
+      
+      {showFloatingViewer && fileItem && actualFileType === 'pdf' && (
+        <FloatingPdfViewer
+          item={fileItem}
+          onClose={() => setShowFloatingViewer(false)}
           onExpand={() => {
             setShowFloatingViewer(false);
             setShowViewer(true);
-          }} 
+          }}
         />
-      )}
-
-      {showViewer && fileItem && (
-        <FileViewer item={fileItem} onClose={() => setShowViewer(false)} />
       )}
     </NodeViewWrapper>
   );
