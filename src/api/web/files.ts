@@ -96,7 +96,11 @@ export const webFilesApi = (db: any, generateId: () => string) => {
         return newLink;
       },
       delete: async (id: string) => {
-        await db.delete('file_page_links', id);
+        const link = await db.get('file_page_links', id);
+        if (link) {
+          link.deleted_at = new Date().toISOString();
+          await db.put('file_page_links', link);
+        }
         return true;
       }
     }

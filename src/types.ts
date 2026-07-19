@@ -297,6 +297,10 @@ declare global {
       getPageHistory: (pageId: string) => Promise<PageHistoryEntry[]>;
       savePageHistory: (pageId: string, content: string) => Promise<{ success: boolean; id: string }>;
       exportBackup: () => Promise<{ success: boolean; canceled?: boolean; path?: string; error?: string }>;
+      youtube?: any;
+      trash?: any;
+      files?: any;
+      anki?: any;
       auth: {
         setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;

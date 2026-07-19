@@ -12,6 +12,8 @@ import { webVaultApi } from '../api/web/vault';
 import { webPracticeApi } from '../api/web/practice';
 import { webFilesApi } from '../api/web/files';
 import { webAnkiApi } from '../api/web/anki';
+import { webYoutubeApi } from '../api/web/youtube';
+import { webTrashApi } from '../api/web/trash';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -183,14 +185,14 @@ export const createWebApiMock = async () => {
 
     // --- FILES ---
     files: webFilesApi(db, generateId),
+    anki: webAnkiApi(db, generateId),
+    youtube: webYoutubeApi(db, generateId),
+    trash: webTrashApi(db),
 
     // --- SYNC ---
     sync: webSyncApi(db, originalDelete, originalPut),
 
     // --- PRACTICE ---
     practice: webPracticeApi(db, generateId),
-
-    // --- ANKI ---
-    anki: webAnkiApi(db, generateId)
   };
 };
