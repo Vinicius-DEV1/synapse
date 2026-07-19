@@ -323,9 +323,31 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
     logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, undefined, response.usage);
     
     try {
-      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanJson);
-    } catch (err) {
+        const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        let parsed = JSON.parse(cleanJson);
+        
+        // POST-PROCESSAMENTO: Trava de segurança extra para remover tags redundantes
+        if (Array.isArray(parsed) && contextData) {
+          const rootDeckName = (contextData.deck_name || '').toLowerCase();
+          const subdecksMap = new Map();
+          if (Array.isArray(contextData.subdecks)) {
+            contextData.subdecks.forEach((s: any) => subdecksMap.set(s.id, (s.name || '').toLowerCase()));
+          }
+          
+          parsed = parsed.map(card => {
+            if (Array.isArray(card.tags)) {
+              const targetDeckName = card.suggested_deck_id ? subdecksMap.get(card.suggested_deck_id) : rootDeckName;
+              card.tags = card.tags.filter((t: string) => {
+                const lowerT = t.toLowerCase();
+                return lowerT !== rootDeckName && (!targetDeckName || lowerT !== targetDeckName);
+              });
+            }
+            return card;
+          });
+        }
+        
+        return parsed;
+      } catch (err) {
       logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, 'Invalid JSON returned', response.usage);
       throw new Error('A IA não retornou um JSON válido na geração de cartões.');
     }
@@ -407,6 +429,39 @@ export async function promptGeminiForChatAnalysis(userPrompt: string, history: a
       }
       
       const parsed = JSON.parse(cleanedText);
+      
+      // POST-PROCESSAMENTO PROGRAMÁTICO (Trava de segurança extra para tags)
+      if (typeof parsed === 'object' && parsed.actions && Array.isArray(parsed.actions) && contextData) {
+        const rootDeckName = (contextData.deck_name || '').toLowerCase();
+        const subdecksMap = new Map();
+        if (Array.isArray(contextData.subdecks)) {
+          contextData.subdecks.forEach((s: any) => subdecksMap.set(s.id, (s.name || '').toLowerCase()));
+        }
+        
+        parsed.actions.forEach((action: any) => {
+          if (action.type === 'create' && Array.isArray(action.cards)) {
+            action.cards.forEach((card: any) => {
+              if (Array.isArray(card.tags)) {
+                const targetDeckName = card.suggested_deck_id ? subdecksMap.get(card.suggested_deck_id) : rootDeckName;
+                card.tags = card.tags.filter((t: string) => {
+                  const lowerT = t.toLowerCase();
+                  return lowerT !== rootDeckName && (!targetDeckName || lowerT !== targetDeckName);
+                });
+              }
+            });
+          } else if (action.type === 'edit' && Array.isArray(action.new_tags)) {
+            action.new_tags = action.new_tags.filter((t: string) => {
+              const lowerT = t.toLowerCase();
+              if (lowerT === rootDeckName) return false;
+              for (let subName of subdecksMap.values()) {
+                if (lowerT === subName) return false;
+              }
+              return true;
+            });
+          }
+        });
+      }
+
       if (response.usage && typeof parsed === 'object') {
          parsed._usage = response.usage;
       }
