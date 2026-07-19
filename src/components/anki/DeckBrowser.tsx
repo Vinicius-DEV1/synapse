@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye } from 'lucide-react';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
+import { useDecks } from './hooks/useDecks';
+import { useDeckCards } from './hooks/useDeckCards';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
 
 interface DeckBrowserProps {
   deck: any;
@@ -11,9 +14,9 @@ interface DeckBrowserProps {
 }
 
 export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdated }: DeckBrowserProps) {
-  const [cards, setCards] = useState<any[]>([]);
-  const [decks, setDecks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { decks } = useDecks();
+  const { cards, loading, refresh: loadCards } = useDeckCards(deck.id);
+  const { play: playAudio } = useAudioPlayer();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterValidation, setFilterValidation] = useState<string>('all');
@@ -32,48 +35,26 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
 
-  useEffect(() => {
-    loadCards();
-    loadDecks();
-  }, [deck.id]);
 
-  const loadDecks = async () => {
-    if (window.api?.anki) {
-      const res = await window.api.anki.getDecks();
-      if (res?.success && res.decks) setDecks(res.decks);
-      else if (Array.isArray(res)) setDecks(res);
-    }
-  };
 
-  const loadCards = async () => {
-    setLoading(true);
-    if (window.api?.anki) {
-      const res = await window.api.anki.getAllCards(deck.id);
-      if (res && res.success && res.cards) {
-        setCards(res.cards);
-      } else if (Array.isArray(res)) {
-        setCards(res);
-      }
-    }
-    setLoading(false);
-  };
-
-  const filteredCards = cards.filter(c => {
-    const matchesSearch = c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          c.back.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || c.card_type === filterType;
-    const matchesValidation = filterValidation === 'all' || (c.validation_mode || 'exact') === filterValidation;
-    const matchesMedia = filterMedia === 'all' || (filterMedia === 'with_media' ? !!c.media_url : !c.media_url);
-    
-    let stateStr = 'new';
-    if (c.state === 1 || c.state === 3) stateStr = 'learning';
-    else if (c.state === 2) stateStr = 'review';
-    
-    const matchesState = filterState === 'all' || stateStr === filterState;
-    const matchesDeck = filterDeck === 'all' || c.deck_id === filterDeck;
-    
-    return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck;
-  });
+  const filteredCards = React.useMemo(() => {
+    return cards.filter(c => {
+      const matchesSearch = c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            c.back.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === 'all' || c.card_type === filterType;
+      const matchesValidation = filterValidation === 'all' || (c.validation_mode || 'exact') === filterValidation;
+      const matchesMedia = filterMedia === 'all' || (filterMedia === 'with_media' ? !!c.media_url : !c.media_url);
+      
+      let stateStr = 'new';
+      if (c.state === 1 || c.state === 3) stateStr = 'learning';
+      else if (c.state === 2) stateStr = 'review';
+      
+      const matchesState = filterState === 'all' || stateStr === filterState;
+      const matchesDeck = filterDeck === 'all' || c.deck_id === filterDeck;
+      
+      return matchesSearch && matchesType && matchesValidation && matchesMedia && matchesState && matchesDeck;
+    });
+  }, [cards, searchQuery, filterType, filterValidation, filterMedia, filterState, filterDeck]);
 
   const groupedCards = React.useMemo(() => {
     const groups = new Map<string, any[]>();
@@ -170,10 +151,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     }
   };
 
-  const playAudio = (url: string) => {
-    const audio = new Audio(url);
-    audio.play().catch(e => console.error("Audio error:", e));
-  };
+
 
   if (editingCard || isCreatingCard) {
     return (
@@ -332,7 +310,18 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           {/* Table */}
           <div className="flex-1 overflow-y-auto p-4">
             {loading ? (
-              <div className="text-center py-12 text-dark-subtext">Carregando cartões...</div>
+              <div className="w-full flex flex-col gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-16 w-full bg-dark-card border border-dark-border rounded-lg animate-pulse flex items-center px-4 gap-4">
+                    <div className="w-4 h-4 bg-white/5 rounded"></div>
+                    <div className="flex-1 flex gap-4">
+                      <div className="h-4 bg-white/5 rounded w-1/3"></div>
+                      <div className="h-4 bg-white/5 rounded w-1/3"></div>
+                    </div>
+                    <div className="w-24 h-4 bg-white/5 rounded"></div>
+                  </div>
+                ))}
+              </div>
             ) : filteredCards.length === 0 ? (
               <div className="text-center py-12 text-dark-subtext">Nenhum cartão encontrado neste baralho.</div>
             ) : (
