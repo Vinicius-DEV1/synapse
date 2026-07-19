@@ -77,12 +77,12 @@ const BlockquoteToggleComponent = (props: any) => {
 
   return (
     <NodeViewWrapper 
-      className="blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded group relative"
+      className="blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded group/toggle relative"
       style={customStyle}
       data-color={currentColor}
     >
       <div 
-        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-50"
+        className="absolute top-1 right-1 opacity-0 group-hover/toggle:opacity-100 transition-opacity z-50"
         contentEditable={false}
       >
         <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
