@@ -27,9 +27,26 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: true };
   },
   getDueCards: async (deckId: string) => {
-    const all = await db.getAllFromIndex('anki_cards', 'deck_id', deckId) || [];
-    // For now, return all cards as due (simplified FSRS logic)
-    return all.filter((c: any) => !c.deleted_at);
+    const allDecks = await db.getAll('anki_decks') || [];
+    const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
+    
+    // Find all descendant deck IDs
+    const deckIds = new Set<string>();
+    deckIds.add(deckId);
+    
+    let added = true;
+    while(added) {
+      added = false;
+      for (const d of activeDecks) {
+        if (d.parent_id && deckIds.has(d.parent_id) && !deckIds.has(d.id)) {
+          deckIds.add(d.id);
+          added = true;
+        }
+      }
+    }
+    
+    const allCards = await db.getAll('anki_cards') || [];
+    return allCards.filter((c: any) => !c.deleted_at && deckIds.has(c.deck_id));
   },
   reviewCard: async (cardId: string, rating: number) => {
     const card = await db.get('anki_cards', cardId);
@@ -52,12 +69,29 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: false, error: 'Card not found' };
   },
   getAllCards: async (deckId?: string) => {
+    const allCards = await db.getAll('anki_cards') || [];
+    const validCards = allCards.filter((c: any) => !c.deleted_at);
+    
     if (deckId) {
-      const all = await db.getAllFromIndex('anki_cards', 'deck_id', deckId) || [];
-      return { success: true, cards: all.filter((c: any) => !c.deleted_at) };
+      const allDecks = await db.getAll('anki_decks') || [];
+      const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
+      
+      const deckIds = new Set<string>();
+      deckIds.add(deckId);
+      
+      let added = true;
+      while(added) {
+        added = false;
+        for (const d of activeDecks) {
+          if (d.parent_id && deckIds.has(d.parent_id) && !deckIds.has(d.id)) {
+            deckIds.add(d.id);
+            added = true;
+          }
+        }
+      }
+      return { success: true, cards: validCards.filter((c: any) => deckIds.has(c.deck_id)) };
     }
-    const all = await db.getAll('anki_cards') || [];
-    return { success: true, cards: all.filter((c: any) => !c.deleted_at) };
+    return { success: true, cards: validCards };
   },
   deleteCard: async (cardId: string) => {
     const card = await db.get('anki_cards', cardId);
