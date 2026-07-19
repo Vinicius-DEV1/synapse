@@ -205,14 +205,16 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
                   <div className="text-center py-8 text-dark-subtext bg-white/5 rounded-xl border border-white/5">Nenhum registro de IA encontrado.</div>
                 ) : (
                   <div className="space-y-3">
-                    {logs.map(log => (
+                    {logs.map(log => {
+                      const isSuccess = log.status === 'success' || (log.status === undefined && !log.error);
+                      return (
                       <div key={log.id} className="bg-dark-bg border border-white/10 rounded-xl overflow-hidden">
                         <div 
                           className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
                           onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                         >
                           <div className="flex items-center gap-3">
-                            {log.status === 'success' ? (
+                            {isSuccess ? (
                               <CheckCircle2 className="text-green-500 w-5 h-5 shrink-0" />
                             ) : (
                               <AlertTriangle className="text-red-500 w-5 h-5 shrink-0" />
@@ -245,8 +247,8 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
                             </div>
                             
                             <div>
-                              <h4 className={`text-xs font-semibold mb-2 uppercase tracking-wider ${log.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                                {log.status === 'success' ? 'Resposta Recebida' : 'Erro Retornado'}
+                              <h4 className={`text-xs font-semibold mb-2 uppercase tracking-wider ${isSuccess ? 'text-green-400' : 'text-red-400'}`}>
+                                {isSuccess ? 'Resposta Recebida' : 'Erro Retornado'}
                               </h4>
                               <div className="bg-dark-bg p-3 rounded-lg border border-white/5 text-sm text-dark-text whitespace-pre-wrap font-mono text-[11px] max-h-60 overflow-y-auto">
                                 {log.response || log.error || 'Sem resposta.'}
@@ -255,7 +257,7 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
                           </div>
                         )}
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>

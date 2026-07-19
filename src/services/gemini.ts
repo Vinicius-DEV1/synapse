@@ -270,9 +270,10 @@ export async function logAIApiCall(module: string, model: string, prompt: any, r
       id: crypto.randomUUID(),
       module,
       model,
-      prompt: JSON.stringify(prompt),
-      response: response ? JSON.stringify(response) : null,
+      prompt: typeof prompt === 'string' ? prompt : JSON.stringify(prompt),
+      response: response ? (typeof response === 'string' ? response : JSON.stringify(response)) : null,
       error: error || null,
+      status: error ? 'error' : 'success',
       created_at: new Date().toISOString()
     });
   } catch (e) {
@@ -301,17 +302,17 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
 
   try {
     const responseText = await promptGemini(finalPrompt, undefined, [], customModelId);
-    logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, responseText);
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText);
     
     try {
       const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleanJson);
     } catch (err) {
-      logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, null, 'Invalid JSON returned');
+      logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, 'Invalid JSON returned');
       throw new Error('A IA não retornou um JSON válido na geração de cartões.');
     }
   } catch (e: any) {
-    logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, null, e.message);
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, null, e.message);
     throw e;
   }
 }
