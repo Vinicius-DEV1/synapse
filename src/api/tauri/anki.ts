@@ -13,6 +13,7 @@ export const tauriAnkiApi = {
   },
   createDeck: async (name: string, desc?: string, parentId?: string) => await invoke('anki_create_deck', { name, description: desc, parent_id: parentId }),
   saveCard: async (c: any) => await invoke('anki_save_card', { card: c }),
+  saveNote: async (n: any) => await invoke('anki_save_card', { card: n }),
   
   getDueCards: async (deckId: string) => {
     // We can fetch all cards for the deck tree and filter/sort them here
@@ -73,8 +74,10 @@ export const tauriAnkiApi = {
   
   getAllCards: async (deckId?: string) => await invoke('anki_get_all_cards', { deckId }),
   deleteCard: async (cardId: string) => await invoke('anki_delete_card', { cardId }),
+  deleteNote: async (noteId: string) => await invoke('anki_delete_card', { cardId: noteId }),
   deleteCardsBulk: async (cardIds: string[]) => { for(let id of cardIds) await invoke('anki_delete_card', { cardId: id }); },
   updateCard: async (cardId: string, c: any) => await invoke('anki_update_card', { cardId, card: c }),
+  updateNote: async (noteId: string, n: any) => await invoke('anki_update_card', { cardId: noteId, card: n }),
   moveCards: async () => {}, // mock
   updateDeck: async (deckId: string, name: string, description: string) => await invoke('anki_update_deck', { deckId, name, description }),
   deleteDeck: async (deckId: string) => await invoke('anki_delete_deck', { deckId }),

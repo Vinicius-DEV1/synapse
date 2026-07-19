@@ -284,6 +284,11 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: true, note_id: noteId };
   },
 
+  saveCard: async (cardData: any) => {
+    // Alias to saveNote
+    return await webAnkiApi(db, generateId).saveNote(cardData);
+  },
+
   updateNote: async (noteId: string, noteData: any) => {
     const existing = await db.get('anki_notes', noteId);
     if (existing) {
@@ -293,6 +298,14 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       return { success: true };
     }
     return { success: false, error: 'Note not found' };
+  },
+
+  updateCard: async (cardId: string, data: any) => {
+    const card = await db.get('anki_cards', cardId);
+    if (card && card.note_id) {
+       return await webAnkiApi(db, generateId).updateNote(card.note_id, data);
+    }
+    return { success: false, error: 'Card not found' };
   },
 
   deleteNote: async (noteId: string) => {
@@ -313,6 +326,14 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       return { success: true };
     }
     return { success: false, error: 'Note not found' };
+  },
+
+  deleteCard: async (cardId: string) => {
+    const card = await db.get('anki_cards', cardId);
+    if (card && card.note_id) {
+       return await webAnkiApi(db, generateId).deleteNote(card.note_id);
+    }
+    return { success: false, error: 'Card not found' };
   },
 
   getDueCards: async (deckId: string) => {

@@ -23,6 +23,12 @@ interface AIChatAnalysisViewProps {
   setFooterState: (state: any) => void;
 }
 
+export interface ChatSession {
+  id: string;
+  date: string;
+  history: ChatMessage[];
+}
+
 export default function AIChatAnalysisView({
   deckId, prompt, setPrompt, selectedModel, models, setSelectedModel,
   includeContext, setIncludeContext, getContextData,
@@ -30,6 +36,8 @@ export default function AIChatAnalysisView({
   onAddCards, isGeneratingRef, setFooterState
 }: AIChatAnalysisViewProps) {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [chatPrompt, setChatPrompt] = useState('');
   const [activeReviewAction, setActiveReviewAction] = useState<{ msgIdx: number, actIdx: number } | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]); // review mode suggestions
@@ -38,21 +46,51 @@ export default function AIChatAnalysisView({
   const { actionStatus, setActionStatus, handleExecuteAction } = useAIActions(deckId);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`ai_chat_${deckId}`);
-    if (saved) {
-      try {
-        setChatHistory(JSON.parse(saved));
-      } catch (e) {}
+    const savedSessions = localStorage.getItem(`ai_chat_sessions_${deckId}`);
+    let loadedSessions: ChatSession[] = [];
+    if (savedSessions) {
+      try { loadedSessions = JSON.parse(savedSessions); } catch(e) {}
+    } else {
+      // Migrate old format
+      const oldChat = localStorage.getItem(`ai_chat_${deckId}`);
+      if (oldChat) {
+        try {
+           const history = JSON.parse(oldChat);
+           if (history.length > 0) {
+              loadedSessions = [{ id: Date.now().toString(), date: new Date().toISOString(), history }];
+              localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(loadedSessions));
+           }
+        } catch(e) {}
+      }
+    }
+    setSessions(loadedSessions);
+    if (loadedSessions.length > 0) {
+       setActiveSessionId(loadedSessions[loadedSessions.length - 1].id);
+       setChatHistory(loadedSessions[loadedSessions.length - 1].history);
+    } else {
+       setActiveSessionId(null);
+       setChatHistory([]);
     }
   }, [deckId]);
 
   useEffect(() => {
-    if (chatHistory.length > 0) {
-      localStorage.setItem(`ai_chat_${deckId}`, JSON.stringify(chatHistory));
-    } else {
-      localStorage.removeItem(`ai_chat_${deckId}`);
+    if (!activeSessionId && chatHistory.length > 0) {
+       const newId = Date.now().toString();
+       const newSession = { id: newId, date: new Date().toISOString(), history: chatHistory };
+       setSessions(prev => {
+         const next = [...prev, newSession];
+         localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
+         return next;
+       });
+       setActiveSessionId(newId);
+    } else if (activeSessionId) {
+       setSessions(prev => {
+         const next = prev.map(s => s.id === activeSessionId ? { ...s, history: chatHistory } : s);
+         localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
+         return next;
+       });
     }
-  }, [chatHistory, deckId]);
+  }, [chatHistory, activeSessionId, deckId]);
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -107,7 +145,12 @@ export default function AIChatAnalysisView({
       }));
       
       const result = await promptGeminiForChatAnalysis(userPrompt, historyForApi, contextData, selectedModel);
-      setChatHistory(prev => [...prev, { role: 'model', content: result.message, actions: result.actions }]);
+      setChatHistory(prev => [...prev, { 
+        role: 'model', 
+        content: result.message, 
+        actions: result.actions,
+        tokens: result._usage
+      }]);
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro no chat.');
     } finally {
@@ -117,6 +160,16 @@ export default function AIChatAnalysisView({
   };
 
   const handleClearChat = () => {
+    if (activeSessionId) {
+      setSessions(prev => {
+        const next = prev.filter(s => s.id !== activeSessionId);
+        localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
+        return next;
+      });
+      setActiveSessionId(null);
+    } else {
+      localStorage.removeItem(`ai_chat_sessions_${deckId}`);
+    }
     setChatHistory([]);
     setActionStatus({});
     setPrompt('');
@@ -192,21 +245,64 @@ export default function AIChatAnalysisView({
   if (chatHistory.length > 0) {
     return (
       <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={chatScrollRef}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium text-white">Análise do Baralho</h3>
-          <button 
-            onClick={handleClearChat}
-            className="text-xs flex items-center gap-1 text-dark-subtext hover:text-white transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" /> Limpar Chat
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 bg-dark-bg/30 p-3 rounded-xl border border-white/5">
+          <h3 className="text-lg font-medium text-white flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-indigo-400" />
+            Análise do Baralho
+          </h3>
+          <div className="flex items-center gap-2">
+            {sessions.length > 0 && (
+              <select 
+                className="bg-dark-card border border-white/10 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-indigo-500/50 text-dark-text"
+                value={activeSessionId || ''}
+                onChange={(e) => {
+                   const id = e.target.value;
+                   const session = sessions.find(s => s.id === id);
+                   if (session) {
+                      setActiveSessionId(id);
+                      setChatHistory(session.history);
+                   }
+                }}
+              >
+                {sessions.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {new Date(s.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button 
+              onClick={() => {
+                setActiveSessionId(null);
+                setChatHistory([]);
+                setChatPrompt('');
+              }}
+              className="px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/20 transition-colors text-xs font-medium whitespace-nowrap"
+            >
+              + Nova Conversa
+            </button>
+            <button 
+              onClick={handleClearChat}
+              className="text-xs flex items-center gap-1 text-dark-subtext hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg ml-2"
+              title="Apagar esta conversa"
+            >
+              <RefreshCw className="w-3 h-3" />
+            </button>
+          </div>
         </div>
         
         {chatHistory.map((msg, idx) => (
-          <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-dark-bg border border-white/5 text-dark-text rounded-tl-sm'}`}>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
-            </div>
+            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl p-4 flex flex-col gap-2 ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-dark-bg border border-white/5 text-dark-text rounded-tl-sm'}`}>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                {msg.tokens && (
+                  <div className="flex justify-end mt-1">
+                    <span className="text-[10px] opacity-40 font-mono flex items-center gap-1" title={`Prompt: ${msg.tokens.promptTokenCount} | Resposta: ${msg.tokens.candidatesTokenCount}`}>
+                      ⚡ {msg.tokens.totalTokenCount} tokens
+                    </span>
+                  </div>
+                )}
+              </div>
             
             {msg.actions && msg.actions.map((act, actIdx) => {
               const actionKey = `${idx}-${actIdx}`;
