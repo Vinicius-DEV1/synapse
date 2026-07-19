@@ -38,6 +38,9 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           const watchedIds = await window.api.youtube.getWatched(videoIds);
           setWatchedSet(new Set(watchedIds));
         }
+      } else {
+        // Web mode fallback
+        setPlaylist({ _error: 'web_limitation' });
       }
     } catch (e) {
       console.error('Failed to fetch playlist', e);
@@ -93,6 +96,14 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
               <Loader2 size={32} className="animate-spin mb-4 text-brand-400" />
               <p className="text-sm font-medium">Extraindo vídeos da playlist...</p>
               <p className="text-xs mt-1 text-white/30">Isso pode levar alguns segundos</p>
+            </div>
+          ) : playlist?._error === 'web_limitation' ? (
+            <div className="flex flex-col items-center justify-center h-full text-white/40 p-6 text-center">
+              <p className="text-sm font-medium text-white/70 mb-2">Recurso Exclusivo do App Desktop</p>
+              <p className="text-xs text-white/40">
+                O YouTube bloqueia a extração de playlists pelo navegador. 
+                Para listar e rastrear os vídeos, use o Caderno na versão Desktop, que possui ferramentas nativas para isso.
+              </p>
             </div>
           ) : !playlist?.entries || playlist.entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-white/40">
