@@ -304,7 +304,7 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
 "1. Se for gerar um cartão de completamento (cloze), o texto 'front' DEVE conter as lacunas no formato {{c1::palavra}}, e 'back' deve ficar vazio. Você pode criar múltiplas lacunas se achar melhor (ex: {{c1::foo}} e {{c2::bar}}).\n" +
 "2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
 "3. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
-"4. Para cada cartão gerado, analise o contexto e crie de 1 a 3 tags curtas e relevantes. Retorne-as no array 'tags' (sem a hashtag).\n" +
+"4. Para cada cartão gerado, analise o contexto e crie de 1 a 3 tags curtas sobre O CONTEÚDO (ex: ingles, fisica_quantica, verbos). NUNCA crie tags sobre dificuldade ou estado (ex: dificil, importante, revisar). Retorne-as no array 'tags' (sem a hashtag).\n" +
 "5. Não exceda o limite de " + maxCards + " cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
 "6. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
 
