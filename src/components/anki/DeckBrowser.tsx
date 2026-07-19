@@ -568,9 +568,16 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         </div>
 
         {/* Preview Modal */}
-        {previewCard && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-[200] p-4 animate-fade-in">
-            <button onClick={() => setPreviewCard(null)} className="absolute top-6 right-6 p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+        {previewCard && (() => {
+          const currentIndex = filteredCards.findIndex(c => c.id === previewCard.id) + 1;
+          const totalCards = filteredCards.length;
+          
+          return (
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-[200] p-4 animate-fade-in">
+              <div className="absolute top-6 left-6 bg-white/10 text-white/70 px-4 py-2 rounded-full text-xs font-bold tracking-widest">
+                {currentIndex} DE {totalCards}
+              </div>
+              <button onClick={() => setPreviewCard(null)} className="absolute top-6 right-6 p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
               <X size={24} />
             </button>
             <div key={previewCard.id} className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center relative group animate-scale-in">
@@ -602,7 +609,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Hover Tooltip Modal */}
