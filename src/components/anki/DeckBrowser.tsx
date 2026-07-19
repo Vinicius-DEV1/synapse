@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, List } from 'lucide-react';
+import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, LayoutList, Table } from 'lucide-react';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
 import { useDecks } from './hooks/useDecks';
@@ -36,7 +36,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [showSettings, setShowSettings] = useState(false);
 
   // View Mode
-  const [viewMode, setViewMode] = useState<'table' | 'expanded'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid' | 'list'>('table');
 
   // Hover Tooltip State
   const [hoverState, setHoverState] = useState<{ id: string, type: 'front' | 'back', content: string, x: number, y: number } | null>(null);
@@ -324,14 +324,21 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 <button 
                   onClick={() => setViewMode('table')} 
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-                  title="Visualização em Tabela"
+                  title="Visualização em Tabela (Densa)"
                 >
-                  <List size={16} />
+                  <Table size={16} />
                 </button>
                 <button 
-                  onClick={() => setViewMode('expanded')} 
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'expanded' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-                  title="Visualização Expandida"
+                  onClick={() => setViewMode('list')} 
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                  title="Lista Expandida"
+                >
+                  <LayoutList size={16} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('grid')} 
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                  title="Grade Expandida"
                 >
                   <LayoutGrid size={16} />
                 </button>
@@ -447,7 +454,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 </tbody>
               </table>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
+              <div className={`p-4 mx-auto w-full ${viewMode === 'list' ? 'max-w-4xl flex flex-col gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}`}>
                 {groupedCards.map(group => {
                   const card = group[0];
                   const isSelected = group.every(c => selectedIds.has(c.id));
@@ -477,17 +484,17 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                       </div>
                       
                       {/* Content */}
-                      <div className="flex-1 flex flex-col gap-4">
-                        <div>
+                      <div className={`flex-1 ${viewMode === 'list' ? 'flex flex-row gap-6' : 'flex flex-col gap-4'}`}>
+                        <div className={`${viewMode === 'list' ? 'flex-1 border-r border-white/5 pr-6' : ''}`}>
                           <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Frente</div>
-                          <div className="text-sm text-dark-text whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar" dangerouslySetInnerHTML={{ __html: card.front }}></div>
+                          <div className={`text-sm text-dark-text whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar ${viewMode === 'list' ? '' : 'max-h-48'}`} dangerouslySetInnerHTML={{ __html: card.front }}></div>
                         </div>
                         
-                        <div className="h-px bg-white/5 w-full"></div>
+                        {viewMode !== 'list' && <div className="h-px bg-white/5 w-full"></div>}
                         
-                        <div>
+                        <div className={`${viewMode === 'list' ? 'flex-1' : ''}`}>
                           <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Verso</div>
-                          <div className="text-sm text-dark-subtext whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar" dangerouslySetInnerHTML={{ __html: card.back }}></div>
+                          <div className={`text-sm text-dark-subtext whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar ${viewMode === 'list' ? '' : 'max-h-48'}`} dangerouslySetInnerHTML={{ __html: card.back }}></div>
                         </div>
                       </div>
                       
