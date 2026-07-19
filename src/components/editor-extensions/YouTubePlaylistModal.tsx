@@ -78,10 +78,25 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
               <PlayCircle size={16} className="text-brand-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" />
             </div>
             <div>
-              <h2 className="text-base font-medium text-white/90 tracking-wide">{title}</h2>
-              <p className="text-xs text-white/40 mt-0.5">
-                {playlist?.entries ? `${playlist.entries.length} vídeos na playlist` : 'Carregando...'}
-              </p>
+              <h2 className="text-base font-medium text-white/90 tracking-wide line-clamp-1">{title}</h2>
+              {playlist?.entries && (
+                <div className="mt-1.5 w-full">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-[11px] text-white/40 font-medium uppercase tracking-wider">
+                      Progresso: {watchedSet.size} / {playlist.entries.length}
+                    </p>
+                    <p className="text-[11px] text-white/40 font-medium">
+                      {Math.round((watchedSet.size / playlist.entries.length) * 100)}%
+                    </p>
+                  </div>
+                  <div className="w-64 bg-white/5 rounded-full h-1 overflow-hidden">
+                    <div 
+                      className="bg-brand-500 h-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(248,113,113,0.5)]" 
+                      style={{ width: `${(watchedSet.size / playlist.entries.length) * 100}%` }} 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <button 
@@ -121,45 +136,55 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                 return (
                   <div 
                     key={video.id}
-                    className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/5 transition-all duration-200"
+                    className="group relative flex items-center p-2 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/5 transition-all duration-300"
                   >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <span className="text-xs font-mono text-white/30 w-6 text-right">
-                        {idx + 1}
-                      </span>
-                      
-                      <button 
-                        onClick={() => toggleWatched(video)}
-                        className="flex-shrink-0 text-white/20 hover:text-brand-400 transition-colors"
-                      >
-                        {isWatched ? (
-                          <CheckCircle2 size={18} className="text-brand-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" />
-                        ) : (
-                          <Circle size={18} />
-                        )}
-                      </button>
-                      
-                      <div className="flex flex-col min-w-0">
-                        <a 
-                          href={videoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`text-sm font-medium truncate tracking-wide hover:text-brand-300 transition-colors ${
-                            isWatched ? 'text-white/40 line-through' : 'text-white/90'
-                          }`}
-                        >
-                          {video.title}
-                        </a>
-                        <div className="flex items-center gap-3 mt-1 opacity-60">
-                          {video.duration && (
-                            <span className="text-[11px] flex items-center gap-1 text-white/60">
-                              <Clock size={10} />
-                              {formatDuration(video.duration)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    <div className="w-6 text-center text-[10px] font-mono text-white/20 mr-2 group-hover:text-white/40 transition-colors">
+                      {idx + 1}
                     </div>
+
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="relative w-28 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 shadow-sm group-hover:shadow-md transition-all group-hover:ring-1 group-hover:ring-brand-500/30">
+                      <img src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`} className={`w-full h-full object-cover transition-all duration-500 ${isWatched ? 'opacity-40 grayscale' : 'opacity-90 group-hover:opacity-100 group-hover:scale-105'}`} alt={video.title} />
+                      {video.duration && (
+                        <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-sm text-white px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wider">
+                          {formatDuration(video.duration)}
+                        </div>
+                      )}
+                      <div className={`absolute inset-0 bg-brand-500/20 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300 ${isWatched ? 'opacity-100' : 'opacity-0'}`}>
+                        <CheckCircle2 size={16} className="text-white drop-shadow-md" />
+                      </div>
+                    </a>
+                    
+                    <div className="flex-1 min-w-0 ml-4 flex flex-col justify-center">
+                      <a 
+                        href={videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`text-sm font-medium line-clamp-2 leading-snug tracking-wide transition-colors !no-underline !not-italic ${
+                          isWatched ? '!text-white/40 line-through' : '!text-white/90 hover:!text-brand-300'
+                        }`}
+                      >
+                        {video.title}
+                      </a>
+                      <span className="text-[11px] text-white/40 truncate mt-1 font-medium">
+                        {video.uploader}
+                      </span>
+                    </div>
+
+                    <button 
+                      onClick={() => toggleWatched(video)}
+                      className={`flex-shrink-0 p-2.5 rounded-xl ml-2 transition-all duration-200 ${
+                        isWatched 
+                          ? 'text-brand-400 bg-brand-500/10 hover:bg-brand-500/20' 
+                          : 'text-white/20 hover:text-brand-400 hover:bg-white/5'
+                      }`}
+                      title={isWatched ? "Marcar como não assistido" : "Marcar como assistido"}
+                    >
+                      {isWatched ? (
+                        <CheckCircle2 size={20} className="drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" />
+                      ) : (
+                        <Circle size={20} />
+                      )}
+                    </button>
                   </div>
                 );
               })}
