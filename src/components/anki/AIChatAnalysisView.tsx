@@ -41,9 +41,18 @@ export default function AIChatAnalysisView({
   const [chatPrompt, setChatPrompt] = useState('');
   const [activeReviewAction, setActiveReviewAction] = useState<{ msgIdx: number, actIdx: number } | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]); // review mode suggestions
+  const [deckCards, setDeckCards] = useState<any[]>([]); // for displaying original card content
   
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const { actionStatus, setActionStatus, handleExecuteAction } = useAIActions(deckId);
+
+  useEffect(() => {
+    if (window.api?.anki) {
+      window.api.anki.getAllCards(deckId).then(res => {
+        setDeckCards(res?.cards || []);
+      }).catch(() => {});
+    }
+  }, [deckId]);
 
   useEffect(() => {
     const savedSessions = localStorage.getItem(`ai_chat_sessions_${deckId}`);
@@ -394,17 +403,48 @@ export default function AIChatAnalysisView({
                   </div>
                   <details className="group">
                     <summary className="p-3 text-xs text-blue-300/70 cursor-pointer hover:bg-blue-500/5 select-none font-medium text-center">Ver detalhes das edições</summary>
-                    <div className="p-4 pt-0 space-y-3 max-h-64 overflow-y-auto">
-                      {editActions.map((e, i) => (
-                        <div key={i} className="bg-black/20 p-3 rounded-lg text-xs space-y-2 relative border border-white/5">
-                          {actionStatus[e.actionKey] && (
-                            <div className="absolute top-2 right-2 bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold">FEITO</div>
-                          )}
-                          <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Nova Frente</span><p className="text-white mt-0.5">{e.act.new_front}</p></div>
-                          {e.act.new_back && <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Novo Verso</span><p className="text-white mt-0.5">{e.act.new_back}</p></div>}
-                        </div>
-                      ))}
-                    </div>
+                    <div className="p-4 pt-0 space-y-3 max-h-[500px] overflow-y-auto">
+                        {editActions.map((e, i) => {
+                          const originalCard = deckCards.find(c => c.id === e.act.card_id);
+                          return (
+                            <div key={i} className="bg-black/20 p-4 rounded-xl text-xs space-y-3 relative border border-white/5">
+                              {actionStatus[e.actionKey] && (
+                                <div className="absolute top-2 right-2 bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold">FEITO</div>
+                              )}
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <div className="text-white/40 uppercase tracking-wide text-[10px] border-b border-white/10 pb-1 font-semibold">Atual</div>
+                                  <div>
+                                    <span className="text-white/30 text-[10px] block mb-0.5">Frente</span>
+                                    <p className="text-white/70 line-through decoration-red-500/50">{originalCard?.front || '...'}</p>
+                                  </div>
+                                  {originalCard?.back && (
+                                    <div>
+                                      <span className="text-white/30 text-[10px] block mb-0.5">Verso</span>
+                                      <p className="text-white/70 line-through decoration-red-500/50">{originalCard.back}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div className="text-blue-300/70 uppercase tracking-wide text-[10px] border-b border-blue-500/20 pb-1 font-semibold">Nova Sugestão</div>
+                                  <div>
+                                    <span className="text-blue-300/50 text-[10px] block mb-0.5">Frente</span>
+                                    <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block">{e.act.new_front || originalCard?.front}</p>
+                                  </div>
+                                  {(e.act.new_back || originalCard?.back) && (
+                                    <div>
+                                      <span className="text-blue-300/50 text-[10px] block mb-0.5">Verso</span>
+                                      <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block">{e.act.new_back || originalCard?.back}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                   </details>
                 </div>
               );
