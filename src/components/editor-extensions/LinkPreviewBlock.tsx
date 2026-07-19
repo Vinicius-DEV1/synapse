@@ -195,7 +195,7 @@ const LinkPreviewComponent = (props: any) => {
 
   return (
     <NodeViewWrapper className="link-preview-block block my-4" contentEditable={false}>
-      <div className="relative group">
+      <div className="relative group/link">
         <a 
           href={url}
           target="_blank"
@@ -210,7 +210,7 @@ const LinkPreviewComponent = (props: any) => {
               {loading || isReloading ? (
                 <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
               ) : (
-                <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover:text-brand-400 transition-colors">
+                <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover/link:text-brand-400 transition-colors">
                   {typeof fetchedTitle === 'string' ? fetchedTitle : url}
                 </div>
               )}
@@ -221,7 +221,7 @@ const LinkPreviewComponent = (props: any) => {
             </div>
           </div>
         </a>
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
           <button
             onClick={handleReload}
             className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
