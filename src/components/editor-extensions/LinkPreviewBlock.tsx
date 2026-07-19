@@ -23,13 +23,13 @@ const LinkPreviewComponent = (props: any) => {
   const [isReloading, setIsReloading] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+
   const fetchTitle = async (forceReload = false) => {
     if (!forceReload && (fetchedTitle || !loading)) return;
 
     let isMounted = true;
     setIsReloading(true);
-
-    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
     const proxies = [
       // YouTube-specific proxies (tried first if URL is YouTube)
