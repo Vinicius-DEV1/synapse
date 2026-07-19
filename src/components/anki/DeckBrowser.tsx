@@ -35,7 +35,26 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
 
+  // Hover Tooltip State
+  const [hoverState, setHoverState] = useState<{ id: string, type: 'front' | 'back', content: string, x: number, y: number } | null>(null);
+  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const handleMouseEnter = (e: React.MouseEvent, id: string, type: 'front' | 'back', content: string) => {
+    const x = e.clientX;
+    const y = e.clientY;
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+      setHoverState({ id, type, content, x, y });
+    }, 2000);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setHoverState(null);
+  };
 
   const filteredCards = React.useMemo(() => {
     return cards.filter(c => {
@@ -357,7 +376,11 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                           className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
-                      <td className="p-3 text-sm text-dark-text max-w-xs truncate">
+                      <td 
+                        className="p-3 text-sm text-dark-text max-w-xs truncate cursor-default"
+                        onMouseEnter={(e) => handleMouseEnter(e, card.id, 'front', card.front)}
+                        onMouseLeave={handleMouseLeave}
+                      >
                         {card.deck_id !== deck.id && (
                           <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30 whitespace-nowrap align-middle">
                             {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
@@ -370,7 +393,12 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                         )}
                         <span dangerouslySetInnerHTML={{ __html: card.front }}></span>
                       </td>
-                      <td className="p-3 text-sm text-dark-subtext max-w-xs truncate" dangerouslySetInnerHTML={{ __html: card.back }}></td>
+                      <td 
+                        className="p-3 text-sm text-dark-subtext max-w-xs truncate cursor-default" 
+                        dangerouslySetInnerHTML={{ __html: card.back }}
+                        onMouseEnter={(e) => handleMouseEnter(e, card.id, 'back', card.back)}
+                        onMouseLeave={handleMouseLeave}
+                      ></td>
                       <td className="p-3 text-center">
                         {card.media_url && (
                           <button onClick={() => playAudio(card.media_url)} className="text-dark-subtext hover:text-indigo-400 p-1">
@@ -428,6 +456,22 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           </div>
         )}
       </div>
+
+      {/* Hover Tooltip Modal */}
+      {hoverState && (
+        <div 
+          className="fixed z-[300] bg-dark-card border border-indigo-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] rounded-xl p-5 max-w-md w-max pointer-events-none animate-fade-in"
+          style={{ 
+            left: Math.min(hoverState.x + 15, window.innerWidth - 450), 
+            top: Math.min(hoverState.y + 15, window.innerHeight - 200) 
+          }}
+        >
+          <div className="text-[10px] text-indigo-400 font-bold mb-2 uppercase tracking-widest">
+            {hoverState.type === 'front' ? 'Frente Completa' : 'Verso Completo'}
+          </div>
+          <div className="text-sm text-white leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: hoverState.content }}></div>
+        </div>
+      )}
     </div>
   );
 }
