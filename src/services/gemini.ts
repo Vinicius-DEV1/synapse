@@ -316,3 +316,21 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
     throw e;
   }
 }
+
+export async function promptGeminiForDeckAnalysis(userPrompt: string, contextData?: any, customModelId?: string): Promise<string> {
+  const systemInstruction = "Você é um professor e especialista em memorização. Sua tarefa é analisar o baralho do usuário.\n" +
+"Você receberá o contexto atual do baralho (nome, descrição e cartões existentes) e uma pergunta ou pedido do usuário sobre esse baralho.\n" +
+"Responda em formato Markdown, de forma clara, direta e construtiva. Se o usuário perguntar o que falta, sugira tópicos. Se perguntar se está bom, avalie a qualidade dos cartões.";
+
+  const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO ATUAL ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
+  const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
+
+  try {
+    const responseText = await promptGemini(finalPrompt, undefined, [], customModelId);
+    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, responseText);
+    return responseText;
+  } catch (e: any) {
+    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, null, e.message);
+    throw e;
+  }
+}

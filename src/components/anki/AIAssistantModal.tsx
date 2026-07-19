@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, AlertTriangle, Plus, ChevronDown } from 'lucide-react';
-import { fetchGeminiModels, promptGeminiForCardSuggestions, type GeminiModel } from '../../services/gemini';
+import { fetchGeminiModels, promptGeminiForCardSuggestions, promptGeminiForDeckAnalysis, type GeminiModel } from '../../services/gemini';
 import { getSettings } from '../../utils/settings';
 
 interface AIAssistantModalProps {
@@ -10,6 +10,7 @@ interface AIAssistantModalProps {
 }
 
 export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssistantModalProps) {
+  const [mode, setMode] = useState<'generate' | 'analyze'>('generate');
   const [prompt, setPrompt] = useState('');
   const [maxCards, setMaxCards] = useState(5);
   const [includeContext, setIncludeContext] = useState(true);
@@ -21,6 +22,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   const [error, setError] = useState<string | null>(null);
   
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
 
   useEffect(() => {
     loadModels();
@@ -48,6 +50,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
     setLoading(true);
     setError(null);
     setSuggestions([]);
+    setAnalysisResult(null);
     
     try {
       let contextData = null;
@@ -66,11 +69,16 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
          };
       }
       
-      const result = await promptGeminiForCardSuggestions(prompt, maxCards, contextData, selectedModel);
-      setSuggestions(result);
+      if (mode === 'generate') {
+         const result = await promptGeminiForCardSuggestions(prompt, maxCards, contextData, selectedModel);
+         setSuggestions(result);
+      } else {
+         const result = await promptGeminiForDeckAnalysis(prompt, contextData, selectedModel);
+         setAnalysisResult(result);
+      }
       
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro ao gerar os cartões.');
+      setError(err.message || (mode === 'generate' ? 'Ocorreu um erro ao gerar os cartões.' : 'Ocorreu um erro ao analisar o baralho.'));
     } finally {
       setLoading(false);
     }
@@ -101,14 +109,19 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
         </header>
 
         <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-          {suggestions.length === 0 ? (
+          {suggestions.length === 0 && !analysisResult ? (
             <div className="space-y-4">
+              <div className="flex bg-white/5 rounded-lg p-1">
+                <button onClick={() => setMode('generate')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === 'generate' ? 'bg-indigo-600 text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}>Criar Cartões</button>
+                <button onClick={() => setMode('analyze')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === 'analyze' ? 'bg-indigo-600 text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}>Analisar Baralho</button>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-dark-subtext mb-1">O que você quer estudar?</label>
+                <label className="block text-sm font-medium text-dark-subtext mb-1">{mode === 'generate' ? 'O que você quer estudar?' : 'O que deseja analisar?'}</label>
                 <textarea 
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
-                  placeholder="Ex: Crie cartões avançados sobre verbos irregulares no passado. Evite os básicos que eu já tenho."
+                  placeholder={mode === 'generate' ? "Ex: Crie cartões avançados sobre verbos irregulares no passado. Evite os básicos que eu já tenho." : "Ex: O que acha desse baralho? Falta algum conceito importante?"}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500 h-28"
                 />
               </div>
@@ -127,17 +140,19 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
                     {models.length === 0 && <option value="">Carregando...</option>}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-subtext mb-1">Máximo de Cartões</label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="50"
-                    value={maxCards}
-                    onChange={e => setMaxCards(Number(e.target.value))}
-                    className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                {mode === 'generate' && (
+                  <div>
+                    <label className="block text-sm font-medium text-dark-subtext mb-1">Máximo de Cartões</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="50"
+                      value={maxCards}
+                      onChange={e => setMaxCards(Number(e.target.value))}
+                      className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
@@ -160,7 +175,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
                 </div>
               )}
             </div>
-          ) : (
+          ) : mode === 'generate' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-white">{suggestions.length} Cartões Sugeridos</h3>
@@ -197,11 +212,26 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-white">Análise do Baralho</h3>
+                <button 
+                  onClick={() => setAnalysisResult(null)}
+                  className="text-sm text-dark-subtext hover:text-white transition-colors"
+                >
+                  Nova análise
+                </button>
+              </div>
+              <div className="bg-dark-bg border border-white/5 rounded-xl p-6 text-dark-text whitespace-pre-wrap leading-relaxed text-sm">
+                {analysisResult}
+              </div>
+            </div>
           )}
         </div>
 
         <footer className="px-6 py-4 border-t border-white/5 bg-dark-bg/50 flex justify-end">
-          {suggestions.length === 0 ? (
+          {suggestions.length === 0 && !analysisResult ? (
             <button 
               onClick={handleGenerate} 
               disabled={loading || !prompt.trim()}
@@ -210,22 +240,29 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Gerando sugestões...
+                  {mode === 'generate' ? 'Gerando sugestões...' : 'Analisando baralho...'}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Gerar Cartões
+                  {mode === 'generate' ? 'Gerar Cartões' : 'Analisar Baralho'}
                 </>
               )}
             </button>
-          ) : (
+          ) : mode === 'generate' ? (
              <button 
               onClick={handleAddAll} 
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Adicionar Todos ({suggestions.length})
+            </button>
+          ) : (
+             <button 
+              onClick={onClose} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg"
+            >
+              Concluído
             </button>
           )}
         </footer>
