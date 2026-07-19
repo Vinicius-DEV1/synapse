@@ -7,11 +7,11 @@ export default function AnkiView() {
   const [decks, setDecks] = useState<any[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
   const [managingDeck, setManagingDeck] = useState<any | null>(null);
-
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState('');
   const [newDeckDesc, setNewDeckDesc] = useState('');
   const [parentDeckId, setParentDeckId] = useState<string | null>(null);
+  const [deckStats, setDeckStats] = useState<Record<string, { novos: number, revisar: number, feitas: number }>>({});
 
   useEffect(() => {
     loadDecks();
@@ -20,9 +20,43 @@ export default function AnkiView() {
   const loadDecks = async () => {
     if (window.api?.anki) {
       const res = await window.api.anki.getDecks();
-      if (res.success && res.decks) setDecks(res.decks);
-      else if (Array.isArray(res)) setDecks(res);
+      let loadedDecks = [];
+      if (res.success && res.decks) {
+        loadedDecks = res.decks;
+      } else if (Array.isArray(res)) {
+        loadedDecks = res;
+      }
+      setDecks(loadedDecks);
+      loadStats(loadedDecks);
     }
+  };
+
+  const loadStats = async (decksToLoad: any[]) => {
+    if (!window.api?.anki) return;
+    const stats: Record<string, any> = {};
+    for (const d of decksToLoad) {
+      try {
+        const dueRes = await window.api.anki.getDueCards(d.id);
+        let dueCards = [];
+        if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
+        else if (Array.isArray(dueRes)) dueCards = dueRes;
+
+        const allRes = await window.api.anki.getAllCards(d.id);
+        let allCards = [];
+        if (allRes && allRes.success && allRes.cards) allCards = allRes.cards;
+        else if (Array.isArray(allRes)) allCards = allRes;
+
+        const novos = allCards.filter((c: any) => c.state === 0 || c.state === 'new' || c.srs_state === null || c.srs_state === undefined || c.state === undefined).length;
+        const revisar = dueCards.length;
+        const feitas = allCards.length - novos - revisar;
+
+        stats[d.id] = { novos, revisar, feitas: feitas > 0 ? feitas : 0 };
+      } catch (err) {
+        console.warn('Failed to load stats for deck', d.id, err);
+        stats[d.id] = { novos: 0, revisar: 0, feitas: 0 };
+      }
+    }
+    setDeckStats(stats);
   };
 
   const handleCreateDeck = async () => {
@@ -73,9 +107,18 @@ export default function AnkiView() {
 
         <div className="flex flex-wrap items-center justify-end gap-6 shrink-0">
           <div className="flex gap-3 text-xs font-medium bg-dark-bg px-3 py-1.5 rounded-lg border border-white/5">
-            <div className="text-blue-400/80 flex items-center gap-1" title="Novos Cartões"><span className="w-2 h-2 rounded-full bg-blue-400/50"></span>0</div>
-            <div className="text-orange-400/80 flex items-center gap-1" title="Para Revisar"><span className="w-2 h-2 rounded-full bg-orange-400/50"></span>0</div>
-            <div className="text-green-400/80 flex items-center gap-1" title="Revisões Feitas"><span className="w-2 h-2 rounded-full bg-green-400/50"></span>0</div>
+            <div className="text-blue-400/80 flex items-center gap-1" title="Novos Cartões">
+              <span className="w-2 h-2 rounded-full bg-blue-400/50"></span>
+              {deckStats[deck.id]?.novos || 0}
+            </div>
+            <div className="text-orange-400/80 flex items-center gap-1" title="Para Revisar">
+              <span className="w-2 h-2 rounded-full bg-orange-400/50"></span>
+              {deckStats[deck.id]?.revisar || 0}
+            </div>
+            <div className="text-green-400/80 flex items-center gap-1" title="Revisões Feitas/Aprendizado">
+              <span className="w-2 h-2 rounded-full bg-green-400/50"></span>
+              {deckStats[deck.id]?.feitas || 0}
+            </div>
           </div>
 
           <div className="flex gap-2">
