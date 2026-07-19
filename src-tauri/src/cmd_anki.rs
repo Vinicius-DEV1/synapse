@@ -109,9 +109,16 @@ pub fn anki_get_due_cards(deck_id: String, db_state: State<'_, DbState>) -> Resu
     let now = Utc::now().to_rfc3339();
     
     let mut stmt = conn.prepare(
-        "SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode, s.state, s.due_date 
+        "WITH RECURSIVE subdecks AS (
+            SELECT id FROM anki_decks WHERE id = ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT d.id FROM anki_decks d
+            JOIN subdecks s ON d.parent_id = s.id
+            WHERE d.deleted_at IS NULL
+         )
+         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode, s.state, s.due_date 
          FROM anki_cards c JOIN anki_srs_state s ON c.id = s.id 
-         WHERE c.deck_id = ? AND s.due_date <= ? ORDER BY s.due_date ASC"
+         WHERE c.deck_id IN (SELECT id FROM subdecks) AND s.due_date <= ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL ORDER BY s.due_date ASC"
     ).map_err(|e| e.to_string())?;
     
     let iter = stmt.query_map([&deck_id, &now], |row| {
@@ -199,11 +206,18 @@ pub fn anki_get_all_cards(deck_id: Option<String>, db_state: State<'_, DbState>)
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut query = "SELECT id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode FROM anki_cards".to_string();
+    let mut query = "SELECT id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode FROM anki_cards WHERE deleted_at IS NULL".to_string();
     let mut p: Vec<String> = Vec::new();
     
     if let Some(did) = deck_id {
-        query.push_str(" WHERE deck_id = ?");
+        query = "WITH RECURSIVE subdecks AS (
+            SELECT id FROM anki_decks WHERE id = ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT d.id FROM anki_decks d
+            JOIN subdecks s ON d.parent_id = s.id
+            WHERE d.deleted_at IS NULL
+         )
+         SELECT id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode FROM anki_cards WHERE deleted_at IS NULL AND deck_id IN (SELECT id FROM subdecks)".to_string();
         p.push(did);
     }
     query.push_str(" ORDER BY created_at DESC");
