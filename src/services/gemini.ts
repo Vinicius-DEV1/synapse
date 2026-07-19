@@ -288,8 +288,9 @@ export async function logAIApiCall(module: string, model: string, prompt: any, r
   }
 }
 
-export async function promptGeminiForCardSuggestions(userPrompt: string, maxCards: number, contextData?: any, customModelId?: string): Promise<any[]> {
-  const systemInstruction = "Você é um especialista em criação de Flashcards para memorização espaçada (Anki).\n" +
+import { getAiPrompt } from './db-web';
+
+export const DEFAULT_CARD_GENERATION_PROMPT = "Você é um especialista em criação de Flashcards para memorização espaçada (Anki).\n" +
 "O usuário solicitará a criação de novos flashcards. \n" +
 "Sua tarefa é retornar ESTRITAMENTE um JSON Array de objetos. Nenhum texto adicional.\n" +
 "Cada objeto do array deve seguir o schema:\n" +
@@ -305,8 +306,12 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
 "2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
 "3. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
 "4. Para cada cartão gerado, analise o contexto e crie de 1 a 3 tags curtas sobre O CONTEÚDO (ex: ingles, fisica_quantica, verbo). NUNCA crie tags sobre dificuldade (ex: dificil, revisar). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Se precisar criar uma nova tag, escreva sempre no SINGULAR e sem acentuação para evitar variações (ex: use 'verbo' em vez de 'verbos'). Retorne as tags no array 'tags' (sem a hashtag).\n" +
-"5. Não exceda o limite de " + maxCards + " cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
+"5. Não exceda o limite de {{maxCards}} cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
 "6. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
+
+export async function promptGeminiForCardSuggestions(userPrompt: string, maxCards: number, contextData?: any, customModelId?: string): Promise<any[]> {
+  let systemInstruction = await getAiPrompt('anki_card_suggestions') || DEFAULT_CARD_GENERATION_PROMPT;
+  systemInstruction = systemInstruction.replace('{{maxCards}}', maxCards.toString());
 
   const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO ATUAL ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
   const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
@@ -329,8 +334,7 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
   }
 }
 
-export async function promptGeminiForChatAnalysis(userPrompt: string, history: any[] = [], contextData?: any, customModelId?: string): Promise<any> {
-  const systemInstruction = `Você é um professor e especialista em memorização (Anki). Você está ajudando o usuário em um chat a revisar e melhorar seu baralho.
+export const DEFAULT_CHAT_ANALYSIS_PROMPT = `Você é um professor e especialista em memorização (Anki). Você está ajudando o usuário em um chat a revisar e melhorar seu baralho.
 O usuário vai pedir análises ou geração/edição de cartões.
 Você deve SEMPRE retornar sua resposta ESTRITAMENTE no formato JSON abaixo, sem usar formatação markdown (\`\`\`json). Apenas o texto do JSON cru.
 
@@ -369,7 +373,10 @@ Você tem capacidade de geração massiva. NUNCA mencione restrições de tamanh
 EXCEÇÃO: A única exceção é se a quantidade pedida for EXTREMAMENTE exagerada e desnecessária (ex: pedir 500 ou 1000 cartões de uma vez). Nesse caso específico, NÃO GERE OS CARTÕES. Ao invés disso, use a propriedade 'message' para avisar o usuário que a quantidade é gigantesca, perguntando se ele tem certeza de que deseja desperdiçar tantos tokens, e aguarde a confirmação dele no chat antes de gerar.
 Não retorne NADA ALÉM do JSON válido.`;
 
+export async function promptGeminiForChatAnalysis(userPrompt: string, history: any[] = [], contextData?: any, customModelId?: string): Promise<any> {
+  const systemInstruction = await getAiPrompt('anki_chat_analysis') || DEFAULT_CHAT_ANALYSIS_PROMPT;
   const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO (USE OS IDs PARA EDIT/DELETE) ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
+
   const finalSystemInstruction = systemInstruction + contextStr;
   const finalPrompt = userPrompt;
 

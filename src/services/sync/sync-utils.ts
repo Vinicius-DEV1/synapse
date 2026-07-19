@@ -2,7 +2,7 @@ import { db } from '../firebase';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
 export const MODULE_TABLES: Record<string, string[]> = {
-  core: ['config'],
+  core: ['config', 'ai_prompts'],
   notes: ['pages', 'page_history'],
   finance: ['transactions', 'wishlist'],
   library: [
