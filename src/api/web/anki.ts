@@ -54,10 +54,12 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       if (!c.due_date) return true;
       return c.due_date <= now;
     }).sort((a: any, b: any) => {
-      // New cards first, then sort by due date ascending
-      if (!a.due_date && b.due_date) return -1;
-      if (a.due_date && !b.due_date) return 1;
+      // Prioritize cards with a due_date (Reviews / Learning) over New cards
+      if (a.due_date && !b.due_date) return -1;
+      if (!a.due_date && b.due_date) return 1;
       if (!a.due_date && !b.due_date) return 0;
+      
+      // Sort due cards by due date ascending (older/most overdue first)
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
   },
