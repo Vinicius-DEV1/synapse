@@ -91,6 +91,31 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     return Array.from(groups.values());
   }, [filteredCards]);
 
+  useEffect(() => {
+    if (!previewCard) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        const idx = filteredCards.findIndex(c => c.id === previewCard.id);
+        if (idx !== -1 && idx < filteredCards.length - 1) {
+          setPreviewCard(filteredCards[idx + 1]);
+          setShowAnswer(false);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        const idx = filteredCards.findIndex(c => c.id === previewCard.id);
+        if (idx > 0) {
+          setPreviewCard(filteredCards[idx - 1]);
+          setShowAnswer(false);
+        }
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        setShowAnswer(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewCard, filteredCards]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredCards.length) {
       setSelectedIds(new Set());
@@ -545,7 +570,18 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
             <button onClick={() => setPreviewCard(null)} className="absolute top-6 right-6 p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
               <X size={24} />
             </button>
-            <div className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center">
+            <div className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center relative group">
+              <div className="absolute bottom-4 right-4 flex gap-2 opacity-30 hover:opacity-100 transition-opacity">
+                <button onClick={() => { setEditingCard(previewCard); setPreviewCard(null); }} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar">
+                  <Edit3 size={16} />
+                </button>
+                <button onClick={() => {
+                   handleDeleteCard(previewCard.id);
+                   setPreviewCard(null);
+                }} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors" title="Excluir">
+                  <Trash2 size={16} />
+                </button>
+              </div>
               <div className="text-xl text-center text-white min-h-[100px] flex items-center justify-center break-words w-full" dangerouslySetInnerHTML={{ __html: previewCard.front }}></div>
               
               {showAnswer ? (
