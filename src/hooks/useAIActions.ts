@@ -13,14 +13,14 @@ export function useAIActions(deckId: string) {
     if (!window.api?.anki) return;
     try {
       if (action.type === 'edit') {
-        const existingCard = await window.api.anki.getNote(action.card_id);
-        await window.api.anki.saveNote({
-          ...existingCard,
-          id: action.card_id,
-          deck_id: deckId,
-          front: action.new_front,
-          back: action.new_back
-        });
+        const card = await window.api.anki.getCard(action.card_id);
+        if (card && card.note_id) {
+          await window.api.anki.updateNote(card.note_id, {
+            deck_id: deckId,
+            front: action.new_front,
+            back: action.new_back
+          });
+        }
       } else if (action.type === 'delete') {
         await window.api.anki.deleteCardsBulk([action.card_id]);
       } else if (action.type === 'delete_bulk') {
