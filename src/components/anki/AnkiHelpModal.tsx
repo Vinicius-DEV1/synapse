@@ -221,14 +221,27 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
                             )}
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-white text-sm">{log.module === 'anki_validation' ? 'Validação de Cartão' : 'Geração de Flashcards'}</span>
+                                <span className="font-medium text-white text-sm">
+                                  {log.module === 'anki_validation' ? 'Validação de Cartão' : 
+                                   log.module === 'anki_card_suggestions' ? 'Geração de Flashcards' : 
+                                   log.module === 'anki_deck_analysis' ? 'Análise de Baralho' : log.module}
+                                </span>
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                                   {log.model}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-dark-subtext mt-1">
-                                <Clock className="w-3 h-3" />
-                                {new Date(log.created_at).toLocaleString()}
+                              <div className="flex items-center gap-1 text-xs text-dark-subtext mt-1 flex-wrap">
+                                <div className="flex items-center gap-1 mr-3">
+                                  <Clock className="w-3 h-3" />
+                                  {new Date(log.created_at).toLocaleString()}
+                                </div>
+                                {log.token_usage && (
+                                  <div className="flex gap-2">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Input: {log.token_usage.promptTokenCount}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Output: {log.token_usage.candidatesTokenCount}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-dark-subtext border border-white/10">Total: {log.token_usage.totalTokenCount}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
