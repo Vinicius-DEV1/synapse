@@ -233,23 +233,87 @@ export default function AIChatAnalysisView({
                    </div>
                  );
               }
-              if (act.type === 'edit') {
+              if (act.type === 'delete') {
                  return (
-                   <div key={actIdx} className="mt-2 ml-4 bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl w-full max-w-[80%] space-y-3">
-                     <div className="flex items-center gap-2 text-blue-300">
-                       <Edit3 className="w-4 h-4" />
-                       <p className="text-sm font-medium">Sugestão de Edição de Cartão</p>
+                   <div key={actIdx} className="mt-2 ml-4 bg-red-500/10 border border-red-500/20 p-4 rounded-xl w-full max-w-[80%] flex items-center justify-between">
+                     <div className="flex items-center gap-3 text-red-400">
+                       <Trash2 className="w-5 h-5" />
+                       <p className="text-sm font-medium">Sugestão de Exclusão (1 cartão)</p>
                      </div>
-                     <div className="bg-black/20 p-3 rounded-lg text-xs space-y-2">
-                        <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Nova Frente</span><p className="text-white mt-0.5">{act.new_front}</p></div>
-                        {act.new_back && <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Novo Verso</span><p className="text-white mt-0.5">{act.new_back}</p></div>}
-                     </div>
-                     <button disabled={isDone} onClick={() => handleExecuteAction(act, actionKey)} className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900/50 disabled:text-blue-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm transition-colors w-full flex items-center justify-center gap-2">
-                       {isDone ? <><Check className="w-4 h-4" /> Edição Aplicada</> : 'Aprovar Edição'}
+                     <button disabled={isDone} onClick={() => handleExecuteAction(act, actionKey)} className="bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 disabled:text-red-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm transition-colors shadow">
+                       {isDone ? 'Excluído' : 'Aprovar Exclusão'}
                      </button>
                    </div>
-                 )
+                 );
               }
+              if (act.type === 'delete_bulk') {
+                 return (
+                   <div key={actIdx} className="mt-2 ml-4 bg-red-500/10 border border-red-500/20 rounded-xl w-full max-w-[80%] overflow-hidden flex flex-col">
+                      <div className="p-4 flex items-center justify-between border-b border-red-500/10">
+                        <div className="flex items-center gap-3 text-red-400">
+                          <Trash2 className="w-5 h-5" />
+                          <p className="text-sm font-medium">Sugestão de Exclusão ({act.cards_to_delete?.length} cartões)</p>
+                        </div>
+                        <button disabled={isDone} onClick={() => handleExecuteAction(act, actionKey)} className="bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 disabled:text-red-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm transition-colors shadow">
+                          {isDone ? 'Excluídos' : 'Aprovar Exclusão'}
+                        </button>
+                      </div>
+                      <details className="group">
+                        <summary className="p-3 text-xs text-red-300/70 cursor-pointer hover:bg-red-500/5 select-none font-medium text-center">Ver motivos das exclusões</summary>
+                        <div className="p-4 pt-0 space-y-2">
+                          {act.cards_to_delete?.map((item: any, i: number) => (
+                             <div key={i} className="text-xs bg-black/20 p-2 rounded text-red-100">
+                               <span className="font-semibold opacity-70">Motivo:</span> {item.reason}
+                             </div>
+                          ))}
+                        </div>
+                      </details>
+                   </div>
+                 );
+              }
+              return null;
+            })}
+
+            {/* Handle multiple edits consolidated */}
+            {(() => {
+              const editActions = msg.actions?.map((act, actIdx) => ({ act, actIdx, actionKey: `${idx}-${actIdx}` })).filter(x => x.act.type === 'edit') || [];
+              if (editActions.length === 0) return null;
+              
+              const allDone = editActions.every(e => actionStatus[e.actionKey]);
+              
+              return (
+                <div className="mt-2 ml-4 bg-blue-500/10 border border-blue-500/20 rounded-xl w-full max-w-[80%] overflow-hidden flex flex-col">
+                  <div className="p-4 flex items-center justify-between border-b border-blue-500/10">
+                    <div className="flex items-center gap-3 text-blue-300">
+                      <Edit3 className="w-5 h-5" />
+                      <p className="text-sm font-medium">Sugestão de Edição ({editActions.length} {editActions.length === 1 ? 'cartão' : 'cartões'})</p>
+                    </div>
+                    <button 
+                      disabled={allDone} 
+                      onClick={() => { editActions.forEach(e => { if(!actionStatus[e.actionKey]) handleExecuteAction(e.act, e.actionKey) }) }} 
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900/50 disabled:text-blue-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm transition-colors shadow flex items-center gap-2"
+                    >
+                      {allDone ? <><Check className="w-4 h-4" /> Aplicadas</> : 'Aprovar Todos'}
+                    </button>
+                  </div>
+                  <details className="group">
+                    <summary className="p-3 text-xs text-blue-300/70 cursor-pointer hover:bg-blue-500/5 select-none font-medium text-center">Ver detalhes das edições</summary>
+                    <div className="p-4 pt-0 space-y-3 max-h-64 overflow-y-auto">
+                      {editActions.map((e, i) => (
+                        <div key={i} className="bg-black/20 p-3 rounded-lg text-xs space-y-2 relative border border-white/5">
+                          {actionStatus[e.actionKey] && (
+                            <div className="absolute top-2 right-2 bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] font-bold">FEITO</div>
+                          )}
+                          <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Nova Frente</span><p className="text-white mt-0.5">{e.act.new_front}</p></div>
+                          {e.act.new_back && <div><span className="text-blue-300/70 uppercase tracking-wide text-[10px]">Novo Verso</span><p className="text-white mt-0.5">{e.act.new_back}</p></div>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              );
+            })()}
+          </div>           }
               if (act.type === 'delete' || act.type === 'delete_bulk') {
                  const isBulk = act.type === 'delete_bulk';
                  const deleteCount = isBulk ? (act.cards_to_delete?.length || 0) : 1;

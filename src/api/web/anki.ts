@@ -175,6 +175,14 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: true };
   },
   
+  getNote: async (noteId: string) => {
+    return await db.get('anki_notes', noteId);
+  },
+
+  getCard: async (cardId: string) => {
+    return await db.get('anki_cards', cardId);
+  },
+
   saveNote: async (noteData: any) => {
     const noteId = noteData.id || generateId();
     const note = {
