@@ -4,6 +4,7 @@ import { File, FileText, Image as ImageIcon, Film, Download, Trash2, X, Folder }
 import { useStore } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import FileViewer from '../files/FileViewer';
+import FloatingPdfViewer from './FloatingPdfViewer';
 
 export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
@@ -14,6 +15,7 @@ export default function FileWidgetNodeView(props: any) {
   const [keepInDrive, setKeepInDrive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
+  const [showFloatingViewer, setShowFloatingViewer] = useState(false);
   const [fileItem, setFileItem] = useState<any>(null);
 
   useEffect(() => {
@@ -88,9 +90,10 @@ export default function FileWidgetNodeView(props: any) {
         onClick={() => {
           if (fileType === 'folder') {
             dispatch({ type: 'SET_CURRENT_MODULE', payload: 'files' });
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('navigate-folder', { detail: fileId }));
-            }, 100);
+            // Should probably emit an event to navigate to that folder inside the module
+            window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
+          } else if (fileType === 'pdf' && fileItem) {
+            setShowFloatingViewer(true);
           } else {
             if (fileItem) setShowViewer(true);
             else alert("O arquivo ainda está sendo carregado ou não foi encontrado.");
@@ -150,6 +153,17 @@ export default function FileWidgetNodeView(props: any) {
             </div>
           </div>
         </div>
+      )}
+
+      {showFloatingViewer && fileItem && (
+        <FloatingPdfViewer 
+          item={fileItem} 
+          onClose={() => setShowFloatingViewer(false)} 
+          onExpand={() => {
+            setShowFloatingViewer(false);
+            setShowViewer(true);
+          }} 
+        />
       )}
 
       {showViewer && fileItem && (

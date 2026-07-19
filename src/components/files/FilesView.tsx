@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import type { FileFolder, FileItem } from '../../types_files';
-import { Plus, Search, Folder, File, FileText, Image as ImageIcon, Film, FileArchive, MoreVertical, LayoutGrid, List, FolderPlus, X } from 'lucide-react';
+import { Plus, Search, Folder, File, FileText, Image as ImageIcon, Film, FileArchive, MoreVertical, LayoutGrid, List, FolderPlus, X, FolderUp } from 'lucide-react';
 import FileUploadModal from './FileUploadModal';
+import FolderUploadModal from './FolderUploadModal';
 import FolderModal from './FolderModal';
 import DeleteModal from './DeleteModal';
 import FileContextMenu from './FileContextMenu';
@@ -19,6 +20,7 @@ export default function FilesView() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showFolderUploadModal, setShowFolderUploadModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FileFolder | undefined>(undefined);
   const [itemToDelete, setItemToDelete] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
@@ -75,8 +77,9 @@ export default function FilesView() {
     return () => window.removeEventListener('navigate-folder', handleNavigateFolder);
   }, []);
 
-  const handleUploadComplete = (newFile: FileItem) => {
+  const handleUploadComplete = () => {
     setShowUploadModal(false);
+    setShowFolderUploadModal(false);
     loadData();
   };
 
@@ -139,17 +142,26 @@ export default function FilesView() {
             />
           </div>
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border ${driveStatus === 'connected' ? 'bg-green-500/10 text-green-400 border-green-500/20' : driveStatus === 'disconnected' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-white/5 text-dark-subtext border-white/10'}`} title="Status de Conexão com o Google Drive">
-              <div className={`w-2 h-2 rounded-full ${driveStatus === 'connected' ? 'bg-green-400' : driveStatus === 'disconnected' ? 'bg-red-400' : 'bg-gray-400 animate-pulse'}`}></div>
-              <span>{driveStatus === 'connected' ? 'Drive Conectado' : driveStatus === 'disconnected' ? 'Drive Desconectado' : 'Verificando...'}</span>
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2 mr-2 text-xs text-white/50">
+                <span className="w-2 h-2 rounded-full bg-brand-500"></span>
+                <span>{driveStatus === 'connected' ? 'Drive Conectado' : driveStatus === 'disconnected' ? 'Drive Desconectado' : 'Verificando...'}</span>
+              </div>
+              <button 
+                onClick={() => setShowFolderUploadModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-lg text-sm transition-colors"
+                title="Fazer upload de uma pasta inteira"
+              >
+                <FolderUp size={16} />
+              </button>
+              <button 
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm transition-colors"
+                title="Fazer upload de arquivo"
+              >
+                <Plus size={16} />
+              </button>
             </div>
-            <button 
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm transition-colors"
-            >
-              <Plus size={16} />
-              <span>Novo Arquivo</span>
-            </button>
           </div>
         </div>
         
@@ -222,6 +234,14 @@ export default function FilesView() {
         />
       )}
       
+      {showFolderUploadModal && (
+        <FolderUploadModal 
+          onClose={() => setShowFolderUploadModal(false)}
+          onUploadComplete={handleUploadComplete}
+          currentFolderId={selectedFolderId}
+        />
+      )}
+
       {showFolderModal && (
         <FolderModal
           onClose={() => setShowFolderModal(false)}

@@ -668,7 +668,13 @@ export default function PracticeChat({ session }: PracticeChatProps) {
 
   const startAudioCapture = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+      } catch (err) {
+        console.warn('Overconstrained audio request failed, falling back to basic audio', err);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       mediaStreamRef.current = stream;
       
       const track = stream.getAudioTracks()[0];
