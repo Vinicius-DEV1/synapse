@@ -289,13 +289,15 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
 "{\n" +
 "  \"front\": \"Texto da frente do cartão\",\n" +
 "  \"back\": \"Texto do verso do cartão (vazio para clozes)\",\n" +
-"  \"type\": \"reading\" | \"cloze\" | \"typing\"\n" +
+"  \"type\": \"reading\" | \"cloze\" | \"typing\",\n" +
+"  \"suggested_deck_id\": \"(Opcional) ID do sub-baralho sugerido caso aplicável\"\n" +
 "}\n" +
 "Regras:\n" +
 "1. Se for gerar um cartão de completamento (cloze), o texto 'front' DEVE conter as lacunas no formato {{c1::palavra}}, e 'back' deve ficar vazio. Você pode criar múltiplas lacunas se achar melhor (ex: {{c1::foo}} e {{c2::bar}}).\n" +
 "2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
-"3. Não exceda o limite de " + maxCards + " cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
-"4. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
+"3. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
+"4. Não exceda o limite de " + maxCards + " cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
+"5. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
 
   const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO ATUAL ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
   const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;

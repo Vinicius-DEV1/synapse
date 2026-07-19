@@ -24,6 +24,9 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  
+  const [ignoreSubdeckSuggestions, setIgnoreSubdeckSuggestions] = useState(false);
+  const [allDecksMap, setAllDecksMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadModels();
@@ -60,12 +63,19 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
          const resCards = await window.api.anki.getAllCards(deckId);
          
          const decks = Array.isArray(resDecks) ? resDecks : resDecks.decks;
+         
+         const map: Record<string, string> = {};
+         decks?.forEach((d: any) => { map[d.id] = d.name; });
+         setAllDecksMap(map);
+         
          const currentDeck = decks?.find((d: any) => d.id === deckId);
+         const subdecks = decks?.filter((d: any) => d.parent_id === deckId) || [];
          const cards = resCards?.cards || [];
          
          contextData = {
            deck_name: currentDeck?.name || 'Desconhecido',
            deck_description: currentDeck?.description || '',
+           subdecks: subdecks.map((d: any) => ({ id: d.id, name: d.name, description: d.description })),
            existing_cards: cards.map((c: any) => ({ front: c.front, back: c.back, type: c.card_type }))
          };
       }
@@ -88,7 +98,8 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   const handleAddAll = () => {
      onAddCards(suggestions.map(c => ({
        ...c,
-       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact'
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact',
+       suggested_deck_id: ignoreSubdeckSuggestions ? undefined : c.suggested_deck_id
      })));
      onClose();
   };
@@ -97,7 +108,8 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
      const c = suggestions[index];
      onAddCards([{
        ...c,
-       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact'
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact',
+       suggested_deck_id: ignoreSubdeckSuggestions ? undefined : c.suggested_deck_id
      }]);
      setSuggestions(prev => prev.filter((_, i) => i !== index));
   };
@@ -178,18 +190,33 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
                 </div>
 
                 {mode === 'generate' && (
-                  <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
-                    <input 
-                      type="checkbox" 
-                      id="enableAIAssessment" 
-                      checked={enableAIAssessment}
-                      onChange={e => setEnableAIAssessment(e.target.checked)}
-                      className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
-                    />
-                    <label htmlFor="enableAIAssessment" className="text-sm text-dark-text cursor-pointer select-none">
-                      Habilitar Validação por IA para os cartões gerados (Digitação/Cloze)
-                    </label>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
+                      <input 
+                        type="checkbox" 
+                        id="enableAIAssessment" 
+                        checked={enableAIAssessment}
+                        onChange={e => setEnableAIAssessment(e.target.checked)}
+                        className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      />
+                      <label htmlFor="enableAIAssessment" className="text-sm text-dark-text cursor-pointer select-none">
+                        Habilitar Validação por IA para os cartões gerados (Digitação/Cloze)
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
+                      <input 
+                        type="checkbox" 
+                        id="ignoreSubdeckSuggestions" 
+                        checked={ignoreSubdeckSuggestions}
+                        onChange={e => setIgnoreSubdeckSuggestions(e.target.checked)}
+                        className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      />
+                      <label htmlFor="ignoreSubdeckSuggestions" className="text-sm text-dark-text cursor-pointer select-none">
+                        Ignorar sugestões de sub-baralhos da IA (adicionar tudo no baralho atual)
+                      </label>
+                    </div>
+                  </>
                 )}
               </div>
               
@@ -215,8 +242,15 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
               <div className="space-y-3">
                 {suggestions.map((card, idx) => (
                   <div key={idx} className="bg-dark-bg border border-white/5 rounded-xl p-4 flex flex-col gap-2 relative group">
+                    <div className="flex items-center justify-between pr-10 mb-1">
+                      <p className="text-sm font-semibold text-indigo-300">Frente ({card.type})</p>
+                      {card.suggested_deck_id && allDecksMap[card.suggested_deck_id] && !ignoreSubdeckSuggestions && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Destino: {allDecksMap[card.suggested_deck_id]}
+                        </span>
+                      )}
+                    </div>
                     <div className="pr-10">
-                      <p className="text-sm font-semibold text-indigo-300 mb-1">Frente ({card.type})</p>
                       <p className="text-dark-text">{card.front}</p>
                     </div>
                     {card.type !== 'cloze' && card.back && (
