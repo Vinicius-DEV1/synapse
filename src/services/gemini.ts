@@ -138,7 +138,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
   const requestBody: any = { 
     contents,
-    generationConfig: { maxOutputTokens: 8192 }
+    generationConfig: { maxOutputTokens: 65536 }
   };
   if (customSystemInstruction) {
     requestBody.system_instruction = { parts: { text: customSystemInstruction } };
