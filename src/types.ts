@@ -300,7 +300,6 @@ declare global {
       youtube?: any;
       trash?: any;
       files?: any;
-      anki?: any;
       auth: {
         setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
         login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
@@ -378,12 +377,15 @@ declare global {
         getDecks: () => Promise<{ success: boolean; decks?: any[]; error?: string }>;
         createDeck: (name: string, desc?: string) => Promise<{ success: boolean; id?: string; error?: string }>;
         saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
+        saveNote: (noteData: any) => Promise<{ success: boolean; note_id?: string; error?: string }>;
         getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
         reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
         getAllCards: (deckId?: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
         deleteCard: (cardId: string) => Promise<{ success: boolean; error?: string }>;
+        deleteNote: (noteId: string) => Promise<{ success: boolean; error?: string }>;
         deleteCardsBulk: (cardIds: string[]) => Promise<{ success: boolean; error?: string }>;
         updateCard: (cardId: string, data: any) => Promise<{ success: boolean; error?: string }>;
+        updateNote: (noteId: string, data: any) => Promise<{ success: boolean; error?: string }>;
         moveCards: (cardIds: string[], newDeckId: string) => Promise<{ success: boolean; error?: string }>;
         updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
         deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;

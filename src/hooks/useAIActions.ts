@@ -4,6 +4,11 @@ export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
   actions?: any[];
+  tokens?: {
+    promptTokenCount: number;
+    candidatesTokenCount: number;
+    totalTokenCount: number;
+  };
 }
 
 export function useAIActions(deckId: string) {

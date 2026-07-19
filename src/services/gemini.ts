@@ -394,11 +394,21 @@ export async function promptGeminiForChatAnalysis(userPrompt: string, history: a
     logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, responseText, undefined, response.usage);
     
     try {
-      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanJson);
-    } catch (err) {
-      logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, responseText, 'Invalid JSON returned', response.usage);
-      throw new Error('A IA não retornou um JSON válido na resposta do chat.');
+      let cleanedText = responseText;
+      if (cleanedText.startsWith('```json')) {
+         cleanedText = cleanedText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+         cleanedText = cleanedText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      const parsed = JSON.parse(cleanedText);
+      if (response.usage && typeof parsed === 'object') {
+         parsed._usage = response.usage;
+      }
+      return parsed;
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response as JSON:', parseError, responseText);
+      return { message: "Desculpe, ocorreu um erro ao processar o formato da resposta. " + responseText };
     }
   } catch (e: any) {
     logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, null, e.message);
