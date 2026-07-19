@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, LayoutList, Table, Filter } from 'lucide-react';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
@@ -51,7 +52,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => {
       setHoverState({ id, type, content, x, y });
-    }, 2000);
+    }, 1500);
   };
 
   const handleMouseLeave = () => {
@@ -566,9 +567,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
       </div>
 
       {/* Hover Tooltip Modal */}
-      {hoverState && (
+      {hoverState && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed z-[300] bg-dark-card border border-indigo-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] rounded-xl p-5 max-w-md w-max pointer-events-none animate-fade-in"
+          className="fixed z-[9999] bg-dark-card border border-indigo-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] rounded-xl p-5 max-w-md w-max pointer-events-none animate-fade-in"
           style={{ 
             left: Math.min(hoverState.x + 15, window.innerWidth - 450), 
             top: Math.min(hoverState.y + 15, window.innerHeight - 200) 
@@ -578,7 +579,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
             {hoverState.type === 'front' ? 'Frente Completa' : 'Verso Completo'}
           </div>
           <div className="text-sm text-white leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: hoverState.content }}></div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
