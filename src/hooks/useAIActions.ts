@@ -22,9 +22,9 @@ export function useAIActions(deckId: string) {
         if (card) {
           await window.api.anki.updateCard(action.card_id, {
             deck_id: deckId,
-            front: action.new_front,
-            back: action.new_back,
-            tags: action.new_tags || card.tags
+            front: action.new_front !== undefined ? action.new_front : card.front,
+            back: action.new_back !== undefined ? action.new_back : card.back,
+            tags: action.new_tags !== undefined ? action.new_tags : card.tags
           });
         }
       } else if (action.type === 'delete') {
