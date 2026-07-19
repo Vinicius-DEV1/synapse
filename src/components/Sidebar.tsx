@@ -256,11 +256,10 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           >
             <Shield size={18} />
           </button>
-          <div className="flex items-center gap-1">
             <button
               onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'practice' })}
               className={`p-2 rounded-lg transition-all active:scale-95 ${
-                state.currentModule === 'practice' 
+                activeModule === 'practice' 
                   ? 'bg-brand-500/20 text-brand-400' 
                   : 'hover:bg-white/5 text-dark-subtext hover:text-dark-text'
               }`}
@@ -271,7 +270,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <button
               onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'trash' })}
               className={`p-2 rounded-lg transition-all active:scale-95 ${
-                state.currentModule === 'trash'
+                activeModule === 'trash'
                   ? 'bg-red-500/20 text-red-400'
                   : 'hover:bg-white/5 text-dark-subtext hover:text-dark-text'
               }`}
@@ -286,7 +285,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             >
               <Settings size={18} />
             </button>
-          </div>
         </div>
         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
         </div>
@@ -636,7 +634,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                   dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
                 }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mt-2 ${
-                  state.currentModule === 'trash'
+                  activeModule === 'trash'
                     ? 'bg-red-500/20 text-red-400'
                     : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
                 }`}
