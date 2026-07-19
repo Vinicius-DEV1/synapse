@@ -46,7 +46,20 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     }
     
     const allCards = await db.getAll('anki_cards') || [];
-    return allCards.filter((c: any) => !c.deleted_at && deckIds.has(c.deck_id));
+    const now = new Date().toISOString();
+    
+    return allCards.filter((c: any) => {
+      if (c.deleted_at || !deckIds.has(c.deck_id)) return false;
+      // If it doesn't have a due_date, it's a new card, so it's due
+      if (!c.due_date) return true;
+      return c.due_date <= now;
+    }).sort((a: any, b: any) => {
+      // New cards first, then sort by due date ascending
+      if (!a.due_date && b.due_date) return -1;
+      if (a.due_date && !b.due_date) return 1;
+      if (!a.due_date && !b.due_date) return 0;
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    });
   },
   reviewCard: async (cardId: string, rating: number) => {
     const card = await db.get('anki_cards', cardId);
