@@ -62,7 +62,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
       deck_name: currentDeck?.name || 'Desconhecido',
       deck_description: currentDeck?.description || '',
       subdecks: subdecks.map((d: any) => ({ id: d.id, name: d.name, description: d.description })),
-      existing_cards: cards.map((c: any) => ({ id: c.id, deck_id: c.deck_id, front: c.front, back: c.back, type: c.card_type }))
+      existing_cards: cards.map((c: any) => ({ id: c.id, deck_id: c.deck_id, front: c.front, back: c.back, type: c.card_type, tags: c.tags }))
     };
   };
 
