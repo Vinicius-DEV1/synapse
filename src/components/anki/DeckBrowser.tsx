@@ -209,11 +209,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-dark-border flex items-center justify-between bg-dark-bg">
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={onClose}>
+      <div 
+        className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]"
+        onMouseDown={e => e.stopPropagation()}
+      >
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
+          
+          {/* Header */}
+          <div className="p-6 border-b border-dark-border flex items-center justify-between bg-dark-bg shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-dark-text flex items-center gap-2">
               <HardDrive className="text-indigo-400" />
@@ -235,20 +239,19 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          
           {showSettings && (
-            <DeckSettingsPanel 
-              deck={deck} 
-              onSave={handleUpdateDeck} 
-              onDelete={handleDeleteDeck} 
-              onResetProgress={handleResetProgress} 
-            />
+            <div className="shrink-0 border-b border-white/5">
+              <DeckSettingsPanel 
+                deck={deck} 
+                onSave={handleUpdateDeck} 
+                onDelete={handleDeleteDeck} 
+                onResetProgress={handleResetProgress} 
+              />
+            </div>
           )}
 
-          {/* Toolbar */}
-          <div className="p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-transparent">
+          {/* Toolbar (Sticky) */}
+          <div className="sticky top-0 z-20 p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-dark-card/95 backdrop-blur-md shrink-0 shadow-sm">
             <div className="flex flex-wrap items-center gap-3 flex-1">
               <button 
                 onClick={() => setShowFilters(!showFilters)} 
@@ -368,8 +371,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
             </div>
           </div>
 
-          {/* Table */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Table / Grid / List */}
+          <div className="flex-1 p-4 flex flex-col">
             {loading ? (
               <div className="w-full flex flex-col gap-2">
                 {[...Array(4)].map((_, i) => (
