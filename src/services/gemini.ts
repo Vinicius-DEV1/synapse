@@ -346,7 +346,8 @@ Schema esperado:
       "type": "edit",
       "card_id": "ID do cartão no contexto",
       "new_front": "Novo texto da frente",
-      "new_back": "Novo texto do verso"
+      "new_back": "Novo texto do verso",
+      "new_tags": ["tag_preservada", "nova_tag"]
     },
     {
       "type": "delete_bulk",
@@ -361,6 +362,9 @@ A lista 'actions' é OPCIONAL. Só adicione ações de 'create' se o usuário pe
 Para editar ou excluir, você precisa olhar o 'id' dos cartões no contexto atual fornecido. Se encontrar múltiplos cartões inúteis ou redundantes, exclua todos juntos no 'delete_bulk'. 
 Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você DEVE analisar o assunto de cada filho e sugerir alocar o novo cartão criado em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Os cartões no array 'existing_cards' possuem a propriedade 'deck_id', que indica a qual sub-baralho ou baralho pai eles pertencem. Use essa informação para fazer contagens ou análises corretas. REGRA CRÍTICA: Se o usuário pedir para criar cartões e você não tiver certeza de qual sub-baralho ele quer usar, NÃO GERE OS CARTÕES AINDA. Ao invés disso, use a 'message' para perguntar em qual sub-baralho ele deseja colocar (liste os disponíveis) e aguarde a resposta dele. Se o cartão for explicitamente geral e para a raiz, omita o campo.
 A propriedade 'message' é sempre OBRIGATÓRIA.
+Regras de Padronização:
+1. TAGS: Sempre que criar ou editar cartões, forneça tags curtas focadas OBRIGATORIAMENTE no CONTEÚDO (ex: verbos, biologia). NUNCA crie tags genéricas de dificuldade ou estado (ex: importante, revisar, dificil). Dê PREFERÊNCIA ABSOLUTA a usar tags já existentes no contexto. Ao criar novas, escreva sempre no SINGULAR e sem acentuação (ex: 'verbo' em vez de 'verbos').
+2. TEXTOS (FRONT/BACK): Mantenha os cartões curtos e objetivos. Evite blocos de texto gigantescos, prefira informações atomizadas (fáceis de memorizar rapidamente).
 Você tem capacidade de geração massiva. NUNCA mencione restrições de tamanho na sua resposta, nunca fracione entregas injustificadamente, NUNCA peça permissão para continuar, e nunca dê desculpas para gerar menos cartões do que o pedido (ex: se o usuário pedir para gerar ou editar 100 cartões, você DEVE gerar o JSON contendo TODOS eles de uma vez).
 EXCEÇÃO: A única exceção é se a quantidade pedida for EXTREMAMENTE exagerada e desnecessária (ex: pedir 500 ou 1000 cartões de uma vez). Nesse caso específico, NÃO GERE OS CARTÕES. Ao invés disso, use a propriedade 'message' para avisar o usuário que a quantidade é gigantesca, perguntando se ele tem certeza de que deseja desperdiçar tantos tokens, e aguarde a confirmação dele no chat antes de gerar.
 Não retorne NADA ALÉM do JSON válido.`;

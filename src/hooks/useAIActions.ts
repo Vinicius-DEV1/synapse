@@ -14,11 +14,12 @@ export function useAIActions(deckId: string) {
     try {
       if (action.type === 'edit') {
         const card = await window.api.anki.getCard(action.card_id);
-        if (card && card.note_id) {
-          await window.api.anki.updateNote(card.note_id, {
+        if (card) {
+          await window.api.anki.updateCard(action.card_id, {
             deck_id: deckId,
             front: action.new_front,
-            back: action.new_back
+            back: action.new_back,
+            tags: action.new_tags || card.tags
           });
         }
       } else if (action.type === 'delete') {
