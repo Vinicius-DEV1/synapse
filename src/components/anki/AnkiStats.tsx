@@ -142,11 +142,9 @@ export default function AnkiStats({ onBack }: AnkiStatsProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto relative animate-fade-in" style={{ height: '100dvh' }}>
-      <div className="max-w-5xl mx-auto w-full space-y-8 pb-20">
-        
-        {/* Header */}
-        <header className="flex justify-between items-center pb-8 border-b border-white/5">
+    <div className="w-full animate-fade-in">
+      <div className="w-full">
+        <header className="mb-8 border-b border-white/5 pb-6">
           <div>
             <div className="flex items-center gap-3 mb-2 text-dark-subtext hover:text-white cursor-pointer w-fit transition-colors" onClick={onBack}>
               <ArrowLeft size={20} />

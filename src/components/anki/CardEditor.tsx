@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Volume2, Plus, BrainCircuit } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, Volume2, Plus, BrainCircuit, Sparkles } from 'lucide-react';
+import AIAssistantModal from './AIAssistantModal';
 
 export interface CardDraft {
   front: string;
@@ -12,6 +13,7 @@ export interface CardDraft {
   media_url?: string; // Could be a local path or external URL
   video_clip?: { path: string, startMs: number, endMs: number }; // For video extraction
   tts_text?: string; // For Edge TTS generation
+  deck_id?: string;
 }
 
 interface CardEditorProps {
@@ -33,6 +35,10 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [cardType, setCardType] = useState<CardDraft['card_type']>(draft.card_type);
   const [validationMode, setValidationMode] = useState<'exact' | 'ai'>(draft.validation_mode || 'exact');
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+
+  const frontRef = useRef<HTMLTextAreaElement>(null);
+  const backRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     loadDecks();
@@ -40,6 +46,17 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       generatePreviewAudio();
     }
   }, []);
+
+  useEffect(() => {
+    if (frontRef.current) {
+      frontRef.current.style.height = 'auto';
+      frontRef.current.style.height = frontRef.current.scrollHeight + 'px';
+    }
+    if (backRef.current) {
+      backRef.current.style.height = 'auto';
+      backRef.current.style.height = backRef.current.scrollHeight + 'px';
+    }
+  }, [front, back]);
 
   const generatePreviewAudio = async () => {
     setGeneratingAudio(true);
@@ -66,8 +83,9 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       const res = await window.api.anki.getDecks();
       if (res.success && res.decks && res.decks.length > 0) {
         setDecks(res.decks);
-        // Pre-select parentDeckId if provided, otherwise select first deck
-        if (parentDeckId && res.decks.find((d: any) => d.id === parentDeckId)) {
+        if (draft.deck_id) {
+          setSelectedDeck(draft.deck_id);
+        } else if (parentDeckId && res.decks.find((d: any) => d.id === parentDeckId)) {
           setSelectedDeck(parentDeckId);
         } else {
           setSelectedDeck(res.decks[0].id);
@@ -96,20 +114,21 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
         }
       }
 
-      // 2. Save or Update Card
+      // 2. Save or Update Note
       if (window.api?.anki) {
         if (editingCardId) {
-          const res = await window.api.anki.updateCard(editingCardId, {
+          const res = await window.api.anki.updateNote(editingCardId, {
              front,
              back,
              extra_note: extraNote,
              media_url: finalMediaUrl,
              validation_mode: validationMode,
-             card_type: cardType
+             card_type: cardType,
+             deck_id: selectedDeck
           });
           if (!res.success) throw new Error(res.error);
         } else {
-          const res = await window.api.anki.saveCard({
+          const res = await window.api.anki.saveNote({
              deck_id: selectedDeck,
              front,
              back,
@@ -133,6 +152,42 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
     }
   };
 
+  const handleAddCardsFromAI = async (cards: any[]) => {
+    if (!selectedDeck || !window.api?.anki) return;
+    setLoading(true);
+    let successCount = 0;
+    try {
+      for (const card of cards) {
+        const payload = {
+          deck_id: selectedDeck,
+          front: card.front,
+          back: card.back || '',
+          card_type: card.type || 'reading',
+          source_module: 'manual',
+          validation_mode: 'exact'
+        };
+        const res = await window.api.anki.saveNote(payload);
+        if (res.success) successCount++;
+      }
+      if (successCount > 0 && onSaveSuccess) {
+        onSaveSuccess();
+      }
+      // Se não for edição e adicionou pelo menos 1, limpa pra criar mais ou fecha
+      if (!editingCardId && successCount > 0) {
+        setFront('');
+        setBack('');
+        setExtraNote('');
+        if (frontRef.current) frontRef.current.style.height = 'auto';
+        if (backRef.current) backRef.current.style.height = 'auto';
+      }
+    } catch (error) {
+      console.error('Error adding AI cards:', error);
+      alert('Erro ao salvar cartões da IA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -151,7 +206,6 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
         </header>
 
         <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
-          {!editingCardId && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-dark-subtext mb-1">Baralho</label>
               <select 
@@ -165,7 +219,6 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                 ))}
               </select>
             </div>
-          )}
 
           <div className="flex gap-4 mb-4">
             <div className="flex-1">
@@ -207,10 +260,11 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                {cardType === 'listening' && <Volume2 className="w-4 h-4 text-indigo-400" />}
              </div>
              <textarea 
+               ref={frontRef}
                value={front}
                onChange={(e) => setFront(e.target.value)}
-               className="w-full h-24 bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500 text-lg leading-relaxed"
-               placeholder={cardType === 'cloze' ? "Ex: I {{go}} to school" : "Texto principal ou frase..."}
+               className="w-full min-h-[96px] bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500 text-lg leading-relaxed overflow-hidden"
+               placeholder={cardType === 'cloze' ? "Ex: I {{c1::go}} to school" : "Texto principal ou frase..."}
              />
           </div>
 
@@ -219,9 +273,10 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                {cardType === 'cloze' ? 'Verso (Opcional - Explicação)' : 'Verso (Resposta)'}
              </label>
              <textarea 
+               ref={backRef}
                value={back}
                onChange={(e) => setBack(e.target.value)}
-               className="w-full h-24 bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500"
+               className="w-full min-h-[96px] bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text resize-none focus:outline-none focus:border-indigo-500 overflow-hidden"
                placeholder={cardType === 'cloze' ? "Explicação opcional para a resposta..." : "Tradução, significado, IPA..."}
              />
           </div>
@@ -268,28 +323,48 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
           )}
         </div>
 
-        <footer className="px-6 py-4 border-t border-dark-border bg-dark-bg/50 flex justify-end gap-3">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-dark-subtext hover:text-white transition-colors"
-          >
-            Cancelar
-          </button>
-          <button 
-            onClick={handleSave}
-            disabled={loading || !selectedDeck || !front || (cardType !== 'cloze' && !back)}
-            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            {loading ? (
+        <footer className="px-6 py-4 border-t border-dark-border bg-dark-bg/50 flex justify-between items-center gap-3">
+          {!editingCardId ? (
+            <button 
+              onClick={() => setShowAIAssistant(true)}
+              className="px-4 py-2 text-sm font-medium bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-colors rounded-lg flex items-center gap-2 border border-indigo-500/20"
+            >
+              <Sparkles className="w-4 h-4" />
+              Assistente IA
+            </button>
+          ) : <div></div>}
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-dark-subtext hover:text-white transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={handleSave}
+              disabled={loading || !selectedDeck || !front || (cardType !== 'cloze' && !back)}
+              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {loading ? (
               <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             ) : (
               <Save className="w-4 h-4" />
             )}
             Salvar Flashcard
           </button>
+          </div>
         </footer>
 
       </div>
+      
+      {showAIAssistant && (
+        <AIAssistantModal 
+          deckId={selectedDeck} 
+          onClose={() => setShowAIAssistant(false)} 
+          onAddCards={handleAddCardsFromAI}
+        />
+      )}
     </div>
   );
 }

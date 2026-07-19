@@ -1,5 +1,6 @@
 import { getSettings } from '../utils/settings';
 import { NetworkResilience } from '../utils/NetworkResilience';
+import { getWebDb } from './db-web';
 
 export interface GeminiKeyEntry {
   id: string;
@@ -91,7 +92,7 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   }
 }
 
-export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = []): Promise<string> {
+export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string): Promise<string> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
 
@@ -100,7 +101,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   }
 
   const settings = getSettings();
-  let modelId = settings.geminiModel || 'models/gemini-1.5-pro';
+  let modelId = customModelId || settings.geminiModel || 'models/gemini-1.5-pro';
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
@@ -259,5 +260,58 @@ export async function promptGeminiForAnkiEvaluation(front: string, back: string,
   } catch (err) {
     console.error('Failed to parse Gemini JSON for Anki evaluation:', responseText);
     throw new Error('A IA não retornou um JSON válido na avaliação.');
+  }
+}
+
+export async function logAIApiCall(module: string, model: string, prompt: any, response: any, error?: string) {
+  try {
+    const db = await getWebDb();
+    await db.put('ai_logs', {
+      id: crypto.randomUUID(),
+      module,
+      model,
+      prompt: JSON.stringify(prompt),
+      response: response ? JSON.stringify(response) : null,
+      error: error || null,
+      created_at: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('Failed to log AI call', e);
+  }
+}
+
+export async function promptGeminiForCardSuggestions(userPrompt: string, maxCards: number, contextData?: any, customModelId?: string): Promise<any[]> {
+  const systemInstruction = "Você é um especialista em criação de Flashcards para memorização espaçada (Anki).\n" +
+"O usuário solicitará a criação de novos flashcards. \n" +
+"Sua tarefa é retornar ESTRITAMENTE um JSON Array de objetos. Nenhum texto adicional.\n" +
+"Cada objeto do array deve seguir o schema:\n" +
+"{\n" +
+"  \"front\": \"Texto da frente do cartão\",\n" +
+"  \"back\": \"Texto do verso do cartão (vazio para clozes)\",\n" +
+"  \"type\": \"reading\" | \"cloze\" | \"typing\"\n" +
+"}\n" +
+"Regras:\n" +
+"1. Se for gerar um cartão de completamento (cloze), o texto 'front' DEVE conter as lacunas no formato {{c1::palavra}}, e 'back' deve ficar vazio. Você pode criar múltiplas lacunas se achar melhor (ex: {{c1::foo}} e {{c2::bar}}).\n" +
+"2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
+"3. Não exceda o limite de " + maxCards + " cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
+"4. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
+
+  const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO ATUAL ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
+  const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
+
+  try {
+    const responseText = await promptGemini(finalPrompt, undefined, [], customModelId);
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, responseText);
+    
+    try {
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (err) {
+      logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, null, 'Invalid JSON returned');
+      throw new Error('A IA não retornou um JSON válido na geração de cartões.');
+    }
+  } catch (e: any) {
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', userPrompt, null, e.message);
+    throw e;
   }
 }
