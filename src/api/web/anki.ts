@@ -138,6 +138,45 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: true, payload };
   },
 
+  importDeck: async (payload: any) => {
+    try {
+      const { decks = [], notes = [], cards = [] } = payload;
+      
+      const now = new Date().toISOString();
+      for (const d of decks) {
+        const existing = await db.get('anki_decks', d.id);
+        if (existing) {
+          await db.put('anki_decks', { ...existing, ...d, updated_at: now });
+        } else {
+          await db.put('anki_decks', { ...d, updated_at: now });
+        }
+      }
+
+      for (const n of notes) {
+        const existing = await db.get('anki_notes', n.id);
+        if (existing) {
+          await db.put('anki_notes', { ...existing, ...n, updated_at: now });
+        } else {
+          await db.put('anki_notes', { ...n, updated_at: now });
+        }
+      }
+
+      for (const c of cards) {
+        const existing = await db.get('anki_cards', c.id);
+        if (existing) {
+          await db.put('anki_cards', { ...existing, ...c, updated_at: now });
+        } else {
+          await db.put('anki_cards', { ...c, updated_at: now });
+        }
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      console.error('Import error:', e);
+      return { success: false, error: e.message };
+    }
+  },
+
   getDecks: async () => {
     const all = await db.getAll('anki_decks') || [];
     const decks = all.filter((d: any) => !d.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
