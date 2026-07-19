@@ -3,7 +3,6 @@ import { PanelLeftClose, PanelLeft, Plus, Search, BookOpen, Wallet, Library, Lay
 import { useStore } from '../store/useStore';
 import SidebarItem from './SidebarItem';
 import SettingsModal from './SettingsModal';
-import TrashModal from './TrashModal';
 import { useMouseDrag } from '../hooks/useMouseDrag';
 
 function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index, onDropPinned }: any) {
@@ -51,7 +50,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-  const [showTrash, setShowTrash] = useState(false);
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
@@ -117,18 +115,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module;
 
-  // Listen for mouse-based drag drops on empty sidebar area (unparent page)
   useEffect(() => {
     const onDragDrop = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       const treeEl = document.getElementById('sidebar-page-tree');
       if (!treeEl) return;
       
-      // Check if dropped on the tree container but NOT on any SidebarItem
       const targetEl = document.elementFromPoint(detail.x, detail.y);
       if (!targetEl) return;
       
-      // If the target is the tree container itself (empty area), unparent
       if (targetEl === treeEl || targetEl.id === 'sidebar-page-tree') {
         onUpdatePage(detail.pageId, { parent_id: null });
       }
@@ -141,7 +136,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   if (state.sidebarCollapsed) {
     return (
       <>
-        {/* Mobile: Floating open button */}
         {!state.isReadingModeFullScreen && (
           <div className="md:hidden fixed top-4 left-0 z-[90]">
             <button
@@ -154,7 +148,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </div>
         )}
 
-        {/* Desktop: Slim Sidebar */}
         <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
@@ -263,36 +256,38 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           >
             <Shield size={18} />
           </button>
-          <button
-            onClick={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: 'practice' })}
-            className={`p-2 rounded-lg transition-all active:scale-95 ${
-              activeModule === 'practice' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-            }`}
-            title="Prática"
-          >
-            <Mic size={18} />
-          </button>
-          <button
-            onClick={() => setShowTrash(true)}
-            className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
-            title="Lixeira"
-          >
-            <Trash2 size={18} />
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
-            title="Configurações"
-          >
-            <Settings size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => dispatch({ type: 'SET_CURRENT_MODULE', payload: 'practice' })}
+              className={`p-2 rounded-lg transition-all active:scale-95 ${
+                state.currentModule === 'practice' 
+                  ? 'bg-brand-500/20 text-brand-400' 
+                  : 'hover:bg-white/5 text-dark-subtext hover:text-dark-text'
+              }`}
+              title="Treino Prático (IA)"
+            >
+              <Mic size={18} />
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'SET_CURRENT_MODULE', payload: 'trash' })}
+              className={`p-2 rounded-lg transition-all active:scale-95 ${
+                state.currentModule === 'trash'
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'hover:bg-white/5 text-dark-subtext hover:text-dark-text'
+              }`}
+              title="Lixeira"
+            >
+              <Trash2 size={18} />
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+              title="Configurações"
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </div>
-        {showTrash && (
-          <TrashModal 
-            onClose={() => setShowTrash(false)} 
-            onPageRestored={() => dispatch({ type: 'LOAD_PAGES_REQUEST' })} 
-          />
-        )}
         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
         </div>
       </>
@@ -301,15 +296,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Backdrop */}
       <div 
          className="md:hidden fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm transition-opacity"
          onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
       />
       
-      {/* Sidebar Container */}
       <div className="fixed md:relative z-[70] md:z-20 w-[260px] h-full bg-dark-bg md:bg-dark-card/50 border-r border-white/5 flex flex-col shadow-2xl md:shadow-none animate-slide-right md:animate-none">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
           {activeModule === 'notes' ? (
@@ -349,7 +341,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
       {activeModule === 'notes' && (
         <>
-          {/* Search */}
           <div className="px-3 py-2">
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dark-subtext" />
@@ -363,7 +354,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             </div>
           </div>
 
-          {/* New Page Button */}
           <div className="px-3 py-1">
             <button
               onClick={() => onCreatePage(null)}
@@ -376,7 +366,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </>
       )}
 
-      {/* Tree */}
       <div 
         className="flex-1 overflow-y-auto px-2 py-1 pb-20"
         id="sidebar-page-tree"
@@ -505,7 +494,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         )}
       </div>
 
-      {/* Module Switcher (Footer) */}
       <div className="border-t border-white/5 flex flex-col">
         <button
           onClick={() => setIsModulesExpanded(!isModulesExpanded)}
@@ -642,33 +630,34 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <Mic size={16} />
               <span>Prática</span>
             </button>
-            <button
-              onClick={() => {
-                setShowTrash(true);
-                dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
-              }}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
-            >
-              <Trash2 size={16} />
-              <span>Lixeira</span>
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
-            >
-              <Settings size={16} />
-              <span>Configurações</span>
-            </button>
+              <button
+                onClick={() => {
+                  dispatch({ type: 'SET_CURRENT_MODULE', payload: 'trash' });
+                  dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
+                }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mt-2 ${
+                  state.currentModule === 'trash'
+                    ? 'bg-red-500/20 text-red-400'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+                }`}
+              >
+                <Trash2 size={16} />
+                Lixeira
+              </button>
+              <button
+                onClick={() => {
+                  setShowSettings(true);
+                  dispatch({ type: 'SET_SIDEBAR_OPEN', isOpen: false });
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
+              >
+                <Settings size={16} />
+                <span>Configurações</span>
+              </button>
           </div>
         )}
       </div>
 
-      {showTrash && (
-        <TrashModal 
-          onClose={() => setShowTrash(false)} 
-          onPageRestored={() => dispatch({ type: 'LOAD_PAGES_REQUEST' })} 
-        />
-      )}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       </div>
     </>

@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, Youtube, ListVideo } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 
@@ -265,7 +265,7 @@ const LinkPreviewComponent = (props: any) => {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
               {isYouTube ? (
-                <Youtube size={16} className="text-brand-500 drop-shadow-sm flex-shrink-0" />
+                <PlaySquare size={16} className="text-brand-500 drop-shadow-sm flex-shrink-0" />
               ) : (
                 renderIcon()
               )}

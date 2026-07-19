@@ -67,3 +67,47 @@ pub fn trash_restore(id: String, item_type: String, db_state: tauri::State<crate
     
     Ok(true)
 }
+
+#[tauri::command]
+pub fn trash_delete_permanently(id: String, item_type: String, db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
+    
+    let table = match item_type.as_str() {
+        "page" => "pages",
+        "anki_deck" => "anki_decks",
+        "anki_card" => "anki_cards",
+        "file" => "files",
+        "vault" => "vault_groups",
+        "finance" => "transactions",
+        _ => return Err("Tipo nǜo suportado".into()),
+    };
+    
+    let query = format!("DELETE FROM {} WHERE id = ?", table);
+    conn.execute(&query, rusqlite::params![id]).map_err(|e| e.to_string())?;
+    
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
+    
+    let tables = vec![
+        "pages", 
+        "anki_decks", 
+        "anki_cards", 
+        "files", 
+        "vault_groups", 
+        "transactions", 
+        "file_folders"
+    ];
+    
+    for table in tables {
+        let query = format!("DELETE FROM {} WHERE deleted_at IS NOT NULL", table);
+        let _ = conn.execute(&query, []);
+    }
+    
+    Ok(true)
+}
