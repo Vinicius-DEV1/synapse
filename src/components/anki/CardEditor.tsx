@@ -164,7 +164,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
           back: card.back || '',
           card_type: card.type || 'reading',
           source_module: 'manual',
-          validation_mode: 'exact'
+          validation_mode: card.validation_mode || 'exact'
         };
         const res = await window.api.anki.saveNote(payload);
         if (res.success) successCount++;

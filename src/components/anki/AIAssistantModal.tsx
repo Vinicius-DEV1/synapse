@@ -14,6 +14,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   const [prompt, setPrompt] = useState('');
   const [maxCards, setMaxCards] = useState(5);
   const [includeContext, setIncludeContext] = useState(true);
+  const [enableAIAssessment, setEnableAIAssessment] = useState(true);
   
   const [models, setModels] = useState<GeminiModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
@@ -85,12 +86,19 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   };
   
   const handleAddAll = () => {
-     onAddCards(suggestions);
+     onAddCards(suggestions.map(c => ({
+       ...c,
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact'
+     })));
      onClose();
   };
 
   const handleAddSingle = (index: number) => {
-     onAddCards([suggestions[index]]);
+     const c = suggestions[index];
+     onAddCards([{
+       ...c,
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact'
+     }]);
      setSuggestions(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -155,17 +163,34 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
                 )}
               </div>
               
-              <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
-                <input 
-                  type="checkbox" 
-                  id="includeContext" 
-                  checked={includeContext}
-                  onChange={e => setIncludeContext(e.target.checked)}
-                  className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
-                />
-                <label htmlFor="includeContext" className="text-sm text-dark-text cursor-pointer select-none">
-                  Enviar contexto do baralho (Evita gerar cartões repetidos)
-                </label>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
+                  <input 
+                    type="checkbox" 
+                    id="includeContext" 
+                    checked={includeContext}
+                    onChange={e => setIncludeContext(e.target.checked)}
+                    className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                  />
+                  <label htmlFor="includeContext" className="text-sm text-dark-text cursor-pointer select-none">
+                    Enviar contexto do baralho (Evita gerar cartões repetidos)
+                  </label>
+                </div>
+
+                {mode === 'generate' && (
+                  <div className="flex items-center gap-3 bg-dark-bg p-4 rounded-xl border border-white/5">
+                    <input 
+                      type="checkbox" 
+                      id="enableAIAssessment" 
+                      checked={enableAIAssessment}
+                      onChange={e => setEnableAIAssessment(e.target.checked)}
+                      className="w-4 h-4 text-indigo-500 rounded border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                    />
+                    <label htmlFor="enableAIAssessment" className="text-sm text-dark-text cursor-pointer select-none">
+                      Habilitar Validação por IA para os cartões gerados (Digitação/Cloze)
+                    </label>
+                  </div>
+                )}
               </div>
               
               {error && (
