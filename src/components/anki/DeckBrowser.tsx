@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, LayoutList, Table } from 'lucide-react';
+import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, LayoutList, Table, Filter } from 'lucide-react';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
 import { useDecks } from './hooks/useDecks';
@@ -37,6 +37,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
 
   // View Mode
   const [viewMode, setViewMode] = useState<'table' | 'grid' | 'list'>('table');
+
+  // Filters visibility
+  const [showFilters, setShowFilters] = useState(true);
 
   // Hover Tooltip State
   const [hoverState, setHoverState] = useState<{ id: string, type: 'front' | 'back', content: string, x: number, y: number } | null>(null);
@@ -247,6 +250,14 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           {/* Toolbar */}
           <div className="p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-transparent">
             <div className="flex flex-wrap items-center gap-3 flex-1">
+              <button 
+                onClick={() => setShowFilters(!showFilters)} 
+                className={`p-2 rounded-xl transition-colors border ${showFilters ? 'bg-white/10 border-white/20 text-indigo-400' : 'bg-dark-card border-white/5 text-dark-subtext hover:bg-white/5 hover:text-white'}`}
+                title="Mostrar/Ocultar Filtros"
+              >
+                <Filter size={18} />
+              </button>
+
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-subtext" />
                 <input 
@@ -258,6 +269,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 />
               </div>
               
+              {showFilters && (
+                <>
               <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
                 <option value="all">Tipos (Todos)</option>
                 <option value="reading">Leitura</option>
@@ -291,6 +304,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
+                </>
+              )}
             </div>
             
             <div className="flex items-center gap-3">
