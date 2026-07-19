@@ -6,7 +6,7 @@ import { DOMSerializer } from 'prosemirror-model';
 import { BG_COLORS } from '../../utils/colors';
 
 const BlockquoteToggleComponent = (props: any) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const isOpen = props.node.attrs.isOpen;
   const [showColors, setShowColors] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -190,7 +190,7 @@ const BlockquoteToggleComponent = (props: any) => {
         contentEditable={false}
       >
         <button 
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => props.updateAttributes({ isOpen: !isOpen })}
           className="p-1 hover:bg-white/10 rounded transition-colors text-white/60 hover:text-white/90"
         >
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -223,6 +223,7 @@ export const BlockquoteToggle = Node.create({
     return {
       title: { default: '' },
       color: { default: 'default' },
+      isOpen: { default: true },
     };
   },
 
