@@ -36,16 +36,45 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
     onSave(deckName, deckDesc, newLimit, reviewLimit, fsrsWeights);
   };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (window.api?.anki?.importDeck) {
+        const res = await window.api.anki.importDeck(payload);
+        if (res.success) {
+          alert('Baralho importado com sucesso!');
+          window.location.reload(); // Quick way to refresh all Anki views and tree
+        } else {
+          alert('Erro ao importar: ' + res.error);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao ler ou processar arquivo de importação.');
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleExport = async () => {
     if (window.api?.anki?.exportDeckRecursive) {
       try {
         const res = await window.api.anki.exportDeckRecursive(deck.id);
-        if (res.success) {
-          const blob = new Blob([JSON.stringify(res.payload, null, 2)], { type: 'application/json' });
+        if (res.success && res.payload) {
+          const jsonString = JSON.stringify(res.payload, null, 2);
+          const blob = new Blob([jsonString], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `deck_${deck.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+          a.download = `baralho_${deck.name.replace(/\s+/g, '_')}_${Date.now()}.json`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -99,6 +128,8 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
         
         <div className="flex justify-between items-center pt-4 border-t border-white/10">
           <div className="flex flex-col gap-2">
+            <input type="file" accept=".json" ref={fileInputRef} onChange={handleImport} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} className="text-green-400 hover:text-green-300 text-sm font-medium text-left transition-colors">Importar / Mesclar Baralho</button>
             <button onClick={handleExport} className="text-blue-400 hover:text-blue-300 text-sm font-medium text-left transition-colors">Exportar Baralho + Sub-baralhos</button>
             <button onClick={onResetProgress} className="text-orange-400 hover:text-orange-300 text-sm font-medium text-left transition-colors">Resetar Progresso (FSRS)</button>
             <button onClick={onDelete} className="text-red-400 hover:text-red-300 text-sm font-medium text-left transition-colors">Excluir Baralho Inteiro</button>
