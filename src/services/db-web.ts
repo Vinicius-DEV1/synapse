@@ -39,6 +39,7 @@ interface CadernoDBSchema extends DBSchema {
   file_folders: { key: string; value: any };
   file_page_links: { key: string; value: any; indexes: { 'file_id': string, 'page_id': string } };
   ai_logs: { key: string; value: any; indexes: { 'module': string } };
+  ai_prompts: { key: string; value: any; indexes: { 'module': string } };
   
   // Legacy tables for migration safety
   items: { key: string; value: any };
@@ -50,7 +51,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 14, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 15, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -193,9 +194,13 @@ export async function getWebDb() {
           store.createIndex('file_id', 'file_id');
           store.createIndex('page_id', 'page_id');
         }
-        // AI Logs
+        // AI Logs & Prompts
         if (!db.objectStoreNames.contains('ai_logs')) {
           const store = db.createObjectStore('ai_logs', { keyPath: 'id' });
+          store.createIndex('module', 'module');
+        }
+        if (!db.objectStoreNames.contains('ai_prompts')) {
+          const store = db.createObjectStore('ai_prompts', { keyPath: 'id' });
           store.createIndex('module', 'module');
         }
 
@@ -214,4 +219,20 @@ export async function getWebDb() {
     });
   }
   return dbPromise;
+}
+
+export async function getAiPrompt(id: string): Promise<string | null> {
+  const db = await getWebDb();
+  const doc = await db.get('ai_prompts', id);
+  return doc?.content || null;
+}
+
+export async function saveAiPrompt(id: string, module: string, content: string): Promise<void> {
+  const db = await getWebDb();
+  await db.put('ai_prompts', {
+    id,
+    module,
+    content,
+    updated_at: new Date().toISOString()
+  });
 }
