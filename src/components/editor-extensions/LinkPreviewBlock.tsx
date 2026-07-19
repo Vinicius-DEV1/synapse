@@ -158,7 +158,7 @@ const LinkPreviewComponent = (props: any) => {
       let finalTitle = fetchedTitleStr;
       let finalChannel = null;
       let finalDuration = null;
-      let finalIsPlaylist = false;
+      let finalIsPlaylist = url.includes('list=');
 
       // Tauri yt-dlp fetch for YouTube (brings rich metadata)
       if (isYouTube && window.api && window.api.youtube && !url.includes('/@')) {
