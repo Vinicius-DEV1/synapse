@@ -142,35 +142,66 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     try {
       const { decks = [], notes = [], cards = [] } = payload;
       
+      const stats = {
+        decksCreated: 0, decksUpdated: 0, decksIgnored: 0,
+        notesCreated: 0, notesUpdated: 0, notesIgnored: 0,
+        cardsCreated: 0, cardsUpdated: 0, cardsIgnored: 0
+      };
+
+      const isIdentical = (a: any, b: any, ignoreKeys = ['updated_at', 'created_at', 'deleted_at']) => {
+        const objA = { ...a };
+        const objB = { ...b };
+        ignoreKeys.forEach(k => { delete objA[k]; delete objB[k]; });
+        return JSON.stringify(objA) === JSON.stringify(objB);
+      };
+      
       const now = new Date().toISOString();
       for (const d of decks) {
         const existing = await db.get('anki_decks', d.id);
         if (existing) {
-          await db.put('anki_decks', { ...existing, ...d, updated_at: now });
+          if (isIdentical(existing, d)) {
+            stats.decksIgnored++;
+          } else {
+            await db.put('anki_decks', { ...existing, ...d, updated_at: now });
+            stats.decksUpdated++;
+          }
         } else {
           await db.put('anki_decks', { ...d, updated_at: now });
+          stats.decksCreated++;
         }
       }
 
       for (const n of notes) {
         const existing = await db.get('anki_notes', n.id);
         if (existing) {
-          await db.put('anki_notes', { ...existing, ...n, updated_at: now });
+          if (isIdentical(existing, n)) {
+            stats.notesIgnored++;
+          } else {
+            await db.put('anki_notes', { ...existing, ...n, updated_at: now });
+            stats.notesUpdated++;
+          }
         } else {
           await db.put('anki_notes', { ...n, updated_at: now });
+          stats.notesCreated++;
         }
       }
 
       for (const c of cards) {
         const existing = await db.get('anki_cards', c.id);
         if (existing) {
-          await db.put('anki_cards', { ...existing, ...c, updated_at: now });
+          if (isIdentical(existing, c, ['updated_at', 'created_at', 'deleted_at', 'last_reviewed', 'state', 'due', 'stability', 'difficulty'])) {
+             stats.cardsIgnored++;
+          } else {
+             await db.put('anki_cards', { ...existing, ...c, updated_at: now });
+             stats.cardsUpdated++;
+          }
         } else {
           await db.put('anki_cards', { ...c, updated_at: now });
+          stats.cardsCreated++;
         }
       }
 
-      return { success: true };
+      return { success: true, stats };
     } catch (e: any) {
       console.error('Import error:', e);
       return { success: false, error: e.message };
