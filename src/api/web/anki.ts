@@ -140,8 +140,16 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
 
   importDeck: async (payload: any) => {
     try {
+      if (typeof payload !== 'object' || payload === null) {
+        throw new Error('Payload inválido');
+      }
+
       const { decks = [], notes = [], cards = [] } = payload;
       
+      if (!Array.isArray(decks) || !Array.isArray(notes) || !Array.isArray(cards)) {
+        throw new Error('Formato corrompido: decks, notes ou cards não são listas válidas.');
+      }
+
       const stats = {
         decksCreated: 0, decksUpdated: 0, decksIgnored: 0,
         notesCreated: 0, notesUpdated: 0, notesIgnored: 0,
@@ -156,50 +164,60 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       };
       
       const now = new Date().toISOString();
+      const tx = db.transaction(['anki_decks', 'anki_notes', 'anki_cards'], 'readwrite');
+      const storeDecks = tx.objectStore('anki_decks');
+      const storeNotes = tx.objectStore('anki_notes');
+      const storeCards = tx.objectStore('anki_cards');
+
       for (const d of decks) {
-        const existing = await db.get('anki_decks', d.id);
+        if (!d.id) throw new Error('Baralho sem ID detectado.');
+        const existing = await storeDecks.get(d.id);
         if (existing) {
           if (isIdentical(existing, d)) {
             stats.decksIgnored++;
           } else {
-            await db.put('anki_decks', { ...existing, ...d, updated_at: now });
+            await storeDecks.put({ ...existing, ...d, updated_at: now });
             stats.decksUpdated++;
           }
         } else {
-          await db.put('anki_decks', { ...d, updated_at: now });
+          await storeDecks.put({ ...d, updated_at: now });
           stats.decksCreated++;
         }
       }
 
       for (const n of notes) {
-        const existing = await db.get('anki_notes', n.id);
+        if (!n.id) throw new Error('Nota sem ID detectada.');
+        const existing = await storeNotes.get(n.id);
         if (existing) {
           if (isIdentical(existing, n)) {
             stats.notesIgnored++;
           } else {
-            await db.put('anki_notes', { ...existing, ...n, updated_at: now });
+            await storeNotes.put({ ...existing, ...n, updated_at: now });
             stats.notesUpdated++;
           }
         } else {
-          await db.put('anki_notes', { ...n, updated_at: now });
+          await storeNotes.put({ ...n, updated_at: now });
           stats.notesCreated++;
         }
       }
 
       for (const c of cards) {
-        const existing = await db.get('anki_cards', c.id);
+        if (!c.id) throw new Error('Cartão sem ID detectado.');
+        const existing = await storeCards.get(c.id);
         if (existing) {
           if (isIdentical(existing, c, ['updated_at', 'created_at', 'deleted_at', 'last_reviewed', 'state', 'due', 'stability', 'difficulty'])) {
              stats.cardsIgnored++;
           } else {
-             await db.put('anki_cards', { ...existing, ...c, updated_at: now });
+             await storeCards.put({ ...existing, ...c, updated_at: now });
              stats.cardsUpdated++;
           }
         } else {
-          await db.put('anki_cards', { ...c, updated_at: now });
+          await storeCards.put({ ...c, updated_at: now });
           stats.cardsCreated++;
         }
       }
+
+      await tx.done;
 
       return { success: true, stats };
     } catch (e: any) {
