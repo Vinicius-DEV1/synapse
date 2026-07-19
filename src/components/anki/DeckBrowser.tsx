@@ -25,10 +25,27 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [showSettings, setShowSettings] = useState(false);
   const [deckName, setDeckName] = useState(deck.name);
   const [deckDesc, setDeckDesc] = useState(deck.description || '');
+  
+  // Settings
+  const [newLimit, setNewLimit] = useState(20);
+  const [reviewLimit, setReviewLimit] = useState(200);
+  const [fsrsWeights, setFsrsWeights] = useState('');
 
   useEffect(() => {
     loadCards();
+    loadSettings();
   }, [deck.id]);
+
+  const loadSettings = async () => {
+    if (window.api?.anki?.getDeckSettings) {
+      const s = await window.api.anki.getDeckSettings(deck.id);
+      if (s) {
+        setNewLimit(s.new_limit || 20);
+        setReviewLimit(s.review_limit || 200);
+        setFsrsWeights(s.fsrs_weights || '');
+      }
+    }
+  };
 
   const loadCards = async () => {
     setLoading(true);
@@ -89,6 +106,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const handleUpdateDeck = async () => {
     if (window.api?.anki) {
       await window.api.anki.updateDeck(deck.id, deckName, deckDesc);
+      
+      if (window.api.anki.updateDeckSettings) {
+        await window.api.anki.updateDeckSettings(deck.id, {
+          new_limit: Number(newLimit),
+          review_limit: Number(reviewLimit),
+          fsrs_weights: fsrsWeights.trim() || null
+        });
+      }
+      
       setShowSettings(false);
       onDeckUpdated({ ...deck, name: deckName, description: deckDesc });
     }
@@ -191,6 +217,23 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   <label className="block text-xs font-medium text-dark-subtext mb-1">Descrição</label>
                   <input type="text" value={deckDesc} onChange={e => setDeckDesc(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-dark-subtext mb-1">Limite Diário (Novos)</label>
+                    <input type="number" min="0" value={newLimit} onChange={e => setNewLimit(Number(e.target.value))} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-dark-subtext mb-1">Limite Diário (Revisão)</label>
+                    <input type="number" min="0" value={reviewLimit} onChange={e => setReviewLimit(Number(e.target.value))} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2 text-sm text-dark-text focus:outline-none focus:border-indigo-500 transition-colors" />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-dark-subtext mb-1">Pesos FSRS (Opcional - JSON Array)</label>
+                  <input type="text" placeholder="Ex: [0.4, 1.1, 3.1, ...]" value={fsrsWeights} onChange={e => setFsrsWeights(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm text-dark-text font-mono focus:outline-none focus:border-indigo-500 transition-colors hover:border-white/20" />
+                </div>
+                
                 <div className="flex justify-between items-center pt-4 border-t border-white/10">
                   <div className="flex flex-col gap-2">
                     <button onClick={handleResetProgress} className="text-orange-400 hover:text-orange-300 text-sm font-medium text-left">Resetar Progresso (FSRS)</button>
