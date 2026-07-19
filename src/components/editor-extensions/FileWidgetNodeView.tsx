@@ -36,18 +36,7 @@ export default function FileWidgetNodeView(props: any) {
   };
 
   const handleDelete = () => {
-    if (isLink) {
-      // If it's just a link, just remove the widget, file stays
-      deleteNode();
-      // Optionally tell backend to delete the FilePageLink
-      if (window.api && window.api.files && window.api.files.links) {
-        // Need the link ID, but we might just delete all links for this widget_id
-        // We didn't save the link_id in the widget attrs, but backend can delete by widget_id if implemented.
-        // For now, let it be.
-      }
-    } else {
-      setShowDeleteConfirm(true);
-    }
+    setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
