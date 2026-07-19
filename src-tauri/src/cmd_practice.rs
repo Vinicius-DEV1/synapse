@@ -142,7 +142,7 @@ pub fn practice_get_memories(db_state: State<'_, DbState>) -> Result<Vec<TutorMe
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    let mut stmt = conn.prepare("SELECT id, category, fact, created_at FROM tutor_memories ORDER BY created_at DESC")
+    let mut stmt = conn.prepare("SELECT id, category, fact, created_at FROM tutor_memories WHERE deleted_at IS NULL ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
         
     let iter = stmt.query_map([], |row| {
@@ -187,7 +187,7 @@ pub fn practice_delete_memory(id: String, db_state: State<'_, DbState>) -> Resul
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
     let count = conn.execute(
-        "DELETE FROM tutor_memories WHERE id = ?",
+        "UPDATE tutor_memories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![id]
     ).map_err(|e| e.to_string())?;
     

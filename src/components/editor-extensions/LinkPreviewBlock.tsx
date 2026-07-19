@@ -1,13 +1,27 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, Youtube, ListVideo } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import YouTubePlaylistModal from './YouTubePlaylistModal';
+
+const formatDuration = (seconds: number) => {
+  if (!seconds) return '';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
 
 const LinkPreviewComponent = (props: any) => {
-  const { url, title, isLoading } = props.node.attrs;
+  const { url, title, isLoading, channel, duration, isPlaylist } = props.node.attrs;
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
+  const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
+  const [fetchedDuration, setFetchedDuration] = useState<number | null>(duration);
+  const [fetchedIsPlaylist, setFetchedIsPlaylist] = useState<boolean>(isPlaylist);
   const [loading, setLoading] = useState(isLoading);
   const [isReloading, setIsReloading] = useState(false);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
   const fetchTitle = async (forceReload = false) => {
     if (!forceReload && (fetchedTitle || !loading)) return;
@@ -124,13 +138,59 @@ const LinkPreviewComponent = (props: any) => {
       }
     }
 
-    try {
-      if (!success) throw new Error('All proxies failed');
+    const updateNodeSafe = (updates: any) => {
+      if (typeof props.getPos === 'function') {
+        const pos = props.getPos();
+        if (pos !== undefined && props.editor && props.editor.state) {
+          const nodeAtPos = props.editor.state.doc.nodeAt(pos);
+          if (nodeAtPos && nodeAtPos.type.name === 'linkPreview' && nodeAtPos.attrs.url === url) {
+            props.updateAttributes(updates);
+          } else {
+            console.warn('LinkPreview safe update skipped: node at pos mismatch.');
+          }
+        }
+      } else {
+        props.updateAttributes(updates);
+      }
+    };
 
-      const newTitle = typeof fetchedTitleStr === 'string' ? fetchedTitleStr : String(fetchedTitleStr);
+    try {
+      let finalTitle = fetchedTitleStr;
+      let finalChannel = null;
+      let finalDuration = null;
+      let finalIsPlaylist = false;
+
+      // Tauri yt-dlp fetch for YouTube (brings rich metadata)
+      if (isYouTube && window.api && window.api.youtube && !url.includes('/@')) {
+        try {
+          const ytInfo = await window.api.youtube.fetchPlaylistInfo(url);
+          if (ytInfo && ytInfo.title) {
+            finalTitle = ytInfo.title;
+            finalChannel = ytInfo.uploader || ytInfo.uploader_id;
+            finalDuration = ytInfo.duration;
+            finalIsPlaylist = ytInfo._type === 'playlist' || url.includes('list=');
+          }
+        } catch (ytErr) {
+          console.warn('yt-dlp fetch failed, falling back to basic title', ytErr);
+        }
+      }
+
+      if (!finalTitle && !success) throw new Error('All proxies failed');
+
+      const newTitle = typeof finalTitle === 'string' ? finalTitle : String(finalTitle || fetchedTitleStr);
       if (isMounted) {
         setFetchedTitle(newTitle);
-        props.updateAttributes({ title: newTitle, isLoading: false });
+        if (finalChannel) setFetchedChannel(finalChannel);
+        if (finalDuration) setFetchedDuration(finalDuration);
+        if (finalIsPlaylist) setFetchedIsPlaylist(finalIsPlaylist);
+        
+        updateNodeSafe({ 
+          title: newTitle, 
+          isLoading: false,
+          channel: finalChannel,
+          duration: finalDuration,
+          isPlaylist: finalIsPlaylist
+        });
         setLoading(false);
       }
     } catch (err) {
@@ -138,7 +198,7 @@ const LinkPreviewComponent = (props: any) => {
       if (isMounted) {
         const fallbackTitle = new URL(url).hostname;
         setFetchedTitle(fallbackTitle);
-        props.updateAttributes({ title: fallbackTitle, isLoading: false });
+        updateNodeSafe({ title: fallbackTitle, isLoading: false });
         setLoading(false);
       }
     } finally {
@@ -204,20 +264,54 @@ const LinkPreviewComponent = (props: any) => {
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
-              {renderIcon()}
+              {isYouTube ? (
+                <Youtube size={16} className="text-brand-500 drop-shadow-sm flex-shrink-0" />
+              ) : (
+                renderIcon()
+              )}
             </div>
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               {loading || isReloading ? (
                 <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1"></div>
               ) : (
-                <div className="text-sm font-semibold text-white/90 truncate mb-0.5 group-hover/link:text-brand-400 transition-colors">
-                  {typeof fetchedTitle === 'string' ? fetchedTitle : url}
-                </div>
+                <span className="text-[13px] font-medium text-white/90 truncate leading-tight tracking-wide">
+                  {fetchedTitle || new URL(url).hostname}
+                </span>
               )}
-              <div className="text-xs text-white/40 truncate flex items-center gap-1">
-                <Link2 size={12} />
-                {url}
+              <div className="flex items-center gap-3 mt-1 opacity-60">
+                <span className="text-[11px] truncate tracking-wide text-brand-200">
+                  {new URL(url).hostname}
+                </span>
+                
+                {fetchedChannel && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                    <span className="text-[11px] truncate">{fetchedChannel}</span>
+                  </>
+                )}
+                
+                {fetchedDuration && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                    <span className="text-[11px] flex items-center gap-1">
+                      <Clock size={10} />
+                      {formatDuration(fetchedDuration)}
+                    </span>
+                  </>
+                )}
               </div>
+            </div>
+            
+            <div className="flex gap-2">
+              {fetchedIsPlaylist && (
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPlaylistModal(true); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 rounded-lg text-[11px] font-medium transition-colors border border-brand-500/30 backdrop-blur-sm shadow-sm whitespace-nowrap"
+                >
+                  <ListVideo size={14} />
+                  Ver Playlist
+                </button>
+              )}
             </div>
           </div>
         </a>
@@ -253,6 +347,9 @@ export const LinkPreviewBlock = Node.create({
       url: { default: '' },
       title: { default: null },
       isLoading: { default: true },
+      channel: { default: null },
+      duration: { default: null },
+      isPlaylist: { default: false },
     };
   },
 

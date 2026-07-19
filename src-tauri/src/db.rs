@@ -60,6 +60,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS tutor_sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME, custom_prompt TEXT, deleted_at DATETIME);
          CREATE TABLE IF NOT EXISTS tutor_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL, text_content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS tutor_memories (id TEXT PRIMARY KEY, category TEXT NOT NULL, fact TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS youtube_watched (id TEXT PRIMARY KEY, video_id TEXT NOT NULL, title TEXT, channel_name TEXT);
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
     
@@ -85,7 +86,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         "anki_decks", "anki_cards", "anki_srs_state", "anki_reviews", "focus_sessions", "alarms",
         "page_history", "tutor_sessions", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
         "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
-        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links"
+        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched"
     ];
     for t in tables_with_sync {
         let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);

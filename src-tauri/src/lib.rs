@@ -20,6 +20,7 @@ mod cmd_drive;
 mod cmd_files;
 mod cmd_vault;
 mod cmd_practice;
+mod cmd_trash;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -151,6 +152,9 @@ pub fn run() {
         cmd_video::video_remux_default_track,
         cmd_video::video_convert_mp4,
         cmd_youtube::youtube_fetch_info,
+        cmd_youtube::youtube_fetch_playlist_info,
+        cmd_youtube::youtube_get_watched,
+        cmd_youtube::youtube_set_watched,
         cmd_youtube::youtube_download,
         cmd_audio::audio_extract_clip,
         cmd_audio::audio_generate_tts,
@@ -213,7 +217,9 @@ pub fn run() {
         cmd_practice::practice_create_message,
         cmd_practice::practice_get_memories,
         cmd_practice::practice_create_memory,
-        cmd_practice::practice_delete_memory
+        cmd_practice::practice_delete_memory,
+        cmd_trash::trash_get_all,
+        cmd_trash::trash_restore
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

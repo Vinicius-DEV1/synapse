@@ -166,7 +166,9 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     for (const review of allReviews) {
       const card = await db.get('anki_cards', review.card_id);
       if (card && card.deck_id === deckId) {
-        await db.delete('anki_reviews', review.id);
+        review.deleted_at = new Date().toISOString();
+        review.updated_at = new Date().toISOString();
+        await db.put('anki_reviews', review);
       }
     }
     

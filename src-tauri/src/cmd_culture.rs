@@ -173,12 +173,23 @@ pub fn culture_save_episodes(item_id: String, episodes: Vec<CultureEpisode>, db_
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     
-    conn.execute("DELETE FROM culture_episodes WHERE item_id = ?", [&item_id]).map_err(|e| e.to_string())?;
+    conn.execute("UPDATE culture_episodes SET deleted_at = CURRENT_TIMESTAMP WHERE item_id = ?", [&item_id]).map_err(|e| e.to_string())?;
     
     for ep in episodes {
         let is_watched_int = if ep.is_watched { 1 } else { 0 };
         conn.execute(
-            "INSERT INTO culture_episodes (id, item_id, episode_number, season_number, episode_in_season, title, synopsis, is_watched, aired_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO culture_episodes (id, item_id, episode_number, season_number, episode_in_season, title, synopsis, is_watched, aired_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                item_id = excluded.item_id,
+                episode_number = excluded.episode_number,
+                season_number = excluded.season_number,
+                episode_in_season = excluded.episode_in_season,
+                title = excluded.title,
+                synopsis = excluded.synopsis,
+                is_watched = excluded.is_watched,
+                aired_at = excluded.aired_at,
+                updated_at = excluded.updated_at,
+                deleted_at = NULL",
             params![ep.id, item_id, ep.episode_number, ep.season_number, ep.episode_in_season, ep.title, ep.synopsis, is_watched_int, ep.aired_at, ep.updated_at]
         ).map_err(|e| e.to_string())?;
     }

@@ -16,6 +16,7 @@ import { tauriDriveApi } from './api/tauri/drive';
 import { tauriVideoApi, tauriLofiApi, tauriYoutubeApi, tauriAudioApi, tauriTranscribeApi, tauriOsApi } from './api/tauri/multimedia';
 import { tauriBackupApi } from './api/tauri/backup';
 import { tauriFilesApi } from './api/tauri/files';
+import { tauriTrashApi } from './api/tauri/trash';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
@@ -114,6 +115,8 @@ export const createTauriApi = async () => {
     transcribe: tauriTranscribeApi,
     
     os: tauriOsApi,
+    
+    trash: tauriTrashApi,
     
     backup: tauriBackupApi,
     

@@ -14,7 +14,7 @@ export const MODULE_TABLES: Record<string, string[]> = {
     'library_reading_sessions'
   ],
   culture: ['culture_items', 'culture_episodes'],
-  video: ['videos', 'video_words'],
+  video: ['videos', 'video_words', 'youtube_watched'],
   calendar: ['calendar_events'],
   vault: ['vault_groups', 'vault_items', 'vault_password_history'],
   practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories'],
