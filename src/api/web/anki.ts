@@ -1,4 +1,7 @@
+import { processReview } from '../../services/fsrs';
+
 export const webAnkiApi = (db: any, generateId: () => string) => ({
+  // ... other methods intact ...
   getDecks: async () => {
     const all = await db.getAll('anki_decks') || [];
     const decks = all.filter((d: any) => !d.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -14,6 +17,21 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       updated_at: new Date().toISOString()
     };
     await db.put('anki_decks', deck);
+    
+    // Create default settings for this deck
+    const settings = {
+      id: generateId(),
+      deck_id: deck.id,
+      new_limit: 20,
+      review_limit: 200,
+      learning_steps: '1m,10m',
+      relearning_steps: '10m',
+      fsrs_weights: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    await db.put('anki_deck_settings', settings);
+    
     return { success: true };
   },
   saveCard: async (card: any) => {
@@ -48,58 +66,70 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     const allCards = await db.getAll('anki_cards') || [];
     const now = new Date().toISOString();
     
-    return allCards.filter((c: any) => {
-      if (c.deleted_at || !deckIds.has(c.deck_id)) return false;
-      // If it doesn't have a due_date, it's a new card, so it's due
-      if (!c.due_date) return true;
-      return c.due_date <= now;
-    }).sort((a: any, b: any) => {
-      // Prioritize cards with a due_date (Reviews / Learning) over New cards
-      if (a.due_date && !b.due_date) return -1;
-      if (!a.due_date && b.due_date) return 1;
-      if (!a.due_date && !b.due_date) return 0;
-      
-      // Sort due cards by due date ascending (older/most overdue first)
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-    });
+    // Fetch deck settings
+    const allSettings = await db.getAll('anki_deck_settings') || [];
+    const deckSettings = allSettings.find((s: any) => s.deck_id === deckId) || { new_limit: 20, review_limit: 200 };
+    
+    const validCards = allCards.filter((c: any) => !c.deleted_at && deckIds.has(c.deck_id));
+    
+    // First, classify the cards
+    let newCards = [];
+    let learningCards = [];
+    let reviewCards = [];
+    
+    for (const c of validCards) {
+       const state = Number(c.state) || 0; // 0=New, 1=Learning, 2=Review, 3=Relearning
+       if (state === 0) {
+           newCards.push(c);
+       } else if (state === 1 || state === 3) {
+           if (c.due_date && c.due_date <= now) {
+               learningCards.push(c);
+           }
+       } else if (state === 2) {
+           if (c.due_date && c.due_date <= now) {
+               reviewCards.push(c);
+           }
+       }
+    }
+    
+    // Sort New Cards by creation date
+    newCards.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    // Sort Learning and Review by due date ascending
+    learningCards.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    reviewCards.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    
+    // Apply limits
+    newCards = newCards.slice(0, deckSettings.new_limit);
+    reviewCards = reviewCards.slice(0, deckSettings.review_limit);
+    
+    // The final queue: Learning > Review > New
+    const finalQueue = [...learningCards, ...reviewCards, ...newCards];
+    
+    return finalQueue;
   },
   reviewCard: async (cardId: string, rating: number) => {
     const card = await db.get('anki_cards', cardId);
     if (card) {
-      const stateNum = parseInt(card.state) || 0;
-      let stability = parseFloat(card.stability) || 0.0;
-      let difficulty = parseFloat(card.difficulty) || 0.0;
-      let newState = 2; // review
+      // Get settings for the deck this card belongs to
+      const allSettings = await db.getAll('anki_deck_settings') || [];
+      const deckSettings = allSettings.find((s: any) => s.deck_id === card.deck_id);
       
-      if (stateNum === 0 || card.state === 'new') {
-        if (rating === 1) { stability = 0.5; difficulty = 8.0; newState = 1; }
-        else if (rating === 2) { stability = 1.0; difficulty = 6.0; }
-        else if (rating === 3) { stability = 2.0; difficulty = 5.0; }
-        else { stability = 4.0; difficulty = 4.0; }
-      } else {
-        if (rating === 1) { stability *= 0.2; difficulty = Math.min(10.0, difficulty + 2.0); newState = 1; }
-        else if (rating === 2) { stability *= 1.2; difficulty = Math.min(10.0, difficulty + 1.0); }
-        else if (rating === 3) { stability *= 2.5; difficulty = Math.max(1.0, difficulty - 0.5); }
-        else { stability *= 3.5; difficulty = Math.max(1.0, difficulty - 2.0); }
-      }
+      const fsrsCardState = processReview(card, rating, deckSettings);
       
-      stability = Math.max(0.1, stability);
-      
-      const nextDue = new Date();
-      if (rating === 1) {
-        nextDue.setMinutes(nextDue.getMinutes() + 5);
-      } else {
-        nextDue.setSeconds(nextDue.getSeconds() + (stability * 86400));
-      }
-
       const updated = { 
         ...card, 
-        state: newState,
-        stability,
-        difficulty,
-        due_date: nextDue.toISOString(),
+        state: fsrsCardState.state,
+        stability: fsrsCardState.stability,
+        difficulty: fsrsCardState.difficulty,
+        elapsed_days: fsrsCardState.elapsed_days,
+        scheduled_days: fsrsCardState.scheduled_days,
+        reps: fsrsCardState.reps,
+        lapses: fsrsCardState.lapses,
+        due_date: fsrsCardState.due.toISOString(),
+        last_review: fsrsCardState.last_review?.toISOString() || new Date().toISOString(),
         updated_at: new Date().toISOString() 
       };
+      
       await db.put('anki_cards', updated);
       
       // Log the review
@@ -114,6 +144,42 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
       return { success: true };
     }
     return { success: false, error: 'Card not found' };
+  },
+  getDeckSettings: async (deckId: string) => {
+    const allSettings = await db.getAll('anki_deck_settings') || [];
+    const settings = allSettings.find((s: any) => s.deck_id === deckId);
+    if (settings) return settings;
+    
+    // Return defaults if none
+    return {
+      deck_id: deckId,
+      new_limit: 20,
+      review_limit: 200,
+      learning_steps: '1m,10m',
+      relearning_steps: '10m',
+      fsrs_weights: null,
+    };
+  },
+  updateDeckSettings: async (deckId: string, settings: any) => {
+    const allSettings = await db.getAll('anki_deck_settings') || [];
+    const existing = allSettings.find((s: any) => s.deck_id === deckId);
+    
+    if (existing) {
+      await db.put('anki_deck_settings', {
+        ...existing,
+        ...settings,
+        updated_at: new Date().toISOString()
+      });
+    } else {
+      await db.put('anki_deck_settings', {
+        id: generateId(),
+        deck_id: deckId,
+        ...settings,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
+    return { success: true };
   },
   getAllCards: async (deckId?: string) => {
     const allCards = await db.getAll('anki_cards') || [];

@@ -123,5 +123,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN aired_at TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN updated_at TEXT", []);
     
+    // Migrations for Anki FSRS
+    let _ = conn.execute("ALTER TABLE anki_srs_state ADD COLUMN scheduled_days INTEGER DEFAULT 0", []);
+    let _ = conn.execute("CREATE TABLE IF NOT EXISTS anki_deck_settings (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, new_limit INTEGER DEFAULT 20, review_limit INTEGER DEFAULT 200, learning_steps TEXT DEFAULT '1m,10m', relearning_steps TEXT DEFAULT '1m,10m', fsrs_weights TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
+
     Ok(conn)
 }
