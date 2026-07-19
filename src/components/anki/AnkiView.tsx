@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Play, Plus, Trash2, Edit3, Settings, BrainCircuit, X, Layers, HelpCircle, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
 import StudySession from './StudySession';
 import DeckBrowser from './DeckBrowser';
@@ -110,7 +110,7 @@ export default function AnkiView() {
       }));
   };
 
-  const deckTree = buildDeckTree(decks);
+  const deckTree = useMemo(() => buildDeckTree(decks), [decks]);
 
   const renderDeckCard = (deck: any, depth: number = 0) => {
     const isCollapsed = collapsedDecks.has(deck.id);

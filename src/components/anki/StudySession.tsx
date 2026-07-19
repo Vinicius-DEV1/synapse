@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, RotateCcw, X, Volume2, Edit3, Trash2 } from 'lucide-react';
 import CardEditor from './CardEditor';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
 
 interface Card {
   id: string;
@@ -25,6 +26,8 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   const [evaluating, setEvaluating] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{verdict: string, feedback: string} | null>(null);
   const [exactMatch, setExactMatch] = useState<boolean | null>(null);
+  
+  const { play: playUrl, stop: stopAudio } = useAudioPlayer();
 
   useEffect(() => {
     loadDueCards();
@@ -112,18 +115,10 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showingAnswer, currentIndex, cards]);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
   const playAudio = () => {
     const card = cards[currentIndex];
     if (card?.media_url) {
-      if (!audioRef.current || !audioRef.current.src.endsWith(encodeURI(card.media_url).replace(/%20/g, ' '))) {
-        if (audioRef.current) audioRef.current.pause();
-        audioRef.current = new Audio(card.media_url);
-      }
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+      playUrl(card.media_url);
     }
   };
 
@@ -148,7 +143,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
     let expected = card.back;
     if (card.card_type === 'cloze') {
-        const targetC = card.ord + 1;
+        const targetC = ((card as any).ord ?? 0) + 1;
         const regex = new RegExp(`\\{\\{c${targetC}::(.*?)\\}\\}`);
         const match = card.front.match(regex);
         if (match) expected = match[1];
@@ -198,11 +193,14 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-[200]">
-        <p className="animate-pulse flex items-center gap-2">
-          <RotateCcw className="w-5 h-5 animate-spin" />
-          Preparando sessão...
-        </p>
+      <div className="fixed inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-[200] p-4">
+        <div className="w-full max-w-2xl bg-dark-card border border-dark-border rounded-2xl p-10 flex flex-col items-center justify-center shadow-2xl min-h-[400px]">
+           <div className="w-2/3 h-8 bg-white/5 rounded-lg animate-pulse mb-8"></div>
+           <div className="w-1/2 h-6 bg-white/5 rounded-lg animate-pulse mb-12"></div>
+           <div className="w-full h-px bg-dark-border my-6"></div>
+           <div className="w-3/4 h-6 bg-white/5 rounded-lg animate-pulse mb-4"></div>
+           <div className="w-1/2 h-6 bg-white/5 rounded-lg animate-pulse"></div>
+        </div>
       </div>
     );
   }
@@ -258,7 +256,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
             ) : card.card_type === 'cloze' ? (
                 <div className="text-3xl font-medium leading-relaxed text-dark-text text-center" style={{ lineHeight: '1.8' }}>
                     {(() => {
-                        const targetC = card.ord + 1;
+                        const targetC = ((card as any).ord ?? 0) + 1;
                         const parts = card.front.replace(/<\/?p[^>]*>/gi, '').split(/(\{\{c\d+::.*?\}\})/);
                         return parts.map((part: string, i: number) => {
                             const match = part.match(/^\{\{c(\d+)::(.*?)\}\}$/);
@@ -360,7 +358,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
               )}
 
               {card.card_type === 'cloze' && card.validation_mode === 'exact' && !exactMatch && (
-                  <div className="mb-4 text-green-400 font-medium bg-green-500/10 px-4 py-2 rounded-lg">Resposta Esperada: {card.front.match(/\{\{(.*?)\}\}/)?.[1]}</div>
+                  <div className="mb-4 text-green-400 font-medium bg-green-500/10 px-4 py-2 rounded-lg">Resposta Esperada: {card.front.match(/\{\{c\d+::(.*?)\}\}/)?.[1]}</div>
               )}
 
               {card.card_type === 'typing' && card.validation_mode === 'exact' && !exactMatch && (

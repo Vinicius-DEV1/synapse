@@ -92,7 +92,7 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   }
 }
 
-export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string): Promise<{ text: string, usage?: any }> {
+export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string, customSystemInstruction?: string): Promise<{ text: string, usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
 
@@ -105,7 +105,7 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
-  const systemInstruction = `Se o usuário pedir para transcrever uma questão ou gerar uma questão de múltipla escolha, retorne ESTRITAMENTE um JSON com o schema: {"enunciado": "...", "opcoes": ["A", "B", "C", "D"], "correta": 0} (onde correta é o índice numérico). Não use markdown, apenas o JSON cru. Se não for uma requisição de questão, responda normalmente.`;
+  const systemInstruction = customSystemInstruction || `Se o usuário pedir para transcrever uma questão ou gerar uma questão de múltipla escolha, retorne ESTRITAMENTE um JSON com o schema: {"enunciado": "...", "opcoes": ["A", "B", "C", "D"], "correta": 0} (onde correta é o índice numérico). Não use markdown, apenas o JSON cru. Se não for uma requisição de questão, responda normalmente.`;
 
   const contents: any[] = [];
 
@@ -178,7 +178,9 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
       }
 
       if (data.candidates && data.candidates.length > 0) {
-        return { text: data.candidates[0].content.parts[0].text, usage: data.usageMetadata };
+        const candidate = data.candidates[0];
+        const text = candidate?.content?.parts?.[0]?.text || '';
+        return { text, usage: data.usageMetadata };
       }
       return { text: '' };
     } catch (error: any) {
@@ -323,20 +325,67 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
   }
 }
 
-export async function promptGeminiForDeckAnalysis(userPrompt: string, contextData?: any, customModelId?: string): Promise<string> {
-  const systemInstruction = "Você é um professor e especialista em memorização. Sua tarefa é analisar o baralho do usuário.\n" +
-"Você receberá o contexto atual do baralho (nome, descrição e cartões existentes) e uma pergunta ou pedido do usuário sobre esse baralho.\n" +
-"Responda em formato Markdown, de forma clara, direta e construtiva. Se o usuário perguntar o que falta, sugira tópicos. Se perguntar se está bom, avalie a qualidade dos cartões.";
+export async function promptGeminiForChatAnalysis(userPrompt: string, history: any[] = [], contextData?: any, customModelId?: string): Promise<any> {
+  const systemInstruction = `Você é um professor e especialista em memorização (Anki). Você está ajudando o usuário em um chat a revisar e melhorar seu baralho.
+O usuário vai pedir análises ou geração/edição de cartões.
+Você deve SEMPRE retornar sua resposta ESTRITAMENTE no formato JSON abaixo, sem usar formatação markdown (\`\`\`json). Apenas o texto do JSON cru.
 
-  const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO ATUAL ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
-  const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
+Schema esperado:
+{
+  "message": "A mensagem de texto que você responderá ao usuário no chat (sempre obrigatório). Pode usar formatação markdown leve (negrito, listas) mas sem aspas não escapadas.",
+  "actions": [
+    {
+      "type": "create",
+      "cards": [{"front": "...", "back": "...", "type": "reading", "suggested_deck_id": "(opcional) ID do sub-baralho se aplicável"}]
+    },
+    {
+      "type": "edit",
+      "card_id": "ID do cartão no contexto",
+      "new_front": "Novo texto da frente",
+      "new_back": "Novo texto do verso"
+    },
+    {
+      "type": "delete_bulk",
+      "cards_to_delete": [
+        { "card_id": "ID do cartão", "reason": "Por que excluir?" }
+      ]
+    }
+  ]
+}
+
+A lista 'actions' é OPCIONAL. Só adicione ações de 'create' se o usuário pedir para gerar cartões. Só adicione 'edit' ou 'delete_bulk' se você encontrar ativamente algum cartão no contexto fornecido que precise ser melhorado ou excluído.
+Para editar ou excluir, você precisa olhar o 'id' dos cartões no contexto atual fornecido. Se encontrar múltiplos cartões inúteis ou redundantes, exclua todos juntos no 'delete_bulk'. 
+Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você DEVE analisar o assunto de cada filho e sugerir alocar o novo cartão criado em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). REGRA CRÍTICA: Se o usuário pedir para criar cartões e você não tiver certeza de qual sub-baralho ele quer usar, NÃO GERE OS CARTÕES AINDA. Ao invés disso, use a 'message' para perguntar em qual sub-baralho ele deseja colocar (liste os disponíveis) e aguarde a resposta dele. Se o cartão for explicitamente geral e para a raiz, omita o campo.
+A propriedade 'message' é sempre OBRIGATÓRIA.
+Você tem capacidade de geração massiva. NUNCA mencione restrições de tamanho na sua resposta, nunca fracione entregas injustificadamente e nunca dê desculpas para gerar menos cartões do que o pedido (ex: se o usuário pedir 50 ou 100 cartões, você DEVE gerar o JSON contendo todos eles de uma vez).
+EXCEÇÃO: A única exceção é se a quantidade pedida for EXTREMAMENTE exagerada e desnecessária (ex: pedir 500 ou 1000 cartões de uma vez). Nesse caso específico, NÃO GERE OS CARTÕES. Ao invés disso, use a propriedade 'message' para avisar o usuário que a quantidade é gigantesca, perguntando se ele tem certeza de que deseja desperdiçar tantos tokens, e aguarde a confirmação dele no chat antes de gerar.
+Não retorne NADA ALÉM do JSON válido.`;
+
+  const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO (USE OS IDs PARA EDIT/DELETE) ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
+  const finalPrompt = history.length === 0 ? `${contextStr}\nPedido do usuário: ${userPrompt}` : userPrompt;
+
+  let fullLogPrompt = systemInstruction + '\n\n' + contextStr;
+  if (history && history.length > 0) {
+     fullLogPrompt += '\n--- HISTÓRICO DO CHAT ---\n';
+     fullLogPrompt += JSON.stringify(history, null, 2);
+     fullLogPrompt += '\n-------------------------\n';
+  }
+  fullLogPrompt += '\nPedido atual do usuário: ' + userPrompt;
 
   try {
-    const response = await promptGemini(finalPrompt, undefined, [], customModelId);
-    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, response.text, undefined, response.usage);
-    return response.text;
+    const response = await promptGemini(finalPrompt, undefined, history, customModelId, systemInstruction);
+    const responseText = response.text;
+    logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, responseText, undefined, response.usage);
+    
+    try {
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (err) {
+      logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, responseText, 'Invalid JSON returned', response.usage);
+      throw new Error('A IA não retornou um JSON válido na resposta do chat.');
+    }
   } catch (e: any) {
-    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, null, e.message);
+    logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, null, e.message);
     throw e;
   }
 }
