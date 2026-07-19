@@ -305,7 +305,7 @@ export const DEFAULT_CARD_GENERATION_PROMPT = "Você é um especialista em cria�
 "1. Se for gerar um cartão de completamento (cloze), o texto 'front' DEVE conter as lacunas no formato {{c1::palavra}}, e 'back' deve ficar vazio. Você pode criar múltiplas lacunas se achar melhor (ex: {{c1::foo}} e {{c2::bar}}).\n" +
 "2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
 "3. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
-"4. Para cada cartão gerado, analise o contexto e crie de 1 a 3 tags curtas sobre O CONTEÚDO (ex: ingles, fisica_quantica, verbo). NUNCA crie tags sobre dificuldade (ex: dificil, revisar). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Se precisar criar uma nova tag, escreva sempre no SINGULAR e sem acentuação para evitar variações (ex: use 'verbo' em vez de 'verbos'). Retorne as tags no array 'tags' (sem a hashtag).\n" +
+"4. Para cada cartão gerado, crie de 1 a 3 tags curtas sobre O CONTEÚDO. REGRAS DE TAGS: NUNCA crie uma tag que seja idêntica ou muito similar ao nome do baralho atual ou de seus sub-baralhos (isso é redundante). Concentre-se em sub-tópicos mais específicos (ex: em um baralho 'Javascript', use 'array', 'funcao' e NÃO 'javascript'). NUNCA crie tags sobre dificuldade (ex: dificil, revisar). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Escreva sempre no SINGULAR e sem acentuação (ex: use 'verbo' em vez de 'verbos'). Retorne as tags no array 'tags'.\n" +
 "5. Não exceda o limite de {{maxCards}} cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
 "6. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
 
@@ -362,7 +362,9 @@ Schema esperado:
   ]
 }
 
-A lista 'actions' é OPCIONAL. Só adicione ações de 'create' se o usuário pedir para gerar cartões. Só adicione 'edit' ou 'delete_bulk' se você encontrar ativamente algum cartão no contexto fornecido que precise ser melhorado ou excluído.
+REGRAS DE TAGS PARA CRIAÇÃO/EDIÇÃO: NUNCA crie uma tag que seja idêntica ou muito similar ao nome do baralho atual ou de seus sub-baralhos (isso é redundante). Concentre-se em sub-tópicos específicos. NUNCA crie tags sobre dificuldade (ex: dificil). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Escreva sempre no SINGULAR e sem acentuação. Retorne APENAS o JSON válido.
+
+Só adicione ações de 'create' se o usuário pedir para gerar cartões. Só adicione 'edit' ou 'delete_bulk' se você encontrar ativamente algum cartão no contexto fornecido que precise ser melhorado ou excluído.
 Para editar ou excluir, você precisa olhar o 'id' dos cartões no contexto atual fornecido. Se encontrar múltiplos cartões inúteis ou redundantes, exclua todos juntos no 'delete_bulk'. 
 Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você DEVE analisar o assunto de cada filho e sugerir alocar o novo cartão criado em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Os cartões no array 'existing_cards' possuem a propriedade 'deck_id', que indica a qual sub-baralho ou baralho pai eles pertencem. Use essa informação para fazer contagens ou análises corretas. REGRA CRÍTICA: Se o usuário pedir para criar cartões e você não tiver certeza de qual sub-baralho ele quer usar, NÃO GERE OS CARTÕES AINDA. Ao invés disso, use a 'message' para perguntar em qual sub-baralho ele deseja colocar (liste os disponíveis) e aguarde a resposta dele. Se o cartão for explicitamente geral e para a raiz, omita o campo.
 A propriedade 'message' é sempre OBRIGATÓRIA.
