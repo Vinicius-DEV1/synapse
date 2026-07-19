@@ -9,6 +9,7 @@ const BlockquoteToggleComponent = (props: any) => {
   const [isOpen, setIsOpen] = useState(true);
   const [showColors, setShowColors] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
 
@@ -56,15 +57,29 @@ const BlockquoteToggleComponent = (props: any) => {
   };
 
   const handleCopy = () => {
-    const { node, editor } = props;
+    const { node, editor, getPos } = props;
     try {
       const serializer = DOMSerializer.fromSchema(editor.schema);
-      const div = document.createElement('div');
-      div.appendChild(serializer.serializeNode(node));
-      const html = div.innerHTML;
+      const inner = serializer.serializeNode(node);
+      // Wrap with data-pm-slice so ProseMirror reconstructs the full node on paste
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-pm-slice', '0 0 []');
+      wrapper.appendChild(inner);
+      const html = wrapper.outerHTML;
+
+      const doToast = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+
       navigator.clipboard.write([
-        new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })
-      ]).catch(() => navigator.clipboard.writeText(div.textContent || ''));
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([node.textContent || ''], { type: 'text/plain' }),
+        })
+      ]).then(doToast).catch(() => {
+        // Fallback: select node + execCommand
+        editor.chain().setNodeSelection(getPos()).run();
+        document.execCommand('copy');
+        doToast();
+      });
     } catch (e) {
       console.error('Copy failed', e);
     }
@@ -93,13 +108,20 @@ const BlockquoteToggleComponent = (props: any) => {
           >
             <Type size={14} />
           </button>
-          <button
-            onClick={handleCopy}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Copiar toggle callout"
-          >
-            <Copy size={14} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleCopy}
+              className={`p-1 rounded-md transition-all ${copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'}`}
+              title="Copiar toggle callout"
+            >
+              <Copy size={14} />
+            </button>
+            {copied && (
+              <div className="absolute bottom-full right-0 mb-1.5 px-2 py-0.5 bg-dark-bg border border-white/10 rounded-md text-[11px] text-white/70 whitespace-nowrap pointer-events-none shadow-lg">
+                Copiado!
+              </div>
+            )}
+          </div>
           <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
           <button
             onClick={() => {
