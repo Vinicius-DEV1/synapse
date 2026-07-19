@@ -198,7 +198,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
   if (loading) {
     return (
-      <div className="absolute inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-50">
+      <div className="fixed inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-[200]">
         <p className="animate-pulse flex items-center gap-2">
           <RotateCcw className="w-5 h-5 animate-spin" />
           Preparando sessão...
@@ -209,7 +209,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
 
   if (cards.length === 0) {
     return (
-      <div className="absolute inset-0 bg-dark-bg flex flex-col items-center justify-center text-dark-text z-50">
+      <div className="fixed inset-0 bg-dark-bg flex flex-col items-center justify-center text-dark-text z-[200]">
         <h2 className="text-2xl font-bold mb-4">Parabéns! 🎉</h2>
         <p className="text-dark-subtext mb-8">Você não tem cartões pendentes neste baralho agora.</p>
         <button onClick={onClose} className="px-6 py-2 bg-indigo-600 rounded-lg font-medium hover:bg-indigo-700">
@@ -222,7 +222,7 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
   const card = cards[currentIndex];
 
   return (
-    <div className="absolute inset-0 bg-dark-bg flex flex-col z-50 select-text">
+    <div className="fixed inset-0 bg-dark-bg flex flex-col z-[200] select-text">
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-8">
         <div className="flex items-center gap-4 text-sm font-medium">
