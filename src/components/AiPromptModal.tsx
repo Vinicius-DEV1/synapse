@@ -55,7 +55,8 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
       const finalPrompt = (isFirst && contextText) ? `Contexto:\n"${contextText}"\n\nInstrução:\n${prompt}` : prompt;
       const imageToPass = isFirst ? contextImage : undefined;
 
-      const response = await promptGemini(finalPrompt, imageToPass, messages);
+      const responseObj = await promptGemini(finalPrompt, imageToPass, messages);
+      const response = responseObj.text;
       
       const newUserParts: any[] = [{ text: finalPrompt }];
       if (imageToPass) {
