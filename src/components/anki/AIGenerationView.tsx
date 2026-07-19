@@ -126,6 +126,16 @@ export default function AIGenerationView({
                 </div>
               )}
               
+              {card.tags && card.tags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {card.tags.map((tag: string, tagIdx: number) => (
+                    <span key={tagIdx} className="px-2 py-0.5 bg-dark-bg text-dark-subtext border border-white/5 rounded-full text-[10px] font-medium">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
               <button 
                 onClick={() => handleAddSingle(idx)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
