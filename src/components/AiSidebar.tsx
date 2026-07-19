@@ -29,7 +29,8 @@ export default function AiSidebar() {
 
     setLoading(true);
     try {
-      const response = await promptGemini(prompt, undefined, activeSession.messages);
+      const responseObj = await promptGemini(prompt, undefined, activeSession.messages);
+      const response = responseObj.text;
       const newUserMsg = { role: 'user', parts: [{ text: prompt }] };
       const newModelMsg = { role: 'model', parts: [{ text: response }] };
       

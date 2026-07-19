@@ -92,7 +92,7 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   }
 }
 
-export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string): Promise<string> {
+export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string): Promise<{ text: string, usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
 
@@ -178,9 +178,9 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
       }
 
       if (data.candidates && data.candidates.length > 0) {
-        return data.candidates[0].content.parts[0].text;
+        return { text: data.candidates[0].content.parts[0].text, usage: data.usageMetadata };
       }
-      return '';
+      return { text: '' };
     } catch (error: any) {
       if (error.message === 'RATE_LIMIT') {
         console.warn(`Chave Gemini esgotada (429). Desativando por 23h e rotacionando...`);
@@ -220,7 +220,8 @@ export async function promptGeminiForQuestion(prompt: string, imageBase64?: stri
 }
 Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA MAIS NADA ALÉM DO JSON. Não use blocos de código markdown (\`\`\`json) na resposta.`;
 
-  const responseText = await promptGemini(customPrompt, imageBase64);
+  const response = await promptGemini(customPrompt, imageBase64);
+  const responseText = response.text;
   
   try {
     // Strip markdown JSON wrapper if the model still returns it
@@ -252,7 +253,8 @@ export async function promptGeminiForAnkiEvaluation(front: string, back: string,
 "}\n" +
 "Não use blocos de código markdown (```json) na resposta. Apenas o JSON cru.";
 
-  const responseText = await promptGemini(customPrompt);
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
   
   try {
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -263,7 +265,7 @@ export async function promptGeminiForAnkiEvaluation(front: string, back: string,
   }
 }
 
-export async function logAIApiCall(module: string, model: string, prompt: any, response: any, error?: string) {
+export async function logAIApiCall(module: string, model: string, prompt: any, response: any, error?: string, tokenUsage?: any) {
   try {
     const db = await getWebDb();
     await db.put('ai_logs', {
@@ -274,6 +276,7 @@ export async function logAIApiCall(module: string, model: string, prompt: any, r
       response: response ? (typeof response === 'string' ? response : JSON.stringify(response)) : null,
       error: error || null,
       status: error ? 'error' : 'success',
+      token_usage: tokenUsage || null,
       created_at: new Date().toISOString()
     });
   } catch (e) {
@@ -303,14 +306,15 @@ export async function promptGeminiForCardSuggestions(userPrompt: string, maxCard
   const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
 
   try {
-    const responseText = await promptGemini(finalPrompt, undefined, [], customModelId);
-    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText);
+    const response = await promptGemini(finalPrompt, undefined, [], customModelId);
+    const responseText = response.text;
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, undefined, response.usage);
     
     try {
       const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleanJson);
     } catch (err) {
-      logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, 'Invalid JSON returned');
+      logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, 'Invalid JSON returned', response.usage);
       throw new Error('A IA não retornou um JSON válido na geração de cartões.');
     }
   } catch (e: any) {
@@ -328,9 +332,9 @@ export async function promptGeminiForDeckAnalysis(userPrompt: string, contextDat
   const finalPrompt = `${systemInstruction}\n\n${contextStr}\nPedido do usuário: ${userPrompt}`;
 
   try {
-    const responseText = await promptGemini(finalPrompt, undefined, [], customModelId);
-    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, responseText);
-    return responseText;
+    const response = await promptGemini(finalPrompt, undefined, [], customModelId);
+    logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, response.text, undefined, response.usage);
+    return response.text;
   } catch (e: any) {
     logAIApiCall('anki_deck_analysis', customModelId || 'default', finalPrompt, null, e.message);
     throw e;
