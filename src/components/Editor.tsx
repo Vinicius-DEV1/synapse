@@ -361,11 +361,11 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         <FileSelectModal
           isOpen={true}
           onClose={() => setFileSelectModal(false)}
-          onSelect={(fileId, fileName, fileType, isEncrypted) => {
+          onSelect={(item) => {
             if (editor) {
               editor.chain().focus().insertContent({
                 type: 'fileWidget',
-                attrs: { fileId, fileName, fileType, isEncrypted }
+                attrs: { fileId: item.id, name: item.name, fileType: item.type, isLink: true }
               }).run();
             }
             setFileSelectModal(false);
