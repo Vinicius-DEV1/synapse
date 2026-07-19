@@ -63,7 +63,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
   fetchPlaylistInfo: async (url: string) => {
     // In Vite, import.meta.env might not be fully available in this context if it's outside components,
     // but assuming it is injected globally by Vite:
-    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY;
     if (!apiKey) throw new Error('API Key não encontrada');
 
     const playlistId = extractPlaylistId(url);
