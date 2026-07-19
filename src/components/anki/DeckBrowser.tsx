@@ -34,8 +34,10 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     setLoading(true);
     if (window.api?.anki) {
       const res = await window.api.anki.getAllCards(deck.id);
-      if (res.success && res.cards) {
+      if (res && res.success && res.cards) {
         setCards(res.cards);
+      } else if (Array.isArray(res)) {
+        setCards(res);
       }
     }
     setLoading(false);

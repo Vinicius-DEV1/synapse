@@ -34,8 +34,13 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
     setLoading(true);
     if (window.api?.anki) {
       const res = await window.api.anki.getDueCards(deckId);
-      if (res.success && res.cards) {
+      if (res && res.success && res.cards) {
         setCards(res.cards);
+        setCurrentIndex(0);
+        setShowingAnswer(false);
+        resetCardState();
+      } else if (Array.isArray(res)) {
+        setCards(res);
         setCurrentIndex(0);
         setShowingAnswer(false);
         resetCardState();
