@@ -313,41 +313,6 @@ export default function AIChatAnalysisView({
                 </div>
               );
             })()}
-          </div>           }
-              if (act.type === 'delete' || act.type === 'delete_bulk') {
-                 const isBulk = act.type === 'delete_bulk';
-                 const deleteCount = isBulk ? (act.cards_to_delete?.length || 0) : 1;
-                 
-                 return (
-                   <div key={actIdx} className="mt-2 ml-4 bg-red-500/10 border border-red-500/20 p-4 rounded-xl w-full max-w-[80%] space-y-3">
-                     <div className="flex items-center gap-2 text-red-300">
-                       <Trash2 className="w-4 h-4" />
-                       <p className="text-sm font-medium">Sugestão de Exclusão ({deleteCount} {deleteCount === 1 ? 'cartão' : 'cartões'})</p>
-                     </div>
-                     
-                     {isBulk ? (
-                       <details className="text-xs text-red-300/80 bg-red-950/30 rounded cursor-pointer group">
-                         <summary className="p-2 font-medium hover:bg-red-950/50 outline-none select-none">Ver detalhes dos cartões a excluir...</summary>
-                         <div className="p-2 pt-0 max-h-40 overflow-y-auto space-y-2 border-t border-red-500/20 mt-1">
-                           {act.cards_to_delete?.map((c: any, i: number) => (
-                             <div key={i} className="bg-black/20 p-2 rounded">
-                               <span className="text-red-400 font-mono text-[10px]">ID: {c.card_id}</span>
-                               <p className="mt-1">{c.reason}</p>
-                             </div>
-                           ))}
-                         </div>
-                       </details>
-                     ) : (
-                       <p className="text-xs text-red-300/80 bg-red-950/30 p-2 rounded">{act.reason}</p>
-                     )}
-                     
-                     <button disabled={isDone} onClick={() => handleExecuteAction(act, actionKey)} className="bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 disabled:text-red-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm transition-colors w-full flex items-center justify-center gap-2">
-                       {isDone ? <><Check className="w-4 h-4" /> Movido para Lixeira</> : 'Aprovar Exclusão'}
-                     </button>
-                   </div>
-                 )
-              }
-            })}
           </div>
         ))}
         {loading && (
