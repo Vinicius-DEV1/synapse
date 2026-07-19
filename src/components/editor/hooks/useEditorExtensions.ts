@@ -11,6 +11,9 @@ import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Collaboration } from '@tiptap/extension-collaboration';
+import BulletList from '@tiptap/extension-bullet-list';
+import Bold from '@tiptap/extension-bold';
+import { wrappingInputRule } from '@tiptap/core';
 import * as Y from 'yjs';
 
 // Custom Extensions
@@ -29,16 +32,40 @@ import { FocusWidgetBlock } from '../../editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
 
+
+// Only '-' creates bullet list (removes * and + shortcuts)
+const CustomBulletList = BulletList.extend({
+  addInputRules() {
+    return [
+      wrappingInputRule({
+        find: /^\s*(-)\s$/,
+        type: this.type,
+      }),
+    ];
+  },
+});
+
+// Bold only via Ctrl+B — disables ** markdown shortcut
+const CustomBold = Bold.extend({
+  addInputRules() {
+    return [];
+  },
+});
+
 export function useEditorExtensions(ydoc: Y.Doc | null) {
   return useMemo(() => {
     const lowlight = createLowlight(common);
     
     return [
       StarterKit.configure({
-        history: false, 
+        history: false,
         codeBlock: false,
         blockquote: false,
+        bulletList: false,  // replaced by CustomBulletList (only - shortcut)
+        bold: false,        // replaced by CustomBold (no ** shortcut, Ctrl+B only)
       }),
+      CustomBulletList,
+      CustomBold,
       ColorBlockquote,
       CodeBlockLowlight.extend({
         addNodeView() {
