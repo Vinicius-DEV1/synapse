@@ -96,19 +96,22 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
+        e.preventDefault();
         const idx = filteredCards.findIndex(c => c.id === previewCard.id);
         if (idx !== -1 && idx < filteredCards.length - 1) {
           setPreviewCard(filteredCards[idx + 1]);
           setShowAnswer(false);
         }
       } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
         const idx = filteredCards.findIndex(c => c.id === previewCard.id);
         if (idx > 0) {
           setPreviewCard(filteredCards[idx - 1]);
           setShowAnswer(false);
         }
       } else if (e.key === ' ' || e.key === 'Enter') {
-        setShowAnswer(true);
+        e.preventDefault();
+        setShowAnswer(prev => !prev);
       }
     };
 
@@ -240,7 +243,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]"
         onMouseDown={e => e.stopPropagation()}
       >
-        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
+        <div className={`flex-1 flex flex-col relative custom-scrollbar ${previewCard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           
           {/* Header */}
           <div className="p-6 border-b border-dark-border flex items-center justify-between bg-dark-bg shrink-0">
@@ -570,7 +573,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
             <button onClick={() => setPreviewCard(null)} className="absolute top-6 right-6 p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
               <X size={24} />
             </button>
-            <div className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center relative group">
+            <div key={previewCard.id} className="w-full max-w-2xl bg-dark-bg border border-white/10 rounded-2xl p-10 shadow-2xl flex flex-col items-center relative group animate-scale-in">
               <div className="absolute bottom-4 right-4 flex gap-2 opacity-30 hover:opacity-100 transition-opacity">
                 <button onClick={() => { setEditingCard(previewCard); setPreviewCard(null); }} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar">
                   <Edit3 size={16} />
