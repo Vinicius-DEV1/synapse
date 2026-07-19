@@ -256,11 +256,9 @@ const LinkPreviewComponent = (props: any) => {
   return (
     <NodeViewWrapper className="link-preview-block block my-4" contentEditable={false}>
       <div className="relative group/link">
-        <a 
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all rounded-lg p-3 cursor-pointer no-underline"
+        <div 
+          onClick={() => window.open(url, '_blank')}
+          className="block bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all rounded-lg p-3 pr-[72px] cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
@@ -314,7 +312,7 @@ const LinkPreviewComponent = (props: any) => {
               )}
             </div>
           </div>
-        </a>
+        </div>
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
           <button
             onClick={handleReload}
@@ -331,6 +329,14 @@ const LinkPreviewComponent = (props: any) => {
             <X size={14} />
           </button>
         </div>
+        
+        {showPlaylistModal && (
+          <YouTubePlaylistModal
+            url={url}
+            title={fetchedTitle || 'Playlist'}
+            onClose={() => setShowPlaylistModal(false)}
+          />
+        )}
       </div>
     </NodeViewWrapper>
   );
