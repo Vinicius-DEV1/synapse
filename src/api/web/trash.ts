@@ -52,5 +52,36 @@ export const webTrashApi = (db: any) => ({
       return true;
     }
     return false;
+  },
+  empty: async () => {
+    const tables = ['pages', 'anki_decks', 'anki_cards', 'files', 'vault_groups', 'transactions', 'culture_items', 'file_folders'];
+    for (const table of tables) {
+      try {
+        const all = await db.getAll(table) || [];
+        const deleted = all.filter((x: any) => x.deleted_at);
+        for (const item of deleted) {
+          await db.delete(table, item.id);
+        }
+      } catch (e) {
+        console.warn(`Could not empty table ${table}`, e);
+      }
+    }
+    return true;
+  },
+  deletePermanently: async (id: string, itemType: string) => {
+    const tableMap: Record<string, string> = {
+      'page': 'pages',
+      'anki_deck': 'anki_decks',
+      'anki_card': 'anki_cards',
+      'file': 'files',
+      'vault': 'vault_groups',
+      'finance': 'transactions',
+      'culture': 'culture_items'
+    };
+    const table = tableMap[itemType];
+    if (!table) throw new Error('Tipo não suportado');
+    
+    await db.delete(table, id);
+    return true;
   }
 });

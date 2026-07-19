@@ -20,7 +20,7 @@ export default function FileWidgetNodeView(props: any) {
 
   useEffect(() => {
     // Fetch file data if needed for viewer
-    if (window.api && window.api.files) {
+    if (window.api && window.api.files && fileId) {
       window.api.files.getById(fileId).then(setFileItem).catch(console.error);
     }
   }, [fileId]);
@@ -102,7 +102,7 @@ export default function FileWidgetNodeView(props: any) {
       >
         {getIcon()}
         <span className={`text-sm font-medium ${isLink ? 'text-blue-300' : 'text-brand-300'} truncate max-w-[150px]`}>
-          {name}
+          {name || fileItem?.name || 'Arquivo'}
         </span>
         <button 
           onClick={(e) => { e.stopPropagation(); handleDelete(); }}
@@ -117,23 +117,8 @@ export default function FileWidgetNodeView(props: any) {
           <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-semibold text-lg text-center">Excluir Arquivo</h3>
             <p className="text-dark-subtext text-sm text-center">
-              Deseja excluir este arquivo permanentemente ou apenas desvinculá-lo desta página?
+              Deseja excluir este arquivo permanentemente do Caderno ou apenas desvincular desta pgina?
             </p>
-            
-            {fileItem?.drive_file_id && (
-              <div className="w-full flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10 mt-2">
-                <input 
-                  type="checkbox" 
-                  id="keepInDrive2" 
-                  checked={keepInDrive} 
-                  onChange={e => setKeepInDrive(e.target.checked)}
-                  className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500"
-                />
-                <label htmlFor="keepInDrive2" className="text-xs text-dark-subtext cursor-pointer leading-tight">
-                  Manter cópia no Google Drive e no módulo Arquivos (apenas remover o widget)
-                </label>
-              </div>
-            )}
             
             <div className="flex gap-2 mt-2">
               <button 
@@ -144,11 +129,18 @@ export default function FileWidgetNodeView(props: any) {
                 Cancelar
               </button>
               <button 
-                onClick={keepInDrive ? () => deleteNode() : confirmDelete}
+                onClick={() => deleteNode()}
+                disabled={isDeleting}
+                className="flex-1 py-2 bg-dark-bg border border-white/10 hover:bg-white/5 text-white rounded-lg font-medium transition-colors text-sm"
+              >
+                Desvincular
+              </button>
+              <button 
+                onClick={confirmDelete}
                 disabled={isDeleting}
                 className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
               >
-                {isDeleting ? 'Excluindo...' : (keepInDrive ? 'Desvincular' : 'Excluir de Tudo')}
+                {isDeleting ? 'Excluindo...' : 'Excluir de Tudo'}
               </button>
             </div>
           </div>

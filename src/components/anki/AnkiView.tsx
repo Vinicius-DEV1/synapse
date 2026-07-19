@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Play, BrainCircuit, Settings } from 'lucide-react';
+import { Play, Plus, Trash2, Edit3, Settings, BrainCircuit, X, Layers } from 'lucide-react';
 import StudySession from './StudySession';
 import DeckBrowser from './DeckBrowser';
 
@@ -56,41 +56,48 @@ export default function AnkiView() {
   const deckTree = buildDeckTree(decks);
 
   const renderDeckCard = (deck: any, depth: number = 0) => (
-    <div key={deck.id} className={depth > 0 ? 'ml-4 mt-4' : ''}>
+    <div key={deck.id} className="flex flex-col w-full">
       <div
-        className="bg-dark-card p-6 rounded-2xl border border-white/5 flex flex-col cursor-pointer hover:border-indigo-500/50 hover:shadow-lg transition-all duration-300 group"
-        style={{ marginLeft: depth > 0 ? '16px' : '0' }}
+        className="bg-dark-card p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group"
+        style={{ marginLeft: `${depth * 24}px`, marginTop: depth > 0 ? '8px' : '16px' }}
       >
-        <h3 className="text-xl font-semibold mb-2 text-white/90 group-hover:text-white transition-colors">{deck.name}</h3>
-        <p className="text-dark-subtext text-sm flex-1 leading-relaxed">{deck.description}</p>
+        <div className="flex-1 min-w-0 pr-4">
+          <div className="flex items-center gap-3">
+            <Layers className="text-indigo-400 shrink-0" size={20} />
+            <h3 className="text-lg font-semibold text-white/90 group-hover:text-white transition-colors truncate">{deck.name}</h3>
+          </div>
+          {deck.description && (
+            <p className="text-dark-subtext text-xs mt-1 truncate pl-8">{deck.description}</p>
+          )}
+        </div>
 
-        <div className="mt-8 flex justify-between items-center">
-          <div className="flex gap-4 text-sm font-medium">
-            <div className="text-blue-400/80" title="Novos Cartões">0</div>
-            <div className="text-orange-400/80" title="Para Revisar">0</div>
-            <div className="text-green-400/80" title="Revisões Feitas">0</div>
+        <div className="flex flex-wrap items-center justify-end gap-6 shrink-0">
+          <div className="flex gap-3 text-xs font-medium bg-dark-bg px-3 py-1.5 rounded-lg border border-white/5">
+            <div className="text-blue-400/80 flex items-center gap-1" title="Novos Cartões"><span className="w-2 h-2 rounded-full bg-blue-400/50"></span>0</div>
+            <div className="text-orange-400/80 flex items-center gap-1" title="Para Revisar"><span className="w-2 h-2 rounded-full bg-orange-400/50"></span>0</div>
+            <div className="text-green-400/80 flex items-center gap-1" title="Revisões Feitas"><span className="w-2 h-2 rounded-full bg-green-400/50"></span>0</div>
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={(e) => { e.stopPropagation(); handleCreateSubDeck(deck.id); }}
-              className="flex items-center justify-center bg-dark-bg hover:bg-white/5 border border-white/5 p-2 rounded-xl transition-colors text-dark-subtext hover:text-white"
+              className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
               title="Criar Subbaralho"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={() => setManagingDeck(deck)}
-              className="flex items-center justify-center bg-dark-bg hover:bg-white/5 border border-white/5 p-2 rounded-xl transition-colors text-dark-subtext hover:text-white"
-              title="Gerenciar Baralho (Cards, Opções)"
+              className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
+              title="Gerenciar Baralho"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
             </button>
             <button
               onClick={() => setStudyingDeckId(deck.id)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-sm transition-all shadow-lg shadow-indigo-900/20 font-medium"
+              className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm transition-all font-medium"
             >
-              <Play className="w-4 h-4 fill-white" />
+              <Play className="w-3 h-3 fill-white" />
               Estudar
             </button>
           </div>
@@ -120,12 +127,24 @@ export default function AnkiView() {
           </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col w-full pb-20">
+          {deckTree.length > 0 && (
+            <div className="flex items-center justify-between px-4 pb-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider border-b border-white/5 mb-2">
+              <span>Baralho</span>
+              <div className="flex gap-16 mr-[200px]">
+                <span>Estatísticas</span>
+                <span>Ações</span>
+              </div>
+            </div>
+          )}
+
           {deckTree.map((deck: any) => renderDeckCard(deck))}
 
           {deckTree.length === 0 && (
-            <div className="col-span-full py-12 text-center text-dark-subtext">
-              Nenhum baralho encontrado. Crie um baralho para começar.
+            <div className="py-20 flex flex-col items-center justify-center text-dark-subtext bg-dark-card border border-white/5 rounded-2xl">
+              <BrainCircuit className="w-12 h-12 mb-4 opacity-20" />
+              <p className="text-lg font-medium">Nenhum baralho encontrado</p>
+              <p className="text-sm mt-1">Crie um baralho para começar a estudar.</p>
             </div>
           )}
         </div>
