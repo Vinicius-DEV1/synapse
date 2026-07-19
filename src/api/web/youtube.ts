@@ -73,12 +73,19 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
       // Fetch playlist details
       const listRes = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${apiKey}`);
       const listData = await listRes.json();
+      if (!listRes.ok) {
+        throw new Error(listData.error?.message || 'Falha ao buscar detalhes da playlist (403/404). Verifique as restrições da sua API Key.');
+      }
+      
       const listTitle = listData.items?.[0]?.snippet?.title || 'Playlist';
       const listUploader = listData.items?.[0]?.snippet?.channelTitle || '';
 
       // Fetch items
       const itemsRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
       const itemsData = await itemsRes.json();
+      if (!itemsRes.ok) {
+        throw new Error(itemsData.error?.message || 'Falha ao buscar vídeos da playlist.');
+      }
       
       const entries = [];
       for (const item of itemsData.items || []) {
@@ -117,6 +124,9 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
       // Fetch single video
       const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`);
       const vidData = await vidRes.json();
+      if (!vidRes.ok) {
+        throw new Error(vidData.error?.message || 'Falha ao buscar vídeo. Verifique sua API Key.');
+      }
       const item = vidData.items?.[0];
       if (!item) throw new Error('Vídeo não encontrado');
 
