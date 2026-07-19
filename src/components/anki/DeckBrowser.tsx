@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye } from 'lucide-react';
+import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, List } from 'lucide-react';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
 import { useDecks } from './hooks/useDecks';
@@ -34,6 +34,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   
   // Deck settings mode
   const [showSettings, setShowSettings] = useState(false);
+
+  // View Mode
+  const [viewMode, setViewMode] = useState<'table' | 'expanded'>('table');
 
   // Hover Tooltip State
   const [hoverState, setHoverState] = useState<{ id: string, type: 'front' | 'back', content: string, x: number, y: number } | null>(null);
@@ -317,6 +320,23 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 </div>
               )}
               
+              <div className="flex bg-dark-bg border border-white/5 rounded-lg p-0.5">
+                <button 
+                  onClick={() => setViewMode('table')} 
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                  title="Visualização em Tabela"
+                >
+                  <List size={16} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('expanded')} 
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'expanded' ? 'bg-indigo-600 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                  title="Visualização Expandida"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </div>
+
               <button 
                 onClick={() => setIsCreatingCard(true)}
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -343,7 +363,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
               </div>
             ) : filteredCards.length === 0 ? (
               <div className="text-center py-12 text-dark-subtext">Nenhum cartão encontrado neste baralho.</div>
-            ) : (
+            ) : viewMode === 'table' ? (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-dark-border/50 text-dark-subtext text-xs uppercase tracking-wider">
@@ -426,6 +446,73 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   )})}
                 </tbody>
               </table>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
+                {groupedCards.map(group => {
+                  const card = group[0];
+                  const isSelected = group.every(c => selectedIds.has(c.id));
+                  return (
+                    <div key={card.note_id} className={`bg-dark-card border rounded-2xl p-5 flex flex-col hover:shadow-2xl transition-all ${isSelected ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/5 hover:border-white/20'}`}>
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <span className="px-2 py-1 rounded bg-black/40 text-dark-subtext text-[10px] uppercase font-bold tracking-wider">{card.card_type}</span>
+                          {card.deck_id !== deck.id && (
+                            <span className="px-2 py-1 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30 truncate max-w-[120px]">
+                              {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
+                            </span>
+                          )}
+                          {group.length > 1 && (
+                            <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-500/30" title={`${group.length} cartões nesta nota`}>
+                              [{group.length}]
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected}
+                          onChange={() => toggleSelectGroup(group)}
+                          className="rounded border-dark-border bg-dark-bg text-indigo-600 focus:ring-indigo-500 scale-125"
+                        />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 flex flex-col gap-4">
+                        <div>
+                          <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Frente</div>
+                          <div className="text-sm text-dark-text whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar" dangerouslySetInnerHTML={{ __html: card.front }}></div>
+                        </div>
+                        
+                        <div className="h-px bg-white/5 w-full"></div>
+                        
+                        <div>
+                          <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Verso</div>
+                          <div className="text-sm text-dark-subtext whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar" dangerouslySetInnerHTML={{ __html: card.back }}></div>
+                        </div>
+                      </div>
+                      
+                      {/* Footer */}
+                      <div className="mt-5 flex justify-between items-center border-t border-white/5 pt-4">
+                        <div>
+                          {card.media_url && (
+                            <button onClick={() => playAudio(card.media_url)} className="flex items-center gap-2 bg-black/40 hover:bg-black/60 text-indigo-400 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                              <Volume2 size={14} /> Ouvir Áudio
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => setEditingCard(card)} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar">
+                            <Edit3 size={16} />
+                          </button>
+                          <button onClick={() => handleDeleteCard(card.id)} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors" title="Excluir">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
