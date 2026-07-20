@@ -1,6 +1,7 @@
 import { db } from '../firebase';
 import { encryptText, decryptText, deriveMasterKey } from '../crypto';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { logFirebaseOp } from './sync-monitor';
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
   try {
@@ -8,6 +9,7 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
     
     const docRef = doc(db, 'config', 'auth_validator');
     const docSnap = await getDoc(docRef);
+    logFirebaseOp('read', 1);
     
     if (!docSnap.exists() || !docSnap.data().encryptedData) {
       return { isValid: true, isNew: true };
@@ -45,6 +47,7 @@ export async function getSecurityLock(): Promise<SecurityLock> {
     try {
       const docRef = doc(db, 'config', 'security_lock');
       const docSnap = await getDoc(docRef);
+      logFirebaseOp('read', 1);
       if (docSnap.exists()) {
         const data = docSnap.data();
         failedAttempts = data.failedAttempts || 0;
@@ -85,6 +88,7 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
   if (navigator.onLine) {
     try {
       await setDoc(doc(db, 'config', 'security_lock'), newLock, { merge: true });
+      logFirebaseOp('write', 1);
     } catch {
       // Ignorar erro de escrita
     }
@@ -98,6 +102,7 @@ export async function clearFailedAttempts(): Promise<void> {
   if (navigator.onLine) {
     try {
       await setDoc(doc(db, 'config', 'security_lock'), { failedAttempts: 0, lastFailedAt: 0 }, { merge: true });
+      logFirebaseOp('write', 1);
     } catch {}
   }
 }
@@ -111,6 +116,7 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
     encryptedData,
     updatedAt: new Date().toISOString()
   });
+  logFirebaseOp('write', 1);
 }
 
 export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
@@ -118,6 +124,7 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
   try {
     const docRef = doc(db, 'config', 'module_keys');
     const docSnap = await getDoc(docRef);
+    logFirebaseOp('read', 1);
     
     if (docSnap.exists() && docSnap.data().encryptedData) {
       console.error("🔒 ALERTA DE SEGURANÇA: Tentativa de sobrescrever chaves de criptografia existentes foi bloqueada.");
@@ -130,6 +137,7 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
       encryptedData,
       updatedAt: serverTimestamp()
     }, { merge: true });
+    logFirebaseOp('write', 1);
   } catch (err) {
     console.error("Erro ao subir chaves modulares", err);
   }
@@ -139,6 +147,7 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Re
   if (!navigator.onLine) return null;
   try {
     const docSnap = await getDoc(doc(db, 'config', 'module_keys'));
+    logFirebaseOp('read', 1);
     if (docSnap.exists() && docSnap.data().encryptedData) {
       try {
         const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
