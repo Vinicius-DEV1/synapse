@@ -136,6 +136,7 @@ export async function hardResetCloud(): Promise<void> {
     configBatch.delete(doc(db, 'config', 'auth_validator'));
     configBatch.delete(doc(db, 'config', 'module_keys'));
     configBatch.delete(doc(db, 'config', 'sync_signal'));
+    configBatch.delete(doc(db, 'config', 'sync_manifest'));
     await configBatch.commit();
   } catch (err) {}
 }
