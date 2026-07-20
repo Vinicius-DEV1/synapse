@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus, Minimize2 } from 'lucide-react';
 import { promptGemini } from '../services/gemini';
@@ -9,6 +9,15 @@ export default function AiSidebar() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [state.activeAiChatId, state.aiChatSessions, loading]);
 
   const sessions = Object.values(state.aiChatSessions).sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -348,6 +357,7 @@ export default function AiSidebar() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
