@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Trash2, Edit3, Settings, Volume2, HardDrive, Eye, LayoutGrid, LayoutList, Table, Filter } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
 import { useDecks } from './hooks/useDecks';
@@ -256,6 +257,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={onClose}>
       <div 
         className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]"
@@ -663,5 +665,6 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         document.body
       )}
     </div>
+    </Portal>
   );
 }
