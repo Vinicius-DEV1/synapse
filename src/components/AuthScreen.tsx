@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud, getSecurityLock, recordFailedAttempt, clearFailedAttempts } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
+import { PlatformInfo } from '../services/platform';
 
 const INTIMIDATING_PHRASES = [
   "Se você usar toda a energia do sol para tentar quebrar essa criptografia AES-256 GCM, o sol vai apagar antes de você conseguir.",
@@ -71,6 +72,12 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
     try {
       const cloudCheck = await verifyCloudMasterPassword(password);
+
+      if (PlatformInfo.platform === 'web' && (cloudCheck.error === 'offline' || cloudCheck.error === 'timeout')) {
+        triggerError('O App Web requer conexão com a internet ativa.');
+        setLoading(false);
+        return;
+      }
 
       if (isSetup) {
         // Validar na nuvem antes de permitir o setup local

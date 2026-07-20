@@ -3,12 +3,12 @@ import { encryptText, decryptText, deriveMasterKey } from '../crypto';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { logFirebaseOp } from './sync-monitor';
 
-export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean }> {
+export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean; error?: 'offline' | 'timeout' | 'invalid' }> {
   try {
     const masterKey = await deriveMasterKey(password);
     
     if (!navigator.onLine) {
-      return { isValid: false, isNew: false };
+      return { isValid: false, isNew: false, error: 'offline' };
     }
     
     const docRef = doc(db, 'config', 'auth_validator');
@@ -21,7 +21,7 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
     
     if (!docSnap) {
       console.warn("⏳ Timeout ao verificar senha na nuvem. Firebase demorou muito.");
-      return { isValid: false, isNew: false };
+      return { isValid: false, isNew: false, error: 'timeout' };
     }
 
     logFirebaseOp('read', 1);
@@ -40,9 +40,9 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
       // Falha ao descriptografar
     }
 
-    return { isValid: false, isNew: false };
+    return { isValid: false, isNew: false, error: 'invalid' };
   } catch {
-    return { isValid: false, isNew: false };
+    return { isValid: false, isNew: false, error: 'invalid' };
   }
 }
 
