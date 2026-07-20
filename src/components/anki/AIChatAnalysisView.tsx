@@ -187,7 +187,7 @@ export default function AIChatAnalysisView({
   const handleAddAll = () => {
      onAddCards(suggestions.map(c => ({
        ...c,
-       validation_mode: 'exact'
+       validation_mode: (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact'
      })));
      setSuggestions([]);
      
