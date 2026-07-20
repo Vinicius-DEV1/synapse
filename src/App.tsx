@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
 import { FocusProvider, useFocusContext } from './store/FocusContext';
-import Sidebar from './components/Sidebar';
+import Sidebar from './components/layout/sidebar/Sidebar';
 import TabBar from './components/TabBar';
 import ContextMenu from './components/ContextMenu';
 import ConfirmModal from './components/ConfirmModal';
