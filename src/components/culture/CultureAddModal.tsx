@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Loader2, Save, Trash2 } from 'lucide-react';
 import type { CultureItem, CultureType } from '../../types';
 import { CultureService } from '../../services/culture';
+import { Portal } from '../ui/Portal';
 
 interface Props {
   isOpen: boolean;
@@ -230,7 +231,8 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-dark-card w-full max-w-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col max-h-[90vh] overflow-hidden animate-scale-up">
         
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
@@ -428,5 +430,6 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
 
       </div>
     </div>
+    </Portal>
   );
 }

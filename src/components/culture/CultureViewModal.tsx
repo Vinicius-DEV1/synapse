@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ExternalLink, Target, Calendar, CheckCircle, Tv, BookOpen, Layers, Play, Hash, Clock, Globe } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
+import { Portal } from '../ui/Portal';
 
 interface Props {
   item: CultureItem;
@@ -95,7 +96,8 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
   }
 
   return (
-    <div
+    <Portal>
+      <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
@@ -298,5 +300,6 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
