@@ -250,6 +250,12 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             placement: 'top',
             offset: [0, 8]
           }} 
+          shouldShow={({ editor }) => 
+            !editor.state.selection.empty && 
+            !editor.isActive('image') && 
+            !editor.isActive('encryptedImage') && 
+            !editor.isActive('resizableImage')
+          }
           className="flex shadow-elevated rounded-xl overflow-visible border border-white/5 bg-dark-bg/80 backdrop-blur-xl"
         >
           <FloatingToolbar editor={editor} />
@@ -290,7 +296,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           onClose={() => setPageSearchMenu(null)}
           onSelect={async (selectedPageId, title) => {
             let finalId = selectedPageId;
-            if (selectedPageId === 'NEW' && onCreateLinkedPage) {
+            if (selectedPageId === 'new' && onCreateLinkedPage) {
               finalId = await onCreateLinkedPage(title);
             }
             if (finalId && editor) {
@@ -300,7 +306,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
               editor.commands.deleteRange({ from: startPos, to: endPos });
               editor.chain().focus().insertContent({
                 type: 'pageReference',
-                attrs: { pageId: finalId, pageTitle: title }
+                attrs: { pageId: finalId, title: title }
               }).run();
             }
             setPageSearchMenu(null);
