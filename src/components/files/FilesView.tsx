@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
-import type { FileFolder, FileItem } from '../../types_files';
+import type { FileFolder, FileItem } from '../../types';
 import { Plus, Search, Folder, File, FileText, Image as ImageIcon, Film, FileArchive, MoreVertical, LayoutGrid, List, FolderPlus, X, FolderUp } from 'lucide-react';
 import FileUploadModal from './FileUploadModal';
 import FolderUploadModal from './FolderUploadModal';

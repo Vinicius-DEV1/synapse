@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { VideoItem } from '../../../types_video';
+import type { VideoItem } from '../../../types';
 import type { SubtitleCue } from '../../../utils/vtt-parser';
 
 export function useVideoVocabulary(

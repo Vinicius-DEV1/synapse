@@ -1,5 +1,5 @@
 import { getValidAccessToken, uploadToDrive, downloadFromDrive, deleteFromDrive } from './drive';
-import type { LofiItem } from '../types_lofi';
+import type { LofiItem } from '../types';
 
 const LOFI_TABLE = 'lofis';
 

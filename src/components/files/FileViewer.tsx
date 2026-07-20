@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, ExternalLink, Download, FileText, File } from 'lucide-react';
-import type { FileItem } from '../../types_files';
+import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 

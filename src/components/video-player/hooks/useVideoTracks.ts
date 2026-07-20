@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { VideoItem, TrackItem } from '../../../types_video';
+import type { VideoItem, TrackItem } from '../../../types';
 
 export function useVideoTracks(
   video: VideoItem,

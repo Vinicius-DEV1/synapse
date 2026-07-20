@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import type { FileItem, FileFolder } from '../../types_files';
+import type { FileItem, FileFolder } from '../../types';
 
 interface RenameModalProps {
   item: FileItem | FileFolder;

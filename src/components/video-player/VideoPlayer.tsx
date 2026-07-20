@@ -3,7 +3,7 @@ import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
 import DictionaryModal from '../library/DictionaryModal';
-import type { VideoItem } from '../../types_video';
+import type { VideoItem } from '../../types';
 
 import { useVideoProgress } from './hooks/useVideoProgress';
 import { useVideoTracks } from './hooks/useVideoTracks';

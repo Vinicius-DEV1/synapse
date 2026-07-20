@@ -1,6 +1,6 @@
 import React from 'react';
 import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, BookOpen } from 'lucide-react';
-import type { TrackItem } from '../../../types_video';
+import type { TrackItem } from '../../../types';
 
 interface VideoControlsOverlayProps {
   title: string;

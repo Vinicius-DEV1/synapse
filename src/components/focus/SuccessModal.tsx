@@ -33,7 +33,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
     if (localStorage.getItem('soundEnabled') === 'false') return;
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
     

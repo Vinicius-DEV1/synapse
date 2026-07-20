@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Folder } from 'lucide-react';
-import type { FileFolder } from '../../types_files';
+import type { FileFolder } from '../../types';
 
 interface FolderModalProps {
   onClose: () => void;

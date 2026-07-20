@@ -10,7 +10,7 @@ interface UseEditorSyncProps {
   latestContentRef: MutableRefObject<{ html: string, crdt: string } | null>;
 }
 
-if (!(window as any).__cadernoEditorBackup) { (window as any).__cadernoEditorBackup = new Map(); }
+if (!window.__cadernoEditorBackup) { window.__cadernoEditorBackup = new Map(); }
 export function useEditorSync({ pageId, initialCrdtState, initialContent, onSaveRef, latestContentRef }: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
@@ -22,10 +22,10 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
       applyBase64StateToYDoc(doc, initialCrdtState!);
     }
     
-    const backup = (window as any).__cadernoEditorBackup?.get(pageId);
+    const backup = window.__cadernoEditorBackup?.get(pageId);
     if (backup?.crdt && backup.crdt.length > 8) {
       applyBase64StateToYDoc(doc, backup.crdt);
-      (window as any).__cadernoEditorBackup.delete(pageId);
+      window.__cadernoEditorBackup.delete(pageId);
     }
     return doc;
   });
@@ -36,7 +36,7 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
     
 
 
-  const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !(window as any).__cadernoEditorBackup?.has(pageId);
+  const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !window.__cadernoEditorBackup?.has(pageId);
 
   useEffect(() => {
     const handleRemoteUpdate = (e: CustomEvent) => {

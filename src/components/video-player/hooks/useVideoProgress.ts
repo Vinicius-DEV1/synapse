@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { VideoItem } from '../../../types_video';
+import type { VideoItem } from '../../../types';
 
 export function useVideoProgress(
   video: VideoItem,

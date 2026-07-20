@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Maximize2, Loader2, Download } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
-import type { FileItem } from '../../types_files';
+import type { FileItem } from '../../types';
 
 interface FloatingPdfViewerProps {
   item: FileItem;

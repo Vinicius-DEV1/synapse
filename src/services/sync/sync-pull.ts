@@ -82,16 +82,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
                 if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
 
-                if (typeof window !== 'undefined' && (window as any).api?.log) {
-                  (window as any).api.log(`[PULL] Doc \${docSnap.id}. localTime=\${localTime}, cloudTime=\${cloudTime}`);
+                if (typeof window !== 'undefined' && window.api?.log) {
+                  window.api.log(`[PULL] Doc \${docSnap.id}. localTime=\${localTime}, cloudTime=\${cloudTime}`);
                 }
 
                 // We no longer hard-delete locally. We just upsert the document 
                 // so that the local DB stores the deleted_at flag (for the Trash feature).
                 /*
                 if (parsed.deleted_at) {
-                  if (typeof window !== 'undefined' && (window as any).api?.log) {
-                    (window as any).api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Soft deleting locally.`);
+                  if (typeof window !== 'undefined' && window.api?.log) {
+                    window.api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Soft deleting locally.`);
                   }
                   // We let the upsertRow below handle it, which will update the local row with deleted_at
                 }
@@ -108,8 +108,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     rowToUpsert.crdt_state = mergedCrdtState;
                     
                     if (typeof window !== 'undefined') {
-                      if ((window as any).api?.log) {
-                         (window as any).api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                      if (window.api?.log) {
+                         window.api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
                       }
                       window.dispatchEvent(new CustomEvent('caderno-sync-update', {
                         detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state }
@@ -129,8 +129,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     rowToUpsert.deleted_at = parsed.deleted_at;
                   } else {
                     skippedDocsCount++;
-                    if (typeof window !== 'undefined' && (window as any).api?.log) {
-                      (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+                    if (typeof window !== 'undefined' && window.api?.log) {
+                      window.api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                     }
                     continue;
                   }
@@ -161,8 +161,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                       throw upsertErr;
                     }
                   }
-                  if (typeof window !== 'undefined' && (window as any).api?.log) {
-                    (window as any).api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+                  if (typeof window !== 'undefined' && window.api?.log) {
+                    window.api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
                   }
                 } catch (upsertErr) {
                   console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);

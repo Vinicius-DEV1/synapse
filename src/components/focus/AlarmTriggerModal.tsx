@@ -16,7 +16,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
     const type = localStorage.getItem('defaultAlarmType') || 'beep';
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
     

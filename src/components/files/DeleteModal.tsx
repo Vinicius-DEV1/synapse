@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
-import type { FileItem, FileFolder } from '../../types_files';
+import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 
 interface DeleteModalProps {

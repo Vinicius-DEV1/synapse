@@ -71,5 +71,5 @@ export async function hardResetCloud(): Promise<void> {
 }
 
 if (typeof window !== 'undefined') {
-  (window as any).hardResetCloud = hardResetCloud;
+  window.hardResetCloud = hardResetCloud;
 }

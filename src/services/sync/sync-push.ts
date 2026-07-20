@@ -40,8 +40,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           if (localTime > highestLocalTime) highestLocalTime = localTime;
           
           try {
-            if (typeof window !== 'undefined' && (window as any).api?.log) {
-              (window as any).api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
+            if (typeof window !== 'undefined' && window.api?.log) {
+              window.api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
             }
             const { id, updated_at, created_at, ...sensitiveData } = row;
             const jsonString = JSON.stringify(sensitiveData);
@@ -49,8 +49,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             if (jsonString.length > 900_000) {
               const msg = `[PUSH SKIP] Doc ${row.id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
               console.warn(msg);
-              if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(msg);
+              if (typeof window !== 'undefined' && window.api?.log) {
+                window.api.log(msg);
               }
               continue;
             }
@@ -87,8 +87,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
 
   if (pushedCount > 0 || errors.length > 0) {
     // console.log(`[Sync] PUSH finalizou: \${pushedCount} docs enviados, \${errors.length} pulados/errados, \${pushSkippedCount} inalterados.`);
-    if (typeof window !== 'undefined' && (window as any).api?.log) {
-      (window as any).api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
+    if (typeof window !== 'undefined' && window.api?.log) {
+      window.api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
     if (highestLocalTime > getLastSyncTime('push')) {
       setLastSyncTime('push', highestLocalTime);

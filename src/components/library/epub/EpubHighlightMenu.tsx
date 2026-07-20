@@ -82,7 +82,7 @@ export default function EpubHighlightMenu() {
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
-          (window as any).__lastHighlightClick = Date.now();
+          window.__lastHighlightClick = Date.now();
           const rawRect = e.target.getBoundingClientRect();
           let offsetX = 0; let offsetY = 0;
           const iframe = e.target.ownerDocument?.defaultView?.frameElement;
@@ -115,7 +115,7 @@ export default function EpubHighlightMenu() {
           if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
           if (e && typeof e.preventDefault === 'function') e.preventDefault();
           // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
-          (window as any).__lastHighlightClick = Date.now();
+          window.__lastHighlightClick = Date.now();
           const rawRect = e.target.getBoundingClientRect();
           let offsetX = 0; let offsetY = 0;
           const iframe = e.target.ownerDocument?.defaultView?.frameElement;

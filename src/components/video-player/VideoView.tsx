@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { VideoItem } from '../../types_video';
+import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';

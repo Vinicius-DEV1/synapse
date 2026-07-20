@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Folder, ChevronRight, LayoutGrid } from 'lucide-react';
-import type { FileItem, FileFolder } from '../../types_files';
+import type { FileItem, FileFolder } from '../../types';
 
 interface MoveModalProps {
   item: FileItem | FileFolder;

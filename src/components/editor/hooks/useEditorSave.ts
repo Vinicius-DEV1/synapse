@@ -21,7 +21,7 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
     latestContentRef.current = { html, crdt: crdtState };
 
     if (pageId) {
-      (window as any).__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
+      window.__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
     }
     
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
