@@ -350,9 +350,9 @@ export default function AiSidebar() {
                       {msg.tokens && (
                         <div 
                           className="text-[10px] opacity-40 font-mono flex items-center gap-1 px-2 cursor-help" 
-                          title={`Prompt: ${msg.tokens.promptTokenCount} | Resposta: ${msg.tokens.candidatesTokenCount}`}
+                          title={`Prompt: ${msg.tokens.promptTokenCount} | Resposta: ${msg.tokens.candidatesTokenCount} | Total: ${msg.tokens.totalTokenCount} tokens`}
                         >
-                          {msg.tokens.totalTokenCount} tokens
+                          {msg.tokens.totalTokenCount}
                         </div>
                       )}
                     </div>
