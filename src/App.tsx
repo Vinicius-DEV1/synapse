@@ -29,6 +29,7 @@ function AppContent() {
   const { state, dispatch } = useStore();
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
   const platform = usePlatform();
+  const settings = getSettings();
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
 
