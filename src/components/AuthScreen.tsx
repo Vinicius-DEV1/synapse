@@ -105,7 +105,12 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         };
 
         if (!cloudCheck.isNew) {
-           const pulled = await pullModularKeysFromCloud(masterKey);
+           let pulled = null;
+           try {
+             pulled = await pullModularKeysFromCloud(masterKey);
+           } catch (e: any) {
+             if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou (Timeout). App Web bloqueado.");
+           }
            if (pulled) {
              existingKeysToUse = { ...existingKeysToUse, ...pulled };
            }
@@ -120,7 +125,12 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
             }
           } else {
-            rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
+             try {
+               rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
+             } catch (e: any) {
+               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
+               rawKeys = existingKeysToUse;
+             }
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};
@@ -185,14 +195,26 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
           }
           
-          const cloudKeys = await pullModularKeysFromCloud(masterKey);
+          let cloudKeys = null;
+          try {
+            cloudKeys = await pullModularKeysFromCloud(masterKey);
+          } catch (e: any) {
+            if (platform.platform === 'web') {
+              throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.");
+            }
+          }
+          
           if (cloudKeys) {
              rawKeys = cloudKeys;
              if (window.api.auth.forceUpdateKeychain) {
                await window.api.auth.forceUpdateKeychain(password, rawKeys);
              }
           } else if (!rawKeys) {
-             rawKeys = await pullModularKeysFromCloud(masterKey);
+             try {
+               rawKeys = await pullModularKeysFromCloud(masterKey);
+             } catch (e: any) {
+               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
+             }
           }
 
           const moduleKeys: Record<string, CryptoKey> = {};

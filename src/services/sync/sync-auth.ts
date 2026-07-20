@@ -144,7 +144,16 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
   if (!navigator.onLine) return;
   try {
     const docRef = doc(db, 'config', 'module_keys');
-    const docSnap = await getDoc(docRef);
+    const docSnap = await Promise.race([
+      getDoc(docRef),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+    ]);
+    
+    if (!docSnap) {
+      console.warn("⏳ Timeout ao ler chaves modulares para push.");
+      return;
+    }
+    
     logFirebaseOp('read', 1);
     
     if (docSnap.exists() && docSnap.data().encryptedData) {
@@ -154,10 +163,13 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
 
     const payload = JSON.stringify(keys);
     const encryptedData = await encryptText(payload, masterKey);
-    await setDoc(docRef, {
-      encryptedData,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    await Promise.race([
+      setDoc(docRef, {
+        encryptedData,
+        updatedAt: serverTimestamp()
+      }, { merge: true }),
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Timeout write")), 5000))
+    ]);
     logFirebaseOp('write', 1);
   } catch (err) {
     console.error("Erro ao subir chaves modulares", err);
@@ -167,7 +179,15 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
 export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Record<string, string> | null> {
   if (!navigator.onLine) return null;
   try {
-    const docSnap = await getDoc(doc(db, 'config', 'module_keys'));
+    const docSnap = await Promise.race([
+      getDoc(doc(db, 'config', 'module_keys')),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+    ]);
+    
+    if (!docSnap) {
+      throw new Error("FIREBASE_TIMEOUT");
+    }
+    
     logFirebaseOp('read', 1);
     if (docSnap.exists() && docSnap.data().encryptedData) {
       try {
@@ -178,8 +198,11 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Re
         return null;
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("Erro ao baixar chaves modulares", err);
+    if (err.message === "FIREBASE_TIMEOUT") {
+      throw err;
+    }
   }
   return null;
 }
