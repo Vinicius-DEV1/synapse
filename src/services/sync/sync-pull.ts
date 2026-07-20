@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { decryptText } from '../crypto';
-import { onSnapshot, query, where, collection, doc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
+import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 
 /** Tamanho do batch de decriptação paralela */
@@ -21,6 +21,20 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   let Y: typeof import('yjs') | null = null;
   let yjsUtils: { base64ToUint8Array: (b64: string) => Uint8Array; getYDocStateAsBase64: (doc: any) => string } | null = null;
 
+  // Manifest: ler UMA VEZ para saber quais tabelas têm mudanças desde lastPull.
+  // Se não existir ou falhar, queryamos todas as tabelas (fallback seguro).
+  let manifest: Record<string, string> | null = null;
+  if (lastPull > 0) {
+    try {
+      const manifestSnap = await getDoc(doc(db, 'config', 'sync_manifest'));
+      if (manifestSnap.exists()) {
+        manifest = manifestSnap.data() as Record<string, string>;
+      }
+    } catch {
+      // Manifest read falhou — fallback: query todas as tabelas (sem risco de perda)
+    }
+  }
+
   for (const module of Object.keys(MODULE_TABLES)) {
     const key = moduleKeys[module] || moduleKeys['core'];
     if (!key) {
@@ -31,6 +45,20 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
     
     for (const table of tables) {
       try {
+        // Manifest optimization: pular tabelas sem mudanças desde lastPull.
+        // Se a tabela ESTÁ no manifest e seu timestamp <= lastPull, skip.
+        // Se a tabela NÃO está no manifest, query normalmente (segurança: pode ter sido
+        // pushada por código antigo sem manifest, ou por outro device).
+        if (manifest) {
+          const tableTimestamp = manifest[table];
+          if (tableTimestamp) {
+            const tableLastUpdate = parseDateSafe(tableTimestamp);
+            if (tableLastUpdate <= lastPull) {
+              continue; // Nenhuma mudança nesta tabela desde o último pull
+            }
+          }
+        }
+
         let qBase = collection(db, table) as any;
         if (lastPull > 0) {
           const lastPullIso = new Date(lastPull).toISOString();
@@ -94,7 +122,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           const docsToProcess = querySnapshot.docs.filter(docSnap => {
             const cloudData = docSnap.data();
             if (!cloudData.encryptedData) return false;
-            if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') return false;
+            if (['auth_validator', 'module_keys', 'sync_manifest', 'sync_signal', 'security_lock'].includes(docSnap.id)) return false;
             
             const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
             if (cloudTime > highestCloudTime) {

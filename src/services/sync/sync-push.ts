@@ -63,6 +63,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   let highestSuccessTime = lastPush; // #6: só avança o timestamp com docs que tiveram SUCESSO
   let pushedCount = 0;
   const errors: string[] = [];
+  // Manifest: rastreia o timestamp mais alto de cada tabela que teve push bem-sucedido
+  const manifestUpdate: Record<string, string> = {};
 
   for (const module of Object.keys(MODULE_TABLES)) {
     const key = moduleKeys[module] || moduleKeys['core'];
@@ -126,6 +128,13 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
                 highestSuccessTime = item.localTime;
               }
             }
+            // Manifest: registrar o timestamp mais alto desta tabela
+            const chunkHighest = Math.max(...chunk.map(c => c.localTime));
+            const currentManifest = manifestUpdate[table];
+            const currentManifestTime = currentManifest ? parseDateSafe(currentManifest) : 0;
+            if (chunkHighest > currentManifestTime) {
+              manifestUpdate[table] = new Date(chunkHighest).toISOString();
+            }
           } catch (err: any) {
             // Se o batch falhar, registrar erro para cada doc do chunk
             for (const item of chunk) {
@@ -165,6 +174,17 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         }, { merge: true });
       } catch (e) {
         console.warn("Falha ao enviar sinal de sync", e);
+      }
+
+      // Manifest: atualizar config/sync_manifest com os timestamps das tabelas que mudaram.
+      // O pull usa isso para pular tabelas sem mudanças, economizando ~34 reads por ciclo.
+      // merge: true preserva timestamps de tabelas pushadas por outros dispositivos.
+      if (Object.keys(manifestUpdate).length > 0) {
+        try {
+          await setDoc(doc(db, 'config', 'sync_manifest'), manifestUpdate, { merge: true });
+        } catch (e) {
+          console.warn("Falha ao atualizar sync manifest", e);
+        }
       }
     }
   }
