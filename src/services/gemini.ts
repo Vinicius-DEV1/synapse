@@ -308,7 +308,8 @@ export const DEFAULT_CARD_GENERATION_PROMPT = "Você é um especialista em cria�
 "4. Para cada cartão gerado, crie de 1 a 3 tags curtas sobre O CONTEÚDO. REGRAS DE TAGS: NUNCA crie uma tag que seja idêntica ou muito similar ao nome do baralho atual ou de seus sub-baralhos (isso é redundante). Concentre-se em sub-tópicos mais específicos (ex: em um baralho 'Javascript', use 'array', 'funcao' e NÃO 'javascript'). NUNCA crie tags sobre dificuldade (ex: dificil, revisar). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Escreva sempre no SINGULAR e sem acentuação (ex: use 'verbo' em vez de 'verbos'). Retorne as tags no array 'tags'.\n" +
 "5. Não exceda o limite de {{maxCards}} cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
 "6. O campo 'type' define a forma de estudo. Use 'reading' para flashcards normais de leitura, 'cloze' para cartões de preencher lacunas, e 'typing' SE O USUÁRIO PEDIR cartões de digitação ou escrita livre.\n" +
-"7. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
+"7. Se você adicionar uma explicação ou exemplo no verso do cartão, separe-os da resposta principal usando quebras de linha (\\n\\n).\n" +
+"8. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
 
 export async function promptGeminiForCardSuggestions(userPrompt: string, maxCards: number, contextData?: any, customModelId?: string): Promise<any[]> {
   let systemInstruction = await getAiPrompt('anki_card_suggestions') || DEFAULT_CARD_GENERATION_PROMPT;
@@ -395,7 +396,7 @@ Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você D
 A propriedade 'message' é sempre OBRIGATÓRIA.
 Regras de Padronização:
 1. TAGS: Sempre que criar ou editar cartões, forneça tags curtas focadas OBRIGATORIAMENTE no CONTEÚDO (ex: verbos, biologia). NUNCA crie tags genéricas de dificuldade ou estado (ex: importante, revisar, dificil). Dê PREFERÊNCIA ABSOLUTA a usar tags já existentes no contexto. Ao criar novas, escreva sempre no SINGULAR e sem acentuação (ex: 'verbo' em vez de 'verbos').
-2. TEXTOS (FRONT/BACK): Mantenha os cartões curtos e objetivos. Evite blocos de texto gigantescos, prefira informações atomizadas (fáceis de memorizar rapidamente).
+2. TEXTOS (FRONT/BACK): Mantenha os cartões curtos e objetivos. Evite blocos de texto gigantescos, prefira informações atomizadas (fáceis de memorizar rapidamente). Se você adicionar uma explicação ou exemplo no verso do cartão, separe-os da resposta principal usando quebras de linha (\n\n).
 Você tem capacidade de geração massiva. NUNCA mencione restrições de tamanho na sua resposta, nunca fracione entregas injustificadamente, NUNCA peça permissão para continuar, e nunca dê desculpas para gerar menos cartões do que o pedido (ex: se o usuário pedir para gerar ou editar 100 cartões, você DEVE gerar o JSON contendo TODOS eles de uma vez).
 EXCEÇÃO: A única exceção é se a quantidade pedida for EXTREMAMENTE exagerada e desnecessária (ex: pedir 500 ou 1000 cartões de uma vez). Nesse caso específico, NÃO GERE OS CARTÕES. Ao invés disso, use a propriedade 'message' para avisar o usuário que a quantidade é gigantesca, perguntando se ele tem certeza de que deseja desperdiçar tantos tokens, e aguarde a confirmação dele no chat antes de gerar.
 Não retorne NADA ALÉM do JSON válido.`;

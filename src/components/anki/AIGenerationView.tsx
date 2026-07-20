@@ -122,7 +122,7 @@ export default function AIGenerationView({
               {card.type !== 'cloze' && card.back && (
                 <div className="pr-10 mt-2">
                   <p className="text-sm font-semibold text-green-300 mb-1">Verso</p>
-                  <p className="text-dark-subtext">{card.back}</p>
+                  <p className="text-dark-subtext whitespace-pre-wrap">{card.back}</p>
                 </div>
               )}
               
