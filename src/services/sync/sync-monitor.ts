@@ -5,6 +5,7 @@ export interface SyncStats {
   reads: number;
   writes: number;
   deletes: number;
+  hourly?: Record<string, { reads: number; writes: number; deletes: number }>;
 }
 
 function getTodayKey(): string {
@@ -20,15 +21,28 @@ export function logFirebaseOp(type: FirebaseOpType, count: number): void {
     if (raw) {
       stats = JSON.parse(raw);
     } else {
-      stats = { date: key, reads: 0, writes: 0, deletes: 0 };
+      stats = { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
     }
   } catch {
-    stats = { date: key, reads: 0, writes: 0, deletes: 0 };
+    stats = { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
   }
 
-  if (type === 'read') stats.reads += count;
-  else if (type === 'write') stats.writes += count;
-  else if (type === 'delete') stats.deletes += count;
+  if (!stats.hourly) stats.hourly = {};
+  const hour = new Date().getHours().toString();
+  if (!stats.hourly[hour]) {
+    stats.hourly[hour] = { reads: 0, writes: 0, deletes: 0 };
+  }
+
+  if (type === 'read') {
+    stats.reads += count;
+    stats.hourly[hour].reads += count;
+  } else if (type === 'write') {
+    stats.writes += count;
+    stats.hourly[hour].writes += count;
+  } else if (type === 'delete') {
+    stats.deletes += count;
+    stats.hourly[hour].deletes += count;
+  }
 
   localStorage.setItem(key, JSON.stringify(stats));
 
@@ -68,7 +82,7 @@ export function getTodayStats(): SyncStats {
     const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { date: key, reads: 0, writes: 0, deletes: 0 };
+  return { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
 }
 
 export function getWeeklyStats(): SyncStats[] {
@@ -82,10 +96,10 @@ export function getWeeklyStats(): SyncStats[] {
       if (raw) {
         stats.push(JSON.parse(raw));
       } else {
-        stats.push({ date: key, reads: 0, writes: 0, deletes: 0 });
+        stats.push({ date: key, reads: 0, writes: 0, deletes: 0, hourly: {} });
       }
     } catch {
-      stats.push({ date: key, reads: 0, writes: 0, deletes: 0 });
+      stats.push({ date: key, reads: 0, writes: 0, deletes: 0, hourly: {} });
     }
   }
   return stats;
