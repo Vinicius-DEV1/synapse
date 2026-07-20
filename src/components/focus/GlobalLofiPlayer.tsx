@@ -101,6 +101,25 @@ export const GlobalLofiPlayer: React.FC = () => {
       <div 
         className="fixed bottom-4 left-4 z-50 flex items-end gap-2 group"
       >
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-300 backdrop-blur-md border z-50 ${
+            isExpanded 
+              ? 'bg-brand-500 border-brand-400 text-white scale-90' 
+              : 'bg-dark-card/80 border-white/10 text-dark-subtext hover:bg-white/10 hover:text-white hover:scale-105'
+          }`}
+        >
+          {isPlayingLofi && !isExpanded ? (
+            <div className="flex gap-0.5 items-center justify-center">
+              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-3" style={{ animationDelay: '0ms' }} />
+              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-5" style={{ animationDelay: '200ms' }} />
+              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-4" style={{ animationDelay: '400ms' }} />
+            </div>
+          ) : (
+            <Volume2 size={20} className={isPlayingLofi && isExpanded ? 'text-white' : ''} />
+          )}
+        </button>
+
         <div 
           className={`bg-dark-card border border-white/10 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] origin-bottom-left ${
             isExpanded ? 'opacity-100 scale-100 mb-2' : 'opacity-0 scale-90 pointer-events-none absolute bottom-0 left-0'
@@ -164,25 +183,6 @@ export const GlobalLofiPlayer: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-300 backdrop-blur-md border z-50 ${
-            isExpanded 
-              ? 'bg-brand-500 border-brand-400 text-white scale-90' 
-              : 'bg-dark-card/80 border-white/10 text-dark-subtext hover:bg-white/10 hover:text-white hover:scale-105'
-          }`}
-        >
-          {isPlayingLofi && !isExpanded ? (
-            <div className="flex gap-0.5 items-center justify-center">
-              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-3" style={{ animationDelay: '0ms' }} />
-              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-5" style={{ animationDelay: '200ms' }} />
-              <div className="w-1 bg-brand-400 rounded-full animate-[bounce_1s_infinite] h-4" style={{ animationDelay: '400ms' }} />
-            </div>
-          ) : (
-            <Volume2 size={20} className={isPlayingLofi && isExpanded ? 'text-white' : ''} />
-          )}
-        </button>
       </div>
     </>
   );

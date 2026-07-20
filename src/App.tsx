@@ -39,6 +39,14 @@ function AppContent() {
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage } = usePageActions();
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
+  
+  const { loadData: loadFocusData } = useFocusContext();
+
+  useEffect(() => {
+    if (isAuth) {
+      loadFocusData();
+    }
+  }, [isAuth, loadFocusData]);
 
   // Lock on inactivity
   useActivityTracker({
