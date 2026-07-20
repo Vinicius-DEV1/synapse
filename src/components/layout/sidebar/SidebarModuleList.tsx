@@ -76,16 +76,20 @@ export function SidebarModuleList({ isCollapsedView, onOpenSettings, onModuleSel
       {/* Settings Button */}
       {isCollapsedView ? (
         <button
-          onClick={onOpenSettings}
-          className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95 mt-auto"
+          onClick={() => handleModuleClick('settings')}
+          className={`p-2 rounded-lg transition-all active:scale-95 mt-auto ${
+            activeModule === 'settings' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+          }`}
           title="Configurações"
         >
           <Settings size={18} />
         </button>
       ) : (
         <button
-          onClick={onOpenSettings}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all mt-2"
+          onClick={() => handleModuleClick('settings')}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mt-2 ${
+            activeModule === 'settings' ? 'bg-brand-500/10 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+          }`}
         >
           <Settings size={16} />
           <span>Configurações</span>

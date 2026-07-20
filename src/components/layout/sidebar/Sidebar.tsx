@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import SettingsModal from '../../SettingsModal';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
 
@@ -12,7 +11,6 @@ interface SidebarProps {
 
 export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
-  const [showSettings, setShowSettings] = useState(false);
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
@@ -58,12 +56,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <div className="mt-auto flex flex-col gap-4">
             <SidebarModuleList 
               isCollapsedView={true} 
-              onOpenSettings={() => setShowSettings(true)} 
             />
           </div>
         </div>
-        
-        {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       </>
     );
   }
@@ -80,6 +75,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       case 'files': return <FolderOpen size={20} className="text-brand-400" />;
       case 'vault': return <Shield size={20} className="text-brand-400" />;
       case 'practice': return <Mic size={20} className="text-brand-400" />;
+      case 'settings': return <Settings size={20} className="text-brand-400" />;
       default: return <Wallet size={20} className="text-brand-400" />;
     }
   };
@@ -96,6 +92,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       case 'files': return 'Arquivos';
       case 'vault': return 'Cofre';
       case 'practice': return 'Prática';
+      case 'settings': return 'Configurações';
       default: return 'Finanças';
     }
   };
@@ -174,6 +171,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Prática de Inglês</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Converse fluentemente com o seu parceiro IA e aperfeiçoe seu idioma.</div>
           </div>
+        ) : activeModule === 'settings' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Painel de Controle</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie a segurança, sincronização e preferências do aplicativo.</div>
+          </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
@@ -208,7 +210,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto max-h-[40vh] custom-scrollbar">
               <SidebarModuleList 
                 isCollapsedView={false} 
-                onOpenSettings={() => setShowSettings(true)} 
                 onModuleSelect={() => {
                   if (window.innerWidth < 768) {
                     dispatch({ type: 'TOGGLE_SIDEBAR' });
@@ -218,8 +219,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             </div>
           )}
         </div>
-
-        {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       </div>
     </>
   );
