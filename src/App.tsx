@@ -19,37 +19,20 @@ import { usePageActions } from './hooks/usePageActions';
 import FloatingPageModal from './components/FloatingPageModal';
 import SyncErrorModal from './components/SyncErrorModal';
 import RenamePageModal from './components/RenamePageModal';
+import { useAppAuth } from './hooks/useAppAuth';
+import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { useAppTitle } from './hooks/useAppTitle';
+import { useGarbageCollection } from './hooks/useGarbageCollection';
 
 function AppContent() {
   const { state, dispatch } = useStore();
-  const [isAuth, setIsAuth] = useState(false);
-  const [authStatus, setAuthStatus] = useState<'new' | 'unencrypted' | 'encrypted' | 'error' | null>(null);
-  const [settings, setSettings] = useState<AppSettings>(getSettings());
-  const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
-  const [renamePageId, setRenamePageId] = useState<string | null>(null);
-  const { loadData: loadFocusData } = useFocusContext();
-  
-  const {
-    handleCreatePage,
-    handleCreateLinkedPage,
-    handleDeletePage,
-    handleUpdatePage,
-    handleUpdateContent
-  } = usePageActions();
+  const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const activeModule = activeTab?.module;
 
-  // Load focus data when authenticated
-  useEffect(() => {
-    if (isAuth) {
-      loadFocusData();
-    }
-  }, [isAuth, loadFocusData]);
-
-  // Listen to settings changes
-  useEffect(() => {
-    const handleSettingsChange = () => setSettings(getSettings());
-    window.addEventListener('app-settings-changed', handleSettingsChange);
-    return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
-  }, []);
+  useAppShortcuts(state.tabs, dispatch);
+  useAppTitle(activeModule, activeTab?.bookTitle);
+  useGarbageCollection(isAuth);
 
   // Lock on inactivity
   useActivityTracker({
@@ -66,43 +49,7 @@ function AppContent() {
     }
   });
 
-  useEffect(() => {
-    if (window.api?.auth) {
-      window.api.auth.status().then((res) => {
-        setAuthStatus(res.status);
-      }).catch((err) => {
-        console.error('Failed to get auth status:', err);
-      });
 
-      const cleanup = window.api.auth.onLock(() => {
-        setIsAuth(false);
-        setAuthStatus('encrypted');
-        dispatch({ type: 'SET_MODULE_KEYS', keys: {} });
-      });
-      
-      // Initialize backend preferences
-      window.api.auth.setPreferences({ autoLockOnSuspend: getSettings().autoLockOnSuspend });
-
-      return cleanup;
-    }
-  }, []);
-
-  // Run Garbage Collector if needed
-  useEffect(() => {
-    if (isAuth) {
-      const lastRunStr = localStorage.getItem('last_gc_run');
-      const lastRun = lastRunStr ? parseInt(lastRunStr, 10) : 0;
-      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-      
-      if (Date.now() - lastRun > SEVEN_DAYS) {
-        import('./services/image-gc').then(m => {
-          m.runImageGarbageCollector().then(() => {
-            localStorage.setItem('last_gc_run', Date.now().toString());
-          });
-        });
-      }
-    }
-  }, [isAuth]);
 
   const loadPages = useCallback(async () => {
     if (window.api) {
@@ -155,9 +102,6 @@ function AppContent() {
     return () => window.removeEventListener('open-floating-page', handler);
   }, []);
 
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
-  const activeModule = activeTab.module;
-
   // Failsafe: If activeTabId is completely detached from the available tabs (e.g. from a broken localStorage state),
   // self-correct to the first available tab so actions like NAVIGATE_IN_TAB don't silently fail.
   useEffect(() => {
@@ -165,46 +109,6 @@ function AppContent() {
       dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[0].id });
     }
   }, [state.tabs, state.activeTabId, dispatch]);
-
-  // Global Keyboard Shortcuts (Alt + 1..9 for tabs)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.code && e.code.startsWith('Digit')) {
-        const num = parseInt(e.code.replace('Digit', ''), 10);
-        if (num >= 1 && num <= 9) {
-          const index = num - 1;
-          if (index >= 0 && index < state.tabs.length) {
-            e.preventDefault();
-            dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id });
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.tabs, dispatch]);
-
-  // Update document title based on active module and platform
-  useEffect(() => {
-    const isDesktopApp = !!(window as any).__TAURI_INTERNALS__;
-    if (isDesktopApp) {
-      document.title = 'Caderno Desktop';
-    } else {
-      if (activeModule === 'notes') {
-        document.title = 'Caderno Web';
-      } else if (activeModule === 'library') {
-        document.title = activeTab?.bookTitle || 'Biblioteca';
-      } else if (activeModule === 'culture') {
-        document.title = 'Cultura';
-      } else if (activeModule === 'finance') {
-        document.title = 'Finanças';
-      } else if (activeModule === 'anki') {
-        document.title = 'Flashcards';
-      } else {
-        document.title = 'Caderno Web';
-      }
-    }
-  }, [activeModule, activeTab?.bookTitle]);
 
   if (authStatus === null) {
     return (
