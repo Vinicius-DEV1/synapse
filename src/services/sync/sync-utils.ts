@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { logFirebaseOp } from './sync-monitor';
 
 export const MODULE_TABLES: Record<string, string[]> = {
   core: ['config', 'ai_prompts'],
@@ -113,6 +114,7 @@ export async function hardResetCloud(): Promise<void> {
   for (const table of allTables) {
     try {
       const snap = await getDocs(collection(db, table));
+      logFirebaseOp('read', snap.docs.length || 1);
       if (snap.empty) continue;
 
       // Dividir em chunks para batch delete
@@ -124,6 +126,7 @@ export async function hardResetCloud(): Promise<void> {
           batch.delete(doc(db, table, d.id));
         }
         await batch.commit();
+        logFirebaseOp('delete', chunk.length);
       }
     } catch (err) {
       console.error(`Erro ao limpar tabela ${table}:`, err);
@@ -138,6 +141,7 @@ export async function hardResetCloud(): Promise<void> {
     configBatch.delete(doc(db, 'config', 'sync_signal'));
     configBatch.delete(doc(db, 'config', 'sync_manifest'));
     await configBatch.commit();
+    logFirebaseOp('delete', 4);
   } catch (err) {}
 }
 
