@@ -107,3 +107,54 @@ pub fn sync_upsert_row(table_name: String, row: Value, db_state: State<'_, DbSta
     
     Ok(true)
 }
+
+/// #3: Busca apenas as rows com IDs específicos de uma tabela.
+/// Muito mais eficiente que sync_get_table quando só precisamos verificar
+/// conflitos contra um subconjunto de docs que vieram da nuvem.
+#[tauri::command]
+pub fn sync_get_rows_by_ids(table_name: String, ids: Vec<String>, db_state: State<'_, DbState>) -> Result<Vec<Value>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    
+    // Validar nome da tabela para evitar SQL injection
+    if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return Err("Invalid table name".into());
+    }
+    
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Construir placeholders parametrizados: SELECT * FROM table WHERE id IN (?, ?, ...)
+    let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
+    let query = format!("SELECT * FROM {} WHERE id IN ({})", table_name, placeholders.join(", "));
+    
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+    
+    let params: Vec<rusqlite::types::Value> = ids.into_iter()
+        .map(|id| rusqlite::types::Value::Text(id))
+        .collect();
+    
+    let iter = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
+        let mut map = serde_json::Map::new();
+        for (i, col) in column_names.iter().enumerate() {
+            let val = row.get_ref(i).unwrap();
+            let json_val = match val {
+                rusqlite::types::ValueRef::Null => Value::Null,
+                rusqlite::types::ValueRef::Integer(i) => Value::Number(i.into()),
+                rusqlite::types::ValueRef::Real(f) => serde_json::Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null),
+                rusqlite::types::ValueRef::Text(t) => Value::String(String::from_utf8_lossy(t).to_string()),
+                rusqlite::types::ValueRef::Blob(_) => Value::Null,
+            };
+            map.insert(col.clone(), json_val);
+        }
+        Ok(Value::Object(map))
+    }).map_err(|e| e.to_string())?;
+    
+    let mut items = Vec::new();
+    for i in iter {
+        if let Ok(item) = i { items.push(item); }
+    }
+    Ok(items)
+}
