@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import 'highlight.js/styles/atom-one-dark.css'
+import { platform } from './services/platform';
 
 async function init() {
   if (!localStorage.getItem('wiped_for_test_1')) {
@@ -13,8 +14,8 @@ async function init() {
 
   if (!window.api) {
     let mockApi;
-    if ((window as any).__TAURI_INTERNALS__) {
-      console.log("Tauri environment detected. Initializing Tauri API Bridge...");
+    if (platform.platform === 'desktop') {
+      console.log("Desktop environment detected. Initializing Tauri API Bridge...");
       const { createTauriApi } = await import('./tauri-api');
       mockApi = await createTauriApi() as any;
     } else {

@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
+import { usePlatform } from './usePlatform';
 
 export function useAppTitle(activeModule: string, bookTitle?: string) {
+  const { useNativeTitleBar } = usePlatform();
+  
   useEffect(() => {
-    const isDesktopApp = !!window.__TAURI_INTERNALS__;
-    if (isDesktopApp) {
+    if (useNativeTitleBar) {
       document.title = 'Caderno Desktop';
     } else {
       if (activeModule === 'notes') {

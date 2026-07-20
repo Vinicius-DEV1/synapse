@@ -3,6 +3,7 @@ import ePub from 'epubjs';
 import { getValidAccessToken, downloadFromDrive } from '../../../services/drive';
 import { decryptFile } from '../../../services/storage';
 import { useStore } from '../../../store/useStore';
+import { platform } from '../../../services/platform';
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
 
@@ -40,8 +41,8 @@ export function useEpubLoader(
         
         let originalAbsPath = '';
         try {
-          // Apenas tenta stream local HTTP se estiver rodando no Tauri (Desktop)
-          if (window.__TAURI_INTERNALS__ && window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
+          // Apenas tenta stream local HTTP se a plataforma suportar acesso ao FileSystem local
+          if (platform.canReadLocalFilesystem && window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
              let absPath = book.file_path;
              if (!absPath.startsWith('file://') && !absPath.match(/^[a-zA-Z]:/)) {
                  const { appDataDir, join } = await import('@tauri-apps/api/path');
