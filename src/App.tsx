@@ -37,6 +37,8 @@ function AppContent() {
   useAppTitle(activeModule, activeTab?.bookTitle);
   useGarbageCollection(isAuth);
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage } = usePageActions();
+  const [renamePageId, setRenamePageId] = useState<string | null>(null);
+  const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
 
   // Lock on inactivity
   useActivityTracker({
