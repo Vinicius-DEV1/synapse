@@ -245,7 +245,7 @@ export default function AiSidebar() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col h-full bg-dark-bg">
+        <div className="flex-1 flex flex-col min-h-0 bg-dark-bg">
           {/* Chat Header */}
           <div className="flex items-center gap-2 p-3 border-b border-white/5 bg-dark-card">
             <button 
