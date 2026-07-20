@@ -24,23 +24,13 @@ const EncryptedImageNodeView = (props: any) => {
       const rect = imgRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      e.dataTransfer.setDragImage(imgRef.current, x, y);
+    }
+  };
 
-      const clone = imgRef.current.cloneNode(true) as HTMLImageElement;
-      clone.style.position = 'absolute';
-      clone.style.top = '-9999px';
-      clone.style.left = '-9999px';
-      clone.style.width = `${rect.width}px`;
-      clone.style.height = `${rect.height}px`;
-      clone.classList.remove('ring-2', 'ring-brand-500');
-      
-      document.body.appendChild(clone);
-      e.dataTransfer.setDragImage(clone, x, y);
-
-      setTimeout(() => {
-        if (document.body.contains(clone)) {
-          document.body.removeChild(clone);
-        }
-      }, 0);
+  const handleClick = (e: React.MouseEvent) => {
+    if (editor && typeof getPos === 'function') {
+      editor.commands.setNodeSelection(getPos());
     }
   };
 
@@ -295,7 +285,10 @@ const EncryptedImageNodeView = (props: any) => {
   // ─── Imagem carregada com sucesso ──────────────────────────────────────────
 
   return (
-    <NodeViewWrapper className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}>
+    <NodeViewWrapper 
+      className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}
+      onDragStart={handleDragStart}
+    >
       <img
         ref={imgRef}
         src={blobUrl!}
@@ -304,10 +297,8 @@ const EncryptedImageNodeView = (props: any) => {
         height={height}
         style={{ width: width ? `${width}px` : 'auto', height: height ? `${height}px` : 'auto', maxWidth: '100%' }}
         className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
-        draggable="true"
-        data-drag-handle
         onDoubleClick={handleDoubleClick}
-        onDragStart={handleDragStart}
+        onClick={handleClick}
       />
 
       {/* Alças de redimensionamento */}
