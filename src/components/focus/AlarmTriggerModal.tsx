@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import type { Alarm } from '../types';
+import { Portal } from '../ui/Portal';
 
 interface AlarmTriggerModalProps {
   alarm: Alarm;
@@ -90,7 +91,8 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
   };
 
   return (
-    <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] overflow-hidden">
+    <Portal>
+      <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] overflow-hidden">
       <div className="bg-dark-card rounded-3xl w-full max-w-sm border border-brand-500/30 shadow-2xl flex flex-col items-center justify-center p-8 relative animate-in zoom-in duration-300">
         <div className="absolute inset-0 bg-brand-500/10 animate-pulse-slow rounded-3xl"></div>
         
@@ -115,6 +117,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
         </button>
       </div>
     </div>
+    </Portal>
   );
 };
 
