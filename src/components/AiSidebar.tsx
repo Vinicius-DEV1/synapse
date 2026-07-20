@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus } from 'lucide-react';
+import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus, Minimize2 } from 'lucide-react';
 import { promptGemini } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -74,6 +74,34 @@ export default function AiSidebar() {
     alert('Texto copiado! Pressione Ctrl+V no editor para inserir.');
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = state.aiSidebarWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = startX - moveEvent.clientX;
+      let newWidth = startWidth + deltaX;
+      
+      if (newWidth < 300) newWidth = 300;
+      if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
+
+      dispatch({ type: 'SET_AI_SIDEBAR_WIDTH', width: newWidth });
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleResetWidth = () => {
+    dispatch({ type: 'SET_AI_SIDEBAR_WIDTH', width: 340 });
+  };
+
   const mdRenderers = {
     p: ({ children }: any) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
     strong: ({ children }: any) => <strong className="font-bold text-brand-300">{children}</strong>,
@@ -100,7 +128,18 @@ export default function AiSidebar() {
   };
 
   return (
-    <div className="w-[340px] bg-dark-card border-l border-white/5 flex flex-col h-full absolute right-0 top-0 z-50 shadow-2xl animate-slide-in-right">
+    <div 
+      className="bg-dark-card border-l border-white/5 flex flex-col h-full absolute right-0 top-0 z-50 shadow-2xl animate-slide-in-right"
+      style={{ width: state.aiSidebarWidth }}
+    >
+      {/* Drag Handle */}
+      <div 
+        className="absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-brand-500 z-50 transition-colors"
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleResetWidth}
+        title="Arraste para redimensionar (Duplo clique para restaurar)"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/5">
         <div className="flex items-center gap-2 text-brand-400 font-medium">
@@ -115,6 +154,15 @@ export default function AiSidebar() {
               title="Novo Chat Rápido"
             >
               <Plus size={18} />
+            </button>
+          )}
+          {state.aiSidebarWidth !== 340 && (
+            <button 
+              onClick={handleResetWidth}
+              className="p-1.5 text-dark-subtext hover:text-brand-400 rounded-lg transition-colors"
+              title="Restaurar largura padrão"
+            >
+              <Minimize2 size={16} />
             </button>
           )}
           <button 

@@ -117,6 +117,8 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, aiChatSessions: {}, activeAiChatId: null };
     case 'TOGGLE_AI_SIDEBAR':
       return { ...state, showAiSidebar: !state.showAiSidebar };
+    case 'SET_AI_SIDEBAR_WIDTH':
+      return { ...state, aiSidebarWidth: action.width };
     case 'OPEN_AI_CHAT':
       return { ...state, showAiSidebar: true, activeAiChatId: action.chatId };
     case 'SET_MODULE_KEYS':
