@@ -1,6 +1,6 @@
 import { Plus, X, FileText, Library, Wallet } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { useMouseDrag } from '../hooks/useMouseDrag';
+import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 
 interface TabItemProps {
   tab: any;
@@ -31,36 +31,34 @@ function TabItem({ tab, index, isActive, page, onSelect, onClose, onDropTab, tab
     icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
   }
 
-  const { handleMouseDown } = useMouseDrag({
-    id: index.toString(),
-    type: 'tab',
-    getGhostContent: () => {
-      const el = document.createElement('div');
-      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-1.5 shadow-xl text-xs font-medium';
-      el.innerHTML = `<span>${title}</span>`;
-      return el;
-    },
-    onDrop: (targetId) => {
-      if (targetId !== null) {
-        const targetIdx = parseInt(targetId, 10);
-        if (!isNaN(targetIdx) && targetIdx !== index) {
-          onDropTab(index, targetIdx);
-        }
-      }
-    }
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `tab-${index}`,
+    data: { type: 'tab', index },
   });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `tab-${index}`,
+    data: { type: 'tab', index },
+  });
+
+  const setNodeRef = (node: HTMLElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  };
 
   return (
     <button
-      data-droppable-type="tab"
-      data-droppable-id={index.toString()}
-      onMouseDown={handleMouseDown}
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       onClick={() => onSelect(tab.id)}
       className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] transition-all ${
+        isOver ? 'ring-1 ring-brand-500' : ''
+      } ${
         isActive
           ? 'bg-dark-bg text-dark-text border-t-2 border-x border-brand-500 border-x-white/5'
           : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-      }`}
+      } ${isDragging ? 'opacity-50' : ''}`}
     >
       {icon}
       <span className="truncate flex-1 text-left">{title}</span>
@@ -104,8 +102,28 @@ export default function TabBar() {
     dispatch({ type: 'REORDER_TABS', sourceIndex, targetIndex });
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (active && over && active.id !== over.id) {
+      if (active.data.current?.type === 'tab' && over.data.current?.type === 'tab') {
+        const sourceIndex = active.data.current.index;
+        const targetIndex = over.data.current.index;
+        handleDropTab(sourceIndex, targetIndex);
+      }
+    }
+  };
+
   return (
-    <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
       {state.tabs.map((tab, index) => {
         const isActive = tab.id === state.activeTabId;
         const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) : null;
@@ -155,5 +173,6 @@ export default function TabBar() {
         )}
       </button>
     </div>
+    </DndContext>
   );
 }
