@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, MessageSquare } from 'lucide-react';
 import { downloadYouTubeAndSync } from '../../services/video-manager';
+import { Portal } from '../ui/Portal';
 
 interface YouTubeDownloadModalProps {
   onClose: () => void;
@@ -136,7 +137,8 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
           <h2 className="text-white font-medium flex items-center gap-2">
@@ -338,5 +340,6 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
