@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, ImageIcon } from 'lucide-react';
 import type { WishlistItem } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface WishlistModalProps {
   initialData?: WishlistItem | null;
@@ -82,7 +83,8 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between p-4 border-b border-white/5">
           <h2 className="text-lg font-semibold text-dark-text">
@@ -194,5 +196,6 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
         </form>
       </div>
     </div>
+    </Portal>
   );
 }
