@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, UploadCloud, File, AlertCircle, Folder, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import type { FileItem, FileFolder } from '../../types_files';
+import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
 

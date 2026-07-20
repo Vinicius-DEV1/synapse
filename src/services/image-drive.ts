@@ -24,7 +24,7 @@ interface CachedImage {
  * No Desktop usa comandos do Tauri; na web usa IndexedDB diretamente.
  */
 function isDesktopApp(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).api && !!(window as any).api.imageCache;
+  return typeof window !== 'undefined' && !!window.api && !!window.api.imageCache;
 }
 
 /**
@@ -35,7 +35,7 @@ export async function getCachedImage(id: string): Promise<CachedImage | undefine
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri para acessar o cache
     try {
-      const cached = await (window as any).api.imageCache.get(id);
+      const cached = await window.api.imageCache.get(id);
       if (cached) {
         return {
           id: cached.id,
@@ -66,7 +66,7 @@ export async function setCachedImage(
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri
     try {
-      await (window as any).api.imageCache.put(id, data, mimeType);
+      await window.api.imageCache.put(id, data, mimeType);
     } catch (e) {
       console.error('Erro ao salvar no cache local via Tauri:', e);
     }

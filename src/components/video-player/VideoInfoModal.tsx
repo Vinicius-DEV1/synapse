@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay } from 'lucide-react';
-import type { VideoItem, TrackItem } from '../../types_video';
+import type { VideoItem, TrackItem } from '../../types';
 
 interface VideoInfoModalProps {
   video: VideoItem;

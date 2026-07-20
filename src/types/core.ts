@@ -1,4 +1,4 @@
-import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry, PasswordGenOptions, BreachCheckResult } from './types_vault';
+import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry, PasswordGenOptions, BreachCheckResult } from './vault';
 
 export interface Page {
   id: string;

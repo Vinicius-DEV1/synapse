@@ -16,7 +16,7 @@ export default function AiSidebar() {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
     if (contextText) {
       setTimeout(() => {
-        (window as any).find(contextText, false, false, true, false, true, false);
+        window.find(contextText, false, false, true, false, true, false);
       }, 300);
     }
   };

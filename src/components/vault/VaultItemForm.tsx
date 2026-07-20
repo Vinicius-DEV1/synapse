@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Save, X, Plus, Trash2, Key, RefreshCw, ShieldAlert, Star, ShieldCheck } from 'lucide-react';
-import type { VaultItem, VaultGroup, VaultCustomField } from '../../types_vault';
+import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 
 interface VaultItemFormProps {

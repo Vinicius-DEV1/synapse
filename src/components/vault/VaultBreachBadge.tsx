@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
-import type { BreachCheckResult } from '../../types_vault';
+import type { BreachCheckResult } from '../../types';
 
 export function VaultBreachBadge({ password }: { password?: string | null }) {
   const [result, setResult] = useState<BreachCheckResult | null>(null);

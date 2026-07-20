@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { History, Copy, Check } from 'lucide-react';
-import type { VaultPasswordHistoryEntry } from '../../types_vault';
+import type { VaultPasswordHistoryEntry } from '../../types';
 
 export function VaultPasswordHistory({ itemId }: { itemId: string }) {
   const [history, setHistory] = useState<VaultPasswordHistoryEntry[]>([]);

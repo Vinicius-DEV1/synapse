@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
-import type { VaultItem, BreachCheckResult } from '../../types_vault';
+import type { VaultItem, BreachCheckResult } from '../../types';
 
 interface VaultSecurityDashboardProps {
   items: VaultItem[];

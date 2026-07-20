@@ -248,7 +248,7 @@ export function useEpubLoader(
                handleEpubClick();
                return;
              }
-              const lastHlClick = Math.max(globalLastHighlightClickRef.current, (window as any).__lastHighlightClick || 0);
+              const lastHlClick = Math.max(globalLastHighlightClickRef.current, window.__lastHighlightClick || 0);
               if (Date.now() - lastHlClick < 500) {
                 return;
               }
@@ -256,7 +256,7 @@ export function useEpubLoader(
              clearSelectionTimerRef.current = setTimeout(() => {
                clearSelectionTimerRef.current = null;
                
-               const finalLastHlClick = Math.max(globalLastHighlightClickRef.current, (window as any).__lastHighlightClick || 0);
+               const finalLastHlClick = Math.max(globalLastHighlightClickRef.current, window.__lastHighlightClick || 0);
                if (Date.now() - finalLastHlClick < 500) {
                  return; 
                }

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { VideoItem } from '../../types_video';
+import type { VideoItem } from '../../types';
 import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, Folder, ArrowLeft, Info, FolderPlus, Pencil, FolderInput } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import VideoInfoModal from './VideoInfoModal';

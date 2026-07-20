@@ -39,7 +39,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
 
   const playTestSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
       

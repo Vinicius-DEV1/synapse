@@ -114,7 +114,7 @@ export const PdfPage = React.memo(({
           }));
         } else {
           // No text layer, try OCR
-          const cache = await (window as any).api.library.getOcrCache(bookId, pageNum);
+          const cache = await window.api.library.getOcrCache(bookId, pageNum);
           if (cache) {
             const rawWords = JSON.parse(cache.word_boxes);
             const isNormalized = rawWords[0]?.isNormalized;
@@ -169,7 +169,7 @@ export const PdfPage = React.memo(({
                 }));
                 
                 setTextItems(scaledWords);
-                await (window as any).api.library.saveOcrCache({
+                await window.api.library.saveOcrCache({
                   book_id: bookId,
                   page_number: pageNum,
                   text_content: result.data.text,

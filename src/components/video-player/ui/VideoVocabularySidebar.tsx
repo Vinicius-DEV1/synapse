@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen, X, Trash2, Sparkles } from 'lucide-react';
-import type { VideoItem } from '../../../types_video';
+import type { VideoItem } from '../../../types';
 
 interface VideoVocabularySidebarProps {
   video: VideoItem;

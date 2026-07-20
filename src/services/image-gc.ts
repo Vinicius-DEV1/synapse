@@ -2,7 +2,7 @@ import { getValidAccessToken, listFiles, deleteFromDrive, getOrCreatePhotosFolde
 import { getWebDb } from './db-web';
 function isDesktopApp(): boolean {
   return navigator.userAgent.toLowerCase().includes('Desktop') || 
-         (typeof window !== 'undefined' && !!(window as any).api);
+         (typeof window !== 'undefined' && !!window.api);
 }
 
 /**

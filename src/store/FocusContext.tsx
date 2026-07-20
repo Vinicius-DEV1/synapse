@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import type { Session, Alarm } from '../components/focus/types';
-import type { LofiItem } from '../types_lofi';
+import type { LofiItem } from '../types';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi';
 
@@ -102,7 +102,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
     if (!isSoundEnabled) return;
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
       

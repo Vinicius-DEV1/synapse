@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, File, Image as ImageIcon, Film, FileText, FileArchive, Folder } from 'lucide-react';
-import type { FileItem, FileFolder } from '../../types_files';
+import type { FileItem, FileFolder } from '../../types';
 
 interface FileSelectModalProps {
   onClose: () => void;

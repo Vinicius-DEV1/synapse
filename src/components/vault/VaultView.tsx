@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, ShieldCheck, Plus, Folder, Search, Key, ShieldAlert, Star, Lock, Eye, EyeOff, Check, Copy, ExternalLink, Settings2, History, Trash2, Clock, Smartphone, GripVertical, MoreVertical, Edit2 } from 'lucide-react';
-import type { VaultGroup, VaultItem } from '../../types_vault';
+import type { VaultGroup, VaultItem } from '../../types';
 import { VaultItemForm } from './VaultItemForm';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';

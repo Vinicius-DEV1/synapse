@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, File, Calendar, HardDrive, Type, Share2, Tag } from 'lucide-react';
-import type { FileItem, FilePageLink } from '../../types_files';
+import type { FileItem, FilePageLink } from '../../types';
 
 interface FileInfoModalProps {
   item: FileItem;

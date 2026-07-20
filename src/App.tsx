@@ -79,7 +79,7 @@ function AppContent() {
   // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
   // (handlers do ProseMirror não têm acesso ao contexto React)
   useEffect(() => {
-    (window as any).__cadernoModuleKeys = state.moduleKeys;
+    window.__cadernoModuleKeys = state.moduleKeys;
   }, [state.moduleKeys]);
 
   // Close context menu on click outside
@@ -136,7 +136,7 @@ function AppContent() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Tab Bar - Show if enabled in settings for current platform */}
         {!state.isReadingModeFullScreen && 
-         ((window as any).__TAURI_INTERNALS__ ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
+         (window.__TAURI_INTERNALS__ ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">

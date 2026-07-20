@@ -1,6 +1,6 @@
 import { getValidAccessToken, downloadFromDrive } from '../services/drive';
 import { decryptFile } from '../services/storage';
-import type { FileItem } from '../types_files';
+import type { FileItem } from '../types';
 
 export async function getDecryptedFileUrl(
   item: FileItem, 
@@ -8,8 +8,8 @@ export async function getDecryptedFileUrl(
 ): Promise<string | null> {
   let url = '';
 
-  if (item.local_path && typeof window !== 'undefined' && (window as any).api?.files) {
-    url = await (window as any).api.files.getLocal(item.local_path) || '';
+  if (item.local_path && typeof window !== 'undefined' && window.api?.files) {
+    url = await window.api.files.getLocal(item.local_path) || '';
   }
 
   if (!url && item.drive_file_id) {

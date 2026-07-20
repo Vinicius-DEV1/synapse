@@ -1,5 +1,5 @@
 import { getValidAccessToken, getOrCreateAppFolder, uploadToDrive, downloadFromDrive } from './drive';
-import type { VideoItem } from '../types_video';
+import type { VideoItem } from '../types';
 
 // Tabela sincronizada que vai guardar os metadados dos vídeos
 const VIDEO_TABLE = 'videos';
@@ -104,7 +104,7 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): 
 }
 
 import type { UploadOptions } from '../components/video-player/VideoUploadModal';
-import type { TrackItem } from '../types_video';
+import type { TrackItem } from '../types';
 
 /**
  * Helper to upload a local file to Drive via fetch

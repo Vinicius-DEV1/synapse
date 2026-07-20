@@ -153,13 +153,13 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             imagePasted = true;
             const file = item.getAsFile();
             if (file && editor) {
-              const masterKey = (window as any).__cadernoModuleKeys?.['notes'];
+              const masterKey = window.__cadernoModuleKeys?.['notes'];
               if (masterKey) {
                 const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-                if (!(window as any).__pendingImageUploads) {
-                  (window as any).__pendingImageUploads = new Map();
+                if (!window.__pendingImageUploads) {
+                  window.__pendingImageUploads = new Map();
                 }
-                (window as any).__pendingImageUploads.set(tempId, file);
+                window.__pendingImageUploads.set(tempId, file);
                 file.arrayBuffer().then(buffer => {
                   setCachedImage(tempId, buffer, file.type).catch(console.error);
                 }).catch(console.error);

@@ -41,7 +41,7 @@ const EncryptedImageNodeView = (props: any) => {
     try {
       // Se for um upload recém-colado
       if (driveFileId.startsWith('uploading_')) {
-        let file = (window as any).__pendingImageUploads?.get(driveFileId);
+        let file = window.__pendingImageUploads?.get(driveFileId);
         
         // Se a página foi recarregada e perdemos o file da memória,
         // tentamos recuperar do cache local!
@@ -58,8 +58,8 @@ const EncryptedImageNodeView = (props: any) => {
 
         if (file) {
           const realDriveId = await uploadEncryptedImage(file, masterKey);
-          if ((window as any).__pendingImageUploads) {
-            (window as any).__pendingImageUploads.delete(driveFileId);
+          if (window.__pendingImageUploads) {
+            window.__pendingImageUploads.delete(driveFileId);
           }
           // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
           updateAttributes({ driveFileId: realDriveId });

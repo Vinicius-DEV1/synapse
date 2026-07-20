@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 export function useAppTitle(activeModule: string, bookTitle?: string) {
   useEffect(() => {
-    const isDesktopApp = !!(window as any).__TAURI_INTERNALS__;
+    const isDesktopApp = !!window.__TAURI_INTERNALS__;
     if (isDesktopApp) {
       document.title = 'Caderno Desktop';
     } else {
