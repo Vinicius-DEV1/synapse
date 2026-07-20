@@ -36,7 +36,7 @@ function AppContent() {
   useAppShortcuts(state.tabs, dispatch);
   useAppTitle(activeModule, activeTab?.bookTitle);
   useGarbageCollection(isAuth);
-  const { handleCreatePage, handleUpdatePage, handleDeletePage } = usePageActions();
+  const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage } = usePageActions();
 
   // Lock on inactivity
   useActivityTracker({
