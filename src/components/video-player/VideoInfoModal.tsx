@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface VideoInfoModalProps {
   video: VideoItem;
@@ -36,7 +37,8 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
   } catch(e) {}
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
           <h2 className="text-white font-medium flex items-center gap-2">
@@ -200,5 +202,6 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
