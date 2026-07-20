@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, X, DatabaseBackup } from 'lucide-react';
+import { Portal } from './ui/Portal';
 
 export default function SyncErrorModal() {
   const [errorDetails, setErrorDetails] = useState<{ message: string; isQuota: boolean } | null>(null);
@@ -28,7 +29,8 @@ export default function SyncErrorModal() {
   if (!errorDetails) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <Portal>
+      <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-[#1C1C1F] border border-red-500/30 rounded-2xl shadow-[0_0_50px_rgba(239,68,68,0.15)] w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="bg-red-500/10 p-6 flex flex-col items-center text-center border-b border-red-500/20">
           <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
@@ -66,5 +68,6 @@ export default function SyncErrorModal() {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -3,6 +3,7 @@ import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import getCroppedImg from '../utils/cropImage';
 import { X, Save, ZoomIn, ZoomOut, Scissors } from 'lucide-react';
+import { Portal } from './ui/Portal';
 
 interface ImageViewerModalProps {
   isOpen: boolean;
@@ -67,7 +68,8 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-fade-in backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 animate-fade-in backdrop-blur-sm">
       <div className="absolute top-0 w-full p-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-20">
         <h2 className="text-white font-medium text-lg ml-4">
           {mode === 'view' ? 'Visualizador de Imagem' : 'Cortar Imagem'}
@@ -154,5 +156,6 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
         <span className="text-white/40 text-xs min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
       </div>
     </div>
+    </Portal>
   );
 }

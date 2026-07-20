@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Maximize2, X } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import PageView from './page-view/PageView';
+import { Portal } from './ui/Portal';
 
 interface FloatingPageModalProps {
   pageId: string;
@@ -44,7 +45,8 @@ export default function FloatingPageModal({
   if (!page) return null;
 
   return (
-    <div 
+    <Portal>
+      <div 
       className="fixed inset-0 z-[99999] bg-dark-bg/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-fade-in"
       onClick={handleBackdropClick}
     >
@@ -82,5 +84,6 @@ export default function FloatingPageModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
