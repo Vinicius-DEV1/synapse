@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus } from 'lucide-react';
 import { promptGemini } from '../services/gemini';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function AiSidebar() {
   const { state, dispatch } = useStore();
@@ -70,6 +72,31 @@ export default function AiSidebar() {
     handleNavigate(activeSession.pageId);
     navigator.clipboard.writeText(text);
     alert('Texto copiado! Pressione Ctrl+V no editor para inserir.');
+  };
+
+  const mdRenderers = {
+    p: ({ children }: any) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
+    strong: ({ children }: any) => <strong className="font-bold text-brand-300">{children}</strong>,
+    em: ({ children }: any) => <em className="italic">{children}</em>,
+    h1: ({ children }: any) => <h1 className="text-lg font-bold mb-2 text-white">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-md font-bold mb-2 text-white">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-sm font-bold mb-2 text-white">{children}</h3>,
+    ul: ({ children }: any) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+    ol: ({ children }: any) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+    li: ({ children }: any) => <li>{children}</li>,
+    blockquote: ({ children }: any) => <blockquote className="border-l-2 border-brand-500 pl-3 my-2 text-brand-50/80 italic">{children}</blockquote>,
+    code: ({ node, inline, className, children, ...props }: any) => {
+      const match = /language-(\w+)/.exec(className || '');
+      return inline ? (
+        <code className="bg-white/10 px-1 py-0.5 rounded text-brand-300 text-xs font-mono" {...props}>{children}</code>
+      ) : (
+        <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto mb-2 custom-scrollbar">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      );
+    }
   };
 
   return (
@@ -237,11 +264,21 @@ export default function AiSidebar() {
                             </div>
                           );
                         } catch (e) {
-                          return <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>;
+                          return (
+                            <div className="text-sm">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdRenderers}>
+                                {textContent}
+                              </ReactMarkdown>
+                            </div>
+                          );
                         }
                       })()
                     ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
+                      <div className="text-sm">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdRenderers}>
+                          {textContent}
+                        </ReactMarkdown>
+                      </div>
                     )}
                   </div>
                   {!isUser && (
