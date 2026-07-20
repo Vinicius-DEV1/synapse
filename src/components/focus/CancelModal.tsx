@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 
 interface CancelModalProps {
   onSave: (justification: string) => void;
@@ -15,7 +16,8 @@ const CancelModal: React.FC<CancelModalProps> = ({ onSave }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-dark-bg/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden">
+    <Portal>
+      <div className="absolute inset-0 bg-dark-bg/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden">
       <div className="bg-dark-card rounded-3xl w-full max-w-md border border-rose-500/30 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200">
         <div className="p-5 sm:p-6 border-b border-rose-500/10 flex items-center gap-3 bg-rose-500/5 sticky top-0 z-10 backdrop-blur-md">
           <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
@@ -52,6 +54,7 @@ const CancelModal: React.FC<CancelModalProps> = ({ onSave }) => {
         </form>
       </div>
     </div>
+    </Portal>
   );
 };
 

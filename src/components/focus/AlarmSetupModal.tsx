@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, X } from 'lucide-react';
 import type { Alarm } from '../types';
+import { Portal } from '../ui/Portal';
 
 interface AlarmSetupModalProps {
   onSave: (alarm: Alarm) => void;
@@ -24,7 +25,8 @@ const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, ini
   };
 
   return (
-    <div className="absolute inset-0 bg-dark-bg/90 backdrop-blur-sm flex flex-col z-50 animate-in fade-in duration-200">
+    <Portal>
+      <div className="absolute inset-0 bg-dark-bg/90 backdrop-blur-sm flex flex-col z-50 animate-in fade-in duration-200">
       <div className="flex-1 overflow-y-auto w-full max-w-2xl mx-auto p-4 sm:p-6 pb-32">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3 tracking-tight">
@@ -76,6 +78,7 @@ const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, ini
         </form>
       </div>
     </div>
+    </Portal>
   );
 };
 

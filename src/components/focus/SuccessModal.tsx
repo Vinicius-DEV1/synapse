@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Music } from 'lucide-react';
 
 import type { Session } from '../types';
+import { Portal } from '../ui/Portal';
 
 interface SuccessModalProps {
   onSave: (summary: string) => void;
@@ -111,7 +112,8 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
   };
 
   return (
-    <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden">
+    <Portal>
+      <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden">
       <div className="bg-dark-card rounded-3xl w-full max-w-md border border-emerald-500/30 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-300">
         <div className="p-6 sm:p-8 flex flex-col items-center justify-center bg-gradient-to-b from-emerald-500/20 to-transparent relative overflow-hidden sticky top-0 z-10 backdrop-blur-md">
           {/* Confetti / Glow effect */}
@@ -200,6 +202,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
         </form>
       </div>
     </div>
+    </Portal>
   );
 };
 

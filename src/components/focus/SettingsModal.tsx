@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, Volume2, VolumeX, AlertTriangle } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -67,7 +68,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
   };
 
   return (
-    <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden">
+    <Portal>
+      <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden">
       <div className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200">
         <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -166,6 +168,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 
