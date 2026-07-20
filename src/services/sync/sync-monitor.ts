@@ -5,7 +5,17 @@ export interface SyncStats {
   reads: number;
   writes: number;
   deletes: number;
-  hourly?: Record<string, { reads: number; writes: number; deletes: number }>;
+  bytesDownloaded?: number;
+  bytesUploaded?: number;
+  hourly?: Record<string, { reads: number; writes: number; deletes: number; bytesDownloaded?: number; bytesUploaded?: number }>;
+}
+
+export interface SyncEventLog {
+  id: string;
+  timestamp: string;
+  type: 'push' | 'pull' | 'error' | 'info';
+  message: string;
+  bytes?: number;
 }
 
 function getTodayKey(): string {
@@ -47,6 +57,73 @@ export function logFirebaseOp(type: FirebaseOpType, count: number): void {
   localStorage.setItem(key, JSON.stringify(stats));
 
   checkBurnRate(type, count);
+}
+
+export function logFirebaseTraffic(bytesDown: number, bytesUp: number): void {
+  if (bytesDown <= 0 && bytesUp <= 0) return;
+  const key = getTodayKey();
+  let stats: SyncStats;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      stats = JSON.parse(raw);
+    } else {
+      stats = { date: key, reads: 0, writes: 0, deletes: 0, bytesDownloaded: 0, bytesUploaded: 0, hourly: {} };
+    }
+  } catch {
+    stats = { date: key, reads: 0, writes: 0, deletes: 0, bytesDownloaded: 0, bytesUploaded: 0, hourly: {} };
+  }
+
+  if (!stats.bytesDownloaded) stats.bytesDownloaded = 0;
+  if (!stats.bytesUploaded) stats.bytesUploaded = 0;
+  
+  if (!stats.hourly) stats.hourly = {};
+  const hour = new Date().getHours().toString();
+  if (!stats.hourly[hour]) {
+    stats.hourly[hour] = { reads: 0, writes: 0, deletes: 0, bytesDownloaded: 0, bytesUploaded: 0 };
+  }
+  if (!stats.hourly[hour].bytesDownloaded) stats.hourly[hour].bytesDownloaded = 0;
+  if (!stats.hourly[hour].bytesUploaded) stats.hourly[hour].bytesUploaded = 0;
+
+  stats.bytesDownloaded += bytesDown;
+  stats.bytesUploaded += bytesUp;
+  stats.hourly[hour].bytesDownloaded! += bytesDown;
+  stats.hourly[hour].bytesUploaded! += bytesUp;
+
+  localStorage.setItem(key, JSON.stringify(stats));
+}
+
+export function logSyncEvent(type: SyncEventLog['type'], message: string, bytes?: number): void {
+  try {
+    const raw = localStorage.getItem('caderno_sync_events');
+    let logs: SyncEventLog[] = raw ? JSON.parse(raw) : [];
+    
+    logs.unshift({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      type,
+      message,
+      bytes
+    });
+
+    // Limit to 50 items
+    if (logs.length > 50) {
+      logs = logs.slice(0, 50);
+    }
+
+    localStorage.setItem('caderno_sync_events', JSON.stringify(logs));
+    window.dispatchEvent(new CustomEvent('caderno-sync-events-updated'));
+  } catch (err) {
+    console.error('Failed to log sync event', err);
+  }
+}
+
+export function getSyncEvents(): SyncEventLog[] {
+  try {
+    const raw = localStorage.getItem('caderno_sync_events');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
 }
 
 let burnAccumulator = {

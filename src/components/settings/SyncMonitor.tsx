@@ -1,27 +1,43 @@
 import { useEffect, useState } from 'react';
-import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop } from '../../services/sync/sync-monitor';
-import type { SyncStats } from '../../services/sync/sync-monitor';
-import { Database, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop, getSyncEvents } from '../../services/sync/sync-monitor';
+import type { SyncStats, SyncEventLog } from '../../services/sync/sync-monitor';
+import { Database, AlertTriangle, RefreshCw, CheckCircle2, ArrowDownToLine, ArrowUpFromLine, Terminal } from 'lucide-react';
 
 export default function SyncMonitor() {
   const [today, setToday] = useState<SyncStats | null>(null);
   const [week, setWeek] = useState<SyncStats[]>([]);
+  const [events, setEvents] = useState<SyncEventLog[]>([]);
   const [emergency, setEmergency] = useState(false);
 
   const DAILY_READ_QUOTA = 50000;
   const DAILY_WRITE_QUOTA = 20000;
+  
+  const formatBytes = (bytes?: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const loadStats = () => {
     setToday(getTodayStats());
     setWeek(getWeeklyStats());
     setEmergency(isEmergencyStopped());
+    setEvents(getSyncEvents());
   };
 
   useEffect(() => {
     loadStats();
     // Auto-refresh
     const interval = setInterval(loadStats, 5000);
-    return () => clearInterval(interval);
+    const handleEventsUpdated = () => setEvents(getSyncEvents());
+    window.addEventListener('caderno-sync-events-updated', handleEventsUpdated);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('caderno-sync-events-updated', handleEventsUpdated);
+    };
   }, []);
 
   if (!today) return null;
@@ -109,6 +125,28 @@ export default function SyncMonitor() {
         </div>
       </div>
 
+      {/* Tráfego de Rede */}
+      <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <ArrowDownToLine size={20} />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-white/70">Baixado (Pull)</div>
+            <div className="text-xl font-bold">{formatBytes(today.bytesDownloaded)}</div>
+          </div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
+            <ArrowUpFromLine size={20} />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-white/70">Enviado (Push)</div>
+            <div className="text-xl font-bold">{formatBytes(today.bytesUploaded)}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Gráfico por Hora (Hoje) */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-6 flex items-center gap-2">
@@ -136,8 +174,8 @@ export default function SyncMonitor() {
                 {total > 0 && (
                   <div className="absolute bottom-full mb-4 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-xs opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl transition-opacity">
                     <div className="font-bold text-white/90 mb-1">{h}:00 às {h}:59</div>
-                    <div className="text-blue-400">{reads.toLocaleString()} leituras</div>
-                    <div className="text-orange-400">{writes.toLocaleString()} escritas</div>
+                    <div className="text-blue-400 mb-0.5">{reads.toLocaleString()} leituras <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesDownloaded)})</span></div>
+                    <div className="text-orange-400">{writes.toLocaleString()} escritas <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesUploaded)})</span></div>
                   </div>
                 )}
               </div>
@@ -178,6 +216,39 @@ export default function SyncMonitor() {
       <div className="text-xs text-white/40 mt-4 flex items-start gap-2">
         <AlertTriangle size={14} className="shrink-0 mt-0.5" />
         <p>Estes valores são estimativas baseadas nas operações enviadas e recebidas pelo aplicativo localmente. O consumo real computado pelo Google Cloud no Firebase pode ter uma pequena variação.</p>
+      </div>
+
+      {/* Sync Logs Console */}
+      <div className="bg-[#0f111a] border border-white/10 rounded-xl overflow-hidden mt-6 flex flex-col">
+        <div className="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-sm font-medium text-white/70 flex items-center gap-2">
+            <Terminal size={14} />
+            Console de Eventos (Logs)
+          </h3>
+          <span className="text-xs text-white/40 font-mono">caderno-sync-daemon v1.0</span>
+        </div>
+        <div className="p-4 overflow-y-auto font-mono text-xs max-h-64 space-y-1.5 custom-scrollbar">
+          {events.length === 0 ? (
+            <div className="text-white/30 italic">Nenhum evento registrado ainda.</div>
+          ) : (
+            events.map(ev => {
+              const time = new Date(ev.timestamp).toLocaleTimeString([], { hour12: false });
+              let color = 'text-white/60';
+              let icon = 'ℹ️';
+              if (ev.type === 'error') { color = 'text-red-400'; icon = '❌'; }
+              else if (ev.type === 'push') { color = 'text-orange-300'; icon = '⬆️'; }
+              else if (ev.type === 'pull') { color = 'text-blue-300'; icon = '☁️'; }
+
+              return (
+                <div key={ev.id} className="flex items-start gap-3 hover:bg-white/5 px-2 py-1 -mx-2 rounded transition-colors">
+                  <span className="text-white/30 shrink-0">[{time}]</span>
+                  <span className="shrink-0">{icon}</span>
+                  <span className={`${color} break-all`}>{ev.message}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

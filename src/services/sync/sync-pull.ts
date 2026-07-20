@@ -2,7 +2,7 @@ import { db } from '../firebase';
 import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
-import { logFirebaseOp, isEmergencyStopped } from './sync-monitor';
+import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 
 /** Tamanho do batch de decriptação paralela */
 const DECRYPT_BATCH_SIZE = 20;
@@ -91,6 +91,13 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           
           const querySnapshot = await getDocs(q);
           logFirebaseOp('read', querySnapshot.docs.length || 1);
+          
+          let chunkBytes = 0;
+          querySnapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            chunkBytes += docSnap.id.length + (data.encryptedData?.length || 0) + 150;
+          });
+          logFirebaseTraffic(chunkBytes, 0);
           
           if (querySnapshot.empty) {
             hasMore = false;
@@ -273,12 +280,17 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         const msg = `PULL erro tabela ${table}: ${err?.message}\nStack: ${err?.stack}`;
         console.error(msg);
         (window.api as any).log?.(msg);
+        logSyncEvent('error', `Falha ao sincronizar ${table}: ${err?.message}`);
       }
     }
   }
 
   if (highestCloudTime > lastPull) {
     setLastSyncTime('pull', highestCloudTime);
+  }
+
+  if (pulledDocsCount > 0 || skippedDocsCount > 0) {
+    logSyncEvent('pull', `Sincronização (Download) concluída: ${pulledDocsCount} novos, ${skippedDocsCount} ignorados.`);
   }
 }
 
