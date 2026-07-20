@@ -285,10 +285,7 @@ const EncryptedImageNodeView = (props: any) => {
   // ─── Imagem carregada com sucesso ──────────────────────────────────────────
 
   return (
-    <NodeViewWrapper 
-      className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}
-      onDragStart={handleDragStart}
-    >
+    <NodeViewWrapper className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}>
       <img
         ref={imgRef}
         src={blobUrl!}
@@ -297,6 +294,9 @@ const EncryptedImageNodeView = (props: any) => {
         height={height}
         style={{ width: width ? `${width}px` : 'auto', height: height ? `${height}px` : 'auto', maxWidth: '100%' }}
         className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
+        draggable="true"
+        data-drag-handle
+        onDragStart={handleDragStart}
         onDoubleClick={handleDoubleClick}
         onClick={handleClick}
       />

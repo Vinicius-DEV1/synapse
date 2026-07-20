@@ -90,10 +90,7 @@ const ResizableImageNodeView = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper 
-      className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}
-      onDragStart={handleDragStart}
-    >
+    <NodeViewWrapper className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}>
       <img
         ref={imgRef}
         src={node.attrs.src}
@@ -103,6 +100,9 @@ const ResizableImageNodeView = (props: any) => {
         height={node.attrs.height}
         style={{ width: node.attrs.width ? `${node.attrs.width}px` : 'auto', height: node.attrs.height ? `${node.attrs.height}px` : 'auto', maxWidth: '100%' }}
         className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
+        draggable="true"
+        data-drag-handle
+        onDragStart={handleDragStart}
         onDoubleClick={handleDoubleClick}
         onClick={handleClick}
       />
