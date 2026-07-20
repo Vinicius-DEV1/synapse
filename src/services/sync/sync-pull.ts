@@ -2,6 +2,7 @@ import { db } from '../firebase';
 import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
+import { logFirebaseOp, isEmergencyStopped } from './sync-monitor';
 
 /** Tamanho do batch de decriptação paralela */
 const DECRYPT_BATCH_SIZE = 20;
@@ -9,6 +10,10 @@ const DECRYPT_BATCH_SIZE = 20;
 export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) {
     console.error("Sync API não exposta no preload.");
+    return;
+  }
+  if (isEmergencyStopped()) {
+    console.warn('[Sync PULL] Bloqueado por medida de segurança (Emergency Stop).');
     return;
   }
 
@@ -27,6 +32,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   if (lastPull > 0) {
     try {
       const manifestSnap = await getDoc(doc(db, 'config', 'sync_manifest'));
+      logFirebaseOp('read', 1);
       if (manifestSnap.exists()) {
         manifest = manifestSnap.data() as Record<string, string>;
       }
@@ -56,6 +62,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             if (tableLastUpdate <= lastPull) {
               continue; // Nenhuma mudança nesta tabela desde o último pull
             }
+          } else if (lastPull > 0) {
+            // Se a tabela NÃO está no manifest e não é o primeiro pull, ela não tem dados novos.
+            continue;
           }
         }
 
@@ -81,6 +90,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           }
           
           const querySnapshot = await getDocs(q);
+          logFirebaseOp('read', querySnapshot.docs.length || 1);
+          
           if (querySnapshot.empty) {
             hasMore = false;
             break;
@@ -278,6 +289,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 export function listenForCloudSyncSignal(onSignal: (deviceId?: string) => void) {
   const signalRef = doc(db, 'config', 'sync_signal');
   return onSnapshot(signalRef, (docSnap) => {
+    logFirebaseOp('read', 1);
     if (docSnap.exists()) {
       const data = docSnap.data();
       onSignal(data?.deviceId);
