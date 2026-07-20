@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getTodayStats, getWeeklyStats, SyncStats, isEmergencyStopped, clearEmergencyStop } from '../../services/sync/sync-monitor';
+import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop } from '../../services/sync/sync-monitor';
+import type { SyncStats } from '../../services/sync/sync-monitor';
 import { Database, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 export default function SyncMonitor() {
