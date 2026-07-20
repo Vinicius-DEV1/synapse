@@ -53,19 +53,14 @@ export async function hardResetCloud(): Promise<void> {
     try {
       const snap = await getDocs(collection(db, table));
       for (const d of snap.docs) {
-        if (table === 'config' && (d.id === 'auth_validator' || d.id === 'module_keys' || d.id === 'sync_signal')) {
-          await deleteDoc(doc(db, table, d.id));
-          continue;
-        }
         await deleteDoc(doc(db, table, d.id));
       }
-      // console.log(`Tabela \${table} limpa na nuvem.`);
     } catch (err) {
-      console.error(`Erro ao limpar tabela \${table}:`, err);
+      console.error(`Erro ao limpar tabela ${table}:`, err);
     }
   }
   
-  // Limpar os docs fixos de config explicitamente (para garantir que a nuvem fique 100% virgem)
+  // Limpar os docs fixos de config que podem não estar no getDocs (edge case de cache)
   try {
     await deleteDoc(doc(db, 'config', 'auth_validator'));
     await deleteDoc(doc(db, 'config', 'module_keys'));
