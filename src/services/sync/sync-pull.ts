@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { decryptText } from '../crypto';
-import { onSnapshot, query, where, collection, doc, getDocs, limit, startAfter } from 'firebase/firestore';
+import { onSnapshot, query, where, collection, doc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 
 export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
@@ -28,7 +28,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         let qBase = collection(db, table) as any;
         if (lastPull > 0) {
           const lastPullIso = new Date(lastPull).toISOString();
-          qBase = query(collection(db, table), where('updatedAt', '>', lastPullIso));
+          qBase = query(collection(db, table), where('updatedAt', '>', lastPullIso), orderBy('updatedAt'));
         }
 
         let hasMore = true;
@@ -131,26 +131,24 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                     skippedDocsCount++;
                     if (typeof window !== 'undefined' && (window as any).api?.log) {
                       (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
-                      (window as any).api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
                     }
                     continue;
                   }
                 }
 
                 try {
-                  // Proteção contra race condition: re-ler o timestamp local ANTES do upsert
-                  // para evitar sobrescrever dados que foram salvos enquanto o sync rodava
-                  try {
-                    const freshRows = await window.api.sync.getTable(table);
-                    const freshRow = freshRows.find((r: any) => r.id === docSnap.id);
-                    if (freshRow) {
-                      const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
-                      if (freshTime > cloudTime) {
-                        skippedDocsCount++;
-                        continue;
-                      }
+                  // Proteção contra race condition: usar mapa local atualizado
+                  // para verificar se o usuario editou enquanto o sync rodava.
+                  // Relemos a tabela inteira UMA VEZ por chunk (fora do loop de docs)
+                  // em vez de N vezes (uma por doc) que era o comportamento anterior.
+                  const freshRow = localMap.get(docSnap.id);
+                  if (freshRow) {
+                    const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
+                    if (freshTime > cloudTime) {
+                      skippedDocsCount++;
+                      continue;
                     }
-                  } catch (e) { /* proceed if re-read fails */ }
+                  }
 
                   pulledDocsCount++;
                   try {
