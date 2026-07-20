@@ -1,31 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, Pin, Plus } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from '../../SidebarItem';
-import { useMouseDrag } from '../../../hooks/useMouseDrag';
+import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDraggable, useDroppable } from '@dnd-kit/core';
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 
-function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index, onDropPinned }: any) {
-  const { handleMouseDown } = useMouseDrag({
-    id: page.id,
-    type: 'pinned-page',
-    getGhostContent: () => {
-      const el = document.createElement('div');
-      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium';
-      el.innerHTML = `<span>${page.icon || '📄'}</span><span>${page.title}</span>`;
-      return el;
-    },
-    onDrop: (targetId) => {
-      if (targetId) {
-        onDropPinned(page.id, targetId);
-      }
-    }
+function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index }: any) {
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `pinned-${page.id}`,
+    data: { type: 'pinned', page },
   });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `pinned-${page.id}`,
+    data: { type: 'pinned', page },
+  });
+
+  const setNodeRef = (node: HTMLElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  };
 
   return (
     <div
-      data-droppable-type="pinned-page"
-      data-droppable-id={page.id}
-      onMouseDownCapture={handleMouseDown}
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`transition-all ${isOver ? 'ring-1 ring-brand-500 rounded-lg' : ''} ${isDragging ? 'opacity-50' : ''}`}
     >
       <SidebarItem
         page={page}
@@ -36,6 +37,18 @@ function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index,
         isSearchResult={false}
         disableHierarchyDnD={true}
       />
+    </div>
+  );
+}
+
+function RootDroppable({ children }: { children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({
+    id: 'root',
+    data: { type: 'hierarchy-root' }
+  });
+  return (
+    <div ref={setNodeRef} className="flex-1 overflow-y-auto px-2 py-1 pb-20" id="sidebar-page-tree">
+      {children}
     </div>
   );
 }
@@ -85,26 +98,43 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     });
   };
 
-  useEffect(() => {
-    const onDragDrop = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      const treeEl = document.getElementById('sidebar-page-tree');
-      if (!treeEl) return;
-      
-      const targetEl = document.elementFromPoint(detail.x, detail.y);
-      if (!targetEl) return;
-      
-      if (targetEl === treeEl || targetEl.id === 'sidebar-page-tree') {
-        onUpdatePage(detail.pageId, { parent_id: null });
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  const [activeDragData, setActiveDragData] = useState<any>(null);
+
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveDragData(e.active.data.current);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveDragData(null);
+    const { active, over } = e;
+    if (!over) return;
+
+    if (active.data.current?.type === 'pinned' && over.data.current?.type === 'pinned') {
+      const draggedId = active.data.current.page.id;
+      const targetId = over.data.current.page.id;
+      handleDropPinned(draggedId, targetId);
+    } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy') {
+      const draggedId = active.data.current.page.id;
+      const targetId = over.data.current.page.id;
+      if (draggedId !== targetId) {
+        onUpdatePage(draggedId, { parent_id: targetId });
       }
-    };
-    
-    window.addEventListener('caderno-drag-drop', onDragDrop);
-    return () => window.removeEventListener('caderno-drag-drop', onDragDrop);
-  }, [onUpdatePage]);
+    } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy-root') {
+      const draggedId = active.data.current.page.id;
+      onUpdatePage(draggedId, { parent_id: null });
+    }
+  };
 
   return (
-    <>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="px-3 py-2">
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dark-subtext" />
@@ -128,10 +158,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         </button>
       </div>
 
-      <div 
-        className="flex-1 overflow-y-auto px-2 py-1 pb-20"
-        id="sidebar-page-tree"
-      >
+      <RootDroppable>
         {!searchQuery && pinnedPages.length > 0 && (
           <div className="mb-4">
             <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
@@ -145,7 +172,6 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                 activeTab={activeTab}
                 onCreatePage={onCreatePage}
                 onUpdatePage={onUpdatePage}
-                onDropPinned={handleDropPinned}
               />
             ))}
             {!searchQuery && pinnedPages.length > visiblePinnedCount && (
@@ -190,7 +216,16 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             Exibir mais ({filteredPages.length - visiblePagesCount})
           </button>
         )}
-      </div>
-    </>
+      </RootDroppable>
+
+      <DragOverlay dropAnimation={null}>
+        {activeDragData ? (
+          <div className="bg-brand-500/20 backdrop-blur-md border border-brand-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium text-brand-300">
+            <span>{activeDragData.page.icon || '📄'}</span>
+            <span>{activeDragData.page.title}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
