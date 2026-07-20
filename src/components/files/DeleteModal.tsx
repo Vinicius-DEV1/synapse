@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
+import { Portal } from '../ui/Portal';
 
 interface DeleteModalProps {
   item: FileItem | FileFolder;
@@ -47,7 +48,8 @@ export default function DeleteModal({ item, isFolder, onClose, onDeleted }: Dele
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-red-500/20 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
         <div className="flex flex-col items-center justify-center p-6 gap-4">
           <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center">
@@ -98,5 +100,6 @@ export default function DeleteModal({ item, isFolder, onClose, onDeleted }: Dele
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, File, Calendar, HardDrive, Type, Share2, Tag } from 'lucide-react';
 import type { FileItem, FilePageLink } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface FileInfoModalProps {
   item: FileItem;
@@ -23,7 +24,8 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
   const updatedDate = new Date(item.updated_at || Date.now()).toLocaleString();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-dark-bg/50">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -117,5 +119,6 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

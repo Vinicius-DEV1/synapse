@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface RenameModalProps {
   item: FileItem | FileFolder;
@@ -52,7 +53,8 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">
@@ -100,5 +102,6 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

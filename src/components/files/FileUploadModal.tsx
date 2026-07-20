@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import type { FileItem } from '../../types';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
+import { Portal } from '../ui/Portal';
 
 interface FileUploadModalProps {
   onClose: () => void;
@@ -111,7 +112,8 @@ export default function FileUploadModal({ onClose, onUploadComplete, currentFold
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Enviar Arquivo</h2>
@@ -194,5 +196,6 @@ export default function FileUploadModal({ onClose, onUploadComplete, currentFold
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
