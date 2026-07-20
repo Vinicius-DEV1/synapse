@@ -9,8 +9,8 @@ import { getDecryptedImageUrl, uploadEncryptedImage, getCachedImage } from '../.
 type LoadingState = 'loading' | 'loaded' | 'error';
 
 const EncryptedImageNodeView = (props: any) => {
-  const { node, updateAttributes, selected } = props;
-  const { driveFileId, width, alt } = node.attrs;
+  const { node, updateAttributes, selected, editor, getPos } = props;
+  const { driveFileId, width, height, alt } = node.attrs;
 
   const [state, setState] = useState<LoadingState>('loading');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -93,19 +93,51 @@ const EncryptedImageNodeView = (props: any) => {
 
   // ─── Lógica de redimensionamento (idêntica ao ResizableImage) ──────────────
 
-  const handleMouseDown = (e: React.MouseEvent, direction: 'left' | 'right') => {
+  const handleMouseDown = (e: React.MouseEvent, handle: 'bottom-right' | 'right' | 'left' | 'bottom' | 'top') => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
 
+    if (editor && typeof getPos === 'function') {
+      editor.commands.setNodeSelection(getPos());
+    }
+
     const startX = e.clientX;
+    const startY = e.clientY;
     const startWidth = imgRef.current?.offsetWidth || 0;
+    const startHeight = imgRef.current?.offsetHeight || 0;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const currentX = moveEvent.clientX;
-      const diff = currentX - startX;
-      const newWidth = Math.max(50, startWidth + (direction === 'right' ? diff : -diff));
-      updateAttributes({ width: newWidth });
+      const diffX = moveEvent.clientX - startX;
+      const diffY = moveEvent.clientY - startY;
+
+      let newWidth = startWidth;
+      let newHeight: number | null = startHeight;
+
+      if (handle === 'bottom-right') {
+        newWidth = Math.max(50, startWidth + diffX);
+        newHeight = null;
+      } else if (handle === 'right') {
+        newWidth = Math.max(50, startWidth + diffX);
+      } else if (handle === 'left') {
+        newWidth = Math.max(50, startWidth - diffX);
+      } else if (handle === 'bottom') {
+        newHeight = Math.max(50, startHeight + diffY);
+      } else if (handle === 'top') {
+        newHeight = Math.max(50, startHeight - diffY);
+      }
+
+      if (handle === 'right' || handle === 'left') {
+        newHeight = startHeight;
+      }
+      if (handle === 'bottom' || handle === 'top') {
+        newWidth = startWidth;
+      }
+
+      updateAttributes({ 
+        width: newWidth,
+        height: newHeight
+      });
     };
 
     const handleMouseUp = () => {
@@ -118,12 +150,21 @@ const EncryptedImageNodeView = (props: any) => {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const event = new CustomEvent('open-image-viewer', { 
+      detail: { src: blobUrl, nodePos: typeof getPos === 'function' ? getPos() : null } 
+    });
+    window.dispatchEvent(event);
+  };
+
   // ─── Estilos compartilhados ────────────────────────────────────────────────
 
   const containerStyle: React.CSSProperties = {
     width: width ? `${width}px` : '100%',
     maxWidth: '100%',
-    height: 'auto',
+    height: height ? `${height}px` : 'auto',
   };
 
   // ─── Estado de carregamento — skeleton animado ─────────────────────────────
@@ -234,23 +275,23 @@ const EncryptedImageNodeView = (props: any) => {
         ref={imgRef}
         src={blobUrl!}
         alt={alt || ''}
-        style={{ width: width ? `${width}px` : 'auto', height: 'auto', maxWidth: '100%' }}
+        width={width}
+        height={height}
+        style={{ width: width ? `${width}px` : 'auto', height: height ? `${height}px` : 'auto', maxWidth: '100%' }}
         className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
         draggable="true"
         data-drag-handle
+        onDoubleClick={handleDoubleClick}
       />
 
       {/* Alças de redimensionamento */}
       {(selected || isResizing) && (
         <>
-          {/* Top-Left */}
-          <div className="absolute left-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
-          {/* Top-Right */}
-          <div className="absolute right-0 top-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
-          {/* Bottom-Left */}
-          <div className="absolute left-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nesw-resize z-10 -translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
-          {/* Bottom-Right */}
-          <div className="absolute right-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+          <div className="absolute right-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'bottom-right')} />
+          <div className="absolute right-0 top-1/2 w-1.5 h-4 bg-brand-500 rounded-sm border border-white cursor-ew-resize z-10 translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
+          <div className="absolute left-0 top-1/2 w-1.5 h-4 bg-brand-500 rounded-sm border border-white cursor-ew-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
+          <div className="absolute bottom-0 left-1/2 w-4 h-1.5 bg-brand-500 rounded-sm border border-white cursor-ns-resize z-10 -translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'bottom')} />
+          <div className="absolute top-0 left-1/2 w-4 h-1.5 bg-brand-500 rounded-sm border border-white cursor-ns-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'top')} />
         </>
       )}
     </NodeViewWrapper>
@@ -287,6 +328,17 @@ export const EncryptedImage = Node.create({
         renderHTML: (attributes) => {
           if (!attributes.width) return {};
           return { 'data-width': attributes.width };
+        },
+      },
+      height: {
+        default: null,
+        parseHTML: (element) => {
+          const val = element.getAttribute('data-height');
+          return val ? Number(val) : null;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.height) return {};
+          return { 'data-height': attributes.height };
         },
       },
       alt: {
