@@ -625,12 +625,12 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                   <Trash2 size={16} />
                 </button>
               </div>
-              <div className="text-xl text-center text-white min-h-[100px] flex items-center justify-center break-words w-full" dangerouslySetInnerHTML={{ __html: previewCard.front }}></div>
+              <div className="text-xl text-center text-white min-h-[100px] flex items-center justify-center break-words w-full whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: previewCard.front }}></div>
               
               {showAnswer ? (
                 <>
                   <div className="w-full h-px bg-white/10 my-8"></div>
-                  <div className="text-lg text-center text-dark-subtext min-h-[100px] flex items-center justify-center break-words w-full" dangerouslySetInnerHTML={{ __html: previewCard.back }}></div>
+                  <div className="text-lg text-center text-dark-subtext min-h-[100px] flex items-center justify-center break-words w-full whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: previewCard.back }}></div>
                 </>
               ) : (
                 <button 

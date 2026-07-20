@@ -438,16 +438,18 @@ export default function AIChatAnalysisView({
                                 
                                 <div className="space-y-2">
                                   <div className="text-blue-300/70 uppercase tracking-wide text-[10px] border-b border-blue-500/20 pb-1 font-semibold">Nova Sugestão</div>
-                                  <div>
-                                    <span className="text-blue-300/50 text-[10px] block mb-0.5">Frente</span>
-                                    <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block">{e.act.new_front || originalCard?.front}</p>
-                                  </div>
-                                  {(e.act.new_back || originalCard?.back) && (
+                                  <div className="flex-1 space-y-2">
                                     <div>
-                                      <span className="text-blue-300/50 text-[10px] block mb-0.5">Verso</span>
-                                      <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block">{e.act.new_back || originalCard?.back}</p>
+                                      <span className="text-blue-300/50 text-[10px] block mb-0.5">Frente</span>
+                                      <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block whitespace-pre-wrap">{e.act.new_front || originalCard?.front}</p>
                                     </div>
-                                  )}
+                                    {(e.act.new_back || originalCard?.back) && (
+                                      <div>
+                                        <span className="text-blue-300/50 text-[10px] block mb-0.5">Verso</span>
+                                        <p className="text-white bg-blue-500/10 px-2 py-1 rounded inline-block whitespace-pre-wrap">{e.act.new_back || originalCard?.back}</p>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
