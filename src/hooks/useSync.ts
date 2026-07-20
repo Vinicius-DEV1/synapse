@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud, listenForCloudSyncSignal } from '../services/sync';
+import { getDeviceId, restoreLastSyncTimesFromDb } from '../services/sync/sync-utils';
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) =>
@@ -9,6 +10,29 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
+/**
+ * #5: Verifica se o erro é de quota/permissão do Firebase.
+ * Deduplicado — usado por todos os handlers de erro de sync.
+ */
+function isQuotaOrPermissionError(err: any): boolean {
+  return err.code === 'resource-exhausted' 
+    || err.message?.toLowerCase().includes('quota') 
+    || err.message?.toLowerCase().includes('permission-denied');
+}
+
+/**
+ * #5: Handler centralizado de erros de sync.
+ * Emite evento global se for erro de quota/permissão.
+ */
+function handleSyncError(err: any, context: string) {
+  console.warn(`[Sync] ${context} FALHOU: ${err.message}`, err);
+  if (isQuotaOrPermissionError(err)) {
+    window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
+      detail: { message: err.message, code: err.code } 
+    }));
+  }
+}
 
 export function useSync(isAuth: boolean, masterKey: string | null, loadPages: () => void) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
@@ -28,6 +52,11 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       let lastFullSyncTime = 0; // Cooldown: tempo mínimo entre full syncs
       const FULL_SYNC_COOLDOWN_MS = 30_000; // 30 segundos de cooldown entre full syncs
       const syncChannel = new BroadcastChannel('caderno_sync');
+      // #7: ID único do dispositivo para ignorar sinais do próprio push
+      const myDeviceId = getDeviceId();
+
+      // #10: Restaurar timestamps de sync do banco local (protege contra limpeza de localStorage)
+      restoreLastSyncTimesFromDb().catch(() => {});
 
       const doFullSync = async () => {
         if (isClosed) return;
@@ -66,12 +95,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           }
         } catch (err: any) {
           if (!isClosed) {
-            console.warn(`[Sync] doFullSync FALHOU: ${err.message}`, err);
-            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
-              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
-                detail: { message: err.message, code: err.code } 
-              }));
-            }
+            handleSyncError(err, 'doFullSync'); // #5: centralizado
             finishSync(false);
           }
         } finally {
@@ -97,12 +121,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           }
         } catch (err: any) {
           if (!isClosed) {
-            console.warn(`[Sync] doPushOnlySync FALHOU: ${err.message}`, err);
-            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
-              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
-                detail: { message: err.message, code: err.code } 
-              }));
-            }
+            handleSyncError(err, 'doPushOnlySync'); // #5: centralizado
             finishSync(false);
           }
         } finally {
@@ -118,10 +137,14 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // Usamos isFirstSnapshot para ignorar esse disparo inicial redundante,
       // já que o doFullSync() acima já faz o pull completo.
       let isFirstSnapshot = true;
-      const unsubRealTime = listenForCloudSyncSignal(() => {
+      const unsubRealTime = listenForCloudSyncSignal((signalDeviceId?: string) => {
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
           return; // Ignora o disparo automático do onSnapshot na montagem
+        }
+        // #7: Ignorar sinais do próprio dispositivo (evita pull desnecessário após push)
+        if (signalDeviceId && signalDeviceId === myDeviceId) {
+          return;
         }
         if (!navigator.onLine) return;
         if (isSyncing) return; // Mutex
@@ -133,12 +156,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             finishSync(true);
           })
           .catch((err: any) => {
-            console.warn('[Sync] Falha no Pull em Tempo Real:', err.message);
-            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
-              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
-                detail: { message: err.message, code: err.code } 
-              }));
-            }
+            handleSyncError(err, 'Pull em Tempo Real'); // #5: centralizado
             finishSync(false);
           })
           .finally(() => {
