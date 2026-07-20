@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
+import { Portal } from './ui/Portal';
 
 interface RenamePageModalProps {
   isOpen: boolean;
@@ -35,7 +36,8 @@ export default function RenamePageModal({ isOpen, onClose, currentTitle, onRenam
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
         className="bg-dark-card border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative"
         onKeyDown={handleKeyDown}
@@ -82,5 +84,6 @@ export default function RenamePageModal({ isOpen, onClose, currentTitle, onRenam
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

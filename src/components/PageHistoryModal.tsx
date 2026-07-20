@@ -3,6 +3,7 @@ import { X, Clock, AlertCircle } from 'lucide-react';
 import type { PageHistoryEntry } from '../types';
 // @ts-ignore
 import HtmlDiff from 'htmldiff-js';
+import { Portal } from './ui/Portal';
 
 interface PageHistoryModalProps {
   pageId: string;
@@ -49,7 +50,8 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
   }
 
   return (
-    <div className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6">
+    <Portal>
+      <div className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6">
       <div className="bg-dark-card w-full max-w-6xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-dark-border flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border bg-dark-card z-10">
@@ -123,5 +125,6 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

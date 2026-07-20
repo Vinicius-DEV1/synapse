@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Image as ImageIcon, FileText, Trash2, Plus, Send } from 'lucide-react';
 import { promptGemini } from '../services/gemini';
+import { Portal } from './ui/Portal';
 
 interface AiPromptModalProps {
   x: number;
@@ -82,7 +83,8 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
   const adjustedY = Math.min(y, window.innerHeight - 450);
 
   return (
-    <div
+    <Portal>
+      <div
       ref={modalRef}
       className="fixed z-[100] w-[360px] max-h-[500px] flex flex-col bg-dark-card border border-brand-500/30 rounded-xl shadow-2xl overflow-hidden animate-scale-in"
       style={{ left: adjustedX, top: adjustedY }}
@@ -230,5 +232,6 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
         </div>
       </form>
     </div>
+    </Portal>
   );
 }

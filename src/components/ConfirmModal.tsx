@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { Portal } from './ui/Portal';
 
 interface ConfirmModalProps {
   pageId: string;
@@ -9,7 +10,8 @@ interface ConfirmModalProps {
 
 export default function ConfirmModal({ pageName, onConfirm, onCancel }: ConfirmModalProps) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
         className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scale-in"
         onClick={(e) => e.stopPropagation()}
@@ -44,5 +46,6 @@ export default function ConfirmModal({ pageName, onConfirm, onCancel }: ConfirmM
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
