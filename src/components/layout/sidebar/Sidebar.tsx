@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
@@ -174,7 +174,30 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         ) : activeModule === 'settings' ? (
           <div className="flex flex-col gap-1 mt-2">
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Painel de Controle</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie a segurança, sincronização e preferências do aplicativo.</div>
+            
+            {[
+              { id: 'general', label: 'Geral', icon: Settings },
+              { id: 'editor', label: 'Editor', icon: LayoutDashboard },
+              { id: 'security', label: 'Segurança', icon: Shield },
+              { id: 'ai', label: 'IA', icon: Zap },
+              { id: 'shortcuts', label: 'Atalhos', icon: Keyboard },
+              { id: 'storage', label: 'Uso', icon: HardDrive },
+              { id: 'backup', label: 'Backup', icon: DownloadCloud },
+              { id: 'sync', label: 'Sync', icon: RefreshCw },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => dispatch({ type: 'NAVIGATE_IN_TAB', tabId: activeTab.id, pageId: tab.id })}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                  (activeTab.pageId || 'general') === tab.id
+                    ? 'bg-brand-500/10 text-brand-400'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
+                }`}
+              >
+                <tab.icon size={16} />
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">

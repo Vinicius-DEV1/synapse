@@ -67,7 +67,7 @@ export function ViewFactory({
       case 'trash':
         return <TrashView />;
       case 'settings':
-        return <SettingsModule />;
+        return <SettingsModule tab={tab} />;
       case 'finance':
       default:
         return <FinanceView />;
