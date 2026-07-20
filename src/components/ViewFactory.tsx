@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import type { Tab, Page } from '../types';
 
-const PageView = lazy(() => import('./PageView'));
+const PageView = lazy(() => import('./page-view/PageView'));
 const FinanceView = lazy(() => import('./finance/FinanceView'));
 const LibraryView = lazy(() => import('./library/LibraryView'));
 const CultureView = lazy(() => import('./culture/CultureView'));

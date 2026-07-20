@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Maximize2, X } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import PageView from './PageView';
+import PageView from './page-view/PageView';
 
 interface FloatingPageModalProps {
   pageId: string;
