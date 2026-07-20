@@ -58,7 +58,7 @@ export default function AiSidebar() {
       const responseObj = await promptGemini(prompt, undefined, activeSession.messages);
       const response = responseObj.text;
       const newUserMsg = { role: 'user', parts: [{ text: prompt }] };
-      const newModelMsg = { role: 'model', parts: [{ text: response }] };
+      const newModelMsg = { role: 'model', parts: [{ text: response }], tokens: responseObj.usage };
       
       dispatch({
         type: 'UPDATE_AI_CHAT',
@@ -339,13 +339,23 @@ export default function AiSidebar() {
                     )}
                   </div>
                   {!isUser && (
-                    <button 
-                      onClick={() => handleInsert(textContent)}
-                      className="mt-1 flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 font-medium px-2 py-1 hover:bg-brand-500/10 rounded transition-colors"
-                    >
-                      <Plus size={12} />
-                      <span>Copiar para Inserir</span>
-                    </button>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button 
+                        onClick={() => handleInsert(textContent)}
+                        className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 font-medium px-2 py-1 hover:bg-brand-500/10 rounded transition-colors"
+                      >
+                        <Plus size={12} />
+                        <span>Copiar para Inserir</span>
+                      </button>
+                      {msg.tokens && (
+                        <div 
+                          className="text-[10px] opacity-40 font-mono flex items-center gap-1 px-2 cursor-help" 
+                          title={`Prompt: ${msg.tokens.promptTokenCount} | Resposta: ${msg.tokens.candidatesTokenCount}`}
+                        >
+                          {msg.tokens.totalTokenCount} tokens
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );
