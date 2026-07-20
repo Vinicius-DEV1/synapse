@@ -1,7 +1,56 @@
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId } from './sync-utils';
+
+/** Tamanho máximo do batch do Firestore é 500; usamos 400 como margem de segurança */
+const BATCH_SIZE = 400;
+
+/** Limite de tamanho de payload individual (Firestore doc limit ~1MB) */
+const MAX_PAYLOAD_BYTES = 900_000;
+
+interface PreparedDoc {
+  id: string;
+  encryptedData: string;
+  updatedAt: string | null;
+  createdAt: string | null;
+  localTime: number;
+  table: string;
+}
+
+/**
+ * Prepara (serializa + encripta) uma lista de rows em paralelo.
+ * Retorna as que estão prontas e emite warnings para as que foram puladas.
+ */
+async function prepareRowsForPush(
+  rows: any[],
+  key: CryptoKey,
+  table: string
+): Promise<{ prepared: PreparedDoc[]; skippedLarge: string[] }> {
+  const skippedLarge: string[] = [];
+
+  const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
+    const { id, updated_at, created_at, ...sensitiveData } = row;
+    const jsonString = JSON.stringify(sensitiveData);
+
+    if (jsonString.length > MAX_PAYLOAD_BYTES) {
+      const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
+      skippedLarge.push(msg);
+      return null;
+    }
+
+    const encryptedData = await encryptText(jsonString, key);
+    const safeUpdatedAt = updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null;
+    const safeCreatedAt = created_at ? new Date(parseDateSafe(created_at)).toISOString() : null;
+    const localTime = Math.max(parseDateSafe(updated_at || created_at || 0), parseDateSafe(row.deleted_at || 0));
+
+    return { id, encryptedData, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
+  });
+
+  const results = await Promise.all(promises);
+  const prepared = results.filter((r): r is PreparedDoc => r !== null);
+  return { prepared, skippedLarge };
+}
 
 export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) return;
@@ -11,8 +60,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
-  // console.log(`[Sync] PUSH Iniciado. (lastPush: ${new Date(lastPush).toISOString()})`);
-  let highestLocalTime = lastPush;
+  let highestSuccessTime = lastPush; // #6: só avança o timestamp com docs que tiveram SUCESSO
   let pushedCount = 0;
   const errors: string[] = [];
 
@@ -34,43 +82,57 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           : localRows;
 
         if (rowsToPush.length === 0) continue;
-        
-        for (const row of rowsToPush) {
-          const localTime = Math.max(parseDateSafe(row.updated_at || row.created_at || 0), parseDateSafe(row.deleted_at || 0));
-          if (localTime > highestLocalTime) highestLocalTime = localTime;
-          
-          try {
+
+        // #2: Encriptar TODOS os docs da tabela em paralelo (Promise.all)
+        const { prepared, skippedLarge } = await prepareRowsForPush(rowsToPush, key, table);
+
+        // #9: Notificação visível para docs pulados por tamanho
+        for (const msg of skippedLarge) {
+          console.warn(msg);
+          if (typeof window !== 'undefined' && window.api?.log) {
+            window.api.log(msg);
+          }
+          // Dispatch evento para UI mostrar toast/banner ao usuário
+          window.dispatchEvent(new CustomEvent('caderno-sync-warning', { 
+            detail: { message: msg } 
+          }));
+        }
+
+        if (prepared.length === 0) continue;
+
+        // #1: WriteBatch — envia em chunks de BATCH_SIZE com write atômico
+        for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
+          const chunk = prepared.slice(i, i + BATCH_SIZE);
+          const batch = writeBatch(db);
+
+          for (const item of chunk) {
             if (typeof window !== 'undefined' && window.api?.log) {
-              window.api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
+              window.api.log(`[PUSH DOING] Doc ${item.id} (${item.table}). Batching to Firebase...`);
             }
-            const { id, updated_at, created_at, ...sensitiveData } = row;
-            const jsonString = JSON.stringify(sensitiveData);
-
-            if (jsonString.length > 900_000) {
-              const msg = `[PUSH SKIP] Doc ${row.id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
-              console.warn(msg);
-              if (typeof window !== 'undefined' && window.api?.log) {
-                window.api.log(msg);
-              }
-              continue;
-            }
-
-            const encryptedData = await encryptText(jsonString, key);
-            const docRef = doc(db, table, id);
-            
-            const safeUpdatedAt = row.updated_at ? new Date(parseDateSafe(row.updated_at)).toISOString() : null;
-            const safeCreatedAt = row.created_at ? new Date(parseDateSafe(row.created_at)).toISOString() : null;
-            
-            await setDoc(docRef, {
-              encryptedData,
-              updatedAt: safeUpdatedAt,
-              createdAt: safeCreatedAt
+            const docRef = doc(db, table, item.id);
+            batch.set(docRef, {
+              encryptedData: item.encryptedData,
+              updatedAt: item.updatedAt,
+              createdAt: item.createdAt
             }, { merge: true });
-            pushedCount++;
+          }
+
+          try {
+            await batch.commit();
+            // #6: Só avança o highestSuccessTime APÓS commit bem-sucedido
+            for (const item of chunk) {
+              pushedCount++;
+              if (item.localTime > highestSuccessTime) {
+                highestSuccessTime = item.localTime;
+              }
+            }
           } catch (err: any) {
-            const msg = `PUSH erro doc ${row.id} (${table}): ${err?.message}`;
-            console.warn(msg);
-            errors.push(msg);
+            // Se o batch falhar, registrar erro para cada doc do chunk
+            for (const item of chunk) {
+              const msg = `PUSH erro doc ${item.id} (${table}): ${err?.message}`;
+              console.warn(msg);
+              errors.push(msg);
+            }
           }
         }
       } catch (err: any) {
@@ -86,24 +148,24 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   if (pushedCount > 0 || errors.length > 0) {
-    // console.log(`[Sync] PUSH finalizou: \${pushedCount} docs enviados, \${errors.length} pulados/errados, \${pushSkippedCount} inalterados.`);
     if (typeof window !== 'undefined' && window.api?.log) {
       window.api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
-    if (highestLocalTime > getLastSyncTime('push')) {
-      setLastSyncTime('push', highestLocalTime);
+    // #6: Atualiza lastPush apenas com o timestamp mais alto dos docs COM SUCESSO
+    if (highestSuccessTime > getLastSyncTime('push')) {
+      setLastSyncTime('push', highestSuccessTime);
     }
     if (pushedCount > 0) {
       try {
+        // #7: Incluir deviceId no sinal para que o listener possa ignorar sinais do próprio dispositivo
         await setDoc(doc(db, 'config', 'sync_signal'), {
           updatedAt: serverTimestamp(),
-          source: navigator.userAgent
+          source: navigator.userAgent,
+          deviceId: getDeviceId()
         }, { merge: true });
       } catch (e) {
         console.warn("Falha ao enviar sinal de sync", e);
       }
     }
-  } else {
-    // console.log(`[Sync] PUSH concluído: Nada novo para enviar. (Ignorados: \${pushSkippedCount})`);
   }
 }
