@@ -22,14 +22,21 @@ const EncryptedImageNodeView = (props: any) => {
   const handleDragStart = (e: React.DragEvent) => {
     if (imgRef.current) {
       const rect = imgRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      e.dataTransfer.setDragImage(imgRef.current, x, y);
+      const canvas = document.createElement('canvas');
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(imgRef.current, 0, 0, rect.width, rect.height);
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        e.dataTransfer.setDragImage(canvas, x, y);
+      }
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (editor && typeof getPos === 'function') {
+  const handleMouseUpSelection = (e: React.MouseEvent) => {
+    if (editor && typeof getPos === 'function' && !isResizing) {
       editor.commands.setNodeSelection(getPos());
     }
   };
@@ -298,7 +305,7 @@ const EncryptedImageNodeView = (props: any) => {
         data-drag-handle
         onDragStart={handleDragStart}
         onDoubleClick={handleDoubleClick}
-        onClick={handleClick}
+        onMouseUp={handleMouseUpSelection}
       />
 
       {/* Alças de redimensionamento */}
