@@ -108,7 +108,10 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
   // Salvar na Nuvem
   if (navigator.onLine) {
     try {
-      await setDoc(doc(db, 'config', 'security_lock'), newLock, { merge: true });
+      await Promise.race([
+        setDoc(doc(db, 'config', 'security_lock'), newLock, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]);
       logFirebaseOp('write', 1);
     } catch {
       // Ignorar erro de escrita
@@ -122,7 +125,10 @@ export async function clearFailedAttempts(): Promise<void> {
   localStorage.removeItem('caderno_security_lock');
   if (navigator.onLine) {
     try {
-      await setDoc(doc(db, 'config', 'security_lock'), { failedAttempts: 0, lastFailedAt: 0 }, { merge: true });
+      await Promise.race([
+        setDoc(doc(db, 'config', 'security_lock'), { failedAttempts: 0, lastFailedAt: 0 }, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]);
       logFirebaseOp('write', 1);
     } catch {}
   }
@@ -133,11 +139,18 @@ export async function clearFailedAttempts(): Promise<void> {
 export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
   const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });
   const encryptedData = await encryptText(payload, masterKey);
-  await setDoc(doc(db, 'config', 'auth_validator'), {
-    encryptedData,
-    updatedAt: new Date().toISOString()
-  });
-  logFirebaseOp('write', 1);
+  try {
+    await Promise.race([
+      setDoc(doc(db, 'config', 'auth_validator'), {
+        encryptedData,
+        updatedAt: new Date().toISOString()
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+    ]);
+    logFirebaseOp('write', 1);
+  } catch (err) {
+    console.error("Timeout ou erro ao inicializar validator", err);
+  }
 }
 
 export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
