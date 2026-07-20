@@ -84,6 +84,16 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     };
   }, [pageId, cleanupSave]);
 
+  useEffect(() => {
+    const handleOpenImageViewer = (e: any) => {
+      if (e.detail && e.detail.src) {
+        setViewerState({ isOpen: true, src: e.detail.src, nodePos: e.detail.nodePos });
+      }
+    };
+    window.addEventListener('open-image-viewer', handleOpenImageViewer);
+    return () => window.removeEventListener('open-image-viewer', handleOpenImageViewer);
+  }, []);
+
   // 4. Slash Commands
   const {
     slashMenu,
