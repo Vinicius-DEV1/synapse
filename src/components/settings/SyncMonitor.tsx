@@ -41,8 +41,16 @@ export default function SyncMonitor() {
     return 'bg-green-500';
   };
 
+  const maxHourTotal = Math.max(
+    1,
+    ...Array.from({ length: 24 }).map((_, h) => {
+      const stats = today.hourly?.[h.toString()];
+      return (stats?.reads || 0) + (stats?.writes || 0);
+    })
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in text-white/90">
+    <div className="space-y-6 animate-fade-in text-white/90 pb-8">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Database size={20} className="text-purple-400" />
@@ -101,6 +109,43 @@ export default function SyncMonitor() {
         </div>
       </div>
 
+      {/* Gráfico por Hora (Hoje) */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
+        <h3 className="text-sm font-medium text-white/70 mb-6 flex items-center gap-2">
+          <Database size={14} />
+          Consumo Hoje (Por Hora)
+        </h3>
+        <div className="flex items-end gap-1 h-32 w-full pt-4 border-b border-white/10">
+          {Array.from({ length: 24 }).map((_, h) => {
+            const hourStr = h.toString();
+            const hourStats = today.hourly?.[hourStr];
+            const reads = hourStats?.reads || 0;
+            const writes = hourStats?.writes || 0;
+            const total = reads + writes;
+            const heightPercent = Math.min((total / maxHourTotal) * 100, 100);
+            
+            return (
+              <div key={h} className="flex-1 flex flex-col items-center justify-end gap-1 group relative">
+                <div 
+                  className="w-full bg-brand-500/50 group-hover:bg-brand-400 rounded-t-sm transition-all"
+                  style={{ height: `${heightPercent}%`, minHeight: total > 0 ? '4px' : '0' }}
+                />
+                <span className="text-[10px] text-white/30">{h}h</span>
+                
+                {/* Tooltip on hover */}
+                {total > 0 && (
+                  <div className="absolute bottom-full mb-4 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-xs opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl transition-opacity">
+                    <div className="font-bold text-white/90 mb-1">{h}:00 às {h}:59</div>
+                    <div className="text-blue-400">{reads.toLocaleString()} leituras</div>
+                    <div className="text-orange-400">{writes.toLocaleString()} escritas</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Histórico Semanal */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-4 flex items-center gap-2">
@@ -110,7 +155,7 @@ export default function SyncMonitor() {
         <div className="space-y-3">
           {week.slice().reverse().map((day, i) => (
             <div key={day.date} className="flex items-center gap-4 text-sm">
-              <div className="w-24 text-white/50">{day.date} {i === 0 && '(Hoje)'}</div>
+              <div className="w-24 text-white/50">{day.date.replace('sync_stats_', '').split('-').slice(1).join('/')} {i === 0 ? '(Hoje)' : ''}</div>
               <div className="flex-1">
                 <div className="flex gap-2">
                   <div className="text-blue-400" style={{ width: '80px' }}>{day.reads} L</div>
