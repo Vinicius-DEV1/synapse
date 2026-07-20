@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, File, Image as ImageIcon, Film, FileText, FileArchive, Folder } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface FileSelectModalProps {
   onClose: () => void;
@@ -48,7 +49,8 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
   const hasResults = filteredFiles.length > 0 || filteredFolders.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
         <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
           <h2 className="text-lg font-semibold text-white">Vincular Arquivo Existente</h2>
@@ -116,5 +118,6 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
+import { Portal } from '../ui/Portal';
 
 interface FolderUploadModalProps {
   onClose: () => void;
@@ -202,7 +203,8 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
   const totalProgress = tasks.length > 0 ? (tasks.reduce((acc, t) => acc + t.progress, 0) / tasks.length) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col h-[70vh]">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -340,5 +342,6 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
         )}
       </div>
     </div>
+    </Portal>
   );
 }
