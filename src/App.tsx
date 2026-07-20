@@ -23,10 +23,12 @@ import { useAppAuth } from './hooks/useAppAuth';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppTitle } from './hooks/useAppTitle';
 import { useGarbageCollection } from './hooks/useGarbageCollection';
+import { usePlatform } from './hooks/usePlatform';
 
 function AppContent() {
   const { state, dispatch } = useStore();
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
+  const platform = usePlatform();
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
 
@@ -136,7 +138,7 @@ function AppContent() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Tab Bar - Show if enabled in settings for current platform */}
         {!state.isReadingModeFullScreen && 
-         (window.__TAURI_INTERNALS__ ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
+         (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
