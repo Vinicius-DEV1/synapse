@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, PlayCircle, Loader2, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 
 interface YouTubePlaylistModalProps {
   url: string;
@@ -68,7 +69,8 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md transition-all duration-300">
       <div className="bg-[#1C1C1F]/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] w-full max-w-2xl overflow-hidden flex flex-col transform transition-all h-[80vh]">
         
         {/* Header */}
@@ -193,5 +195,6 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
