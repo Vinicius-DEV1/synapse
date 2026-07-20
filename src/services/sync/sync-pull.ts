@@ -3,6 +3,9 @@ import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 
+/** Tamanho do batch de decriptação paralela */
+const DECRYPT_BATCH_SIZE = 20;
+
 export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) {
     console.error("Sync API não exposta no preload.");
@@ -10,10 +13,13 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   }
 
   const lastPull = getLastSyncTime('pull');
-  // console.log(`[Sync] PULL Iniciado. (lastPull: \${new Date(lastPull).toISOString()})`);
   let highestCloudTime = lastPull;
   let pulledDocsCount = 0;
   let skippedDocsCount = 0;
+
+  // #4: Lazy import do Yjs UMA VEZ fora de todos os loops
+  let Y: typeof import('yjs') | null = null;
+  let yjsUtils: { base64ToUint8Array: (b64: string) => Uint8Array; getYDocStateAsBase64: (doc: any) => string } | null = null;
 
   for (const module of Object.keys(MODULE_TABLES)) {
     const key = moduleKeys[module] || moduleKeys['core'];
@@ -35,8 +41,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         let lastDocSnap: any = null;
         const CHUNK_SIZE = 100;
         
-        const localRows = await window.api.sync.getTable(table);
-        const localMap = new Map(localRows.map((r: any) => [r.id, r]));
+        // #3: Lazy-load do mapa local — será preenchido sob demanda
+        let localMap: Map<string, any> | null = null;
 
         while (hasMore) {
           let q = qBase;
@@ -54,123 +60,168 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           
           lastDocSnap = querySnapshot.docs[querySnapshot.docs.length - 1];
 
-          for (const docSnap of querySnapshot.docs) {
+          // #3: Buscar apenas os IDs que vieram da nuvem (se o método existir)
+          if (!localMap) {
+            if (window.api.sync.getRowsByIds) {
+              const cloudIds = querySnapshot.docs
+                .filter(d => d.data().encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys')
+                .map(d => d.id);
+              if (cloudIds.length > 0) {
+                const localRows = await window.api.sync.getRowsByIds(table, cloudIds);
+                localMap = new Map(localRows.map((r: any) => [r.id, r]));
+              } else {
+                localMap = new Map();
+              }
+            } else {
+              // Fallback: se getRowsByIds não existe, carrega tabela inteira (compatibilidade)
+              const localRows = await window.api.sync.getTable(table);
+              localMap = new Map(localRows.map((r: any) => [r.id, r]));
+            }
+          } else if (window.api.sync.getRowsByIds) {
+            // Para chunks subsequentes, buscar apenas novos IDs
+            const newIds = querySnapshot.docs
+              .filter(d => d.data().encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys' && !localMap!.has(d.id))
+              .map(d => d.id);
+            if (newIds.length > 0) {
+              const newRows = await window.api.sync.getRowsByIds(table, newIds);
+              for (const r of newRows) {
+                localMap.set(r.id, r);
+              }
+            }
+          }
+
+          // Filtrar docs válidos para processar
+          const docsToProcess = querySnapshot.docs.filter(docSnap => {
             const cloudData = docSnap.data();
-            if (!cloudData.encryptedData) continue;
-            if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') continue;
+            if (!cloudData.encryptedData) return false;
+            if (docSnap.id === 'auth_validator' || docSnap.id === 'module_keys') return false;
             
             const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
             }
-
-            if (lastPull > 0 && cloudTime <= lastPull) {
-              continue;
-            }
+            if (lastPull > 0 && cloudTime <= lastPull) return false;
             
-            const localRow = localMap.get(docSnap.id);
+            const localRow = localMap!.get(docSnap.id);
             const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
+            return cloudTime !== localTime;
+          });
+
+          // #2: Decriptar em batches paralelos para não bloquear a thread
+          for (let i = 0; i < docsToProcess.length; i += DECRYPT_BATCH_SIZE) {
+            const batch = docsToProcess.slice(i, i + DECRYPT_BATCH_SIZE);
             
-            if (cloudTime !== localTime) {
-              try {
-                const decryptedJson = await decryptText(cloudData.encryptedData, key);
-                const parsed = JSON.parse(decryptedJson);
-                const rowToUpsert: any = {
-                  id: docSnap.id,
-                  ...parsed
-                };
-                if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
-                if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
-
-                if (typeof window !== 'undefined' && window.api?.log) {
-                  window.api.log(`[PULL] Doc \${docSnap.id}. localTime=\${localTime}, cloudTime=\${cloudTime}`);
+            const decryptedResults = await Promise.all(
+              batch.map(async (docSnap) => {
+                const cloudData = docSnap.data();
+                try {
+                  const decryptedJson = await decryptText(cloudData.encryptedData, key);
+                  const parsed = JSON.parse(decryptedJson);
+                  return { docSnap, cloudData, parsed, error: null };
+                } catch (err: any) {
+                  return { docSnap, cloudData, parsed: null, error: err };
                 }
+              })
+            );
 
-                // We no longer hard-delete locally. We just upsert the document 
-                // so that the local DB stores the deleted_at flag (for the Trash feature).
-                /*
-                if (parsed.deleted_at) {
-                  if (typeof window !== 'undefined' && window.api?.log) {
-                    window.api.log(`[PULL DELETED] Doc ${docSnap.id} deleted from cloud. Soft deleting locally.`);
-                  }
-                  // We let the upsertRow below handle it, which will update the local row with deleted_at
-                }
-                */
+            // Processar os resultados decriptados
+            for (const result of decryptedResults) {
+              if (result.error || !result.parsed) {
+                const msg = `PULL erro doc ${result.docSnap.id} (${table}): ${result.error?.message}`;
+                console.error(msg);
+                (window.api as any).log?.(msg);
+                continue;
+              }
 
-                if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
-                  try {
-                    const Y = await import('yjs');
-                    const { base64ToUint8Array, getYDocStateAsBase64 } = await import('../../utils/yjs-utils');
-                    const ydoc = new Y.Doc();
-                    Y.applyUpdate(ydoc, base64ToUint8Array(localRow.crdt_state));
-                    Y.applyUpdate(ydoc, base64ToUint8Array(parsed.crdt_state));
-                    const mergedCrdtState = getYDocStateAsBase64(ydoc);
-                    rowToUpsert.crdt_state = mergedCrdtState;
-                    
-                    if (typeof window !== 'undefined') {
-                      if (window.api?.log) {
-                         window.api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
-                      }
-                      window.dispatchEvent(new CustomEvent('caderno-sync-update', {
-                        detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state }
-                      }));
-                    }
-                    
-                    if (localTime > cloudTime) {
-                      Object.assign(rowToUpsert, localRow);
-                      rowToUpsert.crdt_state = mergedCrdtState;
-                    }
-                  } catch (crdtErr) {
-                    console.error("Erro no merge CRDT Yjs:", crdtErr);
+              const { docSnap, cloudData, parsed } = result;
+              const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+              const localRow = localMap!.get(docSnap.id);
+              const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
+
+              const rowToUpsert: any = {
+                id: docSnap.id,
+                ...parsed
+              };
+              if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
+              if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
+
+              if (typeof window !== 'undefined' && window.api?.log) {
+                window.api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
+              }
+
+              // CRDT merge para pages (Yjs)
+              if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
+                try {
+                  // #4: Import Yjs uma única vez (lazy, fora do loop)
+                  if (!Y) {
+                    Y = await import('yjs');
+                    yjsUtils = await import('../../utils/yjs-utils');
                   }
-                } else if (localTime > cloudTime) {
-                  if (parsed.deleted_at && !localRow?.deleted_at) {
+                  const ydoc = new Y.Doc();
+                  Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(localRow.crdt_state));
+                  Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(parsed.crdt_state));
+                  const mergedCrdtState = yjsUtils!.getYDocStateAsBase64(ydoc);
+                  rowToUpsert.crdt_state = mergedCrdtState;
+                  
+                  if (typeof window !== 'undefined') {
+                    if (window.api?.log) {
+                       window.api.log(`[PULL MERGE] Doc ${docSnap.id} merged CRDT.`);
+                    }
+                    window.dispatchEvent(new CustomEvent('caderno-sync-update', {
+                      detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state }
+                    }));
+                  }
+                  
+                  if (localTime > cloudTime) {
                     Object.assign(rowToUpsert, localRow);
-                    rowToUpsert.deleted_at = parsed.deleted_at;
-                  } else {
+                    rowToUpsert.crdt_state = mergedCrdtState;
+                  }
+                } catch (crdtErr) {
+                  console.error("Erro no merge CRDT Yjs:", crdtErr);
+                }
+              } else if (localTime > cloudTime) {
+                if (parsed.deleted_at && !localRow?.deleted_at) {
+                  Object.assign(rowToUpsert, localRow);
+                  rowToUpsert.deleted_at = parsed.deleted_at;
+                } else {
+                  skippedDocsCount++;
+                  if (typeof window !== 'undefined' && window.api?.log) {
+                    window.api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
+                  }
+                  continue;
+                }
+              }
+
+              try {
+                // Proteção contra race condition: verificar se houve edição local durante o sync
+                const freshRow = localMap!.get(docSnap.id);
+                if (freshRow) {
+                  const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
+                  if (freshTime > cloudTime) {
                     skippedDocsCount++;
-                    if (typeof window !== 'undefined' && window.api?.log) {
-                      window.api.log(`[PULL SKIP] Doc ${docSnap.id} skipped (localTime > cloudTime).`);
-                    }
                     continue;
                   }
                 }
 
+                pulledDocsCount++;
                 try {
-                  // Proteção contra race condition: usar mapa local atualizado
-                  // para verificar se o usuario editou enquanto o sync rodava.
-                  // Relemos a tabela inteira UMA VEZ por chunk (fora do loop de docs)
-                  // em vez de N vezes (uma por doc) que era o comportamento anterior.
-                  const freshRow = localMap.get(docSnap.id);
-                  if (freshRow) {
-                    const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
-                    if (freshTime > cloudTime) {
-                      skippedDocsCount++;
-                      continue;
-                    }
-                  }
-
-                  pulledDocsCount++;
-                  try {
+                  await window.api.sync.upsertRow(table, rowToUpsert);
+                } catch (upsertErr: any) {
+                  if (upsertErr.message && upsertErr.message.includes('has no column named created_at')) {
+                    delete rowToUpsert.created_at;
                     await window.api.sync.upsertRow(table, rowToUpsert);
-                  } catch (upsertErr: any) {
-                    if (upsertErr.message && upsertErr.message.includes('has no column named created_at')) {
-                      delete rowToUpsert.created_at;
-                      await window.api.sync.upsertRow(table, rowToUpsert);
-                    } else {
-                      throw upsertErr;
-                    }
+                  } else {
+                    throw upsertErr;
                   }
-                  if (typeof window !== 'undefined' && window.api?.log) {
-                    window.api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
-                  }
-                } catch (upsertErr) {
-                  console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
                 }
-              } catch (err: any) {
-                const msg = `PULL erro doc ${docSnap.id} (${table}): ${err?.message}`;
-                console.error(msg);
-                (window.api as any).log?.(msg);
+                // Atualizar o mapa local com o valor que acabamos de salvar
+                localMap!.set(docSnap.id, rowToUpsert);
+                
+                if (typeof window !== 'undefined' && window.api?.log) {
+                  window.api.log(`[PULL UPSERT] Doc ${docSnap.id} upserted.`);
+                }
+              } catch (upsertErr) {
+                console.warn(`PULL erro doc ${docSnap.id} (${table}):`, upsertErr);
               }
             }
           }
@@ -190,14 +241,18 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   if (highestCloudTime > lastPull) {
     setLastSyncTime('pull', highestCloudTime);
   }
-  // console.log(`[Sync] PULL Concluído. Documentos processados: ${pulledDocsCount}, Ignorados (conflito): ${skippedDocsCount}.`);
 }
 
-export function listenForCloudSyncSignal(onSignal: () => void) {
+/**
+ * #7: Listener atualizado para passar o deviceId do sinal ao callback.
+ * Permite que o chamador ignore sinais do próprio dispositivo.
+ */
+export function listenForCloudSyncSignal(onSignal: (deviceId?: string) => void) {
   const signalRef = doc(db, 'config', 'sync_signal');
   return onSnapshot(signalRef, (docSnap) => {
     if (docSnap.exists()) {
-      onSignal();
+      const data = docSnap.data();
+      onSignal(data?.deviceId);
     }
   });
 }
