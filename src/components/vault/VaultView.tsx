@@ -5,7 +5,6 @@ import { VaultItemForm } from './VaultItemForm';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultSecurityDashboard } from './VaultSecurityDashboard';
-import { useMouseDrag } from '../../hooks/useMouseDrag';
 
 export default function VaultView() {
   const [viewMode, setViewMode] = useState<'list' | 'security'>('list');
@@ -99,68 +98,7 @@ export default function VaultView() {
     }
   };
 
-  // --- DRAG AND DROP (MOUSE EVENTS) ---
-  useEffect(() => {
-    const onDragMove = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      const targetEl = document.elementFromPoint(detail.x, detail.y);
-      if (targetEl) {
-         const droppable = targetEl.closest('[data-droppable-type="vault-group"]');
-         if (droppable) {
-           setDragOverGroupId(droppable.getAttribute('data-droppable-id'));
-           return;
-         }
-      }
-      setDragOverGroupId(null);
-    };
 
-    const onDragDrop = async (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      setDragOverGroupId(null);
-
-      // Reorder groups
-      if (detail.type === 'vault-group' && detail.targetId) {
-        if (detail.id !== detail.targetId) {
-          const draggedIndex = groups.findIndex(g => g.id === detail.id);
-          const targetIndex = groups.findIndex(g => g.id === detail.targetId);
-          if (draggedIndex !== -1 && targetIndex !== -1) {
-            const newGroups = [...groups];
-            const [draggedGroup] = newGroups.splice(draggedIndex, 1);
-            newGroups.splice(targetIndex, 0, draggedGroup);
-            
-            const updates = newGroups.map((g, index) => ({ id: g.id, position: index }));
-            setGroups(newGroups.map((g, index) => ({ ...g, position: index })));
-            await window.api.vault?.reorderGroups(updates);
-          }
-        }
-      }
-      
-      // Move item to group
-      if (detail.type === 'vault-item' && detail.targetId !== null) {
-         const targetGroupId = detail.targetId === 'root' ? '' : detail.targetId;
-         const item = items.find(i => i.id === detail.id);
-         if (item && item.group_id !== targetGroupId) {
-           const updatedItem = { ...item, group_id: targetGroupId };
-           await window.api.vault?.upsertItem(updatedItem);
-           loadData();
-         }
-      }
-    };
-
-    const onDragEnd = () => {
-      setDragOverGroupId(null);
-    };
-
-    window.addEventListener('caderno-drag-move', onDragMove);
-    window.addEventListener('caderno-drag-drop', onDragDrop);
-    window.addEventListener('caderno-drag-end', onDragEnd);
-
-    return () => {
-      window.removeEventListener('caderno-drag-move', onDragMove);
-      window.removeEventListener('caderno-drag-drop', onDragDrop);
-      window.removeEventListener('caderno-drag-end', onDragEnd);
-    };
-  }, [groups, items]);
 
   const filteredItems = searchQuery
     ? items.filter(i => 
@@ -477,16 +415,6 @@ function ItemDetails({ item, onEdit, onDelete }: { item: VaultItem; onEdit: () =
 }
 
 function VaultGroupItem({ g, selectedGroupId, viewMode, dragOverGroupId, onSelect, onContextMenu }: any) {
-  const { handleMouseDown } = useMouseDrag({
-    id: g.id,
-    type: 'vault-group',
-    getGhostContent: () => {
-      const el = document.createElement('div');
-      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium';
-      el.innerHTML = `<span style="color: ${g.color || '#fff'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span><span>${g.name}</span>`;
-      return el;
-    }
-  });
 
   return (
     <div 
@@ -503,7 +431,7 @@ function VaultGroupItem({ g, selectedGroupId, viewMode, dragOverGroupId, onSelec
         <span className="truncate text-sm">{g.name}</span>
       </div>
       <div className="flex flex-shrink-0 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <span onMouseDown={handleMouseDown} className="text-dark-subtext/50 cursor-grab active:cursor-grabbing mr-1">
+        <span className="text-dark-subtext/50 mr-1">
           <GripVertical size={14} />
         </span>
         <button 
@@ -518,16 +446,6 @@ function VaultGroupItem({ g, selectedGroupId, viewMode, dragOverGroupId, onSelec
 }
 
 function VaultItemRow({ item, selectedItem, onSelect }: any) {
-  const { handleMouseDown } = useMouseDrag({
-    id: item.id,
-    type: 'vault-item',
-    getGhostContent: () => {
-      const el = document.createElement('div');
-      el.className = 'bg-dark-bg text-dark-text border border-brand-500 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium';
-      el.innerHTML = `<span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-400"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg></span><span>${item.label}</span>`;
-      return el;
-    }
-  });
 
   return (
     <div 
@@ -543,7 +461,7 @@ function VaultItemRow({ item, selectedItem, onSelect }: any) {
       </div>
       <div className="flex flex-col items-end gap-1">
         {item.is_favorite === 1 && <Star size={12} className="text-yellow-500 flex-shrink-0" fill="currentColor" />}
-        <span onMouseDown={handleMouseDown} className="text-dark-subtext/30 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+        <span className="text-dark-subtext/30 opacity-0 group-hover:opacity-100">
           <GripVertical size={12} />
         </span>
       </div>

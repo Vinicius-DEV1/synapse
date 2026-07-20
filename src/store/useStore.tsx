@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
 import type { AppState, Action, Tab } from '../types';
-import { commandHandlers } from './commands';
+import { appReducer as reducer } from './commands';
 
 function generateTabId(): string {
   return 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
@@ -65,13 +65,7 @@ const initialState: AppState = {
   isReadingModeFullScreen: false,
 };
 
-function reducer(state: AppState, action: Action): AppState {
-  const handler = commandHandlers[action.type];
-  if (handler) {
-    return handler.execute(state, action);
-  }
-  return state;
-}
+
 
 interface StoreContextType {
   state: AppState;
