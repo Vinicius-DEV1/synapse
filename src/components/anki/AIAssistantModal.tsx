@@ -4,6 +4,7 @@ import { fetchGeminiModels, type GeminiModel } from '../../services/gemini';
 import { getSettings } from '../../utils/settings';
 import AIGenerationView from './AIGenerationView';
 import AIChatAnalysisView from './AIChatAnalysisView';
+import { Portal } from '../ui/Portal';
 
 interface AIAssistantModalProps {
   deckId: string;
@@ -67,7 +68,8 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={e => e.stopPropagation()}>
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={e => e.stopPropagation()}>
       <div className="bg-dark-card border border-indigo-500/30 w-full max-w-3xl rounded-2xl shadow-[0_0_50px_rgba(99,102,241,0.15)] flex flex-col overflow-hidden h-[85vh]">
         
         <header className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-indigo-900/20 shrink-0">
@@ -198,5 +200,6 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
         </footer>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, BrainCircuit, Keyboard, Settings, Activity, Target, Database, Clock, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Tag, Search, Edit3, Save, RotateCcw } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import { getWebDb, getAiPrompt, saveAiPrompt } from '../../services/db-web';
 import { DEFAULT_CARD_GENERATION_PROMPT, DEFAULT_CHAT_ANALYSIS_PROMPT } from '../../services/gemini';
 
@@ -86,6 +87,7 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
   };
 
   return (
+    <Portal>
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-fade-in">
       <div className="bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/10 h-[80vh] max-h-[700px]">
         
@@ -431,6 +433,7 @@ export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

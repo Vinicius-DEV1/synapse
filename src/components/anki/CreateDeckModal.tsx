@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Portal } from '../ui/Portal';
 
 interface CreateDeckModalProps {
   parentId: string | null;
@@ -19,7 +20,8 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
   };
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+    <Portal>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
       <div className="bg-dark-card border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl">
         <h2 className="text-xl font-bold mb-4">{parentId ? 'Novo Subbaralho' : 'Novo Baralho'}</h2>
 
@@ -65,5 +67,6 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
