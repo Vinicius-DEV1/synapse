@@ -13,6 +13,7 @@ const FilesView = lazy(() => import('./files/FilesView'));
 const VaultView = lazy(() => import('./vault/VaultView'));
 const PracticeView = lazy(() => import('./practice/PracticeView'));
 const TrashView = lazy(() => import('./trash/TrashView'));
+const SettingsModule = lazy(() => import('./settings/SettingsModule'));
 
 export interface ViewFactoryProps {
   tab: Tab;
@@ -65,6 +66,8 @@ export function ViewFactory({
         return <PracticeView />;
       case 'trash':
         return <TrashView />;
+      case 'settings':
+        return <SettingsModule />;
       case 'finance':
       default:
         return <FinanceView />;
