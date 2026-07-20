@@ -2,6 +2,7 @@ import { db } from '../firebase';
 import { encryptText } from '../crypto';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId } from './sync-utils';
+import { logFirebaseOp, isEmergencyStopped } from './sync-monitor';
 
 /** Tamanho máximo do batch do Firestore é 500; usamos 400 como margem de segurança */
 const BATCH_SIZE = 400;
@@ -54,6 +55,10 @@ async function prepareRowsForPush(
 
 export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.sync) return;
+  if (isEmergencyStopped()) {
+    console.warn('[Sync PUSH] Bloqueado por medida de segurança (Emergency Stop).');
+    return;
+  }
   
   if (!navigator.onLine) {
     throw new Error('Sem conexão com a internet para sincronizar.');
@@ -80,7 +85,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         if (localRows.length === 0) continue;
 
         const rowsToPush = lastPush > 0 
-          ? localRows.filter((r: any) => Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0)) >= lastPush)
+          ? localRows.filter((r: any) => Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0)) > lastPush)
           : localRows;
 
         if (rowsToPush.length === 0) continue;
@@ -121,6 +126,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
 
           try {
             await batch.commit();
+            logFirebaseOp('write', chunk.length);
             // #6: Só avança o highestSuccessTime APÓS commit bem-sucedido
             for (const item of chunk) {
               pushedCount++;
@@ -172,6 +178,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           source: navigator.userAgent,
           deviceId: getDeviceId()
         }, { merge: true });
+        logFirebaseOp('write', 1);
       } catch (e) {
         console.warn("Falha ao enviar sinal de sync", e);
       }
@@ -182,6 +189,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
       if (Object.keys(manifestUpdate).length > 0) {
         try {
           await setDoc(doc(db, 'config', 'sync_manifest'), manifestUpdate, { merge: true });
+          logFirebaseOp('write', 1);
         } catch (e) {
           console.warn("Falha ao atualizar sync manifest", e);
         }

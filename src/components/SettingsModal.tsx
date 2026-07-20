@@ -11,13 +11,14 @@ import AiTab from './settings/tabs/AiTab';
 import ShortcutsTab from './settings/tabs/ShortcutsTab';
 import StorageTab from './settings/tabs/StorageTab';
 import { BackupTab } from './settings/tabs/BackupTab';
+import SyncMonitor from './settings/SyncMonitor';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts' | 'storage' | 'backup'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts' | 'storage' | 'backup' | 'sync'>('general');
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -94,6 +95,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             >
               Backup
             </button>
+            <button 
+              onClick={() => setActiveTab('sync')}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'sync' ? 'bg-dark-card text-white shadow-sm' : 'text-dark-subtext hover:text-white'}`}
+            >
+              Sync
+            </button>
           </div>
         )}
 
@@ -130,6 +137,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
           {activeTab === 'backup' && !isChangingPassword && (
             <BackupTab />
+          )}
+
+          {activeTab === 'sync' && !isChangingPassword && (
+            <SyncMonitor />
           )}
 
           {!isChangingPassword && (
