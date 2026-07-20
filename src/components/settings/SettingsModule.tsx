@@ -11,9 +11,10 @@ import ShortcutsTab from './tabs/ShortcutsTab';
 import StorageTab from './tabs/StorageTab';
 import { BackupTab } from './tabs/BackupTab';
 import SyncMonitor from './SyncMonitor';
+import type { Tab } from '../../../types';
 
-export default function SettingsModule() {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'security' | 'ai' | 'shortcuts' | 'storage' | 'backup' | 'sync'>('general');
+export default function SettingsModule({ tab }: { tab?: Tab }) {
+  const activeTab = tab?.pageId || 'general';
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -40,45 +41,6 @@ export default function SettingsModule() {
 
   return (
     <div className="w-full h-full flex bg-dark-bg text-dark-text overflow-hidden">
-      {/* Sidebar for settings tabs */}
-      <div className="w-64 border-r border-white/5 bg-dark-card/30 flex flex-col h-full overflow-y-auto">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-brand-500/20 rounded-xl flex items-center justify-center text-brand-400 shadow-inner">
-              <Settings size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white leading-tight">Configurações</h2>
-              <p className="text-xs text-dark-subtext">Painel de Controle</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 px-3 pb-6 flex flex-col gap-1">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  setIsChangingPassword(false);
-                }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium ${
-                  isActive 
-                    ? 'bg-brand-500/10 text-brand-400' 
-                    : 'text-dark-subtext hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Icon size={18} />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div className="flex-1 h-full overflow-y-auto bg-dark-bg p-8 custom-scrollbar">
         <div className="max-w-4xl mx-auto">
