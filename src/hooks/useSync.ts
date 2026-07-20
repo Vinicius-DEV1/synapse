@@ -76,6 +76,39 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         }
       };
 
+      const doPushOnlySync = async () => {
+        if (isClosed) return;
+        if (!navigator.onLine) {
+          finishSync(false);
+          return;
+        }
+        startSync();
+        try {
+          await withTimeout(
+            Promise.all([
+              pushAllToCloud(masterKey),
+              syncPdfsToCloud(masterKey),
+            ]),
+            120_000
+          );
+          if (!isClosed) {
+            finishSync(true);
+            // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
+            syncChannel.postMessage('LOCAL_UPDATE');
+          }
+        } catch (err: any) {
+          if (!isClosed) {
+            console.warn(`[Sync] doPushOnlySync FALHOU: ${err.message}`, err);
+            if (err.code === 'resource-exhausted' || err.message?.toLowerCase().includes('quota') || err.message?.toLowerCase().includes('permission-denied')) {
+              window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
+                detail: { message: err.message, code: err.code } 
+              }));
+            }
+            finishSync(false);
+          }
+        }
+      };
+
       // 1. Initial Sync (Sincroniza ao abrir)
       doFullSync();
 
@@ -111,10 +144,10 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
-        // console.log('[Sync] Gatilho de edição detectado! Agendando sync em 1.5s...');
+        // console.log('[Sync] Gatilho de edição detectado! Agendando push em 1.5s...');
         clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
-          doFullSync();
+          doPushOnlySync();
         }, 1500); // ⚡ 1.5s após a edição
       };
       
