@@ -40,6 +40,7 @@ function loadSavedState(): Partial<AppState> {
         sidebarCollapsed: parsed.sidebarCollapsed,
         expandedNodes: parsed.expandedNodes,
         aiChatSessions: parsed.aiChatSessions || {},
+        aiSidebarWidth: parsed.aiSidebarWidth || 340,
       };
     }
   } catch (e) {
@@ -60,6 +61,7 @@ const initialState: AppState = {
   confirmDelete: null,
   aiChatSessions: saved.aiChatSessions || {},
   showAiSidebar: false,
+  aiSidebarWidth: saved.aiSidebarWidth || 340,
   activeAiChatId: null,
   moduleKeys: {},
   isReadingModeFullScreen: false,
@@ -85,6 +87,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sidebarCollapsed: state.sidebarCollapsed,
       expandedNodes: state.expandedNodes,
       aiChatSessions: state.aiChatSessions,
+      aiSidebarWidth: state.aiSidebarWidth,
     };
     localStorage.setItem('appLayoutState', JSON.stringify(stateToSave));
     
@@ -94,10 +97,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         sidebarCollapsed: state.sidebarCollapsed,
         expandedNodes: state.expandedNodes,
         aiChatSessions: state.aiChatSessions,
+        aiSidebarWidth: state.aiSidebarWidth,
       };
       window.api.config.set('appLayoutState', dbState).catch(console.error);
     }
-  }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions]);
+  }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

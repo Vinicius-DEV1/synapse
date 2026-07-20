@@ -182,6 +182,7 @@ export interface AppState {
   confirmDelete: string | null;
   aiChatSessions: Record<string, AiChatSession>;
   showAiSidebar: boolean;
+  aiSidebarWidth: number;
   activeAiChatId: string | null;
   moduleKeys: Record<string, CryptoKey>;
   isReadingModeFullScreen: boolean;
@@ -212,6 +213,7 @@ export type Action =
   | { type: 'DELETE_AI_CHAT'; id: string }
   | { type: 'CLEAR_AI_CHATS' }
   | { type: 'TOGGLE_AI_SIDEBAR' }
+  | { type: 'SET_AI_SIDEBAR_WIDTH'; width: number }
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
   | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };
