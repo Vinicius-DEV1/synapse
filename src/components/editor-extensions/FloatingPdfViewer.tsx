@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Maximize2, Loader2, Download } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 import type { FileItem } from '../../types';
@@ -10,7 +11,7 @@ interface FloatingPdfViewerProps {
   onExpand: () => void;
 }
 
-export default function FloatingPdfViewer({ item, onClose, onExpand }: FloatingPdfViewerProps) {
+function FloatingPdfViewerContent({ item, onClose, onExpand }: FloatingPdfViewerProps) {
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,5 +92,13 @@ export default function FloatingPdfViewer({ item, onClose, onExpand }: FloatingP
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FloatingPdfViewer(props: FloatingPdfViewerProps) {
+  return (
+    <Portal>
+      <FloatingPdfViewerContent {...props} />
+    </Portal>
   );
 }

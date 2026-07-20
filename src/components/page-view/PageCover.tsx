@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Image as ImageIcon, X, Upload, Sparkles } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { Page } from '../../types';
 
 interface PageCoverProps {
@@ -78,6 +79,7 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
       )}
 
       {showCoverModal && (
+        <Portal>
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
           <div className="bg-dark-card border border-dark-border p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
             <button onClick={() => setShowCoverModal(false)} className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors">
@@ -139,6 +141,7 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   );

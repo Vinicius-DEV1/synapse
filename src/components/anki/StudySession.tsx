@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, RotateCcw, X, Volume2, Edit3, Trash2 } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 
@@ -16,7 +17,7 @@ interface Card {
   source_id?: string;
 }
 
-export default function StudySession({ deckId, onClose }: { deckId: string; onClose: () => void }) {
+function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () => void }) {
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showingAnswer, setShowingAnswer] = useState(false);
@@ -436,5 +437,13 @@ export default function StudySession({ deckId, onClose }: { deckId: string; onCl
         </div>
       </main>
     </div>
+  );
+}
+
+export default function StudySession(props: { deckId: string; onClose: () => void }) {
+  return (
+    <Portal>
+      <StudySessionContent {...props} />
+    </Portal>
   );
 }

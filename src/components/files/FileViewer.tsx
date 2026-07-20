@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, ExternalLink, Download, FileText, File } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
@@ -9,7 +10,7 @@ interface FileViewerProps {
   onClose: () => void;
 }
 
-export default function FileViewer({ item, onClose }: FileViewerProps) {
+function FileViewerContent({ item, onClose }: FileViewerProps) {
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
@@ -152,5 +153,13 @@ export default function FileViewer({ item, onClose }: FileViewerProps) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FileViewer(props: FileViewerProps) {
+  return (
+    <Portal>
+      <FileViewerContent {...props} />
+    </Portal>
   );
 }
