@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useStore } from '../../../store/useStore';
-import type { Page } from '../../../types';
-import Editor from '../../Editor';
-import SubPageGrid from '../../SubPageGrid';
-import EmptyState from '../../EmptyState';
-import PageHistoryModal from '../../PageHistoryModal';
+import { useStore } from '../../store/useStore';
+import type { Page } from '../../types';
+import Editor from '../Editor';
+import SubPageGrid from '../SubPageGrid';
+import EmptyState from '../EmptyState';
+import PageHistoryModal from '../PageHistoryModal';
 import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';

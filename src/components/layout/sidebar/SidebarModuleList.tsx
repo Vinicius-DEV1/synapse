@@ -1,4 +1,5 @@
-import { MAIN_MODULES, SPECIAL_MODULES, ModuleConfig } from './modules.config';
+import { MAIN_MODULES, SPECIAL_MODULES } from './modules.config';
+import type { ModuleConfig } from './modules.config';
 import { useStore } from '../../../store/useStore';
 import { Settings } from 'lucide-react';
 
