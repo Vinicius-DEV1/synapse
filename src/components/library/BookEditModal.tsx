@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Plus, Palette, Image as ImageIcon, FileText, Upload, FileCode2, Loader2 } from 'lucide-react';
 import { extractPdfCover } from '../../utils/pdf-cover';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface BookEditModalProps {
   book: LibraryBook;
@@ -159,7 +160,8 @@ export default function BookEditModal({
   };
 
   return (
-    <div
+    <Portal>
+      <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
@@ -442,5 +444,6 @@ export default function BookEditModal({
         </form>
       </div>
     </div>
+    </Portal>
   );
 }
