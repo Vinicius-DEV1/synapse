@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, ArrowRightLeft, Gift, Plus, Trash2, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { Transaction, WishlistItem } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
@@ -427,6 +428,7 @@ export default function FinanceView() {
       )}
 
       {selectedWishlistDetails && (
+        <Portal>
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWishlistDetails(null)}>
           <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-white/5">
@@ -496,6 +498,7 @@ export default function FinanceView() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

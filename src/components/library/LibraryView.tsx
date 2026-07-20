@@ -3,6 +3,7 @@ import {
   Search, Plus, BarChart3, ArrowUpDown, ChevronDown,
   BookOpen, Loader2, Library, Edit2, Cloud
 } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import LibraryGrid from './LibraryGrid';
 import BookEditModal from './BookEditModal';
@@ -637,6 +638,7 @@ export default function LibraryView({ tabId }: { tabId: string }) {
 
       {/* Upload Feedback Modal */}
       {uploadResult && (
+        <Portal>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-brand-900 border border-brand-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
             {uploadResult.type === 'success' ? (
@@ -662,6 +664,7 @@ export default function LibraryView({ tabId }: { tabId: string }) {
             </button>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

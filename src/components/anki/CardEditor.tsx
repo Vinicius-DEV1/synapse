@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Volume2, Plus, BrainCircuit, Sparkles } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import AIAssistantModal from './AIAssistantModal';
 
 export interface CardDraft {
@@ -213,6 +214,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
   };
 
   return (
+    <Portal>
     <div 
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onMouseDown={(e) => e.stopPropagation()}
@@ -412,5 +414,6 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
         />
       )}
     </div>
+    </Portal>
   );
 }

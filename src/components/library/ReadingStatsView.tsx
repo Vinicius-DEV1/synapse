@@ -3,13 +3,14 @@ import {
   X, BookCheck, FileText, Clock, Flame, Trophy, Calendar,
   TrendingUp, Loader2
 } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { LibraryBook, GlobalReadingStats } from '../../types';
 
 interface ReadingStatsViewProps {
   onClose: () => void;
 }
 
-export default function ReadingStatsView({ onClose }: ReadingStatsViewProps) {
+function ReadingStatsViewContent({ onClose }: ReadingStatsViewProps) {
   const [stats, setStats] = useState<GlobalReadingStats | null>(null);
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,6 +273,14 @@ export default function ReadingStatsView({ onClose }: ReadingStatsViewProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ReadingStatsView(props: ReadingStatsViewProps) {
+  return (
+    <Portal>
+      <ReadingStatsViewContent {...props} />
+    </Portal>
   );
 }
 
