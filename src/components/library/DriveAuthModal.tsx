@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Cloud, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { getDriveAuthUrl, exchangeCodeForToken, saveDriveCredentials, getDriveCredentials, generateCodeVerifier, generateCodeChallenge } from '../../services/drive';
+import { Portal } from '../ui/Portal';
 
 interface DriveAuthModalProps {
   onClose: () => void;
@@ -74,7 +75,8 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div 
         className="w-full max-w-md bg-dark-bg border border-white/10 rounded-2xl shadow-2xl flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -192,5 +194,6 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

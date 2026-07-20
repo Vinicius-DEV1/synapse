@@ -6,6 +6,7 @@ import CardEditor from '../anki/CardEditor';
 import type { DictionaryData, Collocation } from '../../types/dictionary';
 import { useDictionaryQuery } from './dictionary/useDictionaryQuery';
 import { DictionaryContent } from './dictionary/DictionaryContent';
+import { Portal } from '../ui/Portal';
 
 export interface DictionaryModalProps {
   text: string;
@@ -45,7 +46,8 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
   }, [text, mode, preloadedData, fetchDefinition, setDictionaryData, setLanguageTab, pageContext]);
 
   return (
-    <div className="dictionary-modal-container select-none fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={onClose}>
+    <Portal>
+      <div className="dictionary-modal-container select-none fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onMouseDown={onClose}>
       <div 
         className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-[95vw] max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
         onMouseDown={(e) => e.stopPropagation()}
@@ -307,5 +309,6 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
       )}
 
     </div>
+    </Portal>
   );
 }
