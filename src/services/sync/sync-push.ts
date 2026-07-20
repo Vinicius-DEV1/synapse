@@ -2,7 +2,7 @@ import { db } from '../firebase';
 import { encryptText } from '../crypto';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId } from './sync-utils';
-import { logFirebaseOp, isEmergencyStopped } from './sync-monitor';
+import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 
 /** Tamanho máximo do batch do Firestore é 500; usamos 400 como margem de segurança */
 const BATCH_SIZE = 400;
@@ -111,6 +111,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
           const chunk = prepared.slice(i, i + BATCH_SIZE);
           const batch = writeBatch(db);
+          let chunkBytes = 0;
 
           for (const item of chunk) {
             if (typeof window !== 'undefined' && window.api?.log) {
@@ -122,11 +123,14 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
               updatedAt: item.updatedAt,
               createdAt: item.createdAt
             }, { merge: true });
+            
+            chunkBytes += item.id.length + item.encryptedData.length + 150;
           }
 
           try {
             await batch.commit();
             logFirebaseOp('write', chunk.length);
+            logFirebaseTraffic(0, chunkBytes);
             // #6: Só avança o highestSuccessTime APÓS commit bem-sucedido
             for (const item of chunk) {
               pushedCount++;
@@ -154,12 +158,17 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         const msg = `PUSH erro tabela ${table}: ${err?.message}`;
         console.error(msg);
         errors.push(msg);
+        logSyncEvent('error', `Falha ao enviar para nuvem (${table}): ${err?.message}`);
       }
     }
   }
 
   if (errors.length > 0) {
     console.warn(`[Sync] PUSH concluído com ${errors.length} avisos. Primeiro: ${errors[0]}`);
+  }
+
+  if (pushedCount > 0) {
+    logSyncEvent('push', `Sincronização (Upload) concluída: ${pushedCount} enviados.`);
   }
 
   if (pushedCount > 0 || errors.length > 0) {
