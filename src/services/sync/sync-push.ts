@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
-import { collection, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 
 export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
@@ -14,7 +14,6 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   // console.log(`[Sync] PUSH Iniciado. (lastPush: ${new Date(lastPush).toISOString()})`);
   let highestLocalTime = lastPush;
   let pushedCount = 0;
-  let pushSkippedCount = 0;
   const errors: string[] = [];
 
   for (const module of Object.keys(MODULE_TABLES)) {
@@ -69,13 +68,13 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             }, { merge: true });
             pushedCount++;
           } catch (err: any) {
-            const msg = `PUSH erro doc \${row.id} (\${table}): \${err?.message}`;
+            const msg = `PUSH erro doc ${row.id} (${table}): ${err?.message}`;
             console.warn(msg);
             errors.push(msg);
           }
         }
       } catch (err: any) {
-        const msg = `PUSH erro tabela \${table}: \${err?.message}`;
+        const msg = `PUSH erro tabela ${table}: ${err?.message}`;
         console.error(msg);
         errors.push(msg);
       }
@@ -83,13 +82,13 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   if (errors.length > 0) {
-    console.warn(`[Sync] PUSH concluído com \${errors.length} avisos. Primeiro: \${errors[0]}`);
+    console.warn(`[Sync] PUSH concluído com ${errors.length} avisos. Primeiro: ${errors[0]}`);
   }
 
   if (pushedCount > 0 || errors.length > 0) {
     // console.log(`[Sync] PUSH finalizou: \${pushedCount} docs enviados, \${errors.length} pulados/errados, \${pushSkippedCount} inalterados.`);
     if (typeof window !== 'undefined' && (window as any).api?.log) {
-      (window as any).api.log(`[PUSH] \${pushedCount} enviados, \${errors.length} pulados.`);
+      (window as any).api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
     if (highestLocalTime > getLastSyncTime('push')) {
       setLastSyncTime('push', highestLocalTime);
