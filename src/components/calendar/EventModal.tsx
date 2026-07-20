@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { CalendarEvent } from '../../types';
 import { X, Calendar as CalendarIcon, Clock, Type, Palette } from 'lucide-react';
 import { format } from 'date-fns';
+import { Portal } from '../ui/Portal';
 
 interface EventModalProps {
   event: CalendarEvent | null;
@@ -90,7 +91,8 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <Portal>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1a1924] border border-dark-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-dark-border">
           <h2 className="text-lg font-medium text-dark-text">
@@ -298,5 +300,6 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
