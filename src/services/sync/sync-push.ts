@@ -37,35 +37,18 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         if (rowsToPush.length === 0) continue;
         
         for (const row of rowsToPush) {
-          const docRef = doc(db, table, row.id);
           const localTime = Math.max(parseDateSafe(row.updated_at || row.created_at || 0), parseDateSafe(row.deleted_at || 0));
           if (localTime > highestLocalTime) highestLocalTime = localTime;
           
-          const isDeleted = !!row.deleted_at;
-          const cloudSnap = await getDoc(docRef);
-          const cloudData = cloudSnap.exists() ? cloudSnap.data() : undefined;
-
-          if (cloudData) {
-            const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
-            
-            if (!isDeleted && localTime <= cloudTime) {
-              pushSkippedCount++;
-              if (typeof window !== 'undefined' && (window as any).api?.log) {
-                (window as any).api.log(`[PUSH SKIP] Doc ${row.id}. localTime=${localTime} <= cloudTime=${cloudTime}`);
-              }
-              continue;
-            }
-          }
-
           try {
             if (typeof window !== 'undefined' && (window as any).api?.log) {
-              (window as any).api.log(`[PUSH DOING] Doc \${row.id} (\${table}). Pushing to Firebase...`);
+              (window as any).api.log(`[PUSH DOING] Doc ${row.id} (${table}). Pushing to Firebase...`);
             }
             const { id, updated_at, created_at, ...sensitiveData } = row;
             const jsonString = JSON.stringify(sensitiveData);
 
             if (jsonString.length > 900_000) {
-              const msg = `[PUSH SKIP] Doc \${row.id} (\${table}) pulado: conteúdo muito grande (\${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
+              const msg = `[PUSH SKIP] Doc ${row.id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
               console.warn(msg);
               if (typeof window !== 'undefined' && (window as any).api?.log) {
                 (window as any).api.log(msg);
