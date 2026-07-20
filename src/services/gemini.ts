@@ -110,7 +110,10 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
   const contents: any[] = [];
 
   if (history && history.length > 0) {
-    const formattedHistory = JSON.parse(JSON.stringify(history)); // deep copy
+    const formattedHistory = history.map((msg: any) => ({
+      role: msg.role,
+      parts: msg.parts
+    }));
     contents.push(...formattedHistory);
     
     const userParts: any[] = [{ text: prompt }];
