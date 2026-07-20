@@ -74,7 +74,16 @@ export const PageReference = Node.create({
 
   addAttributes() {
     return {
-      pageId: { default: null },
+      pageId: { 
+        default: null,
+        parseHTML: element => element.getAttribute('data-page-id'),
+        renderHTML: attributes => {
+          if (!attributes.pageId) {
+            return {};
+          }
+          return { 'data-page-id': attributes.pageId };
+        }
+      },
       title: { default: 'Página' },
     };
   },
