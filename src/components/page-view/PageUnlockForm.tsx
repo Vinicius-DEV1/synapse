@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Page } from '../../../types';
+import type { Page } from '../../types';
 
 interface PageUnlockFormProps {
   page: Page;

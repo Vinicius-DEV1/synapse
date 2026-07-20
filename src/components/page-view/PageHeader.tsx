@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { ChevronRight, Clock } from 'lucide-react';
-import { useStore } from '../../../store/useStore';
-import type { Page } from '../../../types';
-import EmojiPopover from '../../EmojiPopover';
+import { useStore } from '../../store/useStore';
+import type { Page } from '../../types';
+import EmojiPopover from '../EmojiPopover';
 
 interface PageHeaderProps {
   page: Page;

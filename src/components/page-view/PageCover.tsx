@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Image as ImageIcon, X, Upload, Sparkles } from 'lucide-react';
-import type { Page } from '../../../types';
+import type { Page } from '../../types';
 
 interface PageCoverProps {
   page: Page;
