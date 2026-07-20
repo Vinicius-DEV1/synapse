@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Target, X, Check } from 'lucide-react';
 import type { CultureItem } from '../../types';
+import { Portal } from '../ui/Portal';
 
 interface Props {
   isOpen: boolean;
@@ -25,7 +26,8 @@ export default function CultureGoalModal({ isOpen, onClose, onSave, item }: Prop
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <Portal>
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
         className="bg-dark-card w-full max-w-sm rounded-xl shadow-2xl border border-white/10 overflow-hidden animate-scale-up"
         onClick={e => e.stopPropagation()}
@@ -70,5 +72,6 @@ export default function CultureGoalModal({ isOpen, onClose, onSave, item }: Prop
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
+import { Portal } from '../ui/Portal';
 
 interface CultureEpisodeModalProps {
   item: CultureItem;
@@ -341,7 +342,8 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
       <div className="bg-dark-card w-full max-w-3xl rounded-3xl shadow-2xl border border-white/10 flex flex-col h-[85vh] overflow-hidden">
 
         {/* ── Header ── */}
@@ -520,5 +522,6 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
