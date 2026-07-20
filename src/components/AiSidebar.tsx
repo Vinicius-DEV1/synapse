@@ -23,6 +23,21 @@ export default function AiSidebar() {
 
   const activeSession = state.activeAiChatId ? state.aiChatSessions[state.activeAiChatId] : null;
 
+  const handleNewQuickChat = () => {
+    const id = `chat_${Date.now()}`;
+    dispatch({
+      type: 'UPDATE_AI_CHAT',
+      session: {
+        id,
+        pageId: 'global',
+        pageTitle: 'Chat Rápido',
+        messages: [],
+        updatedAt: Date.now()
+      }
+    });
+    dispatch({ type: 'OPEN_AI_CHAT', chatId: id });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || !activeSession) return;
@@ -65,20 +80,38 @@ export default function AiSidebar() {
           <Sparkles size={18} />
           <span>Chats Ativos</span>
         </div>
-        <button 
-          onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
-          className="p-1.5 text-dark-subtext hover:text-white rounded-lg transition-colors"
-        >
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          {!state.activeAiChatId && (
+            <button 
+              onClick={handleNewQuickChat}
+              className="p-1.5 text-brand-400 hover:bg-brand-500/20 rounded-lg transition-colors"
+              title="Novo Chat Rápido"
+            >
+              <Plus size={18} />
+            </button>
+          )}
+          <button 
+            onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
+            className="p-1.5 text-dark-subtext hover:text-white rounded-lg transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {!state.activeAiChatId ? (
         <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
           {sessions.length === 0 ? (
-            <div className="text-center text-dark-subtext text-sm py-10">
+            <div className="text-center text-dark-subtext text-sm py-10 flex flex-col items-center">
               <MessageSquare size={32} className="mx-auto mb-3 opacity-20" />
-              Nenhum chat ativo no momento.
+              <p className="mb-4">Nenhum chat ativo no momento.</p>
+              <button 
+                onClick={handleNewQuickChat}
+                className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg transition-colors font-medium text-xs shadow-lg shadow-brand-500/20"
+              >
+                <Plus size={14} />
+                Novo Chat Rápido
+              </button>
             </div>
           ) : (
             sessions.map(session => (
@@ -102,13 +135,17 @@ export default function AiSidebar() {
                     </button>
                   </div>
                   <div className="flex items-start gap-2 mb-3">
-                    {session.contextImage ? (
+                    {session.pageId === 'global' ? (
+                      <MessageSquare size={14} className="mt-1 shrink-0 text-brand-500" />
+                    ) : session.contextImage ? (
                       <ImageIcon size={14} className="mt-1 shrink-0 text-brand-500" />
                     ) : (
                       <FileText size={14} className="mt-1 shrink-0 text-brand-500" />
                     )}
                     <p className="text-sm text-white line-clamp-2">
-                      {session.contextImage ? 'Imagem referenciada' : `"${session.contextText}"`}
+                      {session.pageId === 'global' 
+                        ? (session.messages.length > 0 && session.messages[0].parts[0]?.text ? session.messages[0].parts[0].text : 'Nova conversa livre') 
+                        : session.contextImage ? 'Imagem referenciada' : `"${session.contextText}"`}
                     </p>
                   </div>
                 </div>
@@ -117,14 +154,16 @@ export default function AiSidebar() {
                   <div className="text-xs text-brand-400 font-medium truncate flex-1">
                     {session.pageTitle}
                   </div>
-                  <button 
-                    onClick={() => handleNavigate(session.pageId, session.contextText)}
-                    className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-300 font-medium px-2 py-1 rounded transition-colors bg-brand-500/10 hover:bg-brand-500/20"
-                    title="Ir para a página"
-                  >
-                    <ExternalLink size={12} />
-                    Ir
-                  </button>
+                  {session.pageId !== 'global' && (
+                    <button 
+                      onClick={() => handleNavigate(session.pageId, session.contextText)}
+                      className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-300 font-medium px-2 py-1 rounded transition-colors bg-brand-500/10 hover:bg-brand-500/20"
+                      title="Ir para a página"
+                    >
+                      <ExternalLink size={12} />
+                      Ir
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -142,9 +181,15 @@ export default function AiSidebar() {
             </button>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-white truncate">Conversa com IA</div>
-              <div className="text-xs text-brand-400 truncate cursor-pointer hover:underline flex items-center gap-1" onClick={() => handleNavigate(activeSession!.pageId, activeSession!.contextText)}>
-                {activeSession?.pageTitle} <ExternalLink size={10} />
-              </div>
+              {activeSession?.pageId !== 'global' ? (
+                <div className="text-xs text-brand-400 truncate cursor-pointer hover:underline flex items-center gap-1" onClick={() => handleNavigate(activeSession!.pageId, activeSession!.contextText)}>
+                  {activeSession?.pageTitle} <ExternalLink size={10} />
+                </div>
+              ) : (
+                <div className="text-xs text-brand-400 truncate">
+                  {activeSession?.pageTitle}
+                </div>
+              )}
             </div>
           </div>
           
