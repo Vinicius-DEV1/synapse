@@ -10,15 +10,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
-/**
- * Função helper para executar pull sem disparar cascata de sync triggers.
- * Ativa a flag de supressão durante o pull, garantindo que os db.put do
- * upsertRow não re-disparem o debounce do sync.
- */
-async function pullWithSuppression(masterKey: any): Promise<void> {
-  await pullAllFromCloud(masterKey);
-}
-
 export function useSync(isAuth: boolean, masterKey: string | null, loadPages: () => void) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,6 +24,9 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
   useEffect(() => {
     if (isAuth && masterKey) {
       let isClosed = false;
+      let isSyncing = false; // Mutex: impede syncs simultâneos que desperdiçam cota Firebase
+      let lastFullSyncTime = 0; // Cooldown: tempo mínimo entre full syncs
+      const FULL_SYNC_COOLDOWN_MS = 30_000; // 30 segundos de cooldown entre full syncs
       const syncChannel = new BroadcastChannel('caderno_sync');
 
       const doFullSync = async () => {
@@ -42,14 +36,23 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
           finishSync(false);
           return;
         }
-        // console.log(`[Sync] doFullSync INICIADO às ${new Date().toLocaleTimeString()}`);
+        // Mutex: se já tem um sync rodando, ignora esta chamada
+        if (isSyncing) {
+          console.warn('[Sync] doFullSync ignorado: outro sync já está em andamento.');
+          return;
+        }
+        // Cooldown: evita full syncs muito frequentes (ex: foco rápido + intervalo)
+        const now = Date.now();
+        if (now - lastFullSyncTime < FULL_SYNC_COOLDOWN_MS) {
+          console.warn('[Sync] doFullSync ignorado: cooldown de 30s ainda ativo.');
+          return;
+        }
+        isSyncing = true;
+        lastFullSyncTime = now;
         startSync();
         try {
-          // console.log('[Sync] Etapa 1: PULL From Cloud (Baixando alterações...)');
-          await withTimeout(pullWithSuppression(masterKey), 120_000);
-          // console.log('[Sync] PULL concluído. Recarregando páginas na UI...');
+          await withTimeout(pullAllFromCloud(masterKey), 120_000);
           loadPages();
-          // console.log('[Sync] Etapa 2: PUSH To Cloud e sync de PDFs (Enviando alterações...)');
           await withTimeout(
             Promise.all([
               pushAllToCloud(masterKey),
@@ -58,9 +61,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             120_000
           );
           if (!isClosed) {
-            // console.log('[Sync] doFullSync CONCLUÍDO COM SUCESSO!');
             finishSync(true);
-            // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
             syncChannel.postMessage('LOCAL_UPDATE');
           }
         } catch (err: any) {
@@ -73,27 +74,25 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             }
             finishSync(false);
           }
+        } finally {
+          isSyncing = false;
         }
       };
 
       const doPushOnlySync = async () => {
         if (isClosed) return;
         if (!navigator.onLine) {
-          finishSync(false);
-          return;
+          return; // Offline: não mostra erro, apenas ignora silenciosamente
         }
+        // Mutex: se já tem um sync rodando, ignora
+        if (isSyncing) return;
+        isSyncing = true;
         startSync();
         try {
-          await withTimeout(
-            Promise.all([
-              pushAllToCloud(masterKey),
-              syncPdfsToCloud(masterKey),
-            ]),
-            120_000
-          );
+          // Apenas push — sem pull e sem sync de PDFs (que é pesado e roda no doFullSync)
+          await withTimeout(pushAllToCloud(masterKey), 120_000);
           if (!isClosed) {
             finishSync(true);
-            // Avisa outras abas do mesmo navegador que gravamos novidades no IDB local
             syncChannel.postMessage('LOCAL_UPDATE');
           }
         } catch (err: any) {
@@ -106,6 +105,8 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
             }
             finishSync(false);
           }
+        } finally {
+          isSyncing = false;
         }
       };
 
@@ -113,11 +114,20 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       doFullSync();
 
       // 2. Cross-Device Real-time Firebase Sync
+      // NOTA: onSnapshot dispara imediatamente com o estado atual do doc.
+      // Usamos isFirstSnapshot para ignorar esse disparo inicial redundante,
+      // já que o doFullSync() acima já faz o pull completo.
+      let isFirstSnapshot = true;
       const unsubRealTime = listenForCloudSyncSignal(() => {
+        if (isFirstSnapshot) {
+          isFirstSnapshot = false;
+          return; // Ignora o disparo automático do onSnapshot na montagem
+        }
         if (!navigator.onLine) return;
-        // console.log('[Sync] Sinal Real-time recebido (Cross-device)! Sincronizando...');
+        if (isSyncing) return; // Mutex
+        isSyncing = true;
         startSync();
-        withTimeout(pullWithSuppression(masterKey), 60_000)
+        withTimeout(pullAllFromCloud(masterKey), 60_000)
           .then(() => {
             loadPages();
             finishSync(true);
@@ -130,13 +140,15 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
               }));
             }
             finishSync(false);
+          })
+          .finally(() => {
+            isSyncing = false;
           });
       });
 
       // 3. Cross-Tab Sync (Same Browser)
       syncChannel.onmessage = (msg) => {
         if (msg.data === 'LOCAL_UPDATE') {
-          // console.log('[Sync] Atualização recebida de outra aba. Recarregando UI...');
           loadPages();
         }
       };
@@ -144,7 +156,6 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
-        // console.log('[Sync] Gatilho de edição detectado! Agendando push em 1.5s...');
         clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
           doPushOnlySync();
@@ -159,20 +170,20 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       }
 
       // 5. Gatilho de FOCO: Atualiza quando o usuário volta de outra janela
+      // Protegido pelo mutex e cooldown de 30s para evitar syncs excessivos
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && !isSyncingOnFocus) {
-          // console.log('[Sync] App ganhou foco novamente. Verificando por atualizações...');
           isSyncingOnFocus = true;
           doFullSync().finally(() => { isSyncingOnFocus = false; });
         }
       };
       document.addEventListener('visibilitychange', handleVisibilityChange);
 
-      // 6. Fallback de Segurança (a cada 5 minutos em vez de 15 segundos)
+      // 6. Fallback de Segurança (a cada 10 minutos — reduzido de 5 para economizar cota)
       const syncInterval = setInterval(() => {
         doFullSync();
-      }, 5 * 60 * 1000); 
+      }, 10 * 60 * 1000); 
 
       return () => {
         isClosed = true;
