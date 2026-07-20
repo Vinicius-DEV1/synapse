@@ -7,8 +7,23 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
   try {
     const masterKey = await deriveMasterKey(password);
     
+    if (!navigator.onLine) {
+      return { isValid: false, isNew: false };
+    }
+    
     const docRef = doc(db, 'config', 'auth_validator');
-    const docSnap = await getDoc(docRef);
+    
+    // Timeout de 5 segundos para não travar o login infinitamente
+    const docSnap = await Promise.race([
+      getDoc(docRef),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+    ]);
+    
+    if (!docSnap) {
+      console.warn("⏳ Timeout ao verificar senha na nuvem. Firebase demorou muito.");
+      return { isValid: false, isNew: false };
+    }
+
     logFirebaseOp('read', 1);
     
     if (!docSnap.exists() || !docSnap.data().encryptedData) {
@@ -46,12 +61,18 @@ export async function getSecurityLock(): Promise<SecurityLock> {
   if (navigator.onLine) {
     try {
       const docRef = doc(db, 'config', 'security_lock');
-      const docSnap = await getDoc(docRef);
-      logFirebaseOp('read', 1);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        failedAttempts = data.failedAttempts || 0;
-        lastFailedAt = data.lastFailedAt || 0;
+      const docSnap = await Promise.race([
+        getDoc(docRef),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+      ]);
+      
+      if (docSnap) {
+        logFirebaseOp('read', 1);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          failedAttempts = data.failedAttempts || 0;
+          lastFailedAt = data.lastFailedAt || 0;
+        }
       }
     } catch {
       // Ignora erro de leitura
