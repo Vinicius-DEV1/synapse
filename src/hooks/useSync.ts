@@ -174,12 +174,12 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
       // 4. Gatilho inteligente sob demanda (quando o usuário edita)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
-        console.log('[Sync Gatilho] Evento app-sync-trigger recebido. Iniciando debounce de 1.5s.');
         clearTimeout(syncDebounceTimer);
+        console.log('[Sync Gatilho] Evento app-sync-trigger recebido. Iniciando debounce de 5s.');
         syncDebounceTimer = setTimeout(() => {
           console.log('[Sync Gatilho] Debounce concluído. Iniciando doPushOnlySync().');
           doPushOnlySync();
-        }, 1500); // ⚡ 1.5s após a edição
+        }, 5000);
       };
 
       let cleanupSyncTrigger: (() => void) | undefined;
