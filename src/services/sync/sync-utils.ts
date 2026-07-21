@@ -27,53 +27,15 @@ export const MODULE_TABLES: Record<string, string[]> = {
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
 
 export function getLastSyncTime(type: 'pull' | 'push'): number {
-  const localStorageValue = parseInt(localStorage.getItem(getLastSyncKey(type)) || '0', 10);
-  
-  // #10: Tentar ler backup do banco local (mais resiliente que localStorage)
-  try {
-    const dbBackupKey = `caderno_sync_backup_${type}`;
-    const dbValue = parseInt(localStorage.getItem(dbBackupKey) || '0', 10);
-    // Usar o valor mais recente entre localStorage e backup
-    return Math.max(localStorageValue, dbValue);
-  } catch {
-    return localStorageValue;
-  }
+  return parseInt(localStorage.getItem(getLastSyncKey(type)) || '0', 10);
 }
 
 export function setLastSyncTime(type: 'pull' | 'push', time: number) {
   localStorage.setItem(getLastSyncKey(type), time.toString());
-  
-  // #10: Backup redundante — salva também via API do banco local
-  // Isso protege contra limpeza de localStorage pelo browser
-  try {
-    if (window.api?.config?.set) {
-      window.api.config.set(`last_sync_${type}_time`, time).catch(() => {});
-    }
-  } catch {
-    // Fallback silencioso: o localStorage já salvou
-  }
 }
 
-/**
- * #10: Restaura lastSyncTime do banco local caso o localStorage tenha sido limpo.
- * Deve ser chamado uma vez na inicialização do sync.
- */
 export async function restoreLastSyncTimesFromDb(): Promise<void> {
-  try {
-    if (!window.api?.config?.get) return;
-    
-    for (const type of ['pull', 'push'] as const) {
-      const dbValue = await window.api.config.get(`last_sync_${type}_time`);
-      if (typeof dbValue === 'number' && dbValue > 0) {
-        const currentValue = parseInt(localStorage.getItem(getLastSyncKey(type)) || '0', 10);
-        if (dbValue > currentValue) {
-          localStorage.setItem(getLastSyncKey(type), dbValue.toString());
-        }
-      }
-    }
-  } catch {
-    // Falha silenciosa: sync continuará com full sync se necessário
-  }
+  // Obsoleto: não salvamos mais no DB para evitar loop infinito
 }
 
 export function parseDateSafe(dateStr: string | undefined | null | number): number {
