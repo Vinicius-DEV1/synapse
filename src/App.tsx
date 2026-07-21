@@ -36,7 +36,7 @@ function AppContent() {
   useAppShortcuts(state.tabs, dispatch);
   useAppTitle(activeModule, activeTab?.bookTitle);
   useGarbageCollection(isAuth);
-  const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage } = usePageActions();
+  const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage, handleExportPage, handleImportPage } = usePageActions();
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
   
@@ -190,6 +190,8 @@ function AppContent() {
               pageId={state.contextMenu.pageId}
               isPinned={!!contextPage?.is_pinned}
               onCreateSubPage={handleCreatePage}
+              onImportSubPage={handleImportPage}
+              onExportPage={handleExportPage}
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
               onRename={(id) => setRenamePageId(id)}
               onTogglePin={(id) => handleUpdatePage(id, { is_pinned: contextPage?.is_pinned ? 0 : 1 })}
