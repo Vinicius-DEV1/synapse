@@ -60,6 +60,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           if (tableTimestamp) {
             const tableLastUpdate = parseDateSafe(tableTimestamp);
             if (tableLastUpdate <= lastPull) {
+              console.log(`[Pull SKIP] Tabela ${table} ignorada (Sem mudanças no Manifest: ${tableLastUpdate} <= ${lastPull}).`);
               continue; // Nenhuma mudança nesta tabela desde o último pull
             }
           } else if (lastPull > 0) {
