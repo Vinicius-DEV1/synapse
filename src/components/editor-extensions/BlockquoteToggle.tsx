@@ -85,10 +85,30 @@ const BlockquoteToggleComponent = (props: any) => {
     }
   };
 
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (props.node.attrs.title === '' && titleInputRef.current) {
+      const timer = setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const currentColor = props.node.attrs.color || 'default';
   const customStyle = currentColor !== 'default'
     ? { backgroundColor: `${currentColor}15`, borderLeftColor: currentColor }
     : {};
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' && isOpen) {
+      e.preventDefault();
+      if (typeof props.getPos === 'function') {
+        props.editor.commands.focus(props.getPos() + 2);
+      }
+    }
+  };
 
   return (
     <NodeViewWrapper 
@@ -196,9 +216,11 @@ const BlockquoteToggleComponent = (props: any) => {
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
         <input 
+          ref={titleInputRef}
           type="text"
           value={props.node.attrs.title}
           onChange={handleTitleChange}
+          onKeyDown={handleKeyDown}
           placeholder="Título do destaque..."
           className="bg-transparent outline-none flex-1 text-white/90 placeholder-white/40 italic"
         />
