@@ -410,6 +410,46 @@ export const LinkPreviewBlock = Node.create({
         }
         return false;
       },
+      ArrowDown: ({ editor }) => {
+        const { state, view } = editor;
+        const { selection } = state;
+        
+        // If we are currently selecting THIS widget
+        if (selection instanceof NodeSelection && selection.node.type.name === this.name) {
+          const posAfter = selection.$to.pos;
+          const nextNode = state.doc.nodeAt(posAfter);
+          
+          // If the node immediately after is also an atom block (like another widget)
+          if (nextNode && nextNode.isAtom && nextNode.isBlock) {
+            const tr = state.tr;
+            tr.setSelection(NodeSelection.create(state.doc, posAfter));
+            view.dispatch(tr);
+            return true;
+          }
+        }
+        return false;
+      },
+      ArrowUp: ({ editor }) => {
+        const { state, view } = editor;
+        const { selection } = state;
+
+        // If we are currently selecting THIS widget
+        if (selection instanceof NodeSelection && selection.node.type.name === this.name) {
+          const posBefore = selection.$from.pos;
+          const resolveBefore = state.doc.resolve(posBefore);
+          const nodeBefore = resolveBefore.nodeBefore;
+
+          // If the node immediately before is also an atom block (like another widget)
+          if (nodeBefore && nodeBefore.isAtom && nodeBefore.isBlock) {
+            const tr = state.tr;
+            const widgetPos = posBefore - nodeBefore.nodeSize;
+            tr.setSelection(NodeSelection.create(state.doc, widgetPos));
+            view.dispatch(tr);
+            return true;
+          }
+        }
+        return false;
+      }
     };
   },
 
