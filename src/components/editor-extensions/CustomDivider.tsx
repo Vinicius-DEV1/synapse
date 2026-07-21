@@ -5,7 +5,7 @@ import { Plus, GripVertical } from 'lucide-react';
 
 const DividerComponent = (props: any) => {
   return (
-    <NodeViewWrapper className="group/divider relative flex items-center w-full" data-drag-handle>
+    <NodeViewWrapper className="group/divider relative flex items-center w-full my-6">
       <div className="absolute -left-12 opacity-0 group-hover/divider:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm" contentEditable={false}>
         <button
           onClick={(e) => {
@@ -29,7 +29,7 @@ const DividerComponent = (props: any) => {
           <GripVertical size={16} />
         </div>
       </div>
-      <hr className="editor-divider w-full flex-1" />
+      <hr className={`editor-divider w-full flex-1 ${props.selected ? 'ProseMirror-selectednode' : ''}`} style={{ margin: 0 }} />
     </NodeViewWrapper>
   );
 };
