@@ -85,10 +85,22 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         if (localRows.length === 0) continue;
 
         const rowsToPush = lastPush > 0 
-          ? localRows.filter((r: any) => Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0)) > lastPush)
+          ? localRows.filter((r: any) => {
+              const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
+              const pushIt = rTime > lastPush;
+              if (pushIt) {
+                console.log(`[Push PENDENTE] Tabela ${table} - ID ${r.id}: rTime(${rTime}) > lastPush(${lastPush}).`);
+              }
+              return pushIt;
+            })
           : localRows;
 
-        if (rowsToPush.length === 0) continue;
+        if (rowsToPush.length === 0) {
+          console.log(`[Push SKIP] Tabela ${table} ignorada (0 registros > lastPush).`);
+          continue;
+        }
+
+        console.log(`[Push INICIANDO] Tabela ${table}: ${rowsToPush.length} registros serão enviados.`);
 
         // #2: Encriptar TODOS os docs da tabela em paralelo (Promise.all)
         const { prepared, skippedLarge } = await prepareRowsForPush(rowsToPush, key, table);
