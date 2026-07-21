@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 
@@ -13,12 +14,21 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr || dateStr.length !== 8) return '';
+  const year = dateStr.substring(0, 4);
+  const month = dateStr.substring(4, 6);
+  const day = dateStr.substring(6, 8);
+  return `${day}/${month}/${year}`;
+};
+
 const LinkPreviewComponent = (props: any) => {
-  const { url, title, isLoading, channel, duration, isPlaylist } = props.node.attrs;
+  const { url, title, isLoading, channel, duration, isPlaylist, uploadDate } = props.node.attrs;
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
   const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
   const [fetchedDuration, setFetchedDuration] = useState<number | null>(duration);
   const [fetchedIsPlaylist, setFetchedIsPlaylist] = useState<boolean>(isPlaylist);
+  const [fetchedUploadDate, setFetchedUploadDate] = useState<string | null>(uploadDate);
   const [loading, setLoading] = useState(isLoading);
   const [isReloading, setIsReloading] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -159,6 +169,7 @@ const LinkPreviewComponent = (props: any) => {
       let finalChannel = null;
       let finalDuration = null;
       let finalIsPlaylist = url.includes('list=');
+      let finalUploadDate = null;
 
       // Tauri or Web yt-dlp/API fetch for YouTube (brings rich metadata)
       if (isYouTube && window.api && window.api.youtube && window.api.youtube.fetchPlaylistInfo && !url.includes('/@')) {
@@ -169,6 +180,7 @@ const LinkPreviewComponent = (props: any) => {
             finalChannel = ytInfo.uploader || ytInfo.uploader_id;
             finalDuration = ytInfo.duration;
             finalIsPlaylist = ytInfo._type === 'playlist' || url.includes('list=');
+            finalUploadDate = ytInfo.upload_date;
           }
         } catch (ytErr) {
           console.warn('yt-dlp fetch failed, falling back to basic title', ytErr);
@@ -183,13 +195,15 @@ const LinkPreviewComponent = (props: any) => {
         if (finalChannel) setFetchedChannel(finalChannel);
         if (finalDuration) setFetchedDuration(finalDuration);
         if (finalIsPlaylist) setFetchedIsPlaylist(finalIsPlaylist);
+        if (finalUploadDate) setFetchedUploadDate(finalUploadDate);
         
         updateNodeSafe({ 
           title: newTitle, 
           isLoading: false,
           channel: finalChannel,
           duration: finalDuration,
-          isPlaylist: finalIsPlaylist
+          isPlaylist: finalIsPlaylist,
+          uploadDate: finalUploadDate
         });
         setLoading(false);
       }
@@ -258,7 +272,11 @@ const LinkPreviewComponent = (props: any) => {
       <div className="relative group/link">
         <div 
           onClick={() => window.open(url, '_blank')}
-          className="block bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all rounded-lg p-3 pr-[72px] cursor-pointer"
+          className={`block transition-all rounded-lg p-3 pr-[72px] cursor-pointer ${
+            props.selected 
+              ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10' 
+              : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
+          }`}
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
@@ -294,6 +312,15 @@ const LinkPreviewComponent = (props: any) => {
                     <span className="text-[11px] flex items-center gap-1">
                       <Clock size={10} />
                       {formatDuration(fetchedDuration)}
+                    </span>
+                  </>
+                )}
+                {fetchedUploadDate && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                    <span className="text-[11px] flex items-center gap-1">
+                      <Calendar size={10} />
+                      {formatDate(fetchedUploadDate)}
                     </span>
                   </>
                 )}
@@ -348,6 +375,35 @@ export const LinkPreviewBlock = Node.create({
   atom: true,
   draggable: true,
 
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }) => {
+        const { state, view } = editor;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        if (!empty || $from.parentOffset !== 0) {
+          return false;
+        }
+
+        const nodeBefore = $from.nodeBefore;
+        if (nodeBefore && nodeBefore.type.name === this.name) {
+          if ($from.parent.content.size === 0) {
+            const tr = state.tr;
+            const pPos = $from.before();
+            const nodeBeforePos = pPos - nodeBefore.nodeSize;
+            
+            tr.delete(pPos, pPos + $from.parent.nodeSize);
+            tr.setSelection(NodeSelection.create(tr.doc, nodeBeforePos));
+            view.dispatch(tr);
+            return true;
+          }
+        }
+        return false;
+      },
+    };
+  },
+
   addAttributes() {
     return {
       url: { default: '' },
@@ -356,6 +412,7 @@ export const LinkPreviewBlock = Node.create({
       channel: { default: null },
       duration: { default: null },
       isPlaylist: { default: false },
+      uploadDate: { default: null },
     };
   },
 
