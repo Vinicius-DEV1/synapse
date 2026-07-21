@@ -96,6 +96,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (lastSavedRef.current === stringified) {
       return; // Skip save if state hasn't actually changed (avoids infinite sync loop)
     }
+    console.log('[Sync Gatilho] appLayoutState mudou!', {
+      old: lastSavedRef.current,
+      new: stringified
+    });
     lastSavedRef.current = stringified;
     
     localStorage.setItem('appLayoutState', stringified);
