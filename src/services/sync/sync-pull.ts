@@ -189,8 +189,17 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 id: docSnap.id,
                 ...parsed
               };
-              if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = cloudData.updatedAt;
-              if (cloudData.createdAt !== undefined) rowToUpsert.created_at = cloudData.createdAt;
+              
+              // Normalize Firestore Timestamps to ISO strings for IndexedDB
+              const normalizeTime = (t: any) => {
+                if (!t) return undefined;
+                if (typeof t.toDate === 'function') return t.toDate().toISOString();
+                if (t.seconds) return new Date(t.seconds * 1000).toISOString();
+                return typeof t === 'string' || typeof t === 'number' ? new Date(t).toISOString() : undefined;
+              };
+              
+              if (cloudData.updatedAt !== undefined) rowToUpsert.updated_at = normalizeTime(cloudData.updatedAt) || cloudData.updatedAt;
+              if (cloudData.createdAt !== undefined) rowToUpsert.created_at = normalizeTime(cloudData.createdAt) || cloudData.createdAt;
 
               if (typeof window !== 'undefined' && window.api?.log) {
                 window.api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
@@ -285,8 +294,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
       }
     }
   }
+  
+  // If lastPush is 0 (first sync ever), initialize it to highestCloudTime
+  // to avoid immediately pushing back everything we just pulled
+  if (getLastSyncTime('push') === 0 && highestCloudTime > 0) {
+    console.log(`[PULL] Inicializando lastPush para ${highestCloudTime} após pull inicial para evitar re-push em massa.`);
+    setLastSyncTime('push', highestCloudTime);
+  }
 
   if (highestCloudTime > lastPull) {
+    console.log(`[PULL] Atualizando lastPull para ${highestCloudTime}`);
     setLastSyncTime('pull', highestCloudTime);
   }
 
