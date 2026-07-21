@@ -38,7 +38,7 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
           console.error(`[Caderno:Debounce] Save FAILED for ${currentPageId}:`, err);
         });
       }
-    }, 500);
+    }, 2000);
   }, [pageId, ydocRef, latestContentRef, onSaveRef]);
 
   const cleanupSave = useCallback(() => {
