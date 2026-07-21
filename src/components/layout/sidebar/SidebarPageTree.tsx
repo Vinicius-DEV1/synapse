@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Search, Pin, Plus } from 'lucide-react';
+import { Search, Pin, Plus, Upload } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from '../../SidebarItem';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDraggable, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { usePageActions } from '../../../hooks/usePageActions';
 
 function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index }: any) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
@@ -61,6 +62,7 @@ interface SidebarPageTreeProps {
 
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
   const { state } = useStore();
+  const { handleImportPage } = usePageActions();
   const [searchQuery, setSearchQuery] = useState('');
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
@@ -148,13 +150,20 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         </div>
       </div>
 
-      <div className="px-3 py-1">
+      <div className="px-3 py-1 flex gap-1">
         <button
           onClick={() => onCreatePage(null)}
-          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
         >
           <Plus size={14} className="text-brand-400" />
           <span>Nova Página</span>
+        </button>
+        <button
+          onClick={() => handleImportPage(null)}
+          className="flex items-center justify-center p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
+          title="Importar Página"
+        >
+          <Upload size={14} className="text-brand-400" />
         </button>
       </div>
 

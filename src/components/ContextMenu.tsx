@@ -1,4 +1,4 @@
-import { FilePlus, Edit2, Trash2, Pin, PinOff } from 'lucide-react';
+import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
@@ -6,13 +6,15 @@ interface ContextMenuProps {
   pageId: string;
   isPinned?: boolean;
   onCreateSubPage: (parentId: string) => void;
+  onImportSubPage?: (parentId: string) => void;
+  onExportPage?: (pageId: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string) => void;
   onTogglePin?: (id: string) => void;
   onClose: () => void;
 }
 
-export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onDelete, onRename, onTogglePin, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onTogglePin, onClose }: ContextMenuProps) {
   // Adjust position to stay within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200);
   const adjustedY = Math.min(y, window.innerHeight - 150);
@@ -33,6 +35,32 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
         <FilePlus size={14} className="text-dark-subtext" />
         Nova sub-página
       </button>
+
+      {onImportSubPage && (
+        <button
+          onClick={() => {
+            onImportSubPage(pageId);
+            onClose();
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
+        >
+          <Upload size={14} className="text-dark-subtext" />
+          Importar sub-página
+        </button>
+      )}
+
+      {onExportPage && (
+        <button
+          onClick={() => {
+            onExportPage(pageId);
+            onClose();
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
+        >
+          <Download size={14} className="text-dark-subtext" />
+          Exportar
+        </button>
+      )}
 
       {onTogglePin && (
         <button
