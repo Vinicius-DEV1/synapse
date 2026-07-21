@@ -31,6 +31,7 @@ import CodeBlockComponent from '../../editor-extensions/CodeBlockComponent';
 import { FocusWidgetBlock } from '../../editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
+import { CustomDivider } from '../../editor-extensions/CustomDivider';
 
 
 // Only '-' creates bullet list (removes * and + shortcuts)
@@ -63,6 +64,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
         blockquote: false,
         bulletList: false,  // replaced by CustomBulletList (only - shortcut)
         bold: false,        // replaced by CustomBold (no ** shortcut, Ctrl+B only)
+        horizontalRule: false, // replaced by CustomDivider (for draggable node views)
       }),
       CustomBulletList,
       CustomBold,
@@ -90,7 +92,8 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       PageReference,
       FocusWidgetBlock,
       AlarmWidgetBlock,
-      FileWidgetBlock
+      FileWidgetBlock,
+      CustomDivider
     ];
   }, [ydoc]);
 }
