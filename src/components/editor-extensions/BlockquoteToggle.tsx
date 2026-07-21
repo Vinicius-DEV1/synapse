@@ -227,9 +227,12 @@ const BlockquoteToggleComponent = (props: any) => {
       </div>
       
       {isOpen && (
-        <div className="toggle-content pl-7 mt-2 text-white/85 italic">
-          <NodeViewContent />
-        </div>
+        <>
+          <div className="h-px bg-white/5 my-2 ml-7 mr-2"></div>
+          <div className="toggle-content pl-7 text-white/85 italic">
+            <NodeViewContent />
+          </div>
+        </>
       )}
     </NodeViewWrapper>
   );
