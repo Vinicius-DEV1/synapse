@@ -1,13 +1,32 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const ToggleBlockComponent = (props: any) => {
   const [isOpen, setIsOpen] = useState(true);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (props.node.attrs.title === '' && titleInputRef.current) {
+      const timer = setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     props.updateAttributes({ title: e.target.value });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' && isOpen) {
+      e.preventDefault();
+      if (typeof props.getPos === 'function') {
+        props.editor.commands.focus(props.getPos() + 2);
+      }
+    }
   };
 
   return (
@@ -23,9 +42,11 @@ const ToggleBlockComponent = (props: any) => {
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
         <input 
+          ref={titleInputRef} 
           type="text"
           value={props.node.attrs.title}
           onChange={handleTitleChange}
+          onKeyDown={handleKeyDown}
           placeholder="Tópico..."
           className="bg-transparent outline-none flex-1 text-dark-text placeholder-white/30"
         />

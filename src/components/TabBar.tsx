@@ -1,6 +1,7 @@
-import { Plus, X, FileText, Library, Wallet } from 'lucide-react';
+import { Plus, X, FileText, Library, Settings } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
+import { MAIN_MODULES, SPECIAL_MODULES } from './layout/sidebar/modules.config';
 
 interface TabItemProps {
   tab: any;
@@ -17,18 +18,21 @@ function TabItem({ tab, index, isActive, page, onSelect, onClose, onDropTab, tab
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 
+  const moduleConfig = [...MAIN_MODULES, ...SPECIAL_MODULES].find(m => m.id === tab.module);
+
   if (tab.module === 'notes') {
     title = page?.title || 'Nova Página';
     icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
-  } else if (tab.module === 'library') {
-    title = tab.bookTitle || 'Biblioteca';
+  } else if (tab.module === 'library' && tab.bookTitle) {
+    title = tab.bookTitle;
     icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
-  } else if (tab.module === 'finance') {
-    title = 'Finanças';
-    icon = <Wallet size={13} className="flex-shrink-0 text-dark-subtext" />;
-  } else if (tab.module === 'culture') {
-    title = 'Cultura';
-    icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+  } else if (tab.module === 'settings') {
+    title = 'Configurações';
+    icon = <Settings size={13} className="flex-shrink-0 text-dark-subtext" />;
+  } else if (moduleConfig) {
+    title = moduleConfig.label;
+    const Icon = moduleConfig.icon;
+    icon = <Icon size={13} className="flex-shrink-0 text-dark-subtext" />;
   }
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({

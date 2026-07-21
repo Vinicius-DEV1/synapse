@@ -172,8 +172,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-1 text-xs text-dark-subtext">Converse fluentemente com o seu parceiro IA e aperfeiçoe seu idioma.</div>
           </div>
         ) : activeModule === 'settings' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Painel de Controle</div>
+          <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar pb-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider shrink-0">Painel de Controle</div>
             
             {[
               { id: 'general', label: 'Geral', icon: Settings },
@@ -188,7 +188,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <button
                 key={tab.id}
                 onClick={() => dispatch({ type: 'NAVIGATE_IN_TAB', tabId: activeTab.id, pageId: tab.id })}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mx-2 shrink-0 ${
                   (activeTab.pageId || 'general') === tab.id
                     ? 'bg-brand-500/10 text-brand-400'
                     : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
