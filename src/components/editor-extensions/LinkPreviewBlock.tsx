@@ -386,15 +386,24 @@ export const LinkPreviewBlock = Node.create({
           return false;
         }
 
-        const nodeBefore = $from.nodeBefore;
-        if (nodeBefore && nodeBefore.type.name === this.name) {
+        // Get the position before the current block (before the <p>)
+        const pPos = $from.before();
+        
+        // Resolve that position to find the block right before it
+        const resolveBefore = state.doc.resolve(pPos);
+        const nodeBeforeBlock = resolveBefore.nodeBefore;
+
+        if (nodeBeforeBlock && nodeBeforeBlock.type.name === this.name) {
           if ($from.parent.content.size === 0) {
             const tr = state.tr;
-            const pPos = $from.before();
-            const nodeBeforePos = pPos - nodeBefore.nodeSize;
+            const widgetPos = pPos - nodeBeforeBlock.nodeSize;
             
+            // Delete the empty paragraph
             tr.delete(pPos, pPos + $from.parent.nodeSize);
-            tr.setSelection(NodeSelection.create(tr.doc, nodeBeforePos));
+            
+            // Select the widget
+            tr.setSelection(NodeSelection.create(tr.doc, widgetPos));
+            
             view.dispatch(tr);
             return true;
           }
