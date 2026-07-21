@@ -32,8 +32,21 @@ const LinkPreviewComponent = (props: any) => {
   const [loading, setLoading] = useState(isLoading);
   const [isReloading, setIsReloading] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+
+  const getVideoId = (videoUrl: string) => {
+    try {
+      const urlObj = new URL(videoUrl);
+      if (urlObj.hostname.includes('youtu.be')) {
+        return urlObj.pathname.slice(1);
+      }
+      return urlObj.searchParams.get('v');
+    } catch {
+      return null;
+    }
+  };
 
   const fetchTitle = async (forceReload = false) => {
     if (!forceReload && (fetchedTitle || !loading)) return;
@@ -279,9 +292,15 @@ const LinkPreviewComponent = (props: any) => {
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-hidden">
               {isYouTube ? (
-                <PlaySquare size={16} className="text-brand-500 drop-shadow-sm flex-shrink-0" />
+                <button 
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowVideo(!showVideo); }}
+                  className="w-full h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+                  title={showVideo ? "Fechar vídeo" : "Assistir vídeo"}
+                >
+                  <PlaySquare size={16} className={`${showVideo ? 'text-white' : 'text-brand-500'} drop-shadow-sm flex-shrink-0 transition-colors`} />
+                </button>
               ) : (
                 renderIcon()
               )}
@@ -339,6 +358,20 @@ const LinkPreviewComponent = (props: any) => {
               )}
             </div>
           </div>
+          
+          {showVideo && isYouTube && (
+            <div 
+              className="mt-3 w-full aspect-video rounded-md overflow-hidden bg-black border border-white/10 animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <iframe
+                src={`https://www.youtube.com/embed/${getVideoId(url)}`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
         </div>
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
           <button
