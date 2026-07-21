@@ -80,14 +80,21 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
         onClose();
       }
     };
+    const handleScroll = (e: Event) => {
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+        return;
+      }
+      onClose();
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', onClose);
-    window.addEventListener('scroll', onClose, true); // true catches scroll on any container
+    window.addEventListener('scroll', handleScroll, true);
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('resize', onClose);
-      window.removeEventListener('scroll', onClose, true);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, [onClose]);
 
