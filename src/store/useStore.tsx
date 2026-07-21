@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from 'react';
 import type { AppState, Action, Tab } from '../types';
 import { appReducer as reducer } from './commands';
 
@@ -79,6 +79,8 @@ const StoreContext = createContext<StoreContextType | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  const lastSavedRef = useRef<string | null>(null);
+
   useEffect(() => {
     const stateToSave = {
       activeModule: state.activeModule,
@@ -89,7 +91,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       aiChatSessions: state.aiChatSessions,
       aiSidebarWidth: state.aiSidebarWidth,
     };
-    localStorage.setItem('appLayoutState', JSON.stringify(stateToSave));
+    
+    const stringified = JSON.stringify(stateToSave);
+    if (lastSavedRef.current === stringified) {
+      return; // Skip save if state hasn't actually changed (avoids infinite sync loop)
+    }
+    lastSavedRef.current = stringified;
+    
+    localStorage.setItem('appLayoutState', stringified);
     
     if (window.api?.config) {
       const dbState = {
