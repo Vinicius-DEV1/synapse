@@ -53,9 +53,12 @@ const ToggleBlockComponent = (props: any) => {
       </div>
       
       {isOpen && (
-        <div className="toggle-content pl-6 mt-1 text-dark-subtext border-l-2 border-white/5 ml-2">
-          <NodeViewContent />
-        </div>
+        <>
+          <div className="h-px bg-white/5 my-1 ml-7 mr-2"></div>
+          <div className="toggle-content pl-6 text-dark-subtext border-l-2 border-white/5 ml-2">
+            <NodeViewContent />
+          </div>
+        </>
       )}
     </NodeViewWrapper>
   );
