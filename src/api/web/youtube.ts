@@ -117,6 +117,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         _type: 'playlist',
         title: listTitle,
         uploader: listUploader,
+        upload_date: listData.items?.[0]?.snippet?.publishedAt ? listData.items[0].snippet.publishedAt.split('T')[0].replace(/-/g, '') : null,
         entries
       };
 
@@ -134,7 +135,8 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         _type: 'video',
         title: item.snippet.title,
         uploader: item.snippet.channelTitle,
-        duration: parseISO8601Duration(item.contentDetails.duration)
+        duration: parseISO8601Duration(item.contentDetails.duration),
+        upload_date: item.snippet.publishedAt ? item.snippet.publishedAt.split('T')[0].replace(/-/g, '') : null
       };
     }
 
