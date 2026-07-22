@@ -92,7 +92,7 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   }
 }
 
-export async function promptGemini(prompt: string, imageBase64?: string, history: any[] = [], customModelId?: string, customSystemInstruction?: string): Promise<{ text: string, usage?: any }> {
+export async function promptGemini(prompt: string, mediaBase64?: string, history: any[] = [], customModelId?: string, customSystemInstruction?: string): Promise<{ text: string, usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
 
@@ -117,10 +117,10 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
     contents.push(...formattedHistory);
     
     const userParts: any[] = [{ text: prompt }];
-    if (imageBase64) {
-      const mimeTypeMatch = imageBase64.match(/^data:(image\/[a-zA-Z]*);base64,/);
+    if (mediaBase64) {
+      const mimeTypeMatch = mediaBase64.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9\-\+\.]+);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-      const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z]*;base64,/, '');
+      const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
       userParts.push({
         inline_data: { mime_type: mimeType, data: base64Data }
       });
@@ -128,10 +128,10 @@ export async function promptGemini(prompt: string, imageBase64?: string, history
     contents.push({ role: 'user', parts: userParts });
   } else {
     const userParts: any[] = [{ text: prompt }];
-    if (imageBase64) {
-      const mimeTypeMatch = imageBase64.match(/^data:(image\/[a-zA-Z]*);base64,/);
+    if (mediaBase64) {
+      const mimeTypeMatch = mediaBase64.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9\-\+\.]+);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-      const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z]*;base64,/, '');
+      const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
       userParts.push({
         inline_data: { mime_type: mimeType, data: base64Data }
       });
@@ -241,18 +241,24 @@ Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA
 }
 
 // Para avaliar flashcards do Anki
-export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string): Promise<{
+export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string, mediaBase64?: string): Promise<{
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
 }> {
-  const customPrompt = "O usuário está estudando com Flashcards. Você é um professor avaliando a resposta dele.\n" +
+  let customPrompt = "O usuário está estudando com Flashcards. Você é um professor avaliando a resposta dele.\n" +
 "Frente do Cartão (Contexto): \"" + front + "\"\n" +
-"Resposta Correta Esperada: \"" + back + "\"\n" +
-"Resposta do Aluno: \"" + typedAnswer + "\"\n\n" +
-"Regra de Avaliação:\n" +
-"1. Se a resposta do aluno capta a essência semântica e gramatical, é 'Correto'.\n" +
-"2. Se há um erro ortográfico leve ou faltou uma pequena nuance, mas a ideia está certa, é 'Parcial'.\n" +
-"3. Se mudou o sentido ou está incorreto, é 'Incorreto'.\n\n" +
+"Resposta Correta Esperada: \"" + back + "\"\n";
+
+  if (mediaBase64) {
+    customPrompt += "O aluno forneceu a resposta em ÁUDIO (anexo). Ouça o áudio e avalie a resposta dele.\n\n";
+  } else {
+    customPrompt += "Resposta do Aluno: \"" + typedAnswer + "\"\n\n";
+  }
+
+  customPrompt += "Regra de Avaliação:\n" +
+"1. Se a resposta do aluno capta a essência semântica e gramatical, é 'Correto'. No caso de áudio, tolere sotaques e leves erros de pronúncia se a intenção for clara e correta.\n" +
+"2. Se há um erro ortográfico/pronúncia leve ou faltou uma pequena nuance, mas a ideia principal está certa, é 'Parcial'.\n" +
+"3. Se mudou o sentido, está incorreto, ou no áudio disse algo sem sentido/diferente, é 'Incorreto'.\n\n" +
 "Responda ESTRITAMENTE em formato JSON com o seguinte schema:\n" +
 "{\n" +
 "  \"verdict\": \"Correto\" | \"Parcial\" | \"Incorreto\",\n" +
@@ -260,7 +266,7 @@ export async function promptGeminiForAnkiEvaluation(front: string, back: string,
 "}\n" +
 "Não use blocos de código markdown (```json) na resposta. Apenas o JSON cru.";
 
-  const response = await promptGemini(customPrompt);
+  const response = await promptGemini(customPrompt, mediaBase64);
   const responseText = response.text;
   
   try {
