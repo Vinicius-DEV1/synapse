@@ -7,7 +7,7 @@ export interface CardDraft {
   front: string;
   back: string;
   extra_note?: string;
-  card_type: 'reading' | 'listening' | 'typing' | 'cloze';
+  card_type: 'reading' | 'listening' | 'typing' | 'cloze' | 'speaking';
   validation_mode?: 'exact' | 'ai';
   source_module: string;
   source_id?: string;
@@ -251,31 +251,41 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
               <label className="block text-sm font-medium text-dark-subtext mb-1">Tipo de Cartão</label>
               <select 
                 value={cardType}
-                onChange={(e) => setCardType(e.target.value as any)}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  setCardType(val);
+                  if (val === 'speaking') {
+                    setValidationMode('ai');
+                  }
+                }}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500 appearance-none"
               >
                 <option value="reading">Leitura (Padrão)</option>
                 <option value="listening">Escuta (Áudio)</option>
                 <option value="typing">Digitação Livre</option>
+                <option value="speaking">Fala Livre (Microfone)</option>
                 <option value="cloze">Completar Frase (Cloze)</option>
               </select>
             </div>
           </div>
           
-          {(cardType === 'typing' || cardType === 'cloze') && (
-            <div className="mb-4 bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl flex items-center justify-between">
+          {(cardType === 'typing' || cardType === 'cloze' || cardType === 'speaking') && (
+            <div className={`mb-4 border p-4 rounded-xl flex items-center justify-between ${cardType === 'speaking' ? 'bg-indigo-500/5 border-indigo-500/10 opacity-70' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
               <div>
                 <p className="text-sm font-medium text-indigo-300">Validar com Inteligência Artificial</p>
-                <p className="text-xs text-indigo-400/70 mt-1">A IA do Gemini irá julgar se a resposta tem o sentido correto, tolerando pequenos erros.</p>
+                <p className="text-xs text-indigo-400/70 mt-1">
+                  {cardType === 'speaking' ? 'Obrigatório para Fala Livre (a IA vai avaliar seu áudio diretamente).' : 'A IA do Gemini irá julgar se a resposta tem o sentido correto, tolerando pequenos erros.'}
+                </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className={`relative inline-flex items-center ${cardType === 'speaking' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input 
                   type="checkbox" 
                   className="sr-only peer"
-                  checked={validationMode === 'ai'}
+                  checked={validationMode === 'ai' || cardType === 'speaking'}
                   onChange={(e) => setValidationMode(e.target.checked ? 'ai' : 'exact')}
+                  disabled={cardType === 'speaking'}
                 />
-                <div className="w-11 h-6 bg-dark-bg border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                <div className={`w-11 h-6 border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${cardType === 'speaking' ? 'bg-indigo-600/50 border-white/5' : 'bg-dark-bg border-white/10 peer-checked:bg-indigo-600'}`}></div>
               </label>
             </div>
           )}
