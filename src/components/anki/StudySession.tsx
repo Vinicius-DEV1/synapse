@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, RotateCcw, X, Volume2, Edit3, Trash2 } from 'lucide-react';
+import { Play, RotateCcw, X, Volume2, Edit3, Trash2, Mic, Square } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
@@ -9,7 +9,7 @@ interface Card {
   front: string;
   back: string;
   media_url?: string;
-  card_type: 'reading' | 'listening' | 'typing' | 'cloze';
+  card_type: 'reading' | 'listening' | 'typing' | 'cloze' | 'speaking';
   validation_mode?: 'exact' | 'ai';
   state: number;
   extra_note?: string;
@@ -28,6 +28,18 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
   const [aiFeedback, setAiFeedback] = useState<{verdict: string, feedback: string} | null>(null);
   const [exactMatch, setExactMatch] = useState<boolean | null>(null);
   
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const { play: playUrl, stop: stopAudio } = useAudioPlayer();
 
   useEffect(() => {
@@ -101,6 +113,9 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
            // Em typing e cloze, Enter é lidado pelo form. Espaço digita espaço.
            return;
         }
+        if (card && card.card_type === 'speaking' && isRecording) {
+           return; // Prevent space from showing answer while recording
+        }
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
           setShowingAnswer(true);
@@ -135,9 +150,9 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
     }
   }, [currentIndex, showingAnswer, loading]);
 
-  const handleAnswerSubmit = async (e?: React.FormEvent) => {
+  const handleAnswerSubmit = async (e?: React.FormEvent, audioBase64?: string) => {
     if (e) e.preventDefault();
-    if (!typedAnswer.trim()) {
+    if (!typedAnswer.trim() && !audioBase64) {
         setShowingAnswer(true);
         return;
     }
@@ -156,7 +171,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
         console.log(`[Flashcards] Resposta Esperada: "${expected}" | Resposta Digitada: "${typedAnswer}"`);
         try {
             const { promptGeminiForAnkiEvaluation } = await import('../../services/gemini');
-            const res = await promptGeminiForAnkiEvaluation(card.front, expected, typedAnswer);
+            const res = await promptGeminiForAnkiEvaluation(card.front, expected, typedAnswer, audioBase64);
             console.log(`[Flashcards] IA retornou:`, res);
             setAiFeedback(res as any);
         } catch (err) {
@@ -168,6 +183,46 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
         setExactMatch(typedAnswer.trim().toLowerCase() === expected.trim().toLowerCase());
     }
     setShowingAnswer(true);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          handleAnswerSubmit(undefined, base64Audio);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Erro ao acessar microfone", err);
+      alert("Não foi possível acessar o microfone.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setEvaluating(true);
+    }
   };
 
   if (editingCard) {
@@ -327,6 +382,33 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
                 {card.card_type === 'typing' && showingAnswer && card.validation_mode === 'ai' && (
                     <div className={`mt-8 px-6 py-3 rounded-xl border bg-indigo-500/10 border-indigo-500/30 text-indigo-400 text-xl font-medium`}>
                         Sua resposta: {typedAnswer || 'Em branco'}
+                    </div>
+                )}
+                {card.card_type === 'speaking' && !showingAnswer && (
+                    <div className="mt-8 flex flex-col items-center">
+                        {!isRecording ? (
+                            <button 
+                                onClick={startRecording}
+                                className="w-20 h-20 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center hover:bg-indigo-500/20 hover:scale-105 transition-all shadow-[0_0_20px_rgba(99,102,241,0.2)]"
+                            >
+                                <Mic className="w-8 h-8" />
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={stopRecording}
+                                className="w-20 h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center hover:bg-red-500/30 hover:scale-105 transition-all shadow-[0_0_30px_rgba(239,68,68,0.4)] animate-pulse"
+                            >
+                                <Square className="w-8 h-8" />
+                            </button>
+                        )}
+                        <p className="text-dark-subtext mt-4 font-medium">
+                            {isRecording ? 'Gravando... Clique para parar e avaliar' : 'Clique para falar a resposta'}
+                        </p>
+                    </div>
+                )}
+                {card.card_type === 'speaking' && showingAnswer && card.validation_mode === 'ai' && (
+                    <div className={`mt-8 px-6 py-3 rounded-xl border bg-indigo-500/10 border-indigo-500/30 text-indigo-400 text-xl font-medium flex items-center gap-2`}>
+                        <Mic className="w-5 h-5" /> Resposta em áudio avaliada pela IA
                     </div>
                 )}
               </>
