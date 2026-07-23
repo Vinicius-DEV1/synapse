@@ -138,7 +138,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
       // 2. Save or Update Note
       if (window.api?.anki) {
         if (editingCardId) {
-          const res = await window.api.anki.updateNote(editingCardId, {
+          const res = await window.api.anki.updateCard(editingCardId, {
              front,
              back,
              extra_note: extraNote,

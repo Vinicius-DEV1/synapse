@@ -25,7 +25,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [typedAnswer, setTypedAnswer] = useState('');
   const [evaluating, setEvaluating] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<{verdict: string, feedback: string} | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<{verdict: string, feedback: string, transcription?: string} | null>(null);
   const [exactMatch, setExactMatch] = useState<boolean | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
@@ -113,8 +113,14 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
            // Em typing e cloze, Enter é lidado pelo form. Espaço digita espaço.
            return;
         }
-        if (card && card.card_type === 'speaking' && isRecording) {
-           return; // Prevent space from showing answer while recording
+        if (card && card.card_type === 'speaking') {
+           if (e.key === 'r' || e.key === 'R') {
+              e.preventDefault();
+              if (isRecording) stopRecording();
+              else startRecording();
+              return;
+           }
+           if (isRecording) return; // Prevent space from showing answer while recording
         }
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
@@ -129,7 +135,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showingAnswer, currentIndex, cards]);
+  }, [showingAnswer, currentIndex, cards, isRecording]);
 
   const playAudio = () => {
     const card = cards[currentIndex];
@@ -171,7 +177,10 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
         console.log(`[Flashcards] Resposta Esperada: "${expected}" | Resposta Digitada: "${typedAnswer}"`);
         try {
             const { promptGeminiForAnkiEvaluation } = await import('../../services/gemini');
-            const res = await promptGeminiForAnkiEvaluation(card.front, expected, typedAnswer, audioBase64);
+            const { getSettings } = await import('../../utils/settings');
+            const settings = getSettings();
+            const modelToUse = settings.geminiModelFlashcards || settings.geminiModel;
+            const res = await promptGeminiForAnkiEvaluation(card.front, expected, typedAnswer, audioBase64, modelToUse);
             console.log(`[Flashcards] IA retornou:`, res);
             setAiFeedback(res as any);
         } catch (err) {
@@ -277,27 +286,30 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
 
   return (
     <div className="fixed inset-0 bg-dark-bg flex flex-col z-[200] select-text">
-      {/* Header */}
-      <header className="h-16 flex items-center justify-between px-8">
-        <div className="flex items-center gap-4 text-sm font-medium">
+      {/* Floating Header Controls */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-10">
+        <div className="flex items-center gap-4 text-sm font-medium bg-dark-bg/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5 shadow-lg">
            <span className="text-dark-subtext">Cartão {currentIndex + 1} de {cards.length}</span>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setEditingCard(cards[currentIndex])} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-colors" title="Editar Cartão">
-            <Edit3 className="w-5 h-5" />
-          </button>
-          <button onClick={handleDeleteCard} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" title="Excluir Cartão">
-            <Trash2 className="w-5 h-5" />
-          </button>
-          <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors" title="Fechar Sessão">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
+      </div>
+      
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-10 flex gap-2 bg-dark-bg/60 backdrop-blur-md p-1 rounded-xl border border-white/5 shadow-lg">
+        <button onClick={() => setEditingCard(cards[currentIndex])} className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors" title="Editar Cartão">
+          <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
+        </button>
+        <button onClick={handleDeleteCard} className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors" title="Excluir Cartão">
+          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+        </button>
+        <div className="w-[1px] h-6 bg-white/10 my-auto mx-1"></div>
+        <button onClick={onClose} className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/10 rounded-lg transition-colors" title="Fechar Sessão">
+          <X className="w-4 h-4 sm:w-5 sm:h-5" />
+        </button>
+      </div>
+
 
       {/* Card Area */}
       <main className="flex-1 flex flex-col p-6 sm:p-12 pb-24 sm:pb-32 overflow-y-auto">
-        <div className="m-auto w-full max-w-2xl flex flex-col items-center gap-8 shrink-0">
+        <div className="mx-auto w-full max-w-2xl flex flex-col items-center gap-8 shrink-0">
           <div className="w-full bg-dark-card rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
           
           {/* Front */}
@@ -437,6 +449,12 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
                           <span className="font-bold text-lg">IA: {aiFeedback.verdict}</span>
                       </div>
                       <p className="text-sm opacity-90">{aiFeedback.feedback}</p>
+                      {aiFeedback.transcription && (
+                          <div className="mt-3 pt-3 border-t border-current/20 text-left">
+                              <p className="text-[11px] opacity-75 mb-1 uppercase tracking-wider font-semibold">Transcrição da Fala:</p>
+                              <p className="text-sm font-medium italic opacity-90">"{aiFeedback.transcription}"</p>
+                          </div>
+                      )}
                   </div>
               )}
 
@@ -479,9 +497,12 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
           )}
 
         </div>
+        </div>
+      </main>
 
-        {/* Controls */}
-        <div className="w-full max-w-2xl flex justify-center mt-2">
+      {/* Controls Footer */}
+      <div className="w-full border-t border-white/10 bg-dark-bg/80 backdrop-blur-md p-4 sm:p-6 flex justify-center shrink-0">
+        <div className="w-full max-w-2xl flex justify-center">
           {!showingAnswer ? (
             <button 
               onClick={() => {
@@ -501,23 +522,31 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
                 <span>Errei</span>
                 <span className="text-xs opacity-50 font-normal">Again (1)</span>
               </button>
-              <button onClick={() => handleRating(2)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-orange-400 border border-white/5 hover:border-orange-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button 
+                onClick={() => handleRating(2)} 
+                disabled={aiFeedback?.verdict === 'Incorreto'}
+                className={`flex-1 py-3 px-2 rounded-xl bg-dark-card text-orange-400 border border-white/5 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg ${aiFeedback?.verdict === 'Incorreto' ? 'opacity-30 cursor-not-allowed grayscale' : 'hover:bg-white/5 hover:border-orange-500/30 hover:shadow-xl'}`}>
                 <span>Difícil</span>
                 <span className="text-xs opacity-50 font-normal">Hard (2)</span>
               </button>
-              <button onClick={() => handleRating(3)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-green-400 border border-white/5 hover:border-green-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button 
+                onClick={() => handleRating(3)} 
+                disabled={aiFeedback?.verdict === 'Incorreto' || aiFeedback?.verdict === 'Parcial'}
+                className={`flex-1 py-3 px-2 rounded-xl bg-dark-card text-green-400 border border-white/5 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg ${aiFeedback?.verdict === 'Incorreto' || aiFeedback?.verdict === 'Parcial' ? 'opacity-30 cursor-not-allowed grayscale' : 'hover:bg-white/5 hover:border-green-500/30 hover:shadow-xl'}`}>
                 <span>Bom</span>
                 <span className="text-xs opacity-50 font-normal">Good (3)</span>
               </button>
-              <button onClick={() => handleRating(4)} className="flex-1 py-3 px-2 rounded-xl bg-dark-card hover:bg-white/5 text-blue-400 border border-white/5 hover:border-blue-500/30 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <button 
+                onClick={() => handleRating(4)} 
+                disabled={aiFeedback?.verdict === 'Incorreto' || aiFeedback?.verdict === 'Parcial'}
+                className={`flex-1 py-3 px-2 rounded-xl bg-dark-card text-blue-400 border border-white/5 font-medium flex flex-col items-center justify-center gap-1 transition-all duration-300 shadow-lg ${aiFeedback?.verdict === 'Incorreto' || aiFeedback?.verdict === 'Parcial' ? 'opacity-30 cursor-not-allowed grayscale' : 'hover:bg-white/5 hover:border-blue-500/30 hover:shadow-xl'}`}>
                 <span>Fácil</span>
                 <span className="text-xs opacity-50 font-normal">Easy (4)</span>
               </button>
             </div>
           )}
         </div>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
