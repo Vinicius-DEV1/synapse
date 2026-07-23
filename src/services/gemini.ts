@@ -101,7 +101,12 @@ export async function promptGemini(prompt: string, mediaBase64?: string, history
   }
 
   const settings = getSettings();
-  let modelId = customModelId || settings.geminiModel || 'models/gemini-1.5-pro';
+  let modelId = customModelId || settings.geminiModel;
+
+  // Se não tem modelo configurado ou é um dos defaults antigos, exigir que o usuário configure
+  if (!modelId || modelId.includes('1.5-pro') || modelId.includes('2.5-pro') || modelId.includes('2.5-flash')) {
+    throw new Error('Por favor, acesse as Configurações > Inteligência Artificial, carregue os modelos e escolha um modelo atual para usar.');
+  }
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
@@ -118,8 +123,12 @@ export async function promptGemini(prompt: string, mediaBase64?: string, history
     
     const userParts: any[] = [{ text: prompt }];
     if (mediaBase64) {
-      const mimeTypeMatch = mediaBase64.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9\-\+\.]+);base64,/);
-      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      const mimeTypeMatch = mediaBase64.match(/^data:(.*?);base64,/);
+      let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      // Strip codecs from mimeType to avoid Gemini API errors
+      if (mimeType.includes(';')) {
+        mimeType = mimeType.split(';')[0];
+      }
       const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
       userParts.push({
         inline_data: { mime_type: mimeType, data: base64Data }
@@ -129,8 +138,12 @@ export async function promptGemini(prompt: string, mediaBase64?: string, history
   } else {
     const userParts: any[] = [{ text: prompt }];
     if (mediaBase64) {
-      const mimeTypeMatch = mediaBase64.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9\-\+\.]+);base64,/);
-      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      const mimeTypeMatch = mediaBase64.match(/^data:(.*?);base64,/);
+      let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      // Strip codecs from mimeType to avoid Gemini API errors
+      if (mimeType.includes(';')) {
+        mimeType = mimeType.split(';')[0];
+      }
       const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
       userParts.push({
         inline_data: { mime_type: mimeType, data: base64Data }
@@ -241,9 +254,10 @@ Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA
 }
 
 // Para avaliar flashcards do Anki
-export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string, mediaBase64?: string): Promise<{
+export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string, mediaBase64?: string, customModelId?: string): Promise<{
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
+  transcription?: string;
 }> {
   let customPrompt = "O usuário está estudando com Flashcards. Você é um professor avaliando a resposta dele.\n" +
 "Frente do Cartão (Contexto): \"" + front + "\"\n" +
@@ -262,11 +276,12 @@ export async function promptGeminiForAnkiEvaluation(front: string, back: string,
 "Responda ESTRITAMENTE em formato JSON com o seguinte schema:\n" +
 "{\n" +
 "  \"verdict\": \"Correto\" | \"Parcial\" | \"Incorreto\",\n" +
-"  \"feedback\": \"Uma breve frase (máx 20 palavras) explicando o motivo, focando em ajudar o aluno.\"\n" +
+"  \"feedback\": \"Uma breve frase (máx 20 palavras) explicando o motivo, focando em ajudar o aluno.\",\n" +
+(mediaBase64 ? "  \"transcription\": \"Opcional. Transcrição exata do que você ouviu no áudio.\"\n" : "") +
 "}\n" +
 "Não use blocos de código markdown (```json) na resposta. Apenas o JSON cru.";
 
-  const response = await promptGemini(customPrompt, mediaBase64);
+  const response = await promptGemini(customPrompt, mediaBase64, [], customModelId);
   const responseText = response.text;
   
   try {
@@ -306,19 +321,23 @@ export const DEFAULT_CARD_GENERATION_PROMPT = "Você é um especialista em cria�
 "{\n" +
 "  \"front\": \"Texto da frente do cartão\",\n" +
 "  \"back\": \"Texto do verso do cartão (vazio para clozes)\",\n" +
-"  \"type\": \"reading\" | \"cloze\" | \"typing\",\n" +
+"  \"type\": \"reading\" | \"cloze\" | \"typing\" | \"speaking\" | \"listening\",\n" +
 "  \"tags\": [\"array\", \"de\", \"tags\", \"curtas\"],\n" +
 "  \"suggested_deck_id\": \"(Opcional) ID do sub-baralho sugerido caso aplicável\"\n" +
 "}\n" +
 "Regras:\n" +
 "1. Se for gerar um cartão de completamento (cloze), o texto 'front' DEVE conter as lacunas no formato {{c1::palavra}}, e 'back' deve ficar vazio. Você pode criar múltiplas lacunas se achar melhor (ex: {{c1::foo}} e {{c2::bar}}).\n" +
-"2. Se o usuário fornecer o contexto do baralho atual, NÃO REPITA NENHUM CARTÃO que já existe no contexto. Crie cartões totalmente inéditos, que complementem o material enviado.\n" +
-"3. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
-"4. Para cada cartão gerado, crie de 1 a 3 tags curtas sobre O CONTEÚDO. REGRAS DE TAGS: NUNCA crie uma tag que seja idêntica ou muito similar ao nome do baralho atual ou de seus sub-baralhos (isso é redundante). Concentre-se em sub-tópicos mais específicos (ex: em um baralho 'Javascript', use 'array', 'funcao' e NÃO 'javascript'). NUNCA crie tags sobre dificuldade (ex: dificil, revisar). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Escreva sempre no SINGULAR e sem acentuação (ex: use 'verbo' em vez de 'verbos'). Retorne as tags no array 'tags'.\n" +
-"5. Não exceda o limite de {{maxCards}} cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
-"6. O campo 'type' define a forma de estudo. Use 'reading' para flashcards normais de leitura, 'cloze' para cartões de preencher lacunas, e 'typing' SE O USUÁRIO PEDIR cartões de digitação ou escrita livre.\n" +
-"7. Se você adicionar uma explicação ou exemplo no verso do cartão, separe-os da resposta principal usando quebras de linha (\\n\\n).\n" +
-"8. Jamais use blocos markdown (```json). Retorne APENAS o JSON.";
+"2. Se o contexto possuir uma lista de 'subdecks' (filhos do baralho atual), você pode analisar o assunto de cada filho e sugerir alocar o novo cartão em um deles usando o campo 'suggested_deck_id' (informando o ID do sub-baralho). Se o cartão for geral ou nenhum filho se aplicar perfeitamente, omita esse campo.\n" +
+"3. Para cada cartão gerado, crie de 1 a 3 tags curtas sobre O CONTEÚDO. REGRAS DE TAGS: NUNCA crie uma tag idêntica ao nome do baralho atual. Foque em sub-tópicos específicos. Reutilize tags existentes no contexto quando possível. Use sempre o SINGULAR e sem acentuação.\n" +
+"4. Não exceda o limite de {{maxCards}} cartões na sua resposta. Retorne os melhores cartões possíveis.\n" +
+"5. O campo 'type' define a forma de estudo. Use:\n" +
+"   - 'reading' para leitura normal.\n" +
+"   - 'cloze' para preencher lacunas.\n" +
+"   - 'typing' para prática de digitação/escrita livre.\n" +
+"   - 'speaking' se o usuário pedir cartões focados em praticar a pronúncia, falar em voz alta, ou testes de conversação por voz.\n" +
+"   - 'listening' se o usuário pedir cartões focados na escuta (áudios).\n" +
+"6. Se você adicionar uma explicação ou exemplo no verso do cartão, separe-os da resposta principal usando quebras de linha (\\n\\n).\n" +
+"7. Jamais use blocos markdown (```json). Retorne APENAS o JSON válido.";
 
 export async function promptGeminiForCardSuggestions(userPrompt: string, maxCards: number, contextData?: any, customModelId?: string): Promise<any[]> {
   let systemInstruction = await getAiPrompt('anki_card_suggestions') || DEFAULT_CARD_GENERATION_PROMPT;
@@ -377,7 +396,7 @@ Schema esperado:
   "actions": [
     {
       "type": "create",
-      "cards": [{"front": "...", "back": "...", "type": "reading", "tags": ["tag1", "tag2"], "suggested_deck_id": "(opcional) ID do sub-baralho se aplicável"}]
+      "cards": [{"front": "...", "back": "...", "type": "reading|speaking|listening|cloze|typing", "tags": ["tag1", "tag2"], "suggested_deck_id": "(opcional) ID do sub-baralho se aplicável"}]
     },
     {
       "type": "edit",
@@ -397,7 +416,7 @@ Schema esperado:
 
   REGRAS DE TAGS PARA CRIAÇÃO/EDIÇÃO: NUNCA crie uma tag que seja idêntica ou muito similar ao nome do baralho atual ou de seus sub-baralhos (isso é redundante). Concentre-se em sub-tópicos específicos. NUNCA crie tags sobre dificuldade (ex: dificil). DÊ PREFERÊNCIA ABSOLUTA a reutilizar as tags já existentes no contexto. Escreva sempre no SINGULAR e sem acentuação.
   
-  REGRAS DE TIPOS (type): Use 'reading' para flashcards normais, 'cloze' para preencher lacunas, e 'typing' SE O USUÁRIO PEDIR escrita livre.
+  REGRAS DE TIPOS (type): Use 'reading' para flashcards normais, 'cloze' para preencher lacunas, 'typing' para escrita livre, 'speaking' se o usuário pedir cartões focados em praticar a pronúncia/fala, e 'listening' para testes de audição.
   
   Só adicione ações de 'create' se o usuário pedir para gerar cartões. Só adicione 'edit' ou 'delete_bulk' se você encontrar ativamente algum cartão no contexto fornecido que precise ser melhorado ou excluído.
 Para editar ou excluir, você precisa olhar o 'id' dos cartões no contexto atual fornecido. Se encontrar múltiplos cartões inúteis ou redundantes, exclua todos juntos no 'delete_bulk'. 

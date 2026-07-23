@@ -57,7 +57,7 @@ export default function AIGenerationView({
   const handleAddAll = () => {
      onAddCards(suggestions.map(c => ({
        ...c,
-       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact',
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze' || c.type === 'speaking') ? 'ai' : 'exact',
        suggested_deck_id: ignoreSubdeckSuggestions ? undefined : c.suggested_deck_id
      })));
      setSuggestions([]);
@@ -68,7 +68,7 @@ export default function AIGenerationView({
      const c = suggestions[index];
      onAddCards([{
        ...c,
-       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze') ? 'ai' : 'exact',
+       validation_mode: enableAIAssessment && (c.type === 'typing' || c.type === 'cloze' || c.type === 'speaking') ? 'ai' : 'exact',
        suggested_deck_id: ignoreSubdeckSuggestions ? undefined : c.suggested_deck_id
      }]);
      setSuggestions(prev => {
