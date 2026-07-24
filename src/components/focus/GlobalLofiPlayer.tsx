@@ -3,6 +3,7 @@ import { Volume2, Play, Pause, VolumeX, SkipForward, X } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { resolveLofiUrl } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
+import { useTimeTracker } from '../../hooks/useTimeTracker';
 
 export const GlobalLofiPlayer: React.FC = () => {
   const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
@@ -13,6 +14,13 @@ export const GlobalLofiPlayer: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  useTimeTracker({
+    itemId: activeLofi?.id || 'none',
+    itemTitle: activeLofi?.title || 'Unknown Lofi',
+    module: 'lofi',
+    isActive: isPlayingLofi && !!activeLofi,
+  });
 
   useEffect(() => {
     if (activeLofi) {

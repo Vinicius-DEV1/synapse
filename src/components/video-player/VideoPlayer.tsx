@@ -11,6 +11,7 @@ import { useVideoVocabulary } from './hooks/useVideoVocabulary';
 import { useVideoControls } from './hooks/useVideoControls';
 import { VideoControlsOverlay } from './ui/VideoControlsOverlay';
 import { VideoVocabularySidebar } from './ui/VideoVocabularySidebar';
+import { useTimeTracker } from '../../hooks/useTimeTracker';
 
 interface VideoPlayerProps {
   src: string;
@@ -45,6 +46,13 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const [streamOffset, setStreamOffset] = useState(0);
   const [currentSrc, setCurrentSrc] = useState(src);
+
+  useTimeTracker({
+    itemId: video.id,
+    itemTitle: title || video.title || 'Unknown Video',
+    module: 'video',
+    isActive: isPlaying
+  });
 
   useEffect(() => {
     setCurrentSrc(src);

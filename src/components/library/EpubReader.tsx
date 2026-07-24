@@ -11,6 +11,7 @@ import EpubTypography from './epub/EpubTypography';
 import EpubHighlightMenu from './epub/EpubHighlightMenu';
 import { useEpubLoader } from './epub/useEpubLoader';
 import { useEpubTheme } from './epub/useEpubTheme';
+import { useTimeTracker } from '../../hooks/useTimeTracker';
 
 interface EpubReaderProps {
   book: LibraryBook;
@@ -26,6 +27,14 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   } = useEpub();
 
   const { state, dispatch } = useStore();
+
+  useTimeTracker({
+    itemId: book.id,
+    itemTitle: book.title,
+    module: 'library',
+    isActive: true,
+    requireInteraction: true
+  });
 
   useEffect(() => {
     const prefs = { fontSize, readingMode, fontFamily, textWidth };
