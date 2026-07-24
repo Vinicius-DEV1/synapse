@@ -24,6 +24,8 @@ import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppTitle } from './hooks/useAppTitle';
 import { useGarbageCollection } from './hooks/useGarbageCollection';
 import { usePlatform } from './hooks/usePlatform';
+import GlobalSearchModal from './components/GlobalSearchModal';
+import DriveAuthModal from './components/library/DriveAuthModal';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -39,8 +41,15 @@ function AppContent() {
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage, handleExportPage, handleImportPage } = usePageActions();
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
+  const [isDriveAuthModalOpen, setIsDriveAuthModalOpen] = useState(false);
   
   const { loadData: loadFocusData } = useFocusContext();
+
+  useEffect(() => {
+    const handleAuthError = () => setIsDriveAuthModalOpen(true);
+    window.addEventListener('drive-auth-expired', handleAuthError);
+    return () => window.removeEventListener('drive-auth-expired', handleAuthError);
+  }, []);
 
   useEffect(() => {
     if (isAuth) {
@@ -257,6 +266,17 @@ function AppContent() {
           onCreatePage={handleCreatePage}
           onCreateLinkedPage={handleCreateLinkedPage}
           onUpdatePage={handleUpdatePage}
+        />
+      )}
+
+      {/* Global Search Modal */}
+      <GlobalSearchModal />
+
+      {/* Drive Auth Modal */}
+      {isDriveAuthModalOpen && (
+        <DriveAuthModal 
+          onClose={() => setIsDriveAuthModalOpen(false)} 
+          onSuccess={() => setIsDriveAuthModalOpen(false)} 
         />
       )}
     </div>

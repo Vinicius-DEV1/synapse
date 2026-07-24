@@ -415,6 +415,8 @@ export async function getValidAccessToken(): Promise<string | null> {
       return newToken.access_token;
     } catch (e) {
       console.error("Failed to refresh token", e);
+      await saveDriveCredentials(null);
+      window.dispatchEvent(new CustomEvent('drive-auth-expired'));
       return null;
     }
   }
