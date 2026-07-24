@@ -9,10 +9,11 @@ interface DashboardProps {
   onOpenSettings: () => void;
   onOpenAlarms: () => void;
   onOpenLofi: () => void;
+  onOpenStats: () => void;
   onDeleteSession: (id: number) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onOpenLofi, onDeleteSession }) => {
+const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onOpenLofi, onOpenStats, onDeleteSession }) => {
   const [dailyGoal, setDailyGoal] = useState<number>(120);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('120');
@@ -113,6 +114,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           </button>
           <button onClick={onOpenAlarms} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Alarms">
             <Bell size={18} />
+          </button>
+          <button onClick={onOpenStats} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Estatísticas">
+            <Activity size={18} />
           </button>
           <button onClick={onOpenSettings} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Settings">
             <Settings size={18} />
