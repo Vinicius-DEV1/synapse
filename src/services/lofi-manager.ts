@@ -175,3 +175,25 @@ export async function deleteLofiLocal(lofi: LofiItem): Promise<void> {
     }
   }
 }
+
+export async function renameLofi(lofi: LofiItem, newTitle: string): Promise<void> {
+  if (window.api?.sync) {
+    await window.api.sync.upsertRow(LOFI_TABLE, {
+      ...lofi,
+      title: newTitle,
+      updated_at: new Date().toISOString()
+    });
+  }
+}
+
+export async function updateLofiOrder(lofisToUpdate: LofiItem[]): Promise<void> {
+  if (window.api?.sync) {
+    const timestamp = new Date().toISOString();
+    for (const lofi of lofisToUpdate) {
+      await window.api.sync.upsertRow(LOFI_TABLE, {
+        ...lofi,
+        updated_at: timestamp
+      });
+    }
+  }
+}
