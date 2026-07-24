@@ -16,6 +16,7 @@ import { PdfToolbar } from './pdf/PdfToolbar';
 import { usePdfDocument } from './pdf/hooks/usePdfDocument';
 import { usePdfRenderer } from './pdf/hooks/usePdfRenderer';
 import { usePdfHighlights } from './pdf/hooks/usePdfHighlights';
+import { useTimeTracker } from '../../hooks/useTimeTracker';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -28,6 +29,14 @@ interface PdfReaderProps {
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
   const { state, dispatch } = useStore();
   const settings = getSettings();
+
+  useTimeTracker({
+    itemId: book.id,
+    itemTitle: book.title,
+    module: 'library',
+    isActive: true,
+    requireInteraction: true
+  });
   
   const [readingMode, setReadingMode] = useState<'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast'>(
     (settings.defaultReadingMode as any) || 'light'
