@@ -11,8 +11,7 @@ import {
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors,
-  DragEndEvent,
+  useSensors
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -329,7 +328,7 @@ export const LofiView: React.FC = () => {
     return list.sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [lofis, sortMode]);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = sortedLofis.findIndex(l => l.id === active.id);
