@@ -7,6 +7,7 @@ import SettingsModal from './SettingsModal';
 import AlarmsList from './AlarmsList';
 import AlarmSetupModal from './AlarmSetupModal';
 import { LofiView } from './LofiView';
+import FocusStatsView from './FocusStatsView';
 import { useFocusContext } from '../../store/FocusContext';
 
 export default function FocusApp() {
@@ -30,8 +31,12 @@ export default function FocusApp() {
           onOpenSettings={() => setView('settings')} 
           onOpenAlarms={() => setView('alarms')} 
           onOpenLofi={() => setView('lofi')}
+          onOpenStats={() => setView('stats')}
           onDeleteSession={handleDeleteSession} 
         />
+      )}
+      {view === 'stats' && (
+        <FocusStatsView onBack={() => setView('dashboard')} />
       )}
       {view === 'lofi' && (
         <LofiView />
