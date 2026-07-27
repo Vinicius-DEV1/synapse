@@ -157,7 +157,9 @@ export default function CalendarEventWidgetNodeView(props: any) {
         onClick={() => setShowPopover(!showPopover)}
         contentEditable={false}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
-          isCompleted
+          props.selected || showPopover
+            ? 'ring-2 ring-brand-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] border-brand-400 bg-brand-500/25 scale-[1.03]'
+            : isCompleted
             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 line-through opacity-80'
             : isLive
             ? 'bg-amber-500/10 border-amber-500/50 text-amber-300 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.3)] ring-1 ring-amber-500/30'
