@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
@@ -65,6 +65,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   const renderModuleHeaderIcon = () => {
     switch (activeModule) {
+      case 'home': return <Home size={20} className="text-brand-400" />;
       case 'notes': return <BookOpen size={20} className="text-brand-400" />;
       case 'library': return <Library size={20} className="text-brand-400" />;
       case 'culture': return <Film size={20} className="text-brand-400" />;
@@ -82,6 +83,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   const renderModuleHeaderLabel = () => {
     switch (activeModule) {
+      case 'home': return 'Início';
       case 'notes': return 'Caderno';
       case 'library': return 'Biblioteca';
       case 'culture': return 'Cultura';
@@ -198,6 +200,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
                 <span>{tab.label}</span>
               </button>
             ))}
+          </div>
+        ) : activeModule === 'home' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Página Inicial</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Resumo do dia, eventos ao vivo e revisões diárias.</div>
           </div>
         ) : (
           <div className="flex flex-col gap-1 mt-2">
