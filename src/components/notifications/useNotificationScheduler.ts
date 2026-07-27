@@ -144,7 +144,26 @@ export function useNotificationScheduler() {
     const interval = setInterval(() => {
       checkReminders();
     }, 60 * 1000); // Check a cada 1 minuto
-    return () => clearInterval(interval);
+
+    const handleFocusOrVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        checkReminders();
+        fetchNotifications();
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisible);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleFocusOrVisible);
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocusOrVisible);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      }
+    };
   }, [fetchNotifications, checkReminders]);
 
   return {

@@ -67,7 +67,22 @@ export default function CalendarEventWidgetNodeView(props: any) {
     setShowPopover(false);
   };
 
-  const deleteWidget = () => {
+  const deleteWidget = async () => {
+    if (eventId && window.api?.calendar) {
+      try {
+        const events = await window.api.calendar.getEvents();
+        const found = events.find((ev: CalendarEvent) => ev.id === eventId);
+        if (found) {
+          const dateStr = found.end_date || found.start_date;
+          const isExpired = dateStr && !isNaN(new Date(dateStr).getTime()) && new Date(dateStr).getTime() < Date.now();
+          if (!isExpired) {
+            await window.api.calendar.deleteEvent(eventId);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao excluir evento da agenda ao remover widget:', err);
+      }
+    }
     props.deleteNode();
   };
 
