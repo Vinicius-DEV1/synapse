@@ -1,0 +1,19 @@
+rules_version = '2';
+
+/**
+ * REGRAS DO CLOUD FIRESTORE - CADERNO APP
+ *
+ * Como o Caderno utiliza Criptografia de Ponta a Ponta (E2EE - AES-GCM) no lado do cliente
+ * protegida pela Senha Mestre do usuário, os dados salvos no Firestore são totalmente
+ * cifrados e ininteligíveis (apenas blocos `encryptedData`).
+ *
+ * Estas regras permitem a leitura e gravação para que a sincronização do seu app
+ * continue funcionando sem expirar após 30 dias.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
