@@ -17,6 +17,8 @@ import { tauriVideoApi, tauriLofiApi, tauriYoutubeApi, tauriAudioApi, tauriTrans
 import { tauriBackupApi } from './api/tauri/backup';
 import { tauriFilesApi } from './api/tauri/files';
 import { tauriTrashApi } from './api/tauri/trash';
+import { tauriDiagramsApi } from './api/tauri/diagrams';
+import { tauriNotificationsApi } from './api/tauri/notifications';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
@@ -71,7 +73,7 @@ export const createTauriApi = async () => {
     getDeletedPages: async () => await invoke('notes_get_deleted_pages'),
     restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
     reorderPages: async () => true, // TODO
-    getPageHistory: async () => [],
+    getPageHistory: async (pageId: string) => await invoke('notes_get_page_history', { pageId }),
     
     // --- IMAGE CACHE ---
     imageCache: {
@@ -127,6 +129,12 @@ export const createTauriApi = async () => {
     vault: tauriVaultApi,
     
     // --- PRACTICE ---
-    practice: tauriPracticeApi
+    practice: tauriPracticeApi,
+    
+    // --- DIAGRAMS ---
+    diagrams: tauriDiagramsApi,
+    
+    // --- NOTIFICATIONS ---
+    notifications: tauriNotificationsApi
   };
 };

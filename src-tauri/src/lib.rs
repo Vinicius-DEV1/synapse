@@ -7,6 +7,7 @@ mod cmd_notes;
 mod cmd_finance;
 mod cmd_library;
 mod cmd_calendar;
+mod cmd_notifications;
 mod cmd_culture;
 mod cmd_anki;
 mod cmd_focus;
@@ -21,6 +22,7 @@ mod cmd_files;
 mod cmd_vault;
 mod cmd_practice;
 mod cmd_trash;
+mod cmd_diagrams;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -86,6 +88,7 @@ pub fn run() {
         cmd_notes::notes_get_page_content,
         cmd_notes::notes_create_page,
         cmd_notes::notes_update_page,
+        cmd_notes::notes_get_page_history,
         cmd_notes::notes_delete_page,
         cmd_notes::notes_get_deleted_pages,
         cmd_notes::notes_restore_page,
@@ -103,6 +106,10 @@ pub fn run() {
         cmd_calendar::calendar_add_event,
         cmd_calendar::calendar_update_event,
         cmd_calendar::calendar_delete_event,
+        cmd_notifications::notifications_get_all,
+        cmd_notifications::notifications_add,
+        cmd_notifications::notifications_mark_read,
+        cmd_notifications::notifications_delete,
         cmd_library::library_get_books,
         cmd_library::library_add_book,
         cmd_library::library_update_book,
@@ -227,7 +234,12 @@ pub fn run() {
         cmd_trash::trash_get_all,
         cmd_trash::trash_restore,
         cmd_trash::trash_empty,
-        cmd_trash::trash_delete_permanently
+        cmd_trash::trash_delete_permanently,
+        cmd_diagrams::diagrams_get_all,
+        cmd_diagrams::diagrams_get_content,
+        cmd_diagrams::diagrams_create,
+        cmd_diagrams::diagrams_update,
+        cmd_diagrams::diagrams_delete
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

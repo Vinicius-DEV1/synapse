@@ -28,7 +28,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash';
+  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -186,10 +186,11 @@ export interface AppState {
   activeAiChatId: string | null;
   moduleKeys: Record<string, CryptoKey>;
   isReadingModeFullScreen: boolean;
+  navDirection: 'forward' | 'backward' | null;
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'diagrams' }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -216,6 +217,7 @@ export type Action =
   | { type: 'SET_AI_SIDEBAR_WIDTH'; width: number }
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
+  | { type: 'SET_NAV_DIRECTION'; direction: 'forward' | 'backward' | null }
   | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };
 
 
@@ -270,8 +272,25 @@ export interface CalendarEvent {
   color: string;
   recurrence_rule?: string | null;
   reminder_minutes?: number | null;
+  page_id?: string | null;
+  reminders?: number[];
+  notified_reminders?: number[];
   created_at: string;
   updated_at: string;
+}
+
+// ============ NOTIFICATION TYPES ============
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'calendar_event' | 'alarm' | 'system';
+  target_page_id?: string | null;
+  event_id?: string | null;
+  scheduled_for?: string | null;
+  fired_at: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 declare global {
@@ -408,6 +427,12 @@ declare global {
         updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<{success: boolean}>;
         deleteEvent: (id: string) => Promise<boolean>;
       };
+      notifications?: {
+        getNotifications: () => Promise<AppNotification[]>;
+        addNotification: (notif: Partial<AppNotification>) => Promise<AppNotification>;
+        markRead: (id?: string) => Promise<boolean>;
+        deleteNotification: (id: string) => Promise<boolean>;
+      };
       audio?: {
         generateTTS: (text: string, lang?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
         extractClip: (videoPath: string, startTimeMs: number, endTimeMs: number) => Promise<{ success: boolean; filePath?: string; error?: string }>;
@@ -464,8 +489,28 @@ declare global {
         createMemory: (memory: Partial<TutorMemory>) => Promise<TutorMemory>;
         deleteMemory: (id: string) => Promise<boolean>;
       };
+      diagrams?: {
+        getAll: () => Promise<DiagramMeta[]>;
+        getContent: (id: string) => Promise<DiagramContent>;
+        create: (payload: { title?: string; icon?: string }) => Promise<DiagramMeta>;
+        update: (payload: { id: string; title?: string; icon?: string; content?: string }) => Promise<number>;
+        delete: (id: string) => Promise<boolean>;
+      };
     };
   }
+}
+
+export interface DiagramMeta {
+  id: string;
+  title: string;
+  icon: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DiagramContent {
+  content: string;
+  encrypted_content?: string | null;
 }
 
 export interface TutorSession {
