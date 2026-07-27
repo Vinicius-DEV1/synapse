@@ -2,6 +2,7 @@ import { Plus, X, FileText, Library, Settings } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MAIN_MODULES, SPECIAL_MODULES } from './layout/sidebar/modules.config';
+import NotificationBell from './notifications/NotificationBell';
 
 interface TabItemProps {
   tab: any;
@@ -157,6 +158,9 @@ export default function TabBar() {
 
       {/* Spacer to push AI button to the right */}
       <div className="flex-1"></div>
+
+      {/* Central de Notificações (Sino) */}
+      <NotificationBell />
 
       {/* AI Sidebar Toggle */}
       <button
