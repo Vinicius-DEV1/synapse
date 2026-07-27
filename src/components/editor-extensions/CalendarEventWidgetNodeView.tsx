@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
-import { Calendar, Check, ExternalLink, Clock, Trash2, Bell } from 'lucide-react';
+import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
+import { Portal } from '../ui/Portal';
 
 export default function CalendarEventWidgetNodeView(props: any) {
   const { eventId, title, dateStr, pageId, status } = props.node.attrs;
@@ -10,6 +11,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
   const [showPopover, setShowPopover] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     setIsCompleted(status === 'completed');
@@ -200,7 +202,10 @@ export default function CalendarEventWidgetNodeView(props: any) {
             </button>
 
             <button
-              onClick={deleteWidget}
+              onClick={() => {
+                setShowPopover(false);
+                setShowConfirmDelete(true);
+              }}
               className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
               title="Remover widget do texto"
             >
@@ -208,6 +213,59 @@ export default function CalendarEventWidgetNodeView(props: any) {
             </button>
           </div>
         </div>
+      )}
+
+      {showConfirmDelete && (
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
+            <div
+              className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scale-in overflow-hidden text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/10 text-red-400">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    Remover Widget de Evento
+                  </h3>
+                  <p className="text-sm text-dark-subtext leading-relaxed">
+                    Tem certeza que deseja remover o widget de evento <strong>"{eventData?.title || title}"</strong> do texto?
+                  </p>
+                  <p className="text-xs text-amber-400/90 leading-relaxed mt-2.5 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg">
+                    {(() => {
+                      const dateStr = eventData?.end_date || eventData?.start_date;
+                      const isExpired = dateStr && !isNaN(new Date(dateStr).getTime()) && new Date(dateStr).getTime() < Date.now();
+                      if (isExpired) {
+                        return 'O evento já expirou (prazo encerrado), por isso ele será mantido na sua agenda.';
+                      }
+                      return 'O evento correspondente também será removido da sua Agenda.';
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmDelete(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmDelete(false);
+                    deleteWidget();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors shadow-lg shadow-red-500/20"
+                >
+                  Confirmar Exclusão
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );
