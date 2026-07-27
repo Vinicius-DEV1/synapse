@@ -135,9 +135,25 @@ export default function CalendarEventWidgetNodeView(props: any) {
     return nowTs >= evTime - 15 * 60 * 1000 && nowTs <= evTime + 60 * 60 * 1000;
   }, [eventData?.start_date, isCompleted, nowTs]);
 
+  const widgetRef = React.useRef<HTMLSpanElement>(null);
+
+  React.useEffect(() => {
+    const el = widgetRef.current;
+    if (!el) return;
+    const handleTriggerConfirm = (e: Event) => {
+      e.stopPropagation();
+      setShowConfirmDelete(true);
+    };
+    el.addEventListener('trigger-widget-delete-confirm', handleTriggerConfirm);
+    return () => {
+      el.removeEventListener('trigger-widget-delete-confirm', handleTriggerConfirm);
+    };
+  }, []);
+
   return (
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
       <span
+        ref={widgetRef}
         onClick={() => setShowPopover(!showPopover)}
         contentEditable={false}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
