@@ -106,8 +106,14 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-[#1a1924] border border-dark-border rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-hidden flex flex-col">
+      <div 
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+        onClick={onClose}
+      >
+        <div 
+          className="bg-[#1a1924] border border-dark-border rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex justify-between items-center px-4 py-3 border-b border-dark-border flex-shrink-0">
             <h2 className="text-lg font-medium text-dark-text">
               {event ? 'Editar Agendamento' : 'Novo Agendamento'}
