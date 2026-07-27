@@ -14,6 +14,8 @@ import { webFilesApi } from '../api/web/files';
 import { webAnkiApi } from '../api/web/anki';
 import { webYoutubeApi } from '../api/web/youtube';
 import { webTrashApi } from '../api/web/trash';
+import { webDiagramsApi } from '../api/web/diagrams';
+import { webNotificationsApi } from '../api/web/notifications';
 
 // Função auxiliar para gerar IDs
 const generateId = () => crypto.randomUUID();
@@ -163,7 +165,7 @@ export const createWebApiMock = async () => {
       await tx.done;
       return true;
     },
-    getPageHistory: async () => [],
+    getPageHistory: async (pageId: string) => [],
     exportBackup: async () => ({ success: false, error: "Backup não suportado na versão Web" }),
 
     // --- AUTH ---
@@ -183,6 +185,7 @@ export const createWebApiMock = async () => {
 
     // --- CALENDAR ---
     calendar: webCalendarApi(db),
+    notifications: webNotificationsApi(db),
 
     // --- VAULT ---
     vault: webVaultApi(db, generateId),
@@ -198,5 +201,8 @@ export const createWebApiMock = async () => {
 
     // --- PRACTICE ---
     practice: webPracticeApi(db, generateId),
+    
+    // --- DIAGRAMS ---
+    diagrams: webDiagramsApi(db, generateId, () => _masterKey),
   };
 };

@@ -61,6 +61,21 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS tutor_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL, text_content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS tutor_memories (id TEXT PRIMARY KEY, category TEXT NOT NULL, fact TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS youtube_watched (id TEXT PRIMARY KEY, video_id TEXT NOT NULL, title TEXT, channel_name TEXT);
+         CREATE TABLE IF NOT EXISTS diagrams (id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT DEFAULT '', encrypted_content TEXT, icon TEXT DEFAULT '🎨', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS notifications (
+             id TEXT PRIMARY KEY,
+             title TEXT NOT NULL,
+             message TEXT NOT NULL,
+             type TEXT NOT NULL,
+             target_page_id TEXT,
+             event_id TEXT,
+             scheduled_for TEXT,
+             fired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             is_read BOOLEAN DEFAULT 0,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             deleted_at DATETIME DEFAULT NULL
+         );
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
     
@@ -75,6 +90,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN is_locked INTEGER DEFAULT 0", []);
     
     let _ = conn.execute("ALTER TABLE tutor_sessions ADD COLUMN custom_prompt TEXT", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN reminders TEXT DEFAULT '[]'", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN notified_reminders TEXT DEFAULT '[]'", []);
     
     // Drop old focus_sessions if it has the old schema (text id)
     let _ = conn.execute("DROP TABLE IF EXISTS sessions", []);
@@ -86,7 +104,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         "anki_decks", "anki_cards", "anki_srs_state", "anki_reviews", "focus_sessions", "alarms",
         "page_history", "tutor_sessions", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
         "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
-        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched"
+        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched", "diagrams", "notifications"
     ];
     for t in tables_with_sync {
         let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);
@@ -100,6 +118,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     // Migration for anki_decks parent_id
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);
+    
+    // Migration for page_history
+    let _ = conn.execute("ALTER TABLE page_history ADD COLUMN encrypted_content TEXT", []);
     
     // Migration for anki tags
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'", []);
