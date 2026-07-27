@@ -7,6 +7,7 @@ export default function ShortcutsTab() {
       title: "Gerais do Aplicativo",
       icon: <Layout size={16} className="text-brand-400" />,
       items: [
+        { keys: ["Ctrl", "J"], desc: "Abrir/Fechar Assistente de IA Rápido (ou Ctrl+Shift+A)" },
         { keys: ["Shift", "F"], desc: "Alternar Tela Cheia (Ocultar Barra do Windows)" },
         { keys: ["Ctrl", "P"], desc: "Abrir Busca Global de Obras" },
         { keys: ["Esc"], desc: "Fechar modais abertos" }

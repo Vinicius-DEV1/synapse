@@ -45,6 +45,22 @@ export function useAppShortcuts(state: AppState, dispatch: React.Dispatch<Action
           }, 0);
         }
       }
+
+      // Toggle AI Sidebar with Ctrl+Shift+A or Ctrl+J (or Cmd on Mac)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'j' || e.key === 'J' || (e.shiftKey && (e.key === 'a' || e.key === 'A')))) {
+        const target = e.target as HTMLElement;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+        if (!isInput || e.shiftKey) {
+          e.preventDefault();
+          dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
+          if (!state.showAiSidebar) {
+            setTimeout(() => {
+              const input = document.querySelector('input[placeholder*="Mensagem (digite @"]') as HTMLInputElement;
+              if (input) input.focus();
+            }, 100);
+          }
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
