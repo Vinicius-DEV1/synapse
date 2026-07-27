@@ -4,8 +4,10 @@ export const webCalendarApi = (db: any) => ({
     return all.filter((e: any) => !e.deleted_at);
   },
   createEvent: async (event: any) => {
+    const id = (event.id && event.id !== '') ? event.id : crypto.randomUUID();
     const newEvent = {
       ...event,
+      id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: null
