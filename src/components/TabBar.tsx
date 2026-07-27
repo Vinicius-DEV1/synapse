@@ -162,7 +162,6 @@ export default function TabBar() {
       {/* Central de Notificações (Sino) */}
       <NotificationBell />
 
-      {/* AI Sidebar Toggle */}
       <button
         onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
         className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 mx-2 mb-1 rounded-lg text-xs font-medium transition-colors ${
@@ -174,11 +173,6 @@ export default function TabBar() {
       >
         <span className="text-[14px]">✨</span>
         <span className="hidden sm:inline">Assistente</span>
-        {Object.keys(state.aiChatSessions || {}).length > 0 && (
-          <span className="bg-brand-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
-            {Object.keys(state.aiChatSessions || {}).length}
-          </span>
-        )}
       </button>
     </div>
     </DndContext>
