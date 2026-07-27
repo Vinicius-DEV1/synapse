@@ -9,7 +9,7 @@ export default function AiSidebar() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [attachedPages, setAttachedPages] = useState<{ id: string; title: string; content?: string }[]>([]);
+  const [attachedPages, setAttachedPages] = useState<{ id: string; title: string; content?: string; isLoading?: boolean }[]>([]);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
@@ -28,6 +28,11 @@ export default function AiSidebar() {
 
   const handleAttachPage = async (page: { id: string; title: string; content?: string }) => {
     if (!attachedPages.some(p => p.id === page.id)) {
+      setAttachedPages(prev => {
+        if (prev.some(p => p.id === page.id)) return prev;
+        return [...prev, { id: page.id, title: page.title, content: page.content, isLoading: true }];
+      });
+
       let content = page.content;
       if (activeTab?.pageId === page.id && activeTab?.unsavedContent) {
         content = activeTab.unsavedContent;
@@ -40,12 +45,36 @@ export default function AiSidebar() {
           console.error('Erro ao buscar conteúdo da página para o chat:', err);
         }
       }
-      setAttachedPages(prev => [...prev, { id: page.id, title: page.title, content }]);
+      setAttachedPages(prev =>
+        prev.map(p => (p.id === page.id ? { ...p, content, isLoading: false } : p))
+      );
     }
     if (showMentionMenu) {
       const newPrompt = prompt.replace(/(?:^|\s)@([^\s@]*)$/, '').trim();
       setPrompt(newPrompt);
       setShowMentionMenu(false);
+    }
+  };
+
+  const getPageAndDescendants = (rootPageId: string) => {
+    const result: { id: string; title: string; content?: string }[] = [];
+    const queue = [rootPageId];
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const found = state.pages.find(p => p.id === currentId);
+      if (found) {
+        result.push({ id: found.id, title: found.title, content: found.content });
+        const children = state.pages.filter(p => p.parent_id === found.id);
+        queue.push(...children.map(c => c.id));
+      }
+    }
+    return result;
+  };
+
+  const handleAttachPageTree = async (rootPage: { id: string; title: string; content?: string }) => {
+    const pagesToAttach = getPageAndDescendants(rootPage.id);
+    for (const p of pagesToAttach) {
+      await handleAttachPage(p);
     }
   };
 
@@ -524,6 +553,7 @@ export default function AiSidebar() {
                     const isCurrent = currentPage && page.id === currentPage.id;
                     const isSelected = index === mentionSelectedIndex;
                     const isAlreadyAttached = attachedPages.some(p => p.id === page.id);
+                    const childCount = state.pages.filter(p => p.parent_id === page.id).length;
                     return (
                       <button
                         key={page.id}
@@ -538,6 +568,18 @@ export default function AiSidebar() {
                           <span className="truncate font-medium">{page.title || 'Sem título'}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {childCount > 0 && (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAttachPageTree(page);
+                              }}
+                              className="bg-brand-500/10 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer"
+                              title={`Anexar página e suas ${childCount} subpágina(s)`}
+                            >
+                              + {childCount} subpágina{childCount > 1 ? 's' : ''}
+                            </span>
+                          )}
                           {isCurrent && (
                             <span className="bg-brand-500/20 text-brand-300 border border-brand-500/30 px-1.5 py-0.5 rounded text-[10px] font-semibold">
                               Atual
@@ -560,8 +602,15 @@ export default function AiSidebar() {
             <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-t border-white/5 bg-dark-card">
               {attachedPages.map(page => (
                 <div key={page.id} className="flex items-center gap-1.5 bg-brand-600/20 border border-brand-500/40 text-brand-200 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm animate-scale-in">
-                  <FileText size={12} className="text-brand-400" />
+                  {page.isLoading ? (
+                    <span className="w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin shrink-0" title="Carregando conteúdo..." />
+                  ) : (
+                    <FileText size={12} className="text-brand-400 shrink-0" />
+                  )}
                   <span className="truncate max-w-[160px]">{page.title || 'Sem título'}</span>
+                  {page.isLoading && (
+                    <span className="text-[10px] text-brand-300 opacity-70">...</span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setAttachedPages(prev => prev.filter(p => p.id !== page.id))}
@@ -577,7 +626,7 @@ export default function AiSidebar() {
 
           {/* Quick attach current page suggestion (if not attached) */}
           {currentPage && !attachedPages.some(p => p.id === currentPage.id) && !showMentionMenu && (
-            <div className="px-3 pt-2 pb-1 border-t border-white/5 bg-dark-card">
+            <div className="px-3 pt-2 pb-1 border-t border-white/5 bg-dark-card flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
                 onClick={() => handleAttachPage(currentPage)}
@@ -587,6 +636,20 @@ export default function AiSidebar() {
                 <Plus size={12} className="text-brand-400 group-hover:scale-125 transition-transform" />
                 <span>Anexar página atual: <strong className="font-semibold text-white">{currentPage.title || 'Sem título'}</strong></span>
               </button>
+              {(() => {
+                const childCount = state.pages.filter(p => p.parent_id === currentPage.id).length;
+                if (childCount === 0) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleAttachPageTree(currentPage)}
+                    className="flex items-center gap-1 text-xs text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 hover:border-brand-500/50 px-2.5 py-1 rounded-full transition-all"
+                    title={`Incluir página atual e suas ${childCount} subpágina(s)`}
+                  >
+                    <span>+ {childCount} subpágina{childCount > 1 ? 's' : ''}</span>
+                  </button>
+                );
+              })()}
             </div>
           )}
 
