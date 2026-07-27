@@ -92,7 +92,7 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   }
 }
 
-export async function promptGemini(prompt: string, mediaBase64?: string, history: any[] = [], customModelId?: string, customSystemInstruction?: string): Promise<{ text: string, usage?: any }> {
+export async function promptGemini(prompt: string, mediaBase64?: string | string[], history: any[] = [], customModelId?: string, customSystemInstruction?: string): Promise<{ text: string, usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
 
@@ -120,37 +120,27 @@ export async function promptGemini(prompt: string, mediaBase64?: string, history
       parts: msg.parts
     }));
     contents.push(...formattedHistory);
-    
-    const userParts: any[] = [{ text: prompt }];
-    if (mediaBase64) {
-      const mimeTypeMatch = mediaBase64.match(/^data:(.*?);base64,/);
-      let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-      // Strip codecs from mimeType to avoid Gemini API errors
-      if (mimeType.includes(';')) {
-        mimeType = mimeType.split(';')[0];
-      }
-      const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
-      userParts.push({
-        inline_data: { mime_type: mimeType, data: base64Data }
-      });
-    }
-    contents.push({ role: 'user', parts: userParts });
-  } else {
-    const userParts: any[] = [{ text: prompt }];
-    if (mediaBase64) {
-      const mimeTypeMatch = mediaBase64.match(/^data:(.*?);base64,/);
-      let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-      // Strip codecs from mimeType to avoid Gemini API errors
-      if (mimeType.includes(';')) {
-        mimeType = mimeType.split(';')[0];
-      }
-      const base64Data = mediaBase64.replace(/^data:.*?;base64,/, '');
-      userParts.push({
-        inline_data: { mime_type: mimeType, data: base64Data }
-      });
-    }
-    contents.push({ role: 'user', parts: userParts });
   }
+
+  const userParts: any[] = [{ text: prompt }];
+  if (mediaBase64) {
+    const mediaList = Array.isArray(mediaBase64) ? mediaBase64 : [mediaBase64];
+    for (const mediaItem of mediaList) {
+      if (!mediaItem) continue;
+      const mimeTypeMatch = mediaItem.match(/^data:(.*?);base64,/);
+      let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      // Strip codecs from mimeType to avoid Gemini API errors
+      if (mimeType.includes(';')) {
+        mimeType = mimeType.split(';')[0];
+      }
+      const base64Data = mediaItem.replace(/^data:.*?;base64,/, '');
+      userParts.push({
+        inline_data: { mime_type: mimeType, data: base64Data }
+      });
+    }
+  }
+  contents.push({ role: 'user', parts: userParts });
+
 
   const requestBody: any = { 
     contents,

@@ -26,6 +26,21 @@ export default function AiSidebar() {
     return (tmp.textContent || tmp.innerText || '(página sem conteúdo em texto)').trim();
   };
 
+  const extractImagesFromHtml = (html?: string): string[] => {
+    if (!html) return [];
+    const images: string[] = [];
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const imgTags = tmp.querySelectorAll('img');
+    imgTags.forEach(img => {
+      const src = img.getAttribute('src') || img.src;
+      if (src && src.startsWith('data:image/')) {
+        images.push(src);
+      }
+    });
+    return images;
+  };
+
   const handleAttachPage = async (page: { id: string; title: string; content?: string }) => {
     if (!attachedPages.some(p => p.id === page.id)) {
       setAttachedPages(prev => {
@@ -168,6 +183,7 @@ export default function AiSidebar() {
     setLoading(true);
     try {
       let finalPromptToSend = promptText;
+      let extractedImages: string[] = [];
       if (attachedPages.length > 0) {
         const pagesWithContent = await Promise.all(
           attachedPages.map(async p => {
@@ -190,7 +206,9 @@ export default function AiSidebar() {
         const names = pagesWithContent.map(p => p.title).join(', ');
         const pagesContext = pagesWithContent.map(p => {
           const cleanContent = stripHtml(p.content);
-          return `📄 Página "${p.title}":\n${cleanContent}`;
+          const pageImgs = extractImagesFromHtml(p.content);
+          extractedImages.push(...pageImgs);
+          return `📄 Página "${p.title}"${pageImgs.length > 0 ? ` [Contém ${pageImgs.length} imagem(ns) anexa(s)]` : ''}:\n${cleanContent}`;
         }).join('\n\n---\n\n');
 
         finalPromptToSend = `[Anexos: ${names}]\n--- CONTEXTO DAS PÁGINAS ANEXADAS ---\n${pagesContext}\n--- FIM DO CONTEXTO ---\n\nInstrução:\n${promptText}`;
@@ -198,7 +216,13 @@ export default function AiSidebar() {
 
       const { getSettings } = await import('../utils/settings');
       const settings = getSettings();
-      const responseObj = await promptGemini(finalPromptToSend, undefined, activeSession.messages, settings.geminiModelChat || settings.geminiModel);
+      const imagesToSend = extractedImages.slice(0, 5); // limite seguro de até 5 imagens para controle de tokens
+      const responseObj = await promptGemini(
+        finalPromptToSend,
+        imagesToSend.length > 0 ? imagesToSend : undefined,
+        activeSession.messages,
+        settings.geminiModelChat || settings.geminiModel
+      );
       const response = responseObj.text;
       const newUserMsg = { role: 'user', parts: [{ text: finalPromptToSend }] };
       const newModelMsg = { role: 'model', parts: [{ text: response }], tokens: responseObj.usage };
