@@ -30,11 +30,50 @@ export function usePageActions() {
 
   const handleDeletePage = useCallback(async (id: string) => {
     if (window.api) {
-      await window.api.deletePage(id);
+      // 1. Coletar o ID da página alvo e todos os seus descendentes recursivamente
+      const toDeleteIds = new Set<string>();
+      const collect = (parentId: string) => {
+        toDeleteIds.add(parentId);
+        state.pages.filter((p) => p.parent_id === parentId).forEach((p) => collect(p.id));
+      };
+      collect(id);
+
+      // 2. Excluir da agenda todos os eventos associados à página e suas subpáginas
+      if (window.api.calendar) {
+        try {
+          const events = await window.api.calendar.getEvents();
+          for (const ev of events) {
+            let shouldDeleteEvent = false;
+            if (ev.page_id && toDeleteIds.has(ev.page_id)) {
+              shouldDeleteEvent = true;
+            } else {
+              for (const pageId of toDeleteIds) {
+                const pageObj = state.pages.find((p) => p.id === pageId);
+                if (pageObj?.content && pageObj.content.includes(`data-event-id="${ev.id}"`)) {
+                  shouldDeleteEvent = true;
+                  break;
+                }
+              }
+            }
+            if (shouldDeleteEvent) {
+              await window.api.calendar.deleteEvent(ev.id);
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao excluir eventos vinculados à página e subpáginas:', err);
+        }
+      }
+
+      // 3. Deletar as páginas no backend
+      for (const pageId of toDeleteIds) {
+        await window.api.deletePage(pageId);
+      }
+
+      // 4. Disparar ação no store
       dispatch({ type: 'DELETE_PAGE', id });
       dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
     }
-  }, [dispatch]);
+  }, [dispatch, state.pages]);
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
     if (window.api) {
