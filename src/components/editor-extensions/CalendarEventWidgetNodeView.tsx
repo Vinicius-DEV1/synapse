@@ -119,14 +119,19 @@ export default function CalendarEventWidgetNodeView(props: any) {
 
   const remindersLabel = formatRemindersLabel(eventData?.reminders);
 
+  const [nowTs, setNowTs] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const isLive = React.useMemo(() => {
     if (!eventData?.start_date || isCompleted) return false;
     const evTime = new Date(eventData.start_date).getTime();
     if (isNaN(evTime)) return false;
-    const now = Date.now();
     // Ao Vivo: desde 15 minutos antes até 60 minutos depois
-    return now >= evTime - 15 * 60 * 1000 && now <= evTime + 60 * 60 * 1000;
-  }, [eventData?.start_date, isCompleted]);
+    return nowTs >= evTime - 15 * 60 * 1000 && nowTs <= evTime + 60 * 60 * 1000;
+  }, [eventData?.start_date, isCompleted, nowTs]);
 
   return (
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
