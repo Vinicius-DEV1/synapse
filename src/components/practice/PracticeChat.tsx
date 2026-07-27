@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, Loader2, Play, Square, Brain, Trash2, X, PhoneOff, AlertCircle, Settings, Volume2, FileText, Sliders } from 'lucide-react';
+import { AudioMessagePlayer } from './chat/AudioMessagePlayer';
+import { MicTestWidget } from './chat/MicTestWidget';
+import { ChatSettingsModal } from './chat/ChatSettingsModal';
+import { ChatSessionSettingsModal } from './chat/ChatSessionSettingsModal';
+import { ChatTranscript } from './chat/ChatTranscript';
 import type { TutorSession, TutorMessage, TutorMemory } from '../../types';
 import { encodeWAV } from '../../utils/audioUtils';
 
@@ -21,111 +26,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return window.btoa(binary);
 }
 
-function AudioMessagePlayer({ src }: { src: string }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const toggle = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
-    }
-  };
-
-  if (!src) return null;
-
-  return (
-    <div className="mt-2 inline-flex items-center gap-2 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full cursor-pointer transition-colors" onClick={toggle}>
-      {isPlaying ? <Square size={14} className="text-brand-400" /> : <Play size={14} className="text-brand-400" />}
-      <span className="text-xs font-medium text-white/80">Ouvir áudio</span>
-      <audio 
-        ref={audioRef} 
-        src={src} 
-        onEnded={() => setIsPlaying(false)} 
-        onPause={() => setIsPlaying(false)} 
-        onPlay={() => setIsPlaying(true)} 
-        className="hidden" 
-      />
-    </div>
-  );
-}
-
-function MicTestWidget() {
-  const [state, setState] = useState<'idle' | 'recording' | 'playing'>('idle');
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const startTest = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach(t => t.stop());
-      };
-      
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setState('recording');
-    } catch (e) {
-      console.error(e);
-      alert('Erro ao acessar microfone para teste.');
-    }
-  };
-
-  const stopTest = () => {
-    if (mediaRecorderRef.current && state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setState('idle');
-    }
-  };
-
-  const playTest = () => {
-    if (audioRef.current && audioUrl) {
-      setState('playing');
-      audioRef.current.play();
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      {state === 'idle' && (
-        <button onClick={startTest} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-dark-subtext hover:text-white transition-colors" title="Testar microfone antes da ligação">
-          <Mic size={14} />
-        </button>
-      )}
-      {state === 'idle' && audioUrl && (
-        <button onClick={playTest} className="p-2 bg-brand-600/20 text-brand-400 hover:bg-brand-600 hover:text-white rounded-full transition-colors" title="Ouvir áudio gravado">
-          <Play size={14} fill="currentColor" />
-        </button>
-      )}
-      {state === 'recording' && (
-        <button onClick={stopTest} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-full text-[11px] font-medium transition-all flex items-center gap-1.5 animate-pulse">
-          <Square size={10} fill="currentColor" /> Gravando teste...
-        </button>
-      )}
-      {state === 'playing' && (
-        <span className="px-3 py-1.5 text-brand-400 text-[11px] font-medium flex items-center gap-1.5">
-          <Play size={10} fill="currentColor" /> Ouvindo teste
-        </span>
-      )}
-      {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setState('idle')} className="hidden" />}
-    </div>
-  );
-}
 
 // O modelo que suporta bidiGenerateContent (Áudio Nativo bidirecional)
 const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
@@ -1129,45 +1029,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-        {messages.map((msg, i) => {
-          const isSystem = msg.text_content.startsWith('[SISTEMA]');
-          
-          if (isSystem) {
-            return (
-              <div key={msg.id || i} className="flex justify-center my-2">
-                <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs text-dark-subtext font-medium tracking-wide">
-                  {msg.text_content.replace('[SISTEMA] ', '')}
-                </div>
-              </div>
-            );
-          }
-          
-          const audioMatch = msg.text_content.match(/\[audio:(data:audio\/wav;base64,.+?)\]/);
-          const textWithoutAudio = msg.text_content.replace(/\[audio:data:audio\/wav;base64,.+?\]/g, '').trim();
-          const isModel = msg.role === 'model';
-          
-          return (
-            <div key={msg.id || i} className={`flex flex-col ${isModel ? 'items-start' : 'items-end'}`}>
-              <span className="text-[10px] text-dark-subtext uppercase tracking-widest font-bold mb-1 ml-1">
-                {isModel ? 'IA' : 'Você'}
-              </span>
-              <div className={`max-w-[80%] p-4 rounded-2xl shadow-sm text-sm ${
-                isModel 
-                  ? 'bg-dark-card border border-white/5 text-dark-text rounded-tl-sm' 
-                  : 'bg-brand-600 text-white rounded-tr-sm'
-              }`}>
-                {textWithoutAudio}
-                {audioMatch && (
-                  <div className="mt-1">
-                    <AudioMessagePlayer src={audioMatch[1]} />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <ChatTranscript messages={messages} />
 
 
 
@@ -1355,146 +1217,27 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           </div>
         </div>
       )}
-      {/* Settings Panel UI */}
-      {isSettingsOpen && (
-        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
-          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-brand-400">
-                <Sliders size={20} />
-                <h3 className="font-semibold text-white">Configurações de Voz</h3>
-              </div>
-              <button 
-                onClick={() => setIsSettingsOpen(false)}
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
-              
-              {/* Global Prompt Config */}
-              <div>
-                <h4 className="text-sm font-semibold text-white mb-1">Prompt Base da IA (Global)</h4>
-                <p className="text-xs text-dark-subtext mb-3">Essa é a instrução padrão que a IA recebe em todas as conversas. Ela dita a personalidade, o idioma principal e o tom geral do seu professor.</p>
-                <textarea 
-                  value={globalSystemPrompt}
-                  onChange={(e) => saveGlobalPrompt(e.target.value)}
-                  placeholder="Escreva como a IA deve agir globalmente..."
-                  className="w-full h-40 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none"
-                />
-                <button 
-                  onClick={() => saveGlobalPrompt(DEFAULT_SYSTEM_INSTRUCTION)}
-                  className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
-                >
-                  Restaurar padrão
-                </button>
-              </div>
-              
-              {/* Voice Config */}
-              <div>
-                <h4 className="text-sm font-semibold text-white mb-1">Voz da IA</h4>
-                <p className="text-xs text-dark-subtext mb-4">Configuração do modelo de áudio bidirecional.</p>
-                
-                <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-sm font-semibold text-brand-400">Áudio Nativo (Latência Zero)</span>
-                  </div>
-                  <p className="text-xs text-white/70 leading-relaxed mb-3">
-                    Para alcançar uma conversa em tempo real sem nenhum atraso, o sistema utiliza um modelo de IA cujo processamento de áudio é nativo e unificado (em vez de traduzir texto para fala). Por causa dessa arquitetura de ponta, a voz da IA é <strong>única e embutida diretamente na rede neural</strong>, não sendo possível alterá-la.
-                  </p>
-                  
-                  <button 
-                    onClick={() => previewVoice('Puck')}
-                    disabled={previewingVoice !== null}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium text-white transition-all disabled:opacity-50"
-                  >
-                    {previewingVoice === 'Puck' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                    Ouvir Amostra
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChatSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        globalSystemPrompt={globalSystemPrompt}
+        setGlobalSystemPrompt={setGlobalSystemPrompt}
+        saveGlobalPrompt={saveGlobalPrompt}
+        defaultSystemInstruction={DEFAULT_SYSTEM_INSTRUCTION}
+        previewVoice={previewVoice}
+        previewingVoice={previewingVoice}
+      />
 
-      {/* Session Settings Panel UI */}
-      {isSessionSettingsOpen && (
-        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
-          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-brand-400">
-                <FileText size={20} />
-                <h3 className="font-semibold text-white">Opções da Sessão</h3>
-              </div>
-              <button 
-                onClick={() => {
-                  setCustomPrompt(session.custom_prompt || '');
-                  setIsSessionSettingsOpen(false);
-                }}
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-              <div>
-                <h4 className="text-sm font-semibold text-white mb-1">Instruções Específicas</h4>
-                <p className="text-xs text-dark-subtext mb-4">Se você preencher este campo, o <strong>Prompt Global será totalmente ignorado</strong> e a IA seguirá apenas estas instruções para esta conversa. Útil para praticar idiomas específicos ou criar situações focadas.</p>
-                
-                <textarea 
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Ex: Você é um garçom em Paris. Fale apenas em Francês..."
-                  className="w-full h-48 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
-                />
-                
-                {presets.length > 0 && (
-                  <div className="mb-4">
-                    <label className="text-xs text-dark-subtext mb-1 block">Carregar Preset Salvo</label>
-                    <div className="flex gap-2">
-                      <select 
-                        className="flex-1 bg-black/20 border border-white/10 rounded-lg text-sm text-white/90 p-2 focus:outline-none focus:border-brand-500/50"
-                        onChange={(e) => {
-                          const p = presets.find(x => x.id === e.target.value);
-                          if (p) setCustomPrompt(p.prompt);
-                          e.target.value = '';
-                        }}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Selecione um preset...</option>
-                        {presets.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex flex-col gap-2">
-                  <button 
-                    onClick={saveCustomPrompt}
-                    className="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors text-sm"
-                  >
-                    Salvar na Sessão Atual
-                  </button>
-                  <button 
-                    onClick={saveAsNewPreset}
-                    disabled={!customPrompt.trim()}
-                    className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm disabled:opacity-50 disabled:hover:bg-white/5"
-                  >
-                    Salvar como Novo Preset
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChatSessionSettingsModal
+        isOpen={isSessionSettingsOpen}
+        onClose={() => setIsSessionSettingsOpen(false)}
+        session={session}
+        customPrompt={customPrompt}
+        setCustomPrompt={setCustomPrompt}
+        presets={presets}
+        saveCustomPrompt={saveCustomPrompt}
+        saveAsNewPreset={saveAsNewPreset}
+      />
     </div>
   );
 };

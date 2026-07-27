@@ -7,12 +7,17 @@ export interface AppSettings {
   fontSize: 'text-sm' | 'text-base' | 'text-lg';
   spellcheck: boolean;
   geminiModel: string;
+  geminiModelChat?: string;
+  geminiModelFlashcards?: string;
+  geminiModelDictionary?: string;
   aiChatHighlight: 'glow' | 'underline' | 'none';
   dictionaryMode: 'offline' | 'online';
   hasOfflineDictionary: boolean;
   defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
   defaultTextWidth: 'narrow' | 'medium' | 'full';
   aiDictionaryLanguage: 'bilingual' | 'english_only';
+  enableStudySfx: boolean;
+  enableStudy3DFlip: boolean;
 }
 
 export function getSettings(): AppSettings {
@@ -24,13 +29,15 @@ export function getSettings(): AppSettings {
     enableTabsDesktop: true,
     fontSize: 'text-base',
     spellcheck: true,
-    geminiModel: 'gemini-1.5-pro',
+    geminiModel: 'gemini-2.5-pro',
     aiChatHighlight: 'glow',
     dictionaryMode: 'offline',
     hasOfflineDictionary: false,
     defaultReadingMode: 'light',
     defaultTextWidth: 'medium',
-    aiDictionaryLanguage: 'bilingual'
+    aiDictionaryLanguage: 'bilingual',
+    enableStudySfx: true,
+    enableStudy3DFlip: true
   };
   
   try {

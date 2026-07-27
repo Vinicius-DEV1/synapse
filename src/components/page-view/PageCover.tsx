@@ -8,6 +8,21 @@ interface PageCoverProps {
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 
+function getStableCoverUrl(url?: string | null, pageId?: string): string | undefined {
+  if (!url) return undefined;
+  if (url.includes('picsum.photos') && !url.includes('/seed/')) {
+    try {
+      const urlObj = new URL(url);
+      const randomParam = urlObj.searchParams.get('random');
+      const seed = randomParam ? randomParam.replace('0.', '') : (pageId || 'cover');
+      return `https://picsum.photos/seed/${seed}/1600/400`;
+    } catch {
+      // fallback to original
+    }
+  }
+  return url;
+}
+
 export function PageCover({ page, onUpdatePage }: PageCoverProps) {
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [coverUrlInput, setCoverUrlInput] = useState('');
@@ -49,7 +64,7 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
     <>
       {page.cover_image ? (
         <div className="w-full h-64 relative group border-b border-dark-border">
-          <img src={page.cover_image} alt="Capa" className="w-full h-full object-cover" />
+          <img src={getStableCoverUrl(page.cover_image, page.id)} alt="Capa" className="w-full h-full object-cover" />
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
             <button 
               onClick={() => setShowCoverModal(true)}
@@ -129,7 +144,8 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
               <div className="pt-2">
                 <button 
                   onClick={() => {
-                    const randomUrl = `https://picsum.photos/1600/400?random=${Math.random()}`;
+                    const randomSeed = Math.random().toString(36).substring(2, 10);
+                    const randomUrl = `https://picsum.photos/seed/${randomSeed}/1600/400`;
                     onUpdatePage(page.id, { cover_image: randomUrl });
                     setShowCoverModal(false);
                   }}

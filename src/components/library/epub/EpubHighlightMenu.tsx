@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useState, useCallback } from 'react';
 import { Trash2, Sparkles, BookType, X } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import DictionaryModal from '../DictionaryModal';
@@ -63,7 +63,7 @@ export default function EpubHighlightMenu() {
     return selection?.text || '';
   };
 
-  const handleCreateHighlight = async (color: string, noteOverride?: string, selOverride?: any) => {
+  const handleCreateHighlight = useCallback(async (color: string, noteOverride?: string, selOverride?: any) => {
     const activeSelection = selOverride || selection;
     if (!activeSelection || !rendition) return;
     try {
@@ -140,7 +140,7 @@ export default function EpubHighlightMenu() {
     setSelection(null);
     setNoteMode(null);
     setNoteText('');
-  };
+  }, [selection, rendition, book.id, noteText, setHighlights, setSelection, setNoteMode, setNoteText]);
 
   const handleDeleteHighlight = async (id: string, cfi: string) => {
     await window.api.library.deleteHighlight(id);

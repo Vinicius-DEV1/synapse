@@ -35,8 +35,9 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
       const available = await fetchGeminiModels();
       setModels(available);
       const settings = getSettings();
-      if (settings.geminiModel && available.find(m => m.name === settings.geminiModel || m.name === `models/${settings.geminiModel}`)) {
-        setSelectedModel(settings.geminiModel.startsWith('models/') ? settings.geminiModel : `models/${settings.geminiModel}`);
+      const modelPref = settings.geminiModelFlashcards || settings.geminiModel;
+      if (modelPref && available.find(m => m.name === modelPref || m.name === `models/${modelPref}`)) {
+        setSelectedModel(modelPref.startsWith('models/') ? modelPref : `models/${modelPref}`);
       } else if (available.length > 0) {
         setSelectedModel(available[0].name);
       }

@@ -147,7 +147,8 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
         const response = await promptGemini(
           prompt,
           undefined,
-          []
+          [],
+          settings.geminiModelDictionary || settings.geminiModel
         );
         
         try {

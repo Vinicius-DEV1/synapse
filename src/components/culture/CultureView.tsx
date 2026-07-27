@@ -1,160 +1,39 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Search, Filter, Calendar, LayoutGrid, AlignJustify, Rows3, ChevronUp, ChevronDown, ArrowUpDown, Target } from 'lucide-react';
-import type { CultureItem, CultureEpisode } from '../../types';
+import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
 import CultureViewModal from './CultureViewModal';
 import CultureGoalModal from './CultureGoalModal';
-
-type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
-export type ViewMode = 'grid' | 'compact' | 'list';
-export type SortMode = 'default' | 'alpha' | 'progress' | 'added';
-
-const DEFAULT_TYPE_ORDER: string[] = ['anime', 'série', 'filme', 'manga', 'hq', 'livro', 'novel'];
-
-const TYPE_LABELS: Record<string, string> = {
-  anime: '🎌 Animes',
-  série: '📺 Séries',
-  filme: '🎬 Filmes',
-  manga: '📖 Mangás',
-  hq: '💥 HQs',
-  livro: '📚 Livros',
-  novel: '📝 Novels',
-};
-
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: 'default', label: 'Padrão' },
-  { value: 'alpha',   label: 'Alfabético' },
-  { value: 'progress', label: '% Progresso' },
-  { value: 'added',  label: 'Mais recente' },
-];
-
-export function sortItems(items: CultureItem[], mode: SortMode): CultureItem[] {
-  return [...items].sort((a, b) => {
-    if (mode === 'alpha') return a.title.localeCompare(b.title, 'pt-BR');
-    if (mode === 'progress') {
-      const pa = a.total_progress > 0 ? a.progress / a.total_progress : 0;
-      const pb = b.total_progress > 0 ? b.progress / b.total_progress : 0;
-      return pb - pa;
-    }
-    if (mode === 'added') {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-    // default: objetivos → recente → finalizados por último
-    const aFinished = a.total_progress > 0 && a.progress >= a.total_progress;
-    const bFinished = b.total_progress > 0 && b.progress >= b.total_progress;
-    if (aFinished !== bFinished) return aFinished ? 1 : -1;
-    if (!!a.is_goal !== !!b.is_goal) return a.is_goal ? -1 : 1;
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
-}
-
-function loadSectionOrder(): string[] {
-  try {
-    const stored = localStorage.getItem('culture_section_order');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return [...DEFAULT_TYPE_ORDER];
-}
+import { useCulture, TYPE_LABELS, sortItems, SORT_OPTIONS, type SortMode } from './hooks/useCulture';
 
 export default function CultureView() {
-  const [items, setItems] = useState<CultureItem[]>([]);
-  const [recentReleases, setRecentReleases] = useState<(CultureEpisode & { item_title: string; item_cover: string })[]>([]);
-  const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const {
+    items,
+    recentReleases,
+    search,
+    setSearch,
+    activeFilter,
+    setActiveFilter,
+    isLoading,
+    viewMode,
+    setViewMode,
+    sortMode,
+    setSortMode,
+    showGoalsSection,
+    toggleGoalsSection,
+    sectionOrder,
+    moveSectionUp,
+    moveSectionDown,
+    filteredItems,
+    loadData
+  } = useCulture();
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CultureItem | null>(null);
   const [viewingItem, setViewingItem] = useState<CultureItem | null>(null);
   const [goalModalItem, setGoalModalItem] = useState<CultureItem | null>(null);
-
-  const [viewMode, setViewMode] = useState<ViewMode>(
-    () => (localStorage.getItem('culture_view_mode') as ViewMode) || 'grid'
-  );
-  const [sortMode, setSortMode] = useState<SortMode>(
-    () => (localStorage.getItem('culture_sort_mode') as SortMode) || 'default'
-  );
-  const [showGoalsSection, setShowGoalsSection] = useState<boolean>(
-    () => localStorage.getItem('culture_show_goals_section') !== 'false'
-  );
-  const [sectionOrder, setSectionOrder] = useState<string[]>(loadSectionOrder);
-
-  const setAndPersistViewMode = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem('culture_view_mode', mode);
-  };
-
-  const setAndPersistSortMode = (mode: SortMode) => {
-    setSortMode(mode);
-    localStorage.setItem('culture_sort_mode', mode);
-  };
-
-  const toggleGoalsSection = () => {
-    setShowGoalsSection(prev => {
-      const next = !prev;
-      localStorage.setItem('culture_show_goals_section', next.toString());
-      return next;
-    });
-  };
-
-  const moveSectionUp = (type: string) => {
-    setSectionOrder(prev => {
-      const idx = prev.indexOf(type);
-      if (idx <= 0) return prev;
-      const next = [...prev];
-      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-      localStorage.setItem('culture_section_order', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const moveSectionDown = (type: string) => {
-    setSectionOrder(prev => {
-      const idx = prev.indexOf(type);
-      if (idx < 0 || idx >= prev.length - 1) return prev;
-      const next = [...prev];
-      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-      localStorage.setItem('culture_section_order', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const loadItems = async () => {
-    try {
-      const data = await CultureService.getItems();
-      setItems(data);
-      const releases = await CultureService.getRecentReleases();
-      setRecentReleases(releases);
-      CultureService.syncOngoingItems(data).then(() => {
-        CultureService.getRecentReleases().then(r => setRecentReleases(r));
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    loadItems();
-    const removeListener = window.api?.onSyncTrigger?.(() => loadItems());
-    return () => removeListener && removeListener();
-  }, []);
-
-  const filteredItems = useMemo(() =>
-    items.filter(item => {
-      const titleStr = item.title || 'Obra sem nome';
-      const matchSearch =
-        titleStr.toLowerCase().includes(search.toLowerCase()) ||
-        (item.synopsis && item.synopsis.toLowerCase().includes(search.toLowerCase()));
-      if (!matchSearch) return false;
-      if (activeFilter === 'all') return true;
-      if (activeFilter === 'goals') return !!item.is_goal;
-      if (activeFilter === 'finished') return item.total_progress > 0 && item.progress >= item.total_progress;
-      return item.type === activeFilter;
-    }),
-  [items, search, activeFilter]);
 
   const groupedItems = useMemo(() => {
     if (activeFilter !== 'all') return null;
@@ -205,7 +84,7 @@ export default function CultureView() {
     if (goalModalItem) {
       try {
         await CultureService.updateItem(goalModalItem.id, { ...goalModalItem, is_goal: true, goal_note: note });
-        loadItems();
+        loadData();
       } catch (err) {
         console.error(err);
       }
@@ -229,7 +108,7 @@ export default function CultureView() {
         key={item.id}
         item={item}
         viewMode={viewMode}
-        onUpdate={loadItems}
+        onUpdate={loadData}
         onClick={() => handleView(item)}
         onEdit={() => handleEdit(item)}
         onEditGoal={() => handleEditGoalNote(item)}
@@ -253,7 +132,7 @@ export default function CultureView() {
               <ArrowUpDown size={13} className="text-dark-subtext flex-shrink-0" />
               <select
                 value={sortMode}
-                onChange={e => setAndPersistSortMode(e.target.value as SortMode)}
+                onChange={e => setSortMode(e.target.value as SortMode)}
                 className="bg-transparent text-xs text-dark-subtext focus:outline-none cursor-pointer hover:text-dark-text transition-colors pr-1"
               >
                 {SORT_OPTIONS.map(o => (
@@ -278,32 +157,36 @@ export default function CultureView() {
               </button>
             </div>
 
-            <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/10">
-              {([
-                { mode: 'grid'    as ViewMode, icon: <LayoutGrid  size={15} />, title: 'Grade normal' },
-                { mode: 'compact' as ViewMode, icon: <Rows3       size={15} />, title: 'Compacto' },
-                { mode: 'list'    as ViewMode, icon: <AlignJustify size={15} />, title: 'Lista' },
-              ]).map(({ mode, icon, title }) => (
-                <button
-                  key={mode} title={title}
-                  onClick={() => setAndPersistViewMode(mode)}
-                  className={`p-1.5 rounded transition-all ${
-                    viewMode === mode
-                      ? 'bg-brand-500/30 text-brand-400'
-                      : 'text-dark-subtext hover:text-dark-text hover:bg-white/10'
-                  }`}
-                >
-                  {icon}
-                </button>
-              ))}
+            <div className="flex bg-dark-card border border-white/10 rounded-lg p-0.5">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                title="Grade"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('compact')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                title="Compacto"
+              >
+                <Rows3 size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                title="Lista"
+              >
+                <AlignJustify size={16} />
+              </button>
             </div>
-
+            
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium text-sm shadow-lg shadow-brand-500/20 active:scale-95"
+              className="flex items-center gap-2 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-all"
             >
               <Plus size={16} />
-              <span>Adicionar Obra</span>
+              Adicionar
             </button>
           </div>
         </div>
@@ -418,19 +301,20 @@ export default function CultureView() {
       </div>
 
       {isAddModalOpen && (
-        <CultureAddModal
-          isOpen={isAddModalOpen}
-          onClose={handleCloseModal}
-          onSuccess={loadItems}
-          itemToEdit={editingItem}
+        <CultureAddModal 
+          isOpen={isAddModalOpen} 
+          onClose={handleCloseModal} 
+          onAdd={loadData}
+          editItem={editingItem}
         />
       )}
-
+      
       {viewingItem && (
         <CultureViewModal
-          item={viewingItem}
           isOpen={!!viewingItem}
           onClose={handleCloseViewModal}
+          item={viewingItem}
+          onUpdate={loadData}
         />
       )}
 

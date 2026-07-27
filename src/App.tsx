@@ -34,8 +34,8 @@ function AppContent() {
   const settings = getSettings();
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
-
-  useAppShortcuts(state.tabs, dispatch);
+  
+  useAppShortcuts(state, dispatch);
   useAppTitle(activeModule, activeTab?.bookTitle);
   useGarbageCollection(isAuth);
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage, handleExportPage, handleImportPage } = usePageActions();
@@ -171,14 +171,22 @@ function AppContent() {
                 key={tab.id} 
                 className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
               >
-                <ViewFactory 
-                  tab={tab}
-                  page={page}
-                  onUpdateContent={handleUpdateContent}
-                  onCreatePage={handleCreatePage}
-                  onCreateLinkedPage={handleCreateLinkedPage}
-                  onUpdatePage={handleUpdatePage}
-                />
+                <div 
+                  key={page?.id || 'empty'} 
+                  className={`w-full h-full flex flex-col ${
+                    isActive && state.navDirection === 'forward' ? 'animate-slide-in-right' : 
+                    isActive && state.navDirection === 'backward' ? 'animate-slide-in-left' : ''
+                  }`}
+                >
+                  <ViewFactory 
+                    tab={tab}
+                    page={page}
+                    onUpdateContent={handleUpdateContent}
+                    onCreatePage={handleCreatePage}
+                    onCreateLinkedPage={handleCreateLinkedPage}
+                    onUpdatePage={handleUpdatePage}
+                  />
+                </div>
               </div>
             );
           })}

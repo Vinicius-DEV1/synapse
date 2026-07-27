@@ -196,24 +196,68 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         </button>
       </div>
       
-      <div className="border-t border-white/5 pt-4">
-        <label className="block text-sm font-medium text-white mb-2">Modelo Principal</label>
-        <select 
-          value={appSettings.geminiModel ? (appSettings.geminiModel.startsWith('models/') ? appSettings.geminiModel : `models/${appSettings.geminiModel}`) : 'models/gemini-1.5-pro'}
-          onChange={(e) => setAppSettings({ ...appSettings, geminiModel: e.target.value })}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
-        >
-          {models.length > 0 ? (
-            models.map(m => (
+      <div className="border-t border-white/5 pt-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-white mb-2">Modelo Padrão / Fallback</label>
+          <select 
+            value={appSettings.geminiModel ? (appSettings.geminiModel.startsWith('models/') ? appSettings.geminiModel : `models/${appSettings.geminiModel}`) : ''}
+            onChange={(e) => setAppSettings({ ...appSettings, geminiModel: e.target.value })}
+            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          >
+            {models.length > 0 ? (
+              models.map(m => (
+                <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+              ))
+            ) : (
+              <option value="">Clique em 'Carregar modelos disponíveis' acima</option>
+            )}
+          </select>
+          <p className="text-[11px] text-dark-subtext mt-1.5">Usado se um módulo específico não tiver um modelo definido.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white mb-2">Modelo para Chat e Assistente</label>
+          <select 
+            value={appSettings.geminiModelChat ? (appSettings.geminiModelChat.startsWith('models/') ? appSettings.geminiModelChat : `models/${appSettings.geminiModelChat}`) : ''}
+            onChange={(e) => setAppSettings({ ...appSettings, geminiModelChat: e.target.value })}
+            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          >
+            <option value="">(Usar Modelo Padrão)</option>
+            {models.map(m => (
               <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
-            ))
-          ) : (
-            <>
-              <option value="models/gemini-1.5-pro">Gemini 1.5 Pro</option>
-              <option value="models/gemini-1.5-flash">Gemini 1.5 Flash</option>
-            </>
-          )}
-        </select>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white mb-2">Modelo para Flashcards</label>
+          <select 
+            value={appSettings.geminiModelFlashcards ? (appSettings.geminiModelFlashcards.startsWith('models/') ? appSettings.geminiModelFlashcards : `models/${appSettings.geminiModelFlashcards}`) : ''}
+            onChange={(e) => setAppSettings({ ...appSettings, geminiModelFlashcards: e.target.value })}
+            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          >
+            <option value="">(Usar Modelo Padrão)</option>
+            {models.map(m => (
+              <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-dark-subtext mt-1.5">Usado na geração, análise e avaliação de áudio nos flashcards.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white mb-2">Modelo para Dicionário IA</label>
+          <select 
+            value={appSettings.geminiModelDictionary ? (appSettings.geminiModelDictionary.startsWith('models/') ? appSettings.geminiModelDictionary : `models/${appSettings.geminiModelDictionary}`) : ''}
+            onChange={(e) => setAppSettings({ ...appSettings, geminiModelDictionary: e.target.value })}
+            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          >
+            <option value="">(Usar Modelo Padrão)</option>
+            {models.map(m => (
+              <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+            ))}
+          </select>
+        </div>
+        
         {modelsError && <p className="text-xs text-red-400 mt-2">{modelsError}</p>}
       </div>
       

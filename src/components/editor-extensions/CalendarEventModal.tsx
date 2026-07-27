@@ -15,7 +15,7 @@ const REMINDER_OPTIONS = [
   { value: 1440, label: '1 dia antes (24 horas)', defaultChecked: true },
   { value: 120, label: '2 horas antes', defaultChecked: true },
   { value: 15, label: '15 minutos antes', defaultChecked: true },
-  { value: 0, label: 'No momento do evento', defaultChecked: false }
+  { value: 0, label: 'No momento do evento', defaultChecked: true }
 ];
 
 export default function CalendarEventModal({

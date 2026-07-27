@@ -21,7 +21,8 @@ export const MODULE_TABLES: Record<string, string[]> = {
   practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories'],
   focus: ['focus_sessions', 'alarms', 'lofis'],
   anki: ['anki_decks', 'anki_notes', 'anki_cards', 'anki_srs_state', 'anki_reviews', 'anki_deck_settings'],
-  files: ['files', 'file_folders', 'file_page_links']
+  files: ['files', 'file_folders', 'file_page_links'],
+  diagrams: ['diagrams']
 };
 
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
