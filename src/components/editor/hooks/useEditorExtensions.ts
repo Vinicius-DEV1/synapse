@@ -31,6 +31,7 @@ import CodeBlockComponent from '../../editor-extensions/CodeBlockComponent';
 import { FocusWidgetBlock } from '../../editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
+import { CalendarEventWidgetBlock } from '../../editor-extensions/CalendarEventWidgetBlock';
 import { CustomDivider } from '../../editor-extensions/CustomDivider';
 
 
@@ -70,6 +71,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       CustomBold,
       ColorBlockquote,
       CodeBlockLowlight.extend({
+        draggable: true,
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
         }
@@ -93,6 +95,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       FocusWidgetBlock,
       AlarmWidgetBlock,
       FileWidgetBlock,
+      CalendarEventWidgetBlock,
       CustomDivider
     ];
   }, [ydoc]);
