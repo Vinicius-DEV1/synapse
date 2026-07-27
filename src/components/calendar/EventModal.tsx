@@ -274,7 +274,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                 ].map(opt => {
                   const checked = reminders.includes(opt.value);
                   return (
-                    <label
+                    <div
                       key={opt.value}
                       onClick={() => {
                         if (checked) setReminders(reminders.filter(v => v !== opt.value));
@@ -289,11 +289,11 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => {}}
-                        className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0"
+                        readOnly
+                        className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0 pointer-events-none"
                       />
                       <span>{opt.label}</span>
-                    </label>
+                    </div>
                   );
                 })}
               </div>

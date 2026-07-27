@@ -208,7 +208,7 @@ export default function CalendarEventModal({
               {REMINDER_OPTIONS.map(opt => {
                 const checked = selectedReminders.includes(opt.value);
                 return (
-                  <label
+                  <div
                     key={opt.value}
                     onClick={() => toggleReminder(opt.value)}
                     className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer select-none transition-all ${
@@ -220,11 +220,11 @@ export default function CalendarEventModal({
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => {}}
-                      className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0"
+                      readOnly
+                      className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0 pointer-events-none"
                     />
                     <span>{opt.label}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
