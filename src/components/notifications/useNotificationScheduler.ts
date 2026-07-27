@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppNotification, CalendarEvent } from '../../types/core';
+import { playZenChime } from '../../utils/audio';
 
 export function useNotificationScheduler() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -59,28 +60,6 @@ export function useNotificationScheduler() {
       }
     } catch (e) {
       console.warn('Falha ao enviar notificação OS:', e);
-    }
-  };
-
-  const playSoftChime = () => {
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1.5);
-    } catch(e){
-      console.warn('Falha ao tocar som:', e);
     }
   };
 
@@ -145,7 +124,7 @@ export function useNotificationScheduler() {
         }
 
         if (hasNewNotification) {
-          playSoftChime();
+          playZenChime();
           await window.api.calendar.updateEvent(event.id, {
             ...event,
             notified_reminders: newNotifiedArray
