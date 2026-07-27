@@ -119,6 +119,15 @@ export default function CalendarEventWidgetNodeView(props: any) {
 
   const remindersLabel = formatRemindersLabel(eventData?.reminders);
 
+  const isLive = React.useMemo(() => {
+    if (!eventData?.start_date || isCompleted) return false;
+    const evTime = new Date(eventData.start_date).getTime();
+    if (isNaN(evTime)) return false;
+    const now = Date.now();
+    // Ao Vivo: desde 15 minutos antes até 60 minutos depois
+    return now >= evTime - 15 * 60 * 1000 && now <= evTime + 60 * 60 * 1000;
+  }, [eventData?.start_date, isCompleted]);
+
   return (
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
       <span
@@ -127,6 +136,8 @@ export default function CalendarEventWidgetNodeView(props: any) {
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
           isCompleted
             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 line-through opacity-80'
+            : isLive
+            ? 'bg-amber-500/10 border-amber-500/50 text-amber-300 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.3)] ring-1 ring-amber-500/30'
             : 'bg-brand-500/10 border-brand-500/30 text-brand-300 hover:bg-brand-500/20 hover:border-brand-500/50'
         }`}
       >

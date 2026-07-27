@@ -41,6 +41,24 @@ export default function NotificationCenterModal({
     });
   };
 
+  const handleCompleteEvent = async (notif: AppNotification) => {
+    if (!window.api?.calendar || !notif.event_id) return;
+    try {
+      const events = await window.api.calendar.getEvents();
+      const ev = events.find((e: any) => e.id === notif.event_id);
+      if (ev) {
+        await window.api.calendar.updateEvent(notif.event_id, {
+          ...ev,
+          status: 'completed'
+        });
+        window.dispatchEvent(new CustomEvent('calendar-event-updated'));
+        await onMarkRead(notif.id);
+      }
+    } catch (e) {
+      console.error('Erro ao concluir evento pela notificação:', e);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'calendar_event':
@@ -158,6 +176,17 @@ export default function NotificationCenterModal({
                         <Clock size={12} />
                         <span>Adiar 15m</span>
                       </button>
+
+                      {notif.type === 'calendar_event' && notif.event_id && (
+                        <button
+                          onClick={() => handleCompleteEvent(notif)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+                          title="Concluir Evento"
+                        >
+                          <Check size={12} />
+                          <span>Concluir</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
