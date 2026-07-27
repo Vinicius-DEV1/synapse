@@ -4,6 +4,7 @@ import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle } fro
 import { useStore } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { Portal } from '../ui/Portal';
+import { parseEventDate } from '../../utils/dateUtils';
 
 export default function CalendarEventWidgetNodeView(props: any) {
   const { eventId, title, dateStr, pageId, status } = props.node.attrs;
@@ -91,7 +92,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const formatDateLabel = (isoDate?: string) => {
     if (!isoDate && !dateStr) return 'Sem data';
     try {
-      const d = new Date(isoDate || dateStr);
+      const d = parseEventDate(isoDate || dateStr);
       return d.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',

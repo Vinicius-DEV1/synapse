@@ -59,7 +59,8 @@ export default function CalendarEventModal({
 
     setIsSubmitting(true);
     try {
-      const isoDateStr = `${date}T${time}:00.000Z`;
+      const localDate = new Date(`${date}T${time}:00`);
+      const isoDateStr = isNaN(localDate.getTime()) ? new Date().toISOString() : localDate.toISOString();
 
       const newEventData: Partial<CalendarEvent> = {
         title: title.trim(),

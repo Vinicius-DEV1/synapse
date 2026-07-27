@@ -3,6 +3,7 @@ import type { CalendarEvent } from '../../types';
 import { format, isToday, isTomorrow, isPast, isFuture, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
 
 interface TaskFeedProps {
   events: CalendarEvent[];
@@ -18,13 +19,13 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
 
   // Sort and filter events
   let filteredEvents = events.filter(e => filter === 'all' ? true : e.type === 'task');
-  filteredEvents.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+  filteredEvents.sort((a, b) => parseEventDate(a.start_date).getTime() - parseEventDate(b.start_date).getTime());
 
-  const todayEvents = filteredEvents.filter(e => format(new Date(e.start_date), 'yyyy-MM-dd') === todayStr);
+  const todayEvents = filteredEvents.filter(e => getEventDayStr(e.start_date) === todayStr);
   
   const upcomingEvents = filteredEvents.filter(e => {
-    const eDate = new Date(e.start_date);
-    return eDate > now && format(eDate, 'yyyy-MM-dd') !== todayStr;
+    const eDate = parseEventDate(e.start_date);
+    return eDate > now && getEventDayStr(e.start_date) !== todayStr;
   });
 
   const toggleTaskStatus = (e: React.MouseEvent, event: CalendarEvent) => {
@@ -65,7 +66,7 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
           <div className="flex items-center gap-2 mt-1">
             <Clock size={12} className="text-dark-subtext" />
             <span className="text-xs text-dark-subtext">
-              {format(new Date(event.start_date), "HH:mm")}
+              {format(parseEventDate(event.start_date), "HH:mm")}
             </span>
           </div>
         </div>
