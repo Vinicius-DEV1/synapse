@@ -26,9 +26,21 @@ export default function AiSidebar() {
     return (tmp.textContent || tmp.innerText || '(página sem conteúdo em texto)').trim();
   };
 
-  const handleAttachPage = (page: { id: string; title: string; content?: string }) => {
+  const handleAttachPage = async (page: { id: string; title: string; content?: string }) => {
     if (!attachedPages.some(p => p.id === page.id)) {
-      setAttachedPages(prev => [...prev, { id: page.id, title: page.title, content: page.content }]);
+      let content = page.content;
+      if (activeTab?.pageId === page.id && activeTab?.unsavedContent) {
+        content = activeTab.unsavedContent;
+      }
+      if (!content && window.api?.getPageContent) {
+        try {
+          const fullData = await window.api.getPageContent(page.id);
+          content = fullData?.content || '';
+        } catch (err) {
+          console.error('Erro ao buscar conteúdo da página para o chat:', err);
+        }
+      }
+      setAttachedPages(prev => [...prev, { id: page.id, title: page.title, content }]);
     }
     if (showMentionMenu) {
       const newPrompt = prompt.replace(/(?:^|\s)@([^\s@]*)$/, '').trim();
@@ -128,8 +140,26 @@ export default function AiSidebar() {
     try {
       let finalPromptToSend = promptText;
       if (attachedPages.length > 0) {
-        const names = attachedPages.map(p => p.title).join(', ');
-        const pagesContext = attachedPages.map(p => {
+        const pagesWithContent = await Promise.all(
+          attachedPages.map(async p => {
+            let content = p.content;
+            if (activeTab?.pageId === p.id && activeTab?.unsavedContent) {
+              content = activeTab.unsavedContent;
+            }
+            if (!content && window.api?.getPageContent) {
+              try {
+                const fullData = await window.api.getPageContent(p.id);
+                content = fullData?.content || '';
+              } catch (err) {
+                console.error('Erro ao buscar conteúdo no submit:', err);
+              }
+            }
+            return { ...p, content };
+          })
+        );
+
+        const names = pagesWithContent.map(p => p.title).join(', ');
+        const pagesContext = pagesWithContent.map(p => {
           const cleanContent = stripHtml(p.content);
           return `📄 Página "${p.title}":\n${cleanContent}`;
         }).join('\n\n---\n\n');
