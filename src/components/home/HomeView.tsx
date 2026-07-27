@@ -123,6 +123,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
   };
 
   const handleOpenPage = (pageId: string) => {
+    dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId, tabId });
   };
 
@@ -132,6 +133,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
     try {
       const page = await window.api.createPage({ parentId: null });
       dispatch({ type: 'ADD_PAGE', page });
+      dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
       dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id, tabId });
     } catch(e) {
       console.error('Erro ao criar página:', e);
