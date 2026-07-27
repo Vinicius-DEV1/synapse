@@ -1,4 +1,5 @@
 import {
+  Home,
   BookOpen,
   Library,
   Wallet,
@@ -10,7 +11,8 @@ import {
   FolderOpen,
   Shield,
   Mic,
-  Trash2
+  Trash2,
+  PenTool
 } from 'lucide-react';
 
 export interface ModuleConfig {
@@ -22,6 +24,7 @@ export interface ModuleConfig {
 }
 
 export const MAIN_MODULES: ModuleConfig[] = [
+  { id: 'home', label: 'Início', icon: Home },
   { id: 'notes', label: 'Caderno', icon: BookOpen },
   { id: 'library', label: 'Biblioteca', icon: Library },
   { id: 'finance', label: 'Finanças', icon: Wallet },
@@ -33,6 +36,7 @@ export const MAIN_MODULES: ModuleConfig[] = [
   { id: 'files', label: 'Arquivos', icon: FolderOpen },
   { id: 'vault', label: 'Cofre', icon: Shield },
   { id: 'practice', label: 'Prática', icon: Mic },
+  { id: 'diagrams', label: 'Diagramas', icon: PenTool },
 ];
 
 export const SPECIAL_MODULES: ModuleConfig[] = [

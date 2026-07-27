@@ -8,7 +8,7 @@ function generateTabId(): string {
 
 const initialTab: Tab = {
   id: generateTabId(),
-  module: 'notes',
+  module: 'home',
   pageId: null,
   bookId: null,
   unsavedContent: null,
@@ -65,6 +65,7 @@ const initialState: AppState = {
   activeAiChatId: null,
   moduleKeys: {},
   isReadingModeFullScreen: false,
+  navDirection: null,
 };
 
 

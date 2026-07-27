@@ -1,6 +1,8 @@
 import React, { Suspense, lazy } from 'react';
 import type { Tab, Page } from '../types';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 
+const HomeView = lazy(() => import('./home/HomeView'));
 const PageView = lazy(() => import('./page-view/PageView'));
 const FinanceView = lazy(() => import('./finance/FinanceView'));
 const LibraryView = lazy(() => import('./library/LibraryView'));
@@ -14,6 +16,7 @@ const VaultView = lazy(() => import('./vault/VaultView'));
 const PracticeView = lazy(() => import('./practice/PracticeView'));
 const TrashView = lazy(() => import('./trash/TrashView'));
 const SettingsModule = lazy(() => import('./settings/SettingsModule'));
+const DiagramsModule = lazy(() => import('./diagrams/DiagramsModule'));
 
 export interface ViewFactoryProps {
   tab: Tab;
@@ -36,6 +39,8 @@ export function ViewFactory({
 
   const renderModule = () => {
     switch (module) {
+      case 'home':
+        return <HomeView tabId={id} />;
       case 'notes':
         return (
           <PageView
@@ -68,6 +73,8 @@ export function ViewFactory({
         return <TrashView />;
       case 'settings':
         return <SettingsModule tab={tab} />;
+      case 'diagrams':
+        return <DiagramsModule />;
       case 'finance':
       default:
         return <FinanceView />;
@@ -80,7 +87,9 @@ export function ViewFactory({
         <span className="animate-pulse">Carregando módulo...</span>
       </div>
     }>
-      {renderModule()}
+      <ErrorBoundary moduleName={module}>
+        {renderModule()}
+      </ErrorBoundary>
     </Suspense>
   );
 }

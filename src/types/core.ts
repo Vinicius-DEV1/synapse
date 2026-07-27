@@ -28,7 +28,7 @@ export interface PageHistoryEntry {
 
 export interface Tab {
   id: string;
-  module: 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams';
+  module: 'home' | 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
