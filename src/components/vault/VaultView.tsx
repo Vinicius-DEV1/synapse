@@ -1,112 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Shield, ShieldCheck, Plus, Folder, Search, Key, ShieldAlert, Star, Lock, Eye, EyeOff, Check, Copy, ExternalLink, Settings2, History, Trash2, Clock, Smartphone, GripVertical, MoreVertical, Edit2 } from 'lucide-react';
 import type { VaultGroup, VaultItem } from '../../types';
 import { VaultItemForm } from './VaultItemForm';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultSecurityDashboard } from './VaultSecurityDashboard';
+import { useVault } from './hooks/useVault';
 
 export default function VaultView() {
-  const [viewMode, setViewMode] = useState<'list' | 'security'>('list');
-  const [groups, setGroups] = useState<VaultGroup[]>([]);
-  const [items, setItems] = useState<VaultItem[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<VaultItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const [isEditingItem, setIsEditingItem] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    groups,
+    items,
+    selectedGroupId,
+    setSelectedGroupId,
+    selectedItem,
+    setSelectedItem,
+    searchQuery,
+    setSearchQuery,
+    viewMode,
+    setViewMode,
+    isEditingItem,
+    setIsEditingItem,
+    isLoading,
+    
+    draggedGroup, setDraggedGroup,
+    draggedItem, setDraggedItem,
+    dragOverGroupId, setDragOverGroupId,
+    
+    groupContextMenu, setGroupContextMenu,
 
-  // Drag and Drop States
-  const [draggedGroup, setDraggedGroup] = useState<VaultGroup | null>(null);
-  const [draggedItem, setDraggedItem] = useState<VaultItem | null>(null);
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
-  
-  // Context Menu States
-  const [groupContextMenu, setGroupContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const g = await window.api.vault?.getGroups() || [];
-      const i = await window.api.vault?.getItems(selectedGroupId || undefined) || [];
-      setGroups(g);
-      setItems(i);
-    } catch (e) {
-      console.error("Erro ao carregar cofre:", e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [selectedGroupId]);
+    loadData,
+    handleCreateGroup,
+    handleEditGroup,
+    handleDeleteGroup,
+    handleSelectItem,
+    handleDeleteItem,
+    filteredItems
+  } = useVault();
 
   // Fechar context menu se clicar fora
   useEffect(() => {
     const handleClick = () => setGroupContextMenu(null);
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
-  }, []);
-
-  const handleCreateGroup = async () => {
-    const name = prompt("Nome do Grupo:");
-    if (!name) return;
-    const newGroup = {
-      id: crypto.randomUUID(),
-      name,
-      icon: 'Folder',
-      color: '#3b82f6',
-      position: groups.length,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null
-    };
-    await window.api.vault?.upsertGroup(newGroup);
-    loadData();
-  };
-
-  const handleEditGroup = async (group: VaultGroup) => {
-    const newName = prompt("Novo nome para o grupo:", group.name);
-    if (!newName || newName === group.name) return;
-    await window.api.vault?.upsertGroup({ ...group, name: newName });
-    loadData();
-  };
-
-  const handleDeleteGroup = async (group: VaultGroup) => {
-    if (confirm(`Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`)) {
-      // 1. Mover os itens para 'Nenhum grupo' (isso na verdade deveria ser feito no backend se quisermos manter consistência forte, mas como o ID aponta pro void, eles automaticamente não vão aparecer quando filtrar pelo grupo deletado)
-      // No getItems do backend, se passar None, ele pega todos. Se passarmos id do grupo deletado, ele retornaria vazio. Então os órfãos continuam salvos e aparecerão em "Todos os Itens".
-      await window.api.vault?.deleteGroup(group.id);
-      if (selectedGroupId === group.id) setSelectedGroupId(null);
-      loadData();
-    }
-  };
-
-  const handleSelectItem = (item: VaultItem) => {
-    setViewMode('list');
-    setSelectedItem(item);
-    setIsEditingItem(false);
-  };
-
-  const handleDeleteItem = async (id: string) => {
-    if (confirm("Tem certeza que deseja apagar este item?")) {
-      await window.api.vault?.deleteItem(id);
-      setSelectedItem(null);
-      loadData();
-    }
-  };
-
-
-
-  const filteredItems = searchQuery
-    ? items.filter(i => 
-        i.label.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (i.username && i.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (i.url && i.url.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : items;
+  }, [setGroupContextMenu]);
 
   return (
     <div className="flex h-full bg-dark-bg text-dark-text font-sans" onClick={() => setGroupContextMenu(null)}>

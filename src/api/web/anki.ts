@@ -435,6 +435,19 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
     return { success: false, error: 'Card not found' };
   },
 
+  getCardIntervals: async (cardId: string) => {
+    const card = await db.get('anki_cards', cardId);
+    if (card) {
+      const allSettings = await db.getAll('anki_deck_settings') || [];
+      const deckSettings = allSettings.find((s: any) => s.deck_id === card.deck_id);
+      
+      const { previewIntervals } = await import('../../services/fsrs');
+      const intervals = previewIntervals(card, deckSettings);
+      return { success: true, intervals };
+    }
+    return { success: false, error: 'Card not found' };
+  },
+
   getDeckSettings: async (deckId: string) => {
     const allSettings = await db.getAll('anki_deck_settings') || [];
     const settings = allSettings.find((s: any) => s.deck_id === deckId);

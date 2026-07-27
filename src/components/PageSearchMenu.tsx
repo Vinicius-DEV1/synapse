@@ -15,9 +15,11 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredPages = state.pages.filter(p => 
-    p.title.toLowerCase().includes(localQuery.toLowerCase())
-  );
+  const filteredPages = state.pages.filter(p => {
+    const q = localQuery.toLowerCase();
+    return p.title.toLowerCase().includes(q) || 
+           (p.content && p.content.toLowerCase().includes(q));
+  });
 
   const options = [
     ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),

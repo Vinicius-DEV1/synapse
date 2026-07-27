@@ -63,7 +63,6 @@ interface SidebarPageTreeProps {
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
   const { state } = useStore();
   const { handleImportPage } = usePageActions();
-  const [searchQuery, setSearchQuery] = useState('');
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
 
@@ -74,12 +73,6 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
   const rootPages = state.pages
     .filter((p: any) => p.parent_id === null && !p.is_pinned)
     .sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
-  const filteredPages = searchQuery.trim()
-    ? state.pages.filter((p: any) =>
-        p.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : rootPages;
 
   const handleDropPinned = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
@@ -138,16 +131,14 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="px-3 py-2">
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dark-subtext" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar páginas..."
-            className="w-full bg-white/5 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-xs text-dark-text placeholder-dark-subtext focus:outline-none focus:border-brand-500/50 transition-colors"
-          />
-        </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
+          className="w-full flex items-center gap-2 bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-left text-dark-subtext hover:bg-white/10 hover:text-dark-text focus:outline-none transition-colors group"
+        >
+          <Search size={14} className="group-hover:text-brand-400 transition-colors" />
+          <span className="flex-1">Buscar páginas...</span>
+          <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded text-white/40 font-mono">⌘K</span>
+        </button>
       </div>
 
       <div className="px-3 py-1 flex gap-1">
@@ -168,7 +159,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       </div>
 
       <RootDroppable>
-        {!searchQuery && pinnedPages.length > 0 && (
+        {pinnedPages.length > 0 && (
           <div className="mb-4">
             <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
               <Pin size={12} /> Fixados
@@ -183,7 +174,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                 onUpdatePage={onUpdatePage}
               />
             ))}
-            {!searchQuery && pinnedPages.length > visiblePinnedCount && (
+            {pinnedPages.length > visiblePinnedCount && (
               <button
                 onClick={() => setVisiblePinnedCount(prev => prev + 10)}
                 className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
@@ -194,35 +185,35 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
           </div>
         )}
         
-        {!searchQuery && pinnedPages.length > 0 && (
+        {pinnedPages.length > 0 && (
           <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider mt-2">
             Páginas
           </div>
         )}
 
-        {filteredPages.length === 0 && (
+        {rootPages.length === 0 && (
           <div className="text-center text-dark-subtext text-xs py-8 px-4">
-            {searchQuery ? 'Nenhuma página encontrada' : 'Nenhuma página criada'}
+            Nenhuma página criada
           </div>
         )}
-        {filteredPages.slice(0, visiblePagesCount).map((page: any) => (
+        {rootPages.slice(0, visiblePagesCount).map((page: any) => (
           <SidebarItem
             key={page.id}
             page={page}
-            depth={searchQuery ? 0 : 0}
+            depth={0}
             activePageId={activeTab?.pageId || null}
             onCreatePage={onCreatePage}
             onUpdatePage={onUpdatePage}
-            isSearchResult={!!searchQuery}
-            disableHierarchyDnD={!!searchQuery}
+            isSearchResult={false}
+            disableHierarchyDnD={false}
           />
         ))}
-        {!searchQuery && filteredPages.length > visiblePagesCount && (
+        {rootPages.length > visiblePagesCount && (
           <button
             onClick={() => setVisiblePagesCount(prev => prev + 10)}
             className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
           >
-            Exibir mais ({filteredPages.length - visiblePagesCount})
+            Exibir mais ({rootPages.length - visiblePagesCount})
           </button>
         )}
       </RootDroppable>

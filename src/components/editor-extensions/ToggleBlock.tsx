@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 const ToggleBlockComponent = (props: any) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const isOpen = props.node.attrs.isOpen;
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -24,20 +24,38 @@ const ToggleBlockComponent = (props: any) => {
     if (e.key === 'ArrowDown' && isOpen) {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
-        props.editor.commands.focus(props.getPos() + 2);
+        const pos = props.getPos();
+        const firstChild = props.node.firstChild;
+        if (firstChild) {
+          if (firstChild.isTextblock) {
+            props.editor.commands.focus(pos + 2);
+          } else {
+            props.editor.commands.setNodeSelection(pos + 1);
+          }
+        }
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         props.editor.commands.focus(Math.max(0, props.getPos() - 1));
       }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (typeof props.getPos === 'function') {
+        const pos = props.getPos();
+        props.editor
+          .chain()
+          .focus()
+          .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+          .run();
+      }
     }
   };
 
   return (
-    <NodeViewWrapper className="toggle-block my-1 marker:text-dark-subtext block group/toggle relative">
+    <NodeViewWrapper className="toggle-wrapper toggle-block my-1 marker:text-dark-subtext block relative">
       {!isOpen && (
-        <div className="absolute -left-12 top-1 opacity-0 group-hover/toggle:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
+        <div className="absolute -left-12 top-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -66,7 +84,7 @@ const ToggleBlockComponent = (props: any) => {
         contentEditable={false}
       >
         <button 
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => props.updateAttributes({ isOpen: !isOpen })}
           className="p-1 hover:bg-white/10 rounded transition-colors text-dark-subtext"
         >
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -82,14 +100,12 @@ const ToggleBlockComponent = (props: any) => {
         />
       </div>
       
-      {isOpen && (
-        <>
-          <div className="h-px bg-white/5 my-1 ml-7 mr-2"></div>
-          <div className="toggle-content pl-6 text-dark-subtext border-l-2 border-white/5 ml-2">
-            <NodeViewContent />
-          </div>
-        </>
-      )}
+      <div className={isOpen ? 'block' : 'hidden'}>
+        <div className="h-px bg-white/5 my-1 ml-7 mr-2"></div>
+        <div className="toggle-content pl-6 text-dark-subtext border-l-2 border-white/5 ml-2">
+          <NodeViewContent />
+        </div>
+      </div>
     </NodeViewWrapper>
   );
 };
@@ -103,15 +119,28 @@ export const ToggleBlock = Node.create({
   addAttributes() {
     return {
       title: { default: '' },
+      isOpen: { default: true },
     };
   },
 
   parseHTML() {
-    return [{ tag: 'div.toggle-block' }];
+    return [{ 
+      tag: 'div.toggle-block',
+      getAttrs: (node) => {
+        if (typeof node === 'string') return {};
+        const element = node as HTMLElement;
+        return {
+          isOpen: element.getAttribute('data-is-open') !== 'false'
+        };
+      }
+    }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { class: 'toggle-block' }), 0];
+    return ['div', mergeAttributes(HTMLAttributes, { 
+      class: 'toggle-block',
+      'data-is-open': HTMLAttributes.isOpen
+    }), 0];
   },
 
   addNodeView() {

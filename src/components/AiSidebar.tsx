@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus, Minimize2 } from 'lucide-react';
+import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image as ImageIcon, Sparkles, Send, Plus, Minimize2, AtSign, Check, Paperclip } from 'lucide-react';
 import { promptGemini } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,7 +9,76 @@ export default function AiSidebar() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
+  const [attachedPages, setAttachedPages] = useState<{ id: string; title: string; content?: string }[]>([]);
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+  const currentPage = activeTab?.pageId ? state.pages.find(p => p.id === activeTab.pageId) : undefined;
+
+  const stripHtml = (html?: string) => {
+    if (!html) return '(página sem conteúdo em texto)';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return (tmp.textContent || tmp.innerText || '(página sem conteúdo em texto)').trim();
+  };
+
+  const handleAttachPage = (page: { id: string; title: string; content?: string }) => {
+    if (!attachedPages.some(p => p.id === page.id)) {
+      setAttachedPages(prev => [...prev, { id: page.id, title: page.title, content: page.content }]);
+    }
+    if (showMentionMenu) {
+      const newPrompt = prompt.replace(/(?:^|\s)@([^\s@]*)$/, '').trim();
+      setPrompt(newPrompt);
+      setShowMentionMenu(false);
+    }
+  };
+
+  const filteredPages = React.useMemo(() => {
+    const query = mentionQuery.toLowerCase().trim();
+    let list = state.pages.filter(p => p.title.toLowerCase().includes(query));
+    if (currentPage && currentPage.title.toLowerCase().includes(query)) {
+      list = [currentPage, ...list.filter(p => p.id !== currentPage.id)];
+    }
+    return list.slice(0, 6);
+  }, [state.pages, mentionQuery, currentPage]);
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPrompt(val);
+    const match = val.match(/(?:^|\s)@([^\s@]*)$/);
+    if (match) {
+      setShowMentionMenu(true);
+      setMentionQuery(match[1]);
+      setMentionSelectedIndex(0);
+    } else {
+      setShowMentionMenu(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentionMenu && filteredPages.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev + 1) % filteredPages.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionSelectedIndex(prev => (prev - 1 + filteredPages.length) % filteredPages.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selected = filteredPages[mentionSelectedIndex] || filteredPages[0];
+        if (selected) {
+          handleAttachPage(selected);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionMenu(false);
+      }
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,13 +120,28 @@ export default function AiSidebar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || !activeSession) return;
+    if ((!prompt.trim() && attachedPages.length === 0) || !activeSession) return;
+
+    const promptText = prompt.trim() || 'Faça um resumo com os principais pontos das páginas anexadas.';
 
     setLoading(true);
     try {
-      const responseObj = await promptGemini(prompt, undefined, activeSession.messages);
+      let finalPromptToSend = promptText;
+      if (attachedPages.length > 0) {
+        const names = attachedPages.map(p => p.title).join(', ');
+        const pagesContext = attachedPages.map(p => {
+          const cleanContent = stripHtml(p.content);
+          return `📄 Página "${p.title}":\n${cleanContent}`;
+        }).join('\n\n---\n\n');
+
+        finalPromptToSend = `[Anexos: ${names}]\n--- CONTEXTO DAS PÁGINAS ANEXADAS ---\n${pagesContext}\n--- FIM DO CONTEXTO ---\n\nInstrução:\n${promptText}`;
+      }
+
+      const { getSettings } = await import('../utils/settings');
+      const settings = getSettings();
+      const responseObj = await promptGemini(finalPromptToSend, undefined, activeSession.messages, settings.geminiModelChat || settings.geminiModel);
       const response = responseObj.text;
-      const newUserMsg = { role: 'user', parts: [{ text: prompt }] };
+      const newUserMsg = { role: 'user', parts: [{ text: finalPromptToSend }] };
       const newModelMsg = { role: 'model', parts: [{ text: response }], tokens: responseObj.usage };
       
       dispatch({
@@ -69,6 +153,8 @@ export default function AiSidebar() {
         }
       });
       setPrompt('');
+      setAttachedPages([]);
+      setShowMentionMenu(false);
     } catch (err) {
       console.error(err);
     } finally {
@@ -285,7 +371,18 @@ export default function AiSidebar() {
               const isQuestionJson = textContent.includes('"enunciado"') && textContent.includes('"opcoes"');
               
               let displayUserText = textContent;
-              if (isUser && idx === 0 && displayUserText.startsWith('Contexto:')) {
+              let attachedNames: string[] = [];
+
+              if (isUser && textContent.startsWith('[Anexos: ')) {
+                const match = textContent.match(/^\[Anexos: (.*?)\]/);
+                if (match && match[1]) {
+                  attachedNames = match[1].split(', ').map(s => s.trim());
+                }
+                const split = textContent.split('Instrução:\n');
+                if (split.length > 1) {
+                  displayUserText = split[1];
+                }
+              } else if (isUser && idx === 0 && displayUserText.startsWith('Contexto:')) {
                 const split = displayUserText.split('Instrução:\n');
                 if (split.length > 1) displayUserText = split[1];
               }
@@ -298,7 +395,19 @@ export default function AiSidebar() {
                       : 'bg-dark-card border border-white/10 text-brand-50 rounded-tl-sm'
                   }`}>
                     {isUser ? (
-                      <p className="whitespace-pre-wrap">{displayUserText}</p>
+                      <div className="flex flex-col gap-1.5">
+                        {attachedNames.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pb-1.5 border-b border-white/20">
+                            {attachedNames.map((name, i) => (
+                              <span key={i} className="inline-flex items-center gap-1 bg-black/20 text-brand-100 px-2 py-0.5 rounded-full text-[11px] font-medium">
+                                <FileText size={10} />
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="whitespace-pre-wrap">{displayUserText}</p>
+                      </div>
                     ) : isQuestionJson ? (
                       (() => {
                         try {
@@ -370,24 +479,124 @@ export default function AiSidebar() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Mention Menu */}
+          {showMentionMenu && (
+            <div className="mx-3 mb-2 bg-dark-card border border-brand-500/40 rounded-xl shadow-2xl overflow-hidden animate-scale-in max-h-56 overflow-y-auto custom-scrollbar">
+              <div className="px-3 py-1.5 border-b border-white/5 text-[11px] font-medium text-brand-400 flex items-center justify-between">
+                <span>Anexar página (@ para filtrar)</span>
+                <span className="text-dark-subtext text-[10px]">↑↓ navegar | Enter escolher</span>
+              </div>
+              {filteredPages.length === 0 ? (
+                <div className="p-3 text-center text-xs text-dark-subtext">Nenhuma página encontrada.</div>
+              ) : (
+                <div className="p-1 space-y-0.5">
+                  {filteredPages.map((page, index) => {
+                    const isCurrent = currentPage && page.id === currentPage.id;
+                    const isSelected = index === mentionSelectedIndex;
+                    const isAlreadyAttached = attachedPages.some(p => p.id === page.id);
+                    return (
+                      <button
+                        key={page.id}
+                        type="button"
+                        onClick={() => handleAttachPage(page)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-left transition-colors ${
+                          isSelected ? 'bg-brand-500/20 text-white' : 'text-brand-50/80 hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <FileText size={14} className={isCurrent ? 'text-brand-400' : 'text-dark-subtext'} />
+                          <span className="truncate font-medium">{page.title || 'Sem título'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isCurrent && (
+                            <span className="bg-brand-500/20 text-brand-300 border border-brand-500/30 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                              Atual
+                            </span>
+                          )}
+                          {isAlreadyAttached && (
+                            <Check size={14} className="text-brand-400" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Attached Pages Chips */}
+          {attachedPages.length > 0 && (
+            <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-t border-white/5 bg-dark-card">
+              {attachedPages.map(page => (
+                <div key={page.id} className="flex items-center gap-1.5 bg-brand-600/20 border border-brand-500/40 text-brand-200 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm animate-scale-in">
+                  <FileText size={12} className="text-brand-400" />
+                  <span className="truncate max-w-[160px]">{page.title || 'Sem título'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedPages(prev => prev.filter(p => p.id !== page.id))}
+                    className="text-brand-300 hover:text-white hover:bg-brand-500/30 rounded-full p-0.5 transition-colors"
+                    title="Remover anexo"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Quick attach current page suggestion (if not attached) */}
+          {currentPage && !attachedPages.some(p => p.id === currentPage.id) && !showMentionMenu && (
+            <div className="px-3 pt-2 pb-1 border-t border-white/5 bg-dark-card">
+              <button
+                type="button"
+                onClick={() => handleAttachPage(currentPage)}
+                className="flex items-center gap-1.5 text-xs text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 hover:border-brand-500/50 px-2.5 py-1 rounded-full transition-all group"
+                title="Incluir conteúdo da página aberta no chat"
+              >
+                <Plus size={12} className="text-brand-400 group-hover:scale-125 transition-transform" />
+                <span>Anexar página atual: <strong className="font-semibold text-white">{currentPage.title || 'Sem título'}</strong></span>
+              </button>
+            </div>
+          )}
+
           {/* Input Area */}
           <form onSubmit={handleSubmit} className="p-3 border-t border-white/5 bg-dark-card">
-            <div className="relative">
-              <input
-                type="text"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Continuar conversa..."
-                disabled={loading}
-                className="w-full bg-dark-bg border border-white/10 rounded-lg pl-3 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
-              />
+            <div className="flex items-center gap-1.5">
               <button
-                type="submit"
-                disabled={loading || !prompt.trim()}
-                className="absolute right-1.5 top-1.5 bottom-1.5 w-8 flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white rounded-md transition-all disabled:opacity-50"
+                type="button"
+                onClick={() => {
+                  setShowMentionMenu(prev => !prev);
+                  setMentionQuery('');
+                  setMentionSelectedIndex(0);
+                }}
+                className={`p-2 rounded-lg transition-colors ${
+                  showMentionMenu 
+                    ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30' 
+                    : 'text-dark-subtext hover:text-brand-400 hover:bg-white/5 border border-transparent'
+                }`}
+                title="Anexar página (@)"
               >
-                <Send size={14} className="ml-0.5" />
+                <Paperclip size={18} />
               </button>
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Mensagem (digite @ para anexar página)..."
+                  disabled={loading}
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg pl-3 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || (!prompt.trim() && attachedPages.length === 0)}
+                  className="absolute right-1.5 top-1.5 bottom-1.5 w-8 flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white rounded-md transition-all disabled:opacity-50"
+                >
+                  <Send size={14} className="ml-0.5" />
+                </button>
+              </div>
             </div>
           </form>
         </div>

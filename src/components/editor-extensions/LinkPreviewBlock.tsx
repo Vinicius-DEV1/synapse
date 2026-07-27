@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 
@@ -33,6 +33,17 @@ const LinkPreviewComponent = (props: any) => {
   const [isReloading, setIsReloading] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+
+  // Sincroniza o estado local com os atributos do nó toda vez que ele sofrer atualizações,
+  // como acontece no drag and drop do TipTap (reciclagem de nós)
+  useEffect(() => {
+    setFetchedTitle(title);
+    setFetchedChannel(channel);
+    setFetchedDuration(duration);
+    setFetchedIsPlaylist(isPlaylist);
+    setFetchedUploadDate(uploadDate);
+    setLoading(isLoading);
+  }, [url, title, channel, duration, isPlaylist, uploadDate, isLoading]);
 
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
@@ -281,8 +292,31 @@ const LinkPreviewComponent = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper className="link-preview-block block my-4" contentEditable={false}>
+    <NodeViewWrapper className="link-preview-block block my-4 group/widget" contentEditable={false}>
       <div className="relative group/link">
+        <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/widget:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function') {
+                const pos = props.getPos();
+                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              }
+            }}
+            className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+            title="Adicionar linha abaixo"
+          >
+            <Plus size={16} />
+          </button>
+          <div 
+            data-drag-handle
+            className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+            title="Arrastar bloco"
+          >
+            <GripVertical size={16} />
+          </div>
+        </div>
         <div 
           onClick={() => window.open(url, '_blank')}
           className={`block transition-all rounded-lg p-3 pr-[72px] cursor-pointer ${
@@ -406,6 +440,7 @@ export const LinkPreviewBlock = Node.create({
   name: 'linkPreview',
   group: 'block',
   atom: true,
+  selectable: true,
   draggable: true,
 
   addKeyboardShortcuts() {

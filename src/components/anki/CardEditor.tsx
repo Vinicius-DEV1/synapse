@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Volume2, Plus, BrainCircuit, Sparkles } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import AIAssistantModal from './AIAssistantModal';
+import { TagInput } from './editor/TagInput';
+import { AudioPreview } from './editor/AudioPreview';
 
 export interface CardDraft {
   front: string;
@@ -39,7 +41,6 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
   const [validationMode, setValidationMode] = useState<'exact' | 'ai'>(draft.validation_mode || 'exact');
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [tags, setTags] = useState<string[]>(draft.tags || []);
-  const [tagInput, setTagInput] = useState('');
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
@@ -98,22 +99,6 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
     }
   };
 
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const newTag = tagInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      if (newTag && !tags.includes(newTag)) {
-        setTags([...tags, newTag]);
-      }
-      setTagInput('');
-    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
-      setTags(tags.slice(0, -1));
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
-  };
 
   const handleSave = async () => {
     if (!selectedDeck) return;
@@ -328,57 +313,9 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
              />
           </div>
 
-          <div>
-             <label className="block text-sm font-medium text-dark-subtext mb-1">Tags</label>
-             <div className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 flex flex-wrap gap-2 items-center focus-within:border-indigo-500 transition-colors">
-               {tags.map(tag => (
-                 <span key={tag} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md text-xs font-medium">
-                   {tag}
-                   <button onClick={() => removeTag(tag)} className="hover:text-indigo-100 focus:outline-none ml-1">
-                     <X className="w-3 h-3" />
-                   </button>
-                 </span>
-               ))}
-               <input 
-                 type="text"
-                 value={tagInput}
-                 onChange={(e) => setTagInput(e.target.value)}
-                 onKeyDown={handleTagKeyDown}
-                 className="flex-1 bg-transparent border-none text-sm text-dark-text focus:outline-none min-w-[100px]"
-                 placeholder={tags.length === 0 ? "Ex: dificil, phrasal_verbs (Pressione Enter)" : ""}
-               />
-             </div>
-          </div>
-
-          {(draft.video_clip || draft.tts_text || mediaUrl) && (
-            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 flex items-center justify-between gap-3 text-sm text-indigo-300">
-               <div className="flex items-center gap-3">
-                 <Volume2 className="w-5 h-5 flex-shrink-0" />
-                 <div>
-                   {generatingAudio ? (
-                     <p className="animate-pulse">Gerando áudio do flashcard...</p>
-                   ) : mediaUrl ? (
-                     <p>Áudio pronto! O arquivo será salvo junto ao cartão.</p>
-                   ) : (
-                     <p>Um clipe de áudio será {draft.video_clip ? 'extraído do vídeo' : 'gerado via Edge TTS'}.</p>
-                   )}
-                 </div>
-               </div>
-               
-               {mediaUrl && !generatingAudio && (
-                 <button 
-                   onClick={() => {
-                     const audio = new Audio(mediaUrl);
-                     audio.play().catch(e => console.error(e));
-                   }}
-                   className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-200 rounded-lg transition-colors font-medium border border-indigo-500/30"
-                 >
-                   <Volume2 className="w-4 h-4" />
-                   Ouvir
-                 </button>
-               )}
-            </div>
-          )}
+          <TagInput tags={tags} setTags={setTags} />
+          
+          <AudioPreview draft={draft as any} mediaUrl={mediaUrl} generatingAudio={generatingAudio} />
         </div>
 
         <footer className="px-6 py-4 border-t border-dark-border bg-dark-bg/50 flex justify-between items-center gap-3">

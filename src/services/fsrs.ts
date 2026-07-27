@@ -101,3 +101,39 @@ export const processReview = (card: any, ratingNum: number, settings?: AnkiDeckS
   
   return record.card;
 };
+
+export const formatAnkiInterval = (diffMs: number): string => {
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `<${Math.max(1, mins)}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.round((days / 30) * 10) / 10;
+  if (days < 365) return `${months}mo`;
+  const years = Math.round((days / 365) * 10) / 10;
+  return `${years}y`;
+};
+
+export const previewIntervals = (card: any, settings?: AnkiDeckSettings): string[] => {
+  const f = getFSRS(settings?.fsrs_weights || undefined);
+  const fsrsCard = migrateCardToFSRS(card);
+  const now = new Date();
+  
+  const intervals: string[] = [];
+  const ratings = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
+  
+  for (const rating of ratings) {
+    const record = f.next(fsrsCard, now, rating);
+    let due = record.card.due;
+    
+    if (rating === Rating.Again && (record.card.state === State.Learning || record.card.state === State.Relearning)) {
+       due = new Date(now.getTime() + 5 * 60000); 
+    }
+    
+    const diff = due.getTime() - now.getTime();
+    intervals.push(formatAnkiInterval(diff));
+  }
+  
+  return intervals;
+};

@@ -105,24 +105,42 @@ const BlockquoteToggleComponent = (props: any) => {
     if (e.key === 'ArrowDown' && isOpen) {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
-        props.editor.commands.focus(props.getPos() + 2);
+        const pos = props.getPos();
+        const firstChild = props.node.firstChild;
+        if (firstChild) {
+          if (firstChild.isTextblock) {
+            props.editor.commands.focus(pos + 2);
+          } else {
+            props.editor.commands.setNodeSelection(pos + 1);
+          }
+        }
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         props.editor.commands.focus(Math.max(0, props.getPos() - 1));
       }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (typeof props.getPos === 'function') {
+        const pos = props.getPos();
+        props.editor
+          .chain()
+          .focus()
+          .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+          .run();
+      }
     }
   };
 
   return (
     <NodeViewWrapper 
-      className="blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded group/toggle relative"
+      className="toggle-wrapper blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded relative"
       style={customStyle}
       data-color={currentColor}
     >
       {!isOpen && (
-        <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/toggle:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
+        <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -147,7 +165,7 @@ const BlockquoteToggleComponent = (props: any) => {
         </div>
       )}
       <div 
-        className="absolute top-1 right-1 opacity-0 group-hover/toggle:opacity-100 transition-opacity z-50"
+        className="absolute top-1 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
         contentEditable={false}
       >
         <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
@@ -256,14 +274,12 @@ const BlockquoteToggleComponent = (props: any) => {
         />
       </div>
       
-      {isOpen && (
-        <>
-          <div className="h-px bg-white/5 my-2 ml-7 mr-2"></div>
-          <div className="toggle-content pl-7 text-white/85 italic">
-            <NodeViewContent />
-          </div>
-        </>
-      )}
+      <div className={isOpen ? 'block' : 'hidden'}>
+        <div className="h-px bg-white/5 my-2 ml-7 mr-2"></div>
+        <div className="toggle-content pl-7 text-white/85 italic">
+          <NodeViewContent />
+        </div>
+      </div>
     </NodeViewWrapper>
   );
 };
@@ -283,11 +299,23 @@ export const BlockquoteToggle = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div.blockquote-toggle' }];
+    return [{ 
+      tag: 'div.blockquote-toggle',
+      getAttrs: (node) => {
+        if (typeof node === 'string') return {};
+        const element = node as HTMLElement;
+        return {
+          isOpen: element.getAttribute('data-is-open') !== 'false'
+        };
+      }
+    }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { class: 'blockquote-toggle' }), 0];
+    return ['div', mergeAttributes(HTMLAttributes, { 
+      class: 'blockquote-toggle',
+      'data-is-open': HTMLAttributes.isOpen
+    }), 0];
   },
 
   addNodeView() {

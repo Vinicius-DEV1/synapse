@@ -59,7 +59,7 @@ interface SeasonSectionProps {
   onMarkAll: (episodes: EnrichedEpisode[], watched: boolean) => void;
 }
 
-function SeasonSection({ seasonNum, episodes, defaultOpen, onToggleWatched, onMarkAll }: SeasonSectionProps) {
+const SeasonSection = React.memo(({ seasonNum, episodes, defaultOpen, onToggleWatched, onMarkAll }: SeasonSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
   const watched = episodes.filter(e => e.is_watched).length;
   const total = episodes.length;
@@ -112,14 +112,15 @@ function SeasonSection({ seasonNum, episodes, defaultOpen, onToggleWatched, onMa
       )}
     </div>
   );
-}
+});
+SeasonSection.displayName = 'SeasonSection';
 
 // ── EpisodeRow ────────────────────────────────────────────────────────────────
-function EpisodeRow({ ep, onToggle, readonly }: {
+const EpisodeRow = React.memo(({ ep, onToggle, readonly }: {
   ep: EnrichedEpisode;
   onToggle: (ep: CultureEpisode) => void;
   readonly?: boolean;
-}) {
+}) => {
   return (
     <div
       onClick={() => !readonly && onToggle(ep)}
@@ -172,7 +173,8 @@ function EpisodeRow({ ep, onToggle, readonly }: {
       </div>
     </div>
   );
-}
+});
+EpisodeRow.displayName = 'EpisodeRow';
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }: CultureEpisodeModalProps) {

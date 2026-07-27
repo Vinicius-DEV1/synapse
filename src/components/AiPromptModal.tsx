@@ -56,14 +56,17 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
       const finalPrompt = (isFirst && contextText) ? `Contexto:\n"${contextText}"\n\nInstrução:\n${prompt}` : prompt;
       const imageToPass = isFirst ? contextImage : undefined;
 
-      const responseObj = await promptGemini(finalPrompt, imageToPass, messages);
+      const { getSettings } = await import('../utils/settings');
+      const settings = getSettings();
+      const responseObj = await promptGemini(finalPrompt, imageToPass, messages, settings.geminiModelChat || settings.geminiModel);
       const response = responseObj.text;
       
       const newUserParts: any[] = [{ text: finalPrompt }];
       if (imageToPass) {
-        const mimeTypeMatch = imageToPass.match(/^data:(image\/[a-zA-Z]*);base64,/);
-        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-        const base64Data = imageToPass.replace(/^data:image\/[a-zA-Z]*;base64,/, '');
+        const mimeTypeMatch = imageToPass.match(/^data:(.*?);base64,/);
+        let mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+        if (mimeType.includes(';')) mimeType = mimeType.split(';')[0];
+        const base64Data = imageToPass.replace(/^data:.*?;base64,/, '');
         newUserParts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
       }
 

@@ -25,6 +25,14 @@ pub struct PageContent {
     pub encrypted_content: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct PageHistoryEntry {
+    pub id: String,
+    pub page_id: String,
+    pub content: String,
+    pub created_at: String,
+}
+
 #[tauri::command]
 pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
     let guard = db_state.conn.lock().unwrap();
@@ -177,10 +185,22 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         if has_updates { query.push_str(","); }
         if let Some(enc) = encrypted {
             query.push_str(" content = '', encrypted_content = ?");
-            params_vec.push(enc.into());
+            params_vec.push(enc.clone().into());
+            
+            let hist_id = uuid::Uuid::new_v4().to_string();
+            let _ = conn.execute(
+                "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, '', ?)",
+                params![hist_id, page.id, enc]
+            );
         } else {
             query.push_str(" content = ?, encrypted_content = NULL");
-            params_vec.push(c.into());
+            params_vec.push(c.clone().into());
+            
+            let hist_id = uuid::Uuid::new_v4().to_string();
+            let _ = conn.execute(
+                "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, ?, NULL)",
+                params![hist_id, page.id, c]
+            );
         }
         has_updates = true;
     }
@@ -232,6 +252,48 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         .map_err(|e| e.to_string())?;
         
     Ok(count as i32)
+}
+
+#[tauri::command]
+pub fn notes_get_page_history(page_id: String, db_state: State<'_, DbState>) -> Result<Vec<PageHistoryEntry>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let mut stmt = conn.prepare("SELECT id, page_id, content, created_at, encrypted_content FROM page_history WHERE page_id = ? ORDER BY created_at DESC")
+        .map_err(|e| e.to_string())?;
+
+    let history_iter = stmt.query_map([&page_id], |row| {
+        let id: String = row.get(0)?;
+        let pid: String = row.get(1)?;
+        let content: String = row.get(2)?;
+        let created_at: String = row.get(3)?;
+        let encrypted_content: Option<String> = row.get(4).unwrap_or(None);
+        Ok((id, pid, content, created_at, encrypted_content))
+    }).map_err(|e| e.to_string())?;
+
+    let mut history = Vec::new();
+    let keys_guard = db_state.keys.lock().unwrap();
+    let notes_key = keys_guard.as_ref().and_then(|k| k.notes.clone());
+
+    for row_res in history_iter {
+        if let Ok((id, pid, mut cont, created, enc_opt)) = row_res {
+            if let Some(enc) = enc_opt {
+                if let Some(key) = &notes_key {
+                    if let Ok(decrypted) = crate::crypto::decrypt_content(key, &enc) {
+                        cont = decrypted;
+                    }
+                }
+            }
+            history.push(PageHistoryEntry {
+                id,
+                page_id: pid,
+                content: cont,
+                created_at: created,
+            });
+        }
+    }
+
+    Ok(history)
 }
 
 #[tauri::command]
