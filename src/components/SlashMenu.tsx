@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -25,6 +25,7 @@ const SLASH_COMMANDS = [
   { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock },
   { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive },
   { id: 'documento-link', title: 'Vincular Arquivo', subtitle: 'Vincular um arquivo existente do módulo.', icon: Link },
+  { id: 'evento', title: 'Evento da Agenda', subtitle: 'Criar e vincular um evento na agenda com avisos.', icon: Calendar },
 ];
 
 interface SlashMenuProps {

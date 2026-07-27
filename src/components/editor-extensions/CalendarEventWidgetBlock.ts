@@ -1,0 +1,110 @@
+import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import CalendarEventWidgetNodeView from './CalendarEventWidgetNodeView';
+
+export interface CalendarEventWidgetOptions {
+  HTMLAttributes: Record<string, any>;
+}
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    calendarEventWidget: {
+      insertCalendarEventWidget: (options: {
+        eventId: string;
+        title: string;
+        dateStr: string;
+        pageId?: string | null;
+        status?: string;
+      }) => ReturnType;
+    };
+  }
+}
+
+export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>({
+  name: 'calendarEventWidget',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  draggable: true,
+
+  addOptions() {
+    return {
+      HTMLAttributes: {
+        class: 'calendar-event-widget',
+      },
+    };
+  },
+
+  addAttributes() {
+    return {
+      eventId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-event-id'),
+        renderHTML: attributes => ({ 'data-event-id': attributes.eventId }),
+      },
+      title: {
+        default: 'Novo Evento',
+        parseHTML: element => element.getAttribute('data-title'),
+        renderHTML: attributes => ({ 'data-title': attributes.title }),
+      },
+      dateStr: {
+        default: '',
+        parseHTML: element => element.getAttribute('data-date'),
+        renderHTML: attributes => ({ 'data-date': attributes.dateStr }),
+      },
+      pageId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-page-id'),
+        renderHTML: attributes => ({ 'data-page-id': attributes.pageId }),
+      },
+      status: {
+        default: 'pending',
+        parseHTML: element => element.getAttribute('data-status') || 'pending',
+        renderHTML: attributes => ({ 'data-status': attributes.status }),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-type="calendar-event-widget"]',
+      },
+      {
+        tag: 'span.calendar-event-widget',
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      'span',
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+        'data-type': 'calendar-event-widget',
+      }),
+    ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(CalendarEventWidgetNodeView);
+  },
+
+  addCommands() {
+    return {
+      insertCalendarEventWidget:
+        options =>
+        ({ commands }) => {
+          return commands.insertContent({
+            type: this.name,
+            attrs: {
+              eventId: options.eventId,
+              title: options.title,
+              dateStr: options.dateStr,
+              pageId: options.pageId || null,
+              status: options.status || 'pending',
+            },
+          });
+        },
+    };
+  },
+});

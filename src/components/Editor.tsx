@@ -15,6 +15,8 @@ import { useFocusContext } from '../store/FocusContext';
 import { uploadEncryptedImage, setCachedImage } from '../services/image-drive';
 import FileUploadModal from './files/FileUploadModal';
 import FileSelectModal from './files/FileSelectModal';
+import { useStore } from '../store/useStore';
+import CalendarEventModal from './editor-extensions/CalendarEventModal';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
 import { useEditorSave } from './editor/hooks/useEditorSave';
@@ -42,6 +44,10 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const [fileUploadModal, setFileUploadModal] = useState<{ isOpen: boolean, isLink: boolean } | null>(null);
   const [fileSelectModal, setFileSelectModal] = useState(false);
   const [pageSearchMenu, setPageSearchMenu] = useState<{ isOpen: boolean, x: number, y: number, query: string } | null>(null);
+  const [calendarEventModal, setCalendarEventModal] = useState<{ isOpen: boolean, initialTitle?: string } | null>(null);
+  
+  const { state } = useStore();
+  const currentPage = state.pages.find(p => p.id === pageId);
   
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
 
@@ -106,7 +112,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     setFocusModal,
     setAlarmModal,
     setFileUploadModal,
-    setFileSelectModal
+    setFileSelectModal,
+    setCalendarEventModal
   });
 
   const editor = useEditor({
@@ -386,6 +393,28 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             }
             setFileSelectModal(false);
           }}
+        />
+      )}
+
+      {calendarEventModal?.isOpen && (
+        <CalendarEventModal
+          isOpen={true}
+          onClose={() => setCalendarEventModal(null)}
+          onSave={(eventId, title, dateStr, linkedPageId) => {
+            if (editor) {
+              editor.chain().focus().insertCalendarEventWidget({
+                eventId,
+                title,
+                dateStr,
+                pageId: linkedPageId,
+                status: 'pending'
+              }).run();
+            }
+            setCalendarEventModal(null);
+          }}
+          initialTitle={calendarEventModal.initialTitle}
+          pageId={pageId}
+          pageTitle={currentPage?.title || ''}
         />
       )}
     </div>

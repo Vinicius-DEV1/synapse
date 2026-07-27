@@ -14,6 +14,7 @@ interface UseSlashCommandProps {
   setAlarmModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTimeStr?: string } | null>>;
   setFileUploadModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, isLink: boolean } | null>>;
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setCalendarEventModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTitle?: string } | null>>;
 }
 
 export function useSlashCommand({
@@ -21,7 +22,8 @@ export function useSlashCommand({
   setFocusModal,
   setAlarmModal,
   setFileUploadModal,
-  setFileSelectModal
+  setFileSelectModal,
+  setCalendarEventModal
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -87,36 +89,38 @@ export function useSlashCommand({
     const endPos = startPos + slashMenu.query.length + 1; 
     
     setSlashMenu(null);
-    editor.commands.deleteRange({ from: startPos, to: endPos });
+    
+    const chain = editor.chain().focus().deleteRange({ from: startPos, to: endPos });
 
     switch (commandId) {
-      case 'text': editor.commands.setParagraph(); break;
-      case 'h1': editor.commands.toggleHeading({ level: 1 }); break;
-      case 'h2': editor.commands.toggleHeading({ level: 2 }); break;
-      case 'h3': editor.commands.toggleHeading({ level: 3 }); break;
-      case 'todo': editor.commands.toggleTaskList(); break;
-      case 'bullet': editor.commands.toggleBulletList(); break;
-      case 'callout': editor.commands.toggleBlockquote(); break;
-      case 'code': editor.commands.toggleCodeBlock(); break;
-      case 'group': editor.commands.insertContent('<div class="group-collection"></div>'); break;
-      case 'question': editor.commands.insertContent('<div class="question-block"></div>'); break;
-      case 'toggle': editor.commands.insertContent('<div class="toggle-block"><p></p></div>'); break;
-      case 'blockquoteToggle': editor.commands.insertContent('<div class="blockquote-toggle"><p></p></div>'); break;
+      case 'text': chain.setParagraph().run(); break;
+      case 'h1': chain.toggleHeading({ level: 1 }).run(); break;
+      case 'h2': chain.toggleHeading({ level: 2 }).run(); break;
+      case 'h3': chain.toggleHeading({ level: 3 }).run(); break;
+      case 'todo': chain.toggleTaskList().run(); break;
+      case 'bullet': chain.toggleBulletList().run(); break;
+      case 'callout': chain.toggleBlockquote().run(); break;
+      case 'code': chain.insertContent({ type: 'codeBlock' }).run(); break;
+      case 'group': chain.insertContent('<div class="group-collection"></div>').run(); break;
+      case 'question': chain.insertContent('<div class="question-block"></div>').run(); break;
+      case 'toggle': chain.insertContent('<div class="toggle-block"><p></p></div>').run(); break;
+      case 'blockquoteToggle': chain.insertContent('<div class="blockquote-toggle"><p></p></div>').run(); break;
       case 'page': 
+        chain.run();
         setPageSearchMenu({ isOpen: true, x: slashMenu.x, y: slashMenu.y, query: slashMenu.query.replace(/^page\s*/i, '') }); 
         break;
-      case 'divider': editor.commands.setHorizontalRule(); break;
+      case 'divider': chain.setHorizontalRule().run(); break;
       case 'table': 
-        editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+        chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
         break;
       case 'table-week': 
-        editor.chain().focus().insertTable({ rows: 4, cols: 7, withHeaderRow: true }).run();
+        chain.insertTable({ rows: 4, cols: 7, withHeaderRow: true }).run();
         break;
       case 'table-day': 
-        editor.chain().focus().insertTable({ rows: 8, cols: 2, withHeaderRow: true }).run();
+        chain.insertTable({ rows: 8, cols: 2, withHeaderRow: true }).run();
         break;
       case 'table-habit': 
-        editor.chain().focus().insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
+        chain.insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
         break;
       case 'foco': {
         const parts = slashMenu.query.trim().split(' ');
@@ -161,6 +165,13 @@ export function useSlashCommand({
       }
       case 'documento-link': {
         setFileSelectModal(true);
+        break;
+      }
+      case 'evento': {
+        const parts = slashMenu.query.trim().split(' ');
+        if (parts[0] && parts[0].toLowerCase() === 'evento') parts.shift();
+        const initialTitle = parts.join(' ').trim() || '';
+        setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
     }
