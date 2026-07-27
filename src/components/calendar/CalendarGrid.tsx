@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -40,23 +40,42 @@ const DraggableEvent = ({ event, onClick }: { event: CalendarEvent, onClick: () 
   );
 };
 
-const DroppableDay = ({ date, isCurrentMonth, children, onClick }: { date: Date, isCurrentMonth: boolean, children: React.ReactNode, onClick: () => void }) => {
+interface DroppableDayProps {
+  date: Date;
+  isCurrentMonth: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+  todayRef?: React.Ref<HTMLDivElement>;
+}
+
+const DroppableDay = ({ date, isCurrentMonth, children, onClick, todayRef }: DroppableDayProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
     data: { date },
   });
 
+  const combineRefs = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    if (todayRef) {
+      if (typeof todayRef === 'function') {
+        todayRef(node);
+      } else if ('current' in todayRef) {
+        (todayRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }
+    }
+  };
+
   return (
     <div
-      ref={setNodeRef}
+      ref={combineRefs}
       onClick={onClick}
-      className={`min-h-[100px] border-r border-b border-dark-border p-1 transition-colors cursor-pointer
-        ${!isCurrentMonth ? 'bg-dark-bg/40' : 'bg-transparent'}
+      className={`min-h-[85px] border-r border-b border-dark-border p-1.5 transition-colors cursor-pointer relative
+        ${!isCurrentMonth ? 'bg-dark-bg/40' : isToday(date) ? 'bg-emerald-500/[0.04] border-emerald-500/30' : 'bg-transparent'}
         ${isOver ? 'bg-dark-hover/50' : 'hover:bg-dark-hover/30'}
       `}
     >
       <div className={`text-xs p-1 mb-1 font-medium w-6 h-6 flex items-center justify-center rounded-full
-        ${isToday(date) ? 'bg-emerald-600 text-white' : 'text-dark-subtext'}
+        ${isToday(date) ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/50' : 'text-dark-subtext'}
       `}>
         {format(date, 'd')}
       </div>
@@ -69,6 +88,16 @@ const DroppableDay = ({ date, isCurrentMonth, children, onClick }: { date: Date,
 
 export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDayClick }: CalendarGridProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const todayRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [currentDate, events.length]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -115,7 +144,17 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
             <ChevronLeft size={20} />
           </button>
-          <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1 text-sm rounded hover:bg-dark-hover text-dark-subtext">
+          <button 
+            onClick={() => {
+              setCurrentDate(new Date());
+              setTimeout(() => {
+                if (todayRef.current) {
+                  todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 50);
+            }} 
+            className="px-3 py-1 text-sm rounded hover:bg-dark-hover text-dark-subtext"
+          >
             Hoje
           </button>
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
@@ -149,6 +188,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
                   date={day} 
                   isCurrentMonth={isSameMonth(day, currentDate)}
                   onClick={() => onDayClick(day)}
+                  todayRef={isToday(day) ? todayRef : undefined}
                 >
                   {dayEvents.map(ev => (
                     <DraggableEvent key={ev.id} event={ev} onClick={() => onEditEvent(ev)} />
