@@ -6,8 +6,10 @@ export const webNotificationsApi = (db: any) => ({
     );
   },
   addNotification: async (notif: any) => {
+    const id = (notif.id && notif.id !== '') ? notif.id : crypto.randomUUID();
     const newNotif = {
-      id: notif.id || crypto.randomUUID(),
+      ...notif,
+      id,
       title: notif.title || '',
       message: notif.message || '',
       type: notif.type || 'system',
