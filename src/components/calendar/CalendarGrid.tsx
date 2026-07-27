@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
+import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
 
 interface CalendarGridProps {
   events: CalendarEvent[];
@@ -118,12 +119,12 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
       const activeEvent = active.data.current as CalendarEvent;
       const targetDateStr = over.id as string; // 'yyyy-MM-dd'
       
-      const newStartDate = new Date(activeEvent.start_date);
+      const newStartDate = parseEventDate(activeEvent.start_date);
       const [year, month, day] = targetDateStr.split('-').map(Number);
       newStartDate.setFullYear(year, month - 1, day);
 
-      const newEndDate = new Date(activeEvent.end_date);
-      const diff = newEndDate.getTime() - new Date(activeEvent.start_date).getTime();
+      const newEndDate = parseEventDate(activeEvent.end_date);
+      const diff = newEndDate.getTime() - parseEventDate(activeEvent.start_date).getTime();
       newEndDate.setTime(newStartDate.getTime() + diff);
 
       onUpdateEvent(activeEvent.id, {
@@ -178,8 +179,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
             {days.map((day, i) => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const dayEvents = events.filter(e => {
-                const eventStartStr = format(new Date(e.start_date), 'yyyy-MM-dd');
-                return eventStartStr === dayStr;
+                return getEventDayStr(e.start_date) === dayStr;
               });
 
               return (

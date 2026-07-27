@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { Calendar, BrainCircuit, Pin, Plus, FolderUp, ChevronRight, BookOpen, Clock, Sunrise, CheckCircle2 } from 'lucide-react';
 import type { CalendarEvent, Page } from '../../types/core';
+import { parseEventDate } from '../../utils/dateUtils';
 
 export default function HomeView({ tabId }: { tabId: string }) {
   const { state, dispatch } = useStore();
@@ -74,17 +75,17 @@ export default function HomeView({ tabId }: { tabId: string }) {
         
         const today = evs.filter(e => {
           if (!e.start_date) return false;
-          const time = new Date(e.start_date).getTime();
+          const time = parseEventDate(e.start_date).getTime();
           return time >= todayStart && time <= todayEnd;
-        }).sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime());
+        }).sort((a, b) => parseEventDate(a.start_date!).getTime() - parseEventDate(b.start_date!).getTime());
         setTodayEvents(today);
 
         // Melhoria 5: Eventos de amanhã
         const tomorrow = evs.filter(e => {
           if (!e.start_date) return false;
-          const time = new Date(e.start_date).getTime();
+          const time = parseEventDate(e.start_date).getTime();
           return time > todayEnd && time <= tomorrowEnd;
-        }).sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime());
+        }).sort((a, b) => parseEventDate(a.start_date!).getTime() - parseEventDate(b.start_date!).getTime());
         setTomorrowEvents(tomorrow);
       }
       
@@ -112,13 +113,13 @@ export default function HomeView({ tabId }: { tabId: string }) {
   };
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return parseEventDate(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
   // Melhoria 2: usa nowTs reativo em vez de Date.now() estático
   const isEventLive = (ev: CalendarEvent) => {
     if (ev.status === 'completed' || !ev.start_date) return false;
-    const time = new Date(ev.start_date).getTime();
+    const time = parseEventDate(ev.start_date).getTime();
     return nowTs >= time - 15 * 60 * 1000 && nowTs <= time + 60 * 60 * 1000;
   };
 

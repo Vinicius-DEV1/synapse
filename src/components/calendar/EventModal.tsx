@@ -3,6 +3,7 @@ import type { CalendarEvent } from '../../types';
 import { X, Calendar as CalendarIcon, Clock, Type, Palette, Bell, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { Portal } from '../ui/Portal';
+import { parseEventDate } from '../../utils/dateUtils';
 import { useStore } from '../../store/useStore';
 
 interface EventModalProps {
@@ -46,7 +47,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       setReminders(remArray);
 
       if (event.start_date) {
-        const start = new Date(event.start_date);
+        const start = parseEventDate(event.start_date);
         if (!isNaN(start.getTime())) {
           setStartDate(format(start, 'yyyy-MM-dd'));
           setStartTime(format(start, 'HH:mm'));
@@ -54,7 +55,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       }
 
       if (event.end_date) {
-        const end = new Date(event.end_date);
+        const end = parseEventDate(event.end_date);
         if (!isNaN(end.getTime())) {
           setEndDate(format(end, 'yyyy-MM-dd'));
           setEndTime(format(end, 'HH:mm'));
@@ -63,8 +64,8 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       
       // Se for de 00:00 até 23:59, consideramos "Dia Inteiro"
       if (event.start_date && event.end_date) {
-        const start = new Date(event.start_date);
-        const end = new Date(event.end_date);
+        const start = parseEventDate(event.start_date);
+        const end = parseEventDate(event.end_date);
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
           if (format(start, 'HH:mm') === '00:00' && format(end, 'HH:mm') === '23:59') {
             setIsAllDay(true);

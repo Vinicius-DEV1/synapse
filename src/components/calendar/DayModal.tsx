@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
 
 interface DayModalProps {
   date: Date;
@@ -16,9 +17,8 @@ interface DayModalProps {
 
 export default function DayModal({ date, events, onClose, onNewEvent, onEditEvent, onToggleTask }: DayModalProps) {
   const dayEvents = events.filter(e => {
-    const eDate = new Date(e.start_date);
-    return format(eDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
-  }).sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+    return getEventDayStr(e.start_date) === format(date, 'yyyy-MM-dd');
+  }).sort((a, b) => parseEventDate(a.start_date).getTime() - parseEventDate(b.start_date).getTime());
 
   return (
     <Portal>
@@ -79,7 +79,7 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
                     <div className="flex items-center gap-2 mt-1">
                       <Clock size={12} className="text-dark-subtext" />
                       <span className="text-xs text-dark-subtext">
-                        {format(new Date(event.start_date), "HH:mm")}
+                        {format(parseEventDate(event.start_date), "HH:mm")}
                       </span>
                     </div>
                   </div>
