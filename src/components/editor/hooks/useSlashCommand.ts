@@ -141,6 +141,7 @@ export function useSlashCommand({
           }
         }
         
+        chain.run();
         setFocusModal({ isOpen: true, initialTime, initialTag, initialDesc });
         break;
       }
@@ -156,14 +157,17 @@ export function useSlashCommand({
           }
         }
         
+        chain.run();
         setAlarmModal({ isOpen: true, initialTimeStr });
         break;
       }
       case 'documento': {
+        chain.run();
         setFileUploadModal({ isOpen: true, isLink: false });
         break;
       }
       case 'documento-link': {
+        chain.run();
         setFileSelectModal(true);
         break;
       }
@@ -171,6 +175,7 @@ export function useSlashCommand({
         const parts = slashMenu.query.trim().split(' ');
         if (parts[0] && parts[0].toLowerCase() === 'evento') parts.shift();
         const initialTitle = parts.join(' ').trim() || '';
+        chain.run();
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
