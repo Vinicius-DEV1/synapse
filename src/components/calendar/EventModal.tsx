@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import type { CalendarEvent } from '../../types';
-import { X, Calendar as CalendarIcon, Clock, Type, Palette } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, Type, Palette, Bell, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { Portal } from '../ui/Portal';
+import { useStore } from '../../store/useStore';
 
 interface EventModalProps {
   event: CalendarEvent | null;
@@ -25,6 +26,9 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
   const [color, setColor] = useState(COLORS[0]);
   const [isAllDay, setIsAllDay] = useState(false);
   const [recurrence, setRecurrence] = useState<'none'|'daily'|'weekly'|'monthly'|'yearly'>('none');
+  const [reminders, setReminders] = useState<number[]>([1440, 120, 15]);
+  const { state, dispatch } = useStore();
+  const linkedPage = state.pages.find(p => p.id === event?.page_id);
 
   useEffect(() => {
     if (event) {
@@ -32,6 +36,14 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       setDescription(event.description || '');
       setType(event.type);
       setColor(event.color || COLORS[0]);
+
+      let remArray: number[] = [1440, 120, 15];
+      if (Array.isArray(event.reminders)) {
+        remArray = event.reminders;
+      } else if (typeof event.reminders === 'string') {
+        try { remArray = JSON.parse(event.reminders); } catch { remArray = [1440, 120, 15]; }
+      }
+      setReminders(remArray);
 
       if (event.start_date) {
         const start = new Date(event.start_date);
@@ -87,6 +99,8 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
       color,
       status: event?.status || 'pending',
       recurrence_rule: recurrence !== 'none' ? recurrence : null,
+      page_id: event?.page_id || null,
+      reminders,
     });
   };
 
@@ -237,6 +251,67 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
               ))}
             </div>
           </div>
+
+          {/* Lembretes */}
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
+              <Bell size={14} className="text-brand-400" /> Avisos / Lembretes Automáticos
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 1440, label: '1 dia antes (24h)' },
+                { value: 120, label: '2 horas antes' },
+                { value: 15, label: '15 minutos antes' },
+                { value: 0, label: 'No momento do evento' }
+              ].map(opt => {
+                const checked = reminders.includes(opt.value);
+                return (
+                  <label
+                    key={opt.value}
+                    onClick={() => {
+                      if (checked) setReminders(reminders.filter(v => v !== opt.value));
+                      else setReminders([...reminders, opt.value].sort((a, b) => b - a));
+                    }}
+                    className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer select-none transition-all ${
+                      checked
+                        ? 'bg-brand-500/15 border-brand-500/40 text-brand-300 font-medium'
+                        : 'bg-white/5 border-white/5 text-dark-subtext hover:bg-white/10'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {}}
+                      className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Vínculo com Página */}
+          {event?.page_id && (
+            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs text-brand-300 truncate">
+                <BookOpen size={14} className="flex-shrink-0" />
+                <span className="truncate">Vinculado a: <strong>{linkedPage?.title || 'Página do Caderno'}</strong></span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (event.page_id) {
+                    dispatch({ type: 'NAVIGATE_IN_TAB', pageId: event.page_id });
+                    onClose();
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition-colors flex-shrink-0"
+              >
+                <span>🔗 Ver na Página</span>
+              </button>
+            </div>
+          )}
 
           {/* Descrição */}
           <div className="space-y-1.5">
