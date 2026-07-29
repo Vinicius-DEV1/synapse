@@ -23,18 +23,33 @@ export const GlobalLofiPlayer: React.FC = () => {
   });
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setSrc(null);
+    setCurrentTime(0);
+
     if (activeLofi) {
       resolveLofiUrl(activeLofi, masterKey)
         .then(url => {
-          setSrc(url);
+          if (!cancelled) {
+            setSrc(url);
+          }
         })
         .catch(err => {
           console.error("Falha ao resolver URL do lofi", err);
-          setSrc(null);
+          if (!cancelled) {
+            setSrc(null);
+          }
         });
-    } else {
-      setSrc(null);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeLofi]);
 
   useEffect(() => {
