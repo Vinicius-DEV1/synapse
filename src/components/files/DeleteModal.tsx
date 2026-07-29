@@ -5,36 +5,44 @@ import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { Portal } from '../ui/Portal';
 
 interface DeleteModalProps {
-  item: FileItem | FileFolder;
-  isFolder: boolean;
+  item?: FileItem | FileFolder;
+  isFolder?: boolean;
+  items?: Array<{ item: FileItem | FileFolder; isFolder: boolean }>;
   onClose: () => void;
   onDeleted: () => void;
 }
 
-export default function DeleteModal({ item, isFolder, onClose, onDeleted }: DeleteModalProps) {
+export default function DeleteModal({ item, isFolder, items, onClose, onDeleted }: DeleteModalProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [keepInDrive, setKeepInDrive] = useState(false);
+
+  const list = items || (item ? [{ item, isFolder: !!isFolder }] : []);
+  const isBulk = list.length > 1;
+  const hasDriveFile = list.some(x => !x.isFolder && (x.item as FileItem).drive_file_id);
+  const foldersCount = list.filter(x => x.isFolder).length;
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      if (isFolder) {
-        await window.api.files.folders.delete(item.id);
-      } else {
-        const fileItem = item as FileItem;
-        
-        // Remove do BD (e exclui localmente pelo rust backend)
-        await window.api.files.delete(fileItem.id);
-        
-        // Exclui do Drive se solicitado
-        if (!keepInDrive && fileItem.drive_file_id) {
-          try {
-            const token = await getValidAccessToken();
-            if (token) {
-              await deleteFromDrive(token, fileItem.drive_file_id);
+      for (const entry of list) {
+        if (entry.isFolder) {
+          await window.api.files.folders.delete(entry.item.id);
+        } else {
+          const fileItem = entry.item as FileItem;
+          
+          // Remove do BD (e exclui localmente pelo rust backend)
+          await window.api.files.delete(fileItem.id);
+          
+          // Exclui do Drive se solicitado
+          if (!keepInDrive && fileItem.drive_file_id) {
+            try {
+              const token = await getValidAccessToken();
+              if (token) {
+                await deleteFromDrive(token, fileItem.drive_file_id);
+              }
+            } catch (e) {
+              console.warn("Failed to delete from Drive", e);
             }
-          } catch (e) {
-            console.warn("Failed to delete from Drive", e);
           }
         }
       }
@@ -58,15 +66,19 @@ export default function DeleteModal({ item, isFolder, onClose, onDeleted }: Dele
           
           <div className="text-center">
             <h2 className="text-lg font-semibold text-white mb-1">
-              Excluir {isFolder ? 'Pasta' : 'Arquivo'}
+              {isBulk ? `Excluir ${list.length} itens` : `Excluir ${list[0]?.isFolder ? 'Pasta' : 'Arquivo'}`}
             </h2>
             <p className="text-dark-subtext text-sm">
-              Tem certeza que deseja excluir <strong>{item.name}</strong>?
-              {isFolder && " Todos os arquivos desta pasta ficarão órfãos e irão para 'Todos os Arquivos'."}
+              {isBulk ? (
+                <>Tem certeza que deseja excluir <strong>{list.length} itens selecionados</strong>?</>
+              ) : (
+                <>Tem certeza que deseja excluir <strong>{list[0]?.item.name}</strong>?</>
+              )}
+              {foldersCount > 0 && " Todos os arquivos desta pasta ficarão órfãos e irão para 'Todos os Arquivos'."}
             </p>
           </div>
 
-          {!isFolder && (item as FileItem).drive_file_id && (
+          {hasDriveFile && (
             <div className="w-full mt-2 flex items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10">
               <input 
                 type="checkbox" 
