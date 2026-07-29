@@ -7,29 +7,35 @@ export const tauriLibraryApi = {
   importBook: async () => {
     try {
       const selected = await open({
-        multiple: false,
+        multiple: true,
         filters: [{ name: 'Books', extensions: ['pdf', 'epub'] }]
       });
-      if (selected && typeof selected === 'string') {
-        const bookId = crypto.randomUUID();
-        const ext = selected.split('.').pop() || 'pdf';
-        const localPath = `library/${bookId}.${ext}.enc`; // Always save as .enc
-        
-        await invoke('library_import_and_encrypt_book', {
-            sourcePath: selected,
-            destPath: localPath
-        });
-        
-        const title = selected.split('\\').pop()?.replace(/\.(pdf|epub)$/i, '') || 'Livro';
-        const book = {
-          id: bookId, title, author: 'Desconhecido', file_path: localPath, cover_image: '',
-          total_pages: 0, last_read_page: '1', reading_status: 'not_started',
-          created_at: new Date().toISOString(), updated_at: new Date().toISOString()
-        };
-        await invoke('library_add_book', { book });
-        return book;
+      if (selected) {
+        const paths = Array.isArray(selected) ? selected : [selected];
+        if (paths.length === 0) return null;
+        const importedBooks = [];
+        for (const filePath of paths) {
+          const bookId = crypto.randomUUID();
+          const ext = filePath.split('.').pop() || 'pdf';
+          const localPath = `library/${bookId}.${ext}.enc`; // Always save as .enc
+          
+          await invoke('library_import_and_encrypt_book', {
+              sourcePath: filePath,
+              destPath: localPath
+          });
+          
+          const title = filePath.split('\\').pop()?.replace(/\.(pdf|epub)$/i, '') || 'Livro';
+          const book = {
+            id: bookId, title, author: 'Desconhecido', file_path: localPath, cover_image: '',
+            total_pages: 0, last_read_page: '1', reading_status: 'not_started',
+            created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+          };
+          await invoke('library_add_book', { book });
+          importedBooks.push(book);
+        }
+        return importedBooks;
       }
-    } catch(e) { console.error("Error importing book", e); }
+    } catch(e) { console.error("Error importing book(s)", e); }
     return null;
   },
   getBookFile: async (id: string) => {
