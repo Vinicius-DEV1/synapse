@@ -17,8 +17,8 @@ function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any)
     transition,
     isDragging,
   } = useSortable({
-    id: page.id,
-    data: { type: 'pinned', page },
+    id: `pinned-sort-${page.id}`,
+    data: { type: 'pinned-sort', pageId: page.id, page },
   });
 
   const style = {
@@ -50,7 +50,7 @@ function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any)
           onCreatePage={onCreatePage}
           onUpdatePage={onUpdatePage}
           isSearchResult={false}
-          disableHierarchyDnD={true}
+          disableHierarchyDnD={false}
         />
       </div>
     </div>
@@ -126,17 +126,20 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     const { active, over } = e;
     if (!over) return;
 
-    const isPinnedDrag = active.data.current?.type === 'pinned' || pinnedPages.some((p: any) => p.id === active.id);
-    const isPinnedOver = over.data.current?.type === 'pinned' || pinnedPages.some((p: any) => p.id === over.id);
+    const isPinnedSortDrag = active.data.current?.type === 'pinned-sort';
+    const isPinnedSortOver = over.data.current?.type === 'pinned-sort';
 
-    if (isPinnedDrag && isPinnedOver) {
-      const draggedId = String(active.id);
-      const targetId = String(over.id);
+    if (isPinnedSortDrag && isPinnedSortOver) {
+      const draggedId = active.data.current.pageId;
+      const targetId = over.data.current.pageId;
       handleDropPinned(draggedId, targetId);
-    } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy') {
+    } else if (
+      active.data.current?.type === 'hierarchy' &&
+      (over.data.current?.type === 'hierarchy' || over.data.current?.type === 'pinned-sort')
+    ) {
       const draggedId = active.data.current.page.id;
-      const targetId = over.data.current.page.id;
-      if (draggedId !== targetId) {
+      const targetId = over.data.current?.page?.id || over.data.current?.pageId;
+      if (draggedId && targetId && draggedId !== targetId) {
         onUpdatePage(draggedId, { parent_id: targetId });
       }
     } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy-root') {
@@ -182,7 +185,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
               <Pin size={12} /> Fixados
             </div>
             <SortableContext
-              items={pinnedPages.slice(0, visiblePinnedCount).map((p: any) => p.id)}
+              items={pinnedPages.slice(0, visiblePinnedCount).map((p: any) => `pinned-sort-${p.id}`)}
               strategy={verticalListSortingStrategy}
             >
               {pinnedPages.slice(0, visiblePinnedCount).map((page: any, index: number) => (
