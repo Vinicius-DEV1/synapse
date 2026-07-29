@@ -344,6 +344,10 @@ export const LofiView: React.FC = () => {
 
   const handleDeleteCompletely = async (lofi: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!confirm(`Tem certeza que deseja apagar COMPLETAMENTE o lofi "${lofi.title}"?`)) {
+      setDeletingId(null);
+      return;
+    }
     try {
       await deleteLofiCompletely(lofi);
       await loadLofis();
@@ -360,6 +364,10 @@ export const LofiView: React.FC = () => {
 
   const handleDeleteLocal = async (lofi: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!confirm(`Tem certeza que deseja apagar LOCALMENTE o lofi "${lofi.title}"?`)) {
+      setDeletingId(null);
+      return;
+    }
     try {
       await deleteLofiLocal(lofi);
       await loadLofis();
