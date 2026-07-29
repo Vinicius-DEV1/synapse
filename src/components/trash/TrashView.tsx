@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Trash2, RefreshCcw, FileText, Layers, Folder, DollarSign, Lock, PlayCircle, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Trash2, RefreshCcw, FileText, Layers, Folder, DollarSign, Lock, PlayCircle, Loader2, AlertTriangle, AlertCircle, Music } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { hardDeleteLofiPermanently } from '../../services/lofi-manager';
 
 interface TrashItem {
   id: string;
@@ -40,6 +41,9 @@ export default function TrashView() {
         if (item.item_type === 'page') {
           dispatch({ type: 'LOAD_PAGES_REQUEST' });
         }
+        if (item.item_type === 'lofi') {
+          window.dispatchEvent(new Event('app-sync-trigger'));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -54,6 +58,21 @@ export default function TrashView() {
     
     setProcessingId(item.id);
     try {
+      if (item.item_type === 'lofi' && window.api?.sync) {
+        try {
+          const rows = await window.api.sync.getAllRows('lofi_items');
+          const lofi = rows?.find((r: any) => r.id === item.id);
+          if (lofi) {
+            await hardDeleteLofiPermanently(lofi);
+            setItems(prev => prev.filter(i => i.id !== item.id));
+            window.dispatchEvent(new Event('app-sync-trigger'));
+            return;
+          }
+        } catch (err) {
+          console.warn("Erro ao excluir permanentemente lofi:", err);
+        }
+      }
+
       if (window.api?.trash?.deletePermanently) {
         await window.api.trash.deletePermanently(item.id, item.item_type);
         setItems(prev => prev.filter(i => i.id !== item.id));
@@ -71,6 +90,18 @@ export default function TrashView() {
   const handleEmptyTrash = async () => {
     setIsEmptying(true);
     try {
+      if (window.api?.sync) {
+        try {
+          const rows = await window.api.sync.getAllRows('lofi_items');
+          const trashed = rows?.filter((r: any) => r.deleted_at);
+          if (trashed) {
+            for (const lofi of trashed) {
+              await hardDeleteLofiPermanently(lofi).catch(() => {});
+            }
+          }
+        } catch (err) {}
+      }
+
       if (window.api?.trash?.empty) {
         await window.api.trash.empty();
         setItems([]);
@@ -93,6 +124,7 @@ export default function TrashView() {
       case 'finance': return <DollarSign className="text-emerald-400" />;
       case 'vault': return <Lock className="text-orange-400" />;
       case 'video': return <PlayCircle className="text-rose-400" />;
+      case 'lofi': return <Music className="text-purple-400" />;
       default: return <FileText className="text-dark-subtext" />;
     }
   };
@@ -106,6 +138,7 @@ export default function TrashView() {
       case 'finance': return 'Transação';
       case 'vault': return 'Cofre';
       case 'video': return 'Vídeo';
+      case 'lofi': return 'Lofi';
       default: return 'Desconhecido';
     }
   };
@@ -118,6 +151,7 @@ export default function TrashView() {
       if (filter === 'files') return i.item_type === 'file';
       if (filter === 'finance') return i.item_type === 'finance';
       if (filter === 'vault') return i.item_type === 'vault';
+      if (filter === 'lofi') return i.item_type === 'lofi';
       return true;
     });
   }, [items, filter]);
@@ -182,7 +216,8 @@ export default function TrashView() {
             { id: 'flashcards', label: 'Flashcards' },
             { id: 'files', label: 'Arquivos' },
             { id: 'finance', label: 'Financeiro' },
-            { id: 'vault', label: 'Cofre' }
+            { id: 'vault', label: 'Cofre' },
+            { id: 'lofi', label: 'Lofi' }
           ].map(f => (
             <button
               key={f.id}
