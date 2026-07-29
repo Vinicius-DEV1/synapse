@@ -8,6 +8,8 @@ import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types'
 interface LibraryGridProps {
   books: LibraryBook[];
   collections: LibraryCollection[];
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
   onSelectBook: (book: LibraryBook) => void;
   onImportBook: () => void;
   onEditBook: (book: LibraryBook) => void;
@@ -24,6 +26,8 @@ const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon:
 export default function LibraryGrid({
   books,
   collections: _collections,
+  selectedIds,
+  onToggleSelect,
   onSelectBook,
   onImportBook,
   onEditBook,
@@ -67,7 +71,11 @@ export default function LibraryGrid({
         return (
           <div
             key={book.id}
-            className="group relative flex flex-col bg-dark-card border border-white/5 rounded-xl hover:border-brand-500/30 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-brand-500/10"
+            className={`group relative flex flex-col bg-dark-card border rounded-xl transition-all duration-300 cursor-pointer shadow-lg ${
+              selectedIds?.has(book.id)
+                ? 'border-brand-500 bg-brand-500/10 shadow-brand-500/20'
+                : 'border-white/5 hover:border-brand-500/30 hover:shadow-brand-500/10'
+            }`}
             style={{
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
@@ -75,6 +83,23 @@ export default function LibraryGrid({
           >
             {/* Cover */}
             <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl">
+              {/* Checkbox (multi-select) */}
+              {selectedIds && onToggleSelect && (
+                <div
+                  className="absolute top-2 left-2 z-20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelect(book.id);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(book.id)}
+                    onChange={() => {}}
+                    className="w-4 h-4 rounded border-white/30 bg-dark-bg/80 text-brand-500 focus:ring-brand-500 cursor-pointer shadow-md"
+                  />
+                </div>
+              )}
               {book.cover_image ? (
                 <img
                   src={book.cover_image}

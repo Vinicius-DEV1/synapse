@@ -9,11 +9,12 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
+      input.multiple = true;
       input.accept = 'application/pdf,application/epub+zip,.pdf,.epub';
       
       input.onchange = async (e: any) => {
-        const file = e.target.files[0];
-        if (!file) {
+        const files = Array.from(e.target.files || []) as File[];
+        if (!files.length) {
           window.dispatchEvent(new Event('library-upload-end'));
           return resolve(null);
         }
@@ -29,32 +30,37 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         }
         
         try {
-          const arrayBuffer = await file.arrayBuffer();
-          const bookId = generateId();
-          
-          const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
-          
-          const title = file.name.replace(/\.(pdf|epub)$/i, '');
-          const book = {
-            id: bookId,
-            title,
-            author: '',
-            file_path: remotePath, // Agora salvamos o caminho do Storage, não o local!
-            original_name: file.name,
-            cover_image: '',
-            total_pages: 0,
-            last_read_page: 1,
-            reading_status: 'not_started',
-            last_read_at: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deleted_at: null
-          };
-          
-          await db.put('library_books', book);
-          resolve(book);
+          const importedBooks = [];
+          for (const file of files) {
+            const arrayBuffer = await file.arrayBuffer();
+            const bookId = generateId();
+            
+            const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
+            
+            const title = file.name.replace(/\.(pdf|epub)$/i, '');
+            const book = {
+              id: bookId,
+              title,
+              author: '',
+              file_path: remotePath, // Agora salvamos o caminho do Storage, não o local!
+              original_name: file.name,
+              cover_image: '',
+              total_pages: 0,
+              last_read_page: 1,
+              reading_status: 'not_started',
+              last_read_at: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              deleted_at: null
+            };
+            
+            await db.put('library_books', book);
+            importedBooks.push(book);
+          }
+          window.dispatchEvent(new Event('library-upload-end'));
+          resolve(importedBooks);
         } catch (err) {
-          console.error("[Upload] ERRO ao importar arquivo:", err);
+          console.error("[Upload] ERRO ao importar arquivo(s):", err);
           window.dispatchEvent(new Event('library-upload-end'));
           reject(err);
         }

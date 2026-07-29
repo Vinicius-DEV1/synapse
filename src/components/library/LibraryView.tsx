@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  BookOpen, Loader2, Library, Cloud
+  BookOpen, Loader2, Library, Cloud, Trash2, CheckCircle2, Circle
 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { LibraryHeader } from './ui/LibraryHeader';
@@ -16,7 +16,7 @@ import { useStore } from '../../store/useStore';
 
 
 
-export default function LibraryView({ tabId }: { tabId: string }) {
+export default function LibraryView({ tabId }: { tabId?: string }) {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [collections, setCollections] = useState<LibraryCollection[]>([]);
   
@@ -44,6 +44,7 @@ export default function LibraryView({ tabId }: { tabId: string }) {
   const [editingCollectionName, setEditingCollectionName] = useState('');
   const [showDriveAuth, setShowDriveAuth] = useState(false);
   const [hasDriveAuth, setHasDriveAuth] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const checkDriveAuth = () => {
@@ -118,10 +119,13 @@ export default function LibraryView({ tabId }: { tabId: string }) {
     try {
       const imported = await window.api.library.importBook();
       if (imported) {
+        const list = Array.isArray(imported) ? imported : [imported];
         await loadData();
         setUploadResult({
           title: "Upload Concluído",
-          message: `O arquivo "${imported.title}" foi importado com sucesso para a nuvem.`,
+          message: list.length > 1
+            ? `${list.length} livros foram importados com sucesso para a nuvem.`
+            : `O arquivo "${list[0]?.title || 'Livro'}" foi importado com sucesso para a nuvem.`,
           type: "success"
         });
       }
@@ -144,6 +148,38 @@ export default function LibraryView({ tabId }: { tabId: string }) {
       await loadData();
     } catch (err) {
       console.error('Delete failed', err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.api?.library || selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    if (!confirm(`Tem certeza que deseja excluir ${count} ${count === 1 ? 'livro selecionado' : 'livros selecionados'}?`)) {
+      return;
+    }
+    try {
+      for (const id of selectedIds) {
+        await window.api.library.deleteBook(id);
+      }
+      setSelectedIds(new Set());
+      await loadData();
+    } catch (err) {
+      console.error('Bulk delete failed', err);
+      alert('Falha ao excluir alguns livros.');
+    }
+  };
+
+  const handleBulkStatusChange = async (status: ReadingStatus) => {
+    if (!window.api?.library || selectedIds.size === 0) return;
+    try {
+      for (const id of selectedIds) {
+        await window.api.library.updateBook({ id, reading_status: status });
+      }
+      setSelectedIds(new Set());
+      await loadData();
+    } catch (err) {
+      console.error('Bulk status update failed', err);
+      alert('Falha ao alterar status dos livros.');
     }
   };
 
@@ -327,6 +363,32 @@ export default function LibraryView({ tabId }: { tabId: string }) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
+        {filteredAndSorted.length > 0 && (
+          <div className="px-6 pt-3 flex items-center justify-between">
+            <button
+              onClick={() => {
+                if (selectedIds.size === filteredAndSorted.length) {
+                  setSelectedIds(new Set());
+                } else {
+                  setSelectedIds(new Set(filteredAndSorted.map(b => b.id)));
+                }
+              }}
+              className="flex items-center gap-2 text-xs text-dark-subtext hover:text-white transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={selectedIds.size > 0 && selectedIds.size === filteredAndSorted.length}
+                onChange={() => {}}
+                className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer"
+              />
+              <span>
+                {selectedIds.size === filteredAndSorted.length
+                  ? 'Desmarcar todos'
+                  : 'Selecionar todos os filtrados'}
+              </span>
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 size={32} className="text-brand-400 animate-spin" />
@@ -335,6 +397,15 @@ export default function LibraryView({ tabId }: { tabId: string }) {
           <LibraryGrid
             books={filteredAndSorted}
             collections={collections}
+            selectedIds={selectedIds}
+            onToggleSelect={(id) => {
+              setSelectedIds(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
             onSelectBook={handleSelectBook}
             onImportBook={handleImport}
             onEditBook={setEditingBook}
@@ -343,6 +414,55 @@ export default function LibraryView({ tabId }: { tabId: string }) {
           />
         )}
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-dark-card border border-white/15 shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 animate-slide-up">
+          <span className="text-sm font-semibold text-white">
+            {selectedIds.size} {selectedIds.size === 1 ? 'selecionado' : 'selecionados'}
+          </span>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-dark-subtext hover:text-white transition-colors"
+          >
+            Desmarcar
+          </button>
+          <div className="h-4 w-px bg-white/15" />
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleBulkStatusChange('reading')}
+              className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1 transition-colors"
+              title="Marcar como Lendo"
+            >
+              <BookOpen size={13} className="text-emerald-400" />
+              Lendo
+            </button>
+            <button
+              onClick={() => handleBulkStatusChange('finished')}
+              className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1 transition-colors"
+              title="Marcar como Concluído"
+            >
+              <CheckCircle2 size={13} className="text-brand-400" />
+              Concluído
+            </button>
+            <button
+              onClick={() => handleBulkStatusChange('not_started')}
+              className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1 transition-colors"
+              title="Marcar como Não iniciado"
+            >
+              <Circle size={13} className="text-gray-400" />
+              Não iniciado
+            </button>
+          </div>
+          <div className="h-4 w-px bg-white/15" />
+          <button
+            onClick={handleBulkDelete}
+            className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <Trash2 size={13} />
+            Excluir ({selectedIds.size})
+          </button>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingBook && (
