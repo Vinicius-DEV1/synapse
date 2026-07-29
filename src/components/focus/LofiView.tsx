@@ -208,7 +208,7 @@ function SortableItem({
               onClick={(e) => onDeleteCompletely(lofi, e)}
               className="text-left px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 transition-colors font-semibold"
             >
-              Apagar completamente
+              Mover para a Lixeira
             </button>
           </div>
         )}
@@ -300,7 +300,7 @@ export const LofiView: React.FC = () => {
   };
 
   const handleBulkDeleteCompletely = async () => {
-    if (!confirm(`Tem certeza que deseja apagar COMPLETAMENTE ${selectedIds.size} lofi(s)?`)) return;
+    if (!confirm(`Tem certeza que deseja mover para a Lixeira ${selectedIds.size} lofi(s)?`)) return;
     const ids = Array.from(selectedIds);
     for (const id of ids) {
       const item = lofis.find(l => l.id === id);
@@ -344,7 +344,7 @@ export const LofiView: React.FC = () => {
 
   const handleDeleteCompletely = async (lofi: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Tem certeza que deseja apagar COMPLETAMENTE o lofi "${lofi.title}"?`)) {
+    if (!confirm(`Tem certeza que deseja mover para a Lixeira o lofi "${lofi.title}"?`)) {
       setDeletingId(null);
       return;
     }
@@ -557,7 +557,7 @@ export const LofiView: React.FC = () => {
             className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
           >
             <Trash2 size={13} />
-            Apagar completamente ({selectedIds.size})
+            Mover para a Lixeira ({selectedIds.size})
           </button>
         </div>
       )}
