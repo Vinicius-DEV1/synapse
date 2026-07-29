@@ -1,43 +1,58 @@
 import { useState } from 'react';
-import { Search, Pin, Plus, Upload } from 'lucide-react';
+import { Search, Pin, Plus, Upload, GripVertical } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from '../../SidebarItem';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDraggable, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { useSortable, SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { usePageActions } from '../../../hooks/usePageActions';
 
-function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, index }: any) {
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: `pinned-${page.id}`,
+function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: page.id,
     data: { type: 'pinned', page },
   });
 
-  const { setNodeRef: setDropRef, isOver } = useDroppable({
-    id: `pinned-${page.id}`,
-    data: { type: 'pinned', page },
-  });
-
-  const setNodeRef = (node: HTMLElement | null) => {
-    setDragRef(node);
-    setDropRef(node);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className={`transition-all ${isOver ? 'ring-1 ring-brand-500 rounded-lg' : ''} ${isDragging ? 'opacity-50' : ''}`}
+      style={style}
+      className="group relative flex items-center transition-all rounded-lg hover:bg-white/[0.02]"
     >
-      <SidebarItem
-        page={page}
-        depth={0}
-        activePageId={activeTab?.pageId || null}
-        onCreatePage={onCreatePage}
-        onUpdatePage={onUpdatePage}
-        isSearchResult={false}
-        disableHierarchyDnD={true}
-      />
+      <div
+        {...attributes}
+        {...listeners}
+        className="opacity-0 group-hover:opacity-100 p-1 -mr-1 z-10 text-dark-subtext hover:text-white cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0"
+        title="Arrastar para reordenar fixado"
+      >
+        <GripVertical size={14} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <SidebarItem
+          page={page}
+          depth={0}
+          activePageId={activeTab?.pageId || null}
+          onCreatePage={onCreatePage}
+          onUpdatePage={onUpdatePage}
+          isSearchResult={false}
+          disableHierarchyDnD={true}
+        />
+      </div>
     </div>
   );
 }
@@ -83,10 +98,9 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     
     if (draggedIdx === -1 || targetIdx === -1) return;
     
-    const [draggedItem] = currentPinned.splice(draggedIdx, 1);
-    currentPinned.splice(targetIdx, 0, draggedItem);
+    const reordered = arrayMove(currentPinned, draggedIdx, targetIdx);
     
-    currentPinned.forEach((p: any, idx: number) => {
+    reordered.forEach((p: any, idx: number) => {
       if (p.pinned_order !== idx) {
         onUpdatePage(p.id, { pinned_order: idx });
       }
@@ -112,9 +126,12 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     const { active, over } = e;
     if (!over) return;
 
-    if (active.data.current?.type === 'pinned' && over.data.current?.type === 'pinned') {
-      const draggedId = active.data.current.page.id;
-      const targetId = over.data.current.page.id;
+    const isPinnedDrag = active.data.current?.type === 'pinned' || pinnedPages.some((p: any) => p.id === active.id);
+    const isPinnedOver = over.data.current?.type === 'pinned' || pinnedPages.some((p: any) => p.id === over.id);
+
+    if (isPinnedDrag && isPinnedOver) {
+      const draggedId = String(active.id);
+      const targetId = String(over.id);
       handleDropPinned(draggedId, targetId);
     } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy') {
       const draggedId = active.data.current.page.id;
@@ -164,16 +181,21 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
               <Pin size={12} /> Fixados
             </div>
-            {pinnedPages.slice(0, visiblePinnedCount).map((page: any, index: number) => (
-              <PinnedSidebarItem
-                key={page.id}
-                page={page}
-                index={index}
-                activeTab={activeTab}
-                onCreatePage={onCreatePage}
-                onUpdatePage={onUpdatePage}
-              />
-            ))}
+            <SortableContext
+              items={pinnedPages.slice(0, visiblePinnedCount).map((p: any) => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {pinnedPages.slice(0, visiblePinnedCount).map((page: any, index: number) => (
+                <PinnedSidebarItem
+                  key={page.id}
+                  page={page}
+                  index={index}
+                  activeTab={activeTab}
+                  onCreatePage={onCreatePage}
+                  onUpdatePage={onUpdatePage}
+                />
+              ))}
+            </SortableContext>
             {pinnedPages.length > visiblePinnedCount && (
               <button
                 onClick={() => setVisiblePinnedCount(prev => prev + 10)}

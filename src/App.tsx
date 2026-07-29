@@ -211,7 +211,16 @@ function AppContent() {
               onExportPage={handleExportPage}
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
               onRename={(id) => setRenamePageId(id)}
-              onTogglePin={(id) => handleUpdatePage(id, { is_pinned: contextPage?.is_pinned ? 0 : 1 })}
+              onTogglePin={(id) => {
+                const isPinning = !contextPage?.is_pinned;
+                const maxOrder = state.pages
+                  .filter(p => p.is_pinned)
+                  .reduce((max, p) => Math.max(max, p.pinned_order || 0), -1);
+                handleUpdatePage(id, {
+                  is_pinned: isPinning ? 1 : 0,
+                  pinned_order: isPinning ? maxOrder + 1 : 0,
+                });
+              }}
               onClose={() => dispatch({ type: 'HIDE_CONTEXT_MENU' })}
             />
           );
