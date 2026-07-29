@@ -33,6 +33,8 @@ interface SortableLofiItemProps {
   onRename: (lofi: LofiItem, newTitle: string) => void;
   formatDuration: (seconds?: number | null) => string;
   isManualSort: boolean;
+  isSelected: boolean;
+  onToggleSelect: (lofi: LofiItem, e: React.MouseEvent) => void;
 }
 
 function SortableItem({
@@ -45,7 +47,9 @@ function SortableItem({
   setDeletingId,
   onRename,
   formatDuration,
-  isManualSort
+  isManualSort,
+  isSelected,
+  onToggleSelect,
 }: SortableLofiItemProps) {
   const {
     attributes,
@@ -93,9 +97,24 @@ function SortableItem({
       className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
         isActive 
           ? 'bg-brand-500/10 border-brand-500/30 text-white' 
+          : isSelected
+          ? 'bg-brand-500/10 border-brand-500/30 text-white'
           : 'bg-dark-card border-white/5 text-dark-subtext hover:bg-white/5 hover:text-white'
       }`}
     >
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggleSelect(lofi, e); }}
+        className={`w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0 ${
+          isSelected
+            ? 'bg-brand-500 border-brand-500 text-white'
+            : 'border-white/20 bg-dark-bg/50 hover:border-white/40 text-transparent'
+        }`}
+        title="Selecionar para ações em lote"
+      >
+        <Check size={12} className={isSelected ? 'opacity-100' : 'opacity-0'} />
+      </button>
+
       {isManualSort && (
         <div 
           {...attributes} 
@@ -204,7 +223,9 @@ export const LofiView: React.FC = () => {
   const masterKey = state.moduleKeys['focus'];
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const [sortMode, setSortMode] = useState<'manual' | 'date' | 'alpha'>('manual');
 
@@ -225,39 +246,100 @@ export const LofiView: React.FC = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'audio/*,video/*';
+    input.multiple = true;
     input.onchange = async (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(e.target.files || []) as File[];
+      if (!files.length) return;
       
       setIsUploading(true);
-      setProgress(0);
-      try {
-        let duration: number | undefined;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadStatusText(`Enviando (${i + 1}/${files.length})`);
+        setProgress(0);
         try {
-          const url = URL.createObjectURL(file);
-          duration = await new Promise((resolve) => {
-            const audio = new Audio(url);
-            audio.onloadedmetadata = () => {
-              resolve(audio.duration);
-              URL.revokeObjectURL(url);
-            };
-            audio.onerror = () => resolve(undefined);
-          });
-        } catch (e) {
-          console.warn("Could not extract duration", e);
-        }
+          let duration: number | undefined;
+          try {
+            const url = URL.createObjectURL(file);
+            duration = await new Promise((resolve) => {
+              const audio = new Audio(url);
+              audio.onloadedmetadata = () => {
+                resolve(audio.duration);
+                URL.revokeObjectURL(url);
+              };
+              audio.onerror = () => resolve(undefined);
+            });
+          } catch (e) {
+            console.warn("Could not extract duration", e);
+          }
 
-        await uploadNewLofi(file, duration, masterKey, (p) => setProgress(p));
-        await loadLofis();
-        window.dispatchEvent(new Event('app-sync-trigger'));
-      } catch (err) {
-        console.error("Erro ao importar Lofi", err);
-        alert("Erro ao importar Lofi");
-      } finally {
-        setIsUploading(false);
+          await uploadNewLofi(file, duration, masterKey, (p) => setProgress(p));
+        } catch (err) {
+          console.error("Erro ao importar Lofi", err);
+          alert(`Erro ao importar Lofi: ${file.name}`);
+        }
       }
+      await loadLofis();
+      window.dispatchEvent(new Event('app-sync-trigger'));
+      setIsUploading(false);
+      setUploadStatusText('');
     };
     input.click();
+  };
+
+  const handleToggleSelect = (lofi: LofiItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(lofi.id)) {
+        next.delete(lofi.id);
+      } else {
+        next.add(lofi.id);
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDeleteCompletely = async () => {
+    if (!confirm(`Tem certeza que deseja apagar COMPLETAMENTE ${selectedIds.size} lofi(s)?`)) return;
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const item = lofis.find(l => l.id === id);
+      if (item) {
+        try {
+          await deleteLofiCompletely(item);
+          if (activeLofi?.id === item.id) {
+            setActiveLofi(null);
+            setIsPlayingLofi(false);
+          }
+        } catch (err) {
+          console.error("Erro ao deletar Lofi:", err);
+        }
+      }
+    }
+    setSelectedIds(new Set());
+    await loadLofis();
+    window.dispatchEvent(new Event('app-sync-trigger'));
+  };
+
+  const handleBulkDeleteLocal = async () => {
+    if (!confirm(`Tem certeza que deseja apagar LOCALMENTE ${selectedIds.size} lofi(s)?`)) return;
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const item = lofis.find(l => l.id === id);
+      if (item) {
+        try {
+          await deleteLofiLocal(item);
+          if (activeLofi?.id === item.id) {
+            setActiveLofi(null);
+            setIsPlayingLofi(false);
+          }
+        } catch (err) {
+          console.error("Erro ao deletar Lofi local:", err);
+        }
+      }
+    }
+    setSelectedIds(new Set());
+    await loadLofis();
   };
 
   const handleDeleteCompletely = async (lofi: any, e: React.MouseEvent) => {
@@ -372,13 +454,26 @@ export const LofiView: React.FC = () => {
             <option value="date">Mais Recentes</option>
             <option value="alpha">A-Z</option>
           </select>
+          <button
+            onClick={() => {
+              if (selectedIds.size === lofis.length && lofis.length > 0) {
+                setSelectedIds(new Set());
+              } else {
+                setSelectedIds(new Set(lofis.map(l => l.id)));
+              }
+            }}
+            disabled={lofis.length === 0}
+            className="px-3 py-2 rounded-lg border border-white/10 bg-dark-card text-dark-subtext hover:text-white text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {selectedIds.size === lofis.length && lofis.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+          </button>
           <button 
             onClick={handleImport}
             disabled={isUploading}
             className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50"
           >
             {isUploading ? (
-              <span>Enviando {Math.round(progress)}%</span>
+              <span>{uploadStatusText || `Enviando ${Math.round(progress)}%`}</span>
             ) : (
               <>
                 <Plus size={16} />
@@ -420,6 +515,8 @@ export const LofiView: React.FC = () => {
                     onRename={handleRename}
                     formatDuration={formatDuration}
                     isManualSort={sortMode === 'manual'}
+                    isSelected={selectedIds.has(lofi.id)}
+                    onToggleSelect={handleToggleSelect}
                   />
                 ))}
               </div>
@@ -427,6 +524,35 @@ export const LofiView: React.FC = () => {
           </DndContext>
         )}
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-dark-card border border-white/15 shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 animate-slide-up">
+          <span className="text-sm font-semibold text-white">
+            {selectedIds.size} {selectedIds.size === 1 ? 'selecionado' : 'selecionados'}
+          </span>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-dark-subtext hover:text-white transition-colors"
+          >
+            Desmarcar
+          </button>
+          <div className="h-4 w-px bg-white/15" />
+          <button
+            onClick={handleBulkDeleteLocal}
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Trash2 size={13} />
+            Apagar localmente ({selectedIds.size})
+          </button>
+          <button
+            onClick={handleBulkDeleteCompletely}
+            className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <Trash2 size={13} />
+            Apagar completamente ({selectedIds.size})
+          </button>
+        </div>
+      )}
     </div>
   );
 };
