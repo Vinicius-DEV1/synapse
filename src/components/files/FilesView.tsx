@@ -24,11 +24,14 @@ export default function FilesView() {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FileFolder | undefined>(undefined);
   const [itemToDelete, setItemToDelete] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
+  const [itemsToDelete, setItemsToDelete] = useState<Array<{ item: FileItem | FileFolder, isFolder: boolean }> | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: FileItem | FileFolder, isFolder: boolean } | null>(null);
   const [itemToView, setItemToView] = useState<FileItem | null>(null);
   const [itemToInfo, setItemToInfo] = useState<FileItem | null>(null);
   const [itemToRename, setItemToRename] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
   const [itemToMove, setItemToMove] = useState<{ item: FileItem | FileFolder, isFolder: boolean } | null>(null);
+  const [itemsToMove, setItemsToMove] = useState<Array<{ item: FileItem | FileFolder, isFolder: boolean }> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   
   const loadData = async () => {
@@ -168,63 +171,143 @@ export default function FilesView() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="bg-white/5 rounded-lg border border-white/5 overflow-hidden">
              <table className="w-full text-sm text-left">
-               <thead className="bg-white/5 text-dark-subtext text-xs uppercase">
-                 <tr>
-                   <th className="px-4 py-3 font-medium">Nome</th>
-                   <th className="px-4 py-3 font-medium w-24">Tipo</th>
-                   <th className="px-4 py-3 font-medium w-32">Tamanho</th>
-                   <th className="px-4 py-3 font-medium w-40">Modificado</th>
-                   <th className="px-4 py-3 font-medium w-32">Origem</th>
-                   <th className="px-4 py-3 font-medium w-16 text-center">Ações</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-white/5">
-                 {files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).length === 0 ? (
-                   <tr>
-                     <td colSpan={6} className="px-4 py-8 text-center text-dark-subtext">
-                       Nenhum arquivo encontrado nesta pasta.
-                     </td>
-                   </tr>
-                 ) : (
-                   files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).map(file => (
-                     <tr 
-                       key={file.id} 
-                       className="hover:bg-white/5 transition-colors group cursor-pointer"
-                       onDoubleClick={() => setItemToView(file)}
+                <thead>
+                  <tr className="bg-white/5 text-dark-subtext text-xs uppercase">
+                    <th className="px-4 py-3 font-medium w-10">
+                      <input
+                        type="checkbox"
+                        checked={
+                          files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).length > 0 &&
+                          selectedIds.size === files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).length
+                        }
+                        onChange={() => {
+                          const currentFiles = files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId);
+                          if (selectedIds.size === currentFiles.length) {
+                            setSelectedIds(new Set());
+                          } else {
+                            setSelectedIds(new Set(currentFiles.map(f => f.id)));
+                          }
+                        }}
+                        className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-medium">Nome</th>
+                    <th className="px-4 py-3 font-medium w-24">Tipo</th>
+                    <th className="px-4 py-3 font-medium w-32">Tamanho</th>
+                    <th className="px-4 py-3 font-medium w-40">Modificado</th>
+                    <th className="px-4 py-3 font-medium w-32">Origem</th>
+                    <th className="px-4 py-3 font-medium w-16 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-dark-subtext">
+                        Nenhum arquivo encontrado nesta pasta.
+                      </td>
+                    </tr>
+                  ) : (
+                    files.filter(f => selectedFolderId === null || f.folder_id === selectedFolderId).map(file => (
+                      <tr 
+                        key={file.id} 
+                        className={`hover:bg-white/5 transition-colors group cursor-pointer ${
+                          selectedIds.has(file.id) ? 'bg-brand-500/10' : ''
+                        }`}
+                        onDoubleClick={() => setItemToView(file)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           setContextMenu({ x: e.clientX, y: e.clientY, item: file, isFolder: false });
                         }}
-                     >
-                       <td className="px-4 py-3 flex items-center gap-3">
-                         <FileText size={18} className="text-blue-400" />
-                         <span className="truncate max-w-[300px]" title={file.name}>{file.name}</span>
-                       </td>
-                       <td className="px-4 py-3 text-dark-subtext uppercase text-xs">{file.file_type}</td>
-                       <td className="px-4 py-3 text-dark-subtext">{(file.file_size / 1024 / 1024).toFixed(2)} MB</td>
-                       <td className="px-4 py-3 text-dark-subtext">{new Date(file.updated_at || Date.now()).toLocaleDateString()}</td>
-                       <td className="px-4 py-3">
-                         {/* Origin tag */}
-                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-xs text-dark-subtext border border-white/5">
-                           ☁️ Drive
-                         </span>
-                       </td>
-                       <td className="px-4 py-3 text-center">
-                         <button 
-                           onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, item: file, isFolder: false }); }}
-                           className="p-1 text-dark-subtext hover:text-white rounded transition-colors opacity-0 group-hover:opacity-100"
-                         >
-                           <MoreVertical size={16} />
-                         </button>
-                       </td>
-                     </tr>
-                   ))
-                 )}
-               </tbody>
-             </table>
-          </div>
+                      >
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(file.id)}
+                            onChange={() => {
+                              setSelectedIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(file.id)) next.delete(file.id);
+                                else next.add(file.id);
+                                return next;
+                              });
+                            }}
+                            className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3 flex items-center gap-3">
+                          <FileText size={18} className="text-blue-400" />
+                          <span className="truncate max-w-[300px]" title={file.name}>{file.name}</span>
+                        </td>
+                        <td className="px-4 py-3 text-dark-subtext uppercase text-xs">{file.file_type}</td>
+                        <td className="px-4 py-3 text-dark-subtext">{(file.file_size / 1024 / 1024).toFixed(2)} MB</td>
+                        <td className="px-4 py-3 text-dark-subtext">{new Date(file.updated_at || Date.now()).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          {/* Origin tag */}
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-xs text-dark-subtext border border-white/5">
+                            ☁️ Drive
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, item: file, isFolder: false }); }}
+                            className="p-1 text-dark-subtext hover:text-white rounded transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+           </div>
         </div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-dark-card border border-white/15 shadow-2xl rounded-2xl px-5 py-3 flex items-center gap-4 animate-slide-up">
+          <span className="text-sm font-semibold text-white">
+            {selectedIds.size} {selectedIds.size === 1 ? 'selecionado' : 'selecionados'}
+          </span>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-dark-subtext hover:text-white transition-colors"
+          >
+            Desmarcar
+          </button>
+          <div className="h-4 w-px bg-white/15" />
+          <button
+            onClick={() => {
+              const items = Array.from(selectedIds)
+                .map(id => {
+                  const f = files.find(x => x.id === id);
+                  return f ? { item: f, isFolder: false } : null;
+                })
+                .filter(Boolean) as Array<{ item: FileItem | FileFolder, isFolder: boolean }>;
+              setItemsToMove(items);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <FolderUp size={13} />
+            Mover ({selectedIds.size})
+          </button>
+          <button
+            onClick={() => {
+              const items = Array.from(selectedIds)
+                .map(id => {
+                  const f = files.find(x => x.id === id);
+                  return f ? { item: f, isFolder: false } : null;
+                })
+                .filter(Boolean) as Array<{ item: FileItem | FileFolder, isFolder: boolean }>;
+              setItemsToDelete(items);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <X size={13} />
+            Excluir ({selectedIds.size})
+          </button>
+        </div>
+      )}
 
       {showUploadModal && (
         <FileUploadModal 
@@ -250,13 +333,16 @@ export default function FilesView() {
         />
       )}
       
-      {itemToDelete && (
+      {(itemToDelete || itemsToDelete) && (
         <DeleteModal
-          item={itemToDelete.item}
-          isFolder={itemToDelete.isFolder}
-          onClose={() => setItemToDelete(null)}
+          item={itemToDelete?.item}
+          isFolder={itemToDelete?.isFolder}
+          items={itemsToDelete || undefined}
+          onClose={() => { setItemToDelete(null); setItemsToDelete(null); }}
           onDeleted={() => {
             setItemToDelete(null);
+            setItemsToDelete(null);
+            setSelectedIds(new Set());
             loadData();
           }}
         />
@@ -297,20 +383,24 @@ export default function FilesView() {
         />
       )}
 
-      {itemToMove && (
+      {(itemToMove || itemsToMove) && (
         <MoveModal
-          item={itemToMove.item}
-          isFolder={itemToMove.isFolder}
+          item={itemToMove?.item}
+          isFolder={itemToMove?.isFolder}
+          items={itemsToMove || undefined}
           folders={folders}
-          onClose={() => setItemToMove(null)}
+          onClose={() => { setItemToMove(null); setItemsToMove(null); }}
           onMove={async (id, targetFolderId, isFolder) => {
             if (window.api && window.api.files) {
               if (isFolder) {
-                const folder = itemToMove.item as FileFolder;
-                await window.api.files.folders.update({ ...folder, parent_id: targetFolderId });
+                const folder = folders.find(f => f.id === id);
+                if (folder) {
+                  await window.api.files.folders.update({ ...folder, parent_id: targetFolderId });
+                }
               } else {
                 await window.api.files.move(id, targetFolderId);
               }
+              setSelectedIds(new Set());
               loadData();
             }
           }}

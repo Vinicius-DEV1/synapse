@@ -1,40 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Folder, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 
 interface MoveModalProps {
-  item: FileItem | FileFolder;
-  isFolder: boolean;
+  item?: FileItem | FileFolder;
+  isFolder?: boolean;
+  items?: Array<{ item: FileItem | FileFolder; isFolder: boolean }>;
   folders: FileFolder[];
   onClose: () => void;
   onMove: (id: string, targetFolderId: string | null, isFolder: boolean) => Promise<void>;
 }
 
-export default function MoveModal({ item, isFolder, folders, onClose, onMove }: MoveModalProps) {
+export default function MoveModal({ item, isFolder, items, folders, onClose, onMove }: MoveModalProps) {
+  const list = items || (item ? [{ item, isFolder: !!isFolder }] : []);
+  const initialFolderId = list[0]
+    ? (list[0].isFolder ? (list[0].item as FileFolder).parent_id || null : (list[0].item as FileItem).folder_id || null)
+    : null;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
-    isFolder ? (item as FileFolder).parent_id || null : (item as FileItem).folder_id || null
-  );
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
 
   // Filtramos as pastas válidas (uma pasta não pode ser movida para dentro dela mesma)
   const validFolders = folders.filter(f => {
-    if (!isFolder) return true;
-    return f.id !== item.id;
+    return !list.some(entry => entry.isFolder && entry.item.id === f.id);
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentFolderId = isFolder ? (item as FileFolder).parent_id || null : (item as FileItem).folder_id || null;
-    
-    if (selectedFolderId === currentFolderId) {
-      onClose();
-      return;
-    }
-    
     setIsSubmitting(true);
     try {
-      await onMove(item.id, selectedFolderId, isFolder);
+      for (const entry of list) {
+        const currentFolderId = entry.isFolder ? (entry.item as FileFolder).parent_id || null : (entry.item as FileItem).folder_id || null;
+        if (selectedFolderId !== currentFolderId) {
+          await onMove(entry.item.id, selectedFolderId, entry.isFolder);
+        }
+      }
       onClose();
     } catch (err) {
       console.error("Failed to move:", err);
