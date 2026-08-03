@@ -188,6 +188,14 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [loadLofis]);
 
   // loadData is called by AppContent when authenticated
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      loadLofis();
+      loadData();
+    };
+    window.addEventListener('caderno-sync-complete', handleSyncComplete);
+    return () => window.removeEventListener('caderno-sync-complete', handleSyncComplete);
+  }, [loadLofis, loadData]);
 
   // Alarms check
   useEffect(() => {

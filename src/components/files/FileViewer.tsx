@@ -86,6 +86,47 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     );
   }
 
+  // Para PDFs, layout full-screen sem barra extra (o iframe já tem toolbar própria)
+  if (isPdf) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-black">
+        {/* Barra compacta flutuante sobre o PDF */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-dark-bg/80 backdrop-blur-md border border-white/10 rounded-lg px-2 py-1 shadow-lg">
+          <span className="text-xs text-dark-subtext font-medium truncate max-w-48 px-1" title={item.name}>
+            {item.name}
+          </span>
+          {objectUrl && (
+            <a 
+              href={objectUrl} 
+              download={item.name}
+              className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              title="Download"
+            >
+              <Download size={16} />
+            </a>
+          )}
+          <button 
+            onClick={onClose} 
+            className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            title="Fechar"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {!objectUrl ? (
+          <div className="flex-1 flex items-center justify-center text-dark-subtext animate-pulse">Carregando PDF...</div>
+        ) : (
+          <iframe 
+            src={objectUrl} 
+            className="w-full h-full bg-white"
+            title={item.name}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md">
       <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/50">
@@ -116,12 +157,6 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             src={objectUrl} 
             alt={item.name} 
             className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          />
-        ) : isPdf ? (
-          <iframe 
-            src={objectUrl} 
-            className="w-full h-full rounded-lg bg-white"
-            title={item.name}
           />
         ) : isText ? (
           <div className="w-full h-full max-w-4xl bg-dark-card border border-white/10 rounded-xl shadow-2xl p-6 overflow-auto">

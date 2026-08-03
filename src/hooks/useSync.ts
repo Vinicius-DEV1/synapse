@@ -82,6 +82,7 @@ export function useSync(isAuth: boolean, masterKey: string | null, loadPages: ()
         try {
           await withTimeout(pullAllFromCloud(masterKey), 120_000);
           loadPages();
+          window.dispatchEvent(new CustomEvent('caderno-sync-complete'));
           await withTimeout(
             Promise.all([
               pushAllToCloud(masterKey),

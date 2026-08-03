@@ -224,6 +224,14 @@
   border-top-color: #8b5cf6;
 }
 
+.file-widget.ProseMirror-selectednode > div,
+.page-reference.ProseMirror-selectednode {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+}
+
 /* Animations */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }

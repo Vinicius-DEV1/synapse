@@ -439,8 +439,9 @@ declare global {
       };
       backup?: {
         selectFolder: () => Promise<string | null>;
-        startBackup: (options: { destination: string, type: 'encrypted' | 'decrypted', includeMedia: boolean, driveToken?: string, rawKey?: string }) => Promise<{ success: boolean; error?: string }>;
+        startBackup: (options: { destination: string, type: 'encrypted' | 'decrypted', includeMedia: boolean, driveToken?: string }) => Promise<{ success: boolean; message?: string }>;
         onLog: (callback: (data: { message: string, progress?: number }) => void) => () => void;
+        cancelBackup: () => Promise<boolean>;
       };
       files?: {
         getAll: () => Promise<any[]>;

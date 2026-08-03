@@ -25,6 +25,18 @@ export default function FileWidgetNodeView(props: any) {
     }
   }, [fileId]);
 
+  // Escuta evento de delete via teclado (Backspace/Delete) para mostrar modal de confirmação
+  useEffect(() => {
+    const handleDeleteRequest = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.fileId === fileId) {
+        setShowDeleteConfirm(true);
+      }
+    };
+    window.addEventListener('file-widget-delete-request', handleDeleteRequest);
+    return () => window.removeEventListener('file-widget-delete-request', handleDeleteRequest);
+  }, [fileId]);
+
   const getIcon = () => {
     switch(fileType) {
       case 'pdf': return <FileText size={16} className="text-blue-400" />;
@@ -82,7 +94,7 @@ export default function FileWidgetNodeView(props: any) {
             // Should probably emit an event to navigate to that folder inside the module
             window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
           } else if (fileType === 'pdf' && fileItem) {
-            setShowFloatingViewer(true);
+            setShowViewer(true);
           } else {
             if (fileItem) setShowViewer(true);
             else alert("O arquivo ainda está sendo carregado ou não foi encontrado.");
