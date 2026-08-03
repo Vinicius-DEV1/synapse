@@ -131,6 +131,13 @@ export function VideoControlsOverlay({
             max={duration || 100}
             value={progress}
             onChange={handleSeek}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.target as HTMLElement).blur();
+              }
+            }}
             className="flex-1 h-1.5 mx-2 bg-white/30 rounded-full appearance-none cursor-pointer accent-brand-500 hover:h-2 transition-all"
           />
 
