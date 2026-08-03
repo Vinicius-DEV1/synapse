@@ -114,8 +114,10 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       } else if (e.code === 'KeyA' || e.key === 'a') {
         setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1);
       } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
         seekBy(-5);
       } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
         seekBy(5);
       }
     };
