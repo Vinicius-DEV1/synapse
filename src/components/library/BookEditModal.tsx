@@ -24,6 +24,33 @@ const PRESET_COLORS = [
   '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
 ];
 
+const compressBase64Image = (base64: string, maxWidth = 300, maxHeight = 400, quality = 0.75): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(base64);
+      }
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+};
+
 export default function BookEditModal({
   book,
   allBooks,
@@ -74,9 +101,10 @@ export default function BookEditModal({
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const base64 = event.target?.result as string;
-      setCoverImage(base64);
+      const compressed = await compressBase64Image(base64);
+      setCoverImage(compressed);
     };
     reader.readAsDataURL(file);
     setShowCoverMenu(false);
@@ -98,7 +126,8 @@ export default function BookEditModal({
       }
       
       const base64 = await extractPdfCover(fileData);
-      setCoverImage(base64);
+      const compressed = await compressBase64Image(base64);
+      setCoverImage(compressed);
     } catch (err) {
       console.error('Falha ao extrair capa', err);
       alert('Erro ao extrair capa do PDF. O arquivo pode estar corrompido, não baixado, ou não suportado.');
