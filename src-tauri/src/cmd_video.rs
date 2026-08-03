@@ -4,6 +4,11 @@ use std::fs;
 use std::process::Command;
 use serde_json::Value;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let videos_dir = app_data_dir.join("videos");
@@ -109,10 +114,11 @@ pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, St
         local_path.clone()
     };
     
-    let output = Command::new(ffprobe_path)
-        .args(["-v", "quiet", "-print_format", "json", "-show_streams", &input_path])
-        .output()
-        .map_err(|e| e.to_string())?;
+    let mut cmd = Command::new(ffprobe_path);
+    cmd.args(["-v", "quiet", "-print_format", "json", "-show_streams", &input_path]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd.output().map_err(|e| e.to_string())?;
         
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);
