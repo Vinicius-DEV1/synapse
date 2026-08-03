@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
@@ -77,7 +77,10 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       case 'vault': return <Shield size={20} className="text-brand-400" />;
       case 'practice': return <Mic size={20} className="text-brand-400" />;
       case 'settings': return <Settings size={20} className="text-brand-400" />;
-      default: return <Wallet size={20} className="text-brand-400" />;
+      case 'trash': return <Trash2 size={20} className="text-brand-400" />;
+      case 'diagrams': return <Network size={20} className="text-brand-400" />;
+      case 'finance': return <Wallet size={20} className="text-brand-400" />;
+      default: return <Home size={20} className="text-brand-400" />;
     }
   };
 
@@ -95,7 +98,10 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       case 'vault': return 'Cofre';
       case 'practice': return 'Prática';
       case 'settings': return 'Configurações';
-      default: return 'Finanças';
+      case 'trash': return 'Lixeira';
+      case 'diagrams': return 'Diagramas';
+      case 'finance': return 'Finanças';
+      default: return 'Início';
     }
   };
 
