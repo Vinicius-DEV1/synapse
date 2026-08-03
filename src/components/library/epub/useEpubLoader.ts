@@ -78,25 +78,38 @@ export function useEpubLoader(
            }
         }
 
-        // Se não conseguiu via stream local (seja Web ou falha no Desktop), 
-        // usa o getBookFile que lida nativamente com Drive/Storage/Base64.
         if (!arrayBuffer && window.api?.library) {
             console.log("Obtendo arquivo do livro via API nativa/web...");
             const res = await window.api.library.getBookFile(book.id);
-            if (!res) throw new Error("Arquivo não encontrado no banco de dados nem na nuvem.");
-            
-            if (res instanceof ArrayBuffer) {
-              arrayBuffer = res;
-            } else if (typeof res === 'string') {
-              const binaryString = atob(res);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-              arrayBuffer = bytes.buffer;
+            if (res) {
+              if (res instanceof ArrayBuffer) {
+                arrayBuffer = res;
+              } else if (typeof res === 'string') {
+                const binaryString = atob(res);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                arrayBuffer = bytes.buffer;
+              }
             }
         }
 
+        if (!arrayBuffer && book.drive_file_id) {
+          console.log("Baixando EPUB do Google Drive: ", book.drive_file_id);
+          const token = await getValidAccessToken();
+          if (token) {
+             const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+             if (masterKey) {
+               arrayBuffer = await decryptFile(encryptedData, masterKey);
+             } else {
+               arrayBuffer = encryptedData;
+             }
+          } else {
+             throw new Error("Você precisa conectar sua conta do Google Drive primeiro para baixar este livro.");
+          }
+        }
+
         if (!arrayBuffer) {
-          throw new Error('Nenhum arquivo encontrado para este livro.');
+          throw new Error("Arquivo não encontrado no banco de dados nem na nuvem. Verifique se o arquivo foi sincronizado na nuvem.");
         }
 
         if (!active) return;
