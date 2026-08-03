@@ -5,6 +5,11 @@ use std::process::{Command, Stdio};
 use serde_json::Value;
 use std::io::{BufReader, BufRead};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let videos_dir = app_data_dir.join("videos");
@@ -23,9 +28,11 @@ pub async fn youtube_fetch_info(url: String, app: AppHandle) -> Result<Value, St
     let ytdlp_path = get_bin_path(&app, "yt-dlp.exe");
     
     // spawning yt-dlp -j to get JSON info
-    let output = Command::new(ytdlp_path)
-        .args(["-j", &url])
-        .output()
+    let mut cmd = Command::new(ytdlp_path);
+    cmd.args(["-j", &url]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd.output()
         .map_err(|e| e.to_string())?;
         
     if output.status.success() {
@@ -66,10 +73,12 @@ pub async fn youtube_download(url: String, filename: String, quality: String, su
         }
     }
     
-    let mut child = Command::new(ytdlp_path)
-        .args(&args)
-        .stdout(Stdio::piped())
-        .spawn()
+    let mut child = Command::new(ytdlp_path);
+    child.args(&args)
+        .stdout(Stdio::piped());
+    #[cfg(target_os = "windows")]
+    child.creation_flags(CREATE_NO_WINDOW);
+    let mut child = child.spawn()
         .map_err(|e| e.to_string())?;
         
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
@@ -119,9 +128,11 @@ pub async fn youtube_download(url: String, filename: String, quality: String, su
 #[tauri::command]
 pub async fn youtube_fetch_playlist_info(url: String, app: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let ytdlp_path = std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join("yt-dlp.exe");
-    let output = std::process::Command::new(ytdlp_path)
-        .args(["-J", &url])
-        .output()
+    let mut cmd = std::process::Command::new(ytdlp_path);
+    cmd.args(["-J", &url]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd.output()
         .map_err(|e| e.to_string())?;
         
     if output.status.success() {

@@ -3,6 +3,11 @@ use std::path::PathBuf;
 use std::fs;
 use std::process::Command;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[allow(dead_code)]
 fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
@@ -46,8 +51,8 @@ pub fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i
         video_path.clone()
     };
     
-    let output = Command::new(ffmpeg_path)
-        .args([
+    let mut cmd = Command::new(ffmpeg_path);
+    cmd.args([
             "-y",
             "-i", &input_path,
             "-ss", &start_sec.to_string(),
@@ -56,8 +61,10 @@ pub fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i
             "-c:a", "libmp3lame",
             "-q:a", "2", // high quality VBR
             &temp_path.to_string_lossy().to_string()
-        ])
-        .output()
+        ]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd.output()
         .map_err(|e| e.to_string())?;
         
     if output.status.success() || temp_path.exists() {
