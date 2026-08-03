@@ -17,6 +17,9 @@ use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio_util::io::ReaderStream;
 
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[derive(Clone)]
 pub struct StreamState {
     pub app_handle: AppHandle,
@@ -161,6 +164,12 @@ async fn stream_handler(
     
     cmd.stdout(Stdio::piped())
        .stderr(Stdio::null());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
 
     let mut child = match cmd.spawn() {
         Ok(c) => c,
