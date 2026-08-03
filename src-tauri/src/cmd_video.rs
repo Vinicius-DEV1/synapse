@@ -143,16 +143,17 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
         local_path.clone()
     };
     
-    let output = Command::new(ffmpeg_path)
-        .args([
+    let mut cmd2 = Command::new(ffmpeg_path);
+    cmd2.args([
             "-y", // overwrite
             "-i", &input_path,
             "-map", &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean map
             "-c:s", "webvtt",
             &vtt_out_path.to_string_lossy().to_string()
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+        ]);
+    #[cfg(target_os = "windows")]
+    cmd2.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd2.output().map_err(|e| e.to_string())?;
         
     if output.status.success() || vtt_out_path.exists() {
         let content = fs::read_to_string(&vtt_out_path).unwrap_or_default();
@@ -180,17 +181,18 @@ pub fn video_extract_audio(local_path: String, track_index: String, db_state: ta
         local_path.clone()
     };
     
-    let output = Command::new(ffmpeg_path)
-        .args([
+    let mut cmd3 = Command::new(ffmpeg_path);
+    cmd3.args([
             "-y",
             "-i", &input_path,
             "-map", &track_index,
             "-c:a", "aac",
             "-b:a", "128k",
             &temp_audio.to_string_lossy().to_string()
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+        ]);
+    #[cfg(target_os = "windows")]
+    cmd3.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd3.output().map_err(|e| e.to_string())?;
         
     if output.status.success() || temp_audio.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
@@ -229,8 +231,8 @@ pub fn video_remux_default_track(source_path: String, filename: String, track_in
         source_path.clone()
     };
     
-    let output = Command::new(ffmpeg_path)
-        .args([
+    let mut cmd4 = Command::new(ffmpeg_path);
+    cmd4.args([
             "-y",
             "-i", &input_path,
             "-map", "0:v",
@@ -239,9 +241,10 @@ pub fn video_remux_default_track(source_path: String, filename: String, track_in
             "-map", "0:s?",
             "-c", "copy",
             &temp_dest.to_string_lossy().to_string()
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+        ]);
+    #[cfg(target_os = "windows")]
+    cmd4.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd4.output().map_err(|e| e.to_string())?;
         
     if output.status.success() || temp_dest.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
@@ -288,15 +291,16 @@ pub fn video_convert_mp4(source_path: String, filename: String, db_state: tauri:
         source_path.clone()
     };
     
-    let output = Command::new(ffmpeg_path)
-        .args([
+    let mut cmd5 = Command::new(ffmpeg_path);
+    cmd5.args([
             "-y",
             "-i", &input_path,
             "-c", "copy",
             &temp_dest.to_string_lossy().to_string()
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+        ]);
+    #[cfg(target_os = "windows")]
+    cmd5.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd5.output().map_err(|e| e.to_string())?;
         
     if output.status.success() || temp_dest.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
