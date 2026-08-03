@@ -91,10 +91,24 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const seekBy = (seconds: number) => {
     if (videoRef.current) {
-      const newTime = Math.max(0, Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + seconds));
-      videoRef.current.currentTime = newTime;
-      if (audioRef.current) audioRef.current.currentTime = newTime;
-      setProgress(newTime);
+      const currentTime = progress; // use progress state which accounts for streamOffset
+      const maxDuration = duration || videoRef.current.duration || 0;
+      const newTime = Math.max(0, Math.min(maxDuration, currentTime + seconds));
+      
+      if (currentSrc.includes('/stream?')) {
+        // For encrypted streams, we need to change the URL with &start= 
+        const baseSrc = currentSrc.split('&start=')[0];
+        setStreamOffset(newTime);
+        setCurrentSrc(`${baseSrc}&start=${newTime}`);
+        setProgress(newTime);
+        if (!isPlaying) {
+          setIsPlaying(true);
+        }
+      } else {
+        videoRef.current.currentTime = newTime;
+        if (audioRef.current) audioRef.current.currentTime = newTime;
+        setProgress(newTime);
+      }
       resetControls();
     }
   };
