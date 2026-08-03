@@ -3,13 +3,20 @@ use std::process::Command;
 use crate::db::DbState;
 use serde_json::Value;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[tauri::command]
 pub fn drive_open_url(url: String) -> Result<(), String> {
     // Escapa a URL para o CMD para que o '&' não seja interpretado como novo comando
     let safe_url = url.replace("&", "^&");
-    Command::new("cmd")
-        .args(["/C", "start", "", &safe_url])
-        .spawn()
+    let mut cmd = Command::new("cmd");
+    cmd.args(["/C", "start", "", &safe_url]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd.spawn()
         .map_err(|e| format!("Falha ao abrir navegador: {}", e))?;
     Ok(())
 }
