@@ -167,7 +167,6 @@ async fn stream_handler(
 
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
