@@ -23,6 +23,7 @@ mod cmd_vault;
 mod cmd_practice;
 mod cmd_trash;
 mod cmd_diagrams;
+mod cmd_backup;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -239,7 +240,10 @@ pub fn run() {
         cmd_diagrams::diagrams_get_content,
         cmd_diagrams::diagrams_create,
         cmd_diagrams::diagrams_update,
-        cmd_diagrams::diagrams_delete
+        cmd_diagrams::diagrams_delete,
+        cmd_backup::backup_select_folder,
+        cmd_backup::backup_start,
+        cmd_backup::backup_cancel
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

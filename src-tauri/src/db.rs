@@ -19,7 +19,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT, focus_key_enc TEXT, files_key_enc TEXT, vault_key_enc TEXT);
          CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          
-         CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT);
+         CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT, progress REAL DEFAULT 0.0, last_watched_at DATETIME);
          CREATE TABLE IF NOT EXISTS lofis (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT);
          CREATE TABLE IF NOT EXISTS video_words (id TEXT PRIMARY KEY, video_id TEXT NOT NULL, word TEXT NOT NULL, context TEXT, timestamp REAL);
          CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, start_date TEXT, end_date TEXT);
@@ -46,9 +46,12 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, tags TEXT DEFAULT '[]', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME);
          CREATE TABLE IF NOT EXISTS anki_reviews (id TEXT PRIMARY KEY, card_id TEXT NOT NULL, rating INTEGER NOT NULL, duration INTEGER DEFAULT 0, review_time DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS anki_notes (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS anki_deck_settings (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, new_limit INTEGER DEFAULT 20, review_limit INTEGER DEFAULT 100, learning_steps TEXT, relearning_steps TEXT, fsrs_weights TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          
          CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS alarms (id TEXT PRIMARY KEY, time TEXT NOT NULL, label TEXT, sound TEXT DEFAULT 'bell', enabled BOOLEAN DEFAULT 1, days TEXT);
+         CREATE TABLE IF NOT EXISTS activity_logs (id TEXT PRIMARY KEY, module TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, date TEXT NOT NULL, duration_seconds INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          
          CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, name TEXT NOT NULL, file_type TEXT NOT NULL, file_size INTEGER DEFAULT 0, local_path TEXT, drive_file_id TEXT, folder_id TEXT, mime_type TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS file_folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, parent_id TEXT, color TEXT DEFAULT '#6366f1', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
@@ -101,10 +104,10 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     // Auto-migrate tables to have sync columns
     let tables_with_sync = vec![
         "videos", "lofis", "video_words", "calendar_events", "culture_items", "culture_episodes",
-        "anki_decks", "anki_cards", "anki_srs_state", "anki_reviews", "focus_sessions", "alarms",
+        "anki_decks", "anki_notes", "anki_cards", "anki_srs_state", "anki_reviews", "anki_deck_settings", "focus_sessions", "alarms",
         "page_history", "tutor_sessions", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
         "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
-        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched", "diagrams", "notifications"
+        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched", "diagrams", "notifications", "activity_logs"
     ];
     for t in tables_with_sync {
         let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);
@@ -113,6 +116,8 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     }
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN is_local INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN progress REAL DEFAULT 0.0", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN last_watched_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE lofis ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE lofis ADD COLUMN is_local INTEGER DEFAULT 0", []);
 

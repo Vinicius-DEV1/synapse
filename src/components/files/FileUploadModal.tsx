@@ -8,11 +8,14 @@ import { Portal } from '../ui/Portal';
 
 interface FileUploadModalProps {
   onClose: () => void;
-  onUploadComplete: (file: FileItem) => void;
-  currentFolderId: string | null;
+  onUploadComplete?: (file: FileItem) => void;
+  onUploaded?: (fileId: string, fileName: string, fileType: string, isEncrypted?: boolean) => void;
+  currentFolderId?: string | null;
+  isOpen?: boolean;
+  isLink?: boolean;
 }
 
-export default function FileUploadModal({ onClose, onUploadComplete, currentFolderId }: FileUploadModalProps) {
+export default function FileUploadModal({ onClose, onUploadComplete, onUploaded, currentFolderId = null }: FileUploadModalProps) {
   const { state } = useStore();
   const masterKey = state.moduleKeys['files'];
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -104,7 +107,11 @@ export default function FileUploadModal({ onClose, onUploadComplete, currentFold
         lastCreated = await window.api.files.create(fileRecord);
         setProgress(100);
       }
-      onUploadComplete(lastCreated);
+      if (onUploadComplete) {
+        onUploadComplete(lastCreated);
+      } else if (onUploaded && lastCreated) {
+        onUploaded(lastCreated.id, lastCreated.name, lastCreated.file_type, !!masterKey);
+      }
     } catch (err: any) {
       console.error("Upload error:", err);
       setError(err.message || 'Erro desconhecido ao enviar arquivo');

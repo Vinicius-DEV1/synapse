@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import FileWidgetNodeView from './FileWidgetNodeView';
 
 export interface FileWidgetOptions {
@@ -80,4 +81,54 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
       },
     }
   },
+
+  addKeyboardShortcuts() {
+    const nodeName = this.name;
+
+    return {
+      Backspace: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+
+        // Caso 1: Nó já está selecionado via NodeSelection
+        if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
+          const fileId = selection.node.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
+        // Caso 2: Cursor (TextSelection) logo após o atom inline — Backspace deletaria direto
+        const { $from } = selection;
+        if (selection.empty && $from.nodeBefore?.type.name === nodeName) {
+          const fileId = $from.nodeBefore.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
+        return false;
+      },
+      Delete: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+
+        // Caso 1: NodeSelection
+        if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
+          const fileId = selection.node.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
+        // Caso 2: Cursor logo antes do atom inline — Delete deletaria direto
+        const { $from } = selection;
+        if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
+          const fileId = $from.nodeAfter.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
+        return false;
+      },
+    };
+  },
 });
+

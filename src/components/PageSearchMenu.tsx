@@ -17,8 +17,13 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
 
   const filteredPages = state.pages.filter(p => {
     const q = localQuery.toLowerCase();
-    return p.title.toLowerCase().includes(q) || 
-           (p.content && p.content.toLowerCase().includes(q));
+    if (p.title.toLowerCase().includes(q)) return true;
+    // Busca em texto puro para evitar match em tags HTML
+    if (p.content) {
+      const plain = p.content.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+      return plain.toLowerCase().includes(q);
+    }
+    return false;
   });
 
   const options = [

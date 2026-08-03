@@ -8,8 +8,8 @@ import { Portal } from '../ui/Portal';
 
 interface FolderUploadModalProps {
   onClose: () => void;
-  onUploadComplete: () => void;
-  currentFolderId: string | null;
+  onUploadComplete?: () => void;
+  currentFolderId?: string | null;
 }
 
 interface UploadTask {
@@ -22,7 +22,7 @@ interface UploadTask {
   targetFolderId: string | null;
 }
 
-export default function FolderUploadModal({ onClose, onUploadComplete, currentFolderId }: FolderUploadModalProps) {
+export default function FolderUploadModal({ onClose, onUploadComplete, currentFolderId = null }: FolderUploadModalProps) {
   const { state } = useStore();
   const masterKey = state.moduleKeys['files'];
   const [tasks, setTasks] = useState<UploadTask[]>([]);
@@ -186,7 +186,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
     setIsUploading(false);
     setCurrentTaskIndex(-1);
     
-    if (allGood) {
+    if (allGood && onUploadComplete) {
       onUploadComplete();
     }
   };

@@ -367,11 +367,30 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         <FileUploadModal
           isOpen={true}
           onClose={() => setFileUploadModal(null)}
-          onUploaded={(fileId, fileName, fileType, isEncrypted) => {
+          onUploadComplete={(file) => {
+            if (editor && file) {
+              editor.chain().focus().insertContent({
+                type: 'fileWidget',
+                attrs: {
+                  fileId: file.id,
+                  name: file.name,
+                  fileType: file.file_type || 'other',
+                  isLink: fileUploadModal.isLink || false
+                }
+              }).run();
+            }
+            setFileUploadModal(null);
+          }}
+          onUploaded={(fileId, fileName, fileType) => {
             if (editor) {
               editor.chain().focus().insertContent({
                 type: 'fileWidget',
-                attrs: { fileId, fileName, fileType, isEncrypted }
+                attrs: {
+                  fileId,
+                  name: fileName,
+                  fileType,
+                  isLink: fileUploadModal.isLink || false
+                }
               }).run();
             }
             setFileUploadModal(null);

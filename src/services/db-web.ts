@@ -22,6 +22,7 @@ interface CadernoDBSchema extends DBSchema {
   culture_episodes: { key: string; value: any; indexes: { 'item_id': string } };
   focus_sessions: { key: string; value: any };
   alarms: { key: number; value: any };
+  activity_logs: { key: string; value: any };
   calendar_events: { key: string; value: any };
   notifications: { key: string; value: any };
   vault_groups: { key: string; value: any };
@@ -53,7 +54,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export async function getWebDb() {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 17, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 18, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -127,6 +128,9 @@ export async function getWebDb() {
         }
         if (!db.objectStoreNames.contains('alarms')) {
           db.createObjectStore('alarms', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('activity_logs')) {
+          db.createObjectStore('activity_logs', { keyPath: 'id' });
         }
         // Calendar
         if (!db.objectStoreNames.contains('calendar_events')) {
