@@ -212,7 +212,17 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Página Inicial</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">Resumo do dia, eventos ao vivo e revisões diárias.</div>
           </div>
-        ) : (
+        ) : activeModule === 'trash' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Lixeira do Sistema</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Restaure páginas e estações lofi ou exclua itens permanentemente.</div>
+          </div>
+        ) : activeModule === 'diagrams' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Editor de Diagramas</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">Crie, conecte e estruture fluxogramas visuais no painel principal.</div>
+          </div>
+        ) : activeModule === 'finance' ? (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
               <LayoutDashboard size={16} className="text-brand-400" />
@@ -227,6 +237,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <span>Desejos & Futuro</span>
             </button>
           </div>
+        ) : (
+          <div className="mt-2" />
         )}
 
         <div className="border-t border-white/5 flex flex-col mt-auto">
