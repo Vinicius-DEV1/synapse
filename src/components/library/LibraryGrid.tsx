@@ -142,7 +142,7 @@ export default function LibraryGrid({
               )}
             </div>
 
-            {/* Dropdown Menu - Movido para fora do cover para nÇœo ser cortado */}
+            {/* Dropdown Menu - Movido para fora do cover para não ser cortado */}
             {menuBookId === book.id && (
               <div
                 ref={menuRef}
@@ -171,7 +171,7 @@ export default function LibraryGrid({
                     className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
                     <Circle size={14} />
-                    Marcar como NÇœo iniciado
+                    Marcar como Não iniciado
                   </button>
                 )}
                 {book.reading_status !== 'reading' && (
