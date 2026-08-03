@@ -27,7 +27,13 @@ export function useVideoProgress(
 
   const saveProgress = async (currentTime: number) => {
     if (window.api?.sync && currentTime > 0) {
-      const updated = { ...video, progress: currentTime };
+      const now = new Date().toISOString();
+      const updated = { 
+        ...video, 
+        progress: currentTime,
+        last_watched_at: now,
+        updated_at: now 
+      };
       try {
         await window.api.sync.upsertRow('videos', updated);
       } catch (e) {
