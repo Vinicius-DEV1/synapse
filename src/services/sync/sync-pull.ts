@@ -263,12 +263,27 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 try {
                   await window.api.sync.upsertRow(table, rowToUpsert);
                 } catch (upsertErr: any) {
-                  if (upsertErr.message && upsertErr.message.includes('has no column named created_at')) {
-                    delete rowToUpsert.created_at;
-                    await window.api.sync.upsertRow(table, rowToUpsert);
-                  } else {
-                    throw upsertErr;
+                  // Generic handler: strip any unknown column and retry (up to 5 times)
+                  let retryRow = { ...rowToUpsert };
+                  let lastErr = upsertErr;
+                  for (let attempt = 0; attempt < 5; attempt++) {
+                    const colMatch = lastErr?.message?.match(/has no column named (\S+)/);
+                    if (colMatch) {
+                      delete retryRow[colMatch[1]];
+                      try {
+                        await window.api.sync.upsertRow(table, retryRow);
+                        // Update rowToUpsert to reflect what was actually saved
+                        Object.keys(rowToUpsert).forEach(k => { if (!(k in retryRow)) delete rowToUpsert[k]; });
+                        lastErr = null;
+                        break;
+                      } catch (retryErr: any) {
+                        lastErr = retryErr;
+                      }
+                    } else {
+                      break;
+                    }
                   }
+                  if (lastErr) throw lastErr;
                 }
                 // Atualizar o mapa local com o valor que acabamos de salvar
                 localMap!.set(docSnap.id, rowToUpsert);
