@@ -43,8 +43,6 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   } | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const [streamOffset, setStreamOffset] = useState(0);
   const [currentSrc, setCurrentSrc] = useState(src);
 
   useTimeTracker({
@@ -56,7 +54,6 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   useEffect(() => {
     setCurrentSrc(src);
-    setStreamOffset(0);
   }, [src]);
 
   const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef);
@@ -89,44 +86,15 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     }
   };
 
-  const isTimeBuffered = (time: number): boolean => {
-    if (!videoRef.current) return false;
-    const buffered = videoRef.current.buffered;
-    for (let i = 0; i < buffered.length; i++) {
-      if (time >= buffered.start(i) && time <= buffered.end(i)) {
-        return true;
-      }
-    }
-    return false;
-  };
-
   const seekBy = (seconds: number) => {
     if (videoRef.current) {
       const currentTime = progress;
       const maxDuration = duration || videoRef.current.duration || 0;
       const newTime = Math.max(0, Math.min(maxDuration, currentTime + seconds));
       
-      if (currentSrc.includes('/stream?')) {
-        // For encrypted streams: check if target is within buffered data
-        const localTime = newTime - streamOffset;
-        if (localTime >= 0 && isTimeBuffered(localTime)) {
-          // Data already in buffer — instant seek, no reload
-          videoRef.current.currentTime = localTime;
-          if (audioRef.current) audioRef.current.currentTime = localTime;
-          setProgress(newTime);
-        } else {
-          // Outside buffer — reload stream from new position
-          const baseSrc = currentSrc.split('&start=')[0];
-          setStreamOffset(newTime);
-          setCurrentSrc(`${baseSrc}&start=${newTime}`);
-          setProgress(newTime);
-          if (!isPlaying) setIsPlaying(true);
-        }
-      } else {
-        videoRef.current.currentTime = newTime;
-        if (audioRef.current) audioRef.current.currentTime = newTime;
-        setProgress(newTime);
-      }
+      videoRef.current.currentTime = newTime;
+      if (audioRef.current) audioRef.current.currentTime = newTime;
+      setProgress(newTime);
       resetControls();
     }
   };
@@ -174,7 +142,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      const time = videoRef.current.currentTime + streamOffset;
+      const time = videoRef.current.currentTime;
       setProgress(time);
       if (cues.length > 0) {
         const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
@@ -197,7 +165,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const handleClose = async () => {
     if (videoRef.current) {
-      await saveProgress(videoRef.current.currentTime + streamOffset);
+      await saveProgress(videoRef.current.currentTime);
     }
     onClose();
   };
@@ -205,18 +173,8 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = Number(e.target.value);
     if (videoRef.current) {
-      if (currentSrc.includes('/stream?')) {
-        const baseSrc = currentSrc.split('&start=')[0];
-        setStreamOffset(time);
-        setCurrentSrc(`${baseSrc}&start=${time}`);
-        // O navegador dará autoPlay ou o vídeo recarregará
-        if (!isPlaying) {
-          setIsPlaying(true);
-        }
-      } else {
-        videoRef.current.currentTime = time;
-        if (audioRef.current) audioRef.current.currentTime = time;
-      }
+      videoRef.current.currentTime = time;
+      if (audioRef.current) audioRef.current.currentTime = time;
       setProgress(time);
     }
   };
@@ -276,7 +234,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       if (audioRef.current) audioRef.current.pause();
       setIsPlaying(false);
     }
-    const time = videoRef.current ? videoRef.current.currentTime + streamOffset : 0;
+    const time = videoRef.current ? videoRef.current.currentTime : 0;
     const currentIndex = cues.findIndex(c => time >= c.startTime && time <= c.endTime);
     let extendedContext = context;
     if (currentIndex !== -1) {

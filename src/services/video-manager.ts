@@ -70,28 +70,11 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): 
     // Primeiro tenta usar o file_path absoluto salvo no banco de dados
     let localPath = video.file_path || await window.api.video.getLocalPath(video.original_name);
     
-    // Fallback: se o localPath existe, mudamos a extensão para .enc (se aplicável ao migration)
     if (!localPath) {
       localPath = await window.api.video.getLocalPath(video.original_name + ".enc");
     }
-    
     if (localPath) {
-      // Remove .enc if present to get the real extension
-      const cleanPath = localPath.endsWith('.enc') ? localPath.slice(0, -4) : localPath;
-      const cleanName = video.original_name.endsWith('.enc') ? video.original_name.slice(0, -4) : video.original_name;
-      
-      const ext = (cleanPath || cleanName).split('.').pop()?.toLowerCase();
-      // Se for formato que o Chromium não toca nativamente, usaremos o nosso FFmpeg Streamer
-      if (ext && ['mkv', 'avi', 'flv', 'wmv'].includes(ext)) {
-          try {
-             const port = await (window.api.video as any).getStreamPort();
-             return `http://127.0.0.1:${port}/stream?file=culture/${encodeURIComponent(localPath)}&start=0`;
-          } catch(e) {
-             console.error("Erro ao obter porta do stream:", e);
-          }
-      }
-      
-      // Retorna a URI customizada de criptografia. Em Tauri v2 Windows, usa-se http://scheme.localhost/
+      // Como todos os contêineres são padronizados para .mp4 na importação, usamos sempre a URI nativa com suporte a Range Requests (HTTP 206)
       return `http://encrypted.localhost/files/${encodeURIComponent(localPath)}`;
     }
   }
@@ -132,17 +115,18 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
   
   const sourcePath = (file as any).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
+  const standardizedName = `${baseName}.mp4`;
   
   if (onProgress) onProgress(5); 
 
   if (sourcePath && window.api?.video) {
     try {
-      localPath = await window.api.video.copyLocal(sourcePath, file.name);
+      localPath = await window.api.video.copyLocal(sourcePath, standardizedName);
       isLocal = true;
       
       if (localPath) {
           if (onProgress) onProgress(40);
-          mainFileId = await uploadLocalFileToDrive(token, localPath, file.name + ".enc", (p) => {
+          mainFileId = await uploadLocalFileToDrive(token, localPath, standardizedName + ".enc", (p) => {
             if (onProgress) onProgress(40 + (p * 0.3));
           });
       }
@@ -249,7 +233,7 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
   const newVideo: VideoItem = {
     id: crypto.randomUUID(),
     title: baseName,
-    original_name: file.name,
+    original_name: standardizedName,
     drive_file_id: mainFileId,
     drive_subtitle_id: mainSubtitleId || undefined,
     is_local: isLocal,
