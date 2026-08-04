@@ -447,8 +447,10 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         isFullscreen={isFullscreen}
         showControls={showControls}
         audioTracks={audioTracks}
+        subtitleTracks={subtitleTracks}
         activeAudioIndex={activeAudioIndex}
-        videoWordsCount={videoWords.length}
+        activeSubtitleIndex={activeSubtitleIndex}
+        videoWordsCount={videoWords ? videoWords.length : 0}
         onClose={handleClose}
         togglePlay={togglePlay}
         toggleMute={toggleMute}
@@ -456,6 +458,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         handleSeek={handleSeek}
         toggleFullscreen={toggleFullscreen}
         setActiveAudioIndex={setActiveAudioIndex}
+        setActiveSubtitleIndex={setActiveSubtitleIndex}
         setShowVocabDrawer={setShowVocabDrawer}
         onPauseForDrawer={() => { if (videoRef.current) videoRef.current.pause(); }}
         formatTime={formatTime}
