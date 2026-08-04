@@ -43,6 +43,12 @@ pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, Stri
     Ok(true)
 }
 
+fn normalize_to_mp4_name(filename: &str) -> String {
+    let path = std::path::Path::new(filename);
+    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+    format!("{}.mp4", stem)
+}
+
 #[tauri::command]
 pub fn video_import_and_encrypt(
     source_path: String,
@@ -51,7 +57,8 @@ pub fn video_import_and_encrypt(
     app_handle: AppHandle
 ) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
-    let dest_filename_enc = format!("{}.enc", dest_filename);
+    let norm_filename = normalize_to_mp4_name(&dest_filename);
+    let dest_filename_enc = format!("{}.enc", norm_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
     
     let keys_guard = db_state.keys.lock().unwrap();
@@ -65,7 +72,66 @@ pub fn video_import_and_encrypt(
         return Err("Keys not unlocked".into());
     };
     
-    crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_full_path, &master_key)?;
+    let ext = std::path::Path::new(&source_path)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let needs_remux = !["mp4", "webm"].contains(&ext.as_str());
+
+    let temp_mp4 = videos_dir.join(format!("temp_remux_{}.mp4", uuid::Uuid::new_v4()));
+    let actual_source = if needs_remux {
+        let ffmpeg_path = get_bin_path(&app_handle, "ffmpeg.exe");
+        let mut cmd = Command::new(&ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i", &source_path,
+            "-map", "0:v",
+            "-map", "0:a?",
+            "-map", "0:s?",
+            "-c:v", "copy",
+            "-c:a", "copy",
+            "-c:s", "mov_text",
+            &temp_mp4.to_string_lossy().to_string()
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        
+        let output = cmd.output().map_err(|e| e.to_string())?;
+        if !output.status.success() || !temp_mp4.exists() {
+            // Fallback seguro: transcodifica áudio incompatível para aac
+            let mut cmd2 = Command::new(&ffmpeg_path);
+            cmd2.args([
+                "-y",
+                "-i", &source_path,
+                "-map", "0:v",
+                "-map", "0:a?",
+                "-map", "0:s?",
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "256k",
+                "-c:s", "mov_text",
+                &temp_mp4.to_string_lossy().to_string()
+            ]);
+            #[cfg(target_os = "windows")]
+            cmd2.creation_flags(CREATE_NO_WINDOW);
+            
+            let output2 = cmd2.output().map_err(|e| e.to_string())?;
+            if !output2.status.success() || !temp_mp4.exists() {
+                let _ = fs::remove_file(&temp_mp4);
+                return Err(format!("Falha ao padronizar contêiner para MP4: {}", String::from_utf8_lossy(&output2.stderr)));
+            }
+        }
+        temp_mp4.clone()
+    } else {
+        std::path::PathBuf::from(&source_path)
+    };
+    
+    let enc_res = crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_full_path, &master_key);
+    if needs_remux {
+        let _ = fs::remove_file(&temp_mp4);
+    }
+    enc_res?;
     
     Ok(dest_full_path.to_string_lossy().to_string())
 }
@@ -73,7 +139,8 @@ pub fn video_import_and_encrypt(
 #[tauri::command]
 pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
-    let filename_enc = format!("{}.enc", filename);
+    let norm_filename = normalize_to_mp4_name(&filename);
+    let filename_enc = format!("{}.enc", norm_filename);
     let path = videos_dir.join(&filename_enc);
     let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
     

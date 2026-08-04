@@ -4,6 +4,15 @@ use crate::crypto_stream::{read_chunked_range, DecryptedRange};
 use crate::db::DbState;
 use tauri::Manager;
 
+fn get_mime_type(path: &std::path::Path) -> String {
+    let path_for_mime = if path.to_string_lossy().ends_with(".enc") {
+        path.with_extension("")
+    } else {
+        path.to_path_buf()
+    };
+    mime_guess::from_path(&path_for_mime).first_or_octet_stream().to_string()
+}
+
 pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> Response<Vec<u8>> {
     let db_state = app.state::<DbState>();
     
@@ -132,7 +141,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 Ok(DecryptedRange { data, .. }) => {
                     let actual_end = start + data.len() as u64 - 1;
                     
-                    let mime_type = mime_guess::from_path(&abs_path).first_or_octet_stream().to_string();
+                    let mime_type = get_mime_type(&abs_path);
                     
                     return Response::builder()
                         .status(StatusCode::PARTIAL_CONTENT)
@@ -157,7 +166,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     // Se não tiver cabeçalho de Range, lê o arquivo inteiro
     match read_chunked_range(&abs_path, &master_key, 0, total_size - 1) {
         Ok(DecryptedRange { data, .. }) => {
-            let mime_type = mime_guess::from_path(&abs_path).first_or_octet_stream().to_string();
+            let mime_type = get_mime_type(&abs_path);
             Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime_type)
