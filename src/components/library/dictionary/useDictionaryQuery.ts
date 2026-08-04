@@ -152,13 +152,13 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
         );
         
         try {
-          const cleaned = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const cleaned = response.text.replace(/```json/gi, '').replace(/```/g, '').trim();
           const parsed = JSON.parse(cleaned) as DictionaryData;
           setDictionaryData(parsed);
           setLanguageTab(parsed.detected_language === 'en' ? 'en' : 'pt');
         } catch (e) {
           // Fallback if AI fails to return valid JSON
-          setResult(response);
+          setResult(response.text);
         }
         setLoading(false);
       }
