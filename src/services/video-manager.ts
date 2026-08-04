@@ -93,11 +93,18 @@ import type { TrackItem } from '../types';
  * Helper to upload a local file to Drive via fetch
  */
 async function uploadLocalFileToDrive(token: string, localPath: string, driveFileName: string, onProgress?: (p: number) => void) {
-  const fileReq = await fetch('file:///' + localPath.replace(/\\/g, '/'));
-  const blob = await fileReq.blob();
-  const buffer = await blob.arrayBuffer();
-  const { uploadToDrive } = await import('./drive');
-  return await uploadToDrive(token, driveFileName, buffer, false, onProgress);
+  if (window.api?.video?.uploadFileToDrive) {
+    if (onProgress) onProgress(10); // Fake initial progress since streaming doesn't report chunks yet via this simple Rust command
+    const { getOrCreateAppFolder } = await import('./drive');
+    const folderId = await getOrCreateAppFolder(token);
+    return await window.api.video.uploadFileToDrive(localPath, driveFileName, folderId, token);
+  } else {
+    const fileReq = await fetch('file:///' + localPath.replace(/\\/g, '/'));
+    const blob = await fileReq.blob();
+    const buffer = await blob.arrayBuffer();
+    const { uploadToDrive } = await import('./drive');
+    return await uploadToDrive(token, driveFileName, buffer, false as any, onProgress);
+  }
 }
 
 /**
@@ -238,6 +245,8 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
     drive_subtitle_id: mainSubtitleId || undefined,
     is_local: isLocal,
     file_path: localPath,
+    collection_id: options.collectionId || undefined,
+    collection_name: options.collectionName || undefined,
     audio_tracks_json: JSON.stringify(audioTracksList),
     subtitles_json: JSON.stringify(subtitleTracksList),
     progress: 0,
@@ -257,8 +266,9 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
 
 /**
  * Baixa as legendas (VTT) como texto.
+ * Se masterKey for fornecida, tenta descriptografar o conteúdo (legendas são criptografadas no upload).
  */
-export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePath?: string): Promise<string | null> {
+export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePath?: string, masterKey?: CryptoKey): Promise<string | null> {
   if (!driveSubtitleId && !localSubtitlePath) return null;
 
   try {
@@ -267,13 +277,29 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
       if (!token) return null;
       
       const buffer = await downloadFromDrive(token, driveSubtitleId);
+      
+      // Tenta descriptografar se temos masterKey (legendas são criptografadas no upload)
+      if (masterKey) {
+        try {
+          const { decryptFile } = await import('./storage');
+          const decrypted = await decryptFile(buffer, masterKey);
+          return new TextDecoder().decode(decrypted);
+        } catch {
+          // Se falhar a descriptografia, talvez não esteja criptografado — tenta como texto puro
+        }
+      }
       return new TextDecoder().decode(buffer);
     }
-    // Ler legenda local via fetch file://
+    // Ler legenda local sem bloqueio de ACL no Desktop ou fetch file:// na Web
     if (localSubtitlePath) {
-      const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
-      const res = await fetch(fileUrl);
-      if (res.ok) return await res.text();
+      if (window.api?.video?.readLocalFile) {
+        const uint8 = await window.api.video.readLocalFile(localSubtitlePath);
+        return new TextDecoder().decode(uint8);
+      } else {
+        const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
+        const res = await fetch(fileUrl);
+        if (res.ok) return await res.text();
+      }
     }
     return null;
   } catch (e) {

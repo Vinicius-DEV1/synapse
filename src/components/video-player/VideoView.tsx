@@ -5,6 +5,7 @@ import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
 import YouTubeDownloadModal from './YouTubeDownloadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText, deleteVideoAndSync } from '../../services/video-manager';
+import { getCultureKey } from '../../store/useStore';
 import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, MonitorPlay } from 'lucide-react';
 
 export default function VideoView() {
@@ -15,6 +16,8 @@ export default function VideoView() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>(() => {
     return (localStorage.getItem('videoViewMode') as any) || 'grid';
   });
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(null);
   
   // Player state
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
@@ -47,9 +50,10 @@ export default function VideoView() {
   const handlePlayVideo = async (video: VideoItem) => {
     try {
       setPlayerError(null);
+      const cultureKey = getCultureKey();
       
       // Load subtitles - try saved subtitle first
-      let subText = await getSubtitleText(video.drive_subtitle_id, video.local_subtitle_path);
+      let subText = await getSubtitleText(video.drive_subtitle_id, video.local_subtitle_path, cultureKey);
       
       // Fallback: try subtitles_json tracks (legendas extraídas durante o upload)
       if (!subText && video.subtitles_json) {
@@ -59,10 +63,10 @@ export default function VideoView() {
             const firstTrack = tracks[0];
             // Tenta local primeiro, depois Drive
             if (firstTrack.local_path) {
-              subText = await getSubtitleText(undefined, firstTrack.local_path);
+              subText = await getSubtitleText(undefined, firstTrack.local_path, cultureKey);
             }
             if (!subText && firstTrack.drive_id) {
-              subText = await getSubtitleText(firstTrack.drive_id, undefined);
+              subText = await getSubtitleText(firstTrack.drive_id, undefined, cultureKey);
             }
           }
         } catch (e) {
@@ -325,12 +329,18 @@ export default function VideoView() {
           onCreateFolder={handleCreateFolder}
           onRenameFolder={handleRenameFolder}
           onDeleteFolder={handleDeleteFolder}
+          onActiveCollectionChange={(id, name) => {
+            setSelectedFolderId(id);
+            setSelectedFolderName(name);
+          }}
         />
       </div>
 
       {/* Upload Modal */}
       {showUploadModal && (
         <VideoUploadModal 
+          collectionId={selectedFolderId || undefined}
+          collectionName={selectedFolderName || undefined}
           onClose={() => setShowUploadModal(false)}
           onUpload={handleUpload}
         />
