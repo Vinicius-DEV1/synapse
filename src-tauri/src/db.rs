@@ -107,7 +107,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         "anki_decks", "anki_notes", "anki_cards", "anki_srs_state", "anki_reviews", "anki_deck_settings", "focus_sessions", "alarms",
         "page_history", "tutor_sessions", "tutor_messages", "tutor_memories", "library_books", "library_highlights",
         "library_bookmarks", "library_collections", "library_book_collections", "library_reading_sessions",
-        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched", "diagrams", "notifications", "activity_logs"
+        "transactions", "wishlist", "pages", "vault_password_history", "file_page_links", "youtube_watched", "diagrams", "notifications", "activity_logs", "ai_prompts"
     ];
     for t in tables_with_sync {
         let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", t), []);
@@ -132,7 +132,15 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 
+    // Drop legacy alarms table if it exists with the old schema (INTEGER PRIMARY KEY)
+    let is_legacy_alarms = conn.query_row("SELECT type FROM pragma_table_info('alarms') WHERE name = 'id'", [], |row| row.get::<_, String>(0)).unwrap_or_default() == "INTEGER";
+    if is_legacy_alarms {
+        let _ = conn.execute("DROP TABLE alarms", []);
+    }
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS alarms (id TEXT PRIMARY KEY, time TEXT NOT NULL, label TEXT, sound TEXT DEFAULT 'bell', enabled BOOLEAN DEFAULT 1, days TEXT)", []);
+    
+    // Create ai_prompts table
+    let _ = conn.execute("CREATE TABLE IF NOT EXISTS ai_prompts (id TEXT PRIMARY KEY, module TEXT NOT NULL, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL)", []);
     
     // Migrations for culture module
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN access_link TEXT", []);
