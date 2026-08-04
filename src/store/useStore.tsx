@@ -77,8 +77,15 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
+// Referência global imperativa para acessar state sem hooks (evita re-renders)
+let _storeStateRef: AppState = initialState;
+export function getCultureKey(): CryptoKey | undefined {
+  return _storeStateRef.moduleKeys['culture'];
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  _storeStateRef = state;
 
   const lastSavedRef = useRef<string | null>(null);
 
