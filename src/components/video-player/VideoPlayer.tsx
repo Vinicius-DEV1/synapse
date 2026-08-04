@@ -36,7 +36,6 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const [activeCueText, setActiveCueText] = useState('');
   
   const [isBuffering, setIsBuffering] = useState(true);
-  const [bufferedPercent, setBufferedPercent] = useState(0);
   
   const [dictState, setDictState] = useState<{ 
     word: string; 
@@ -88,16 +87,6 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     };
     fetchNewSubtitle();
   }, [activeSubtitleIndex, subtitleTracks]);
-
-  const handleVideoProgress = () => {
-    if (videoRef.current && videoRef.current.buffered.length > 0) {
-      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
-      const dur = videoRef.current.duration;
-      if (dur > 0) {
-        setBufferedPercent(Math.min(100, Math.round((bufferedEnd / dur) * 100)));
-      }
-    }
-  };
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -342,11 +331,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-[55] pointer-events-none">
           <div className="relative flex items-center justify-center mb-4">
             <div className="w-16 h-16 border-4 border-white/20 border-t-brand-500 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{bufferedPercent}%</span>
-            </div>
           </div>
-          <span className="text-white/80 text-sm font-medium animate-pulse">Carregando vídeo...</span>
         </div>
       )}
 
@@ -358,7 +343,6 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onProgress={handleVideoProgress}
         onWaiting={() => setIsBuffering(true)}
         onCanPlay={() => setIsBuffering(false)}
         onError={() => {
