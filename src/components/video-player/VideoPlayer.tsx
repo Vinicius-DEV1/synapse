@@ -89,20 +89,38 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     }
   };
 
+  const isTimeBuffered = (time: number): boolean => {
+    if (!videoRef.current) return false;
+    const buffered = videoRef.current.buffered;
+    for (let i = 0; i < buffered.length; i++) {
+      if (time >= buffered.start(i) && time <= buffered.end(i)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const seekBy = (seconds: number) => {
     if (videoRef.current) {
-      const currentTime = progress; // use progress state which accounts for streamOffset
+      const currentTime = progress;
       const maxDuration = duration || videoRef.current.duration || 0;
       const newTime = Math.max(0, Math.min(maxDuration, currentTime + seconds));
       
       if (currentSrc.includes('/stream?')) {
-        // For encrypted streams, we need to change the URL with &start= 
-        const baseSrc = currentSrc.split('&start=')[0];
-        setStreamOffset(newTime);
-        setCurrentSrc(`${baseSrc}&start=${newTime}`);
-        setProgress(newTime);
-        if (!isPlaying) {
-          setIsPlaying(true);
+        // For encrypted streams: check if target is within buffered data
+        const localTime = newTime - streamOffset;
+        if (localTime >= 0 && isTimeBuffered(localTime)) {
+          // Data already in buffer — instant seek, no reload
+          videoRef.current.currentTime = localTime;
+          if (audioRef.current) audioRef.current.currentTime = localTime;
+          setProgress(newTime);
+        } else {
+          // Outside buffer — reload stream from new position
+          const baseSrc = currentSrc.split('&start=')[0];
+          setStreamOffset(newTime);
+          setCurrentSrc(`${baseSrc}&start=${newTime}`);
+          setProgress(newTime);
+          if (!isPlaying) setIsPlaying(true);
         }
       } else {
         videoRef.current.currentTime = newTime;
