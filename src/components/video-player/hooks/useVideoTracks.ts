@@ -11,6 +11,7 @@ export function useVideoTracks(
   const [audioTracks, setAudioTracks] = useState<TrackItem[]>([]);
   const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>([]);
   const [activeAudioIndex, setActiveAudioIndex] = useState<number>(-1);
+  const [activeSubtitleIndex, setActiveSubtitleIndex] = useState<number>(0);
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   
   const syncLoopRef = useRef<number>();
@@ -86,6 +87,8 @@ export function useVideoTracks(
     subtitleTracks,
     activeAudioIndex,
     setActiveAudioIndex,
+    activeSubtitleIndex,
+    setActiveSubtitleIndex,
     activeAudioUrl
   };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, BookOpen } from 'lucide-react';
+import { Play, Pause, Maximize, Minimize, Volume2, VolumeX, ArrowLeft, Languages, BookOpen, Subtitles } from 'lucide-react';
 import type { TrackItem } from '../../../types';
 
 interface VideoControlsOverlayProps {
@@ -12,7 +12,9 @@ interface VideoControlsOverlayProps {
   isFullscreen: boolean;
   showControls: boolean;
   audioTracks: TrackItem[];
+  subtitleTracks: TrackItem[];
   activeAudioIndex: number;
+  activeSubtitleIndex: number;
   videoWordsCount: number;
   onClose: () => void;
   togglePlay: () => void;
@@ -21,6 +23,7 @@ interface VideoControlsOverlayProps {
   handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
   toggleFullscreen: () => void;
   setActiveAudioIndex: React.Dispatch<React.SetStateAction<number>>;
+  setActiveSubtitleIndex: React.Dispatch<React.SetStateAction<number>>;
   setShowVocabDrawer: (val: boolean) => void;
   onPauseForDrawer: () => void;
   formatTime: (t: number) => string;
@@ -29,9 +32,9 @@ interface VideoControlsOverlayProps {
 
 export function VideoControlsOverlay({
   title, isPlaying, progress, duration, volume, isMuted, isFullscreen, showControls,
-  audioTracks, activeAudioIndex, videoWordsCount,
+  audioTracks, subtitleTracks, activeAudioIndex, activeSubtitleIndex, videoWordsCount,
   onClose, togglePlay, toggleMute, handleVolumeChange, handleSeek, toggleFullscreen,
-  setActiveAudioIndex, setShowVocabDrawer, onPauseForDrawer, formatTime, setIsHoveringControls
+  setActiveAudioIndex, setActiveSubtitleIndex, setShowVocabDrawer, onPauseForDrawer, formatTime, setIsHoveringControls
 }: VideoControlsOverlayProps) {
   return (
     <div 
@@ -61,7 +64,20 @@ export function VideoControlsOverlay({
             >
               <Languages size={16} className="text-brand-400" />
               <span className="text-sm font-medium">
-                {activeAudioIndex === -1 ? 'Áudio Nativo (0 Lag)' : audioTracks[activeAudioIndex].label}
+                {activeAudioIndex === -1 ? 'Áudio Nativo' : audioTracks[activeAudioIndex].label}
+              </span>
+            </button>
+          )}
+
+          {subtitleTracks.length > 1 && (
+            <button
+              onClick={() => setActiveSubtitleIndex(prev => prev >= subtitleTracks.length - 1 ? 0 : prev + 1)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+              title="Trocar Legenda (S)"
+            >
+              <Subtitles size={16} className="text-brand-400" />
+              <span className="text-sm font-medium truncate max-w-[150px]">
+                {subtitleTracks[activeSubtitleIndex]?.label || `Legenda ${activeSubtitleIndex + 1}`}
               </span>
             </button>
           )}

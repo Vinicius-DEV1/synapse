@@ -35,6 +35,9 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const [cues, setCues] = useState<SubtitleCue[]>([]);
   const [activeCueText, setActiveCueText] = useState('');
   
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
+  
   const [dictState, setDictState] = useState<{ 
     word: string; 
     context: string; 
@@ -57,23 +60,52 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   }, [src]);
 
   const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef);
-  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
+  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
   const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
   const { showControls, setShowControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef, !!dictState);
 
   useEffect(() => {
-    if (subtitleContent) {
+    if (subtitleContent && activeSubtitleIndex === 0) {
       setCues(parseVtt(subtitleContent));
     }
-  }, [subtitleContent]);
+  }, [subtitleContent, activeSubtitleIndex]);
+
+  useEffect(() => {
+    const fetchNewSubtitle = async () => {
+      if (activeSubtitleIndex > 0 && subtitleTracks[activeSubtitleIndex]) {
+        try {
+          const track = subtitleTracks[activeSubtitleIndex];
+          const { getSubtitleText } = await import('../../services/video-manager');
+          const { getCultureKey } = await import('../../store/useStore');
+          let subText = '';
+          if (track.local_path) subText = await getSubtitleText(undefined, track.local_path, getCultureKey());
+          if (!subText && track.drive_id) subText = await getSubtitleText(track.drive_id, undefined, getCultureKey());
+          
+          if (subText) setCues(parseVtt(subText));
+          else setCues([]);
+        } catch(e) { console.error("Error changing subtitle", e); }
+      }
+    };
+    fetchNewSubtitle();
+  }, [activeSubtitleIndex, subtitleTracks]);
+
+  const handleVideoProgress = () => {
+    if (videoRef.current && videoRef.current.buffered.length > 0) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      const dur = videoRef.current.duration;
+      if (dur > 0) {
+        setBufferedPercent(Math.min(100, Math.round((bufferedEnd / dur) * 100)));
+      }
+    }
+  };
 
   const togglePlay = () => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
         if (audioRef.current && activeAudioUrl) {
            audioRef.current.currentTime = videoRef.current.currentTime;
-           audioRef.current.play();
+           audioRef.current.play().catch(() => {});
         }
         setIsPlaying(true);
         if (showResumePrompt) setShowResumePrompt(false);
@@ -88,7 +120,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const seekBy = (seconds: number) => {
     if (videoRef.current) {
-      const currentTime = progress;
+      const currentTime = videoRef.current.currentTime;
       const maxDuration = duration || videoRef.current.duration || 0;
       const newTime = Math.max(0, Math.min(maxDuration, currentTime + seconds));
       
@@ -120,6 +152,10 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         toggleFullscreen();
       } else if (e.code === 'KeyA' || e.key === 'a') {
         setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1);
+      } else if (e.code === 'KeyS' || e.key === 's') {
+        if (subtitleTracks.length > 1) {
+          setActiveSubtitleIndex(prev => prev >= subtitleTracks.length - 1 ? 0 : prev + 1);
+        }
       } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft' || e.key === 'j' || e.key === 'J' || e.key === '<') {
         e.preventDefault();
         e.stopPropagation();
@@ -302,6 +338,18 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         </div>
       )}
 
+      {isBuffering && !errorMsg && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-[55] pointer-events-none">
+          <div className="relative flex items-center justify-center mb-4">
+            <div className="w-16 h-16 border-4 border-white/20 border-t-brand-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{bufferedPercent}%</span>
+            </div>
+          </div>
+          <span className="text-white/80 text-sm font-medium animate-pulse">Carregando vídeo...</span>
+        </div>
+      )}
+
       <video
         ref={videoRef}
         src={currentSrc}
@@ -310,13 +358,18 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onProgress={handleVideoProgress}
+        onWaiting={() => setIsBuffering(true)}
+        onCanPlay={() => setIsBuffering(false)}
         onError={() => {
+          setIsBuffering(false);
           const err = videoRef.current?.error;
           if (err && err.code === 4) {
              setErrorMsg(window.api?.video ? "Formato de vídeo não suportado nativamente." : "Este formato de vídeo não é suportado pelo navegador Web. Por favor, assista na versão Desktop.");
           }
         }}
         onPlay={() => {
+          setIsBuffering(false);
           setIsPlaying(true);
           if (audioRef.current && activeAudioUrl) {
             audioRef.current.currentTime = videoRef.current?.currentTime || 0;
@@ -335,7 +388,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
           src={activeAudioUrl}
           preload="auto"
           onWaiting={() => { if (videoRef.current) videoRef.current.pause(); }}
-          onPlaying={() => { if (videoRef.current && isPlaying) videoRef.current.play(); }}
+          onPlaying={() => { if (videoRef.current && isPlaying) videoRef.current.play().catch(() => {}); }}
         />
       )}
 
@@ -353,7 +406,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
               <button 
                 onClick={() => {
                   setShowResumePrompt(false);
-                  if (videoRef.current) videoRef.current.play();
+                  if (videoRef.current) videoRef.current.play().catch(() => {});
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
@@ -363,7 +416,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
                 onClick={() => {
                   if (videoRef.current) {
                     videoRef.current.currentTime = savedProgress;
-                    videoRef.current.play();
+                    videoRef.current.play().catch(() => {});
                   }
                   setShowResumePrompt(false);
                 }}
