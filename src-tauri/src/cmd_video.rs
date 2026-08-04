@@ -34,6 +34,92 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
 }
 
 #[tauri::command]
+pub fn video_read_file(path: String) -> Result<Vec<u8>, String> {
+    // Safety: limit to 50 MB to prevent OOM crash via IPC for large video files
+    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+    if metadata.len() > 50 * 1024 * 1024 {
+        return Err("File too large to read via IPC. Use video_upload_file_to_drive instead.".into());
+    }
+    fs::read(&path).map_err(|e| e.to_string())
+}
+
+/// Uploads a local file directly to Google Drive without passing bytes through the WebView IPC.
+/// Steps:
+///   1. POST metadata to create an empty file in Drive
+///   2. PATCH the file content using uploadType=media with the file streamed from disk
+/// Returns the Drive file ID.
+#[tauri::command]
+pub async fn video_upload_file_to_drive(
+    local_path: String,
+    drive_filename: String,
+    folder_id: String,
+    access_token: String,
+) -> Result<String, String> {
+    use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+
+    let client = reqwest::Client::new();
+    let drive_api_url = "https://www.googleapis.com/drive/v3/files";
+
+    // Step 1: Create empty file with metadata
+    let metadata = serde_json::json!({
+        "name": drive_filename,
+        "parents": [folder_id]
+    });
+
+    let meta_res = client
+        .post(drive_api_url)
+        .header(AUTHORIZATION, format!("Bearer {}", access_token))
+        .header(CONTENT_TYPE, "application/json")
+        .json(&metadata)
+        .send()
+        .await
+        .map_err(|e| format!("Drive metadata request failed: {}", e))?;
+
+    if !meta_res.status().is_success() {
+        let status = meta_res.status();
+        let body = meta_res.text().await.unwrap_or_default();
+        return Err(format!("Drive metadata creation failed ({}): {}", status, body));
+    }
+
+    let meta_data: serde_json::Value = meta_res
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Drive metadata response: {}", e))?;
+
+    let file_id = meta_data["id"]
+        .as_str()
+        .ok_or("Drive response missing 'id' field")?
+        .to_string();
+
+    // Step 2: Upload file content via PATCH with streaming body
+    let file_bytes = tokio::fs::read(&local_path)
+        .await
+        .map_err(|e| format!("Failed to read local file '{}': {}", local_path, e))?;
+
+    let upload_url = format!(
+        "https://www.googleapis.com/upload/drive/v3/files/{}?uploadType=media",
+        file_id
+    );
+
+    let upload_res = client
+        .patch(&upload_url)
+        .header(AUTHORIZATION, format!("Bearer {}", access_token))
+        .header(CONTENT_TYPE, "application/octet-stream")
+        .body(file_bytes)
+        .send()
+        .await
+        .map_err(|e| format!("Drive upload request failed: {}", e))?;
+
+    if !upload_res.status().is_success() {
+        let status = upload_res.status();
+        let body = upload_res.text().await.unwrap_or_default();
+        return Err(format!("Drive upload failed ({}): {}", status, body));
+    }
+
+    Ok(file_id)
+}
+
+#[tauri::command]
 pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
     let videos_dir = get_videos_dir(&app)?;
     let path = videos_dir.join(&filename);
@@ -182,7 +268,7 @@ pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, St
     };
     
     let mut cmd = Command::new(ffprobe_path);
-    cmd.args(["-v", "quiet", "-print_format", "json", "-show_streams", &input_path]);
+    cmd.args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", &input_path]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let output = cmd.output().map_err(|e| e.to_string())?;
@@ -223,7 +309,9 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
     let output = cmd2.output().map_err(|e| e.to_string())?;
         
     if output.status.success() || vtt_out_path.exists() {
-        let content = fs::read_to_string(&vtt_out_path).unwrap_or_default();
+        let content = fs::read(&vtt_out_path)
+            .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+            .unwrap_or_default();
         let _ = fs::remove_file(&vtt_out_path);
         Ok(content)
     } else {
