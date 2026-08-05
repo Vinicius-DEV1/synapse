@@ -65,6 +65,9 @@ const LinkPreviewComponent = (props: any) => {
     let isMounted = true;
     setIsReloading(true);
 
+    // Captured metadata from oEmbed/noembed (channel name is always available)
+    let oEmbedChannel: string | null = null;
+
     const proxies = [
       // YouTube-specific proxies (tried first if URL is YouTube)
       ...(isYouTube ? [
@@ -75,6 +78,7 @@ const LinkPreviewComponent = (props: any) => {
           const json = await res.json();
           // noembed returns {error: "..."} on failure — must check it's a plain string
           if (json.title && typeof json.title === 'string') {
+            if (json.author_name) oEmbedChannel = json.author_name;
             return json.title;
           }
           throw new Error('No title in Noembed response');
@@ -85,6 +89,7 @@ const LinkPreviewComponent = (props: any) => {
           if (!res.ok) throw new Error('YouTube oEmbed failed');
           const json = await res.json();
           if (json.title && typeof json.title === 'string') {
+            if (json.author_name) oEmbedChannel = json.author_name;
             return json.title;
           }
           throw new Error('No title in YouTube oEmbed response');
@@ -190,7 +195,7 @@ const LinkPreviewComponent = (props: any) => {
 
     try {
       let finalTitle = fetchedTitleStr;
-      let finalChannel = null;
+      let finalChannel: string | null = oEmbedChannel; // Use oEmbed channel as default
       let finalDuration = null;
       let finalIsPlaylist = url.includes('list=');
       let finalUploadDate = null;
@@ -201,13 +206,13 @@ const LinkPreviewComponent = (props: any) => {
           const ytInfo = await window.api.youtube.fetchPlaylistInfo(url);
           if (ytInfo && ytInfo.title) {
             finalTitle = ytInfo.title;
-            finalChannel = ytInfo.uploader || ytInfo.uploader_id;
+            finalChannel = ytInfo.uploader || ytInfo.uploader_id || finalChannel;
             finalDuration = ytInfo.duration;
             finalIsPlaylist = ytInfo._type === 'playlist' || url.includes('list=');
             finalUploadDate = ytInfo.upload_date;
           }
         } catch (ytErr) {
-          console.warn('yt-dlp fetch failed, falling back to basic title', ytErr);
+          console.warn('yt-dlp fetch failed, falling back to oEmbed metadata', ytErr);
         }
       }
 
