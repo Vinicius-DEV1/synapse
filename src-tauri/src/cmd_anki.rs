@@ -168,25 +168,25 @@ pub fn anki_get_all_cards(deck_id: Option<String>, db_state: State<'_, DbState>)
     
     let mut query = "
         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
+               st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
         FROM anki_cards c 
-        LEFT JOIN anki_srs_state s ON c.id = s.id 
+        LEFT JOIN anki_srs_state st ON c.id = st.id 
         WHERE c.deleted_at IS NULL".to_string();
         
     let mut p: Vec<String> = Vec::new();
     
     if let Some(did) = deck_id {
-        query = "WITH RECURSIVE subdecks AS (
+        query = "WITH RECURSIVE subdecks(id) AS (
             SELECT id FROM anki_decks WHERE id = ? AND deleted_at IS NULL
             UNION ALL
             SELECT d.id FROM anki_decks d
-            JOIN subdecks s ON d.parent_id = s.id
+            JOIN subdecks sd ON d.parent_id = sd.id
             WHERE d.deleted_at IS NULL
          )
          SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-                s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
+                st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
          FROM anki_cards c 
-         LEFT JOIN anki_srs_state s ON c.id = s.id 
+         LEFT JOIN anki_srs_state st ON c.id = st.id 
          WHERE c.deleted_at IS NULL AND c.deck_id IN (SELECT id FROM subdecks)".to_string();
         p.push(did);
     }
@@ -216,9 +216,9 @@ pub fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<An
     
     let mut stmt = conn.prepare("
         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               s.due_date, s.state, s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.last_review, c.created_at, c.tags
+               st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
         FROM anki_cards c 
-        LEFT JOIN anki_srs_state s ON c.id = s.id 
+        LEFT JOIN anki_srs_state st ON c.id = st.id 
         WHERE c.id = ? AND c.deleted_at IS NULL
     ").map_err(|e| e.to_string())?;
     
