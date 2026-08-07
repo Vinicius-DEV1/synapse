@@ -77,6 +77,14 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): 
       // Como todos os contêineres são padronizados para .mp4 na importação, usamos sempre a URI nativa com suporte a Range Requests (HTTP 206)
       return `http://encrypted.localhost/files/${encodeURIComponent(localPath)}`;
     }
+  }
+  
+  const isWebEnv = !window.api?.video;
+  
+  if (isWebEnv && video.drive_web_file_id) {
+    return `/stream-video/${video.drive_web_file_id}`;
+  }
+
   if (video.drive_file_id) {
     // Tanto Desktop quanto Web agora usam o Service Worker para fazer streaming sob demanda 
     // do formato ENC1 hospedado no Google Drive, economizando RAM.
@@ -110,15 +118,15 @@ async function uploadLocalFileToDrive(token: string, localPath: string, driveFil
 /**
  * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
  */
-export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem> {
-  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], onProgress } = options;
+export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<VideoItem> {
+  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, onProgress, onPhaseChange } = options;
   
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
   let isLocal = false;
   let localPath: string | undefined = undefined;
-  let mainFileId = '';
+  let webFileId = '';
   
   const sourcePath = (file as any).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
@@ -128,14 +136,24 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
 
   if (sourcePath && window.api?.video) {
     try {
-      localPath = await window.api.video.copyLocal(sourcePath, standardizedName);
-      isLocal = true;
+      if (onPhaseChange) onPhaseChange('Convertendo e criptografando vídeos no Desktop...');
       
-      if (localPath) {
-          if (onProgress) onProgress(40);
-          mainFileId = await uploadLocalFileToDrive(token, localPath, standardizedName + ".enc", (p) => {
-            if (onProgress) onProgress(40 + (p * 0.3));
-          });
+      const processRes = await (window.api.video as any).processUpload(sourcePath, standardizedName, webQuality);
+      isLocal = true;
+      localPath = processRes.original_path;
+      
+      if (onProgress) onProgress(40);
+      if (onPhaseChange) onPhaseChange('Enviando Arquivo Original...');
+      
+      mainFileId = await uploadLocalFileToDrive(token, processRes.original_path, file.name + ".enc", (p) => {
+        if (onProgress) onProgress(40 + (p * 0.15));
+      });
+      
+      if (processRes.web_path) {
+        if (onPhaseChange) onPhaseChange('Enviando Versão Web...');
+        webFileId = await uploadLocalFileToDrive(token, processRes.web_path, standardizedName + ".enc", (p) => {
+           if (onProgress) onProgress(55 + (p * 0.15));
+        });
       }
     } catch (e) {
       console.warn("Não foi possível processar o vídeo localmente:", e);
@@ -143,22 +161,37 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
   }
 
   // If local processing failed or it's a pure web file
-  if (!mainFileId) {
+  if (!mainFileId && !isLocal) {
     let driveFileName = file.name;
     let dataToUpload: ArrayBuffer | Blob = file;
     
+    if (webQuality !== 'original') {
+      if (onPhaseChange) onPhaseChange(`Transcodificando vídeo na Web para ${webQuality} (Cuidado)...`);
+      const { processVideoWeb } = await import('./ffmpeg-web');
+      try {
+        dataToUpload = await processVideoWeb(file, webQuality, (p) => {
+          if (onProgress) onProgress(5 + (p * 0.25));
+        });
+        driveFileName = standardizedName;
+      } catch (err: any) {
+        console.warn("Falha na conversão Web, usando arquivo original.", err);
+      }
+    }
+    
     if (options.masterKey) {
+      if (onPhaseChange) onPhaseChange('Criptografando vídeo...');
       const { encryptFileChunked } = await import('./storage');
-      dataToUpload = await encryptFileChunked(file, options.masterKey, (p) => {
-        if (onProgress) onProgress(p * 0.1); // Criptografia usa os 10% iniciais
+      dataToUpload = await encryptFileChunked(dataToUpload as File | Blob, options.masterKey, (p) => {
+        if (onProgress) onProgress(30 + (p * 0.1));
       });
-      driveFileName = file.name + '.enc';
+      driveFileName += '.enc';
     } else {
       throw new Error("Master key is required for uploading securely on the Web.");
     }
 
+    if (onPhaseChange) onPhaseChange('Enviando para o Google Drive...');
     mainFileId = await uploadToDrive(token, driveFileName, dataToUpload, false as any, (p) => {
-      if (onProgress) onProgress(10 + (p * 0.6));
+      if (onProgress) onProgress(40 + (p * 0.3));
     });
   }
 
@@ -244,6 +277,7 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
     title: baseName,
     original_name: standardizedName,
     drive_file_id: mainFileId,
+    drive_web_file_id: webFileId || undefined,
     drive_subtitle_id: mainSubtitleId || undefined,
     is_local: isLocal,
     file_path: localPath,
@@ -427,6 +461,10 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
     // Arquivo principal
     if (video.drive_file_id) {
       await deleteFromDrive(token, video.drive_file_id).catch(e => console.warn("Falha ao apagar vídeo do Drive", e));
+    }
+    // Arquivo alternativo da Web
+    if (video.drive_web_file_id) {
+      await deleteFromDrive(token, video.drive_web_file_id).catch(e => console.warn("Falha ao apagar vídeo web do Drive", e));
     }
     // Legenda principal
     if (video.drive_subtitle_id) {

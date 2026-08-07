@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Upload, FileVideo, FileText, Loader2, Settings2 } from 'lucide-react';
 import { processSubtitleFile } from '../../utils/subtitles';
 import { useStore } from '../../store/useStore';
@@ -12,15 +12,21 @@ export interface UploadOptions {
   extraAudioTracks?: string[];
   extraSubtitleTracks?: string[];
   masterKey?: CryptoKey;
+  collectionId?: string;
+  collectionName?: string;
+  webQuality: 'original' | '1080p' | '720p';
   onProgress?: (percent: number) => void;
+  onPhaseChange?: (phase: string) => void;
 }
 
 interface VideoUploadModalProps {
+  collectionId?: string;
+  collectionName?: string;
   onClose: () => void;
   onUpload: (options: UploadOptions) => Promise<void>;
 }
 
-export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModalProps) {
+export default function VideoUploadModal({ collectionId, collectionName, onClose, onUpload }: VideoUploadModalProps) {
   const { state } = useStore();
   // We use culture or whatever the active module is, assuming videos are tied to Culture.
   // Actually videos use the 'culture' key since they are embedded in culture items.
@@ -29,10 +35,14 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<string>('Processando e enviando...');
   const [error, setError] = useState<string | null>(null);
+  
+  const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p'>('720p');
   
   const [embeddedSubs, setEmbeddedSubs] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
   const [embeddedAudios, setEmbeddedAudios] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
   
   const [primaryAudioTrack, setPrimaryAudioTrack] = useState<string>('');
   const [extraAudioTracks, setExtraAudioTracks] = useState<Set<string>>(new Set());
@@ -71,6 +81,17 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
     setIsUploading(true);
     setError(null);
     setUploadProgress(0);
+    setUploadPhase('Iniciando...');
+
+    // Warning for Web > 500MB
+    const isDesktop = !!window.api?.video;
+    if (!isDesktop && webQuality !== 'original' && videoFile.size > 500 * 1024 * 1024) {
+      const confirm = window.confirm("Atenção: Converter vídeos maiores que 500MB na versão Web pode causar lentidão severa ou travamento da aba por falta de memória. Recomenda-se usar o Desktop para conversão ou marcar a qualidade como 'Original'.\n\nDeseja continuar mesmo assim?");
+      if (!confirm) {
+        setIsUploading(false);
+        return;
+      }
+    }
 
     try {
       let subtitleText = null;
@@ -86,7 +107,11 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
         extraAudioTracks: Array.from(extraAudioTracks),
         extraSubtitleTracks: Array.from(extraSubtitleTracks),
         masterKey,
-        onProgress: (percent) => setUploadProgress(percent)
+        collectionId,
+        collectionName,
+        webQuality,
+        onProgress: (percent) => setUploadProgress(percent),
+        onPhaseChange: (phase) => setUploadPhase(phase)
       });
       onClose();
     } catch (err: any) {
@@ -124,31 +149,25 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
               <button 
                 type="button"
                 onClick={async () => {
-                  if (!window.api?.video?.openFileDialog) return;
+                  if (!window.api?.video?.openFileDialog) {
+                    videoFileInputRef.current?.click();
+                    return;
+                  }
                   const res = await window.api.video.openFileDialog();
                   if (res) {
                     try {
-                      const fileReq = await fetch('file:///' + res.path.replace(/\\/g, '/'));
-                      const blob = await fileReq.blob();
-                      const file = new File([blob], res.name, { type: res.type });
-                      (file as any).TauriPath = res.path;
+                      // No desktop Tauri, evitamos fetch('file:///') para não falhar no CORS
+                      // e não carregar arquivos gigantes na memória RAM do navegador.
+                      const dummyFile = new File([], res.name, { type: res.type || 'video/mp4' });
+                      (dummyFile as any).TauriPath = res.path;
                       
-                      setVideoFile(file);
+                      setVideoFile(dummyFile);
                       setError(null);
                       setEmbeddedSubs([]);
                       setEmbeddedAudios([]);
                       setPrimaryAudioTrack('');
                       setExtraAudioTracks(new Set());
                       setExtraSubtitleTracks(new Set());
-                      
-                      const tempUrl = URL.createObjectURL(file);
-                      const tempVideo = document.createElement('video');
-                      tempVideo.preload = 'metadata';
-                      tempVideo.onloadedmetadata = () => {
-                        URL.revokeObjectURL(tempUrl);
-                        setVideoDuration(tempVideo.duration);
-                      };
-                      tempVideo.src = tempUrl;
 
                       // Use new scanTracks
                       if ((window.api?.video as any)?.scanTracks) {
@@ -159,20 +178,51 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                             console.error('ffprobe error:', scanRes.error);
                           }
                           const streams = scanRes?.streams || [];
+                          const dur = Number(scanRes?.format?.duration || streams[0]?.duration);
+                          if (!isNaN(dur) && dur > 0) {
+                            setVideoDuration(dur);
+                          }
                           const subs = streams
                             .filter((s: any) => s.codec_type === 'subtitle')
-                            .map((s: any, i: number) => ({ index: `0:s:${i}`, label: s.tags?.language || `Sub ${i}` }));
+                            .map((s: any, i: number) => {
+                              const lang = s.tags?.language || s.tags?.LANGUAGE || 'und';
+                              const title = s.tags?.title || s.tags?.TITLE || '';
+                              const codec = (s.codec_name || s.codec_tag_string || 'SUB').toUpperCase();
+                              return {
+                                index: `0:s:${i}`,
+                                language: lang,
+                                title: title,
+                                codec: codec,
+                                label: title || (lang !== 'und' ? lang.toUpperCase() : `Legenda ${i + 1}`)
+                              };
+                            });
                           const audios = streams
                             .filter((s: any) => s.codec_type === 'audio')
-                            .map((s: any, i: number) => ({ index: `0:a:${i}`, label: s.tags?.language || `Audio ${i}` }));
+                            .map((s: any, i: number) => {
+                              const lang = s.tags?.language || s.tags?.LANGUAGE || 'und';
+                              const title = s.tags?.title || s.tags?.TITLE || '';
+                              const codec = (s.codec_name || s.codec_tag_string || 'AAC').toUpperCase();
+                              return {
+                                index: `0:a:${i}`,
+                                language: lang,
+                                title: title,
+                                codec: codec,
+                                label: title || (lang !== 'und' ? lang.toUpperCase() : `Áudio ${i + 1}`)
+                              };
+                            });
                           setEmbeddedSubs(subs);
                           setEmbeddedAudios(audios);
                           
                           if (audios.length > 0) {
                             setPrimaryAudioTrack(audios[0].index);
                           }
+                          // Marcar tudo por padrão (todas as legendas embutidas e áudios extras)
+                          setExtraSubtitleTracks(new Set(subs.map((s: any) => s.index)));
+                          if (audios.length > 1) {
+                            setExtraAudioTracks(new Set(audios.slice(1).map((a: any) => a.index)));
+                          }
                         } catch (err: any) {
-                          alert('Falha ao rodar o escâner: ' + err.message);
+                          console.warn('Falha ao rodar o escâner:', err.message);
                         } finally {
                           setIsScanning(false);
                         }
@@ -194,6 +244,29 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                   {videoFile ? videoFile.name : 'Clique para selecionar um vídeo do PC'}
                 </span>
               </button>
+              <input
+                type="file"
+                accept="video/*"
+                ref={videoFileInputRef}
+                className="hidden"
+                disabled={isUploading || isScanning}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setVideoFile(file);
+                    setError(null);
+                    setEmbeddedSubs([]);
+                    setEmbeddedAudios([]);
+                    setPrimaryAudioTrack('');
+                    setExtraAudioTracks(new Set());
+                    setExtraSubtitleTracks(new Set());
+                    
+                    // Nota: Na web não temos o ffprobe para extrair duração, legenda, etc.,
+                    // pois o ffprobe no browser seria muito pesado. O usuário terá que
+                    // upar legendas manualmente.
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -233,7 +306,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                           }}
                           className="accent-brand-500"
                         />
-                        <span>{i + 1}. {audio.language !== 'und' ? audio.language?.toUpperCase() : 'Desconhecido'} ({audio.codec})</span>
+                        <span>{i + 1}. {audio.title || (audio.language && audio.language !== 'und' ? audio.language.toUpperCase() : `Áudio ${i + 1}`)} {audio.codec ? `(${audio.codec})` : ''}</span>
                       </label>
                     ))}
                   </div>
@@ -250,7 +323,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                               onChange={() => toggleExtraAudio(audio.index)}
                               className="accent-brand-500 rounded"
                             />
-                            <span>{audio.language !== 'und' ? audio.language?.toUpperCase() : 'Desconhecido'} ({audio.codec})</span>
+                            <span>{audio.title || (audio.language && audio.language !== 'und' ? audio.language.toUpperCase() : `Áudio Extra`)} {audio.codec ? `(${audio.codec})` : ''}</span>
                           </label>
                         ))}
                       </div>
@@ -271,7 +344,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
                           onChange={() => toggleExtraSubtitle(sub.index)}
                           className="accent-purple-500 rounded"
                         />
-                        <span>{i + 1}. {sub.language !== 'und' ? sub.language?.toUpperCase() : 'Desconhecido'} {sub.title ? `- ${sub.title}` : ''}</span>
+                        <span>{i + 1}. {sub.title || (sub.language && sub.language !== 'und' ? sub.language.toUpperCase() : `Legenda ${i + 1}`)} {sub.codec ? `[${sub.codec}]` : ''}</span>
                       </label>
                     ))}
                   </div>
@@ -279,6 +352,21 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
               )}
             </div>
           )}
+
+          {/* Web Quality Selection */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-white/80">Qualidade da Versão Web</label>
+            <select 
+              value={webQuality}
+              onChange={(e) => setWebQuality(e.target.value as any)}
+              disabled={isUploading}
+              className="bg-black/20 border border-white/10 rounded-xl p-3 text-sm text-white/90 outline-none focus:border-brand-500 transition-colors"
+            >
+              <option value="original">Original (Instantâneo - Apenas copia, pode não rodar na web)</option>
+              <option value="720p">720p HD (Rápido e Leve - Recomendado)</option>
+              <option value="1080p">1080p Full HD (Alta Qualidade - Lento)</option>
+            </select>
+          </div>
 
           {/* Subtitle Input (External) */}
           <div className="flex flex-col gap-2">
@@ -314,7 +402,7 @@ export default function VideoUploadModal({ onClose, onUpload }: VideoUploadModal
           {isUploading && (
             <div className="flex flex-col gap-2 mt-2">
               <div className="flex justify-between text-xs text-dark-subtext font-medium">
-                <span>Processando e enviando...</span>
+                <span>{uploadPhase}</span>
                 <span>{Math.round(uploadProgress)}%</span>
               </div>
               <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
