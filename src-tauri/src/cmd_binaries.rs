@@ -1,13 +1,57 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::Write;
 use tauri::AppHandle;
 
-const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
-const FFMPEG_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64";
-const FFPROBE_URL: &str = "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-win32-x64";
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
-pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
+// Retorna a extensão de executável, se houver
+fn get_exe_extension() -> &'static str {
+    if cfg!(target_os = "windows") {
+        ".exe"
+    } else {
+        ""
+    }
+}
+
+// Retorna o caminho final absoluto de um binário a partir do nome base
+pub fn get_bin_path(binary_base_name: &str) -> PathBuf {
+    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let bin_dir = app_data_dir.join("bin");
+    bin_dir.join(format!("{}{}", binary_base_name, get_exe_extension()))
+}
+
+// Funções para pegar as URLs de download dependendo da plataforma
+fn get_ytdlp_url() -> &'static str {
+    match std::env::consts::OS {
+        "windows" => "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
+        "macos" => "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos",
+        _ => "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp",
+    }
+}
+
+fn get_ffmpeg_url() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", _) => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64",
+        ("macos", "aarch64") => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-darwin-arm64",
+        ("macos", _) => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-darwin-x64",
+        ("linux", "aarch64") => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-linux-arm64",
+        _ => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-linux-x64",
+    }
+}
+
+fn get_ffprobe_url() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", _) => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-win32-x64",
+        ("macos", "aarch64") => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-darwin-arm64",
+        ("macos", _) => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-darwin-x64",
+        ("linux", "aarch64") => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-linux-arm64",
+        _ => "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-linux-x64",
+    }
+}
+
+pub async fn ensure_binaries(app: &AppHandle) -> Result<(), String> {
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
     let bin_dir = app_data_dir.join("bin");
     
@@ -15,28 +59,41 @@ pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
         fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
     }
     
-    let ytdlp_path = bin_dir.join("yt-dlp.exe");
-    let ffmpeg_path = bin_dir.join("ffmpeg.exe");
-    let ffprobe_path = bin_dir.join("ffprobe.exe");
+    let ytdlp_path = get_bin_path("yt-dlp");
+    let ffmpeg_path = get_bin_path("ffmpeg");
+    let ffprobe_path = get_bin_path("ffprobe");
     
     // Download yt-dlp
     if !ytdlp_path.exists() {
         println!("Downloading yt-dlp...");
-        download_file(YTDLP_URL, &ytdlp_path).await?;
+        download_file(get_ytdlp_url(), &ytdlp_path).await?;
+        make_executable(&ytdlp_path)?;
     }
     
     // Download ffmpeg
     if !ffmpeg_path.exists() {
         println!("Downloading ffmpeg...");
-        download_file(FFMPEG_URL, &ffmpeg_path).await?;
+        download_file(get_ffmpeg_url(), &ffmpeg_path).await?;
+        make_executable(&ffmpeg_path)?;
     }
     
     // Download ffprobe
     if !ffprobe_path.exists() {
         println!("Downloading ffprobe...");
-        download_file(FFPROBE_URL, &ffprobe_path).await?;
+        download_file(get_ffprobe_url(), &ffprobe_path).await?;
+        make_executable(&ffprobe_path)?;
     }
     
+    Ok(())
+}
+
+fn make_executable(path: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        let mut perms = fs::metadata(path).map_err(|e| e.to_string())?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(path, perms).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -57,12 +114,9 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
 
 #[tauri::command]
 pub fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
-    let bin_dir = app_data_dir.join("bin");
-    
-    Ok(bin_dir.join("yt-dlp.exe").exists() && 
-       bin_dir.join("ffmpeg.exe").exists() && 
-       bin_dir.join("ffprobe.exe").exists())
+    Ok(get_bin_path("yt-dlp").exists() && 
+       get_bin_path("ffmpeg").exists() && 
+       get_bin_path("ffprobe").exists())
 }
 
 #[tauri::command]

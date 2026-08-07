@@ -103,8 +103,7 @@ async fn stream_handler(
     };
 
     // Pega o executável do ffmpeg
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
-    let ffmpeg_path = app_data_dir.join("bin").join("ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     
     if !ffmpeg_path.exists() {
         return (StatusCode::INTERNAL_SERVER_ERROR, "FFmpeg binary not found").into_response();

@@ -18,13 +18,9 @@ fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     Ok(audio_dir)
 }
 
-fn get_bin_path(_app: &AppHandle, binary_name: &str) -> PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
-}
-
 #[tauri::command]
 pub fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i32, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
-    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     
     // Anki clips should go to the Anki directory
     let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
