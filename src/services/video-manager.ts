@@ -119,14 +119,17 @@ async function uploadLocalFileToDrive(token: string, localPath: string, driveFil
  * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
  */
 export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<VideoItem> {
-  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, onProgress, onPhaseChange } = options;
+  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, onProgress, onPhaseChange, signal } = options;
   
+  if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
   let isLocal = false;
   let localPath: string | undefined = undefined;
   let webFileId = '';
+  let mainFileId = '';
   
   const sourcePath = (file as any).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
@@ -144,14 +147,18 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       
       if (onProgress) onProgress(40);
       if (onPhaseChange) onPhaseChange('Enviando Arquivo Original...');
+      if (signal?.aborted) throw new Error("Cancelado pelo usuário");
       
       mainFileId = await uploadLocalFileToDrive(token, processRes.original_path, file.name + ".enc", (p) => {
+        if (signal?.aborted) throw new Error("Cancelado pelo usuário");
         if (onProgress) onProgress(40 + (p * 0.15));
       });
       
       if (processRes.web_path) {
         if (onPhaseChange) onPhaseChange('Enviando Versão Web...');
+        if (signal?.aborted) throw new Error("Cancelado pelo usuário");
         webFileId = await uploadLocalFileToDrive(token, processRes.web_path, standardizedName + ".enc", (p) => {
+           if (signal?.aborted) throw new Error("Cancelado pelo usuário");
            if (onProgress) onProgress(55 + (p * 0.15));
         });
       }
@@ -169,30 +176,41 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       if (onPhaseChange) onPhaseChange(`Transcodificando vídeo na Web para ${webQuality} (Cuidado)...`);
       const { processVideoWeb } = await import('./ffmpeg-web');
       try {
+        if (signal?.aborted) throw new Error("Cancelado pelo usuário");
         dataToUpload = await processVideoWeb(file, webQuality, (p) => {
-          if (onProgress) onProgress(5 + (p * 0.25));
-        });
+          if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+          if (onProgress) onProgress(p * 0.7); 
+        }, signal);
         driveFileName = standardizedName;
       } catch (err: any) {
-        console.warn("Falha na conversão Web, usando arquivo original.", err);
+        if (err.message === 'Cancelado pelo usuário' || signal?.aborted) {
+          throw new Error('Cancelado pelo usuário');
+        }
+        console.error('Falha no FFmpeg Web:', err);
+        // Fallback to original
       }
     }
-    
+
     if (options.masterKey) {
-      if (onPhaseChange) onPhaseChange('Criptografando vídeo...');
+      if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+      if (onPhaseChange) onPhaseChange('Criptografando e enviando para nuvem (Isso pode demorar)...');
+      
       const { encryptFileChunked } = await import('./storage');
-      dataToUpload = await encryptFileChunked(dataToUpload as File | Blob, options.masterKey, (p) => {
+      const encryptedBlob = await encryptFileChunked(dataToUpload as File | Blob, options.masterKey, (p) => {
+        if (signal?.aborted) throw new Error("Cancelado pelo usuário");
         if (onProgress) onProgress(30 + (p * 0.1));
       });
-      driveFileName += '.enc';
+      
+      if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+
+      mainFileId = await uploadToDrive(token, driveFileName + ".enc", encryptedBlob, false as any, (p) => {
+        if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+        if (onProgress) onProgress(70 + (p * 0.3));
+      });
     } else {
       throw new Error("Master key is required for uploading securely on the Web.");
     }
 
-    if (onPhaseChange) onPhaseChange('Enviando para o Google Drive...');
-    mainFileId = await uploadToDrive(token, driveFileName, dataToUpload, false as any, (p) => {
-      if (onProgress) onProgress(40 + (p * 0.3));
-    });
   }
 
   if (onProgress) onProgress(75);
