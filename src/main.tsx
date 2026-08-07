@@ -6,12 +6,6 @@ import 'highlight.js/styles/atom-one-dark.css'
 import { platform } from './services/platform';
 
 async function init() {
-  if (!localStorage.getItem('wiped_for_test_1')) {
-    localStorage.clear();
-    localStorage.setItem('wiped_for_test_1', '1');
-    console.log("🔥 LOCALSTORAGE LIMPO PARA TESTE DE SYNC 🔥");
-  }
-
   if (!window.api) {
     let mockApi;
     if (platform.platform === 'desktop') {
@@ -57,7 +51,9 @@ async function init() {
   // Register Service Worker for Web Video Streaming (and Desktop Cloud Streaming)
   if ('serviceWorker' in navigator) {
     try {
-      await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      // Força a atualização do Service Worker em cada reload (importante para dev)
+      reg.update();
       console.log('Service Worker registered successfully');
     } catch (err) {
       console.error('Service Worker registration failed:', err);

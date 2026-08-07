@@ -20,7 +20,7 @@ fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub async fn youtube_fetch_info(url: String, app: AppHandle) -> Result<Value, String> {
+pub async fn youtube_fetch_info(url: String, _app: AppHandle) -> Result<Value, String> {
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     
     // spawning yt-dlp -j to get JSON info
@@ -122,7 +122,7 @@ pub async fn youtube_download(url: String, filename: String, quality: String, su
 }
 
 #[tauri::command]
-pub async fn youtube_fetch_playlist_info(url: String, app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+pub async fn youtube_fetch_playlist_info(url: String, _app: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let mut cmd = std::process::Command::new(ytdlp_path);
     cmd.args(["-J", &url]);

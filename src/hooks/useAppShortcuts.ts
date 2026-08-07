@@ -61,6 +61,14 @@ export function useAppShortcuts(state: AppState, dispatch: React.Dispatch<Action
           }
         }
       }
+
+      // Open DevTools with F12 or Ctrl+Shift+I in desktop mode
+      if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i'))) {
+        e.preventDefault();
+        import('@tauri-apps/api/core').then(mod => {
+          mod.invoke('app_open_devtools').catch(() => {});
+        }).catch(() => {});
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

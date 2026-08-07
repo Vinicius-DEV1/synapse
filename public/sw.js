@@ -82,7 +82,13 @@ async function handleVideoStream(request, url) {
       return new Response("Key not found", { status: 401 });
     }
     
-    const cryptoKey = await importKey(moduleKey);
+    // Se a chave vier via postMessage como CryptoKey, usamos direto.
+    // Senão, importamos de raw bytes.
+    let cryptoKey = moduleKey;
+    if (!cryptoKey.type) {
+      cryptoKey = await importKey(moduleKey);
+    }
+    
     const originalSize = await getOriginalSize(fileId);
     
     const rangeHeader = request.headers.get('Range');
