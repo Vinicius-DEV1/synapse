@@ -18,10 +18,6 @@ fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     Ok(videos_dir)
 }
 
-fn get_bin_path(_app: &AppHandle, binary_name: &str) -> PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
-}
-
 #[tauri::command]
 pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
@@ -167,7 +163,7 @@ pub fn video_import_and_encrypt(
 
     let temp_mp4 = videos_dir.join(format!("temp_remux_{}.mp4", uuid::Uuid::new_v4()));
     let actual_source = if needs_remux {
-        let ffmpeg_path = get_bin_path(&app_handle, "ffmpeg.exe");
+        let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
         let mut cmd = Command::new(&ffmpeg_path);
         cmd.args([
             "-y",
@@ -222,6 +218,93 @@ pub fn video_import_and_encrypt(
     Ok(dest_full_path.to_string_lossy().to_string())
 }
 
+#[derive(serde::Serialize)]
+pub struct ProcessUploadResult {
+    pub original_path: String,
+    pub web_path: Option<String>,
+}
+
+#[tauri::command]
+pub fn video_process_upload(
+    source_path: String,
+    dest_filename: String,
+    web_quality: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app_handle: AppHandle
+) -> Result<ProcessUploadResult, String> {
+    let videos_dir = get_videos_dir(&app_handle)?;
+    let norm_filename = normalize_to_mp4_name(&dest_filename);
+    let dest_filename_enc = format!("{}.enc", dest_filename); // Original keeps its extension internally but adds .enc
+    let dest_full_path = videos_dir.join(&dest_filename_enc);
+    
+    let keys_guard = db_state.keys.lock().unwrap();
+    let master_key = if let Some(keys) = keys_guard.as_ref() {
+        if let Some(ref k) = keys.culture {
+            k.clone()
+        } else {
+            return Err("Culture key not found".into());
+        }
+    } else {
+        return Err("Keys not unlocked".into());
+    };
+    
+    // 1. Criptografa o Original
+    crate::crypto_stream::encrypt_file_chunked(
+        &std::path::PathBuf::from(&source_path), 
+        &dest_full_path, 
+        &master_key
+    )?;
+
+    // 2. Se a qualidade Web não for "original", cria a cópia Web
+    let web_path = if web_quality != "original" {
+        let web_filename_enc = format!("{}_web.mp4.enc", norm_filename.trim_end_matches(".mp4"));
+        let web_full_path = videos_dir.join(&web_filename_enc);
+        let temp_web_mp4 = videos_dir.join(format!("temp_web_{}.mp4", uuid::Uuid::new_v4()));
+        
+        let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
+        let mut cmd = Command::new(&ffmpeg_path);
+        
+        // Define FFmpeg args based on quality
+        let mut args = vec![
+            "-y",
+            "-i", &source_path,
+        ];
+        
+        if web_quality == "1080p" {
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "fast", "-crf", "23", "-vf", "scale=-2:1080"]);
+        } else if web_quality == "720p" {
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "fast", "-crf", "24", "-vf", "scale=-2:720"]);
+        } else {
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "fast", "-crf", "24", "-vf", "scale=-2:720"]);
+        }
+        
+        args.push(temp_web_mp4.to_string_lossy().as_ref());
+        
+        cmd.args(&args);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        
+        let output = cmd.output().map_err(|e| e.to_string())?;
+        if !output.status.success() || !temp_web_mp4.exists() {
+            let _ = fs::remove_file(&temp_web_mp4);
+            return Err(format!("Falha ao converter vídeo Web: {}", String::from_utf8_lossy(&output.stderr)));
+        }
+        
+        // Criptografa o arquivo Web gerado
+        crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
+        let _ = fs::remove_file(&temp_web_mp4);
+        
+        Some(web_full_path.to_string_lossy().to_string())
+    } else {
+        None
+    };
+
+    Ok(ProcessUploadResult {
+        original_path: dest_full_path.to_string_lossy().to_string(),
+        web_path,
+    })
+}
+
 #[tauri::command]
 pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
@@ -257,7 +340,7 @@ pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::Stat
 
 #[tauri::command]
 pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
-    let ffprobe_path = get_bin_path(&app, "ffprobe.exe");
+    let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
     
     let input_path = if local_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
@@ -284,7 +367,7 @@ pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, St
 
 #[tauri::command]
 pub fn video_extract_subtitles(local_path: String, track_index: String, app: AppHandle) -> Result<String, String> {
-    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let vtt_out_path = videos_dir.join(format!("temp_sub_{}.vtt", uuid::Uuid::new_v4()));
     
@@ -321,7 +404,7 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
 
 #[tauri::command]
 pub fn video_extract_audio(local_path: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
-    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     
     let track_clean = track_index.replace(":", "");
@@ -373,7 +456,7 @@ pub fn video_extract_audio(local_path: String, track_index: String, db_state: ta
 
 #[tauri::command]
 pub fn video_remux_default_track(source_path: String, filename: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
-    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
     let final_dest = videos_dir.join(format!("{}.enc", filename));
@@ -425,7 +508,7 @@ pub fn video_remux_default_track(source_path: String, filename: String, track_in
 
 #[tauri::command]
 pub fn video_convert_mp4(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
-    let ffmpeg_path = get_bin_path(&app, "ffmpeg.exe");
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     
     let temp_dest = videos_dir.join(format!("temp_mp4_{}.mp4", uuid::Uuid::new_v4()));

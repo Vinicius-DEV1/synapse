@@ -8,6 +8,9 @@ export default defineConfig({
     port: 35174,
     host: '127.0.0.1'
   },
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+  },
   build: {
     rollupOptions: {
       output: {

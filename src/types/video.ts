@@ -13,7 +13,8 @@ export interface VideoItem {
   original_name: string;
   duration?: number;
   file_path?: string;          // Local path if downloaded
-  drive_file_id?: string;      // Google Drive file ID
+  drive_file_id?: string;      // Google Drive file ID (Original)
+  drive_web_file_id?: string;  // Google Drive file ID (Web MP4 version)
   drive_subtitle_id?: string;  // Google Drive subtitle file ID (Legacy/Default)
   local_subtitle_path?: string;// Local subtitle path (Legacy/Default)
   subtitles_json?: string;     // Serialized TrackItem[]

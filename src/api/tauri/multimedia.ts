@@ -1,7 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 
 export const tauriVideoApi = {
   getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
+  readLocalFile: async (path: string): Promise<Uint8Array> => {
+    const arr: number[] = await invoke('video_read_file', { path });
+    return new Uint8Array(arr);
+  },
+  uploadFileToDrive: async (localPath: string, driveFilename: string, folderId: string, accessToken: string) => {
+    return await invoke('video_upload_file_to_drive', { localPath, driveFilename, folderId, accessToken });
+  },
   deleteLocal: async (filename: string) => await invoke('video_delete_local', { filename }),
   scanTracks: async (localPath: string) => await invoke('video_scan_tracks', { localPath }),
   extractSubtitles: async (localPath: string, trackIndex: string) => await invoke('video_extract_subtitles', { localPath, trackIndex }),
@@ -11,8 +19,32 @@ export const tauriVideoApi = {
   getStreamPort: async () => await invoke('video_get_stream_port'),
   saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
-  openFileDialog: async () => {},
-  openFolderDialog: async () => {}
+  processUpload: async (sourcePath: string, filename: string, webQuality: string) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality }),
+  openFileDialog: async () => {
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: 'Vídeos', extensions: ['mp4', 'mkv', 'avi', 'flv', 'wmv', 'mov', 'webm'] }]
+    });
+    if (!selected || Array.isArray(selected)) return null;
+    const pathStr = String(selected);
+    const name = pathStr.split('\\').pop()?.split('/').pop() || 'video.mp4';
+    const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
+    let type = 'video/mp4';
+    if (ext === 'mkv') type = 'video/x-matroska';
+    else if (ext === 'webm') type = 'video/webm';
+    return {
+      path: pathStr,
+      name,
+      type
+    };
+  },
+  openFolderDialog: async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false
+    });
+    return selected ? String(selected) : null;
+  }
 };
 
 export const tauriLofiApi = {
