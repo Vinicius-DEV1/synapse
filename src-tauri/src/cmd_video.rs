@@ -132,7 +132,7 @@ fn normalize_to_mp4_name(filename: &str) -> String {
 }
 
 #[tauri::command]
-pub fn video_import_and_encrypt(
+pub async fn video_import_and_encrypt(
     source_path: String,
     dest_filename: String,
     db_state: tauri::State<'_, crate::db::DbState>,
@@ -225,7 +225,7 @@ pub struct ProcessUploadResult {
 }
 
 #[tauri::command]
-pub fn video_process_upload(
+pub async fn video_process_upload(
     source_path: String,
     dest_filename: String,
     web_quality: String,
@@ -278,7 +278,8 @@ pub fn video_process_upload(
             args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "fast", "-crf", "24", "-vf", "scale=-2:720"]);
         }
         
-        args.push(temp_web_mp4.to_string_lossy().as_ref());
+        let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();
+        args.push(&temp_web_mp4_str);
         
         cmd.args(&args);
         #[cfg(target_os = "windows")]
@@ -306,7 +307,7 @@ pub fn video_process_upload(
 }
 
 #[tauri::command]
-pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
     let norm_filename = normalize_to_mp4_name(&filename);
     let filename_enc = format!("{}.enc", norm_filename);
@@ -339,7 +340,7 @@ pub fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::Stat
 }
 
 #[tauri::command]
-pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
+pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
     let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
     
     let input_path = if local_path.ends_with(".enc") {
@@ -366,7 +367,7 @@ pub fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, St
 }
 
 #[tauri::command]
-pub fn video_extract_subtitles(local_path: String, track_index: String, app: AppHandle) -> Result<String, String> {
+pub async fn video_extract_subtitles(local_path: String, track_index: String, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let vtt_out_path = videos_dir.join(format!("temp_sub_{}.vtt", uuid::Uuid::new_v4()));
@@ -403,7 +404,7 @@ pub fn video_extract_subtitles(local_path: String, track_index: String, app: App
 }
 
 #[tauri::command]
-pub fn video_extract_audio(local_path: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_extract_audio(local_path: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     
@@ -455,7 +456,7 @@ pub fn video_extract_audio(local_path: String, track_index: String, db_state: ta
 }
 
 #[tauri::command]
-pub fn video_remux_default_track(source_path: String, filename: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_remux_default_track(source_path: String, filename: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
@@ -507,7 +508,7 @@ pub fn video_remux_default_track(source_path: String, filename: String, track_in
 }
 
 #[tauri::command]
-pub fn video_convert_mp4(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_convert_mp4(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     
