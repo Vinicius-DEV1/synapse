@@ -17,34 +17,34 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          PRAGMA foreign_keys = ON;
          
          CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT, focus_key_enc TEXT, files_key_enc TEXT, vault_key_enc TEXT);
-         CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, data TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, value TEXT);
          
-         CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT, progress REAL DEFAULT 0.0, last_watched_at DATETIME);
+         CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT, progress REAL DEFAULT 0.0, last_watched_at DATETIME, drive_file_id TEXT, drive_web_file_id TEXT, drive_subtitle_id TEXT, local_subtitle_path TEXT, subtitles_json TEXT, audio_tracks_json TEXT, is_local INTEGER DEFAULT 1, collection_id TEXT, collection_name TEXT, youtube_url TEXT, youtube_description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS lofis (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT);
          CREATE TABLE IF NOT EXISTS video_words (id TEXT PRIMARY KEY, video_id TEXT NOT NULL, word TEXT NOT NULL, context TEXT, timestamp REAL);
-         CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, start_date TEXT, end_date TEXT);
+         CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, start_date TEXT, end_date TEXT, type TEXT DEFAULT 'event', type_ TEXT DEFAULT 'event', status TEXT DEFAULT 'pending', color TEXT DEFAULT '#3b82f6', deleted_at DATETIME DEFAULT NULL, page_id TEXT, reminders TEXT DEFAULT '[]', notified_reminders TEXT DEFAULT '[]', recurrence_rule TEXT, reminder_minutes INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          
-         CREATE TABLE IF NOT EXISTS library_books (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT DEFAULT 'Desconhecido', file_path TEXT, drive_file_id TEXT);
+         CREATE TABLE IF NOT EXISTS library_books (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT DEFAULT 'Desconhecido', file_path TEXT, drive_file_id TEXT, cover_color TEXT, cover_image TEXT, collections TEXT DEFAULT '[]', total_pages INTEGER DEFAULT 0, current_page INTEGER DEFAULT 0, reading_status TEXT DEFAULT 'unread', last_read_page TEXT, epub_locations TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME, reading_preferences TEXT, language TEXT, last_read_at DATETIME, original_name TEXT, published_year INTEGER, publisher TEXT);
          CREATE TABLE IF NOT EXISTS library_collections (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS library_book_collections (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, collection_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-         CREATE TABLE IF NOT EXISTS library_highlights (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, text_content TEXT DEFAULT '', color TEXT DEFAULT 'yellow');
+         CREATE TABLE IF NOT EXISTS library_highlights (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, text_content TEXT DEFAULT '', color TEXT DEFAULT 'yellow', rects TEXT, highlight_type TEXT, note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS library_bookmarks (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, label TEXT DEFAULT '', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS library_ocr_cache (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, text_content TEXT DEFAULT '', word_boxes TEXT DEFAULT '[]');
-         CREATE TABLE IF NOT EXISTS library_reading_sessions (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME DEFAULT NULL, pages_read INTEGER DEFAULT 0);
+         CREATE TABLE IF NOT EXISTS library_reading_sessions (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME DEFAULT NULL, pages_read INTEGER DEFAULT 0, start_page INTEGER DEFAULT 0, end_page INTEGER DEFAULT 0);
          
-         CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, description TEXT NOT NULL, amount REAL NOT NULL, type TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT 'completed', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
-         CREATE TABLE IF NOT EXISTS wishlist (id TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, priority TEXT DEFAULT 'medium', category TEXT DEFAULT 'Geral', expected_date TEXT, estimated_cost REAL NOT NULL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, description TEXT NOT NULL, amount REAL NOT NULL, type TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT 'completed', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, is_paid INTEGER DEFAULT 1, is_recurring INTEGER DEFAULT 0, recurrence_period TEXT, recurrence_end_date TEXT, paid_amount REAL);
+         CREATE TABLE IF NOT EXISTS wishlist (id TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, priority TEXT DEFAULT 'medium', category TEXT DEFAULT 'Geral', expected_date TEXT, estimated_cost REAL NOT NULL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, description TEXT, link TEXT, updated_at DATETIME);
          
-         CREATE TABLE IF NOT EXISTS pages (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT NOT NULL, content TEXT DEFAULT '', icon TEXT DEFAULT 'file', sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS pages (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT NOT NULL, content TEXT DEFAULT '', icon TEXT DEFAULT 'file', sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, cover_image TEXT, description TEXT, password_salt TEXT, crdt_state TEXT, encrypted_content TEXT, is_pinned INTEGER DEFAULT 0, pinned_order REAL DEFAULT 0.0, is_locked INTEGER DEFAULT 0);
          CREATE TABLE IF NOT EXISTS image_cache (id TEXT PRIMARY KEY, data BLOB NOT NULL, mimeType TEXT DEFAULT 'image/png');
          CREATE TABLE IF NOT EXISTS page_history (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          
-         CREATE TABLE IF NOT EXISTS culture_items (id TEXT PRIMARY KEY, title TEXT NOT NULL, type TEXT NOT NULL, synopsis TEXT, cover_image TEXT, status TEXT DEFAULT 'backlog', progress INTEGER DEFAULT 0, total_episodes INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, myanimelist_id INTEGER, anilist_id INTEGER);
-         CREATE TABLE IF NOT EXISTS culture_episodes (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, episode_number INTEGER, title TEXT, synopsis TEXT, is_watched BOOLEAN DEFAULT 0, watched_at DATETIME);
+         CREATE TABLE IF NOT EXISTS culture_items (id TEXT PRIMARY KEY, title TEXT NOT NULL, type TEXT NOT NULL, synopsis TEXT, cover_image TEXT, status TEXT DEFAULT 'backlog', progress INTEGER DEFAULT 0, total_episodes INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, myanimelist_id INTEGER, anilist_id INTEGER, access_link TEXT, total_progress INTEGER DEFAULT 0, is_goal BOOLEAN DEFAULT 0, goal_note TEXT, api_id TEXT, api_source TEXT, last_sync_at DATETIME, volumes INTEGER, chapters INTEGER, episodes_count INTEGER);
+         CREATE TABLE IF NOT EXISTS culture_episodes (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, episode_number INTEGER, title TEXT, synopsis TEXT, is_watched BOOLEAN DEFAULT 0, watched_at DATETIME, season_number INTEGER, episode_in_season INTEGER, aired_at DATETIME, updated_at DATETIME);
          
          CREATE TABLE IF NOT EXISTS anki_decks (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, parent_id TEXT, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-         CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, tags TEXT DEFAULT '[]', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-         CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME);
+         CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, tags TEXT DEFAULT '[]', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, card_type TEXT, validation_mode TEXT, media_url TEXT, source_module TEXT, source_id TEXT, updated_at DATETIME, deleted_at DATETIME);
+         CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME, scheduled_days INTEGER DEFAULT 0);
          CREATE TABLE IF NOT EXISTS anki_reviews (id TEXT PRIMARY KEY, card_id TEXT NOT NULL, rating INTEGER NOT NULL, duration INTEGER DEFAULT 0, review_time DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS anki_notes (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS anki_deck_settings (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, new_limit INTEGER DEFAULT 20, review_limit INTEGER DEFAULT 100, learning_steps TEXT, relearning_steps TEXT, fsrs_weights TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
@@ -96,6 +96,102 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN reminders TEXT DEFAULT '[]'", []);
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN notified_reminders TEXT DEFAULT '[]'", []);
+    
+    // Novas colunas (Migrações dinâmicas para esquemas antigos que foram atualizados via web/sync)
+    let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE config ADD COLUMN value TEXT", []);
+    
+    let _ = conn.execute("ALTER TABLE pages ADD COLUMN cover_image TEXT", []);
+    let _ = conn.execute("ALTER TABLE pages ADD COLUMN description TEXT", []);
+    let _ = conn.execute("ALTER TABLE pages ADD COLUMN password_salt TEXT", []);
+    
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN is_paid INTEGER DEFAULT 1", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN is_recurring INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN recurrence_period TEXT", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN recurrence_end_date TEXT", []);
+    
+    let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN description TEXT", []);
+    let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN link TEXT", []);
+    
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_color TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_image TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN collections TEXT DEFAULT '[]'", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN total_pages INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN current_page INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN reading_status TEXT DEFAULT 'unread'", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN last_read_page TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN epub_locations TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN created_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN updated_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN deleted_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN reading_preferences TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN language TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN last_read_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN original_name TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN published_year INTEGER", []);
+    
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_web_file_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_subtitle_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN local_subtitle_path TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN subtitles_json TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN audio_tracks_json TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN is_local INTEGER DEFAULT 1", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN collection_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN collection_name TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN youtube_url TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN youtube_description TEXT", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN created_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE videos ADD COLUMN updated_at DATETIME", []);
+    
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN type TEXT DEFAULT 'event'", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN type_ TEXT DEFAULT 'event'", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN status TEXT DEFAULT 'pending'", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN color TEXT DEFAULT '#3b82f6'", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN deleted_at DATETIME DEFAULT NULL", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN recurrence_rule TEXT", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN reminder_minutes INTEGER", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN created_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN updated_at DATETIME", []);
+    
+    // Novas tabelas extras de migração profunda
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN paid_amount REAL", []);
+    let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN updated_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);
+    
+    let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN rects TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN highlight_type TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN note TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN created_at DATETIME", []);
+    
+    let _ = conn.execute("ALTER TABLE library_reading_sessions ADD COLUMN start_page INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE library_reading_sessions ADD COLUMN end_page INTEGER DEFAULT 0", []);
+    
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN access_link TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN total_progress INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN is_goal BOOLEAN DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN goal_note TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_source TEXT", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN last_sync_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN volumes INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN chapters INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN episodes_count INTEGER", []);
+    
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN season_number INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN episode_in_season INTEGER", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN aired_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN updated_at DATETIME", []);
+    
+    let _ = conn.execute("ALTER TABLE anki_srs_state ADD COLUMN scheduled_days INTEGER DEFAULT 0", []);
+    
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN card_type TEXT", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN validation_mode TEXT", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN media_url TEXT", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_module TEXT", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN updated_at DATETIME", []);
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN deleted_at DATETIME", []);
     
     // Drop old focus_sessions if it has the old schema (text id)
     let _ = conn.execute("DROP TABLE IF EXISTS sessions", []);

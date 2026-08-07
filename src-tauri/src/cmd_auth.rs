@@ -55,7 +55,6 @@ pub fn auth_wipe_local_data(app: tauri::AppHandle, db_state: tauri::State<'_, cr
     }
     
     app.restart();
-    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -79,7 +78,7 @@ pub struct LoginResponse {
 }
 
 #[tauri::command]
-pub fn auth_login(password: String, db_state: State<'_, DbState>) -> Result<LoginResponse, String> {
+pub async fn auth_login(password: String, db_state: State<'_, DbState>) -> Result<LoginResponse, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = match &*guard {
         Some(c) => c,
@@ -224,40 +223,45 @@ pub fn auth_login(password: String, db_state: State<'_, DbState>) -> Result<Logi
 }
 
 #[tauri::command]
-pub fn auth_setup(password: String, existing_keys: Option<HashMap<String, String>>, db_state: State<'_, DbState>) -> Result<LoginResponse, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = match &*guard {
-        Some(c) => c,
-        None => return Ok(LoginResponse { success: false, error: Some("Banco nuo inicializado".into()), modules: vec![], keys: None }),
-    };
-    
-    let get_key = |module: &str| -> String {
-        if let Some(keys) = &existing_keys {
-            if let Some(k) = keys.get(module) {
-                return k.clone();
+pub async fn auth_setup(password: String, existing_keys: Option<HashMap<String, String>>, db_state: State<'_, DbState>) -> Result<LoginResponse, String> {
+    {
+        let guard = db_state.conn.lock().unwrap();
+        let conn = match &*guard {
+            Some(c) => c,
+            None => return Ok(LoginResponse { success: false, error: Some("Banco nuo inicializado".into()), modules: vec![], keys: None }),
+        };
+        
+        let get_key = |module: &str| -> String {
+            if let Some(keys) = &existing_keys {
+                if let Some(k) = keys.get(module) {
+                    return k.clone();
+                }
             }
-        }
-        generate_module_key()
-    };
+            generate_module_key()
+        };
 
-    let library_enc = encrypt_module_key(&get_key("library"), &password)?;
-    let finance_enc = encrypt_module_key(&get_key("finance"), &password)?;
-    let notes_enc = encrypt_module_key(&get_key("notes"), &password)?;
-    let culture_enc = encrypt_module_key(&get_key("culture"), &password)?;
-    let anki_enc = encrypt_module_key(&get_key("anki"), &password)?;
-    let focus_enc = encrypt_module_key(&get_key("focus"), &password)?;
-    let files_enc = encrypt_module_key(&get_key("files"), &password)?;
-    let vault_enc = encrypt_module_key(&get_key("vault"), &password)?;
+        let library_enc = encrypt_module_key(&get_key("library"), &password)?;
+        let finance_enc = encrypt_module_key(&get_key("finance"), &password)?;
+        let notes_enc = encrypt_module_key(&get_key("notes"), &password)?;
+        let culture_enc = encrypt_module_key(&get_key("culture"), &password)?;
+        let anki_enc = encrypt_module_key(&get_key("anki"), &password)?;
+        let focus_enc = encrypt_module_key(&get_key("focus"), &password)?;
+        let files_enc = encrypt_module_key(&get_key("files"), &password)?;
+        let vault_enc = encrypt_module_key(&get_key("vault"), &password)?;
+        
+        let auth_hash = hash_auth_password(&password);
+        let id = uuid::Uuid::new_v4().to_string();
+        
+        conn.execute(
+            "INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rusqlite::params![&id, &auth_hash, &library_enc, &finance_enc, &notes_enc, &culture_enc, &anki_enc, &focus_enc, &files_enc, &vault_enc],
+        ).map_err(|e| e.to_string())?;
+    }
     
-    let auth_hash = hash_auth_password(&password);
-    let id = uuid::Uuid::new_v4().to_string();
-    
-    conn.execute(
-        "INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        rusqlite::params![&id, &auth_hash, &library_enc, &finance_enc, &notes_enc, &culture_enc, &anki_enc, &focus_enc, &files_enc, &vault_enc],
-    ).map_err(|e| e.to_string())?;
-    
-    drop(guard);
-    
-    auth_login(password, db_state)
+    auth_login(password, db_state).await
+}
+
+#[tauri::command]
+pub fn app_open_devtools(window: tauri::WebviewWindow) {
+    window.open_devtools();
 }
