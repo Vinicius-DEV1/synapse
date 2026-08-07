@@ -24,22 +24,34 @@ export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> 
 export async function processVideoWeb(
   file: File, 
   quality: 'original' | '1080p' | '720p',
-  onProgress: (p: number) => void
+  onProgress: (p: number) => void,
+  signal?: AbortSignal
 ): Promise<Blob> {
   if (quality === 'original') {
     return file; // No transcoding
   }
 
-  const ffmpeg = await getFFmpeg();
+  const ffmpegInstance = await getFFmpeg();
   
-  ffmpeg.on('progress', ({ progress }) => {
+  if (signal) {
+    const onAbort = () => {
+      try {
+        ffmpegInstance.terminate();
+      } catch (e) {}
+      ffmpeg = null; // force recreate next time
+    };
+    signal.addEventListener('abort', onAbort);
+    if (signal.aborted) onAbort();
+  }
+  
+  ffmpegInstance.on('progress', ({ progress }) => {
     onProgress(progress * 100);
   });
 
   const inputName = 'input' + file.name.substring(file.name.lastIndexOf('.'));
   const outputName = 'output.mp4';
 
-  await ffmpeg.writeFile(inputName, await fetchFile(file));
+  await ffmpegInstance.writeFile(inputName, await fetchFile(file));
 
   const args = ['-i', inputName];
   
@@ -51,13 +63,13 @@ export async function processVideoWeb(
 
   args.push(outputName);
 
-  await ffmpeg.exec(args);
+  await ffmpegInstance.exec(args);
 
-  const data = await ffmpeg.readFile(outputName);
+  const data = await ffmpegInstance.readFile(outputName);
   
   // Cleanup memory
-  await ffmpeg.deleteFile(inputName);
-  await ffmpeg.deleteFile(outputName);
+  await ffmpegInstance.deleteFile(inputName);
+  await ffmpegInstance.deleteFile(outputName);
   
   return new Blob([data], { type: 'video/mp4' });
 }

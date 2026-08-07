@@ -17,6 +17,7 @@ export interface UploadOptions {
   webQuality: 'original' | '1080p' | '720p';
   onProgress?: (percent: number) => void;
   onPhaseChange?: (phase: string) => void;
+  signal?: AbortSignal;
 }
 
 interface VideoUploadModalProps {
@@ -29,13 +30,23 @@ interface VideoUploadModalProps {
 export default function VideoUploadModal({ collectionId, collectionName, onClose, onUpload }: VideoUploadModalProps) {
   const { state } = useStore();
   // We use culture or whatever the active module is, assuming videos are tied to Culture.
-  // Actually videos use the 'culture' key since they are embedded in culture items.
   const masterKey = state.moduleKeys['culture'];
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<string>('Processando e enviando...');
+  
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const [error, setError] = useState<string | null>(null);
   
   const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p'>('720p');
@@ -78,11 +89,6 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
       return;
     }
 
-    setIsUploading(true);
-    setError(null);
-    setUploadProgress(0);
-    setUploadPhase('Iniciando...');
-
     // Warning for Web > 500MB
     const isDesktop = !!window.api?.video;
     if (!isDesktop && webQuality !== 'original' && videoFile.size > 500 * 1024 * 1024) {
@@ -95,6 +101,14 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
 
     try {
       let subtitleText = null;
+      setIsUploading(true);
+      setError(null);
+      setUploadProgress(0);
+      setUploadPhase('Preparando...');
+      
+      const abortCtrl = new AbortController();
+      abortControllerRef.current = abortCtrl;
+      
       if (subtitleFile) {
         subtitleText = await processSubtitleFile(subtitleFile);
       }
@@ -111,14 +125,26 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         collectionName,
         webQuality,
         onProgress: (percent) => setUploadProgress(percent),
-        onPhaseChange: (phase) => setUploadPhase(phase)
+        onPhaseChange: (phase) => setUploadPhase(phase),
+        signal: abortCtrl.signal
       });
       onClose();
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Ocorreu um erro durante o upload.');
+      if (err.name === 'AbortError' || err.message === 'Cancelado pelo usuário') {
+        setError('Upload cancelado.');
+      } else {
+        console.error(err);
+        setError(err.message || 'Ocorreu um erro durante o upload.');
+      }
       setIsUploading(false);
     }
+  };
+
+  const handleCancel = () => {
+    if (isUploading && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    onClose();
   };
 
   return (
@@ -417,8 +443,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
           <div className="flex justify-end gap-3 mt-2 border-t border-white/5 pt-4">
             <button
               type="button"
-              onClick={onClose}
-              disabled={isUploading}
+              onClick={handleCancel}
               className="px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
             >
               Cancelar
