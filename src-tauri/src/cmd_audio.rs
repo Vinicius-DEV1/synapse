@@ -19,7 +19,7 @@ fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i32, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time_ms: i32, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     
     // Anki clips should go to the Anki directory
@@ -125,7 +125,7 @@ pub fn lofi_delete_local(filename: String, app: AppHandle) -> Result<bool, Strin
 }
 
 #[tauri::command]
-pub fn lofi_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn lofi_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let lofi_dir = get_lofi_dir(&app)?;
     let filename_enc = format!("{}.enc", filename);
     let path = lofi_dir.join(&filename_enc);
@@ -157,7 +157,7 @@ pub fn lofi_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State
 }
 
 #[tauri::command]
-pub fn lofi_copy_local(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn lofi_copy_local(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let lofi_dir = get_lofi_dir(&app)?;
     let filename_enc = format!("{}.enc", filename);
     let dest_path = lofi_dir.join(&filename_enc);
