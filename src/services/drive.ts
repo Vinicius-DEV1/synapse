@@ -222,7 +222,7 @@ export async function getOrCreateLofiFolder(accessToken: string, parentFolderId:
 export async function uploadToDrive(
   accessToken: string, 
   filename: string, 
-  buffer: ArrayBuffer, 
+  buffer: ArrayBuffer | Blob, 
   targetFolder: 'root' | 'photos' | 'lofi' = 'root',
   onProgress?: (percent: number) => void
 ): Promise<string> {

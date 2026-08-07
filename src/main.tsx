@@ -54,6 +54,16 @@ async function init() {
     window.api = createApiProxy(mockApi);
   }
 
+  // Register Service Worker for Web Video Streaming (and Desktop Cloud Streaming)
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      console.log('Service Worker registered successfully');
+    } catch (err) {
+      console.error('Service Worker registration failed:', err);
+    }
+  }
+
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />
