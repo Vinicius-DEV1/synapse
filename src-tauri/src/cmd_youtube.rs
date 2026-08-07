@@ -19,13 +19,9 @@ fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     Ok(videos_dir)
 }
 
-fn get_bin_path(_app: &AppHandle, binary_name: &str) -> PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join(binary_name)
-}
-
 #[tauri::command]
 pub async fn youtube_fetch_info(url: String, app: AppHandle) -> Result<Value, String> {
-    let ytdlp_path = get_bin_path(&app, "yt-dlp.exe");
+    let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     
     // spawning yt-dlp -j to get JSON info
     let mut cmd = Command::new(ytdlp_path);
@@ -46,8 +42,8 @@ pub async fn youtube_fetch_info(url: String, app: AppHandle) -> Result<Value, St
 
 #[tauri::command]
 pub async fn youtube_download(url: String, filename: String, quality: String, subs: Option<Vec<String>>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
-    let ytdlp_path = get_bin_path(&app, "yt-dlp.exe");
-    let ffmpeg_dir = get_bin_path(&app, "ffmpeg.exe").parent().unwrap().to_path_buf();
+    let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
+    let ffmpeg_dir = crate::cmd_binaries::get_bin_path("ffmpeg").parent().unwrap().to_path_buf();
     let videos_dir = get_videos_dir(&app)?;
     
     let temp_filename = format!("temp_{}_{}", uuid::Uuid::new_v4(), filename);
@@ -127,7 +123,7 @@ pub async fn youtube_download(url: String, filename: String, quality: String, su
 
 #[tauri::command]
 pub async fn youtube_fetch_playlist_info(url: String, app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let ytdlp_path = std::env::current_exe().unwrap().parent().unwrap().join("data").join("bin").join("yt-dlp.exe");
+    let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let mut cmd = std::process::Command::new(ytdlp_path);
     cmd.args(["-J", &url]);
     #[cfg(target_os = "windows")]
