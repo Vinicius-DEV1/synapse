@@ -77,10 +77,10 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): 
       // Como todos os contêineres são padronizados para .mp4 na importação, usamos sempre a URI nativa com suporte a Range Requests (HTTP 206)
       return `http://encrypted.localhost/files/${encodeURIComponent(localPath)}`;
     }
-  }
-
   if (video.drive_file_id) {
-    return getVideoStreamLink(video.drive_file_id, masterKey);
+    // Tanto Desktop quanto Web agora usam o Service Worker para fazer streaming sob demanda 
+    // do formato ENC1 hospedado no Google Drive, economizando RAM.
+    return `/stream-video/${video.drive_file_id}`;
   }
 
   throw new Error("Vídeo não foi encontrado nem localmente nem na nuvem.");
@@ -144,18 +144,20 @@ export async function uploadNewVideo(options: UploadOptions): Promise<VideoItem>
 
   // If local processing failed or it's a pure web file
   if (!mainFileId) {
-    let bufferToUpload = await file.arrayBuffer();
     let driveFileName = file.name;
+    let dataToUpload: ArrayBuffer | Blob = file;
     
     if (options.masterKey) {
-      const { encryptFile } = await import('./storage');
-      bufferToUpload = await encryptFile(bufferToUpload, options.masterKey);
+      const { encryptFileChunked } = await import('./storage');
+      dataToUpload = await encryptFileChunked(file, options.masterKey, (p) => {
+        if (onProgress) onProgress(p * 0.1); // Criptografia usa os 10% iniciais
+      });
       driveFileName = file.name + '.enc';
     } else {
       throw new Error("Master key is required for uploading securely on the Web.");
     }
 
-    mainFileId = await uploadToDrive(token, driveFileName, bufferToUpload, false as any, (p) => {
+    mainFileId = await uploadToDrive(token, driveFileName, dataToUpload, false as any, (p) => {
       if (onProgress) onProgress(10 + (p * 0.6));
     });
   }

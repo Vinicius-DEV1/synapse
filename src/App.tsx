@@ -54,8 +54,21 @@ function AppContent() {
   useEffect(() => {
     if (isAuth) {
       loadFocusData();
+      
+      // Update Service Worker with keys and token for video streaming
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        import('./services/drive').then(({ getValidAccessToken }) => {
+          getValidAccessToken().then(token => {
+            navigator.serviceWorker.controller?.postMessage({
+              type: 'SET_KEYS',
+              keys: state.moduleKeys,
+              token: token
+            });
+          });
+        });
+      }
     }
-  }, [isAuth, loadFocusData]);
+  }, [isAuth, loadFocusData, state.moduleKeys]);
 
   // Lock on inactivity
   useActivityTracker({

@@ -24,6 +24,63 @@ export async function encryptFile(fileBuffer: ArrayBuffer, masterKey: CryptoKey)
 }
 
 /**
+ * Criptografa um arquivo grande por chunks no formato ENC1, usado para vídeos.
+ * O formato é:
+ * [MAGIC: "ENC1"](4) + [ORIGINAL_SIZE](8) + [CHUNK_SIZE](4)
+ * Depois, para cada chunk:
+ * [IV](12) + [AES-GCM-Data-With-Auth-Tag](chunk_size + 16)
+ * Retorna um Blob para não estourar a memória com arquivos grandes.
+ */
+export async function encryptFileChunked(file: File | Blob, masterKey: CryptoKey, onProgress?: (p: number) => void): Promise<Blob> {
+  const CHUNK_SIZE = 1024 * 1024; // 1MB
+  const originalSize = file.size;
+  
+  // Header: 16 bytes
+  const headerBuffer = new ArrayBuffer(16);
+  const headerView = new DataView(headerBuffer);
+  
+  // MAGIC = "ENC1" (0x45, 0x4E, 0x43, 0x31)
+  headerView.setUint8(0, 0x45);
+  headerView.setUint8(1, 0x4E);
+  headerView.setUint8(2, 0x43);
+  headerView.setUint8(3, 0x31);
+  
+  // ORIGINAL_SIZE (8 bytes, Little Endian)
+  // JS DataView only has setBigUint64, which is fine
+  headerView.setBigUint64(4, BigInt(originalSize), true);
+  
+  // CHUNK_SIZE (4 bytes, Little Endian)
+  headerView.setUint32(12, CHUNK_SIZE, true);
+  
+  const blobParts: BlobPart[] = [headerBuffer];
+  let offset = 0;
+  
+  while (offset < originalSize) {
+    const chunk = file.slice(offset, offset + CHUNK_SIZE);
+    const chunkBuffer = await chunk.arrayBuffer();
+    
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    
+    const encryptedContent = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      masterKey,
+      chunkBuffer
+    );
+    
+    blobParts.push(iv.buffer);
+    blobParts.push(encryptedContent);
+    
+    offset += CHUNK_SIZE;
+    
+    if (onProgress) {
+      onProgress((offset / originalSize) * 100);
+    }
+  }
+  
+  return new Blob(blobParts, { type: 'application/octet-stream' });
+}
+
+/**
  * Descriptografa um arquivo PDF baixado do Firebase Storage
  */
 export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<ArrayBuffer> {
