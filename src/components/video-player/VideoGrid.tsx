@@ -20,6 +20,7 @@ interface VideoGridProps {
   onCreateFolder?: (name: string) => void;
   onRenameFolder?: (id: string, newName: string) => void;
   onDeleteFolder?: (id: string) => void;
+  onActiveCollectionChange?: (id: string | null, name: string | null) => void;
 }
 
 interface VideoCollection {
@@ -33,7 +34,7 @@ interface VideoCollection {
 export default function VideoGrid({ 
   videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, 
   onMoveVideo, isDeletingId, isDownloadingId, downloadProgress,
-  folders = [], onCreateFolder, onRenameFolder, onDeleteFolder
+  folders = [], onCreateFolder, onRenameFolder, onDeleteFolder, onActiveCollectionChange
 }: VideoGridProps) {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [activeInfoVideo, setActiveInfoVideo] = useState<VideoItem | null>(null);
@@ -107,6 +108,18 @@ export default function VideoGrid({
   const displayVideos = activeCollectionId ? (collectionsMap.get(activeCollectionId)?.videos || []) : standaloneVideos;
   const activeCollectionName = activeCollectionId ? (mergedCollections.find(c => c.id === activeCollectionId)?.name || '') : '';
 
+  const handleSelectCollection = (id: string | null, name: string | null = null) => {
+    setActiveCollectionId(id);
+    if (onActiveCollectionChange) {
+      if (!id) {
+        onActiveCollectionChange(null, null);
+      } else {
+        const colName = name || mergedCollections.find(c => c.id === id)?.name || null;
+        onActiveCollectionChange(id, colName);
+      }
+    }
+  };
+
   const handleRenameSubmit = (folderId: string) => {
     const trimmed = renameValue.trim();
     if (trimmed && onRenameFolder) {
@@ -133,7 +146,7 @@ export default function VideoGrid({
       {activeCollectionId && (
         <div className="px-6 py-3 flex items-center gap-2 text-brand-400 bg-brand-500/5 border-b border-brand-500/10">
           <button 
-            onClick={() => setActiveCollectionId(null)}
+            onClick={() => handleSelectCollection(null, null)}
             className="flex items-center gap-2 hover:text-brand-300 transition-colors font-medium text-sm focus:outline-none"
           >
             <ArrowLeft size={16} /> 
@@ -201,7 +214,7 @@ export default function VideoGrid({
             {!isCompact && (
               <div 
                 className={`${isList ? 'w-40 flex-shrink-0 rounded-lg overflow-hidden' : 'w-full'} aspect-video bg-black/40 relative flex items-center justify-center`}
-                onClick={() => setActiveCollectionId(col.id)}
+                onClick={() => handleSelectCollection(col.id, col.name)}
               >
                 <div className="w-full h-full bg-gradient-to-tr from-brand-900/40 to-brand-500/10 absolute inset-0"></div>
                 <Folder size={32} className="text-brand-400 opacity-80 group-hover:scale-110 transition-transform relative z-10" />
@@ -213,14 +226,14 @@ export default function VideoGrid({
             
             <div 
               className={`${isList ? 'flex-1 p-2' : 'p-3'} flex items-center justify-between gap-2`}
-              onClick={() => { if (renamingFolderId !== col.id) setActiveCollectionId(col.id); }}
+              onClick={() => { if (renamingFolderId !== col.id) handleSelectCollection(col.id, col.name); }}
             >
               {isCompact && (
-                <div className="flex-shrink-0 text-brand-500 opacity-80 group-hover:opacity-100 transition-opacity" onClick={() => setActiveCollectionId(col.id)}>
+                <div className="flex-shrink-0 text-brand-500 opacity-80 group-hover:opacity-100 transition-opacity" onClick={() => handleSelectCollection(col.id, col.name)}>
                   <Folder size={20} className="ml-1 mr-2" />
                 </div>
               )}
-              <div className="flex-1 overflow-hidden" onClick={() => { if (renamingFolderId !== col.id) setActiveCollectionId(col.id); }}>
+              <div className="flex-1 overflow-hidden" onClick={() => { if (renamingFolderId !== col.id) handleSelectCollection(col.id, col.name); }}>
                 {renamingFolderId === col.id ? (
                   <input
                     ref={renameInputRef}

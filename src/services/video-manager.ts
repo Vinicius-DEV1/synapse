@@ -67,28 +67,55 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 
 export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): Promise<string> {
   if (window.api?.video && video.is_local) {
-    // Primeiro tenta usar o file_path absoluto salvo no banco de dados
-    let localPath = video.file_path || await window.api.video.getLocalPath(video.original_name);
+    // Quando sincroniza de outro SO, o file_path salvo pode ser do Windows e não existir no Linux.
+    // Vamos sempre verificar a existência real do arquivo usando o filename.
+    const fileNameFallback = video.file_path ? video.file_path.split(/[/\\]/).pop() : undefined;
     
+    let localPath = await window.api.video.getLocalPath(video.original_name);
     if (!localPath) {
       localPath = await window.api.video.getLocalPath(video.original_name + ".enc");
     }
+    if (!localPath && fileNameFallback) {
+      localPath = await window.api.video.getLocalPath(fileNameFallback);
+    }
+    
     if (localPath) {
-      // Como todos os contêineres são padronizados para .mp4 na importação, usamos sempre a URI nativa com suporte a Range Requests (HTTP 206)
-      return `http://encrypted.localhost/files/${encodeURIComponent(localPath)}`;
+      if (window.api?.video?.getStreamPort) {
+        try {
+          const port = await window.api.video.getStreamPort();
+          const fileName = localPath.split(/[/\\]/).pop();
+          return `http://127.0.0.1:${port}/stream?file=culture/${encodeURIComponent(fileName || '')}`;
+        } catch (e) {
+          console.warn("Failed to get stream port:", e);
+        }
+      }
+      const fileName = localPath.split(/[/\\]/).pop();
+      return `encrypted://localhost/culture/${encodeURIComponent(fileName || '')}`;
     }
   }
   
   const isWebEnv = !window.api?.video;
   
-  if (isWebEnv && video.drive_web_file_id) {
-    return `/stream-video/${video.drive_web_file_id}`;
-  }
-
-  if (video.drive_file_id) {
-    // Tanto Desktop quanto Web agora usam o Service Worker para fazer streaming sob demanda 
-    // do formato ENC1 hospedado no Google Drive, economizando RAM.
-    return `/stream-video/${video.drive_file_id}`;
+  if (isWebEnv) {
+    if (video.drive_web_file_id) {
+      return `/stream-video/${video.drive_web_file_id}`;
+    }
+    if (video.drive_file_id) {
+      return `/stream-video/${video.drive_file_id}`;
+    }
+  } else {
+    // Desktop: Streaming Nativo em Rust do Google Drive (ignorando o Service Worker)
+    if (video.drive_file_id && window.api?.video?.getStreamPort) {
+      try {
+        const port = await window.api.video.getStreamPort();
+        const token = await getValidAccessToken();
+        if (token) {
+          return `http://127.0.0.1:${port}/stream-drive?file_id=${video.drive_file_id}&token=${token}&module=culture`;
+        }
+      } catch (e) {
+        console.error("Failed to get token or port for native drive streaming:", e);
+      }
+    }
   }
 
   throw new Error("Vídeo não foi encontrado nem localmente nem na nuvem.");
@@ -162,8 +189,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
            if (onProgress) onProgress(55 + (p * 0.15));
         });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Não foi possível processar o vídeo localmente:", e);
+      throw new Error("Falha no processamento nativo: " + (e.message || e));
     }
   }
 

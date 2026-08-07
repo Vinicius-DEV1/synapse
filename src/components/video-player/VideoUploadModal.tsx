@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileVideo, FileText, Loader2, Settings2 } from 'lucide-react';
 import { processSubtitleFile } from '../../utils/subtitles';
 import { useStore } from '../../store/useStore';

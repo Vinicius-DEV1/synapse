@@ -334,7 +334,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
       if (row) {
         const val = row.data || row.value;
         if (val) {
-          return JSON.parse(val);
+          const parsed = JSON.parse(val);
+          return parsed ? parsed : { token: null };
         }
       }
     } catch (e) {
@@ -342,7 +343,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
     }
     // Fallback to local file for backwards compatibility
     if (window.api?.drive) {
-      return await window.api.drive.getCredentials();
+      const creds = await window.api.drive.getCredentials();
+      return creds ? creds : { token: null };
     }
     return { token: null };
   }
@@ -359,7 +361,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
         if (!val.startsWith('{') && _inMemoryMasterKey) {
           decrypted = await decryptText(val, _inMemoryMasterKey);
         }
-        return JSON.parse(decrypted);
+        const parsed = JSON.parse(decrypted);
+        return parsed ? parsed : { token: null };
       } catch (e) {
         return { token: null };
       }

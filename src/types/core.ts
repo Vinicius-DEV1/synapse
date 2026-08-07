@@ -387,6 +387,8 @@ declare global {
       video?: {
         getLocalPath: (filename: string) => Promise<string | null>;
         deleteLocal: (filename: string) => Promise<boolean>;
+        readLocalFile?: (path: string) => Promise<Uint8Array>;
+        uploadFileToDrive?: (localPath: string, driveFilename: string, folderId: string, accessToken: string) => Promise<string>;
         saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
         copyLocal: (sourcePath: string, filename: string) => Promise<string>;
         extractSubtitles: (localPath: string, trackIndex?: string) => Promise<string | null>;
