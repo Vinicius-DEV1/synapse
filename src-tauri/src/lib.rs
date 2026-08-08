@@ -65,13 +65,26 @@ pub fn run() {
       
       let db_path = app_data_dir.join("caderno.sqlite");
       
-      // Fallback/Migration: Se o db novo não existe, mas existe o exportado do Electron
+      // Fallback/Migration: Se o db novo não existe, tenta migrar do dev ou Electron
       if !db_path.exists() {
-          if let Some(data_dir) = dirs::data_dir() {
-              let legacy_path = data_dir.join("caderno").join("caderno_migrated.sqlite");
-              if legacy_path.exists() {
-                  if let Err(e) = std::fs::copy(&legacy_path, &db_path) {
-                      println!("Failed to copy legacy db: {}", e);
+          if let Ok(cwd) = std::env::current_dir() {
+              let dev_db = cwd.join("src-tauri").join("target").join("debug").join("data").join("caderno.sqlite");
+              if dev_db.exists() {
+                  let _ = std::fs::copy(&dev_db, &db_path);
+                  let dev_videos = dev_db.parent().unwrap().join("videos");
+                  let dest_videos = app_data_dir.join("videos");
+                  if dev_videos.exists() && !dest_videos.exists() {
+                      let _ = std::fs::create_dir_all(&dest_videos);
+                  }
+              }
+          }
+          if !db_path.exists() {
+              if let Some(data_dir) = dirs::data_dir() {
+                  let legacy_path = data_dir.join("caderno").join("caderno_migrated.sqlite");
+                  if legacy_path.exists() {
+                      if let Err(e) = std::fs::copy(&legacy_path, &db_path) {
+                          println!("Failed to copy legacy db: {}", e);
+                      }
                   }
               }
           }
