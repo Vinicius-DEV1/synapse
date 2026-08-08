@@ -181,12 +181,12 @@ pub struct ProcessUploadResult {
     pub web_size: Option<u64>,
 }
 
-pub fn video_probe_codec(path: &str) -> Result<String, String> {
+pub fn video_probe_codec(path: &str, stream_type: &str) -> Result<String, String> {
     let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
     let output = Command::new(&ffprobe_path)
         .args([
             "-v", "error",
-            "-select_streams", "v:0",
+            "-select_streams", stream_type,
             "-show_entries", "stream=codec_name",
             "-of", "default=noprint_wrappers=1:nokey=1",
             path
@@ -201,103 +201,154 @@ pub fn video_probe_codec(path: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+use tokio::io::AsyncBufReadExt;
+use tauri::Emitter;
+
 #[tauri::command]
 pub async fn video_process_upload(
     source_path: String,
     dest_filename: String,
     web_quality: String,
     conversion_preset: String,
+    duration: f64,
     db_state: tauri::State<'_, crate::db::DbState>,
     app_handle: AppHandle
 ) -> Result<ProcessUploadResult, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
     let norm_filename = normalize_to_mp4_name(&dest_filename);
-    let dest_filename_enc = format!("{}.enc", dest_filename); // Original keeps its extension internally but adds .enc
+    let dest_filename_enc = format!("{}.enc", dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
     
-    let keys_guard = db_state.keys.lock().unwrap();
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.culture {
-            k.clone()
+    let master_key = {
+        let keys_guard = db_state.keys.lock().unwrap();
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
         } else {
-            return Err("Culture key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        return Err("Keys not unlocked".into());
     };
-    let ext = std::path::Path::new(&source_path)
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-        
+    
     let actual_source = std::path::PathBuf::from(&source_path);
     
-    let enc_res = crate::crypto_stream::encrypt_file_chunked(
-        &actual_source, 
-        &dest_full_path, 
-        &master_key
-    );
+    // Spawn encryption of original file in background
+    let actual_source_clone = actual_source.clone();
+    let dest_full_path_clone = dest_full_path.clone();
+    let master_key_clone = master_key.clone();
     
-    enc_res?;
+    let encrypt_task = tokio::task::spawn_blocking(move || {
+        crate::crypto_stream::encrypt_file_chunked(
+            &actual_source_clone, 
+            &dest_full_path_clone, 
+            &master_key_clone
+        )
+    });
 
-    // 2. Se a qualidade Web não for "original", cria a cópia Web
     let web_path = if web_quality != "original" {
         let web_filename_enc = format!("{}_web.mp4.enc", norm_filename.trim_end_matches(".mp4"));
         let web_full_path = videos_dir.join(&web_filename_enc);
         let temp_web_mp4 = videos_dir.join(format!("temp_web_{}.mp4", uuid::Uuid::new_v4()));
         
         let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
-        let mut cmd = Command::new(&ffmpeg_path);
+        let mut cmd = tokio::process::Command::new(&ffmpeg_path);
         
-        // Define FFmpeg args based on quality
         let mut args = vec![
-            "-y",
-            "-i", &source_path,
-            "-movflags", "+faststart",
-            "-map_chapters", "-1",
-            "-sn",
-            "-dn",
+            "-y".to_string(),
+            "-i".to_string(), source_path.clone(),
+            "-movflags".to_string(), "+faststart".to_string(),
+            "-map_chapters".to_string(), "-1".to_string(),
+            "-sn".to_string(),
+            "-dn".to_string(),
         ];
         
         let preset_str = conversion_preset.as_str();
         
         if web_quality == "remux" {
-            println!("[DEBUG] Analisando MKV...");
-            let codec = video_probe_codec(&source_path)?;
-            println!("[DEBUG] Codec de vídeo detectado: {}", codec);
+            let v_codec = video_probe_codec(&source_path, "v:0")?;
+            let a_codec = video_probe_codec(&source_path, "a:0").unwrap_or_default();
             
-            if codec != "h264" {
-                return Err(format!("Modo Expresso bloqueado: O vídeo original está em formato {} e não roda nativamente. Por favor, escolha a conversão 720p ou 1080p.", codec.to_uppercase()));
+            if v_codec != "h264" {
+                return Err(format!("Modo Expresso bloqueado: O vídeo original está em formato {} e não roda nativamente. Por favor, escolha a conversão 720p ou 1080p.", v_codec.to_uppercase()));
             }
             
-            args.extend_from_slice(&["-c:v", "copy", "-c:a", "aac"]);
-        } else if web_quality == "1080p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
-        } else if web_quality == "720p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
-        } else if web_quality == "480p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:480"]);
-        } else if web_quality == "360p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:360"]);
+            args.push("-c:v".to_string());
+            args.push("copy".to_string());
+            args.push("-c:a".to_string());
+            
+            if a_codec == "aac" {
+                args.push("copy".to_string());
+            } else {
+                args.push("aac".to_string());
+            }
         } else {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
+            let scale_val = match web_quality.as_str() {
+                "1080p" => "scale=-2:1080",
+                "720p" => "scale=-2:720",
+                "480p" => "scale=-2:480",
+                "360p" => "scale=-2:360",
+                _ => "scale=-2:720",
+            };
+            
+            args.extend(vec![
+                "-c:v".to_string(), "libx264".to_string(),
+                "-c:a".to_string(), "aac".to_string(),
+                "-preset".to_string(), preset_str.to_string(),
+                "-threads".to_string(), "0".to_string(),
+                "-crf".to_string(), "23".to_string(),
+                "-vf".to_string(), scale_val.to_string(),
+            ]);
         }
         
         let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();
-        args.push(&temp_web_mp4_str);
+        args.push(temp_web_mp4_str);
         
         cmd.args(&args);
+        
         #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
         
-        let output = cmd.output().map_err(|e| e.to_string())?;
-        if !output.status.success() || !temp_web_mp4.exists() {
-            let _ = fs::remove_file(&temp_web_mp4);
-            return Err(format!("Falha ao converter vídeo Web: {}", String::from_utf8_lossy(&output.stderr)));
+        cmd.stdout(std::process::Stdio::null());
+        cmd.stderr(std::process::Stdio::piped());
+        
+        let mut child = cmd.spawn().map_err(|e| format!("Falha ao iniciar FFmpeg: {}", e))?;
+        
+        let stderr = child.stderr.take().unwrap();
+        let mut reader = tokio::io::BufReader::new(stderr).lines();
+        
+        let mut error_log = String::new();
+        while let Ok(Some(line)) = reader.next_line().await {
+            error_log.push_str(&line);
+            error_log.push('\n');
+            
+            if line.contains("time=") {
+                if let Some(time_idx) = line.find("time=") {
+                    let time_str = &line[time_idx + 5..];
+                    if time_str.len() >= 8 {
+                        let parts: Vec<&str> = time_str[..8].split(':').collect();
+                        if parts.len() == 3 {
+                            if let (Ok(h), Ok(m), Ok(s)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>(), parts[2].parse::<f64>()) {
+                                let current_sec = h * 3600.0 + m * 60.0 + s;
+                                if duration > 0.0 {
+                                    let mut pct = (current_sec / duration) * 100.0;
+                                    if pct > 100.0 { pct = 100.0; }
+                                    let _ = app_handle.emit("video_upload_progress", pct);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         
-        // Criptografa o arquivo Web gerado
+        let status = child.wait().await.map_err(|e| e.to_string())?;
+        if !status.success() || !temp_web_mp4.exists() {
+            let _ = fs::remove_file(&temp_web_mp4);
+            return Err(format!("Falha ao converter vídeo Web: {}", error_log));
+        }
+        
         crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
         let _ = fs::remove_file(&temp_web_mp4);
         
@@ -305,6 +356,9 @@ pub async fn video_process_upload(
     } else {
         None
     };
+
+    let enc_res = encrypt_task.await.map_err(|e| e.to_string())?;
+    enc_res?;
 
     let original_size = fs::metadata(&dest_full_path).map(|m| m.len()).unwrap_or(0);
     
