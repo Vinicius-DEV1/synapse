@@ -151,8 +151,7 @@ pub async fn video_import_and_encrypt(
     app_handle: AppHandle
 ) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
-    let norm_filename = normalize_to_mp4_name(&dest_filename);
-    let dest_filename_enc = format!("{}.enc", norm_filename);
+    let dest_filename_enc = format!("{}.enc", dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
     
     let keys_guard = db_state.keys.lock().unwrap();
@@ -166,69 +165,9 @@ pub async fn video_import_and_encrypt(
         return Err("Keys not unlocked".into());
     };
     
-    let ext = std::path::Path::new(&source_path)
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-    let needs_remux = !["mp4", "webm"].contains(&ext.as_str());
-
-    let temp_mp4 = videos_dir.join(format!("temp_remux_{}.mp4", uuid::Uuid::new_v4()));
-    let actual_source = if needs_remux {
-        let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
-        let mut cmd = Command::new(&ffmpeg_path);
-        cmd.args([
-            "-y",
-            "-i", &source_path,
-            "-movflags", "+faststart",
-            "-map_chapters", "-1",
-            "-sn",
-            "-dn",
-            "-map", "0:v",
-            "-map", "0:a?",
-            "-c:v", "copy",
-            "-c:a", "copy",
-            &temp_mp4.to_string_lossy().to_string()
-        ]);
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(CREATE_NO_WINDOW);
-        
-        let output = cmd.output().map_err(|e| e.to_string())?;
-        if !output.status.success() || !temp_mp4.exists() {
-            // Fallback seguro: transcodifica áudio incompatível para aac
-            let mut cmd2 = Command::new(&ffmpeg_path);
-            cmd2.args([
-                "-y",
-                "-i", &source_path,
-                "-movflags", "+faststart",
-                "-map_chapters", "-1",
-                "-sn",
-                "-dn",
-                "-map", "0:v",
-                "-map", "0:a?",
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-b:a", "256k",
-                &temp_mp4.to_string_lossy().to_string()
-            ]);
-            #[cfg(target_os = "windows")]
-            cmd2.creation_flags(CREATE_NO_WINDOW);
-            
-            let output2 = cmd2.output().map_err(|e| e.to_string())?;
-            if !output2.status.success() || !temp_mp4.exists() {
-                let _ = fs::remove_file(&temp_mp4);
-                return Err(format!("Falha ao padronizar contêiner para MP4: {}", String::from_utf8_lossy(&output2.stderr)));
-            }
-        }
-        temp_mp4.clone()
-    } else {
-        std::path::PathBuf::from(&source_path)
-    };
+    let actual_source = std::path::PathBuf::from(&source_path);
     
     let enc_res = crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_full_path, &master_key);
-    if needs_remux {
-        let _ = fs::remove_file(&temp_mp4);
-    }
     enc_res?;
     
     Ok(dest_full_path.to_string_lossy().to_string())
@@ -268,87 +207,15 @@ pub async fn video_process_upload(
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_lowercase();
-    let needs_remux = !["mp4", "webm"].contains(&ext.as_str());
-    
-    let temp_mp4 = videos_dir.join(format!("temp_process_{}.mp4", uuid::Uuid::new_v4()));
-    let actual_source = if needs_remux {
-        println!("[video_process_upload] Detectado formato incompatível ({}). Iniciando remux rápido para MP4...", ext);
-        let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
-        let mut cmd = Command::new(&ffmpeg_path);
-        cmd.args([
-            "-y",
-            "-i", &source_path,
-            "-movflags", "+faststart",
-            "-map_chapters", "-1",
-            "-sn",
-            "-dn",
-            "-map", "0:v",
-            "-map", "0:a?",
-            "-c:v", "copy",
-            "-c:a", "copy",
-            &temp_mp4.to_string_lossy().to_string()
-        ]);
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(CREATE_NO_WINDOW);
         
-        let output = cmd.output().map_err(|e| {
-            println!("[video_process_upload] Erro de sistema ao rodar FFmpeg: {}", e);
-            e.to_string()
-        })?;
-        
-        if !output.status.success() || !temp_mp4.exists() {
-            println!("[video_process_upload] Falha no remux -c:a copy. Detalhes: {}", String::from_utf8_lossy(&output.stderr));
-            println!("[video_process_upload] Tentando fallback recodificando o áudio para AAC...");
-            
-            let mut cmd2 = Command::new(&ffmpeg_path);
-            cmd2.args([
-                "-y",
-                "-i", &source_path,
-                "-movflags", "+faststart",
-                "-map_chapters", "-1",
-                "-sn",
-                "-dn",
-                "-map", "0:v",
-                "-map", "0:a?",
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-b:a", "256k",
-                &temp_mp4.to_string_lossy().to_string()
-            ]);
-            #[cfg(target_os = "windows")]
-            cmd2.creation_flags(CREATE_NO_WINDOW);
-            
-            let output2 = cmd2.output().map_err(|e| {
-                println!("[video_process_upload] Erro de sistema ao rodar FFmpeg fallback: {}", e);
-                e.to_string()
-            })?;
-            
-            if !output2.status.success() || !temp_mp4.exists() {
-                let err_msg = String::from_utf8_lossy(&output2.stderr);
-                println!("[video_process_upload] Erro fatal no fallback: {}", err_msg);
-                let _ = fs::remove_file(&temp_mp4);
-                return Err(format!("Falha ao padronizar contêiner para MP4: {}", err_msg));
-            }
-            println!("[video_process_upload] Fallback AAC concluído com sucesso.");
-        } else {
-            println!("[video_process_upload] Remux instantâneo (copy) concluído com sucesso.");
-        }
-        std::path::PathBuf::from(&temp_mp4)
-    } else {
-        println!("[video_process_upload] Arquivo já compatível ({}). Pulando remux.", ext);
-        std::path::PathBuf::from(&source_path)
-    };
+    let actual_source = std::path::PathBuf::from(&source_path);
     
-    // 1. Criptografa o Original (que agora pode ser o remuxado)
     let enc_res = crate::crypto_stream::encrypt_file_chunked(
         &actual_source, 
         &dest_full_path, 
         &master_key
     );
     
-    if needs_remux {
-        let _ = fs::remove_file(&temp_mp4);
-    }
     enc_res?;
 
     // 2. Se a qualidade Web não for "original", cria a cópia Web
@@ -371,11 +238,15 @@ pub async fn video_process_upload(
         ];
         
         if web_quality == "1080p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "superfast", "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
         } else if web_quality == "720p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "superfast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
+        } else if web_quality == "480p" {
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "26", "-vf", "scale=-2:480"]);
+        } else if web_quality == "360p" {
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "28", "-vf", "scale=-2:360"]);
         } else {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "superfast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
         }
         
         let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();
@@ -409,32 +280,13 @@ pub async fn video_process_upload(
 #[tauri::command]
 pub async fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
-    let norm_filename = normalize_to_mp4_name(&filename);
-    let filename_enc = format!("{}.enc", norm_filename);
+    let filename_enc = format!("{}.enc", filename);
     let path = videos_dir.join(&filename_enc);
     let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
     
     fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
     
-    let keys_guard = db_state.keys.lock().unwrap();
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.culture {
-            k.clone()
-        } else {
-            let _ = fs::remove_file(&temp_path);
-            return Err("Culture key not found".into());
-        }
-    } else {
-        let _ = fs::remove_file(&temp_path);
-        return Err("Keys not unlocked".into());
-    };
-    
-    if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &path, &master_key) {
-        let _ = fs::remove_file(&temp_path);
-        return Err(e);
-    }
-    
-    let _ = fs::remove_file(&temp_path);
+    fs::rename(&temp_path, &path).map_err(|e| e.to_string())?;
     
     Ok(path.to_string_lossy().to_string())
 }
