@@ -48,8 +48,8 @@ async function init() {
     window.api = createApiProxy(mockApi);
   }
 
-  // Register Service Worker for Web Video Streaming (and Desktop Cloud Streaming)
-  if ('serviceWorker' in navigator) {
+  // Register Service Worker for Web Video Streaming (only on HTTP/HTTPS, not tauri://)
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
       // Força a atualização do Service Worker em cada reload (importante para dev)

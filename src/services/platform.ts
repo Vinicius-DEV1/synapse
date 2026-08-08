@@ -6,7 +6,7 @@ export interface PlatformCapabilities {
 }
 
 // O único lugar de toda a aplicação onde injetamos a variável de ambiente do Tauri
-const isDesktop = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+const isDesktop = typeof window !== 'undefined' && (!!window.__TAURI_INTERNALS__ || !!(window as any).__TAURI_IPC__);
 
 export const platform: PlatformCapabilities = {
   platform: isDesktop ? 'desktop' : 'web',
