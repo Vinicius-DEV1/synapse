@@ -456,9 +456,12 @@ pub async fn video_extract_subtitles(local_path: String, track_index: String, ap
             .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
             .unwrap_or_default();
         let _ = fs::remove_file(&vtt_out_path);
+        println!("[DEBUG] Legenda extraída com sucesso (tamanho: {})", content.len());
         Ok(content)
     } else {
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
+        let err = String::from_utf8_lossy(&output.stderr).to_string();
+        println!("[DEBUG] Falha ao extrair legenda: {}", err);
+        Err(err)
     }
 }
 
