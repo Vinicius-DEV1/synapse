@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, initializeFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getAuth } from "firebase/auth";
 
 // Puxando as credenciais do arquivo .env (O Vite exige o prefixo VITE_)
 const firebaseConfig = {
@@ -21,4 +20,3 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 });
 export const storage = getStorage(app);
-export const auth = getAuth(app);
