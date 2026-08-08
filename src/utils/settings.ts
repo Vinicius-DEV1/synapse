@@ -20,7 +20,7 @@ export interface AppSettings {
   enableStudy3DFlip: boolean;
   videoConversionPreset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
   videoPlaybackPreference: 'auto' | 'force_original' | 'force_web';
-  videoDefaultWebQuality: 'original' | '1080p' | '720p' | '480p' | '360p';
+  videoDefaultWebQuality: 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
 }
 
 export function getSettings(): AppSettings {

@@ -181,6 +181,26 @@ pub struct ProcessUploadResult {
     pub web_size: Option<u64>,
 }
 
+pub fn video_probe_codec(path: &str) -> Result<String, String> {
+    let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
+    let output = Command::new(&ffprobe_path)
+        .args([
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            path
+        ])
+        .output()
+        .map_err(|e| format!("Falha ao executar ffprobe: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 #[tauri::command]
 pub async fn video_process_upload(
     source_path: String,
@@ -242,7 +262,17 @@ pub async fn video_process_upload(
         
         let preset_str = conversion_preset.as_str();
         
-        if web_quality == "1080p" {
+        if web_quality == "remux" {
+            println!("[DEBUG] Analisando MKV...");
+            let codec = video_probe_codec(&source_path)?;
+            println!("[DEBUG] Codec de vídeo detectado: {}", codec);
+            
+            if codec != "h264" {
+                return Err(format!("Modo Expresso bloqueado: O vídeo original está em formato {} e não roda nativamente. Por favor, escolha a conversão 720p ou 1080p.", codec.to_uppercase()));
+            }
+            
+            args.extend_from_slice(&["-c:v", "copy", "-c:a", "aac"]);
+        } else if web_quality == "1080p" {
             args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
         } else if web_quality == "720p" {
             args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
