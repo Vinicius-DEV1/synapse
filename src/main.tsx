@@ -30,7 +30,7 @@ async function init() {
             }
             return async (...args: any[]) => {
               const result = await val(...args);
-              if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set'))) {
+              if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set') || prop.startsWith('upsert'))) {
                 console.log(`[Proxy] API method '${prop}' modified state. Disparando 'app-sync-trigger'.`);
                 window.dispatchEvent(new Event('app-sync-trigger'));
               }
