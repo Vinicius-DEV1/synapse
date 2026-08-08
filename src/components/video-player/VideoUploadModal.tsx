@@ -14,7 +14,7 @@ export interface UploadOptions {
   masterKey?: CryptoKey;
   collectionId?: string;
   collectionName?: string;
-  webQuality: 'original' | '1080p' | '720p' | '480p' | '360p';
+  webQuality: 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
   conversionPreset?: string;
   onProgress?: (percent: number) => void;
   onPhaseChange?: (phase: string) => void;
@@ -50,11 +50,11 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   }, []);
 
   const [error, setError] = useState<string | null>(null);
-  const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p' | '480p' | '360p'>('720p');
+  const [webQuality, setWebQuality] = useState<'original' | 'remux' | '1080p' | '720p' | '480p' | '360p'>('720p');
 
   // Load defaults from settings
   useEffect(() => {
-    import('../../../utils/settings').then(({ getSettings }) => {
+    import('../../utils/settings').then(({ getSettings }) => {
       const s = getSettings();
       if (s.videoDefaultWebQuality) {
         setWebQuality(s.videoDefaultWebQuality);
@@ -135,7 +135,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         collectionId,
         collectionName,
         webQuality,
-        conversionPreset: (await import('../../../utils/settings')).getSettings().videoConversionPreset,
+        conversionPreset: (await import('../../utils/settings')).getSettings().videoConversionPreset,
         onProgress: (percent) => setUploadProgress(percent),
         onPhaseChange: (phase) => setUploadPhase(phase),
         signal: abortCtrl.signal
@@ -443,13 +443,12 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
               disabled={isUploading}
               className="bg-black/20 border border-white/10 rounded-xl p-3 text-sm text-white/90 outline-none focus:border-brand-500 transition-colors"
             >
-              {!(videoFile && !videoFile.name.toLowerCase().endsWith('.mp4') && !videoFile.name.toLowerCase().endsWith('.webm')) && (
-                <option className="bg-gray-900 text-white" value="original">Original (Instantâneo - Recomendado p/ MP4)</option>
-              )}
-              <option className="bg-gray-900 text-white" value="1080p">1080p Full HD (Alta Qualidade - Lento)</option>
+              <option className="bg-gray-900 text-white" value="original">Original (Nenhuma Conversão - Pesado)</option>
+              <option className="bg-gray-900 text-white" value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>
+              <option className="bg-gray-900 text-white" value="1080p">1080p Full HD (Alta Qualidade)</option>
               <option className="bg-gray-900 text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>
-              <option className="bg-gray-900 text-white" value="480p">480p SD (Muito Rápido - Qualidade Baixa)</option>
-              <option className="bg-gray-900 text-white" value="360p">360p (Ultra Rápido - Apenas para Celulares)</option>
+              <option className="bg-gray-900 text-white" value="480p">480p SD (Bom para Celular)</option>
+              <option className="bg-gray-900 text-white" value="360p">360p (Economia Máxima de Espaço)</option>
             </select>
           </div>
 

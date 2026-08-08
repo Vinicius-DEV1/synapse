@@ -56,7 +56,9 @@ export async function processVideoWeb(
 
   const args = ['-i', inputName];
   
-  if (quality === '1080p') {
+  if (quality === 'remux') {
+    args.push('-c:v', 'copy', '-c:a', 'aac');
+  } else if (quality === '1080p') {
     args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:1080');
   } else if (quality === '720p') {
     args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');

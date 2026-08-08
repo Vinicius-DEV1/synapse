@@ -142,6 +142,7 @@ export default function VideoTab() {
               className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
               <option value="original">Original (Não recomendado para Web)</option>
+              <option value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>
               <option value="1080p">1080p Full HD</option>
               <option value="720p">720p HD (Rápido e Leve - Recomendado)</option>
               <option value="480p">480p SD (Bom para Celular)</option>
