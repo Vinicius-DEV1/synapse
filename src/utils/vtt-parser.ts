@@ -5,9 +5,11 @@ export interface SubtitleCue {
   text: string;
 }
 
-// Converte "00:00:01.000" para segundos (1.0)
 function parseVttTime(timeStr: string): number {
-  const parts = timeStr.trim().split(':');
+  // Extract only the time part, e.g., "00:00:02.000" from "00:00:02.000 align:start"
+  let cleanTime = timeStr.trim().split(/\s+/)[0];
+  cleanTime = cleanTime.replace(',', '.'); // Handle SRT style commas
+  const parts = cleanTime.split(':');
   let seconds = 0;
   if (parts.length === 3) {
     seconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);

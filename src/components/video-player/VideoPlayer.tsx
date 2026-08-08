@@ -64,25 +64,30 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
   const { showControls, setShowControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef, !!dictState);
 
   useEffect(() => {
-    if (subtitleContent && activeSubtitleIndex === 0) {
-      setCues(parseVtt(subtitleContent));
-    }
-  }, [subtitleContent, activeSubtitleIndex]);
-
-  useEffect(() => {
     const fetchNewSubtitle = async () => {
       if (activeSubtitleIndex > 0 && subtitleTracks[activeSubtitleIndex]) {
         try {
           const track = subtitleTracks[activeSubtitleIndex];
+          console.log("[VideoPlayer] Fetching subtitle track:", track);
+          
           const { getSubtitleText } = await import('../../services/video-manager');
           const { getCultureKey } = await import('../../store/useStore');
           let subText = '';
           if (track.local_path) subText = await getSubtitleText(undefined, track.local_path, getCultureKey());
           if (!subText && track.drive_id) subText = await getSubtitleText(track.drive_id, undefined, getCultureKey());
           
-          if (subText) setCues(parseVtt(subText));
-          else setCues([]);
+          console.log("[VideoPlayer] Subtitle text length fetched:", subText?.length);
+          
+          if (subText) {
+            const parsed = parseVtt(subText);
+            console.log("[VideoPlayer] Parsed cues count:", parsed.length);
+            setCues(parsed);
+          } else {
+            setCues([]);
+          }
         } catch(e) { console.error("Error changing subtitle", e); }
+      } else if (activeSubtitleIndex === 0) {
+        setCues([]);
       }
     };
     fetchNewSubtitle();
@@ -169,6 +174,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     if (videoRef.current) {
       const time = videoRef.current.currentTime;
       setProgress(time);
+      setIsBuffering(false); // Failsafe: Se o tempo mudou, o vídeo claramente não está travado carregando
       if (cues.length > 0) {
         const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
         setActiveCueText(activeCue ? activeCue.text : '');
@@ -345,6 +351,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
         onLoadedMetadata={handleLoadedMetadata}
         onWaiting={() => setIsBuffering(true)}
         onCanPlay={() => setIsBuffering(false)}
+        onSeeked={() => setIsBuffering(false)}
         onError={() => {
           setIsBuffering(false);
           const err = videoRef.current?.error;
@@ -359,6 +366,10 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
             audioRef.current.currentTime = videoRef.current?.currentTime || 0;
             audioRef.current.play().catch(e => console.warn(e));
           }
+        }}
+        onPlaying={() => {
+          setIsBuffering(false);
+          setIsPlaying(true);
         }}
         onPause={() => {
           setIsPlaying(false);

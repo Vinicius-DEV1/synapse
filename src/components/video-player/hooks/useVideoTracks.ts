@@ -21,8 +21,33 @@ export function useVideoTracks(
       if (video.audio_tracks_json) {
         setAudioTracks(JSON.parse(video.audio_tracks_json));
       }
+      
+      const tracks: TrackItem[] = [{ id: 'none', label: 'Sem Legenda' }];
+      
+      // Adiciona a legenda principal (legacy) se existir
+      if (video.drive_subtitle_id || video.local_subtitle_path) {
+        tracks.push({
+          id: 'main',
+          label: 'Legenda Principal',
+          drive_id: video.drive_subtitle_id || undefined,
+          local_path: video.local_subtitle_path || undefined
+        });
+      }
+      
+      // Adiciona as legendas extras
       if (video.subtitles_json) {
-        setSubtitleTracks(JSON.parse(video.subtitles_json));
+        try {
+          const parsedSubs = JSON.parse(video.subtitles_json);
+          tracks.push(...parsedSubs);
+        } catch (e) { console.warn(e); }
+      }
+      
+      setSubtitleTracks(tracks);
+      
+      if (tracks.length > 1) {
+        setActiveSubtitleIndex(1); // Auto-seleciona a primeira legenda real
+      } else {
+        setActiveSubtitleIndex(0); // Sem legenda
       }
     } catch (e) {
       console.error("Failed to parse tracks", e);

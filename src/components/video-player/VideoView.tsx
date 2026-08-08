@@ -50,53 +50,11 @@ export default function VideoView() {
   const handlePlayVideo = async (video: VideoItem) => {
     try {
       setPlayerError(null);
-      const cultureKey = getCultureKey();
       
-      // Load subtitles - try saved subtitle first
-      let subText = await getSubtitleText(video.drive_subtitle_id, video.local_subtitle_path, cultureKey);
+      // The VideoPlayer component now handles fetching all subtitles asynchronously
+      // via useVideoTracks and its internal useEffect, so we don't need to block here.
+      setActiveSubtitle(undefined);
       
-      // Fallback: try subtitles_json tracks (legendas extraídas durante o upload)
-      if (!subText && video.subtitles_json) {
-        try {
-          const tracks = JSON.parse(video.subtitles_json) || [];
-          if (tracks.length > 0) {
-            const firstTrack = tracks[0];
-            // Tenta local primeiro, depois Drive
-            if (firstTrack.local_path) {
-              subText = await getSubtitleText(undefined, firstTrack.local_path, cultureKey);
-            }
-            if (!subText && firstTrack.drive_id) {
-              subText = await getSubtitleText(firstTrack.drive_id, undefined, cultureKey);
-            }
-          }
-        } catch (e) {
-          console.warn("Falha ao parsear subtitles_json:", e);
-        }
-      }
-      
-      // If no saved subtitle but video is local, try extracting embedded subtitles on-the-fly
-      if (!subText && video.is_local && video.file_path && window.api?.video) {
-        try {
-          const localPath = video.file_path;
-          if (localPath) {
-            const scanResult = await (window.api.video as any).scanTracks(localPath);
-            // ffprobe retorna { streams: [...] }, filtramos por codec_type === 'subtitle'
-            const streams = scanResult?.streams || [];
-            const subtitleStreams = streams.filter((s: any) => s.codec_type === 'subtitle');
-            if (subtitleStreams.length > 0) {
-              const firstSub = subtitleStreams[0];
-              const extracted = await window.api.video.extractSubtitles(localPath, String(firstSub.index));
-              if (extracted) subText = extracted;
-            }
-          }
-        } catch (e) {
-          console.warn("Falha ao extrair legenda embutida:", e);
-        }
-      }
-      
-      if (subText) setActiveSubtitle(subText);
-      else setActiveSubtitle(undefined);
-
       // Resolve URL (local vs drive stream)
       const src = await resolveVideoUrl(video);
       setActiveVideoSrc(src);

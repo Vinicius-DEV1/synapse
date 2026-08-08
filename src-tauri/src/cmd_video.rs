@@ -23,10 +23,22 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
     let videos_dir = get_videos_dir(&app)?;
     let path = videos_dir.join(&filename);
     if path.exists() {
-        Ok(path.to_string_lossy().to_string())
-    } else {
-        Ok("".to_string())
+        return Ok(path.to_string_lossy().to_string());
     }
+    
+    // Fallback: Tenta buscar na pasta release se estivermos rodando em debug
+    if let Some(parent) = videos_dir.parent() {
+        if let Some(grandparent) = parent.parent() {
+            if let Some(greatgrandparent) = grandparent.parent() {
+                let release_path = greatgrandparent.join("release").join("data").join("videos").join(&filename);
+                if release_path.exists() {
+                    return Ok(release_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    
+    Ok("".to_string())
 }
 
 #[tauri::command]
@@ -168,12 +180,14 @@ pub async fn video_import_and_encrypt(
         cmd.args([
             "-y",
             "-i", &source_path,
+            "-movflags", "+faststart",
+            "-map_chapters", "-1",
+            "-sn",
+            "-dn",
             "-map", "0:v",
             "-map", "0:a?",
-            "-map", "0:s?",
             "-c:v", "copy",
             "-c:a", "copy",
-            "-c:s", "mov_text",
             &temp_mp4.to_string_lossy().to_string()
         ]);
         #[cfg(target_os = "windows")]
@@ -186,13 +200,15 @@ pub async fn video_import_and_encrypt(
             cmd2.args([
                 "-y",
                 "-i", &source_path,
+                "-movflags", "+faststart",
+                "-map_chapters", "-1",
+                "-sn",
+                "-dn",
                 "-map", "0:v",
                 "-map", "0:a?",
-                "-map", "0:s?",
                 "-c:v", "copy",
                 "-c:a", "aac",
                 "-b:a", "256k",
-                "-c:s", "mov_text",
                 &temp_mp4.to_string_lossy().to_string()
             ]);
             #[cfg(target_os = "windows")]
@@ -247,13 +263,93 @@ pub async fn video_process_upload(
     } else {
         return Err("Keys not unlocked".into());
     };
+    let ext = std::path::Path::new(&source_path)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let needs_remux = !["mp4", "webm"].contains(&ext.as_str());
     
-    // 1. Criptografa o Original
-    crate::crypto_stream::encrypt_file_chunked(
-        &std::path::PathBuf::from(&source_path), 
+    let temp_mp4 = videos_dir.join(format!("temp_process_{}.mp4", uuid::Uuid::new_v4()));
+    let actual_source = if needs_remux {
+        println!("[video_process_upload] Detectado formato incompatível ({}). Iniciando remux rápido para MP4...", ext);
+        let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
+        let mut cmd = Command::new(&ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i", &source_path,
+            "-movflags", "+faststart",
+            "-map_chapters", "-1",
+            "-sn",
+            "-dn",
+            "-map", "0:v",
+            "-map", "0:a?",
+            "-c:v", "copy",
+            "-c:a", "copy",
+            &temp_mp4.to_string_lossy().to_string()
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        
+        let output = cmd.output().map_err(|e| {
+            println!("[video_process_upload] Erro de sistema ao rodar FFmpeg: {}", e);
+            e.to_string()
+        })?;
+        
+        if !output.status.success() || !temp_mp4.exists() {
+            println!("[video_process_upload] Falha no remux -c:a copy. Detalhes: {}", String::from_utf8_lossy(&output.stderr));
+            println!("[video_process_upload] Tentando fallback recodificando o áudio para AAC...");
+            
+            let mut cmd2 = Command::new(&ffmpeg_path);
+            cmd2.args([
+                "-y",
+                "-i", &source_path,
+                "-movflags", "+faststart",
+                "-map_chapters", "-1",
+                "-sn",
+                "-dn",
+                "-map", "0:v",
+                "-map", "0:a?",
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "256k",
+                &temp_mp4.to_string_lossy().to_string()
+            ]);
+            #[cfg(target_os = "windows")]
+            cmd2.creation_flags(CREATE_NO_WINDOW);
+            
+            let output2 = cmd2.output().map_err(|e| {
+                println!("[video_process_upload] Erro de sistema ao rodar FFmpeg fallback: {}", e);
+                e.to_string()
+            })?;
+            
+            if !output2.status.success() || !temp_mp4.exists() {
+                let err_msg = String::from_utf8_lossy(&output2.stderr);
+                println!("[video_process_upload] Erro fatal no fallback: {}", err_msg);
+                let _ = fs::remove_file(&temp_mp4);
+                return Err(format!("Falha ao padronizar contêiner para MP4: {}", err_msg));
+            }
+            println!("[video_process_upload] Fallback AAC concluído com sucesso.");
+        } else {
+            println!("[video_process_upload] Remux instantâneo (copy) concluído com sucesso.");
+        }
+        std::path::PathBuf::from(&temp_mp4)
+    } else {
+        println!("[video_process_upload] Arquivo já compatível ({}). Pulando remux.", ext);
+        std::path::PathBuf::from(&source_path)
+    };
+    
+    // 1. Criptografa o Original (que agora pode ser o remuxado)
+    let enc_res = crate::crypto_stream::encrypt_file_chunked(
+        &actual_source, 
         &dest_full_path, 
         &master_key
-    )?;
+    );
+    
+    if needs_remux {
+        let _ = fs::remove_file(&temp_mp4);
+    }
+    enc_res?;
 
     // 2. Se a qualidade Web não for "original", cria a cópia Web
     let web_path = if web_quality != "original" {
@@ -268,6 +364,10 @@ pub async fn video_process_upload(
         let mut args = vec![
             "-y",
             "-i", &source_path,
+            "-movflags", "+faststart",
+            "-map_chapters", "-1",
+            "-sn",
+            "-dn",
         ];
         
         if web_quality == "1080p" {
