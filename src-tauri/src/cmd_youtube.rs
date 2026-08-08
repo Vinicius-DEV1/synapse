@@ -11,7 +11,7 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let videos_dir = app_data_dir.join("videos");
     if !videos_dir.exists() {
         fs::create_dir_all(&videos_dir).map_err(|e| e.to_string())?;

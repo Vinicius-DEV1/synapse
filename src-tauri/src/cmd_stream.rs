@@ -77,7 +77,7 @@ async fn stream_handler(
     let decoded_path = urlencoding::decode(file_path)
         .unwrap_or(std::borrow::Cow::Borrowed(file_path))
         .to_string();
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let videos_dir = app_data_dir.join("videos");
         
     let mut abs_path = videos_dir.join(&decoded_path);

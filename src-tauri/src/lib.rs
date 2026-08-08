@@ -27,6 +27,29 @@ mod cmd_backup;
 use std::sync::Mutex;
 use tauri::Manager;
 
+pub fn get_app_data_dir() -> std::path::PathBuf {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            let local_data = parent.join("data");
+            if local_data.exists() {
+                let test_file = local_data.join(".write_test");
+                if std::fs::write(&test_file, b"test").is_ok() {
+                    let _ = std::fs::remove_file(&test_file);
+                    return local_data;
+                }
+            }
+        }
+    }
+
+    if let Some(data_dir) = dirs::data_dir() {
+        let p = data_dir.join("caderno");
+        let _ = std::fs::create_dir_all(&p);
+        return p;
+    }
+
+    std::path::PathBuf::from("data")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -37,7 +60,7 @@ pub fn run() {
         protocol_encrypted::handle_encrypted_protocol(ctx.app_handle(), req)
     })
     .setup(|app| {
-      let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+      let app_data_dir = get_app_data_dir();
       std::fs::create_dir_all(&app_data_dir).unwrap();
       
       let db_path = app_data_dir.join("caderno.sqlite");

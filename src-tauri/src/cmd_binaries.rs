@@ -17,7 +17,7 @@ fn get_exe_extension() -> &'static str {
 
 // Retorna o caminho final absoluto de um binário a partir do nome base
 pub fn get_bin_path(binary_base_name: &str) -> PathBuf {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let bin_dir = app_data_dir.join("bin");
     bin_dir.join(format!("{}{}", binary_base_name, get_exe_extension()))
 }
@@ -52,7 +52,7 @@ fn get_ffprobe_url() -> &'static str {
 }
 
 pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let bin_dir = app_data_dir.join("bin");
     
     if !bin_dir.exists() {
