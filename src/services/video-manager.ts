@@ -190,7 +190,15 @@ async function uploadLocalFileToDrive(token: string, localPath: string, driveFil
 /**
  * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
  */
-export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<VideoItem> {
+export interface UploadStats {
+  originalSize?: number;
+  webSize?: number;
+  durationMs: number;
+  webQuality: string;
+}
+
+export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<{ video: VideoItem; stats: UploadStats }> {
+  const startTime = Date.now();
   const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, onProgress, onPhaseChange, signal } = options;
   
   if (signal?.aborted) throw new Error("Cancelado pelo usuário");
@@ -202,6 +210,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   let localPath: string | undefined = undefined;
   let webFileId = '';
   let mainFileId = '';
+  
+  let originalSize: number | undefined = file.size;
+  let webSize: number | undefined = undefined;
   
   const sourcePath = (file as any).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
@@ -216,6 +227,8 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality);
       isLocal = true;
       localPath = processRes.original_path;
+      if (processRes.original_size) originalSize = processRes.original_size;
+      if (processRes.web_size) webSize = processRes.web_size;
       
       if (onProgress) onProgress(40);
       if (onPhaseChange) onPhaseChange('Enviando Arquivo Original...');
@@ -388,7 +401,15 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
 
   if (onProgress) onProgress(100);
 
-  return newVideo;
+  return {
+    video: newVideo,
+    stats: {
+      originalSize,
+      webSize,
+      durationMs: Date.now() - startTime,
+      webQuality
+    }
+  };
 }
 
 /**

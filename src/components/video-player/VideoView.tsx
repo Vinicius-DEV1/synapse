@@ -68,8 +68,9 @@ export default function VideoView() {
   const handleUpload = async (options: UploadOptions) => {
     setIsUploading(true);
     try {
-      await uploadNewVideo(options);
+      const result = await uploadNewVideo(options);
       await loadVideos();
+      return result;
     } finally {
       setIsUploading(false);
     }

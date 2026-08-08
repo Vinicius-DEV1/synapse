@@ -177,6 +177,8 @@ pub async fn video_import_and_encrypt(
 pub struct ProcessUploadResult {
     pub original_path: String,
     pub web_path: Option<String>,
+    pub original_size: u64,
+    pub web_size: Option<u64>,
 }
 
 #[tauri::command]
@@ -238,15 +240,15 @@ pub async fn video_process_upload(
         ];
         
         if web_quality == "1080p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
         } else if web_quality == "720p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
         } else if web_quality == "480p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "26", "-vf", "scale=-2:480"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:480"]);
         } else if web_quality == "360p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "28", "-vf", "scale=-2:360"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:360"]);
         } else {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "ultrafast", "-threads", "0", "-crf", "24", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
         }
         
         let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();
@@ -271,9 +273,19 @@ pub async fn video_process_upload(
         None
     };
 
+    let original_size = fs::metadata(&dest_full_path).map(|m| m.len()).unwrap_or(0);
+    
+    let web_size = if let Some(ref w) = web_path {
+        Some(fs::metadata(w).map(|m| m.len()).unwrap_or(0))
+    } else {
+        None
+    };
+
     Ok(ProcessUploadResult {
         original_path: dest_full_path.to_string_lossy().to_string(),
         web_path,
+        original_size,
+        web_size,
     })
 }
 
