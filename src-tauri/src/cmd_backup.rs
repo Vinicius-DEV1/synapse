@@ -104,11 +104,7 @@ pub async fn backup_start(
     };
     
     // Get the DB path
-    let app_data_dir = std::env::current_exe()
-        .map_err(|e| e.to_string())?
-        .parent()
-        .ok_or("Cannot get exe parent")?
-        .join("data");
+    let app_data_dir = crate::get_app_data_dir();
     
     let db_path = app_data_dir.join("caderno.sqlite");
     

@@ -8,9 +8,8 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-#[allow(dead_code)]
 fn get_audio_dir(_app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let audio_dir = app_data_dir.join("audio");
     if !audio_dir.exists() {
         fs::create_dir_all(&audio_dir).map_err(|e| e.to_string())?;
@@ -23,7 +22,7 @@ pub async fn audio_extract_clip(video_path: String, start_time_ms: i32, end_time
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     
     // Anki clips should go to the Anki directory
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let anki_dir = app_data_dir.join("anki");
     if !anki_dir.exists() {
         fs::create_dir_all(&anki_dir).map_err(|e| e.to_string())?;
@@ -95,7 +94,7 @@ pub async fn audio_generate_tts(_text: String, _lang: Option<String>, _app: AppH
 
 // Comandos Lofi (que eram no lofi.ts)
 fn get_lofi_dir(_app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     let lofi_dir = app_data_dir.join("lofi");
     if !lofi_dir.exists() {
         fs::create_dir_all(&lofi_dir).map_err(|e| e.to_string())?;

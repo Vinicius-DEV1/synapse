@@ -36,7 +36,7 @@ pub fn auth_wipe_local_data(app: tauri::AppHandle, db_state: tauri::State<'_, cr
         *guard = None; // Drop SQLite connection
     }
     
-    let app_data_dir = std::env::current_exe().unwrap().parent().unwrap().join("data");
+    let app_data_dir = crate::get_app_data_dir();
     
     if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
         for entry in entries {

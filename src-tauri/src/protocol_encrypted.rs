@@ -50,19 +50,15 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     let mut abs_path = std::path::PathBuf::from(&decoded_path);
     
     if !abs_path.is_absolute() {
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(parent) = exe_path.parent() {
-                let app_data_dir = parent.join("data");
-                let dir_name = match module_name {
-                    "culture" => "videos",
-                    "library" => "library",
-                    "files" => "files",
-                    "focus" => "lofi",
-                    _ => module_name,
-                };
-                abs_path = app_data_dir.join(dir_name).join(abs_path);
-            }
-        }
+        let app_data_dir = crate::get_app_data_dir();
+        let dir_name = match module_name {
+            "culture" => "videos",
+            "library" => "library",
+            "files" => "files",
+            "focus" => "lofi",
+            _ => module_name,
+        };
+        abs_path = app_data_dir.join(dir_name).join(abs_path);
     }
     
     if !abs_path.exists() {
