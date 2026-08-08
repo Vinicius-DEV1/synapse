@@ -22,9 +22,10 @@ export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> 
 }
 
 export async function processVideoWeb(
-  file: File, 
-  quality: 'original' | '1080p' | '720p',
-  onProgress: (p: number) => void,
+  file: Blob, 
+  quality: string,
+  conversionPreset: string,
+  onProgress: (progress: number) => void,
   signal?: AbortSignal
 ): Promise<Blob> {
   if (quality === 'original') {
@@ -56,15 +57,15 @@ export async function processVideoWeb(
   const args = ['-i', inputName];
   
   if (quality === '1080p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', 'medium', '-crf', '28', '-vf', 'scale=-2:1080');
+    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:1080');
   } else if (quality === '720p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', 'medium', '-crf', '28', '-vf', 'scale=-2:720');
+    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
   } else if (quality === '480p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', 'medium', '-crf', '28', '-vf', 'scale=-2:480');
+    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:480');
   } else if (quality === '360p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', 'medium', '-crf', '28', '-vf', 'scale=-2:360');
+    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:360');
   } else {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', 'ultrafast', '-crf', '28', '-vf', 'scale=-2:720');
+    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
   }
 
   args.push(outputName);

@@ -186,6 +186,7 @@ pub async fn video_process_upload(
     source_path: String,
     dest_filename: String,
     web_quality: String,
+    conversion_preset: String,
     db_state: tauri::State<'_, crate::db::DbState>,
     app_handle: AppHandle
 ) -> Result<ProcessUploadResult, String> {
@@ -239,16 +240,18 @@ pub async fn video_process_upload(
             "-dn",
         ];
         
+        let preset_str = conversion_preset.as_str();
+        
         if web_quality == "1080p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:1080"]);
         } else if web_quality == "720p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
         } else if web_quality == "480p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:480"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:480"]);
         } else if web_quality == "360p" {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:360"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:360"]);
         } else {
-            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", "medium", "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
+            args.extend_from_slice(&["-c:v", "libx264", "-c:a", "aac", "-preset", preset_str, "-threads", "0", "-crf", "23", "-vf", "scale=-2:720"]);
         }
         
         let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();

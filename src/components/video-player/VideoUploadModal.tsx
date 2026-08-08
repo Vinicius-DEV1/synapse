@@ -15,6 +15,7 @@ export interface UploadOptions {
   collectionId?: string;
   collectionName?: string;
   webQuality: 'original' | '1080p' | '720p' | '480p' | '360p';
+  conversionPreset?: string;
   onProgress?: (percent: number) => void;
   onPhaseChange?: (phase: string) => void;
   signal?: AbortSignal;
@@ -49,8 +50,17 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   }, []);
 
   const [error, setError] = useState<string | null>(null);
-  
   const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p' | '480p' | '360p'>('720p');
+
+  // Load defaults from settings
+  useEffect(() => {
+    import('../../../utils/settings').then(({ getSettings }) => {
+      const s = getSettings();
+      if (s.videoDefaultWebQuality) {
+        setWebQuality(s.videoDefaultWebQuality);
+      }
+    });
+  }, []);
   
   const [embeddedSubs, setEmbeddedSubs] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
   const [embeddedAudios, setEmbeddedAudios] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
@@ -114,7 +124,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         subtitleText = await processSubtitleFile(subtitleFile);
       }
       
-      await onUpload({
+      const res = await onUpload({
         videoFile,
         subtitleText,
         duration: videoDuration,
@@ -125,6 +135,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         collectionId,
         collectionName,
         webQuality,
+        conversionPreset: (await import('../../../utils/settings')).getSettings().videoConversionPreset,
         onProgress: (percent) => setUploadProgress(percent),
         onPhaseChange: (phase) => setUploadPhase(phase),
         signal: abortCtrl.signal
