@@ -80,8 +80,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
       }
 
       if (isSetup) {
-        // Validar na nuvem antes de permitir o setup local
-        if (!cloudCheck.isValid) {
+        // Validar na nuvem antes de permitir o setup local (apenas se a nuvem respondeu com senha invalida)
+        if (!cloudCheck.isValid && cloudCheck.error !== 'timeout' && cloudCheck.error !== 'offline') {
           triggerError('Senha incompatível com a sua Nuvem (Firebase).');
           setLoading(false);
           return;
