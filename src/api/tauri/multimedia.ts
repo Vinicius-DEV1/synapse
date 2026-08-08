@@ -19,7 +19,7 @@ export const tauriVideoApi = {
   getStreamPort: async () => await invoke('video_get_stream_port'),
   saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
-  processUpload: async (sourcePath: string, filename: string, webQuality: string) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality }),
+  processUpload: async (sourcePath: string, filename: string, webQuality: string, conversionPreset: string) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality, conversionPreset }),
   openFileDialog: async () => {
     const selected = await open({
       multiple: false,
