@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
@@ -190,6 +190,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               { id: 'ai', label: 'IA', icon: Zap },
               { id: 'shortcuts', label: 'Atalhos', icon: Keyboard },
               { id: 'storage', label: 'Uso', icon: HardDrive },
+              { id: 'video', label: 'Vídeo', icon: Video },
               { id: 'backup', label: 'Backup', icon: DownloadCloud },
               { id: 'sync', label: 'Sync', icon: RefreshCw },
             ].map(tab => (
