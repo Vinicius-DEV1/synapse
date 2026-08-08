@@ -18,6 +18,9 @@ export interface AppSettings {
   aiDictionaryLanguage: 'bilingual' | 'english_only';
   enableStudySfx: boolean;
   enableStudy3DFlip: boolean;
+  videoConversionPreset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
+  videoPlaybackPreference: 'auto' | 'force_original' | 'force_web';
+  videoDefaultWebQuality: 'original' | '1080p' | '720p' | '480p' | '360p';
 }
 
 export function getSettings(): AppSettings {
@@ -37,7 +40,10 @@ export function getSettings(): AppSettings {
     defaultTextWidth: 'medium',
     aiDictionaryLanguage: 'bilingual',
     enableStudySfx: true,
-    enableStudy3DFlip: true
+    enableStudy3DFlip: true,
+    videoConversionPreset: 'medium',
+    videoPlaybackPreference: 'auto',
+    videoDefaultWebQuality: '720p'
   };
   
   try {

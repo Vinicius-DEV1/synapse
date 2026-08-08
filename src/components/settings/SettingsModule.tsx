@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw } from 'lucide-react';
+import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video } from 'lucide-react';
 import { getSettings, saveSettings } from '../../utils/settings';
 import type { AppSettings } from '../../utils/settings';
 
@@ -9,6 +9,7 @@ import SecurityTab from './tabs/SecurityTab';
 import AiTab from './tabs/AiTab';
 import ShortcutsTab from './tabs/ShortcutsTab';
 import StorageTab from './tabs/StorageTab';
+import VideoTab from './tabs/VideoTab';
 import { BackupTab } from './tabs/BackupTab';
 import SyncMonitor from './SyncMonitor';
 import type { Tab } from '../../../types';
@@ -33,6 +34,7 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
     { id: 'ai', label: 'IA', icon: Zap },
     { id: 'shortcuts', label: 'Atalhos', icon: Keyboard },
     { id: 'storage', label: 'Uso', icon: HardDrive },
+    { id: 'video', label: 'Vídeo', icon: Video },
     { id: 'backup', label: 'Backup', icon: DownloadCloud },
     { id: 'sync', label: 'Sync', icon: RefreshCw },
   ] as const;
@@ -78,6 +80,10 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
 
             {activeTab === 'storage' && !isChangingPassword && (
               <StorageTab />
+            )}
+
+            {activeTab === 'video' && !isChangingPassword && (
+              <VideoTab />
             )}
 
             {activeTab === 'backup' && !isChangingPassword && (

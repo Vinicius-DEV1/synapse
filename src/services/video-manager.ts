@@ -73,8 +73,19 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
 import { convertFileSrc } from '@tauri-apps/api/core';
 
 export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
+  const { getSettings } = await import('../../utils/settings');
+  const pref = getSettings().videoPlaybackPreference;
+  
   const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
-  const isUnsupported = forceWeb || !['mp4', 'webm'].includes(ext);
+  
+  let isUnsupported = forceWeb || !['mp4', 'webm'].includes(ext);
+  
+  if (pref === 'force_web') {
+    isUnsupported = true; // Sempre tenta puxar a web version
+  } else if (pref === 'force_original') {
+    isUnsupported = false; // Sempre tenta rodar o original
+  }
+
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
 
   if (window.api?.video && video.is_local) {
@@ -199,7 +210,7 @@ export interface UploadStats {
 
 export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<{ video: VideoItem; stats: UploadStats }> {
   const startTime = Date.now();
-  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, onProgress, onPhaseChange, signal } = options;
+  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, conversionPreset, onProgress, onPhaseChange, signal } = options;
   
   if (signal?.aborted) throw new Error("Cancelado pelo usuário");
 
@@ -224,7 +235,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     try {
       if (onPhaseChange) onPhaseChange('Convertendo e criptografando vídeos no Desktop...');
       
-      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality);
+      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium');
       isLocal = true;
       localPath = processRes.original_path;
       if (processRes.original_size) originalSize = processRes.original_size;
@@ -263,7 +274,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       const { processVideoWeb } = await import('./ffmpeg-web');
       try {
         if (signal?.aborted) throw new Error("Cancelado pelo usuário");
-        dataToUpload = await processVideoWeb(file, webQuality, (p) => {
+        dataToUpload = await processVideoWeb(file, webQuality, conversionPreset || 'medium', (p) => {
           if (signal?.aborted) throw new Error("Cancelado pelo usuário");
           if (onProgress) onProgress(p * 0.7); 
         }, signal);
