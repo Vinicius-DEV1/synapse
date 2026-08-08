@@ -40,13 +40,20 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
     throw new Error("Download local só está disponível no ambiente Desktop.");
   }
   
-  if (!video.drive_file_id) throw new Error("Vídeo não está no Drive.");
+  const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
+  const isUnsupported = !['mp4', 'webm'].includes(ext);
+  
+  const targetDriveId = isUnsupported && video.drive_web_file_id ? video.drive_web_file_id : video.drive_file_id;
+  if (!targetDriveId) throw new Error("Vídeo não está no Drive ou versão compatível indisponível.");
   
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
-  const buffer = await downloadFromDrive(token, video.drive_file_id, onProgress);
-  const localPath = await window.api.video.saveLocal(video.original_name, buffer);
+  const baseName = video.original_name.replace(/\.[^/.]+$/, "");
+  const targetFileName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
+
+  const buffer = await downloadFromDrive(token, targetDriveId, onProgress);
+  const localPath = await window.api.video.saveLocal(targetFileName, buffer);
   
   // Atualiza banco de dados marcando como local
   await window.api.sync.upsertRow(VIDEO_TABLE, {
@@ -65,15 +72,20 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
  */
 import { convertFileSrc } from '@tauri-apps/api/core';
 
-export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): Promise<string> {
+export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
+  const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
+  const isUnsupported = forceWeb || !['mp4', 'webm'].includes(ext);
+  const baseName = video.original_name.replace(/\.[^/.]+$/, "");
+
   if (window.api?.video && video.is_local) {
     // Quando sincroniza de outro SO, o file_path salvo pode ser do Windows e não existir no Linux.
     // Vamos sempre verificar a existência real do arquivo usando o filename.
     const fileNameFallback = video.file_path ? video.file_path.split(/[/\\]/).pop() : undefined;
+    const searchName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
     
-    let localPath = await window.api.video.getLocalPath(video.original_name);
+    let localPath = await window.api.video.getLocalPath(searchName);
     if (!localPath) {
-      localPath = await window.api.video.getLocalPath(video.original_name + ".enc");
+      localPath = await window.api.video.getLocalPath(searchName + ".enc");
     }
     if (!localPath && fileNameFallback) {
       localPath = await window.api.video.getLocalPath(fileNameFallback);
@@ -97,24 +109,34 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey): 
   const isWebEnv = !window.api?.video;
   
   if (isWebEnv) {
-    if (video.drive_web_file_id) {
-      return `/stream-video/${video.drive_web_file_id}`;
-    }
-    if (video.drive_file_id) {
-      return `/stream-video/${video.drive_file_id}`;
+    // No Web, se for formato não suportado (ex: MKV), forçamos o uso da versão Web.
+    const targetDriveId = isUnsupported && video.drive_web_file_id 
+      ? video.drive_web_file_id 
+      : (video.drive_web_file_id || video.drive_file_id);
+      
+    if (targetDriveId) {
+      return `/stream-video/${targetDriveId}`;
     }
   } else {
     // Desktop: Streaming Nativo em Rust do Google Drive (ignorando o Service Worker)
-    if (video.drive_file_id && window.api?.video?.getStreamPort) {
+    // Se for formato não suportado (MKV), forçamos a busca pelo web_file_id na nuvem se ele não estivesse local
+    const targetDriveId = isUnsupported && video.drive_web_file_id 
+      ? video.drive_web_file_id 
+      : (video.drive_file_id || video.drive_web_file_id);
+      
+    if (targetDriveId && window.api?.video?.getStreamPort) {
       try {
         const port = await window.api.video.getStreamPort();
         const token = await getValidAccessToken();
         if (token) {
-          return `http://127.0.0.1:${port}/stream-drive?file_id=${video.drive_file_id}&token=${token}&module=culture`;
+          return `http://127.0.0.1:${port}/stream-drive?file_id=${targetDriveId}&token=${token}&module=culture`;
         }
       } catch (e) {
-        console.error("Failed to get token or port for native drive streaming:", e);
+        console.warn("Failed to get stream port for drive:", e);
       }
+    }
+    if (targetDriveId) {
+      return `/stream-video/${targetDriveId}`; // Fallback para SW
     }
   }
 
@@ -191,7 +213,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     try {
       if (onPhaseChange) onPhaseChange('Convertendo e criptografando vídeos no Desktop...');
       
-      const processRes = await (window.api.video as any).processUpload(sourcePath, standardizedName, webQuality);
+      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality);
       isLocal = true;
       localPath = processRes.original_path;
       

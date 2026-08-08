@@ -12,6 +12,7 @@ import { useVideoControls } from './hooks/useVideoControls';
 import { VideoControlsOverlay } from './ui/VideoControlsOverlay';
 import { VideoVocabularySidebar } from './ui/VideoVocabularySidebar';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
+import { resolveVideoUrl } from '../../services/video-manager';
 
 interface VideoPlayerProps {
   src: string;
@@ -46,6 +47,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [currentSrc, setCurrentSrc] = useState(src);
+  const [hasFallback, setHasFallback] = useState(false);
 
   useTimeTracker({
     itemId: video.id,

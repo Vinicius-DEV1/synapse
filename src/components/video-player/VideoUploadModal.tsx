@@ -14,7 +14,7 @@ export interface UploadOptions {
   masterKey?: CryptoKey;
   collectionId?: string;
   collectionName?: string;
-  webQuality: 'original' | '1080p' | '720p';
+  webQuality: 'original' | '1080p' | '720p' | '480p' | '360p';
   onProgress?: (percent: number) => void;
   onPhaseChange?: (phase: string) => void;
   signal?: AbortSignal;
@@ -49,7 +49,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
 
   const [error, setError] = useState<string | null>(null);
   
-  const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p'>('720p');
+  const [webQuality, setWebQuality] = useState<'original' | '1080p' | '720p' | '480p' | '360p'>('720p');
   
   const [embeddedSubs, setEmbeddedSubs] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
   const [embeddedAudios, setEmbeddedAudios] = useState<{ index: string; language?: string; codec: string; title?: string }[]>([]);
@@ -280,6 +280,9 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
                   const file = e.target.files?.[0];
                   if (file) {
                     setVideoFile(file);
+                    if (webQuality === 'original' && !file.name.toLowerCase().endsWith('.mp4') && !file.name.toLowerCase().endsWith('.webm')) {
+                        setWebQuality('720p');
+                    }
                     setError(null);
                     setEmbeddedSubs([]);
                     setEmbeddedAudios([]);
@@ -388,9 +391,13 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
               disabled={isUploading}
               className="bg-black/20 border border-white/10 rounded-xl p-3 text-sm text-white/90 outline-none focus:border-brand-500 transition-colors"
             >
-              <option value="original">Original (Instantâneo - Apenas copia, pode não rodar na web)</option>
-              <option value="720p">720p HD (Rápido e Leve - Recomendado)</option>
-              <option value="1080p">1080p Full HD (Alta Qualidade - Lento)</option>
+              {!(videoFile && !videoFile.name.toLowerCase().endsWith('.mp4') && !videoFile.name.toLowerCase().endsWith('.webm')) && (
+                <option className="bg-gray-900 text-white" value="original">Original (Instantâneo - Recomendado p/ MP4)</option>
+              )}
+              <option className="bg-gray-900 text-white" value="1080p">1080p Full HD (Alta Qualidade - Lento)</option>
+              <option className="bg-gray-900 text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>
+              <option className="bg-gray-900 text-white" value="480p">480p SD (Muito Rápido - Qualidade Baixa)</option>
+              <option className="bg-gray-900 text-white" value="360p">360p (Ultra Rápido - Apenas para Celulares)</option>
             </select>
           </div>
 
