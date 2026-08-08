@@ -151,6 +151,9 @@ export async function getOrCreateAppFolder(accessToken: string): Promise<string>
   });
 
   const createData = await createRes.json();
+  if (!createRes.ok) {
+    throw new Error(`Falha ao criar pasta: ${createData.error?.message || 'Erro desconhecido'}`);
+  }
   return createData.id;
 }
 
@@ -404,10 +407,28 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
   });
 }
 
+export async function forceTokenRefresh(): Promise<string | null> {
+  const creds = await getDriveCredentials();
+  if (!creds.token || !creds.token.refresh_token) return null;
+  
+  try {
+    const newToken = await refreshToken(creds.token.refresh_token);
+    await saveDriveCredentials(newToken);
+    return newToken.access_token;
+  } catch (e) {
+    console.error("Failed to force refresh token", e);
+    await saveDriveCredentials(null);
+    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    return null;
+  }
+}
+
 /**
  * Retorna um access token válido (renova automaticamente se necessário).
  */
-export async function getValidAccessToken(): Promise<string | null> {
+export async function getValidAccessToken(forceRefresh = false): Promise<string | null> {
+  if (forceRefresh) return await forceTokenRefresh();
+  
   const creds = await getDriveCredentials();
   if (!creds.token) return null;
 

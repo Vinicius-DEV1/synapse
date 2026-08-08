@@ -86,7 +86,26 @@ async fn stream_handler(
         if enc_path.exists() {
             abs_path = enc_path;
         } else {
-            return (StatusCode::NOT_FOUND, "File not found").into_response();
+            // Tenta buscar na pasta release se estivermos rodando em debug
+            if let Some(parent) = app_data_dir.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    let release_dir = grandparent.join("release").join("data").join("videos");
+                    let release_path = release_dir.join(&decoded_path);
+                    let release_enc_path = std::path::PathBuf::from(format!("{}.enc", release_path.to_string_lossy()));
+                    
+                    if release_path.exists() {
+                        abs_path = release_path;
+                    } else if release_enc_path.exists() {
+                        abs_path = release_enc_path;
+                    } else {
+                        return (StatusCode::NOT_FOUND, "File not found").into_response();
+                    }
+                } else {
+                    return (StatusCode::NOT_FOUND, "File not found").into_response();
+                }
+            } else {
+                return (StatusCode::NOT_FOUND, "File not found").into_response();
+            }
         }
     }
 
@@ -123,79 +142,98 @@ async fn stream_handler(
 
     let total_size = match info_res {
         Ok(res) => res.total_original_size,
-        Err(_) => {
-            // Se falhar (ex: arquivo não criptografado), pega o tamanho do arquivo real
+        Err(e) => {
+            println!("[STREAM] Aviso: Falha ao ler cabecalho criptografado ({}). Usando tamanho do arquivo no disco.", e);
             match std::fs::metadata(&abs_path) {
                 Ok(m) => m.len(),
-                Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get file metadata").into_response(),
+                Err(e) => {
+                    println!("[STREAM] Erro fatal: Nao foi possivel obter o tamanho do arquivo: {}", e);
+                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get file metadata").into_response();
+                }
             }
         }
     };
 
     let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
+    println!("[STREAM] Nova requisicao para: {} | Range: {:?}", uri_path, range_header);
+
+    let mut start = 0;
+    let mut end = total_size - 1;
 
     if let Some(range) = range_header {
         if range.starts_with("bytes=") {
             let parts: Vec<&str> = range.trim_start_matches("bytes=").split('-').collect();
-            let start = parts[0].parse::<u64>().unwrap_or(0);
-            let end = if parts.len() > 1 && !parts[1].is_empty() {
+            start = parts[0].parse::<u64>().unwrap_or(0);
+            end = if parts.len() > 1 && !parts[1].is_empty() {
                 parts[1].parse::<u64>().unwrap_or(total_size - 1)
             } else {
                 total_size - 1
             };
+        }
+    }
+
+    if start >= total_size {
+        return (
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            [(header::CONTENT_RANGE, format!("bytes */{}", total_size))],
+            "Requested range not satisfiable",
+        ).into_response();
+    }
+    
+    // Assegura que end não ultrapasse o tamanho total
+    if end >= total_size {
+        end = total_size - 1;
+    }
+
+    println!("[STREAM] Servindo Range Parcial Stream: bytes {}-{} (Tamanho Total: {})", start, end, total_size);
+
+    let content_range = format!("bytes {}-{}/{}", start, end, total_size);
+    let content_length = (end - start + 1).to_string();
+
+    let stream = async_stream::stream! {
+        let mut current_start = start;
+        let max_chunk_size = 2 * 1024 * 1024; // Lemos em pedaços de 2MB da RAM
+        
+        while current_start <= end {
+            let current_end = std::cmp::min(current_start + max_chunk_size - 1, end);
             
-            let path_clone2 = abs_path.clone();
-            let key_clone2 = master_key.clone();
+            let path_clone = abs_path.clone();
+            let key_clone = master_key.clone();
             
             let range_res = tokio::task::spawn_blocking(move || {
-                crate::crypto_stream::read_chunked_range(&path_clone2, &key_clone2, start, end)
-            }).await.unwrap();
+                crate::crypto_stream::read_chunked_range(&path_clone, &key_clone, current_start, current_end)
+            }).await;
 
             match range_res {
-                Ok(decrypted) => {
-                    let actual_end = start + decrypted.data.len() as u64 - 1;
-                    let content_range = format!("bytes {}-{}/{}", start, actual_end, total_size);
-                    
-                    return axum::response::Response::builder()
-                        .status(StatusCode::PARTIAL_CONTENT)
-                        .header(header::CONTENT_TYPE, "video/mp4")
-                        .header(header::ACCEPT_RANGES, "bytes")
-                        .header(header::CONTENT_RANGE, content_range)
-                        .header(header::CONTENT_LENGTH, decrypted.data.len().to_string())
-                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                        .body(Body::from(decrypted.data))
-                        .unwrap();
+                Ok(Ok(decrypted)) => {
+                    yield Ok::<axum::body::Bytes, std::io::Error>(axum::body::Bytes::from(decrypted.data));
+                },
+                Ok(Err(e)) => {
+                    println!("[STREAM] Erro de descriptografia no meio do stream: {}", e);
+                    yield Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    break;
                 },
                 Err(e) => {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, e).into_response();
+                    println!("[STREAM] Erro de spawn no meio do stream: {}", e);
+                    yield Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+                    break;
                 }
             }
+            current_start = current_end + 1;
         }
-    }
+    };
 
-    // Sem cabeçalho de Range, envia o arquivo todo
-    let path_clone3 = abs_path.clone();
-    let key_clone3 = master_key.clone();
-    
-    let all_res = tokio::task::spawn_blocking(move || {
-        crate::crypto_stream::read_chunked_range(&path_clone3, &key_clone3, 0, total_size - 1)
-    }).await.unwrap();
+    let status = if range_header.is_some() { StatusCode::PARTIAL_CONTENT } else { StatusCode::OK };
 
-    match all_res {
-        Ok(decrypted) => {
-            axum::response::Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "video/mp4")
-                .header(header::CONTENT_LENGTH, decrypted.data.len().to_string())
-                .header(header::ACCEPT_RANGES, "bytes")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from(decrypted.data))
-                .unwrap()
-        },
-        Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
-        }
-    }
+    axum::response::Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_RANGE, content_range)
+        .header(header::CONTENT_LENGTH, content_length)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(axum::body::Body::from_stream(stream))
+        .unwrap()
 }
 
 #[tauri::command]
@@ -245,19 +283,17 @@ async fn stream_drive_handler(
     let mut start = 0;
     let mut end = total_size - 1;
     
-    if let Some(range_header) = headers.get(header::RANGE) {
-        if let Ok(range_str) = range_header.to_str() {
-            if range_str.starts_with("bytes=") {
-                let ranges: Vec<&str> = range_str[6..].split('-').collect();
-                if let Ok(s) = ranges[0].parse::<u64>() {
-                    start = s;
-                }
-                if ranges.len() > 1 && !ranges[1].is_empty() {
-                    if let Ok(e) = ranges[1].parse::<u64>() {
-                        end = std::cmp::min(e, total_size - 1);
-                    }
-                }
-            }
+    let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
+
+    if let Some(range_str) = range_header {
+        if range_str.starts_with("bytes=") {
+            let ranges: Vec<&str> = range_str[6..].split('-').collect();
+            start = ranges[0].parse::<u64>().unwrap_or(0);
+            end = if ranges.len() > 1 && !ranges[1].is_empty() {
+                ranges[1].parse::<u64>().unwrap_or(total_size - 1)
+            } else {
+                total_size - 1
+            };
         }
     }
     
@@ -269,33 +305,51 @@ async fn stream_drive_handler(
         ).into_response();
     }
     
-    let chunk_res = crate::crypto_stream::read_network_chunked_range_async(
-        &params.file_id,
-        &params.token,
-        &master_key,
-        start,
-        end
-    ).await;
-    
-    match chunk_res {
-        Ok(decrypted) => {
-            let actual_len = decrypted.data.len();
-            let actual_end = start + actual_len as u64 - 1;
-            
-            let mut headers_resp = axum::http::HeaderMap::new();
-            headers_resp.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
-            headers_resp.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
-            headers_resp.insert(header::CONTENT_LENGTH, actual_len.to_string().parse().unwrap());
-            headers_resp.insert(
-                header::CONTENT_RANGE,
-                format!("bytes {}-{}/{}", start, actual_end, total_size).parse().unwrap()
-            );
-            headers_resp.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
-            
-            (StatusCode::PARTIAL_CONTENT, headers_resp, decrypted.data).into_response()
-        },
-        Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
-        }
+    if end >= total_size {
+        end = total_size - 1;
     }
+
+    let content_range = format!("bytes {}-{}/{}", start, end, total_size);
+    let content_length = (end - start + 1).to_string();
+
+    let stream = async_stream::stream! {
+        let mut current_start = start;
+        let max_chunk_size = 2 * 1024 * 1024; // Puxamos 2MB por vez da nuvem
+        
+        while current_start <= end {
+            let current_end = std::cmp::min(current_start + max_chunk_size - 1, end);
+            
+            let chunk_res = crate::crypto_stream::read_network_chunked_range_async(
+                &params.file_id,
+                &params.token,
+                &master_key,
+                current_start,
+                current_end
+            ).await;
+
+            match chunk_res {
+                Ok(decrypted) => {
+                    yield Ok::<axum::body::Bytes, std::io::Error>(axum::body::Bytes::from(decrypted.data));
+                },
+                Err(e) => {
+                    yield Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    break;
+                }
+            }
+            
+            current_start = current_end + 1;
+        }
+    };
+
+    let status = if range_header.is_some() { StatusCode::PARTIAL_CONTENT } else { StatusCode::OK };
+
+    axum::response::Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_RANGE, content_range)
+        .header(header::CONTENT_LENGTH, content_length)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(axum::body::Body::from_stream(stream))
+        .unwrap()
 }

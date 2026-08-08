@@ -120,71 +120,77 @@ async function handleVideoStream(request, url) {
     const startChunk = Math.floor(start / CLEAR_CHUNK_SIZE);
     const endChunk = Math.floor(end / CLEAR_CHUNK_SIZE);
     
-    let decryptedData = new Uint8Array(end - start + 1);
-    let outputOffset = 0;
-    
     const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
     
-    for (let i = startChunk; i <= endChunk; i++) {
-      let isLastChunk = false;
-      let clearChunkSize = CLEAR_CHUNK_SIZE;
-      
-      if (i === Math.floor(originalSize / CLEAR_CHUNK_SIZE)) {
-        clearChunkSize = originalSize % CLEAR_CHUNK_SIZE;
-        isLastChunk = true;
-        if (clearChunkSize === 0) break; // Exact multiple of 1MB, last chunk is empty
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for (let i = startChunk; i <= endChunk; i++) {
+            let isLastChunk = false;
+            let clearChunkSize = CLEAR_CHUNK_SIZE;
+            
+            if (i === Math.floor(originalSize / CLEAR_CHUNK_SIZE)) {
+              clearChunkSize = originalSize % CLEAR_CHUNK_SIZE;
+              isLastChunk = true;
+              if (clearChunkSize === 0) break; // Exact multiple of 1MB, last chunk is empty
+            }
+            
+            const encChunkSize = clearChunkSize + ENC_CHUNK_EXTRA;
+            const fileOffsetStart = HEADER_SIZE + (i * ENC_CHUNK_SIZE);
+            const fileOffsetEnd = fileOffsetStart + encChunkSize - 1;
+            
+            const headers = new Headers();
+            headers.append('Authorization', `Bearer ${accessToken}`);
+            headers.append('Range', `bytes=${fileOffsetStart}-${fileOffsetEnd}`);
+            
+            const res = await fetch(driveUrl, { headers });
+            if (!res.ok) throw new Error("Falha ao baixar chunk do Drive");
+            
+            const encBuffer = await res.arrayBuffer();
+            const encArray = new Uint8Array(encBuffer);
+            
+            if (encArray.length < 12) throw new Error("Chunk corrompido (sem IV)");
+            
+            const iv = encArray.slice(0, 12);
+            const ciphertext = encArray.slice(12);
+            
+            const decryptedBuffer = await crypto.subtle.decrypt(
+              { name: "AES-GCM", iv },
+              cryptoKey,
+              ciphertext
+            );
+            
+            const decryptedChunk = new Uint8Array(decryptedBuffer);
+            
+            const chunkStartGlobal = i * CLEAR_CHUNK_SIZE;
+            let copyStart = 0;
+            let copyEnd = decryptedChunk.length;
+            
+            if (start > chunkStartGlobal) {
+              copyStart = start - chunkStartGlobal;
+            }
+            if (end < chunkStartGlobal + decryptedChunk.length - 1) {
+              copyEnd = end - chunkStartGlobal + 1;
+            }
+            
+            const neededSlice = decryptedChunk.slice(copyStart, copyEnd);
+            controller.enqueue(neededSlice);
+          }
+          controller.close();
+        } catch (e) {
+          console.error("Stream abortado com erro:", e);
+          controller.error(e);
+        }
       }
-      
-      const encChunkSize = clearChunkSize + ENC_CHUNK_EXTRA;
-      const fileOffsetStart = HEADER_SIZE + (i * ENC_CHUNK_SIZE);
-      const fileOffsetEnd = fileOffsetStart + encChunkSize - 1;
-      
-      const headers = new Headers();
-      headers.append('Authorization', `Bearer ${accessToken}`);
-      headers.append('Range', `bytes=${fileOffsetStart}-${fileOffsetEnd}`);
-      
-      const res = await fetch(driveUrl, { headers });
-      if (!res.ok) throw new Error("Falha ao baixar chunk do Drive");
-      
-      const encBuffer = await res.arrayBuffer();
-      const encArray = new Uint8Array(encBuffer);
-      
-      if (encArray.length < 12) throw new Error("Chunk corrompido (sem IV)");
-      
-      const iv = encArray.slice(0, 12);
-      const ciphertext = encArray.slice(12);
-      
-      const decryptedBuffer = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        cryptoKey,
-        ciphertext
-      );
-      
-      const decryptedChunk = new Uint8Array(decryptedBuffer);
-      
-      const chunkStartGlobal = i * CLEAR_CHUNK_SIZE;
-      let copyStart = 0;
-      let copyEnd = decryptedChunk.length;
-      
-      if (start > chunkStartGlobal) {
-        copyStart = start - chunkStartGlobal;
-      }
-      if (end < chunkStartGlobal + decryptedChunk.length - 1) {
-        copyEnd = end - chunkStartGlobal + 1;
-      }
-      
-      const neededSlice = decryptedChunk.slice(copyStart, copyEnd);
-      decryptedData.set(neededSlice, outputOffset);
-      outputOffset += neededSlice.length;
-    }
+    });
     
-    return new Response(decryptedData, {
-      status: 206,
+    return new Response(stream, {
+      status: rangeHeader ? 206 : 200,
       headers: {
         'Content-Type': 'video/mp4',
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes ${start}-${end}/${originalSize}`,
-        'Content-Length': decryptedData.length.toString(),
+        'Content-Length': (end - start + 1).toString(),
       }
     });
     
