@@ -73,7 +73,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
 import { convertFileSrc } from '@tauri-apps/api/core';
 
 export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
-  const { getSettings } = await import('../../utils/settings');
+  const { getSettings } = await import('../utils/settings');
   const pref = getSettings().videoPlaybackPreference;
   
   const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
@@ -235,7 +235,19 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     try {
       if (onPhaseChange) onPhaseChange('Convertendo e criptografando vídeos no Desktop...');
       
-      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium');
+      let unlistenProgress: any = null;
+      if (window.api?.events) {
+        unlistenProgress = await window.api.events.listen('video_upload_progress', (event: any) => {
+           if (onProgress) onProgress(5 + (event.payload * 0.35)); // Map 0-100 to 5-40%
+        });
+      }
+      
+      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
+      
+      if (unlistenProgress) {
+         unlistenProgress();
+      }
+
       isLocal = true;
       localPath = processRes.original_path;
       if (processRes.original_size) originalSize = processRes.original_size;
