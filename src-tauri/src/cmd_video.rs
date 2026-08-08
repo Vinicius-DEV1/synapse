@@ -239,6 +239,7 @@ pub async fn video_process_upload(
     let dest_full_path_clone = dest_full_path.clone();
     let master_key_clone = master_key.clone();
     
+    println!("[DEBUG] Iniciando task de criptografia do arquivo original em background...");
     let encrypt_task = tokio::task::spawn_blocking(move || {
         crate::crypto_stream::encrypt_file_chunked(
             &actual_source_clone, 
@@ -313,6 +314,7 @@ pub async fn video_process_upload(
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::piped());
         
+        println!("[DEBUG] Spawn do FFmpeg...");
         let mut child = cmd.spawn().map_err(|e| format!("Falha ao iniciar FFmpeg: {}", e))?;
         
         let stderr = child.stderr.take().unwrap();
@@ -322,6 +324,7 @@ pub async fn video_process_upload(
         while let Ok(Some(line)) = reader.next_line().await {
             error_log.push_str(&line);
             error_log.push('\n');
+            println!("[DEBUG] FFmpeg: {}", line);
             
             if line.contains("time=") {
                 if let Some(time_idx) = line.find("time=") {
@@ -344,12 +347,15 @@ pub async fn video_process_upload(
         }
         
         let status = child.wait().await.map_err(|e| e.to_string())?;
+        println!("[DEBUG] FFmpeg finalizou. Status: {}", status);
         if !status.success() || !temp_web_mp4.exists() {
             let _ = fs::remove_file(&temp_web_mp4);
             return Err(format!("Falha ao converter vídeo Web: {}", error_log));
         }
         
+        println!("[DEBUG] Iniciando criptografia do arquivo Web ({:?})...", temp_web_mp4);
         crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
+        println!("[DEBUG] Criptografia do arquivo Web finalizada.");
         let _ = fs::remove_file(&temp_web_mp4);
         
         Some(web_full_path.to_string_lossy().to_string())
@@ -357,7 +363,9 @@ pub async fn video_process_upload(
         None
     };
 
+    println!("[DEBUG] Aguardando task de criptografia do arquivo original...");
     let enc_res = encrypt_task.await.map_err(|e| e.to_string())?;
+    println!("[DEBUG] Task de criptografia do arquivo original completou o Future.");
     enc_res?;
 
     let original_size = fs::metadata(&dest_full_path).map(|m| m.len()).unwrap_or(0);
