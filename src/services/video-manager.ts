@@ -366,7 +366,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   const newVideo: VideoItem = {
     id: crypto.randomUUID(),
     title: baseName,
-    original_name: standardizedName,
+    original_name: file.name,
     drive_file_id: mainFileId,
     drive_web_file_id: webFileId || undefined,
     drive_subtitle_id: mainSubtitleId || undefined,
