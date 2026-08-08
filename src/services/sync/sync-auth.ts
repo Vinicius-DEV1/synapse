@@ -42,7 +42,8 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
 
     return { isValid: false, isNew: false, error: 'invalid' };
   } catch {
-    return { isValid: false, isNew: false, error: 'invalid' };
+    // Firebase connection failure (e.g. CORS on tauri://localhost) — treat as timeout, not invalid password
+    return { isValid: false, isNew: false, error: 'timeout' };
   }
 }
 
@@ -198,7 +199,8 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Re
     ]);
     
     if (!docSnap) {
-      throw new Error("FIREBASE_TIMEOUT");
+      console.warn("⏳ Timeout ao baixar chaves modulares. Usando chaves locais.");
+      return null;
     }
     
     logFirebaseOp('read', 1);
