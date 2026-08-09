@@ -121,9 +121,9 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
                 onChange={e => setSelectedGroupId(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-dark-text focus:outline-none focus:border-brand-500 transition-colors appearance-none"
               >
-                <option value="">Nenhum Grupo</option>
+                <option className="bg-dark-bg text-white" value="">Nenhum Grupo</option>
                 {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
+                  <option className="bg-dark-bg text-white" key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
             </div>
@@ -264,9 +264,9 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
                   }}
                   className="bg-dark-bg text-xs border border-white/10 rounded p-1 text-dark-subtext"
                 >
-                  <option value="text">Texto</option>
-                  <option value="hidden">Oculto</option>
-                  <option value="url">URL</option>
+                  <option className="bg-dark-bg text-white" value="text">Texto</option>
+                  <option className="bg-dark-bg text-white" value="hidden">Oculto</option>
+                  <option className="bg-dark-bg text-white" value="url">URL</option>
                 </select>
                 <button 
                   onClick={() => {

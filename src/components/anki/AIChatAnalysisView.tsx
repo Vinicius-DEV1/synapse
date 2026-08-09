@@ -256,7 +256,7 @@ export default function AIChatAnalysisView({
                 }}
               >
                 {sessions.map(s => (
-                  <option key={s.id} value={s.id}>
+                  <option className="bg-dark-bg text-white" key={s.id} value={s.id}>
                     {new Date(s.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                   </option>
                 ))}

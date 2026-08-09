@@ -107,9 +107,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                     }}
                     className="bg-dark-bg text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-500"
                   >
-                    <option value="beep">Digital Beep</option>
-                    <option value="retro">Retro Alarm</option>
-                    <option value="bell">Tibetan Bell</option>
+                    <option className="bg-dark-bg text-white" value="beep">Digital Beep</option>
+                    <option className="bg-dark-bg text-white" value="retro">Retro Alarm</option>
+                    <option className="bg-dark-bg text-white" value="bell">Tibetan Bell</option>
                   </select>
                 )}
                 <button 

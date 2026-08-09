@@ -11,25 +11,33 @@ export interface GeminiKeyEntry {
 }
 
 export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
-  if (!window.api?.config) return [];
+  const db = await getWebDb();
+  const doc = await db.get('config', 'geminiApiKeys');
+  let keys: GeminiKeyEntry[] | null = doc?.value || null;
   
-  let keys: GeminiKeyEntry[] | null = await window.api.config.get('geminiApiKeys');
-  
-  // Migration logic from old string
-  if (!keys) {
-    const legacyKey = await window.api.config.get('geminiApiKey');
-    if (legacyKey && typeof legacyKey === 'string') {
-      keys = [{
-        id: crypto.randomUUID(),
-        key: legacyKey,
-        status: 'active',
-        addedAt: Date.now()
-      }];
-      await window.api.config.set('geminiApiKeys', keys);
-      await window.api.config.set('geminiApiKey', null);
+  // Migration logic from old local storage
+  if (!keys && window.api?.config) {
+    const legacyKeys = await window.api.config.get('geminiApiKeys');
+    if (legacyKeys) {
+      keys = legacyKeys;
+      await saveGeminiKeys(keys);
     } else {
-      keys = [];
+      const legacyKey = await window.api.config.get('geminiApiKey');
+      if (legacyKey && typeof legacyKey === 'string') {
+        keys = [{
+          id: crypto.randomUUID(),
+          key: legacyKey,
+          status: 'active',
+          addedAt: Date.now()
+        }];
+        await saveGeminiKeys(keys);
+        await window.api.config.set('geminiApiKey', null);
+      } else {
+        keys = [];
+      }
     }
+  } else if (!keys) {
+    keys = [];
   }
   
   // Reactivate keys if disabled time has passed
@@ -44,13 +52,20 @@ export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
   }
   
   if (needsSave) {
-    await window.api.config.set('geminiApiKeys', keys);
+    await saveGeminiKeys(keys);
   }
   
   return keys;
 }
 
 export async function saveGeminiKeys(keys: GeminiKeyEntry[]): Promise<void> {
+  const db = await getWebDb();
+  await db.put('config', {
+    id: 'geminiApiKeys',
+    value: keys,
+    updated_at: new Date().toISOString()
+  });
+  // Also save locally as backup just in case
   if (window.api?.config) {
     await window.api.config.set('geminiApiKeys', keys);
   }

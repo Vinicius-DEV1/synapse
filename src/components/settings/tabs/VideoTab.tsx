@@ -111,15 +111,15 @@ export default function VideoTab() {
               onChange={(e) => handleSave({ ...settings, videoConversionPreset: e.target.value as any })}
               className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
-              <option value="ultrafast">Ultrafast (Mais Rápido / Maior Tamanho / Menor Qualidade)</option>
-              <option value="superfast">Superfast</option>
-              <option value="veryfast">Veryfast</option>
-              <option value="faster">Faster</option>
-              <option value="fast">Fast</option>
-              <option value="medium">Medium (Equilíbrio Padrão)</option>
-              <option value="slow">Slow</option>
-              <option value="slower">Slower</option>
-              <option value="veryslow">Veryslow (Mais Lento / Menor Tamanho / Máxima Qualidade)</option>
+              <option className="bg-dark-bg text-white" value="ultrafast">Ultrafast (Mais Rápido / Maior Tamanho / Menor Qualidade)</option>
+              <option className="bg-dark-bg text-white" value="superfast">Superfast</option>
+              <option className="bg-dark-bg text-white" value="veryfast">Veryfast</option>
+              <option className="bg-dark-bg text-white" value="faster">Faster</option>
+              <option className="bg-dark-bg text-white" value="fast">Fast</option>
+              <option className="bg-dark-bg text-white" value="medium">Medium (Equilíbrio Padrão)</option>
+              <option className="bg-dark-bg text-white" value="slow">Slow</option>
+              <option className="bg-dark-bg text-white" value="slower">Slower</option>
+              <option className="bg-dark-bg text-white" value="veryslow">Veryslow (Mais Lento / Menor Tamanho / Máxima Qualidade)</option>
             </select>
             <p className="text-xs text-dark-subtext mt-2">
               Presets rápidos (como ultrafast) desativam B-Frames e estimação de movimento fina, o que pode causar trepidações ou "cortes" em cenas de ação, mas convertem muito rápido.
@@ -141,12 +141,12 @@ export default function VideoTab() {
               onChange={(e) => handleSave({ ...settings, videoDefaultWebQuality: e.target.value as any })}
               className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
-              <option value="original">Original (Não recomendado para Web)</option>
-              <option value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>
-              <option value="1080p">1080p Full HD</option>
-              <option value="720p">720p HD (Rápido e Leve - Recomendado)</option>
-              <option value="480p">480p SD (Bom para Celular)</option>
-              <option value="360p">360p (Economia Máxima de Espaço)</option>
+              <option className="bg-dark-bg text-white" value="original">Original (Não recomendado para Web)</option>
+              <option className="bg-dark-bg text-white" value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>
+              <option className="bg-dark-bg text-white" value="1080p">1080p Full HD</option>
+              <option className="bg-dark-bg text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>
+              <option className="bg-dark-bg text-white" value="480p">480p SD (Bom para Celular)</option>
+              <option className="bg-dark-bg text-white" value="360p">360p (Economia Máxima de Espaço)</option>
             </select>
           </div>
         </section>

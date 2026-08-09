@@ -226,7 +226,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                 disabled={loading || decks.length === 0}
               >
                 {decks.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option className="bg-dark-bg text-white" key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             </div>
@@ -245,11 +245,11 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                 }}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500 appearance-none"
               >
-                <option value="reading">Leitura (Padrão)</option>
-                <option value="listening">Escuta (Áudio)</option>
-                <option value="typing">Digitação Livre</option>
-                <option value="speaking">Fala Livre (Microfone)</option>
-                <option value="cloze">Completar Frase (Cloze)</option>
+                <option className="bg-dark-bg text-white" value="reading">Leitura (Padrão)</option>
+                <option className="bg-dark-bg text-white" value="listening">Escuta (Áudio)</option>
+                <option className="bg-dark-bg text-white" value="typing">Digitação Livre</option>
+                <option className="bg-dark-bg text-white" value="speaking">Fala Livre (Microfone)</option>
+                <option className="bg-dark-bg text-white" value="cloze">Completar Frase (Cloze)</option>
               </select>
             </div>
           </div>

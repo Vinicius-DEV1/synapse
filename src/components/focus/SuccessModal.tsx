@@ -162,7 +162,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
               className="bg-dark-bg text-white border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500"
             >
               {ALARM_TYPES.map(type => (
-                <option key={type.id} value={type.id}>{type.name}</option>
+                <option className="bg-dark-bg text-white" key={type.id} value={type.id}>{type.name}</option>
               ))}
             </select>
           </div>

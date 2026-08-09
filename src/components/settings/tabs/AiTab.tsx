@@ -206,10 +206,10 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           >
             {models.length > 0 ? (
               models.map(m => (
-                <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+                <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
               ))
             ) : (
-              <option value="">Clique em 'Carregar modelos disponíveis' acima</option>
+              <option className="bg-dark-bg text-white" value="">Clique em 'Carregar modelos disponíveis' acima</option>
             )}
           </select>
           <p className="text-[11px] text-dark-subtext mt-1.5">Usado se um módulo específico não tiver um modelo definido.</p>
@@ -222,9 +222,9 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelChat: e.target.value })}
             className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
-            <option value="">(Usar Modelo Padrão)</option>
+            <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
-              <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+              <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
             ))}
           </select>
         </div>
@@ -236,9 +236,9 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelFlashcards: e.target.value })}
             className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
-            <option value="">(Usar Modelo Padrão)</option>
+            <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
-              <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+              <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
             ))}
           </select>
           <p className="text-[11px] text-dark-subtext mt-1.5">Usado na geração, análise e avaliação de áudio nos flashcards.</p>
@@ -251,9 +251,9 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelDictionary: e.target.value })}
             className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
-            <option value="">(Usar Modelo Padrão)</option>
+            <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
-              <option key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
+              <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
             ))}
           </select>
         </div>
@@ -268,9 +268,9 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           onChange={(e) => setAppSettings({ ...appSettings, aiChatHighlight: e.target.value as 'glow' | 'underline' | 'none' })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option value="glow">Brilho Pulsante (Recomendado)</option>
-          <option value="underline">Apenas Sublinhado (Sutil)</option>
-          <option value="none">Nenhum (Invisível)</option>
+          <option className="bg-dark-bg text-white" value="glow">Brilho Pulsante (Recomendado)</option>
+          <option className="bg-dark-bg text-white" value="underline">Apenas Sublinhado (Sutil)</option>
+          <option className="bg-dark-bg text-white" value="none">Nenhum (Invisível)</option>
         </select>
         <p className="text-[11px] text-dark-subtext mt-1.5">
           Define como os trechos de texto que possuem um chat vinculado serão exibidos no editor.
@@ -284,8 +284,8 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           onChange={(e) => setAppSettings({ ...appSettings, aiDictionaryLanguage: e.target.value as 'bilingual' | 'english_only' })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option value="bilingual">Bilíngue (Inglês + Português)</option>
-          <option value="english_only">100% Inglês (Foco e Economia)</option>
+          <option className="bg-dark-bg text-white" value="bilingual">Bilíngue (Inglês + Português)</option>
+          <option className="bg-dark-bg text-white" value="english_only">100% Inglês (Foco e Economia)</option>
         </select>
         <p className="text-[11px] text-dark-subtext mt-1.5">
           "Bilíngue" traz contexto extra em português. "100% Inglês" força a imersão e economiza sua cota de IA.
@@ -299,8 +299,8 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           onChange={(e) => setAppSettings({ ...appSettings, dictionaryMode: e.target.value as 'offline' | 'online' })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option value="offline">Offline (Banco de Dados Local)</option>
-          <option value="online">Online (IA Inteligente)</option>
+          <option className="bg-dark-bg text-white" value="offline">Offline (Banco de Dados Local)</option>
+          <option className="bg-dark-bg text-white" value="online">Online (IA Inteligente)</option>
         </select>
         <p className="text-[11px] text-dark-subtext mt-1.5 mb-3">
           Define qual motor o Dicionário de PDFs irá usar por padrão ao ser aberto.

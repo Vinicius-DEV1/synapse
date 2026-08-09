@@ -70,44 +70,44 @@ export function DeckToolbar({
         {showFilters && (
           <>
             <select value={filters.type} onChange={e => setFilters({...filters, type: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
-              <option value="all">Tipos (Todos)</option>
-              <option value="reading">Leitura</option>
-              <option value="listening">Escuta</option>
-              <option value="typing">Digitação</option>
-              <option value="cloze">Completar (Cloze)</option>
+              <option className="bg-dark-bg text-white" value="all">Tipos (Todos)</option>
+              <option className="bg-dark-bg text-white" value="reading">Leitura</option>
+              <option className="bg-dark-bg text-white" value="listening">Escuta</option>
+              <option className="bg-dark-bg text-white" value="typing">Digitação</option>
+              <option className="bg-dark-bg text-white" value="cloze">Completar (Cloze)</option>
             </select>
 
             <select value={filters.validation} onChange={e => setFilters({...filters, validation: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
-              <option value="all">Validação (Todas)</option>
-              <option value="exact">Exata</option>
-              <option value="ai">Com IA</option>
+              <option className="bg-dark-bg text-white" value="all">Validação (Todas)</option>
+              <option className="bg-dark-bg text-white" value="exact">Exata</option>
+              <option className="bg-dark-bg text-white" value="ai">Com IA</option>
             </select>
 
             <select value={filters.media} onChange={e => setFilters({...filters, media: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
-              <option value="all">Mídia (Ambos)</option>
-              <option value="with_media">Com Áudio</option>
-              <option value="without_media">Sem Áudio</option>
+              <option className="bg-dark-bg text-white" value="all">Mídia (Ambos)</option>
+              <option className="bg-dark-bg text-white" value="with_media">Com Áudio</option>
+              <option className="bg-dark-bg text-white" value="without_media">Sem Áudio</option>
             </select>
 
             <select value={filters.state} onChange={e => setFilters({...filters, state: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors">
-              <option value="all">Estado (Todos)</option>
-              <option value="new">Novos</option>
-              <option value="learning">Aprendendo</option>
-              <option value="review">Revisão</option>
+              <option className="bg-dark-bg text-white" value="all">Estado (Todos)</option>
+              <option className="bg-dark-bg text-white" value="new">Novos</option>
+              <option className="bg-dark-bg text-white" value="learning">Aprendendo</option>
+              <option className="bg-dark-bg text-white" value="review">Revisão</option>
             </select>
 
             <select value={filters.deck} onChange={e => setFilters({...filters, deck: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors max-w-[150px] truncate">
-              <option value="all">Baralho (Todos)</option>
+              <option className="bg-dark-bg text-white" value="all">Baralho (Todos)</option>
               {decks.filter(d => d.id === deck.id || d.parent_id === deck.id).map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+                <option className="bg-dark-bg text-white" key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
 
             {allTags.length > 0 && (
               <select value={filters.tag} onChange={e => setFilters({...filters, tag: e.target.value})} className="bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text px-3 py-2 focus:outline-none cursor-pointer hover:border-white/20 transition-colors max-w-[150px] truncate">
-                <option value="all">Tags (Todas)</option>
+                <option className="bg-dark-bg text-white" value="all">Tags (Todas)</option>
                 {allTags.map(tag => (
-                  <option key={tag} value={tag}>#{tag}</option>
+                  <option className="bg-dark-bg text-white" key={tag} value={tag}>#{tag}</option>
                 ))}
               </select>
             )}
@@ -130,9 +130,9 @@ export function DeckToolbar({
                }}
                value=""
             >
-               <option value="" disabled>Mover para...</option>
+               <option className="bg-dark-bg text-white" value="" disabled>Mover para...</option>
                {decks.map(d => (
-                   <option key={d.id} value={d.id}>{d.name}</option>
+                   <option className="bg-dark-bg text-white" key={d.id} value={d.id}>{d.name}</option>
                ))}
             </select>
 

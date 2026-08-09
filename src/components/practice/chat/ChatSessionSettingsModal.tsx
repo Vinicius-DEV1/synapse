@@ -62,9 +62,9 @@ export function ChatSessionSettingsModal({
                     }}
                     defaultValue=""
                   >
-                    <option value="" disabled>Selecione um preset...</option>
+                    <option className="bg-dark-bg text-white" value="" disabled>Selecione um preset...</option>
                     {presets.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option className="bg-dark-bg text-white" key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>

@@ -250,11 +250,11 @@ export default function SecurityTab({
           onChange={(e) => setAppSettings({ ...appSettings, autoLockMinutes: parseInt(e.target.value) })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option value="0">Nunca</option>
-          <option value="5">5 minutos</option>
-          <option value="15">15 minutos</option>
-          <option value="30">30 minutos</option>
-          <option value="60">1 hora</option>
+          <option className="bg-dark-bg text-white" value="0">Nunca</option>
+          <option className="bg-dark-bg text-white" value="5">5 minutos</option>
+          <option className="bg-dark-bg text-white" value="15">15 minutos</option>
+          <option className="bg-dark-bg text-white" value="30">30 minutos</option>
+          <option className="bg-dark-bg text-white" value="60">1 hora</option>
         </select>
         <p className="text-[11px] text-dark-subtext mt-1.5">
           Tranca automaticamente após período sem mexer no mouse/teclado.
