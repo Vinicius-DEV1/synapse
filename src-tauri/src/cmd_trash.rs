@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct TrashItem {
@@ -12,7 +12,7 @@ pub struct TrashItem {
 pub fn trash_get_all(db_state: tauri::State<crate::db::DbState>) -> Result<Vec<TrashItem>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let query = "
         SELECT id, title, deleted_at, 'page' as item_type FROM pages WHERE deleted_at IS NOT NULL
         UNION ALL
@@ -27,31 +27,39 @@ pub fn trash_get_all(db_state: tauri::State<crate::db::DbState>) -> Result<Vec<T
         SELECT id, description as title, deleted_at, 'finance' as item_type FROM transactions WHERE deleted_at IS NOT NULL
         ORDER BY deleted_at DESC
     ";
-    
+
     let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
-    
-    let iter = stmt.query_map([], |row| {
-        Ok(TrashItem {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            deleted_at: row.get(2)?,
-            item_type: row.get(3)?,
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(TrashItem {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                deleted_at: row.get(2)?,
+                item_type: row.get(3)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i { items.push(item); }
+        if let Ok(item) = i {
+            items.push(item);
+        }
     }
-    
+
     Ok(items)
 }
 
 #[tauri::command]
-pub fn trash_restore(id: String, item_type: String, db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
+pub fn trash_restore(
+    id: String,
+    item_type: String,
+    db_state: tauri::State<crate::db::DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let table = match item_type.as_str() {
         "page" => "pages",
         "anki_deck" => "anki_decks",
@@ -61,18 +69,26 @@ pub fn trash_restore(id: String, item_type: String, db_state: tauri::State<crate
         "finance" => "transactions",
         _ => return Err("Tipo não suportado".into()),
     };
-    
-    let query = format!("UPDATE {} SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", table);
-    conn.execute(&query, rusqlite::params![id]).map_err(|e| e.to_string())?;
-    
+
+    let query = format!(
+        "UPDATE {} SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        table
+    );
+    conn.execute(&query, rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+
     Ok(true)
 }
 
 #[tauri::command]
-pub fn trash_delete_permanently(id: String, item_type: String, db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
+pub fn trash_delete_permanently(
+    id: String,
+    item_type: String,
+    db_state: tauri::State<crate::db::DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
-    
+
     let table = match item_type.as_str() {
         "page" => "pages",
         "anki_deck" => "anki_decks",
@@ -82,10 +98,11 @@ pub fn trash_delete_permanently(id: String, item_type: String, db_state: tauri::
         "finance" => "transactions",
         _ => return Err("Tipo nǜo suportado".into()),
     };
-    
+
     let query = format!("DELETE FROM {} WHERE id = ?", table);
-    conn.execute(&query, rusqlite::params![id]).map_err(|e| e.to_string())?;
-    
+    conn.execute(&query, rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+
     Ok(true)
 }
 
@@ -93,21 +110,21 @@ pub fn trash_delete_permanently(id: String, item_type: String, db_state: tauri::
 pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
-    
+
     let tables = vec![
-        "pages", 
-        "anki_decks", 
-        "anki_cards", 
-        "files", 
-        "vault_groups", 
-        "transactions", 
-        "file_folders"
+        "pages",
+        "anki_decks",
+        "anki_cards",
+        "files",
+        "vault_groups",
+        "transactions",
+        "file_folders",
     ];
-    
+
     for table in tables {
         let query = format!("DELETE FROM {} WHERE deleted_at IS NOT NULL", table);
         let _ = conn.execute(&query, []);
     }
-    
+
     Ok(true)
 }

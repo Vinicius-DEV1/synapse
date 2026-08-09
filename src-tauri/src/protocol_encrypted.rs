@@ -1,7 +1,7 @@
-use tauri::http::{Request, Response, StatusCode, header};
-use tauri::AppHandle;
 use crate::crypto_stream::{read_chunked_range, DecryptedRange};
 use crate::db::DbState;
+use tauri::http::{header, Request, Response, StatusCode};
+use tauri::AppHandle;
 use tauri::Manager;
 
 fn get_mime_type(path: &std::path::Path) -> String {
@@ -10,15 +10,17 @@ fn get_mime_type(path: &std::path::Path) -> String {
     } else {
         path.to_path_buf()
     };
-    mime_guess::from_path(&path_for_mime).first_or_octet_stream().to_string()
+    mime_guess::from_path(&path_for_mime)
+        .first_or_octet_stream()
+        .to_string()
 }
 
 pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> Response<Vec<u8>> {
     let db_state = app.state::<DbState>();
-    
+
     // As URI can be like "encrypted://localhost/module_name/file.enc" or "http://encrypted.localhost/module_name/file.enc"
     let uri = request.uri().to_string();
-    
+
     let path_str = if uri.starts_with("encrypted://localhost/") {
         uri.trim_start_matches("encrypted://localhost/")
     } else if uri.starts_with("http://encrypted.localhost/") {
@@ -30,7 +32,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
             .body(Vec::new())
             .unwrap();
     };
-    
+
     // Extract module name from the path
     let parts: Vec<&str> = path_str.splitn(2, '/').collect();
     if parts.len() != 2 {
@@ -42,13 +44,13 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     }
     let module_name = parts[0];
     let file_path = parts[1];
-    
+
     let decoded_path = urlencoding::decode(file_path)
         .unwrap_or(std::borrow::Cow::Borrowed(file_path))
         .to_string();
-        
+
     let mut abs_path = std::path::PathBuf::from(&decoded_path);
-    
+
     if !abs_path.is_absolute() {
         let app_data_dir = crate::get_app_data_dir();
         let dir_name = match module_name {
@@ -60,7 +62,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         };
         abs_path = app_data_dir.join(dir_name).join(abs_path);
     }
-    
+
     if !abs_path.exists() {
         return Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -68,7 +70,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
             .body(format!("File not found: {:?}", abs_path).into_bytes())
             .unwrap();
     }
-    
+
     // Extrai a chave do estado
     let keys_guard = db_state.keys.lock().unwrap();
     let unlocked_keys = match &*keys_guard {
@@ -81,7 +83,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .unwrap();
         }
     };
-    
+
     let master_key = match module_name {
         "library" => unlocked_keys.library.clone(),
         "finance" => unlocked_keys.finance.clone(),
@@ -92,7 +94,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         "files" => unlocked_keys.files.clone(),
         _ => None,
     };
-    
+
     let master_key = match master_key {
         Some(k) => k,
         None => {
@@ -103,10 +105,10 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .unwrap();
         }
     };
-    
+
     // Lidar com cabeçalho Range (streaming)
     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
-    
+
     // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1
     // Fazemos uma leitura fictícia de tamanho 0 para pegar o total_original_size
     let info = match read_chunked_range(&abs_path, &master_key, 0, 0) {
@@ -119,9 +121,9 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .unwrap();
         }
     };
-    
+
     let total_size = info.total_original_size;
-    
+
     if let Some(range) = range_header {
         if range.starts_with("bytes=") {
             let parts: Vec<&str> = range.trim_start_matches("bytes=").split('-').collect();
@@ -131,24 +133,27 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
             } else {
                 total_size - 1
             };
-            
+
             // Lê o range descriptografado
             match read_chunked_range(&abs_path, &master_key, start, end) {
                 Ok(DecryptedRange { data, .. }) => {
                     let actual_end = start + data.len() as u64 - 1;
-                    
+
                     let mime_type = get_mime_type(&abs_path);
-                    
+
                     return Response::builder()
                         .status(StatusCode::PARTIAL_CONTENT)
                         .header(header::CONTENT_TYPE, mime_type)
                         .header(header::ACCEPT_RANGES, "bytes")
-                        .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, actual_end, total_size))
+                        .header(
+                            header::CONTENT_RANGE,
+                            format!("bytes {}-{}/{}", start, actual_end, total_size),
+                        )
                         .header(header::CONTENT_LENGTH, data.len().to_string())
                         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                         .body(data)
                         .unwrap();
-                },
+                }
                 Err(e) => {
                     return Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -158,7 +163,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
             }
         }
     }
-    
+
     // Se não tiver cabeçalho de Range, lê o arquivo inteiro
     match read_chunked_range(&abs_path, &master_key, 0, total_size - 1) {
         Ok(DecryptedRange { data, .. }) => {
@@ -170,12 +175,10 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(data)
                 .unwrap()
-        },
-        Err(e) => {
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(e.into_bytes())
-                .unwrap()
         }
+        Err(e) => Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(e.into_bytes())
+            .unwrap(),
     }
 }

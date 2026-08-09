@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
 #[cfg(unix)]
@@ -54,36 +54,36 @@ fn get_ffprobe_url() -> &'static str {
 pub async fn ensure_binaries(_app: &AppHandle) -> Result<(), String> {
     let app_data_dir = crate::get_app_data_dir();
     let bin_dir = app_data_dir.join("bin");
-    
+
     if !bin_dir.exists() {
         fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
     }
-    
+
     let ytdlp_path = get_bin_path("yt-dlp");
     let ffmpeg_path = get_bin_path("ffmpeg");
     let ffprobe_path = get_bin_path("ffprobe");
-    
+
     // Download yt-dlp
     if !ytdlp_path.exists() {
         println!("Downloading yt-dlp...");
         download_file(get_ytdlp_url(), &ytdlp_path).await?;
         make_executable(&ytdlp_path)?;
     }
-    
+
     // Download ffmpeg
     if !ffmpeg_path.exists() {
         println!("Downloading ffmpeg...");
         download_file(get_ffmpeg_url(), &ffmpeg_path).await?;
         make_executable(&ffmpeg_path)?;
     }
-    
+
     // Download ffprobe
     if !ffprobe_path.exists() {
         println!("Downloading ffprobe...");
         download_file(get_ffprobe_url(), &ffprobe_path).await?;
         make_executable(&ffprobe_path)?;
     }
-    
+
     Ok(())
 }
 
@@ -99,24 +99,28 @@ fn make_executable(path: &Path) -> Result<(), String> {
 
 async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
     let response = reqwest::get(url).await.map_err(|e| e.to_string())?;
-    
+
     if !response.status().is_success() {
-        return Err(format!("Failed to download from {}: HTTP {}", url, response.status()));
+        return Err(format!(
+            "Failed to download from {}: HTTP {}",
+            url,
+            response.status()
+        ));
     }
-    
+
     let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-    
+
     let mut file = fs::File::create(dest).map_err(|e| e.to_string())?;
     file.write_all(&bytes).map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
-    Ok(get_bin_path("yt-dlp").exists() && 
-       get_bin_path("ffmpeg").exists() && 
-       get_bin_path("ffprobe").exists())
+    Ok(get_bin_path("yt-dlp").exists()
+        && get_bin_path("ffmpeg").exists()
+        && get_bin_path("ffprobe").exists())
 }
 
 #[tauri::command]

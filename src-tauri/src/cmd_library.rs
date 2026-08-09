@@ -1,7 +1,7 @@
-use tauri::{State, Manager};
-use serde::{Deserialize, Serialize};
 use crate::db::DbState;
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use tauri::{Manager, State};
 
 #[derive(Serialize, Deserialize)]
 pub struct Book {
@@ -34,34 +34,38 @@ pub struct Collection {
 pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare("SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences FROM library_books WHERE deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
-        
-    let iter = stmt.query_map([], |row| {
-        Ok(Book {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            author: row.get(2)?,
-            file_path: row.get(3)?,
-            drive_file_id: row.get(4)?,
-            cover_color: row.get(5)?,
-            cover_image: row.get(6)?,
-            total_pages: row.get(7)?,
-            current_page: row.get(8)?,
-            reading_status: row.get(9)?,
-            last_read_page: row.get(10)?,
-            epub_locations: row.get(11)?,
-            created_at: row.get(12)?,
-            updated_at: row.get(13)?,
-            deleted_at: row.get(14)?,
-            reading_preferences: row.get(15)?,
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Book {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                author: row.get(2)?,
+                file_path: row.get(3)?,
+                drive_file_id: row.get(4)?,
+                cover_color: row.get(5)?,
+                cover_image: row.get(6)?,
+                total_pages: row.get(7)?,
+                current_page: row.get(8)?,
+                reading_status: row.get(9)?,
+                last_read_page: row.get(10)?,
+                epub_locations: row.get(11)?,
+                created_at: row.get(12)?,
+                updated_at: row.get(13)?,
+                deleted_at: row.get(14)?,
+                reading_preferences: row.get(15)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i { items.push(item); }
+        if let Ok(item) = i {
+            items.push(item);
+        }
     }
     Ok(items)
 }
@@ -70,14 +74,18 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
 pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = if book.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { book.id.clone() };
-    
+
+    let id = if book.id.is_empty() {
+        uuid::Uuid::new_v4().to_string()
+    } else {
+        book.id.clone()
+    };
+
     conn.execute(
         "INSERT INTO library_books (id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, reading_preferences) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![id, book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences]
     ).map_err(|e| e.to_string())?;
-    
+
     let mut ret = book;
     ret.id = id;
     Ok(ret)
@@ -87,12 +95,12 @@ pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book
 pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let count = conn.execute(
         "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, book.id]
     ).map_err(|e| e.to_string())?;
-        
+
     Ok(count as i32)
 }
 
@@ -100,10 +108,10 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
 pub fn library_delete_book(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute("UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
-        
+
     Ok(true)
 }
 
@@ -111,37 +119,50 @@ pub fn library_delete_book(id: String, db_state: State<'_, DbState>) -> Result<b
 pub fn library_get_collections(db_state: State<'_, DbState>) -> Result<Vec<Collection>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let mut stmt = conn.prepare("SELECT id, name, color FROM library_collections WHERE deleted_at IS NULL")
+
+    let mut stmt = conn
+        .prepare("SELECT id, name, color FROM library_collections WHERE deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
-        
-    let iter = stmt.query_map([], |row| {
-        Ok(Collection {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            color: row.get(2)?,
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Collection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                color: row.get(2)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i { items.push(item); }
+        if let Ok(item) = i {
+            items.push(item);
+        }
     }
     Ok(items)
 }
 
 #[tauri::command]
-pub fn library_add_collection(collection: Collection, db_state: State<'_, DbState>) -> Result<Collection, String> {
+pub fn library_add_collection(
+    collection: Collection,
+    db_state: State<'_, DbState>,
+) -> Result<Collection, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = if collection.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { collection.id.clone() };
-    
+
+    let id = if collection.id.is_empty() {
+        uuid::Uuid::new_v4().to_string()
+    } else {
+        collection.id.clone()
+    };
+
     conn.execute(
         "INSERT INTO library_collections (id, name, color) VALUES (?, ?, ?)",
-        params![id, collection.name, collection.color]
-    ).map_err(|e| e.to_string())?;
-    
+        params![id, collection.name, collection.color],
+    )
+    .map_err(|e| e.to_string())?;
+
     let mut ret = collection;
     ret.id = id;
     Ok(ret)
@@ -152,9 +173,8 @@ pub fn library_import_and_encrypt_book(
     source_path: String,
     dest_path: String,
     db_state: State<'_, DbState>,
-    app_handle: tauri::AppHandle
+    app_handle: tauri::AppHandle,
 ) -> Result<bool, String> {
-    
     let keys_guard = db_state.keys.lock().unwrap();
     let master_key = if let Some(keys) = keys_guard.as_ref() {
         if let Some(ref k) = keys.library {
@@ -165,29 +185,35 @@ pub fn library_import_and_encrypt_book(
     } else {
         return Err("Keys not unlocked".into());
     };
-    
-    let app_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let dest_full_path = app_dir.join(&dest_path);
-    
+
     if let Some(parent) = dest_full_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    
+
     crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_full_path, &master_key)?;
-    
+
     Ok(true)
 }
 
 #[tauri::command]
-pub fn library_update_collection(collection: Collection, db_state: State<'_, DbState>) -> Result<i32, String> {
+pub fn library_update_collection(
+    collection: Collection,
+    db_state: State<'_, DbState>,
+) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let count = conn.execute(
         "UPDATE library_collections SET name = ?, color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![collection.name, collection.color, collection.id]
     ).map_err(|e| e.to_string())?;
-        
+
     Ok(count as i32)
 }
 
@@ -195,37 +221,45 @@ pub fn library_update_collection(collection: Collection, db_state: State<'_, DbS
 pub fn library_delete_collection(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute("UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
-        
+
     Ok(true)
 }
 
 #[tauri::command]
-pub fn library_add_book_to_collection(book_id: String, collection_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub fn library_add_book_to_collection(
+    book_id: String,
+    collection_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let id = uuid::Uuid::new_v4().to_string();
     conn.execute(
         "INSERT OR REPLACE INTO library_book_collections (id, book_id, collection_id) VALUES (?, ?, ?)",
         params![id, book_id, collection_id]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
 #[tauri::command]
-pub fn library_remove_book_from_collection(book_id: String, collection_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub fn library_remove_book_from_collection(
+    book_id: String,
+    collection_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute(
         "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND collection_id = ?",
         params![book_id, collection_id]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
@@ -247,61 +281,79 @@ pub struct Highlight {
 }
 
 #[tauri::command]
-pub fn library_get_highlights(book_id: String, db_state: State<'_, DbState>) -> Result<Vec<Highlight>, String> {
+pub fn library_get_highlights(
+    book_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<Highlight>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare("SELECT id, book_id, page_number, text_content, color, rects, highlight_type, note, created_at, updated_at, deleted_at FROM library_highlights WHERE book_id = ? AND deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
-        
-    let iter = stmt.query_map([&book_id], |row| {
-        Ok(Highlight {
-            id: row.get(0)?,
-            book_id: row.get(1)?,
-            page_number: row.get(2)?,
-            text_content: row.get(3)?,
-            color: row.get(4)?,
-            rects: row.get(5)?,
-            highlight_type: row.get(6)?,
-            note: row.get(7)?,
-            created_at: row.get(8)?,
-            updated_at: row.get(9)?,
-            deleted_at: row.get(10)?,
+
+    let iter = stmt
+        .query_map([&book_id], |row| {
+            Ok(Highlight {
+                id: row.get(0)?,
+                book_id: row.get(1)?,
+                page_number: row.get(2)?,
+                text_content: row.get(3)?,
+                color: row.get(4)?,
+                rects: row.get(5)?,
+                highlight_type: row.get(6)?,
+                note: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+                deleted_at: row.get(10)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
-    for i in iter { if let Ok(item) = i { items.push(item); } }
+    for i in iter {
+        if let Ok(item) = i {
+            items.push(item);
+        }
+    }
     Ok(items)
 }
 
 #[tauri::command]
-pub fn library_create_highlight(highlight: Highlight, db_state: State<'_, DbState>) -> Result<Highlight, String> {
+pub fn library_create_highlight(
+    highlight: Highlight,
+    db_state: State<'_, DbState>,
+) -> Result<Highlight, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = highlight.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    
+
+    let id = highlight
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     conn.execute(
         "INSERT INTO library_highlights (id, book_id, page_number, text_content, color, rects, highlight_type, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![id, highlight.book_id, highlight.page_number, highlight.text_content, highlight.color.as_deref().unwrap_or("yellow"), highlight.rects, highlight.highlight_type.as_deref().unwrap_or("text"), highlight.note]
     ).map_err(|e| e.to_string())?;
-    
+
     let mut ret = highlight;
     ret.id = Some(id);
     Ok(ret)
 }
 
 #[tauri::command]
-pub fn library_update_highlight(highlight: Highlight, db_state: State<'_, DbState>) -> Result<i32, String> {
+pub fn library_update_highlight(
+    highlight: Highlight,
+    db_state: State<'_, DbState>,
+) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let count = conn.execute(
         "UPDATE library_highlights SET text_content = ?, color = ?, rects = ?, highlight_type = ?, note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![highlight.text_content, highlight.color, highlight.rects, highlight.highlight_type, highlight.note, highlight.id]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(count as i32)
 }
 
@@ -309,10 +361,10 @@ pub fn library_update_highlight(highlight: Highlight, db_state: State<'_, DbStat
 pub fn library_delete_highlight(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute("UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
@@ -330,57 +382,78 @@ pub struct Bookmark {
 }
 
 #[tauri::command]
-pub fn library_get_bookmarks(book_id: String, db_state: State<'_, DbState>) -> Result<Vec<Bookmark>, String> {
+pub fn library_get_bookmarks(
+    book_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<Bookmark>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare("SELECT id, book_id, page_number, label, created_at, updated_at, deleted_at FROM library_bookmarks WHERE book_id = ? AND deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
-        
-    let iter = stmt.query_map([&book_id], |row| {
-        Ok(Bookmark {
-            id: row.get(0)?,
-            book_id: row.get(1)?,
-            page_number: row.get(2)?,
-            label: row.get(3)?,
-            created_at: row.get(4)?,
-            updated_at: row.get(5)?,
-            deleted_at: row.get(6)?,
+
+    let iter = stmt
+        .query_map([&book_id], |row| {
+            Ok(Bookmark {
+                id: row.get(0)?,
+                book_id: row.get(1)?,
+                page_number: row.get(2)?,
+                label: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+                deleted_at: row.get(6)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
-    for i in iter { if let Ok(item) = i { items.push(item); } }
+    for i in iter {
+        if let Ok(item) = i {
+            items.push(item);
+        }
+    }
     Ok(items)
 }
 
 #[tauri::command]
-pub fn library_create_bookmark(bookmark: Bookmark, db_state: State<'_, DbState>) -> Result<Bookmark, String> {
+pub fn library_create_bookmark(
+    bookmark: Bookmark,
+    db_state: State<'_, DbState>,
+) -> Result<Bookmark, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = bookmark.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    
+
+    let id = bookmark
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     conn.execute(
         "INSERT INTO library_bookmarks (id, book_id, page_number, label) VALUES (?, ?, ?, ?)",
-        params![id, bookmark.book_id, bookmark.page_number, bookmark.label]
-    ).map_err(|e| e.to_string())?;
-    
+        params![id, bookmark.book_id, bookmark.page_number, bookmark.label],
+    )
+    .map_err(|e| e.to_string())?;
+
     let mut ret = bookmark;
     ret.id = Some(id);
     Ok(ret)
 }
 
 #[tauri::command]
-pub fn library_update_bookmark(bookmark: Bookmark, db_state: State<'_, DbState>) -> Result<i32, String> {
+pub fn library_update_bookmark(
+    bookmark: Bookmark,
+    db_state: State<'_, DbState>,
+) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let count = conn.execute(
-        "UPDATE library_bookmarks SET label = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![bookmark.label, bookmark.id]
-    ).map_err(|e| e.to_string())?;
-    
+
+    let count = conn
+        .execute(
+            "UPDATE library_bookmarks SET label = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            params![bookmark.label, bookmark.id],
+        )
+        .map_err(|e| e.to_string())?;
+
     Ok(count as i32)
 }
 
@@ -388,44 +461,61 @@ pub fn library_update_bookmark(bookmark: Bookmark, db_state: State<'_, DbState>)
 pub fn library_delete_bookmark(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute("UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
 // --- BOOK COLLECTIONS (getBookCollections / setBookCollections) ---
 
 #[tauri::command]
-pub fn library_get_book_collections(book_id: String, db_state: State<'_, DbState>) -> Result<Vec<Collection>, String> {
+pub fn library_get_book_collections(
+    book_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<Collection>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare(
         "SELECT c.id, c.name, c.color FROM library_collections c INNER JOIN library_book_collections bc ON c.id = bc.collection_id WHERE bc.book_id = ? AND bc.deleted_at IS NULL AND c.deleted_at IS NULL"
     ).map_err(|e| e.to_string())?;
-    
-    let iter = stmt.query_map([&book_id], |row| {
-        Ok(Collection { id: row.get(0)?, name: row.get(1)?, color: row.get(2)? })
-    }).map_err(|e| e.to_string())?;
-    
+
+    let iter = stmt
+        .query_map([&book_id], |row| {
+            Ok(Collection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                color: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
     let mut items = Vec::new();
-    for i in iter { if let Ok(item) = i { items.push(item); } }
+    for i in iter {
+        if let Ok(item) = i {
+            items.push(item);
+        }
+    }
     Ok(items)
 }
 
 #[tauri::command]
-pub fn library_set_book_collections(book_id: String, collection_ids: Vec<String>, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub fn library_set_book_collections(
+    book_id: String,
+    collection_ids: Vec<String>,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     // Soft-delete existing associations
     conn.execute(
         "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND deleted_at IS NULL",
         [&book_id]
     ).map_err(|e| e.to_string())?;
-    
+
     // Insert new ones
     for col_id in &collection_ids {
         let id = uuid::Uuid::new_v4().to_string();
@@ -434,25 +524,37 @@ pub fn library_set_book_collections(book_id: String, collection_ids: Vec<String>
             params![id, book_id, col_id]
         ).map_err(|e| e.to_string())?;
     }
-    
+
     Ok(true)
 }
 
 // --- COLLECTION CREATE ---
 
 #[tauri::command]
-pub fn library_create_collection(collection: Collection, db_state: State<'_, DbState>) -> Result<Collection, String> {
+pub fn library_create_collection(
+    collection: Collection,
+    db_state: State<'_, DbState>,
+) -> Result<Collection, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = if collection.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { collection.id.clone() };
-    
+
+    let id = if collection.id.is_empty() {
+        uuid::Uuid::new_v4().to_string()
+    } else {
+        collection.id.clone()
+    };
+
     conn.execute(
         "INSERT INTO library_collections (id, name, color) VALUES (?, ?, ?)",
-        params![id, collection.name, collection.color]
-    ).map_err(|e| e.to_string())?;
-    
-    Ok(Collection { id, name: collection.name, color: collection.color })
+        params![id, collection.name, collection.color],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(Collection {
+        id,
+        name: collection.name,
+        color: collection.color,
+    })
 }
 
 // --- OCR CACHE ---
@@ -467,10 +569,14 @@ pub struct OcrCache {
 }
 
 #[tauri::command]
-pub fn library_get_ocr_cache(book_id: String, page_number: i32, db_state: State<'_, DbState>) -> Result<Option<OcrCache>, String> {
+pub fn library_get_ocr_cache(
+    book_id: String,
+    page_number: i32,
+    db_state: State<'_, DbState>,
+) -> Result<Option<OcrCache>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let result = conn.query_row(
         "SELECT id, book_id, page_number, text_content, word_boxes FROM library_ocr_cache WHERE book_id = ? AND page_number = ?",
         params![book_id, page_number],
@@ -482,7 +588,7 @@ pub fn library_get_ocr_cache(book_id: String, page_number: i32, db_state: State<
             word_boxes: row.get(4)?,
         })
     );
-    
+
     match result {
         Ok(cache) => Ok(Some(cache)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -491,17 +597,20 @@ pub fn library_get_ocr_cache(book_id: String, page_number: i32, db_state: State<
 }
 
 #[tauri::command]
-pub fn library_save_ocr_cache(cache: OcrCache, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub fn library_save_ocr_cache(
+    cache: OcrCache,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let id = cache.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    
+
     conn.execute(
         "INSERT OR REPLACE INTO library_ocr_cache (id, book_id, page_number, text_content, word_boxes) VALUES (?, ?, ?, ?, ?)",
         params![id, cache.book_id, cache.page_number, cache.text_content, cache.word_boxes]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
@@ -519,18 +628,24 @@ pub struct ReadingSession {
 }
 
 #[tauri::command]
-pub fn library_start_reading_session(session: ReadingSession, db_state: State<'_, DbState>) -> Result<ReadingSession, String> {
+pub fn library_start_reading_session(
+    session: ReadingSession,
+    db_state: State<'_, DbState>,
+) -> Result<ReadingSession, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let id = session.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
+    let id = session
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     conn.execute(
         "INSERT INTO library_reading_sessions (id, book_id, started_at, start_page, end_page) VALUES (?, ?, ?, ?, ?)",
         params![id, session.book_id, now, session.start_page.unwrap_or(1), session.end_page.unwrap_or(1)]
     ).map_err(|e| e.to_string())?;
-    
+
     let mut ret = session;
     ret.id = Some(id);
     ret.started_at = Some(now);
@@ -538,17 +653,20 @@ pub fn library_start_reading_session(session: ReadingSession, db_state: State<'_
 }
 
 #[tauri::command]
-pub fn library_end_reading_session(session: ReadingSession, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub fn library_end_reading_session(
+    session: ReadingSession,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     conn.execute(
         "UPDATE library_reading_sessions SET ended_at = ?, pages_read = ?, end_page = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         params![now, session.pages_read.unwrap_or(0), session.end_page.unwrap_or(1), session.id]
     ).map_err(|e| e.to_string())?;
-    
+
     Ok(true)
 }
 
@@ -582,19 +700,19 @@ pub struct ReadingStats {
 pub fn library_get_reading_stats(db_state: State<'_, DbState>) -> Result<ReadingStats, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let started: i32 = conn.query_row(
         "SELECT COUNT(*) FROM library_books WHERE reading_status = 'reading' AND deleted_at IS NULL", [], |row| row.get(0)
     ).unwrap_or(0);
-    
+
     let finished: i32 = conn.query_row(
         "SELECT COUNT(*) FROM library_books WHERE reading_status = 'finished' AND deleted_at IS NULL", [], |row| row.get(0)
     ).unwrap_or(0);
-    
+
     let total_pages: i32 = conn.query_row(
         "SELECT COALESCE(SUM(pages_read), 0) FROM library_reading_sessions WHERE ended_at IS NOT NULL", [], |row| row.get(0)
     ).unwrap_or(0);
-    
+
     Ok(ReadingStats {
         global_stats: GlobalStats {
             total_books_started: started,
@@ -604,6 +722,6 @@ pub fn library_get_reading_stats(db_state: State<'_, DbState>) -> Result<Reading
             current_streak: 0,
             longest_streak: 0,
             reading_days: vec![],
-        }
+        },
     })
 }

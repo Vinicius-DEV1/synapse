@@ -53,7 +53,9 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
     try {
       const localPath = await window.api.lofi.getLocalPath(filename_enc);
       if (localPath) {
-        return `http://encrypted.localhost/focus/${encodeURIComponent(filename_enc)}`;
+        const isWindows = navigator.userAgent.includes('Windows');
+        const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+        return `${baseUrl}/focus/${encodeURIComponent(filename_enc)}`;
       } else {
         console.warn(`Local lofi file missing for ${lofi.original_name}, falling back to Drive.`);
       }

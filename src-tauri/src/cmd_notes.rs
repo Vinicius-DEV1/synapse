@@ -1,7 +1,7 @@
-use tauri::State;
-use serde::{Deserialize, Serialize};
 use crate::db::DbState;
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use tauri::State;
 
 #[derive(Serialize, Deserialize)]
 pub struct PageMeta {
@@ -37,52 +37,60 @@ pub struct PageHistoryEntry {
 pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order FROM pages WHERE deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
-        
-    let page_iter = stmt.query_map([], |row| {
-        Ok(PageMeta {
-            id: row.get(0)?,
-            parent_id: row.get(1)?,
-            title: row.get(2)?,
-            icon: row.get(3)?,
-            sort_order: row.get(4)?,
-            crdt_state: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-            deleted_at: row.get(8)?,
-            is_locked: row.get(9)?,
-            is_pinned: row.get(10)?,
-            pinned_order: row.get(11)?,
+
+    let page_iter = stmt
+        .query_map([], |row| {
+            Ok(PageMeta {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                icon: row.get(3)?,
+                sort_order: row.get(4)?,
+                crdt_state: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                deleted_at: row.get(8)?,
+                is_locked: row.get(9)?,
+                is_pinned: row.get(10)?,
+                pinned_order: row.get(11)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut pages = Vec::new();
     for page in page_iter {
         if let Ok(p) = page {
             pages.push(p);
         }
     }
-    
+
     Ok(pages)
 }
 
 #[tauri::command]
-pub fn notes_get_page_content(id: String, db_state: State<'_, DbState>) -> Result<PageContent, String> {
+pub fn notes_get_page_content(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<PageContent, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let mut stmt = conn.prepare("SELECT content, encrypted_content FROM pages WHERE id = ?")
+
+    let mut stmt = conn
+        .prepare("SELECT content, encrypted_content FROM pages WHERE id = ?")
         .map_err(|e| e.to_string())?;
-        
-    let mut content = stmt.query_row([&id], |row| {
-        Ok(PageContent {
-            content: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
-            encrypted_content: row.get(1)?,
+
+    let mut content = stmt
+        .query_row([&id], |row| {
+            Ok(PageContent {
+                content: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                encrypted_content: row.get(1)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     // Descriptografar on-the-fly
     if let Some(enc) = &content.encrypted_content {
         let keys_guard = db_state.keys.lock().unwrap();
@@ -94,7 +102,7 @@ pub fn notes_get_page_content(id: String, db_state: State<'_, DbState>) -> Resul
             }
         }
     }
-    
+
     Ok(content)
 }
 
@@ -107,19 +115,23 @@ pub struct CreatePagePayload {
 }
 
 #[tauri::command]
-pub fn notes_create_page(page: CreatePagePayload, db_state: State<'_, DbState>) -> Result<PageMeta, String> {
+pub fn notes_create_page(
+    page: CreatePagePayload,
+    db_state: State<'_, DbState>,
+) -> Result<PageMeta, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let id = uuid::Uuid::new_v4().to_string();
     let title = page.title.unwrap_or_else(|| "Nova Página".into());
     let icon = page.icon.unwrap_or_else(|| "📄".into());
-    
+
     conn.execute(
         "INSERT INTO pages (id, parent_id, title, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
-        params![id, page.parent_id, title, icon, 0.0]
-    ).map_err(|e| e.to_string())?;
-    
+        params![id, page.parent_id, title, icon, 0.0],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(PageMeta {
         id,
         parent_id: page.parent_id,
@@ -149,28 +161,33 @@ pub struct UpdatePagePayload {
 }
 
 #[tauri::command]
-pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) -> Result<i32, String> {
+pub fn notes_update_page(
+    page: UpdatePagePayload,
+    db_state: State<'_, DbState>,
+) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut query = String::from("UPDATE pages SET");
     let mut params_vec: Vec<rusqlite::types::Value> = Vec::new();
     let mut has_updates = false;
-    
+
     if let Some(t) = page.title {
         query.push_str(" title = ?");
         params_vec.push(t.into());
         has_updates = true;
     }
     if let Some(i) = page.icon {
-        if has_updates { query.push_str(","); }
+        if has_updates {
+            query.push_str(",");
+        }
         query.push_str(" icon = ?");
         params_vec.push(i.into());
         has_updates = true;
     }
     if let Some(c) = page.content {
         let mut encrypted = None;
-        
+
         {
             let keys_guard = db_state.keys.lock().unwrap();
             if let Some(keys) = keys_guard.as_ref() {
@@ -181,12 +198,14 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
                 }
             }
         }
-        
-        if has_updates { query.push_str(","); }
+
+        if has_updates {
+            query.push_str(",");
+        }
         if let Some(enc) = encrypted {
             query.push_str(" content = '', encrypted_content = ?");
             params_vec.push(enc.clone().into());
-            
+
             let hist_id = uuid::Uuid::new_v4().to_string();
             let _ = conn.execute(
                 "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, '', ?)",
@@ -195,7 +214,7 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         } else {
             query.push_str(" content = ?, encrypted_content = NULL");
             params_vec.push(c.clone().into());
-            
+
             let hist_id = uuid::Uuid::new_v4().to_string();
             let _ = conn.execute(
                 "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, ?, NULL)",
@@ -205,13 +224,17 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         has_updates = true;
     }
     if let Some(crdt) = page.crdt_state {
-        if has_updates { query.push_str(","); }
+        if has_updates {
+            query.push_str(",");
+        }
         query.push_str(" crdt_state = ?");
         params_vec.push(crdt.into());
         has_updates = true;
     }
     if let Some(pid_val) = page.parent_id {
-        if has_updates { query.push_str(","); }
+        if has_updates {
+            query.push_str(",");
+        }
         query.push_str(" parent_id = ?");
         if pid_val.is_null() {
             params_vec.push(rusqlite::types::Value::Null);
@@ -225,18 +248,22 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         has_updates = true;
     }
     if let Some(pinned) = page.is_pinned {
-        if has_updates { query.push_str(","); }
+        if has_updates {
+            query.push_str(",");
+        }
         query.push_str(" is_pinned = ?");
         params_vec.push(pinned.into());
         has_updates = true;
     }
     if let Some(order) = page.pinned_order {
-        if has_updates { query.push_str(","); }
+        if has_updates {
+            query.push_str(",");
+        }
         query.push_str(" pinned_order = ?");
         params_vec.push(order.into());
         has_updates = true;
     }
-    
+
     // Só atualiza updated_at se houver mudanças reais
     if has_updates {
         query.push_str(", updated_at = CURRENT_TIMESTAMP");
@@ -244,32 +271,38 @@ pub fn notes_update_page(page: UpdatePagePayload, db_state: State<'_, DbState>) 
         // Se não houver mudanças, não faz nada
         return Ok(0);
     }
-    
+
     query.push_str(" WHERE id = ?");
     params_vec.push(page.id.into());
-    
-    let count = conn.execute(&query, rusqlite::params_from_iter(params_vec))
+
+    let count = conn
+        .execute(&query, rusqlite::params_from_iter(params_vec))
         .map_err(|e| e.to_string())?;
-        
+
     Ok(count as i32)
 }
 
 #[tauri::command]
-pub fn notes_get_page_history(page_id: String, db_state: State<'_, DbState>) -> Result<Vec<PageHistoryEntry>, String> {
+pub fn notes_get_page_history(
+    page_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<PageHistoryEntry>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn.prepare("SELECT id, page_id, content, created_at, encrypted_content FROM page_history WHERE page_id = ? ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
 
-    let history_iter = stmt.query_map([&page_id], |row| {
-        let id: String = row.get(0)?;
-        let pid: String = row.get(1)?;
-        let content: String = row.get(2)?;
-        let created_at: String = row.get(3)?;
-        let encrypted_content: Option<String> = row.get(4).unwrap_or(None);
-        Ok((id, pid, content, created_at, encrypted_content))
-    }).map_err(|e| e.to_string())?;
+    let history_iter = stmt
+        .query_map([&page_id], |row| {
+            let id: String = row.get(0)?;
+            let pid: String = row.get(1)?;
+            let content: String = row.get(2)?;
+            let created_at: String = row.get(3)?;
+            let encrypted_content: Option<String> = row.get(4).unwrap_or(None);
+            Ok((id, pid, content, created_at, encrypted_content))
+        })
+        .map_err(|e| e.to_string())?;
 
     let mut history = Vec::new();
     let keys_guard = db_state.keys.lock().unwrap();
@@ -300,10 +333,10 @@ pub fn notes_get_page_history(page_id: String, db_state: State<'_, DbState>) -> 
 pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute("UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
-        
+
     Ok(true)
 }
 
@@ -311,32 +344,34 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
 pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
         .map_err(|e| e.to_string())?;
-        
-    let page_iter = stmt.query_map([], |row| {
-        Ok(PageMeta {
-            id: row.get(0)?,
-            parent_id: row.get(1)?,
-            title: row.get(2)?,
-            icon: row.get(3)?,
-            sort_order: row.get(4)?,
-            crdt_state: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-            deleted_at: row.get(8)?,
-            is_locked: row.get(9)?,
-            is_pinned: row.get(10).unwrap_or(0),
-            pinned_order: row.get(11).unwrap_or(0.0),
+
+    let page_iter = stmt
+        .query_map([], |row| {
+            Ok(PageMeta {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get(2)?,
+                icon: row.get(3)?,
+                sort_order: row.get(4)?,
+                crdt_state: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                deleted_at: row.get(8)?,
+                is_locked: row.get(9)?,
+                is_pinned: row.get(10).unwrap_or(0),
+                pinned_order: row.get(11).unwrap_or(0.0),
+            })
         })
-    }).map_err(|e| e.to_string())?;
-    
+        .map_err(|e| e.to_string())?;
+
     let mut pages = Vec::new();
     for page in page_iter {
         pages.push(page.map_err(|e| e.to_string())?);
     }
-    
+
     Ok(pages)
 }
 
@@ -344,10 +379,13 @@ pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageM
 pub fn notes_restore_page(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    conn.execute("UPDATE pages SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
-        .map_err(|e| e.to_string())?;
-        
+
+    conn.execute(
+        "UPDATE pages SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [&id],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(true)
 }
 
@@ -359,36 +397,48 @@ pub struct ImageCacheResult {
 }
 
 #[tauri::command]
-pub fn image_cache_get(id: String, db_state: State<'_, DbState>) -> Result<Option<ImageCacheResult>, String> {
+pub fn image_cache_get(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Option<ImageCacheResult>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
-    let mut stmt = conn.prepare("SELECT data, mimeType FROM image_cache WHERE id = ?")
+
+    let mut stmt = conn
+        .prepare("SELECT data, mimeType FROM image_cache WHERE id = ?")
         .map_err(|e| e.to_string())?;
-        
+
     let result = stmt.query_row([&id], |row| {
         Ok(ImageCacheResult {
             data: row.get(0)?,
-            mime_type: row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "image/png".into()),
+            mime_type: row
+                .get::<_, Option<String>>(1)?
+                .unwrap_or_else(|| "image/png".into()),
         })
     });
-    
+
     match result {
         Ok(res) => Ok(Some(res)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.to_string())
+        Err(e) => Err(e.to_string()),
     }
 }
 
 #[tauri::command]
-pub fn image_cache_put(id: String, data: Vec<u8>, mime_type: String, db_state: State<'_, DbState>) -> Result<(), String> {
+pub fn image_cache_put(
+    id: String,
+    data: Vec<u8>,
+    mime_type: String,
+    db_state: State<'_, DbState>,
+) -> Result<(), String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    
+
     conn.execute(
         "INSERT OR REPLACE INTO image_cache (id, data, mimeType) VALUES (?, ?, ?)",
-        params![id, data, mime_type]
-    ).map_err(|e| e.to_string())?;
-    
+        params![id, data, mime_type],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(())
 }
