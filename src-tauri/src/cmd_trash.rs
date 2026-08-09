@@ -25,8 +25,6 @@ pub fn trash_get_all(db_state: tauri::State<crate::db::DbState>) -> Result<Vec<T
         SELECT id, name as title, deleted_at, 'vault' as item_type FROM vault_groups WHERE deleted_at IS NOT NULL
         UNION ALL
         SELECT id, description as title, deleted_at, 'finance' as item_type FROM transactions WHERE deleted_at IS NOT NULL
-        UNION ALL
-        SELECT id, title, deleted_at, 'lofi' as item_type FROM lofi_items WHERE deleted_at IS NOT NULL
         ORDER BY deleted_at DESC
     ";
     
@@ -61,7 +59,6 @@ pub fn trash_restore(id: String, item_type: String, db_state: tauri::State<crate
         "file" => "files",
         "vault" => "vault_groups",
         "finance" => "transactions",
-        "lofi" => "lofi_items",
         _ => return Err("Tipo não suportado".into()),
     };
     
@@ -83,7 +80,6 @@ pub fn trash_delete_permanently(id: String, item_type: String, db_state: tauri::
         "file" => "files",
         "vault" => "vault_groups",
         "finance" => "transactions",
-        "lofi" => "lofi_items",
         _ => return Err("Tipo nǜo suportado".into()),
     };
     
@@ -105,8 +101,7 @@ pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, S
         "files", 
         "vault_groups", 
         "transactions", 
-        "file_folders",
-        "lofi_items"
+        "file_folders"
     ];
     
     for table in tables {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay, Copy, Check, FileVideo } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types';
 import { Portal } from '../ui/Portal';
 
@@ -9,11 +9,34 @@ interface VideoInfoModalProps {
 }
 
 export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) {
+  const [fileSize, setFileSize] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (video.is_local && video.file_path) {
+      import('@tauri-apps/plugin-fs').then(fs => {
+        fs.stat(video.file_path as string).then(info => {
+          if (info && info.size) {
+            setFileSize(formatBytes(info.size));
+          }
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+  }, [video]);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '--:--';
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
     const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
     if (h > 0) return `${h}h ${m}m ${s}s`;
     return `${m}m ${s}s`;
   };
@@ -25,6 +48,19 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
       return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
     }
     return null;
+  };
+
+  const getExtension = (filename: string) => {
+    if (!filename) return 'UNKNOWN';
+    return filename.split('.').pop()?.toUpperCase() || 'UNKNOWN';
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
   };
 
   const thumbUrl = getYoutubeThumb(video.youtube_url);
@@ -100,6 +136,46 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
             </div>
           )}
 
+          {/* Versions Info */}
+          <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+             <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
+                <FileVideo size={14} className="text-brand-400" />
+                Versões do Vídeo
+             </h4>
+             <ul className="space-y-2">
+               {video.is_local && video.file_path && (
+                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
+                   <div className="flex items-center gap-2">
+                     <span className="font-medium">Versão Local</span>
+                     <span className="text-[10px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded">{getExtension(video.file_path)}</span>
+                   </div>
+                   <span className="text-xs text-white/50">{fileSize || 'Calculando tamanho...'}</span>
+                 </li>
+               )}
+               {video.drive_file_id && (
+                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
+                   <div className="flex items-center gap-2">
+                     <span className="font-medium">Original na Nuvem (Drive)</span>
+                     <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{getExtension(video.original_name)}</span>
+                   </div>
+                   <span className="text-xs text-white/50">Criptografado</span>
+                 </li>
+               )}
+               {video.drive_web_file_id && (
+                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
+                   <div className="flex items-center gap-2">
+                     <span className="font-medium">Web Remux na Nuvem (Drive)</span>
+                     <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">MP4</span>
+                   </div>
+                   <span className="text-xs text-white/50">Criptografado</span>
+                 </li>
+               )}
+               {!video.is_local && !video.drive_file_id && !video.drive_web_file_id && !video.youtube_url && (
+                 <li className="text-sm text-white/50">Nenhuma versão encontrada</li>
+               )}
+             </ul>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {/* Audio Tracks */}
             <div className="bg-white/5 border border-white/5 rounded-xl p-4">
@@ -158,35 +234,64 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
             
             <div className="flex flex-col gap-1">
               <span className="text-[10px] text-white/40 uppercase font-medium">Nome Original</span>
-              <span className="text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded truncate">
-                {video.original_name}
-              </span>
+              <button 
+                onClick={() => copyToClipboard(video.original_name, 'original')}
+                className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
+              >
+                <span className="break-all">{video.original_name}</span>
+                {copiedField === 'original' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
+              </button>
             </div>
 
             {video.youtube_url && (
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase font-medium">Link do YouTube</span>
-                <a href={video.youtube_url} target="_blank" rel="noreferrer" className="text-xs text-brand-400 font-mono bg-brand-500/10 px-2 py-1 rounded truncate hover:underline">
-                  {video.youtube_url}
-                </a>
+                <button 
+                  onClick={() => copyToClipboard(video.youtube_url!, 'youtube')}
+                  className="group flex items-center justify-between text-xs text-brand-400 font-mono bg-brand-500/10 px-2 py-1 rounded hover:bg-brand-500/20 transition-colors text-left"
+                >
+                  <span className="break-all">{video.youtube_url}</span>
+                  {copiedField === 'youtube' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-brand-400/40 group-hover:text-brand-400 flex-shrink-0 ml-2 transition-colors" />}
+                </button>
               </div>
             )}
 
             {video.is_local && video.file_path && (
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase font-medium">Caminho Local</span>
-                <span className="text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded truncate" title={video.file_path}>
-                  {video.file_path}
-                </span>
+                <button 
+                  onClick={() => copyToClipboard(video.file_path!, 'local')}
+                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
+                >
+                  <span className="break-all">{video.file_path}</span>
+                  {copiedField === 'local' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
+                </button>
               </div>
             )}
             
             {video.drive_file_id && (
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-medium">Drive ID (Backup)</span>
-                <span className="text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded truncate">
-                  {video.drive_file_id}
-                </span>
+                <span className="text-[10px] text-white/40 uppercase font-medium">Drive ID (Backup Original)</span>
+                <button 
+                  onClick={() => copyToClipboard(video.drive_file_id!, 'drive')}
+                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
+                >
+                  <span className="break-all">{video.drive_file_id}</span>
+                  {copiedField === 'drive' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
+                </button>
+              </div>
+            )}
+
+            {video.drive_web_file_id && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-white/40 uppercase font-medium">Drive ID (Backup Web)</span>
+                <button 
+                  onClick={() => copyToClipboard(video.drive_web_file_id!, 'drive_web')}
+                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
+                >
+                  <span className="break-all">{video.drive_web_file_id}</span>
+                  {copiedField === 'drive_web' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
+                </button>
               </div>
             )}
           </div>

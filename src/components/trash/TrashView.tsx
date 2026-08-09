@@ -25,11 +25,17 @@ export default function TrashView() {
 
   const loadItems = async () => {
     setLoading(true);
-    if (window.api?.trash) {
-      const res = await window.api.trash.getAll();
-      setItems(res || []);
+    try {
+      if (window.api?.trash) {
+        const res = await window.api.trash.getAll();
+        setItems(res || []);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar lixeira:", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRestore = async (item: TrashItem) => {
@@ -60,7 +66,7 @@ export default function TrashView() {
     try {
       if (item.item_type === 'lofi' && window.api?.sync) {
         try {
-          const rows = await window.api.sync.getAllRows('lofi_items');
+          const rows = await window.api.sync.getAllRows('lofis');
           const lofi = rows?.find((r: any) => r.id === item.id);
           if (lofi) {
             await hardDeleteLofiPermanently(lofi);
@@ -92,7 +98,7 @@ export default function TrashView() {
     try {
       if (window.api?.sync) {
         try {
-          const rows = await window.api.sync.getAllRows('lofi_items');
+          const rows = await window.api.sync.getAllRows('lofis');
           const trashed = rows?.filter((r: any) => r.deleted_at);
           if (trashed) {
             for (const lofi of trashed) {
