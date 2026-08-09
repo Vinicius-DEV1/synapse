@@ -36,9 +36,9 @@ export function ChatSetupForm({
             className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-dark-text focus:outline-none focus:border-indigo-500"
           >
             {models.map(m => (
-              <option key={m.name} value={m.name}>{m.displayName || m.name}</option>
+              <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName || m.name}</option>
             ))}
-            {models.length === 0 && <option value="">Carregando...</option>}
+            {models.length === 0 && <option className="bg-dark-bg text-white" value="">Carregando...</option>}
           </select>
         </div>
       </div>

@@ -55,10 +55,10 @@ export default function TransactionModal({ onClose, onSave }: TransactionModalPr
               onChange={(e) => setType(e.target.value as any)}
               className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none"
             >
-              <option value="income">Entrada</option>
-              <option value="expense">Saída</option>
-              <option value="loan_made">Emprestei para alguém</option>
-              <option value="loan_taken">Peguei emprestado</option>
+              <option className="bg-dark-bg text-white" value="income">Entrada</option>
+              <option className="bg-dark-bg text-white" value="expense">Saída</option>
+              <option className="bg-dark-bg text-white" value="loan_made">Emprestei para alguém</option>
+              <option className="bg-dark-bg text-white" value="loan_taken">Peguei emprestado</option>
             </select>
           </div>
           

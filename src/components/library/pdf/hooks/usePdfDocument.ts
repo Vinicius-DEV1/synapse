@@ -60,7 +60,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
           throw new Error("Arquivo PDF vazio ou não encontrado. Verifique se o arquivo existe na nuvem.");
         }
         
-        const loadingTask = assetUrl ? pdfjsLib.getDocument(assetUrl) : pdfjsLib.getDocument({ data: fileData });
+        const loadingTask = assetUrl ? pdfjsLib.getDocument({ url: assetUrl }) : pdfjsLib.getDocument({ data: fileData });
         const pdf = await loadingTask.promise;
         
         if (!active) return;

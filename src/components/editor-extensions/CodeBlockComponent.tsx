@@ -38,10 +38,10 @@ export default function CodeBlockComponent(props: any) {
           onChange={(event) => updateAttributes({ language: event.target.value })}
           className="bg-dark-bg/90 text-dark-text text-xs border border-white/20 rounded px-2 py-1 outline-none cursor-pointer"
         >
-          <option value="null">Auto</option>
-          <option disabled>—</option>
+          <option className="bg-dark-bg text-white" value="null">Auto</option>
+          <option className="bg-dark-bg text-white" disabled>—</option>
           {extension.options.lowlight.listLanguages().sort().map((lang: string, index: number) => (
-            <option key={index} value={lang}>
+            <option className="bg-dark-bg text-white" key={index} value={lang}>
               {lang}
             </option>
           ))}

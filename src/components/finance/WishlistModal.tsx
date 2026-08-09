@@ -129,9 +129,9 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
                 onChange={(e) => setPriority(e.target.value as any)}
                 className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none"
               >
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
+                <option className="bg-dark-bg text-white" value="low">Baixa</option>
+                <option className="bg-dark-bg text-white" value="medium">Média</option>
+                <option className="bg-dark-bg text-white" value="high">Alta</option>
               </select>
             </div>
           </div>

@@ -458,9 +458,9 @@ export const LofiView: React.FC = () => {
             onChange={e => setSortMode(e.target.value as 'manual' | 'date' | 'alpha')}
             className="bg-dark-card border border-white/10 text-dark-subtext text-sm rounded-lg px-2 py-2 outline-none focus:border-brand-500"
           >
-            <option value="manual">Manual</option>
-            <option value="date">Mais Recentes</option>
-            <option value="alpha">A-Z</option>
+            <option className="bg-dark-bg text-white" value="manual">Manual</option>
+            <option className="bg-dark-bg text-white" value="date">Mais Recentes</option>
+            <option className="bg-dark-bg text-white" value="alpha">A-Z</option>
           </select>
           <button
             onClick={() => {

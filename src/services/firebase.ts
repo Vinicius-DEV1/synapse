@@ -15,8 +15,10 @@ const firebaseConfig = {
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
+import { platform } from "./platform";
+
 // Instâncias dos serviços (Exportadas para uso em outros módulos)
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
+  experimentalForceLongPolling: platform.platform === 'desktop'
 });
 export const storage = getStorage(app);

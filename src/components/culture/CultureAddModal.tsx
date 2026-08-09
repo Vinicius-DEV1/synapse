@@ -308,7 +308,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as CultureType }))}
                 className="text-white bg-black/20 border border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-500/50 appearance-none pointer-events-auto"
               >
-                {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {TYPES.map(t => <option className="bg-dark-bg text-white" key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
 

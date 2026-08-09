@@ -234,11 +234,11 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                     onChange={e => setRecurrence(e.target.value as any)}
                     className="w-full bg-dark-bg border border-dark-border rounded-md px-3 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="none">Não repetir</option>
-                    <option value="daily">Todos os dias</option>
-                    <option value="weekly">Toda semana</option>
-                    <option value="monthly">Todo mês</option>
-                    <option value="yearly">Todo ano</option>
+                    <option className="bg-dark-bg text-white" value="none">Não repetir</option>
+                    <option className="bg-dark-bg text-white" value="daily">Todos os dias</option>
+                    <option className="bg-dark-bg text-white" value="weekly">Toda semana</option>
+                    <option className="bg-dark-bg text-white" value="monthly">Todo mês</option>
+                    <option className="bg-dark-bg text-white" value="yearly">Todo ano</option>
                   </select>
                 </div>
               )}

@@ -16,9 +16,9 @@ export default function EditorTab({ appSettings, setAppSettings }: EditorTabProp
           onChange={(e) => setAppSettings({ ...appSettings, fontSize: e.target.value as any })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option value="text-sm">Pequeno (14px)</option>
-          <option value="text-base">Padrão (16px)</option>
-          <option value="text-lg">Grande (18px)</option>
+          <option className="bg-dark-bg text-white" value="text-sm">Pequeno (14px)</option>
+          <option className="bg-dark-bg text-white" value="text-base">Padrão (16px)</option>
+          <option className="bg-dark-bg text-white" value="text-lg">Grande (18px)</option>
         </select>
       </div>
       

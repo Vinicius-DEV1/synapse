@@ -265,10 +265,10 @@ export default function BookEditModal({
               <div className="flex-1 flex flex-col gap-4">
                   {/* Datalists for Suggestions */}
                   <datalist id="author-suggestions">
-                    {uniqueAuthors.map(a => <option key={a} value={a} />)}
+                    {uniqueAuthors.map(a => <option className="bg-dark-bg text-white" key={a} value={a} />)}
                   </datalist>
                   <datalist id="publisher-suggestions">
-                    {uniquePublishers.map(p => <option key={p} value={p} />)}
+                    {uniquePublishers.map(p => <option className="bg-dark-bg text-white" key={p} value={p} />)}
                   </datalist>
 
                   {/* Title */}

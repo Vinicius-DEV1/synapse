@@ -191,11 +191,11 @@ export default function CalendarEventModal({
               onChange={e => setType_(e.target.value)}
               className="w-full px-3 py-2 bg-dark-bg border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
             >
-              <option value="mentoria">🎯 Mentoria</option>
-              <option value="reuniao">🤝 Reunião</option>
-              <option value="aula">📚 Aula / Curso</option>
-              <option value="estudo">✏️ Estudo</option>
-              <option value="geral">📅 Geral</option>
+              <option className="bg-dark-bg text-white" value="mentoria">🎯 Mentoria</option>
+              <option className="bg-dark-bg text-white" value="reuniao">🤝 Reunião</option>
+              <option className="bg-dark-bg text-white" value="aula">📚 Aula / Curso</option>
+              <option className="bg-dark-bg text-white" value="estudo">✏️ Estudo</option>
+              <option className="bg-dark-bg text-white" value="geral">📅 Geral</option>
             </select>
           </div>
 
