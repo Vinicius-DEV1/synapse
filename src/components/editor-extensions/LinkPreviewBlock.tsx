@@ -4,6 +4,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
+import { Portal } from '../ui/Portal';
 
 const formatDuration = (seconds: number) => {
   if (!seconds) return '';
@@ -33,6 +34,7 @@ const LinkPreviewComponent = (props: any) => {
   const [isReloading, setIsReloading] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [showLinkConfirm, setShowLinkConfirm] = useState(false);
 
   // Sincroniza o estado local com os atributos do nó toda vez que ele sofrer atualizações,
   // como acontece no drag and drop do TipTap (reciclagem de nós)
@@ -323,7 +325,7 @@ const LinkPreviewComponent = (props: any) => {
           </div>
         </div>
         <div 
-          onClick={() => window.open(url, '_blank')}
+          onClick={() => setShowLinkConfirm(true)}
           className={`block transition-all rounded-lg p-3 pr-[72px] cursor-pointer ${
             props.selected 
               ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10' 
@@ -404,7 +406,7 @@ const LinkPreviewComponent = (props: any) => {
               onClick={(e) => e.stopPropagation()}
             >
               <iframe
-                src={`https://www.youtube.com/embed/${getVideoId(url)}`}
+                src={`https://www.youtube-nocookie.com/embed/${getVideoId(url)}?origin=${encodeURIComponent(window.location.origin)}`}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -435,6 +437,43 @@ const LinkPreviewComponent = (props: any) => {
             title={fetchedTitle || 'Playlist'}
             onClose={() => setShowPlaylistModal(false)}
           />
+        )}
+        
+        {showLinkConfirm && (
+          <Portal>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowLinkConfirm(false)}>
+              <div className="bg-dark-card border border-white/10 rounded-2xl p-6 w-[400px] shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-white mb-2">Abrir Link Externo</h3>
+                <p className="text-dark-subtext text-sm mb-4">
+                  Deseja abrir o seguinte link no seu navegador padrão?
+                </p>
+                <div className="bg-black/30 border border-white/5 p-3 rounded-lg mb-6 overflow-hidden">
+                  <p className="text-brand-400 text-xs break-all">{url}</p>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button 
+                    onClick={() => setShowLinkConfirm(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-dark-subtext hover:bg-white/5 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowLinkConfirm(false);
+                      if (window.api?.os?.openInBrowser) {
+                        window.api.os.openInBrowser(url);
+                      } else {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+                  >
+                    Abrir Navegador
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
         )}
       </div>
     </NodeViewWrapper>
