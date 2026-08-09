@@ -1,21 +1,17 @@
+use crate::db::DbState;
 
+use axum::http::{header, StatusCode};
 use axum::{
     extract::{Query, State},
     response::IntoResponse,
     routing::get,
     Router,
 };
-use axum::body::Body;
-use axum::http::{header, StatusCode};
 use serde::Deserialize;
+
 use tauri::{AppHandle, Manager};
 use tokio::net::TcpListener;
-use tokio::process::Command;
 use tower_http::cors::CorsLayer;
-use crate::db::DbState;
-use std::process::Stdio;
-use tokio::io::AsyncWriteExt;
-use tokio_util::io::ReaderStream;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -27,8 +23,8 @@ pub struct StreamState {
 
 #[derive(Deserialize)]
 pub struct StreamParams {
-    pub file: String, // module/path.enc
-    pub start: Option<f64>, // start time in seconds
+    pub file: String,       // module/path.enc
+    pub _start: Option<f64>, // start time in seconds
 }
 
 #[derive(Deserialize)]
@@ -48,7 +44,9 @@ pub async fn start_stream_server(app: AppHandle) -> Result<u16, String> {
         .layer(CorsLayer::permissive());
 
     // bind to 127.0.0.1:0 to let OS choose an open port
-    let listener = TcpListener::bind("127.0.0.1:0").await.map_err(|e| e.to_string())?;
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|e| e.to_string())?;
     let port = listener.local_addr().unwrap().port();
 
     tokio::spawn(async move {
@@ -64,22 +62,22 @@ async fn stream_handler(
     Query(params): Query<StreamParams>,
 ) -> impl IntoResponse {
     let uri_path = params.file;
-    
+
     // Parse "module/caminho"
     let parts: Vec<&str> = uri_path.splitn(2, '/').collect();
     if parts.len() != 2 {
         return (StatusCode::BAD_REQUEST, "Invalid file format").into_response();
     }
-    
+
     let module_name = parts[0];
     let file_path = parts[1];
-    
+
     let decoded_path = urlencoding::decode(file_path)
         .unwrap_or(std::borrow::Cow::Borrowed(file_path))
         .to_string();
     let app_data_dir = crate::get_app_data_dir();
     let videos_dir = app_data_dir.join("videos");
-        
+
     let mut abs_path = videos_dir.join(&decoded_path);
     if !abs_path.exists() {
         let enc_path = std::path::PathBuf::from(format!("{}.enc", abs_path.to_string_lossy()));
@@ -91,8 +89,9 @@ async fn stream_handler(
                 if let Some(grandparent) = parent.parent() {
                     let release_dir = grandparent.join("release").join("data").join("videos");
                     let release_path = release_dir.join(&decoded_path);
-                    let release_enc_path = std::path::PathBuf::from(format!("{}.enc", release_path.to_string_lossy()));
-                    
+                    let release_enc_path =
+                        std::path::PathBuf::from(format!("{}.enc", release_path.to_string_lossy()));
+
                     if release_path.exists() {
                         abs_path = release_path;
                     } else if release_enc_path.exists() {
@@ -114,31 +113,33 @@ async fn stream_handler(
     let master_key = {
         let guard = db_state.keys.lock().unwrap();
         match &*guard {
-            Some(keys) => {
-                match module_name {
-                    "library" => keys.library.clone(),
-                    "files" => keys.files.clone(),
-                    "culture" => keys.culture.clone(),
-                    _ => None,
-                }
-            }
+            Some(keys) => match module_name {
+                "library" => keys.library.clone(),
+                "files" => keys.files.clone(),
+                "culture" => keys.culture.clone(),
+                _ => None,
+            },
             None => None,
         }
     };
-    
+
     let master_key = match master_key {
         Some(k) => k,
-        None => return (StatusCode::UNAUTHORIZED, "Unauthorized or module not found").into_response(),
+        None => {
+            return (StatusCode::UNAUTHORIZED, "Unauthorized or module not found").into_response()
+        }
     };
 
     // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1
     // Usamos spawn_blocking porque read_chunked_range é sincrono
     let path_clone = abs_path.clone();
     let key_clone = master_key.clone();
-    
+
     let info_res = tokio::task::spawn_blocking(move || {
         crate::crypto_stream::read_chunked_range(&path_clone, &key_clone, 0, 0)
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
     let total_size = match info_res {
         Ok(res) => res.total_original_size,
@@ -147,15 +148,25 @@ async fn stream_handler(
             match std::fs::metadata(&abs_path) {
                 Ok(m) => m.len(),
                 Err(e) => {
-                    println!("[STREAM] Erro fatal: Nao foi possivel obter o tamanho do arquivo: {}", e);
-                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get file metadata").into_response();
+                    println!(
+                        "[STREAM] Erro fatal: Nao foi possivel obter o tamanho do arquivo: {}",
+                        e
+                    );
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to get file metadata",
+                    )
+                        .into_response();
                 }
             }
         }
     };
 
     let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
-    println!("[STREAM] Nova requisicao para: {} | Range: {:?}", uri_path, range_header);
+    println!(
+        "[STREAM] Nova requisicao para: {} | Range: {:?}",
+        uri_path, range_header
+    );
 
     let mut start = 0;
     let mut end = total_size - 1;
@@ -177,15 +188,19 @@ async fn stream_handler(
             StatusCode::RANGE_NOT_SATISFIABLE,
             [(header::CONTENT_RANGE, format!("bytes */{}", total_size))],
             "Requested range not satisfiable",
-        ).into_response();
+        )
+            .into_response();
     }
-    
+
     // Assegura que end não ultrapasse o tamanho total
     if end >= total_size {
         end = total_size - 1;
     }
 
-    println!("[STREAM] Servindo Range Parcial Stream: bytes {}-{} (Tamanho Total: {})", start, end, total_size);
+    println!(
+        "[STREAM] Servindo Range Parcial Stream: bytes {}-{} (Tamanho Total: {})",
+        start, end, total_size
+    );
 
     let content_range = format!("bytes {}-{}/{}", start, end, total_size);
     let content_length = (end - start + 1).to_string();
@@ -193,13 +208,13 @@ async fn stream_handler(
     let stream = async_stream::stream! {
         let mut current_start = start;
         let max_chunk_size = 2 * 1024 * 1024; // Lemos em pedaços de 2MB da RAM
-        
+
         while current_start <= end {
             let current_end = std::cmp::min(current_start + max_chunk_size - 1, end);
-            
+
             let path_clone = abs_path.clone();
             let key_clone = master_key.clone();
-            
+
             let range_res = tokio::task::spawn_blocking(move || {
                 crate::crypto_stream::read_chunked_range(&path_clone, &key_clone, current_start, current_end)
             }).await;
@@ -223,7 +238,11 @@ async fn stream_handler(
         }
     };
 
-    let status = if range_header.is_some() { StatusCode::PARTIAL_CONTENT } else { StatusCode::OK };
+    let status = if range_header.is_some() {
+        StatusCode::PARTIAL_CONTENT
+    } else {
+        StatusCode::OK
+    };
 
     axum::response::Response::builder()
         .status(status)
@@ -254,35 +273,46 @@ async fn stream_drive_handler(
     let master_key = {
         let guard = db_state.keys.lock().unwrap();
         match &*guard {
-            Some(keys) => {
-                match params.module.as_str() {
-                    "library" => keys.library.clone(),
-                    "files" => keys.files.clone(),
-                    "culture" => keys.culture.clone(),
-                    _ => None,
-                }
-            }
+            Some(keys) => match params.module.as_str() {
+                "library" => keys.library.clone(),
+                "files" => keys.files.clone(),
+                "culture" => keys.culture.clone(),
+                _ => None,
+            },
             None => None,
         }
     };
-    
+
     let master_key = match master_key {
         Some(k) => k,
-        None => return (StatusCode::UNAUTHORIZED, "Unauthorized or module not found").into_response(),
+        None => {
+            return (StatusCode::UNAUTHORIZED, "Unauthorized or module not found").into_response()
+        }
     };
-    
-    let info_res = crate::crypto_stream::read_network_chunked_range_async(&params.file_id, &params.token, &master_key, 0, 0).await;
-    
+
+    let info_res = crate::crypto_stream::read_network_chunked_range_async(
+        &params.file_id,
+        &params.token,
+        &master_key,
+        0,
+        0,
+    )
+    .await;
+
     let total_size = match info_res {
         Ok(res) => res.total_original_size,
         Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read drive file info: {}", e)).into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to read drive file info: {}", e),
+            )
+                .into_response();
         }
     };
-    
+
     let mut start = 0;
     let mut end = total_size - 1;
-    
+
     let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
 
     if let Some(range_str) = range_header {
@@ -296,15 +326,16 @@ async fn stream_drive_handler(
             };
         }
     }
-    
+
     if start >= total_size {
         return (
             StatusCode::RANGE_NOT_SATISFIABLE,
             [(header::CONTENT_RANGE, format!("bytes */{}", total_size))],
             "Requested range not satisfiable",
-        ).into_response();
+        )
+            .into_response();
     }
-    
+
     if end >= total_size {
         end = total_size - 1;
     }
@@ -315,10 +346,10 @@ async fn stream_drive_handler(
     let stream = async_stream::stream! {
         let mut current_start = start;
         let max_chunk_size = 2 * 1024 * 1024; // Puxamos 2MB por vez da nuvem
-        
+
         while current_start <= end {
             let current_end = std::cmp::min(current_start + max_chunk_size - 1, end);
-            
+
             let chunk_res = crate::crypto_stream::read_network_chunked_range_async(
                 &params.file_id,
                 &params.token,
@@ -336,12 +367,16 @@ async fn stream_drive_handler(
                     break;
                 }
             }
-            
+
             current_start = current_end + 1;
         }
     };
 
-    let status = if range_header.is_some() { StatusCode::PARTIAL_CONTENT } else { StatusCode::OK };
+    let status = if range_header.is_some() {
+        StatusCode::PARTIAL_CONTENT
+    } else {
+        StatusCode::OK
+    };
 
     axum::response::Response::builder()
         .status(status)

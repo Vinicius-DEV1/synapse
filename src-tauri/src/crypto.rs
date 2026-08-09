@@ -1,24 +1,35 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit, consts::U16},
-    AesGcm, aes::Aes256
+    aead::{consts::U16, Aead, KeyInit},
+    aes::Aes256,
+    AesGcm,
 };
-use pbkdf2::pbkdf2_hmac;
-use sha2::Sha256;
 use hex;
+use pbkdf2::pbkdf2_hmac;
 use rand::RngCore;
+use sha2::Sha256;
 
 // Type alias for AES-256-GCM with 16-byte nonce (used by the Node.js legacy code)
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
 pub fn derive_key_from_password_legacy(password: &str) -> [u8; 32] {
     let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(password.as_bytes(), b"caderno-keychain-salt", 100000, &mut key);
+    pbkdf2_hmac::<Sha256>(
+        password.as_bytes(),
+        b"caderno-keychain-salt",
+        100000,
+        &mut key,
+    );
     key
 }
 
 pub fn derive_key_from_password(password: &str) -> [u8; 32] {
     let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(password.as_bytes(), b"caderno-keychain-salt", 600000, &mut key);
+    pbkdf2_hmac::<Sha256>(
+        password.as_bytes(),
+        b"caderno-keychain-salt",
+        600000,
+        &mut key,
+    );
     key
 }
 
@@ -37,23 +48,24 @@ pub fn generate_module_key() -> String {
 
 pub fn encrypt_module_key_with_key(module_key: &str, key: &[u8; 32]) -> Result<String, String> {
     let cipher = Aes256Gcm16::new(key.into());
-    
+
     let mut iv = [0u8; 16];
     rand::thread_rng().fill_bytes(&mut iv);
-    
+
     let nonce = aes_gcm::Nonce::<U16>::from_slice(&iv);
-    
-    let ciphertext_with_tag = cipher.encrypt(nonce, module_key.as_bytes())
+
+    let ciphertext_with_tag = cipher
+        .encrypt(nonce, module_key.as_bytes())
         .map_err(|e| format!("Encryption failed: {:?}", e))?;
-        
+
     let tag_start = ciphertext_with_tag.len() - 16;
     let ciphertext = &ciphertext_with_tag[..tag_start];
     let tag = &ciphertext_with_tag[tag_start..];
-    
+
     let encrypted_hex = hex::encode(ciphertext);
     let auth_tag_hex = hex::encode(tag);
     let iv_hex = hex::encode(iv);
-    
+
     Ok(format!("{}:{}:{}", iv_hex, auth_tag_hex, encrypted_hex))
 }
 
@@ -63,95 +75,112 @@ pub fn encrypt_module_key(module_key: &str, password: &str) -> Result<String, St
     encrypt_module_key_with_key(module_key, &key)
 }
 
-pub fn decrypt_module_key_with_key(encrypted_payload: &str, key: &[u8; 32]) -> Result<String, String> {
+pub fn decrypt_module_key_with_key(
+    encrypted_payload: &str,
+    key: &[u8; 32],
+) -> Result<String, String> {
     let parts: Vec<&str> = encrypted_payload.split(':').collect();
-    if parts.len() != 3 { return Err("Invalid payload".into()); }
-    
+    if parts.len() != 3 {
+        return Err("Invalid payload".into());
+    }
+
     let iv_hex = parts[0];
     let auth_tag_hex = parts[1];
     let encrypted_hex = parts[2];
-    
+
     let cipher = Aes256Gcm16::new(key.into());
-    
+
     let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
     let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
     let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
-    
+
     let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
-    
+
     let mut ciphertext_with_tag = encrypted_bytes.clone();
     ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
-    
-    let decrypted = cipher.decrypt(nonce, ciphertext_with_tag.as_ref())
+
+    let decrypted = cipher
+        .decrypt(nonce, ciphertext_with_tag.as_ref())
         .map_err(|e| format!("Decryption failed: {:?}", e))?;
-        
+
     String::from_utf8(decrypted).map_err(|_| "Invalid UTF-8".into())
 }
 
-pub fn decrypt_module_key(encrypted_payload: &str, password: &str) -> Result<(String, bool), String> {
+pub fn decrypt_module_key(
+    encrypted_payload: &str,
+    password: &str,
+) -> Result<(String, bool), String> {
     // Tenta primeiro com 600k iterações (moderno)
     let key = derive_key_from_password(password);
     if let Ok(dec) = decrypt_module_key_with_key(encrypted_payload, &key) {
         return Ok((dec, false));
     }
-    
+
     // Se falhar, tenta com 100k iterações (legado do Node.js/Electron)
     let legacy_key = derive_key_from_password_legacy(password);
     if let Ok(dec) = decrypt_module_key_with_key(encrypted_payload, &legacy_key) {
         return Ok((dec, true));
     }
-    
+
     Err("Failed to decrypt with both modern and legacy keys".into())
 }
 
 pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String> {
     let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
-    if key_bytes.len() != 32 { return Err("Key must be 32 bytes".into()); }
-    
+    if key_bytes.len() != 32 {
+        return Err("Key must be 32 bytes".into());
+    }
+
     let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
-    
+
     let mut iv = [0u8; 16];
     rand::thread_rng().fill_bytes(&mut iv);
     let nonce = aes_gcm::Nonce::<U16>::from_slice(&iv);
-    
-    let ciphertext_with_tag = cipher.encrypt(nonce, plaintext.as_bytes())
+
+    let ciphertext_with_tag = cipher
+        .encrypt(nonce, plaintext.as_bytes())
         .map_err(|e| format!("Encryption failed: {:?}", e))?;
-        
+
     let tag_start = ciphertext_with_tag.len() - 16;
     let ciphertext = &ciphertext_with_tag[..tag_start];
     let tag = &ciphertext_with_tag[tag_start..];
-    
+
     let encrypted_hex = hex::encode(ciphertext);
     let auth_tag_hex = hex::encode(tag);
     let iv_hex = hex::encode(iv);
-    
+
     Ok(format!("{}:{}:{}", iv_hex, auth_tag_hex, encrypted_hex))
 }
 
 pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String, String> {
     let parts: Vec<&str> = encrypted_payload.split(':').collect();
-    if parts.len() != 3 { return Err("Invalid payload".into()); }
-    
+    if parts.len() != 3 {
+        return Err("Invalid payload".into());
+    }
+
     let iv_hex = parts[0];
     let auth_tag_hex = parts[1];
     let encrypted_hex = parts[2];
-    
+
     let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
-    if key_bytes.len() != 32 { return Err("Key must be 32 bytes".into()); }
-    
+    if key_bytes.len() != 32 {
+        return Err("Key must be 32 bytes".into());
+    }
+
     let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
-    
+
     let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
     let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
     let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
-    
+
     let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
-    
+
     let mut ciphertext_with_tag = encrypted_bytes.clone();
     ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
-    
-    let decrypted_bytes = cipher.decrypt(nonce, ciphertext_with_tag.as_ref())
+
+    let decrypted_bytes = cipher
+        .decrypt(nonce, ciphertext_with_tag.as_ref())
         .map_err(|e| format!("Decryption failed: {:?}", e))?;
-        
+
     String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into())
 }

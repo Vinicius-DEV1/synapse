@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { open as openBrowser } from '@tauri-apps/plugin-shell';
 
 export const tauriVideoApi = {
   getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
@@ -90,6 +91,6 @@ export const tauriTranscribeApi = {
 };
 
 export const tauriOsApi = {
-  openInBrowser: async (url: string) => await invoke('os_open_in_browser', { url }),
+  openInBrowser: async (url: string) => await openBrowser(url),
   showInFolder: async (path: string) => await invoke('os_show_in_folder', { path })
 };

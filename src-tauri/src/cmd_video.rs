@@ -1,8 +1,8 @@
-use tauri::AppHandle;
-use std::path::PathBuf;
-use std::fs;
-use std::process::Command;
 use serde_json::Value;
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+use tauri::AppHandle;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -25,19 +25,23 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
     if path.exists() {
         return Ok(path.to_string_lossy().to_string());
     }
-    
+
     // Fallback: Tenta buscar na pasta release se estivermos rodando em debug
     if let Some(parent) = videos_dir.parent() {
         if let Some(grandparent) = parent.parent() {
             if let Some(greatgrandparent) = grandparent.parent() {
-                let release_path = greatgrandparent.join("release").join("data").join("videos").join(&filename);
+                let release_path = greatgrandparent
+                    .join("release")
+                    .join("data")
+                    .join("videos")
+                    .join(&filename);
                 if release_path.exists() {
                     return Ok(release_path.to_string_lossy().to_string());
                 }
             }
         }
     }
-    
+
     Ok("".to_string())
 }
 
@@ -46,7 +50,9 @@ pub fn video_read_file(path: String) -> Result<Vec<u8>, String> {
     // Safety: limit to 50 MB to prevent OOM crash via IPC for large video files
     let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
     if metadata.len() > 50 * 1024 * 1024 {
-        return Err("File too large to read via IPC. Use video_upload_file_to_drive instead.".into());
+        return Err(
+            "File too large to read via IPC. Use video_upload_file_to_drive instead.".into(),
+        );
     }
     fs::read(&path).map_err(|e| e.to_string())
 }
@@ -86,7 +92,10 @@ pub async fn video_upload_file_to_drive(
     if !meta_res.status().is_success() {
         let status = meta_res.status();
         let body = meta_res.text().await.unwrap_or_default();
-        return Err(format!("Drive metadata creation failed ({}): {}", status, body));
+        return Err(format!(
+            "Drive metadata creation failed ({}): {}",
+            status, body
+        ));
     }
 
     let meta_data: serde_json::Value = meta_res
@@ -148,12 +157,12 @@ pub async fn video_import_and_encrypt(
     source_path: String,
     dest_filename: String,
     db_state: tauri::State<'_, crate::db::DbState>,
-    app_handle: AppHandle
+    app_handle: AppHandle,
 ) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
     let dest_filename_enc = format!("{}.enc", dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
-    
+
     let keys_guard = db_state.keys.lock().unwrap();
     let master_key = if let Some(keys) = keys_guard.as_ref() {
         if let Some(ref k) = keys.culture {
@@ -164,12 +173,13 @@ pub async fn video_import_and_encrypt(
     } else {
         return Err("Keys not unlocked".into());
     };
-    
+
     let actual_source = std::path::PathBuf::from(&source_path);
-    
-    let enc_res = crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_full_path, &master_key);
+
+    let enc_res =
+        crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_full_path, &master_key);
     enc_res?;
-    
+
     Ok(dest_full_path.to_string_lossy().to_string())
 }
 
@@ -185,11 +195,15 @@ pub fn video_probe_codec(path: &str, stream_type: &str) -> Result<String, String
     let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
     let output = Command::new(&ffprobe_path)
         .args([
-            "-v", "error",
-            "-select_streams", stream_type,
-            "-show_entries", "stream=codec_name",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            path
+            "-v",
+            "error",
+            "-select_streams",
+            stream_type,
+            "-show_entries",
+            "stream=codec_name",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path,
         ])
         .output()
         .map_err(|e| format!("Falha ao executar ffprobe: {}", e))?;
@@ -201,8 +215,8 @@ pub fn video_probe_codec(path: &str, stream_type: &str) -> Result<String, String
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-use tokio::io::AsyncBufReadExt;
 use tauri::Emitter;
+use tokio::io::AsyncBufReadExt;
 
 #[tauri::command]
 pub async fn video_process_upload(
@@ -212,13 +226,13 @@ pub async fn video_process_upload(
     conversion_preset: String,
     duration: f64,
     db_state: tauri::State<'_, crate::db::DbState>,
-    app_handle: AppHandle
+    app_handle: AppHandle,
 ) -> Result<ProcessUploadResult, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
     let norm_filename = normalize_to_mp4_name(&dest_filename);
     let dest_filename_enc = format!("{}.enc", dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
-    
+
     let master_key = {
         let keys_guard = db_state.keys.lock().unwrap();
         if let Some(keys) = keys_guard.as_ref() {
@@ -231,20 +245,20 @@ pub async fn video_process_upload(
             return Err("Keys not unlocked".into());
         }
     };
-    
+
     let actual_source = std::path::PathBuf::from(&source_path);
-    
+
     // Spawn encryption of original file in background
     let actual_source_clone = actual_source.clone();
     let dest_full_path_clone = dest_full_path.clone();
     let master_key_clone = master_key.clone();
-    
+
     println!("[DEBUG] Iniciando task de criptografia do arquivo original em background...");
     let encrypt_task = tokio::task::spawn_blocking(move || {
         crate::crypto_stream::encrypt_file_chunked(
-            &actual_source_clone, 
-            &dest_full_path_clone, 
-            &master_key_clone
+            &actual_source_clone,
+            &dest_full_path_clone,
+            &master_key_clone,
         )
     });
 
@@ -252,33 +266,36 @@ pub async fn video_process_upload(
         let web_filename_enc = format!("{}_web.mp4.enc", norm_filename.trim_end_matches(".mp4"));
         let web_full_path = videos_dir.join(&web_filename_enc);
         let temp_web_mp4 = videos_dir.join(format!("temp_web_{}.mp4", uuid::Uuid::new_v4()));
-        
+
         let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
         let mut cmd = tokio::process::Command::new(&ffmpeg_path);
-        
+
         let mut args = vec![
             "-y".to_string(),
-            "-i".to_string(), source_path.clone(),
-            "-movflags".to_string(), "+faststart".to_string(),
-            "-map_chapters".to_string(), "-1".to_string(),
+            "-i".to_string(),
+            source_path.clone(),
+            "-movflags".to_string(),
+            "+faststart".to_string(),
+            "-map_chapters".to_string(),
+            "-1".to_string(),
             "-sn".to_string(),
             "-dn".to_string(),
         ];
-        
+
         let preset_str = conversion_preset.as_str();
-        
+
         if web_quality == "remux" {
             let v_codec = video_probe_codec(&source_path, "v:0")?;
             let a_codec = video_probe_codec(&source_path, "a:0").unwrap_or_default();
-            
+
             if v_codec != "h264" {
                 return Err(format!("Modo Expresso bloqueado: O vídeo original está em formato {} e não roda nativamente. Por favor, escolha a conversão 720p ou 1080p.", v_codec.to_uppercase()));
             }
-            
+
             args.push("-c:v".to_string());
             args.push("copy".to_string());
             args.push("-c:a".to_string());
-            
+
             if a_codec == "aac" {
                 args.push("copy".to_string());
             } else {
@@ -292,51 +309,65 @@ pub async fn video_process_upload(
                 "360p" => "scale=-2:360",
                 _ => "scale=-2:720",
             };
-            
+
             args.extend(vec![
-                "-c:v".to_string(), "libx264".to_string(),
-                "-c:a".to_string(), "aac".to_string(),
-                "-preset".to_string(), preset_str.to_string(),
-                "-threads".to_string(), "0".to_string(),
-                "-crf".to_string(), "23".to_string(),
-                "-vf".to_string(), scale_val.to_string(),
+                "-c:v".to_string(),
+                "libx264".to_string(),
+                "-c:a".to_string(),
+                "aac".to_string(),
+                "-preset".to_string(),
+                preset_str.to_string(),
+                "-threads".to_string(),
+                "0".to_string(),
+                "-crf".to_string(),
+                "23".to_string(),
+                "-vf".to_string(),
+                scale_val.to_string(),
             ]);
         }
-        
+
         let temp_web_mp4_str = temp_web_mp4.to_string_lossy().into_owned();
         args.push(temp_web_mp4_str);
-        
+
         cmd.args(&args);
-        
+
         #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
-        
+
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::piped());
-        
+
         println!("[DEBUG] Spawn do FFmpeg...");
-        let mut child = cmd.spawn().map_err(|e| format!("Falha ao iniciar FFmpeg: {}", e))?;
-        
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Falha ao iniciar FFmpeg: {}", e))?;
+
         let stderr = child.stderr.take().unwrap();
         let mut reader = tokio::io::BufReader::new(stderr).lines();
-        
+
         let mut error_log = String::new();
         while let Ok(Some(line)) = reader.next_line().await {
             error_log.push_str(&line);
             error_log.push('\n');
             println!("[DEBUG] FFmpeg: {}", line);
-            
+
             if line.contains("time=") {
                 if let Some(time_idx) = line.find("time=") {
                     let time_str = &line[time_idx + 5..];
                     if time_str.len() >= 8 {
                         let parts: Vec<&str> = time_str[..8].split(':').collect();
                         if parts.len() == 3 {
-                            if let (Ok(h), Ok(m), Ok(s)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>(), parts[2].parse::<f64>()) {
+                            if let (Ok(h), Ok(m), Ok(s)) = (
+                                parts[0].parse::<f64>(),
+                                parts[1].parse::<f64>(),
+                                parts[2].parse::<f64>(),
+                            ) {
                                 let current_sec = h * 3600.0 + m * 60.0 + s;
                                 if duration > 0.0 {
                                     let mut pct = (current_sec / duration) * 100.0;
-                                    if pct > 100.0 { pct = 100.0; }
+                                    if pct > 100.0 {
+                                        pct = 100.0;
+                                    }
                                     let _ = app_handle.emit("video_upload_progress", pct);
                                 }
                             }
@@ -345,19 +376,22 @@ pub async fn video_process_upload(
                 }
             }
         }
-        
+
         let status = child.wait().await.map_err(|e| e.to_string())?;
         println!("[DEBUG] FFmpeg finalizou. Status: {}", status);
         if !status.success() || !temp_web_mp4.exists() {
             let _ = fs::remove_file(&temp_web_mp4);
             return Err(format!("Falha ao converter vídeo Web: {}", error_log));
         }
-        
-        println!("[DEBUG] Iniciando criptografia do arquivo Web ({:?})...", temp_web_mp4);
+
+        println!(
+            "[DEBUG] Iniciando criptografia do arquivo Web ({:?})...",
+            temp_web_mp4
+        );
         crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
         println!("[DEBUG] Criptografia do arquivo Web finalizada.");
         let _ = fs::remove_file(&temp_web_mp4);
-        
+
         Some(web_full_path.to_string_lossy().to_string())
     } else {
         None
@@ -369,7 +403,7 @@ pub async fn video_process_upload(
     enc_res?;
 
     let original_size = fs::metadata(&dest_full_path).map(|m| m.len()).unwrap_or(0);
-    
+
     let web_size = if let Some(ref w) = web_path {
         Some(fs::metadata(w).map(|m| m.len()).unwrap_or(0))
     } else {
@@ -385,37 +419,58 @@ pub async fn video_process_upload(
 }
 
 #[tauri::command]
-pub async fn video_save_local(filename: String, buffer: Vec<u8>, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_save_local(
+    filename: String,
+    buffer: Vec<u8>,
+    _db_state: tauri::State<'_, crate::db::DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
     let filename_enc = format!("{}.enc", filename);
     let path = videos_dir.join(&filename_enc);
     let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
-    
+
     fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
-    
+
     fs::rename(&temp_path, &path).map_err(|e| e.to_string())?;
-    
+
     Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
     let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
-    
+
     let input_path = if local_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
-        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
-        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+        let filename = std::path::Path::new(&local_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(filename)
+        )
     } else {
         local_path.clone()
     };
-    
+
     let mut cmd = Command::new(ffprobe_path);
-    cmd.args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", &input_path]);
+    cmd.args([
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        &input_path,
+    ]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let output = cmd.output().map_err(|e| e.to_string())?;
-        
+
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);
         let val: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
@@ -426,37 +481,55 @@ pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Val
 }
 
 #[tauri::command]
-pub async fn video_extract_subtitles(local_path: String, track_index: String, app: AppHandle) -> Result<String, String> {
+pub async fn video_extract_subtitles(
+    local_path: String,
+    track_index: String,
+    app: AppHandle,
+) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let vtt_out_path = videos_dir.join(format!("temp_sub_{}.vtt", uuid::Uuid::new_v4()));
-    
+
     let input_path = if local_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
-        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
-        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+        let filename = std::path::Path::new(&local_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(filename)
+        )
     } else {
         local_path.clone()
     };
-    
+
     let mut cmd2 = Command::new(ffmpeg_path);
     cmd2.args([
-            "-y", // overwrite
-            "-i", &input_path,
-            "-map", &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean map
-            "-c:s", "webvtt",
-            &vtt_out_path.to_string_lossy().to_string()
-        ]);
+        "-y", // overwrite
+        "-i",
+        &input_path,
+        "-map",
+        &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean map
+        "-c:s",
+        "webvtt",
+        &vtt_out_path.to_string_lossy().to_string(),
+    ]);
     #[cfg(target_os = "windows")]
     cmd2.creation_flags(CREATE_NO_WINDOW);
     let output = cmd2.output().map_err(|e| e.to_string())?;
-        
+
     if output.status.success() || vtt_out_path.exists() {
         let content = fs::read(&vtt_out_path)
             .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
             .unwrap_or_default();
         let _ = fs::remove_file(&vtt_out_path);
-        println!("[DEBUG] Legenda extraída com sucesso (tamanho: {})", content.len());
+        println!(
+            "[DEBUG] Legenda extraída com sucesso (tamanho: {})",
+            content.len()
+        );
         Ok(content)
     } else {
         let err = String::from_utf8_lossy(&output.stderr).to_string();
@@ -466,35 +539,52 @@ pub async fn video_extract_subtitles(local_path: String, track_index: String, ap
 }
 
 #[tauri::command]
-pub async fn video_extract_audio(local_path: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_extract_audio(
+    local_path: String,
+    track_index: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
-    
+
     let track_clean = track_index.replace(":", "");
     let temp_audio = videos_dir.join(format!("temp_audio_{}.m4a", track_clean));
     let final_enc = videos_dir.join(format!("{}_{}.m4a.enc", uuid::Uuid::new_v4(), track_clean));
-    
+
     let input_path = if local_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
-        let filename = std::path::Path::new(&local_path).file_name().unwrap().to_str().unwrap();
-        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(filename))
+        let filename = std::path::Path::new(&local_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(filename)
+        )
     } else {
         local_path.clone()
     };
-    
+
     let mut cmd3 = Command::new(ffmpeg_path);
     cmd3.args([
-            "-y",
-            "-i", &input_path,
-            "-map", &track_index,
-            "-c:a", "aac",
-            "-b:a", "128k",
-            &temp_audio.to_string_lossy().to_string()
-        ]);
+        "-y",
+        "-i",
+        &input_path,
+        "-map",
+        &track_index,
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        &temp_audio.to_string_lossy().to_string(),
+    ]);
     #[cfg(target_os = "windows")]
     cmd3.creation_flags(CREATE_NO_WINDOW);
     let output = cmd3.output().map_err(|e| e.to_string())?;
-        
+
     if output.status.success() || temp_audio.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
         let master_key = if let Some(keys) = keys_guard.as_ref() {
@@ -506,10 +596,10 @@ pub async fn video_extract_audio(local_path: String, track_index: String, db_sta
         } else {
             return Err("Keys not unlocked".into());
         };
-        
+
         crate::crypto_stream::encrypt_file_chunked(&temp_audio, &final_enc, &master_key)?;
         let _ = fs::remove_file(&temp_audio);
-        
+
         Ok(final_enc.to_string_lossy().to_string())
     } else {
         let _ = fs::remove_file(&temp_audio);
@@ -518,35 +608,55 @@ pub async fn video_extract_audio(local_path: String, track_index: String, db_sta
 }
 
 #[tauri::command]
-pub async fn video_remux_default_track(source_path: String, filename: String, track_index: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_remux_default_track(
+    source_path: String,
+    filename: String,
+    track_index: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
     let final_dest = videos_dir.join(format!("{}.enc", filename));
-    
+
     let input_path = if source_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
-        let fname = std::path::Path::new(&source_path).file_name().unwrap().to_str().unwrap();
-        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(fname))
+        let fname = std::path::Path::new(&source_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(fname)
+        )
     } else {
         source_path.clone()
     };
-    
+
     let mut cmd4 = Command::new(ffmpeg_path);
     cmd4.args([
-            "-y",
-            "-i", &input_path,
-            "-map", "0:v",
-            "-map", &track_index,
-            "-map", "0:a",
-            "-map", "0:s?",
-            "-c", "copy",
-            &temp_dest.to_string_lossy().to_string()
-        ]);
+        "-y",
+        "-i",
+        &input_path,
+        "-map",
+        "0:v",
+        "-map",
+        &track_index,
+        "-map",
+        "0:a",
+        "-map",
+        "0:s?",
+        "-c",
+        "copy",
+        &temp_dest.to_string_lossy().to_string(),
+    ]);
     #[cfg(target_os = "windows")]
     cmd4.creation_flags(CREATE_NO_WINDOW);
     let output = cmd4.output().map_err(|e| e.to_string())?;
-        
+
     if output.status.success() || temp_dest.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
         let master_key = if let Some(keys) = keys_guard.as_ref() {
@@ -558,10 +668,10 @@ pub async fn video_remux_default_track(source_path: String, filename: String, tr
         } else {
             return Err("Keys not unlocked".into());
         };
-        
+
         crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
         let _ = fs::remove_file(&temp_dest);
-        
+
         Ok(final_dest.to_string_lossy().to_string())
     } else {
         let _ = fs::remove_file(&temp_dest);
@@ -570,39 +680,54 @@ pub async fn video_remux_default_track(source_path: String, filename: String, tr
 }
 
 #[tauri::command]
-pub async fn video_convert_mp4(source_path: String, filename: String, db_state: tauri::State<'_, crate::db::DbState>, app: AppHandle) -> Result<String, String> {
+pub async fn video_convert_mp4(
+    source_path: String,
+    filename: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
-    
+
     let temp_dest = videos_dir.join(format!("temp_mp4_{}.mp4", uuid::Uuid::new_v4()));
-    
+
     let mut final_dest = videos_dir.join(&filename);
     final_dest.set_extension("mp4.enc");
     let dest_path_str = final_dest.to_string_lossy().to_string();
-    
+
     if final_dest.exists() {
         return Ok(dest_path_str);
     }
-    
+
     let input_path = if source_path.ends_with(".enc") {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
-        let fname = std::path::Path::new(&source_path).file_name().unwrap().to_str().unwrap();
-        format!("http://127.0.0.1:{}/stream?file=culture/{}", port, urlencoding::encode(fname))
+        let fname = std::path::Path::new(&source_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(fname)
+        )
     } else {
         source_path.clone()
     };
-    
+
     let mut cmd5 = Command::new(ffmpeg_path);
     cmd5.args([
-            "-y",
-            "-i", &input_path,
-            "-c", "copy",
-            &temp_dest.to_string_lossy().to_string()
-        ]);
+        "-y",
+        "-i",
+        &input_path,
+        "-c",
+        "copy",
+        &temp_dest.to_string_lossy().to_string(),
+    ]);
     #[cfg(target_os = "windows")]
     cmd5.creation_flags(CREATE_NO_WINDOW);
     let output = cmd5.output().map_err(|e| e.to_string())?;
-        
+
     if output.status.success() || temp_dest.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
         let master_key = if let Some(keys) = keys_guard.as_ref() {
@@ -614,10 +739,10 @@ pub async fn video_convert_mp4(source_path: String, filename: String, db_state: 
         } else {
             return Err("Keys not unlocked".into());
         };
-        
+
         crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
         let _ = fs::remove_file(&temp_dest);
-        
+
         Ok(dest_path_str)
     } else {
         let _ = fs::remove_file(&temp_dest);

@@ -8,7 +8,11 @@ export const tauriFilesApi = {
   delete: async (id: string) => await invoke('files_delete', { id }),
   move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
   saveLocal: async (filename: string, data: number[]) => await invoke('files_save_local', { filename, data }),
-  getLocal: async (id: string) => `http://encrypted.localhost/files/${encodeURIComponent(id)}`,
+  getLocal: async (id: string) => {
+    const isWindows = navigator.userAgent.includes('Windows');
+    const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+    return `${baseUrl}/files/${encodeURIComponent(id)}`;
+  },
   
   folders: {
     getAll: async () => await invoke('file_folders_get_all'),

@@ -61,7 +61,9 @@ export function useEpubLoader(
              if (!encPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
                  encPath = encPath + '.enc';
              }
-             assetUrl = `http://encrypted.localhost/library/${encodeURIComponent(encPath)}`;
+             const isWindows = navigator.userAgent.includes('Windows');
+             const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+             assetUrl = `${baseUrl}/library/${encodeURIComponent(encPath)}`;
           }
         } catch (localErr) {
           console.log("Erro ao formatar path local (ignorado na Web)", localErr);

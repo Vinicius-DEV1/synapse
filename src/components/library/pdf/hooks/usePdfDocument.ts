@@ -26,18 +26,26 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
         let fileData: any;
         let assetUrl: string | null = null;
         try {
-          if (book.file_path && !book.file_path.startsWith('http')) {
+          if (book.file_path && !book.file_path.startsWith('http') && !book.file_path.startsWith('drive:')) {
              const { appDataDir, join } = await import('@tauri-apps/api/path');
+             const { exists } = await import('@tauri-apps/plugin-fs');
              const dataDir = await appDataDir();
              let absPath = await join(dataDir, book.file_path);
              
              if (!absPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
                  absPath = absPath + '.enc';
              }
-             assetUrl = `http://encrypted.localhost/library/${encodeURIComponent(absPath)}`;
+             
+             if (await exists(absPath)) {
+                 const isWindows = navigator.userAgent.includes('Windows');
+                 const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+                 assetUrl = `${baseUrl}/library/${encodeURIComponent(absPath)}`;
+             } else {
+                 console.log("Arquivo local não encontrado na checagem. Tentando nuvem...");
+             }
           }
         } catch (localErr) {
-          console.log("Arquivo local não encontrado ou erro. Tentando nuvem...", localErr);
+          console.log("Erro ao checar arquivo local. Tentando nuvem...", localErr);
         }
 
         if (!assetUrl && book.drive_file_id) {

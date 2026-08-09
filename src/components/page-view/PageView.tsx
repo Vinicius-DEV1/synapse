@@ -78,6 +78,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
               pages={childPages}
               onNavigate={handleNavigate}
               onCreatePage={() => onCreatePage(page.id)}
+              onUpdatePage={onUpdatePage}
             />
           </div>
         )}
