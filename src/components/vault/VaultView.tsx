@@ -193,7 +193,15 @@ export default function VaultView() {
             item={selectedItem} 
             groups={groups}
             groupId={selectedGroupId}
-            onSave={() => { setIsEditingItem(false); loadData(); }} 
+            onSave={async () => { 
+              setIsEditingItem(false); 
+              await loadData();
+              // Refresh selectedItem from DB to avoid stale data
+              if (selectedItem?.id) {
+                const updated = await window.api?.vault?.getItem(selectedItem.id);
+                setSelectedItem(updated || null);
+              }
+            }} 
             onCancel={() => { setIsEditingItem(false); }} 
           />
         ) : selectedItem ? (

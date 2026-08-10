@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, X, Plus, Trash2, Key, RefreshCw, ShieldAlert, Star, ShieldCheck } from 'lucide-react';
 import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
@@ -19,7 +19,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
   const [url, setUrl] = useState(item?.url || '');
   const [notes, setNotes] = useState(item?.notes || '');
   const [isFavorite, setIsFavorite] = useState(item?.is_favorite === 1);
-  const [selectedGroupId, setSelectedGroupId] = useState(item?.group_id || groupId || '');
+  const [selectedGroupId, setSelectedGroupId] = useState(item ? (item.group_id || '') : (groupId || ''));
   
   const [customFields, setCustomFields] = useState<VaultCustomField[]>(() => {
     if (!item?.custom_fields) return [];
@@ -27,6 +27,13 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
   });
 
   const [passwordStrength, setPasswordStrength] = useState(item?.password_strength || 0);
+
+  // Calculate strength on mount when editing an item with existing password
+  useEffect(() => {
+    if (item?.password) {
+      checkStrength(item.password);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!label.trim()) return alert('O item precisa de um nome (Rótulo).');
