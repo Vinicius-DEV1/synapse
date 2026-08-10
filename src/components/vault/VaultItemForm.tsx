@@ -34,20 +34,20 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
     const itemToSave = {
       ...item,
       id: item?.id || crypto.randomUUID(),
-      group_id: selectedGroupId || '',
+      group_id: selectedGroupId || null,
       label,
-      username,
-      email,
-      password,
-      url,
-      notes,
+      username: username || null,
+      email: email || null,
+      password: password || null,
+      url: url || null,
+      notes: notes || null,
       custom_fields: customFields.length > 0 ? JSON.stringify(customFields) : null,
       is_favorite: isFavorite ? 1 : 0,
       password_strength: passwordStrength,
       created_at: item?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: item?.deleted_at || null,
-      password_changed_at: item?.password_changed_at || new Date().toISOString(),
+      password_changed_at: item?.password_changed_at || null,
     };
 
     await window.api.vault?.upsertItem(itemToSave);
@@ -69,8 +69,13 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
       }
     } catch (e) {
       console.error(e);
-      // Fallback local se estiver na web sem backend real
-      setPassword(Math.random().toString(36).slice(-10) + 'A!1');
+      // Fallback local criptograficamente seguro
+      const fallbackChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      const fallbackPass = Array.from(array).map(b => fallbackChars[b % fallbackChars.length]).join('');
+      setPassword(fallbackPass);
+      checkStrength(fallbackPass);
     }
   };
 
