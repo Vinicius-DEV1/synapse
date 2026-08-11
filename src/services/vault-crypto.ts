@@ -76,7 +76,7 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
   if (!payload || !payload.includes(':')) return payload;
   
   const parts = payload.split(':');
-  if (parts.length !== 3) return payload; // Não é o formato esperado, retorna original (plaintext legacy)
+  if (parts.length !== 3) throw new Error('Invalid vault payload format');
 
   try {
     const [ivHex, authTagHex, cipherTextHex] = parts;
@@ -112,7 +112,6 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
   } catch (e) {
-    console.error("Vault Decryption Error:", e);
-    return payload; // Fallback para plaintext em caso de erro
+    throw new Error('Failed to decrypt vault field');
   }
 }
