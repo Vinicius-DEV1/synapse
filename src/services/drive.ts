@@ -391,12 +391,17 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
 export async function saveDriveCredentials(token: DriveToken | null): Promise<void> {
   const dataPayload = { token };
   
+  let valToSave = JSON.stringify(dataPayload);
+  if (_inMemoryMasterKey) {
+    valToSave = await encryptText(valToSave, _inMemoryMasterKey);
+  }
+
   if (window.api?.sync) {
     // Salva na tabela config para que o sync engine envie pro Firebase
     // Usa 'data' pois a coluna do SQLite se chama 'data'
     await window.api.sync.upsertRow('config', {
       id: 'drive_credentials',
-      data: JSON.stringify(dataPayload),
+      data: valToSave,
       updated_at: new Date().toISOString()
     });
     // Fallback local file
@@ -407,10 +412,6 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
   }
   
   const db = await getWebDb();
-  let valToSave = JSON.stringify(dataPayload);
-  if (_inMemoryMasterKey) {
-    valToSave = await encryptText(valToSave, _inMemoryMasterKey);
-  }
   await db.put('config', { 
     id: 'drive_credentials', 
     data: valToSave,

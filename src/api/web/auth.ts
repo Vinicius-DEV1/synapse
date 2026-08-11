@@ -35,9 +35,13 @@ export const webAuthApi = (db: any) => ({
     await db.put('config', { id: 'masterHash', value: hash });
     return { success: true };
   },
+  forceUpdateKeychain: async (password: string, keys: any) => {
+    // In Web mode, keys are not saved to a local keychain table, only kept in memory and saved to Firebase.
+    return { success: true };
+  },
   changePassword: async () => ({ success: false, error: "Alteração de senha requer o app Desktop" }),
   wipeLocalData: async () => {
-    indexedDB.deleteDatabase('caderno-db');
+    indexedDB.deleteDatabase('caderno-web-db');
     window.location.reload();
   },
   getVisitors: async () => [],
