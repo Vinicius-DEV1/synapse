@@ -113,7 +113,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
       let uploadBuffer = arrayBuffer;
 
       if (window.api?.files?.saveLocal) {
-        localPath = await window.api.files.saveLocal(task.file.name, Array.from(bytes));
+        localPath = await window.api.files.saveLocal(task.file.name, new Uint8Array(bytes));
       }
       
       updateTask(task.id, { progress: 40 });

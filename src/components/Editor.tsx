@@ -171,8 +171,10 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             const file = item.getAsFile();
             if (file && editor) {
               const masterKey = window.__cadernoModuleKeys?.['notes'];
+              console.log(`[Editor:handlePaste] Imagem detectada. masterKey=${!!masterKey}, file.type="${file.type}", file.size=${file.size}`);
               if (masterKey) {
                 const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
+                console.log(`[Editor:handlePaste] Usando caminho encryptedImage. tempId="${tempId}"`);
                 if (!window.__pendingImageUploads) {
                   window.__pendingImageUploads = new Map();
                 }
@@ -204,6 +206,71 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         if (imagePasted) {
           event.preventDefault();
           return true;
+        }
+        return false;
+      },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+          const files = Array.from(event.dataTransfer.files);
+          let imageDropped = false;
+          
+          for (const file of files) {
+            if (file.type.indexOf('image') === 0) {
+              imageDropped = true;
+              if (editor) {
+                const masterKey = window.__cadernoModuleKeys?.['notes'];
+                const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+                const pos = coordinates ? coordinates.pos : undefined;
+
+                if (masterKey) {
+                  const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
+                  if (!window.__pendingImageUploads) {
+                    window.__pendingImageUploads = new Map();
+                  }
+                  window.__pendingImageUploads.set(tempId, file);
+                  file.arrayBuffer().then(buffer => {
+                    setCachedImage(tempId, buffer, file.type).catch(console.error);
+                  }).catch(console.error);
+                  
+                  if (pos !== undefined) {
+                    editor.chain().focus().insertContentAt(pos, {
+                      type: 'encryptedImage',
+                      attrs: { driveFileId: tempId }
+                    }).run();
+                  } else {
+                    editor.chain().focus().insertContent({
+                      type: 'encryptedImage',
+                      attrs: { driveFileId: tempId }
+                    }).run();
+                  }
+                } else {
+                  if (file.size > 2 * 1024 * 1024) {
+                    alert('Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.');
+                    return true;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const src = e.target?.result;
+                    if (src && editor) {
+                      if (pos !== undefined) {
+                        editor.chain().focus().insertContentAt(pos, {
+                          type: 'image',
+                          attrs: { src: src as string }
+                        }).run();
+                      } else {
+                        editor.chain().focus().setImage({ src: src as string }).run();
+                      }
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }
+            }
+          }
+          if (imageDropped) {
+            event.preventDefault();
+            return true;
+          }
         }
         return false;
       },

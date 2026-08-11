@@ -4,6 +4,9 @@
  */
 
 // Parâmetros fixos para a derivação da chave e encriptação
+// NOTA: O salt na Web ('caderno-e2ee-salt-v1') é diferente do salt no Rust ('caderno-keychain-salt').
+// Isso é mantido assim por razões de retrocompatibilidade, já que a Web e o Rust
+// criptografam dados em domínios isolados (Nuvem vs SQLite local).
 const SALT = new TextEncoder().encode("caderno-e2ee-salt-v1");
 const ITERATIONS = 600000;
 const HASH_ALGORITHM = 'SHA-256';
@@ -44,7 +47,7 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
 export async function importHexKey(hexString: string): Promise<CryptoKey> {
   const bytes = new Uint8Array(Math.ceil(hexString.length / 2));
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hexString.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(hexString.substring(i * 2, i * 2 + 2), 16);
   }
   return crypto.subtle.importKey(
     'raw',
@@ -119,10 +122,14 @@ export async function decryptText(encryptedBase64: string, masterKey: CryptoKey)
 // === Funções Utilitárias para conversão Base64 / ArrayBuffer ===
 
 function bufferToBase64(buffer: Uint8Array): string {
-  let binary = '';
   const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  
+  // Otimização para buffers maiores: processa em chunks para não estourar a call stack
+  const CHUNK_SIZE = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    binary += String.fromCodePoint.apply(null, Array.from(chunk));
   }
   return btoa(binary); // Função global do navegador/Tauri
 }
