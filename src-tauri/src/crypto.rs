@@ -8,7 +8,7 @@ use pbkdf2::pbkdf2_hmac;
 use rand::RngCore;
 use sha2::Sha256;
 
-// Type alias for AES-256-GCM with 16-byte nonce (used by the Node.js legacy code)
+// Type alias for AES-256-GCM with 16-byte nonce (used for module keys)
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
 

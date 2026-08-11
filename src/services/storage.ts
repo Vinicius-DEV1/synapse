@@ -1,5 +1,4 @@
-import { storage } from './firebase';
-import { ref, uploadBytes, getBytes } from 'firebase/storage';
+
 import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 
 /**
@@ -111,14 +110,8 @@ export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer
       return `drive://${driveFileId}`;
     }
   } catch (err) {
-    console.warn("Drive upload failed, falling back to Firebase", err);
+    throw err;
   }
-
-  // Fallback legado
-  const remotePath = `library/${bookId}.enc`;
-  const fileRef = ref(storage, remotePath);
-  await uploadBytes(fileRef, encrypted);
-  return remotePath;
 }
 
 /**
@@ -134,15 +127,7 @@ export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey):
     if (!token) throw new Error('Google Drive não autenticado');
     encryptedBuffer = await downloadFromDrive(token, fileId);
   } else {
-    const fileRef = ref(storage, remotePath);
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('timeout_storage')), 15000);
-    });
-    const result = await Promise.race([
-      getBytes(fileRef),
-      timeoutPromise
-    ]);
-    encryptedBuffer = result as ArrayBuffer;
+    throw new Error('Formato de caminho remoto legado não suportado (Firebase)');
   }
   
   return await decryptFile(encryptedBuffer, masterKey);
