@@ -176,6 +176,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         }
         Err(e) => Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .body(e.into_bytes())
             .unwrap(),
     }
