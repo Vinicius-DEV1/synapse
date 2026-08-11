@@ -77,7 +77,25 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
             .map_err(|e| e.to_string())?;
     }
 
-    Ok(())
+Ok(())
+}
+
+pub fn get_encrypted_file_size<P: AsRef<Path>>(input_path: P) -> Result<u64, String> {
+    let mut input_file =
+        File::open(input_path).map_err(|e| format!("Failed to open input: {}", e))?;
+
+    let mut header = [0u8; 16];
+    input_file
+        .read_exact(&mut header)
+        .map_err(|e| format!("Failed to read header: {}", e))?;
+
+    if &header[0..4] != MAGIC_BYTES {
+        return Err("Invalid file format (missing ENC1)".into());
+    }
+
+    let mut size_bytes = [0u8; 8];
+    size_bytes.copy_from_slice(&header[4..12]);
+    Ok(u64::from_le_bytes(size_bytes))
 }
 
 pub struct DecryptedRange {
