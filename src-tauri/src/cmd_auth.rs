@@ -333,7 +333,7 @@ pub async fn auth_setup(
             None => {
                 return Ok(LoginResponse {
                     success: false,
-                    error: Some("Banco nuo inicializado".into()),
+                    error: Some("Banco não inicializado".into()),
                     modules: vec![],
                     keys: None,
                 })

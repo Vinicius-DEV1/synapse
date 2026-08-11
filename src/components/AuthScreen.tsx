@@ -14,6 +14,20 @@ const INTIMIDATING_PHRASES = [
   "Desista logo. Vá fazer algo mais produtivo do que tentar quebrar o inquebrável."
 ];
 
+async function buildModuleKeys(rawKeys: Record<string, string> | null | undefined, masterKey: CryptoKey): Promise<Record<string, CryptoKey>> {
+  const keys: Record<string, CryptoKey> = {};
+  const modules = ['library', 'finance', 'notes', 'core', 'focus', 'vault', 'culture', 'anki', 'files', 'calendar', 'practice'];
+  
+  for (const mod of modules) {
+    if (rawKeys && rawKeys[mod]) {
+      keys[mod] = await importHexKey(rawKeys[mod]);
+    } else {
+      keys[mod] = masterKey;
+    }
+  }
+  return keys;
+}
+
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
   onSuccess: () => void;
@@ -133,32 +147,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
              }
           }
 
-          const moduleKeys: Record<string, CryptoKey> = {};
-          if (rawKeys) {
-            moduleKeys.library = rawKeys.library ? await importHexKey(rawKeys.library) : masterKey;
-            moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
-            moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
-            moduleKeys.core = masterKey;
-            moduleKeys.focus = masterKey;
-            moduleKeys.vault = masterKey;
-            moduleKeys.culture = masterKey;
-            moduleKeys.anki = masterKey;
-            moduleKeys.files = masterKey;
-            moduleKeys.calendar = masterKey;
-            moduleKeys.practice = masterKey;
-          } else {
-            moduleKeys.library = masterKey;
-            moduleKeys.finance = masterKey;
-            moduleKeys.notes = masterKey;
-            moduleKeys.core = masterKey;
-            moduleKeys.focus = masterKey;
-            moduleKeys.vault = masterKey;
-            moduleKeys.culture = masterKey;
-            moduleKeys.anki = masterKey;
-            moduleKeys.files = masterKey;
-            moduleKeys.calendar = masterKey;
-            moduleKeys.practice = masterKey;
-          }
+          const moduleKeys = await buildModuleKeys(rawKeys, masterKey);
           
           if (cloudCheck.isNew) {
             await initializeCloudValidator(masterKey);
@@ -217,32 +206,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
              }
           }
 
-          const moduleKeys: Record<string, CryptoKey> = {};
-          if (rawKeys) {
-            moduleKeys.library = rawKeys.library ? await importHexKey(rawKeys.library) : masterKey;
-            moduleKeys.finance = rawKeys.finance ? await importHexKey(rawKeys.finance) : masterKey;
-            moduleKeys.notes = rawKeys.notes ? await importHexKey(rawKeys.notes) : masterKey;
-            moduleKeys.core = masterKey;
-            moduleKeys.focus = masterKey;
-            moduleKeys.vault = masterKey;
-            moduleKeys.culture = masterKey;
-            moduleKeys.anki = masterKey;
-            moduleKeys.files = masterKey;
-            moduleKeys.calendar = masterKey;
-            moduleKeys.practice = masterKey;
-          } else {
-            moduleKeys.library = masterKey;
-            moduleKeys.finance = masterKey;
-            moduleKeys.notes = masterKey;
-            moduleKeys.core = masterKey;
-            moduleKeys.focus = masterKey;
-            moduleKeys.vault = masterKey;
-            moduleKeys.culture = masterKey;
-            moduleKeys.anki = masterKey;
-            moduleKeys.files = masterKey;
-            moduleKeys.calendar = masterKey;
-            moduleKeys.practice = masterKey;
-          }
+          const moduleKeys = await buildModuleKeys(rawKeys, masterKey);
 
           
 
