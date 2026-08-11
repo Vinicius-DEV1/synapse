@@ -20,6 +20,16 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
     const crdtState = getYDocStateAsBase64(ydocRef.current);
     latestContentRef.current = { html, crdt: crdtState };
 
+    // Debug: rastrear IDs de encrypted-image no HTML salvo
+    const encImgMatches = html.match(/data-drive-file-id="([^"]+)"/g);
+    const blobMatches = html.match(/src="blob:[^"]+"/g);
+    if (encImgMatches || blobMatches) {
+      console.log(`[EditorSave] HTML contém ${encImgMatches?.length || 0} encrypted-image(s): ${encImgMatches?.join(', ') || 'nenhuma'}`);
+      if (blobMatches) {
+        console.warn(`[EditorSave] ⚠️ HTML contém ${blobMatches.length} blob URL(s) que VÃO QUEBRAR no restart: ${blobMatches.join(', ')}`);
+      }
+    }
+
     if (pageId) {
       window.__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
     }
@@ -32,9 +42,12 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
 
     saveTimeoutRef.current = setTimeout(() => {
       if (!currentContent) return;
+      console.log(`[EditorSave:Debounce] Salvando página ${currentPageId}. HTML length=${currentContent.html.length}`);
       const saveResult = currentOnSave(currentContent.html, currentContent.crdt, []) as any;
       if (saveResult && typeof saveResult.then === 'function') {
-        saveResult.catch((err: any) => {
+        saveResult.then(() => {
+          console.log(`[EditorSave:Debounce] Save OK para ${currentPageId}`);
+        }).catch((err: any) => {
           console.error(`[Caderno:Debounce] Save FAILED for ${currentPageId}:`, err);
         });
       }

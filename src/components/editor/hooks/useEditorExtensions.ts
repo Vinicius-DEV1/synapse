@@ -33,7 +33,7 @@ import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
 import { CalendarEventWidgetBlock } from '../../editor-extensions/CalendarEventWidgetBlock';
 import { CustomDivider } from '../../editor-extensions/CustomDivider';
-
+import { BlobImageInterceptor } from '../../editor-extensions/BlobImageInterceptor';
 
 // Only '-' creates bullet list (removes * and + shortcuts)
 const CustomBulletList = BulletList.extend({
@@ -96,7 +96,8 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       AlarmWidgetBlock,
       FileWidgetBlock,
       CalendarEventWidgetBlock,
-      CustomDivider
+      CustomDivider,
+      BlobImageInterceptor,
     ];
   }, [ydoc]);
 }

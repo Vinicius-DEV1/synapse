@@ -18,7 +18,7 @@ export const tauriVideoApi = {
   remuxDefaultTrack: async (sourcePath: string, filename: string, trackIndex: string) => await invoke('video_remux_default_track', { sourcePath, filename, trackIndex }),
   convertToMp4: async (sourcePath: string, filename: string) => await invoke('video_convert_mp4', { sourcePath, filename }),
   getStreamPort: async () => await invoke('video_get_stream_port'),
-  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
+  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: new Uint8Array(buffer) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
   processUpload: async (sourcePath: string, filename: string, webQuality: string, conversionPreset: string, duration: number) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality, conversionPreset, duration }),
   openFileDialog: async () => {
@@ -51,7 +51,7 @@ export const tauriVideoApi = {
 export const tauriLofiApi = {
   getLocalPath: async (filename: string) => await invoke('lofi_get_local_path', { filename }),
   deleteLocal: async (filename: string) => await invoke('lofi_delete_local', { filename }),
-  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
+  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: new Uint8Array(buffer) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename })
 };
 

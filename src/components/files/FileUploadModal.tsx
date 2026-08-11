@@ -56,7 +56,7 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         let uploadBuffer = arrayBuffer;
 
         if (window.api?.files?.saveLocal) {
-          localPath = await window.api.files.saveLocal(file.name, Array.from(bytes));
+          localPath = await window.api.files.saveLocal(file.name, new Uint8Array(bytes));
         }
         
         setProgress(40);

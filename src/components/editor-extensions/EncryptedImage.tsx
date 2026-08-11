@@ -47,7 +47,9 @@ const EncryptedImageNodeView = (props: any) => {
 
   // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
   const loadImage = useCallback(async () => {
+    console.log(`[EncryptedImage:loadImage] Iniciando. driveFileId="${driveFileId}", masterKey=${!!masterKey}`);
     if (!driveFileId || !masterKey) {
+      console.warn(`[EncryptedImage:loadImage] Abortando - driveFileId ou masterKey ausente`);
       setState('error');
       return;
     }
@@ -63,12 +65,15 @@ const EncryptedImageNodeView = (props: any) => {
     try {
       // Se for um upload recém-colado
       if (driveFileId.startsWith('uploading_')) {
+        console.log(`[EncryptedImage:loadImage] Detectado uploading_ prefix. Buscando file pendente...`);
         let file = window.__pendingImageUploads?.get(driveFileId);
+        console.log(`[EncryptedImage:loadImage] File na memória: ${file ? 'SIM' : 'NÃO'}`);
         
         // Se a página foi recarregada e perdemos o file da memória,
         // tentamos recuperar do cache local!
         if (!file) {
           const cached = await getCachedImage(driveFileId);
+          console.log(`[EncryptedImage:loadImage] Cache recovery: ${cached ? 'SIM' : 'NÃO'}`);
           if (cached) {
             file = new File([cached.data], 'image-recovered', { type: cached.mimeType });
           }
@@ -79,7 +84,9 @@ const EncryptedImageNodeView = (props: any) => {
         }
 
         if (file) {
+          console.log(`[EncryptedImage:loadImage] Fazendo upload real...`);
           const realDriveId = await uploadEncryptedImage(file, masterKey);
+          console.log(`[EncryptedImage:loadImage] Upload concluído! realDriveId="${realDriveId}". Atualizando atributo...`);
           if (window.__pendingImageUploads) {
             window.__pendingImageUploads.delete(driveFileId);
           }
@@ -91,7 +98,9 @@ const EncryptedImageNodeView = (props: any) => {
         }
       }
 
+      console.log(`[EncryptedImage:loadImage] Buscando URL descriptografada para "${driveFileId}"...`);
       const url = await getDecryptedImageUrl(driveFileId, masterKey);
+      console.log(`[EncryptedImage:loadImage] URL obtida: "${url}"`);
       blobUrlRef.current = url;
       setBlobUrl(url);
       setState('loaded');
