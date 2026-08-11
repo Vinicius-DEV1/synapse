@@ -1,7 +1,7 @@
 use aes_gcm::{
     aead::{consts::U16, Aead, KeyInit},
     aes::Aes256,
-    AesGcm,
+    AesGcm, Aes256Gcm,
 };
 use hex;
 use pbkdf2::pbkdf2_hmac;
@@ -131,11 +131,11 @@ pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String>
         return Err("Key must be 32 bytes".into());
     }
 
-    let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
+    let cipher = Aes256Gcm::new(aes_gcm::aead::Key::<Aes256Gcm>::from_slice(&key_bytes));
 
-    let mut iv = [0u8; 16];
+    let mut iv = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut iv);
-    let nonce = aes_gcm::Nonce::<U16>::from_slice(&iv);
+    let nonce = aes_gcm::Nonce::from_slice(&iv);
 
     let ciphertext_with_tag = cipher
         .encrypt(nonce, plaintext.as_bytes())
@@ -167,20 +167,28 @@ pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String,
         return Err("Key must be 32 bytes".into());
     }
 
-    let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
-
     let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
     let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
     let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
 
-    let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
-
     let mut ciphertext_with_tag = encrypted_bytes.clone();
     ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
 
-    let decrypted_bytes = cipher
-        .decrypt(nonce, ciphertext_with_tag.as_ref())
-        .map_err(|e| format!("Decryption failed: {:?}", e))?;
+    if nonce_bytes.len() == 12 {
+        let cipher = Aes256Gcm::new(aes_gcm::aead::Key::<Aes256Gcm>::from_slice(&key_bytes));
+        let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
+        let decrypted_bytes = cipher
+            .decrypt(nonce, ciphertext_with_tag.as_ref())
+            .map_err(|e| format!("Decryption failed: {:?}", e))?;
+        return String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into());
+    } else if nonce_bytes.len() == 16 {
+        let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
+        let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
+        let decrypted_bytes = cipher
+            .decrypt(nonce, ciphertext_with_tag.as_ref())
+            .map_err(|e| format!("Decryption failed: {:?}", e))?;
+        return String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into());
+    }
 
-    String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into())
+    Err("Invalid IV length".into())
 }

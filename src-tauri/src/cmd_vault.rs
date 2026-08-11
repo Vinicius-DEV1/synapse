@@ -259,27 +259,33 @@ pub fn vault_upsert_item(item: VaultItem, db_state: State<'_, DbState>) -> Resul
     let enc_user = item
         .username
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
     let enc_email = item
         .email
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
     let enc_pass = item
         .password
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
     let enc_url = item
         .url
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
     let enc_notes = item
         .notes
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
     let enc_custom = item
         .custom_fields
         .as_ref()
-        .map(|s| crate::crypto::encrypt_content(&vault_key, s).unwrap_or_default());
+        .map(|s| crate::crypto::encrypt_content(&vault_key, s))
+        .transpose()?;
 
     // Checar se a senha mudou para salvar no historico
     if let Some(ref new_pass_enc) = enc_pass {
