@@ -1,3 +1,7 @@
+import { encryptVaultField, decryptVaultField } from '../../services/vault-crypto';
+
+const getVaultKey = () => (window as any).__cadernoVaultKey;
+
 export const webVaultApi = (db: any, generateId: () => string) => ({
   getGroups: async () => {
     const all = await db.getAll('vault_groups') || [];
@@ -39,11 +43,39 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     } else {
       all = await db.getAll('vault_items');
     }
-    return all.filter((i: any) => !i.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const filtered = all.filter((i: any) => !i.deleted_at).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    // Decrypt fields
+    const key = getVaultKey();
+    if (key) {
+      for (const item of filtered) {
+        if (item.label) item.label = await decryptVaultField(item.label, key);
+        if (item.username) item.username = await decryptVaultField(item.username, key);
+        if (item.email) item.email = await decryptVaultField(item.email, key);
+        if (item.password) item.password = await decryptVaultField(item.password, key);
+        if (item.url) item.url = await decryptVaultField(item.url, key);
+        if (item.notes) item.notes = await decryptVaultField(item.notes, key);
+        if (item.custom_fields) item.custom_fields = await decryptVaultField(item.custom_fields, key);
+      }
+    }
+    return filtered;
   },
   getItem: async (id: string) => {
     const item = await db.get('vault_items', id);
-    return item && !item.deleted_at ? item : null;
+    if (item && !item.deleted_at) {
+      const key = getVaultKey();
+      if (key) {
+        if (item.label) item.label = await decryptVaultField(item.label, key);
+        if (item.username) item.username = await decryptVaultField(item.username, key);
+        if (item.email) item.email = await decryptVaultField(item.email, key);
+        if (item.password) item.password = await decryptVaultField(item.password, key);
+        if (item.url) item.url = await decryptVaultField(item.url, key);
+        if (item.notes) item.notes = await decryptVaultField(item.notes, key);
+        if (item.custom_fields) item.custom_fields = await decryptVaultField(item.custom_fields, key);
+      }
+      return item;
+    }
+    return null;
   },
   upsertItem: async (item: any) => {
     const id = item.id || generateId();
@@ -71,9 +103,21 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
       created_at: item.created_at || now,
       updated_at: now,
       deleted_at: null,
-      // Update password_changed_at only when password actually changes
       password_changed_at: passwordChanged ? now : (item.password_changed_at || now),
     };
+
+    // Encrypt fields before saving
+    const key = getVaultKey();
+    if (key) {
+      if (newItem.label) newItem.label = await encryptVaultField(newItem.label, key);
+      if (newItem.username) newItem.username = await encryptVaultField(newItem.username, key);
+      if (newItem.email) newItem.email = await encryptVaultField(newItem.email, key);
+      if (newItem.password) newItem.password = await encryptVaultField(newItem.password, key);
+      if (newItem.url) newItem.url = await encryptVaultField(newItem.url, key);
+      if (newItem.notes) newItem.notes = await encryptVaultField(newItem.notes, key);
+      if (newItem.custom_fields) newItem.custom_fields = await encryptVaultField(newItem.custom_fields, key);
+    }
+
     await db.put('vault_items', newItem);
   },
   deleteItem: async (id: string) => {

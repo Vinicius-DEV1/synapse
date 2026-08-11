@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert, KeyRound, Timer } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
+import { getVaultKeyHash } from '../services/vault-crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud, getSecurityLock, recordFailedAttempt, clearFailedAttempts } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
 import { platform } from '../services/platform';
@@ -102,6 +103,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
 
         const masterKey = await deriveMasterKey(password);
+        (window as any).__cadernoVaultKey = await getVaultKeyHash(password);
         const masterHex = await exportKeyToHex(masterKey);
         
         let existingKeysToUse: Record<string, string> = {
@@ -178,9 +180,14 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         if (res.success) {
           await clearFailedAttempts();
           const masterKey = await deriveMasterKey(password);
+        (window as any).__cadernoVaultKey = await getVaultKeyHash(password);
           let rawKeys = res.keys;
-          
-          if (rawKeys) {
+
+          // Deriva a chave do cofre e expõe no objeto global para a webVaultApi
+          const vaultKeyHash = await getVaultKeyHash(password);
+          (window as any).__cadernoVaultKey = vaultKeyHash;
+
+          if (!rawKeys && isSetup) {
             pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
           }
           
