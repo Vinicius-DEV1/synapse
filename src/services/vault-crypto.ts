@@ -68,7 +68,7 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
     return `${ivHex}:${authTagHex}:${cipherTextHex}`;
   } catch (e) {
     console.error("Vault Encryption Error:", e);
-    return text;
+    throw new Error("Failed to encrypt vault field");
   }
 }
 

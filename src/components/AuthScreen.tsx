@@ -187,16 +187,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         if (res.success) {
           await clearFailedAttempts();
           const masterKey = await deriveMasterKey(password);
-        (window as any).__cadernoVaultKey = await getVaultKeyHash(password);
           let rawKeys = res.keys;
 
           // Deriva a chave do cofre e expõe no objeto global para a webVaultApi
           const vaultKeyHash = await getVaultKeyHash(password);
           (window as any).__cadernoVaultKey = vaultKeyHash;
-
-          if (!rawKeys && isSetup) {
-            pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
-          }
           
           let cloudKeys = null;
           try {

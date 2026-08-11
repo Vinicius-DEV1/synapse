@@ -10,6 +10,9 @@ export const tauriAuthApi = {
   setup: async (password: string, existingKeys?: any) => {
     return await invoke('auth_setup', { password, existingKeys });
   },
+  forceUpdateKeychain: async (password: string, keys: any) => {
+    return await invoke('auth_force_update_keychain', { password, keys });
+  },
   changePassword: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
   getVisitors: async () => [],
   createVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
