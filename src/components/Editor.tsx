@@ -170,7 +170,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             imagePasted = true;
             const file = item.getAsFile();
             if (file && editor) {
-              const masterKey = window.__cadernoModuleKeys?.['notes'];
+              const masterKey = state.moduleKeys?.['notes'];
               console.log(`[Editor:handlePaste] Imagem detectada. masterKey=${!!masterKey}, file.type="${file.type}", file.size=${file.size}`);
               if (masterKey) {
                 const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
@@ -218,7 +218,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
             if (file.type.indexOf('image') === 0) {
               imageDropped = true;
               if (editor) {
-                const masterKey = window.__cadernoModuleKeys?.['notes'];
+                const masterKey = state.moduleKeys?.['notes'];
                 const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
                 const pos = coordinates ? coordinates.pos : undefined;
 

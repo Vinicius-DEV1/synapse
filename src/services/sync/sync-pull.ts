@@ -167,8 +167,26 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               batch.map(async (docSnap) => {
                 const cloudData = docSnap.data();
                 try {
-                  const decryptedJson = await decryptText(cloudData.encryptedData, key);
-                  const parsed = JSON.parse(decryptedJson);
+                  const decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
+                  let finalJson = decryptedJsonOrB64;
+                  
+                  if (cloudData.isCompressed) {
+                    try {
+                      const binary_string = atob(decryptedJsonOrB64);
+                      const len = binary_string.length;
+                      const bytes = new Uint8Array(len);
+                      for (let j = 0; j < len; j++) {
+                        bytes[j] = binary_string.charCodeAt(j);
+                      }
+                      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+                      finalJson = await new Response(stream).text();
+                    } catch (decErr) {
+                      console.error(`Erro ao descomprimir doc`, decErr);
+                      throw decErr;
+                    }
+                  }
+                  
+                  const parsed = JSON.parse(finalJson);
                   return { docSnap, cloudData, parsed, error: null };
                 } catch (err: any) {
                   return { docSnap, cloudData, parsed: null, error: err };

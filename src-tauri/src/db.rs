@@ -90,32 +90,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN crdt_state TEXT", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN encrypted_content TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE pages ADD COLUMN is_pinned INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE pages ADD COLUMN pinned_order REAL DEFAULT 0.0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE pages ADD COLUMN is_locked INTEGER DEFAULT 0",
-        [],
-    );
-
-    let _ = conn.execute(
-        "ALTER TABLE tutor_sessions ADD COLUMN custom_prompt TEXT",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN reminders TEXT DEFAULT '[]'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN notified_reminders TEXT DEFAULT '[]'",
-        [],
-    );
 
     // Novas colunas (Migrações dinâmicas para esquemas antigos que foram atualizados via web/sync)
     let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
@@ -125,81 +100,12 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN description TEXT", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN password_salt TEXT", []);
 
-    let _ = conn.execute(
-        "ALTER TABLE transactions ADD COLUMN is_paid INTEGER DEFAULT 1",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE transactions ADD COLUMN is_recurring INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE transactions ADD COLUMN recurrence_period TEXT",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE transactions ADD COLUMN recurrence_end_date TEXT",
-        [],
-    );
-
     let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN description TEXT", []);
     let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN link TEXT", []);
 
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_color TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_image TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN collections TEXT DEFAULT '[]'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN total_pages INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN current_page INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN reading_status TEXT DEFAULT 'unread'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN last_read_page TEXT",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN epub_locations TEXT",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN created_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN updated_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN deleted_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN reading_preferences TEXT",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN language TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN last_read_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN original_name TEXT",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_books ADD COLUMN published_year INTEGER",
-        [],
-    );
 
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_web_file_id TEXT", []);
@@ -207,10 +113,6 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN local_subtitle_path TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN subtitles_json TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN audio_tracks_json TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE videos ADD COLUMN is_local INTEGER DEFAULT 1",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN collection_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN collection_name TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN youtube_url TEXT", []);
@@ -218,112 +120,20 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN created_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN updated_at DATETIME", []);
 
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN type TEXT DEFAULT 'event'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN type_ TEXT DEFAULT 'event'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN status TEXT DEFAULT 'pending'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN color TEXT DEFAULT '#3b82f6'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN deleted_at DATETIME DEFAULT NULL",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN recurrence_rule TEXT",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN reminder_minutes INTEGER",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN created_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE calendar_events ADD COLUMN updated_at DATETIME",
-        [],
-    );
-
     // Novas tabelas extras de migração profunda
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN paid_amount REAL", []);
     let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN updated_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);
 
     let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN rects TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE library_highlights ADD COLUMN highlight_type TEXT",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE library_highlights ADD COLUMN note TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE library_highlights ADD COLUMN created_at DATETIME",
-        [],
-    );
-
-    let _ = conn.execute(
-        "ALTER TABLE library_reading_sessions ADD COLUMN start_page INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE library_reading_sessions ADD COLUMN end_page INTEGER DEFAULT 0",
-        [],
-    );
 
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN access_link TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN total_progress INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN is_goal BOOLEAN DEFAULT 0",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN goal_note TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_id TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_source TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN last_sync_at DATETIME",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN volumes INTEGER", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN chapters INTEGER", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN episodes_count INTEGER",
-        [],
-    );
-
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN season_number INTEGER",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN episode_in_season INTEGER",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN aired_at DATETIME",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN updated_at DATETIME",
-        [],
-    );
-
-    let _ = conn.execute(
-        "ALTER TABLE anki_srs_state ADD COLUMN scheduled_days INTEGER DEFAULT 0",
-        [],
-    );
 
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN card_type TEXT", []);
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN validation_mode TEXT", []);
@@ -398,35 +208,15 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         );
     }
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE videos ADD COLUMN is_local INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE videos ADD COLUMN progress REAL DEFAULT 0.0",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN last_watched_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE lofis ADD COLUMN drive_file_id TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE lofis ADD COLUMN is_local INTEGER DEFAULT 0",
-        [],
-    );
 
     // Migration for anki_decks parent_id
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);
 
     // Migration for page_history
-    let _ = conn.execute(
-        "ALTER TABLE page_history ADD COLUMN encrypted_content TEXT",
-        [],
-    );
 
     // Migration for anki tags
-    let _ = conn.execute(
-        "ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'",
-        [],
-    );
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 
@@ -437,68 +227,19 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     // Migrations for culture module
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN access_link TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN total_progress INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN is_goal INTEGER DEFAULT 0",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN goal_note TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_id TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN api_source TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN last_sync_at TEXT", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN volumes INTEGER", []);
     let _ = conn.execute("ALTER TABLE culture_items ADD COLUMN chapters INTEGER", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN episodes_count INTEGER",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_items ADD COLUMN deleted_at DATETIME DEFAULT NULL",
-        [],
-    );
-
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN season_number INTEGER",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN episode_in_season INTEGER",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE culture_episodes ADD COLUMN aired_at TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE culture_episodes ADD COLUMN updated_at TEXT",
-        [],
-    );
 
     // Migrations for Anki FSRS and Sync
-    let _ = conn.execute(
-        "ALTER TABLE anki_srs_state ADD COLUMN scheduled_days INTEGER DEFAULT 0",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE anki_srs_state ADD COLUMN last_review DATETIME",
-        [],
-    );
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS anki_deck_settings (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, new_limit INTEGER DEFAULT 20, review_limit INTEGER DEFAULT 200, learning_steps TEXT DEFAULT '1m,10m', relearning_steps TEXT DEFAULT '1m,10m', fsrs_weights TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL)", []);
-    let _ = conn.execute(
-        "ALTER TABLE anki_deck_settings ADD COLUMN deleted_at DATETIME DEFAULT NULL",
-        [],
-    );
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_module TEXT", []);
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_id TEXT", []);
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN media_url TEXT", []);
-    let _ = conn.execute(
-        "ALTER TABLE anki_cards ADD COLUMN card_type TEXT DEFAULT 'basic'",
-        [],
-    );
-    let _ = conn.execute(
-        "ALTER TABLE anki_cards ADD COLUMN validation_mode TEXT DEFAULT 'manual'",
-        [],
-    );
 
     Ok(conn)
 }
