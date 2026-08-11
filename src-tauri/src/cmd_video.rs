@@ -1,3 +1,42 @@
+#[tauri::command]
+pub async fn video_download_drive_file(
+    drive_id: String,
+    access_token: String,
+    dest_filename: String,
+    app: AppHandle,
+) -> Result<String, String> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+    use std::path::Path;
+
+    let videos_dir = get_videos_dir(&app)?;
+    let safe_filename = sanitize_filename(&dest_filename);
+    let path = videos_dir.join(&safe_filename);
+
+    let url = format!("https://www.googleapis.com/drive/v3/files/{}?alt=media", drive_id);
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", access_token))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("Drive download failed: HTTP {}", response.status()));
+    }
+
+    let mut stream = response.bytes_stream();
+    let mut file = tokio::fs::File::create(&path).await.map_err(|e| e.to_string())?;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(path.to_string_lossy().to_string())
+}
+
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;

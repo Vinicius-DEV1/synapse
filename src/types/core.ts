@@ -390,6 +390,7 @@ declare global {
         readLocalFile?: (path: string) => Promise<Uint8Array>;
         uploadFileToDrive?: (localPath: string, driveFilename: string, folderId: string, accessToken: string) => Promise<string>;
         saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
+        downloadFromDrive?: (driveId: string, accessToken: string, destFilename: string) => Promise<string>;
         copyLocal: (sourcePath: string, filename: string) => Promise<string>;
         extractSubtitles: (localPath: string, trackIndex?: string) => Promise<string | null>;
         scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;

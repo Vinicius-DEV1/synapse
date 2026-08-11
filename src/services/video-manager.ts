@@ -52,8 +52,13 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
   const targetFileName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
 
-  const buffer = await downloadFromDrive(token, targetDriveId, onProgress);
-  const localPath = await window.api.video.saveLocal(targetFileName, buffer);
+  let localPath = "";
+  if (window.api.video.downloadFromDrive) {
+    localPath = await window.api.video.downloadFromDrive(targetDriveId, token, targetFileName);
+  } else {
+    const buffer = await downloadFromDrive(token, targetDriveId, onProgress);
+    localPath = await window.api.video.saveLocal(targetFileName, buffer);
+  }
   
   // Atualiza banco de dados marcando como local
   await window.api.sync.upsertRow(VIDEO_TABLE, {
