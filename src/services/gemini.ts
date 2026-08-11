@@ -15,28 +15,7 @@ export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
   const doc = await db.get('config', 'geminiApiKeys');
   let keys: GeminiKeyEntry[] | null = doc?.value || null;
   
-  // Migration logic from old local storage
-  if (!keys && window.api?.config) {
-    const legacyKeys = await window.api.config.get('geminiApiKeys');
-    if (legacyKeys) {
-      keys = legacyKeys;
-      await saveGeminiKeys(keys);
-    } else {
-      const legacyKey = await window.api.config.get('geminiApiKey');
-      if (legacyKey && typeof legacyKey === 'string') {
-        keys = [{
-          id: crypto.randomUUID(),
-          key: legacyKey,
-          status: 'active',
-          addedAt: Date.now()
-        }];
-        await saveGeminiKeys(keys);
-        await window.api.config.set('geminiApiKey', null);
-      } else {
-        keys = [];
-      }
-    }
-  } else if (!keys) {
+  if (!keys) {
     keys = [];
   }
   
@@ -65,10 +44,6 @@ export async function saveGeminiKeys(keys: GeminiKeyEntry[]): Promise<void> {
     value: keys,
     updated_at: new Date().toISOString()
   });
-  // Also save locally as backup just in case
-  if (window.api?.config) {
-    await window.api.config.set('geminiApiKeys', keys);
-  }
 }
 
 
