@@ -1,8 +1,23 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { open as openBrowser } from '@tauri-apps/plugin-shell';
+import { listen } from '@tauri-apps/api/event';
 
 export const tauriVideoApi = {
+  downloadFromDrive: async (driveId: string, accessToken: string, destFilename: string) => {
+    return await invoke<string>('video_download_drive_file', { driveId, accessToken, destFilename });
+  },
+  generateWebVersion: async (sourcePath: string, destFilename: string, webQuality: string, conversionPreset: string, duration: number) => {
+    return await invoke<{ web_path: string, web_size: number }>('video_generate_web', { sourcePath, destFilename, webQuality, conversionPreset, duration });
+  },
+  onDownloadProgress: (callback: (percent: number) => void) => {
+    const unlistenPromise = listen<number>('video_download_progress', (event) => {
+      callback(event.payload);
+    });
+    return () => {
+      unlistenPromise.then(unlisten => unlisten());
+    };
+  },
   getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
   readLocalFile: async (path: string): Promise<Uint8Array> => {
     const arr: number[] = await invoke('video_read_file', { path });
@@ -18,7 +33,7 @@ export const tauriVideoApi = {
   remuxDefaultTrack: async (sourcePath: string, filename: string, trackIndex: string) => await invoke('video_remux_default_track', { sourcePath, filename, trackIndex }),
   convertToMp4: async (sourcePath: string, filename: string) => await invoke('video_convert_mp4', { sourcePath, filename }),
   getStreamPort: async () => await invoke('video_get_stream_port'),
-  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: new Uint8Array(buffer) }),
+  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
   processUpload: async (sourcePath: string, filename: string, webQuality: string, conversionPreset: string, duration: number) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality, conversionPreset, duration }),
   openFileDialog: async () => {
@@ -51,7 +66,7 @@ export const tauriVideoApi = {
 export const tauriLofiApi = {
   getLocalPath: async (filename: string) => await invoke('lofi_get_local_path', { filename }),
   deleteLocal: async (filename: string) => await invoke('lofi_delete_local', { filename }),
-  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: new Uint8Array(buffer) }),
+  saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename })
 };
 

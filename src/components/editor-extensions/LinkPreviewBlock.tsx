@@ -35,6 +35,7 @@ const LinkPreviewComponent = (props: any) => {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sincroniza o estado local com os atributos do nó toda vez que ele sofrer atualizações,
   // como acontece no drag and drop do TipTap (reciclagem de nós)
@@ -46,6 +47,17 @@ const LinkPreviewComponent = (props: any) => {
     setFetchedUploadDate(uploadDate);
     setLoading(isLoading);
   }, [url, title, channel, duration, isPlaylist, uploadDate, isLoading]);
+
+  useEffect(() => {
+    const handleDeleteRequest = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.url === url) {
+        setShowDeleteConfirm(true);
+      }
+    };
+    window.addEventListener('link-widget-delete-request', handleDeleteRequest);
+    return () => window.removeEventListener('link-widget-delete-request', handleDeleteRequest);
+  }, [url]);
 
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
@@ -270,7 +282,7 @@ const LinkPreviewComponent = (props: any) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    props.deleteNode();
+    setShowDeleteConfirm(true);
   };
 
   const [faviconError, setFaviconError] = useState(false);
@@ -475,6 +487,37 @@ const LinkPreviewComponent = (props: any) => {
             </div>
           </Portal>
         )}
+
+        {showDeleteConfirm && (
+          <Portal>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)}>
+              <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+                <h3 className="text-white font-semibold text-lg text-center">Remover Link</h3>
+                <p className="text-dark-subtext text-sm text-center">
+                  Tem certeza que deseja remover este link da página?
+                </p>
+                
+                <div className="flex gap-2 mt-2">
+                  <button 
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      props.deleteNode();
+                    }}
+                    className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
       </div>
     </NodeViewWrapper>
   );
@@ -492,6 +535,13 @@ export const LinkPreviewBlock = Node.create({
       Backspace: ({ editor }) => {
         const { state, view } = editor;
         const { selection } = state;
+        
+        if (selection instanceof NodeSelection && selection.node.type.name === this.name) {
+          const url = selection.node.attrs.url;
+          window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
+          return true;
+        }
+
         const { $from, empty } = selection;
 
         if (!empty || $from.parentOffset !== 0) {
@@ -538,6 +588,17 @@ export const LinkPreviewBlock = Node.create({
             view.dispatch(tr);
             return true;
           }
+        }
+        return false;
+      },
+      Delete: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+
+        if (selection instanceof NodeSelection && selection.node.type.name === this.name) {
+          const url = selection.node.attrs.url;
+          window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
+          return true;
         }
         return false;
       },

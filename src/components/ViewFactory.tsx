@@ -56,7 +56,7 @@ export const ViewFactory = memo(function ViewFactory({
       case 'culture':
         return <CultureView />;
       case 'video':
-        return <VideoView />;
+        return <VideoView tabId={id} />;
       case 'anki':
         return <AnkiView />;
       case 'focus':

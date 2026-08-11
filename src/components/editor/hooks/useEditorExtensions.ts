@@ -32,6 +32,7 @@ import { FocusWidgetBlock } from '../../editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
 import { CalendarEventWidgetBlock } from '../../editor-extensions/CalendarEventWidgetBlock';
+import { MediaWidgetBlock } from '../../editor-extensions/MediaWidgetBlock';
 import { CustomDivider } from '../../editor-extensions/CustomDivider';
 import { BlobImageInterceptor } from '../../editor-extensions/BlobImageInterceptor';
 
@@ -96,6 +97,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       AlarmWidgetBlock,
       FileWidgetBlock,
       CalendarEventWidgetBlock,
+      MediaWidgetBlock,
       CustomDivider,
       BlobImageInterceptor,
     ];

@@ -79,7 +79,7 @@ export const createTauriApi = async () => {
     imageCache: {
       get: async (id: string) => await invoke('image_cache_get', { id }),
       put: async (id: string, data: ArrayBuffer, mimeType: string) => 
-        await invoke('image_cache_put', { id, data: new Uint8Array(data), mimeType })
+        await invoke('image_cache_put', { id, data: Array.from(new Uint8Array(data)), mimeType })
     },
     // --- FINANCE ---
     finance: tauriFinanceApi,

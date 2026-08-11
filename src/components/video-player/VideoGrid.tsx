@@ -21,6 +21,7 @@ interface VideoGridProps {
   onRenameFolder?: (id: string, newName: string) => void;
   onDeleteFolder?: (id: string) => void;
   onActiveCollectionChange?: (id: string | null, name: string | null) => void;
+  onGenerateWebVersion?: (video: VideoItem) => void;
 }
 
 interface VideoCollection {
@@ -34,7 +35,8 @@ interface VideoCollection {
 export default function VideoGrid({ 
   videos, viewMode = 'grid', onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, 
   onMoveVideo, isDeletingId, isDownloadingId, downloadProgress,
-  folders = [], onCreateFolder, onRenameFolder, onDeleteFolder, onActiveCollectionChange
+  folders = [], onCreateFolder, onRenameFolder, onDeleteFolder, onActiveCollectionChange,
+  onGenerateWebVersion
 }: VideoGridProps) {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [activeInfoVideo, setActiveInfoVideo] = useState<VideoItem | null>(null);
@@ -327,6 +329,7 @@ export default function VideoGrid({
             onDeleteCloud={onDeleteCloud}
             onMoveVideo={onMoveVideo}
             onShowInfo={setActiveInfoVideo}
+            onGenerateWebVersion={onGenerateWebVersion}
           />
         ))}
 

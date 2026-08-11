@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, MessageSquare } from 'lucide-react';
+import { useTasks } from '../../store/TaskContext';
 import { downloadYouTubeAndSync } from '../../services/video-manager';
 import { Portal } from '../ui/Portal';
 
@@ -22,6 +23,8 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  
+  const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
 
   const [selectedQuality, setSelectedQuality] = useState('best');
   const [filename, setFilename] = useState('');
@@ -90,56 +93,64 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
     if (!videoInfo) return;
     setIsDownloading(true);
     setError(null);
-    setProgress(0);
+    
+    const taskId = `youtube_dl_${Date.now()}`;
+    const abortController = new AbortController();
+    
+    addTask(taskId, `Download YouTube: ${videoInfo?.title || filename}`, abortController);
+    
+    onClose();
 
-    try {
-      if (isPlaylist && videoInfo.entries) {
-        const collectionId = crypto.randomUUID();
-        const total = videoInfo.entries.length;
-        let completed = 0;
+    const doDownload = async () => {
+      try {
+        if (isPlaylist && videoInfo.entries) {
+          const collectionId = crypto.randomUUID();
+          const total = videoInfo.entries.length;
+          let completed = 0;
 
-        for (const entry of videoInfo.entries) {
-          const entryTitle = entry.title || `Video_${completed+1}`;
-          
+          for (const entry of videoInfo.entries) {
+            const entryTitle = entry.title || `Video_${completed+1}`;
+            
+            await downloadYouTubeAndSync({
+              url: entry.webpage_url || entry.url || url,
+              quality: selectedQuality,
+              filename: `${entryTitle.replace(/[\\/:*?"<>|]/g, '')}.mp4`,
+              youtubeInfo: entry,
+              collectionId,
+              collectionName: collectionName,
+              selectedSubs,
+              onProgress: (p) => {
+                const basePercent = (completed / total) * 100;
+                const itemPercent = (p / 100) * (100 / total);
+                updateTaskProgress(taskId, basePercent + itemPercent, `[${completed + 1}/${total}] ${entryTitle}`);
+              }
+            });
+            completed++;
+          }
+        } else {
           await downloadYouTubeAndSync({
-            url: entry.webpage_url || entry.url || url,
+            url: url,
             quality: selectedQuality,
-            filename: `${entryTitle.replace(/[\\/:*?"<>|]/g, '')}.mp4`,
-            youtubeInfo: entry,
-            collectionId,
-            collectionName: collectionName,
+            filename: filename.replace(/[\\/:*?"<>|]/g, ''),
+            youtubeInfo: videoInfo,
             selectedSubs,
-            onProgress: (p) => {
-              const basePercent = (completed / total) * 100;
-              const itemPercent = (p / 100) * (100 / total);
-              setProgress(basePercent + itemPercent);
-            }
+            onProgress: (p) => updateTaskProgress(taskId, p)
           });
-          completed++;
         }
-      } else {
-        await downloadYouTubeAndSync({
-          url: url,
-          quality: selectedQuality,
-          filename: filename.replace(/[\\/:*?"<>|]/g, ''),
-          youtubeInfo: videoInfo,
-          selectedSubs,
-          onProgress: (p) => setProgress(p)
-        });
+        completeTask(taskId);
+        onSuccess();
+      } catch (err: any) {
+        failTask(taskId, err.message || 'Falha durante o download.');
       }
-      
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Falha durante o download.');
-      setIsDownloading(false);
-    }
+    };
+    
+    doDownload();
   };
 
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+        <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
           <h2 className="text-white font-medium flex items-center gap-2">
             <MonitorPlay size={18} className="text-red-500" />

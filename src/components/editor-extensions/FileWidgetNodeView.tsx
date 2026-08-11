@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
-import { File, FileText, Image as ImageIcon, Film, Download, Trash2, X, Folder } from 'lucide-react';
+import { File, FileText, Image as ImageIcon, Film, Download, Trash2, X, Folder, Plus, GripVertical } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import FileViewer from '../files/FileViewer';
@@ -81,7 +81,32 @@ export default function FileWidgetNodeView(props: any) {
   };
 
   return (
-    <NodeViewWrapper as="span" className="inline-block align-middle mx-1 my-1">
+    <NodeViewWrapper as="span" className="inline-block relative group align-middle mx-1 my-1">
+      {/* Custom Drag Handle & Add Below Button */}
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function') {
+              const pos = props.getPos();
+              props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+            }
+          }}
+          className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Adicionar linha abaixo"
+        >
+          <Plus size={16} />
+        </button>
+        <div 
+          data-drag-handle
+          className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Arrastar arquivo"
+        >
+          <GripVertical size={16} />
+        </div>
+      </div>
+
       <div 
         className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
           isLink 

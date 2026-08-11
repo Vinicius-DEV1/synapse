@@ -15,6 +15,7 @@ interface UseSlashCommandProps {
   setFileUploadModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, isLink: boolean } | null>>;
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCalendarEventModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTitle?: string } | null>>;
+  setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
 }
 
 export function useSlashCommand({
@@ -23,7 +24,8 @@ export function useSlashCommand({
   setAlarmModal,
   setFileUploadModal,
   setFileSelectModal,
-  setCalendarEventModal
+  setCalendarEventModal,
+  setMediaSelectModal
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -102,6 +104,23 @@ export function useSlashCommand({
       case 'callout': chain.toggleBlockquote().run(); break;
       case 'code': chain.insertContent({ type: 'codeBlock' }).run(); break;
       case 'group': chain.insertContent('<div class="group-collection"></div>').run(); break;
+      case 'file': chain.run(); setFileSelectModal(true); break;
+      case 'file-upload': chain.run(); setFileUploadModal({ isOpen: true, isLink: false }); break;
+      case 'file-link': chain.run(); setFileUploadModal({ isOpen: true, isLink: true }); break;
+      case 'video': chain.run(); setMediaSelectModal({ isOpen: true, type: 'video' }); break;
+      case 'livro': chain.run(); setMediaSelectModal({ isOpen: true, type: 'book' }); break;
+      case 'event': {
+        const parts = slashMenu.query.trim().split(' ');
+        let initialTitle = '';
+        
+        if (parts[0] && parts[0].toLowerCase() === 'event') parts.shift();
+        
+        initialTitle = parts.join(' ');
+        
+        chain.run();
+        setCalendarEventModal({ isOpen: true, initialTitle });
+        break;
+      }
       case 'question': chain.insertContent('<div class="question-block"></div>').run(); break;
       case 'toggle': chain.insertContent('<div class="toggle-block"><p></p></div>').run(); break;
       case 'blockquoteToggle': chain.insertContent('<div class="blockquote-toggle"><p></p></div>').run(); break;

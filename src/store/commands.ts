@@ -5,7 +5,12 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'UPDATE_TAB_MODULE':
       return {
         ...state,
-        tabs: state.tabs.map((t) => t.id === action.tabId ? { ...t, module: action.module } : t),
+        tabs: state.tabs.map((t) => t.id === action.tabId ? { 
+          ...t, 
+          module: action.module, 
+          ...(action.bookId !== undefined ? { bookId: action.bookId } : {}),
+          ...(action.moduleState !== undefined ? { moduleState: action.moduleState } : {}) 
+        } : t),
       };
     case 'OPEN_LIBRARY_BOOK':
       return {

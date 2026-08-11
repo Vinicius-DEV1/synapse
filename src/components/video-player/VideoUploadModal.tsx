@@ -124,7 +124,8 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         subtitleText = await processSubtitleFile(subtitleFile);
       }
       
-      const res = await onUpload({
+      // Fire and forget
+      onUpload({
         videoFile,
         subtitleText,
         duration: videoDuration,
@@ -136,11 +137,11 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         collectionName,
         webQuality,
         conversionPreset: (await import('../../utils/settings')).getSettings().videoConversionPreset,
-        onProgress: (percent) => setUploadProgress(percent),
-        onPhaseChange: (phase) => setUploadPhase(phase),
-        signal: abortCtrl.signal
+      }).catch(err => {
+        console.error("Erro no upload assíncrono", err);
       });
-      setUploadResult(res);
+      
+      onClose();
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message === 'Cancelado pelo usuário') {
         setError('Upload cancelado.');

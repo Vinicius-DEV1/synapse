@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, FolderInput, ArrowLeft, Info, Folder } from 'lucide-react';
+import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, FolderInput, ArrowLeft, Info, Folder, MonitorPlay } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { VideoItem } from '../../../types';
 
@@ -17,6 +17,7 @@ interface VideoCardProps {
   onDeleteCloud: (video: VideoItem) => void;
   onMoveVideo?: (video: VideoItem, folderId: string | null, folderName: string | null) => void;
   onShowInfo: (video: VideoItem) => void;
+  onGenerateWebVersion?: (video: VideoItem) => void;
 }
 
 const formatDuration = (seconds?: number) => {
@@ -28,7 +29,7 @@ const formatDuration = (seconds?: number) => {
 
 export const VideoCard = React.memo(({
   video, viewMode, isDeleting, isDownloading, downloadProgress, availableFolders,
-  onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, onMoveVideo, onShowInfo
+  onPlayVideo, onDownloadVideo, onDeleteLocal, onDeleteCloud, onMoveVideo, onShowInfo, onGenerateWebVersion
 }: VideoCardProps) => {
   const isList = viewMode === 'list' || viewMode === 'compact';
   const isCompact = viewMode === 'compact';
@@ -213,6 +214,19 @@ export const VideoCard = React.memo(({
                     </DropdownMenu.SubContent>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Sub>
+              )}
+              
+              {video.is_local && onGenerateWebVersion && (
+                <DropdownMenu.Item 
+                  className="flex items-center gap-2 px-2 py-1.5 text-xs text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 rounded-lg cursor-pointer outline-none transition-colors"
+                  onSelect={(e) => { 
+                    e.preventDefault();
+                    setTimeout(() => onGenerateWebVersion(video), 10); 
+                  }}
+                >
+                  <MonitorPlay size={14} />
+                  Gerar Versão Web...
+                </DropdownMenu.Item>
               )}
               
               {!video.is_local && (
