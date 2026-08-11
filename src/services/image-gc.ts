@@ -61,29 +61,60 @@ export async function runImageGarbageCollector(): Promise<void> {
 }
 
 /**
- * Busca todas as páginas do banco de dados (Web ou Desktop)
- * e extrai os IDs do Google Drive usados nas tags <encrypted-image>.
+ * Busca todas as tabelas do banco de dados (Web ou Desktop) que podem conter rich-text
+ * e extrai os IDs do Google Drive usados nas tags <encrypted-image> ou media_url.
  */
 async function extractUsedDriveFileIds(): Promise<Set<string>> {
   const usedIds = new Set<string>();
-  let pages: any[] = [];
-
-  if (isDesktopApp()) {
-    pages = await window.api.sync.getTable('pages');
-  } else {
-    const db = await getWebDb();
-    if (db) {
-      pages = await db.getAll('pages');
-    }
-  }
+  
+  // Tabelas e colunas que podem conter IDs do Drive
+  const tablesToCheck = [
+    { name: 'pages', cols: ['content'] },
+    { name: 'anki_cards', cols: ['front', 'back', 'media_url'] },
+    { name: 'diagrams', cols: ['content'] },
+    { name: 'ai_prompts', cols: ['content'] },
+    { name: 'calendar_events', cols: ['description'] },
+    { name: 'focus_sessions', cols: ['summary'] },
+    { name: 'library_reading_sessions', cols: ['note'] },
+    { name: 'library_highlights', cols: ['note'] }
+  ];
 
   const regex = /<encrypted-image[^>]*data-drive-file-id="([^"]+)"/g;
+  let db: any = null;
+  if (!isDesktopApp()) {
+    db = await getWebDb();
+  }
 
-  for (const page of pages) {
-    if (page.content) {
-      let match;
-      while ((match = regex.exec(page.content)) !== null) {
-        usedIds.add(match[1]);
+  for (const tableConfig of tablesToCheck) {
+    let rows: any[] = [];
+    if (isDesktopApp()) {
+      try {
+        rows = await window.api.sync.getTable(tableConfig.name);
+      } catch (e) {
+        console.warn(`[GC] Falha ao ler tabela ${tableConfig.name} no Desktop`, e);
+      }
+    } else if (db) {
+      try {
+        rows = await db.getAll(tableConfig.name);
+      } catch (e) {
+        console.warn(`[GC] Falha ao ler tabela ${tableConfig.name} no Web`, e);
+      }
+    }
+
+    for (const row of rows) {
+      for (const col of tableConfig.cols) {
+        const val = row[col];
+        if (typeof val === 'string' && val) {
+          // Extrai tags html
+          let match;
+          while ((match = regex.exec(val)) !== null) {
+            usedIds.add(match[1]);
+          }
+          // Extrai se for exatamente o media_url ou drive ID
+          if (col === 'media_url' && val.length > 20 && !val.includes('<')) {
+            usedIds.add(val);
+          }
+        }
       }
     }
   }
