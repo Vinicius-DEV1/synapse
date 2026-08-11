@@ -34,8 +34,13 @@ export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent:
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
-  const buffer = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
-  const localPath = await window.api.lofi.saveLocal(lofi.original_name, buffer);
+  let localPath = "";
+  if (window.api.video?.downloadFromDrive) {
+    localPath = await window.api.video.downloadFromDrive(lofi.drive_file_id, token, lofi.original_name);
+  } else {
+    const buffer = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
+    localPath = await window.api.lofi.saveLocal(lofi.original_name, buffer);
+  }
   
   await window.api.sync.upsertRow(LOFI_TABLE, {
     ...lofi,

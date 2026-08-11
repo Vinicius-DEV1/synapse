@@ -176,7 +176,7 @@ pub fn run() {
             cmd_video::video_delete_local,
             cmd_video::video_import_and_encrypt,
             cmd_video::video_process_upload,
-            cmd_video::video_save_local,
+            cmd_video::video_save_local, cmd_video::video_download_drive_file,
             cmd_video::video_scan_tracks,
             cmd_video::video_extract_subtitles,
             cmd_video::video_extract_audio,
