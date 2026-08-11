@@ -1,6 +1,11 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 
+// NOTA (Performance Web): O ffmpeg.wasm roda em um único worker e mantém todo o arquivo 
+// virtual na memória RAM (MEMFS).
+// Arquivos muito grandes (>500MB) causarão Out Of Memory (OOM) e travarão a aba do navegador.
+// O app delega o processamento pesado de vídeos para a versão Desktop (Tauri + binários nativos).
+
 let ffmpeg: FFmpeg | null = null;
 
 export async function getFFmpeg(onLog?: (msg: string) => void): Promise<FFmpeg> {
