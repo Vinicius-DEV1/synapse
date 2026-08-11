@@ -19,6 +19,7 @@ import { useStore } from '../store/useStore';
 import CalendarEventModal from './editor-extensions/CalendarEventModal';
 import MediaSelectModal from './MediaSelectModal';
 import MediaActionModal from './MediaActionModal';
+import FileActionModal from './FileActionModal';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
 import { useEditorSave } from './editor/hooks/useEditorSave';
@@ -49,6 +50,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const [calendarEventModal, setCalendarEventModal] = useState<{ isOpen: boolean, initialTitle?: string } | null>(null);
   const [mediaSelectModal, setMediaSelectModal] = useState<{ isOpen: boolean, type: 'video' | 'book' } | null>(null);
   const [mediaActionModal, setMediaActionModal] = useState<{ isOpen: boolean, mediaId: string, mediaType: 'video' | 'book', title: string } | null>(null);
+  const [fileActionModal, setFileActionModal] = useState<{ isOpen: boolean, fileId: string, title: string } | null>(null);
   
   const { state } = useStore();
   const currentPage = state.pages.find(p => p.id === pageId);
@@ -112,6 +114,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     };
     window.addEventListener('open-media-action', handleOpenMediaAction);
     return () => window.removeEventListener('open-media-action', handleOpenMediaAction);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenFileAction = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setFileActionModal({ isOpen: true, fileId: detail.fileId, title: detail.title });
+    };
+    window.addEventListener('open-file-action', handleOpenFileAction);
+    return () => window.removeEventListener('open-file-action', handleOpenFileAction);
   }, []);
 
   // 4. Slash Commands
@@ -532,12 +543,26 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
       )}
 
       {mediaActionModal?.isOpen && (
-        <MediaActionModal
-          isOpen={true}
-          mediaId={mediaActionModal.mediaId}
-          mediaType={mediaActionModal.mediaType}
+        <MediaActionModal 
+          isOpen={true} 
+          mediaId={mediaActionModal.mediaId} 
+          mediaType={mediaActionModal.mediaType} 
           title={mediaActionModal.title}
           onClose={() => setMediaActionModal(null)}
+        />
+      )}
+
+      {fileActionModal?.isOpen && (
+        <FileActionModal
+          isOpen={true}
+          fileId={fileActionModal.fileId}
+          title={fileActionModal.title}
+          onClose={() => setFileActionModal(null)}
+          onOpenViewer={() => {
+            window.dispatchEvent(new CustomEvent('open-quick-viewer', {
+              detail: { fileId: fileActionModal.fileId }
+            }));
+          }}
         />
       )}
     </div>

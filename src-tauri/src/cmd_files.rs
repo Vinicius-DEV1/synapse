@@ -3,7 +3,7 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -209,6 +209,10 @@ pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, St
     conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
 
+    // Limpeza de anotações caso o arquivo estivesse sendo usado no leitor completo como arquivo avulso (Soft Delete)
+    let _ = conn.execute("UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+    let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+
     Ok(true)
 }
 
@@ -235,7 +239,7 @@ pub fn files_save_local(
     filename: String,
     data: Vec<u8>,
     db_state: State<'_, DbState>,
-    app_handle: AppHandle,
+    _app_handle: AppHandle,
 ) -> Result<String, String> {
     let app_dir = crate::get_app_data_dir();
     let files_dir = app_dir.join("files");
