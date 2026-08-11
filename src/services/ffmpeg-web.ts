@@ -54,7 +54,7 @@ export async function processVideoWeb(
     onProgress(progress * 100);
   });
 
-  const inputName = 'input' + file.name.substring(file.name.lastIndexOf('.'));
+  const inputName = 'input' + (file.name ? file.name.substring(file.name.lastIndexOf('.')) : '.mp4');
   const outputName = 'output.mp4';
 
   await ffmpegInstance.writeFile(inputName, await fetchFile(file));

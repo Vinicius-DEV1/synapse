@@ -50,11 +50,18 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
   React.useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    const checkLock = async () => {
+    let localLock: { failedAttempts: number, lastFailedAt: number } | null = null;
+
+    const initLock = async () => {
       if (isSetup) return;
-      const lock = await getSecurityLock();
-      if (lock.failedAttempts > 0 && lock.failedAttempts % 3 === 0) {
-        const remaining = 15 - Math.floor((Date.now() - lock.lastFailedAt) / 1000);
+      localLock = await getSecurityLock();
+      updateLockout();
+    };
+
+    const updateLockout = () => {
+      if (!localLock) return;
+      if (localLock.failedAttempts > 0 && localLock.failedAttempts % 3 === 0) {
+        const remaining = 15 - Math.floor((Date.now() - localLock.lastFailedAt) / 1000);
         if (remaining > 0) {
           setLockoutTime(remaining);
           if (!intimidatingPhrase) {
@@ -68,8 +75,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
       }
     };
 
-    checkLock();
-    interval = setInterval(checkLock, 1000);
+    initLock();
+    interval = setInterval(updateLockout, 1000);
     return () => clearInterval(interval);
   }, [isSetup, intimidatingPhrase]);
 
