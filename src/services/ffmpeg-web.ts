@@ -39,8 +39,9 @@ export async function processVideoWeb(
 
   const ffmpegInstance = await getFFmpeg();
   
+  let onAbort: (() => void) | null = null;
   if (signal) {
-    const onAbort = () => {
+    onAbort = () => {
       try {
         ffmpegInstance.terminate();
       } catch (e) {}
@@ -54,36 +55,41 @@ export async function processVideoWeb(
     onProgress(progress * 100);
   });
 
+  // @ts-ignore
   const inputName = 'input' + (file.name ? file.name.substring(file.name.lastIndexOf('.')) : '.mp4');
   const outputName = 'output.mp4';
 
-  await ffmpegInstance.writeFile(inputName, await fetchFile(file));
+  try {
+    await ffmpegInstance.writeFile(inputName, await fetchFile(file));
 
-  const args = ['-i', inputName];
-  
-  if (quality === 'remux') {
-    args.push('-c:v', 'copy', '-c:a', 'aac');
-  } else if (quality === '1080p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:1080');
-  } else if (quality === '720p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
-  } else if (quality === '480p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:480');
-  } else if (quality === '360p') {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:360');
-  } else {
-    args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
+    const args = ['-i', inputName];
+    
+    if (quality === 'remux') {
+      args.push('-c:v', 'copy', '-c:a', 'aac');
+    } else if (quality === '1080p') {
+      args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:1080');
+    } else if (quality === '720p') {
+      args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
+    } else if (quality === '480p') {
+      args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:480');
+    } else if (quality === '360p') {
+      args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:360');
+    } else {
+      args.push('-c:v', 'libx264', '-c:a', 'aac', '-preset', conversionPreset, '-crf', '28', '-vf', 'scale=-2:720');
+    }
+
+    args.push(outputName);
+
+    await ffmpegInstance.exec(args);
+
+    const data = await ffmpegInstance.readFile(outputName);
+    return new Blob([data], { type: 'video/mp4' });
+  } finally {
+    // Cleanup memory in finally block to avoid MEMFS leaks (OOM)
+    try { await ffmpegInstance.deleteFile(inputName); } catch(e) {}
+    try { await ffmpegInstance.deleteFile(outputName); } catch(e) {}
+    if (signal && onAbort) {
+      signal.removeEventListener('abort', onAbort);
+    }
   }
-
-  args.push(outputName);
-
-  await ffmpegInstance.exec(args);
-
-  const data = await ffmpegInstance.readFile(outputName);
-  
-  // Cleanup memory
-  await ffmpegInstance.deleteFile(inputName);
-  await ffmpegInstance.deleteFile(outputName);
-  
-  return new Blob([data], { type: 'video/mp4' });
 }

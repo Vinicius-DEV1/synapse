@@ -98,6 +98,9 @@ fn make_executable(path: &Path) -> Result<(), String> {
 }
 
 async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
     let response = reqwest::get(url).await.map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
@@ -108,10 +111,13 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
         ));
     }
 
-    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    let mut stream = response.bytes_stream();
+    let mut file = tokio::fs::File::create(dest).await.map_err(|e| e.to_string())?;
 
-    let mut file = fs::File::create(dest).map_err(|e| e.to_string())?;
-    file.write_all(&bytes).map_err(|e| e.to_string())?;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }
