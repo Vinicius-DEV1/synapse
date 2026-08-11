@@ -140,8 +140,8 @@ function checkBurnRate(type: FirebaseOpType, count: number) {
   if (type === 'read') burnAccumulator.reads += count;
   if (type === 'write') burnAccumulator.writes += count;
 
-  // Se gastar mais de 250 escritas ou 1500 leituras em 1 minuto, pausar
-  if (burnAccumulator.writes > 250 || burnAccumulator.reads > 1500) {
+  // Aumento do limite para 2000 writes e 5000 reads para permitir sync de offline longo
+  if (burnAccumulator.writes > 2000 || burnAccumulator.reads > 5000) {
     console.error(`🚨 FIREBASE BURN RATE DETECTED! ${burnAccumulator.writes} writes, ${burnAccumulator.reads} reads in 1 min!`);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('caderno-sync-error', { 

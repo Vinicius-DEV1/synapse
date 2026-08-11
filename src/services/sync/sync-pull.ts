@@ -55,6 +55,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         // Se a tabela ESTÁ no manifest e seu timestamp <= lastPull, skip.
         // Se a tabela NÃO está no manifest, query normalmente (segurança: pode ter sido
         // pushada por código antigo sem manifest, ou por outro device).
+        // Se a tabela ESTÁ no manifest e seu timestamp <= lastPull, skip.
+        // Se a tabela NÃO está no manifest, query normalmente (segurança: pode ter sido
+        // pushada por código antigo sem manifest, ou por outro device).
         if (manifest) {
           const tableTimestamp = manifest[table];
           if (tableTimestamp) {
@@ -63,9 +66,6 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               console.log(`[Pull SKIP] Tabela ${table} ignorada (Sem mudanças no Manifest: ${tableLastUpdate} <= ${lastPull}).`);
               continue; // Nenhuma mudança nesta tabela desde o último pull
             }
-          } else if (lastPull > 0) {
-            // Se a tabela NÃO está no manifest e não é o primeiro pull, ela não tem dados novos.
-            continue;
           }
         }
 
@@ -158,6 +158,11 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           for (let i = 0; i < docsToProcess.length; i += DECRYPT_BATCH_SIZE) {
             const batch = docsToProcess.slice(i, i + DECRYPT_BATCH_SIZE);
             
+            // Busca fresh data em batch para evitar race condition (B10)
+            const batchIds = batch.map(d => d.id);
+            const freshRowsList = await window.api.sync.getRowsByIds(table, batchIds);
+            const freshMap = new Map(freshRowsList.map(r => [r.id, r]));
+
             const decryptedResults = await Promise.all(
               batch.map(async (docSnap) => {
                 const cloudData = docSnap.data();
@@ -250,7 +255,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
               try {
                 // Proteção contra race condition: verificar se houve edição local durante o sync
-                const freshRow = localMap!.get(docSnap.id);
+                const freshRow = freshMap.get(docSnap.id);
                 if (freshRow) {
                   const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
                   if (freshTime > cloudTime) {

@@ -88,9 +88,6 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           ? localRows.filter((r: any) => {
               const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
               const pushIt = rTime > lastPush;
-              if (pushIt) {
-                console.log(`[Push PENDENTE] Tabela ${table} - ID ${r.id}: rTime(${rTime}) > lastPush(${lastPush}).`);
-              }
               return pushIt;
             })
           : localRows;
