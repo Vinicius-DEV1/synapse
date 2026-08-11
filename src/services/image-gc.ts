@@ -70,7 +70,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
   // Tabelas e colunas que podem conter IDs do Drive
   const tablesToCheck = [
     { name: 'pages', cols: ['content'] },
-    { name: 'anki_cards', cols: ['front', 'back', 'media_url'] },
+    { name: 'anki_notes', cols: ['front', 'back', 'extra_note', 'media_url'] },
     { name: 'diagrams', cols: ['content'] },
     { name: 'ai_prompts', cols: ['content'] },
     { name: 'calendar_events', cols: ['description'] },

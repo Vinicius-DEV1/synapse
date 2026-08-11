@@ -129,7 +129,9 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     }
   },
   searchItems: async (query: string) => {
-    const all = await db.getAll('vault_items');
+    // Busca e decripta todos antes de filtrar
+    const api = webVaultApi(db, generateId);
+    const all = await api.getItems();
     const q = query.toLowerCase();
     return all.filter((i: any) => !i.deleted_at && (
       (i.label && i.label.toLowerCase().includes(q)) ||
@@ -139,7 +141,19 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
   },
   getPasswordHistory: async (itemId: string) => {
     const all = await db.getAllFromIndex('vault_password_history', 'item_id', itemId);
-    return all.filter((h: any) => !h.deleted_at).sort((a: any, b: any) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime());
+    const filtered = all.filter((h: any) => !h.deleted_at).sort((a: any, b: any) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime());
+    
+    // Decrypt passwords
+    const key = getVaultKey();
+    if (key) {
+      for (const entry of filtered) {
+        if (entry.password) {
+          entry.password = await decryptVaultField(entry.password, key);
+        }
+      }
+    }
+    
+    return filtered;
   },
 
   generatePassword: async (opts: any) => {
