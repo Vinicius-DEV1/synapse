@@ -71,8 +71,8 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
             .unwrap();
     }
 
-    // Extrai a chave do estado
-    let keys_guard = db_state.keys.lock().unwrap();
+    // Extrai a chave do estado (B23: evita panic se poisoned)
+    let keys_guard = db_state.keys.lock().unwrap_or_else(|e| e.into_inner());
     let unlocked_keys = match &*keys_guard {
         Some(k) => k,
         None => {
@@ -109,10 +109,9 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     // Lidar com cabeçalho Range (streaming)
     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
 
-    // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1
-    // Fazemos uma leitura fictícia de tamanho 0 para pegar o total_original_size
-    let info = match read_chunked_range(&abs_path, &master_key, 0, 0) {
-        Ok(res) => res,
+    // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1 (B24)
+    let total_size = match crate::crypto_stream::get_encrypted_file_size(&abs_path) {
+        Ok(size) => size,
         Err(e) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -121,8 +120,6 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .unwrap();
         }
     };
-
-    let total_size = info.total_original_size;
 
     if let Some(range) = range_header {
         if range.starts_with("bytes=") {
@@ -157,6 +154,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 Err(e) => {
                     return Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*") // B25
                         .body(e.into_bytes())
                         .unwrap();
                 }
