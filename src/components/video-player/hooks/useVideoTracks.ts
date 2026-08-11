@@ -24,16 +24,7 @@ export function useVideoTracks(
       
       const tracks: TrackItem[] = [{ id: 'none', label: 'Sem Legenda' }];
       
-      // Adiciona a legenda principal (legacy) se existir
-      if (video.drive_subtitle_id || video.local_subtitle_path) {
-        tracks.push({
-          id: 'main',
-          label: 'Legenda Principal',
-          drive_id: video.drive_subtitle_id || undefined,
-          local_path: video.local_subtitle_path || undefined
-        });
-      }
-      
+
       // Adiciona as legendas extras
       if (video.subtitles_json) {
         try {

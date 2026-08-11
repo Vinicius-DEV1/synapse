@@ -410,7 +410,6 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     original_name: file.name,
     drive_file_id: mainFileId,
     drive_web_file_id: webFileId || undefined,
-    drive_subtitle_id: mainSubtitleId || undefined,
     is_local: isLocal,
     file_path: localPath,
     collection_id: options.collectionId || undefined,
@@ -440,49 +439,6 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   };
 }
 
-/**
- * Baixa as legendas (VTT) como texto.
- * Se masterKey for fornecida, tenta descriptografar o conteúdo (legendas são criptografadas no upload).
- */
-export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePath?: string, masterKey?: CryptoKey): Promise<string | null> {
-  if (!driveSubtitleId && !localSubtitlePath) return null;
-
-  try {
-    if (driveSubtitleId) {
-      const token = await getValidAccessToken();
-      if (!token) return null;
-      
-      const buffer = await downloadFromDrive(token, driveSubtitleId);
-      
-      // Tenta descriptografar se temos masterKey (legendas são criptografadas no upload)
-      if (masterKey) {
-        try {
-          const { decryptFile } = await import('./storage');
-          const decrypted = await decryptFile(buffer, masterKey);
-          return new TextDecoder().decode(decrypted);
-        } catch {
-          // Se falhar a descriptografia, talvez não esteja criptografado — tenta como texto puro
-        }
-      }
-      return new TextDecoder().decode(buffer);
-    }
-    // Ler legenda local sem bloqueio de ACL no Desktop ou fetch file:// na Web
-    if (localSubtitlePath) {
-      if (window.api?.video?.readLocalFile) {
-        const uint8 = await window.api.video.readLocalFile(localSubtitlePath);
-        return new TextDecoder().decode(uint8);
-      } else {
-        const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
-        const res = await fetch(fileUrl);
-        if (res.ok) return await res.text();
-      }
-    }
-    return null;
-  } catch (e) {
-    console.error("Falha ao ler legendas", e);
-    return null;
-  }
-}
 
 export interface YouTubeDownloadOptions {
   url: string;
@@ -521,10 +477,6 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
     const localPath = await window.api.youtube.download(url, filename, quality, selectedSubs);
     const finalFilename = localPath.split(/[\\/]/).pop() || filename.replace(/\.mp4$/, '.mkv');
     
-    // 1.5. Extract Subtitle (if available)
-    let localSubtitlePath: string | undefined = undefined;
-    let driveSubtitleId: string | undefined = undefined;
-    
     if (selectedSubs && selectedSubs.length > 0) {
       try {
         const scanResult = await window.api.video.scanTracks(localPath);
@@ -535,8 +487,8 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
           const vttContent = await window.api.video.extractSubtitles(localPath, firstSubIndex);
           if (vttContent) {
             const subFilename = `${finalFilename}_sub.vtt`;
-            localSubtitlePath = await window.api.video.saveLocal(subFilename, new TextEncoder().encode(vttContent).buffer as ArrayBuffer);
-            driveSubtitleId = await uploadLocalFileToDrive(token, localSubtitlePath, subFilename);
+            const localSubtitlePath = await window.api.video.saveLocal(subFilename, new TextEncoder().encode(vttContent).buffer as ArrayBuffer);
+            await uploadLocalFileToDrive(token, localSubtitlePath, subFilename);
           }
         }
       } catch (e) {
@@ -555,10 +507,8 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
       title: finalFilename.replace(/\.[^/.]+$/, ""),
       original_name: finalFilename,
       drive_file_id: driveFileId,
-      drive_subtitle_id: driveSubtitleId,
       is_local: true,
       file_path: localPath,
-      local_subtitle_path: localSubtitlePath,
       collection_id: collectionId,
       collection_name: collectionName,
       youtube_url: url,
@@ -606,10 +556,7 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
     if (video.drive_web_file_id) {
       await deleteFromDrive(token, video.drive_web_file_id).catch(e => console.warn("Falha ao apagar vídeo web do Drive", e));
     }
-    // Legenda principal
-    if (video.drive_subtitle_id) {
-      await deleteFromDrive(token, video.drive_subtitle_id).catch(e => console.warn("Falha ao apagar legenda do Drive", e));
-    }
+
 
     // Áudios extras
     try {
