@@ -430,18 +430,6 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 
-    // Drop legacy alarms table if it exists with the old schema (INTEGER PRIMARY KEY)
-    let is_legacy_alarms = conn
-        .query_row(
-            "SELECT type FROM pragma_table_info('alarms') WHERE name = 'id'",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .unwrap_or_default()
-        == "INTEGER";
-    if is_legacy_alarms {
-        let _ = conn.execute("DROP TABLE alarms", []);
-    }
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS alarms (id TEXT PRIMARY KEY, time TEXT NOT NULL, label TEXT, sound TEXT DEFAULT 'bell', enabled BOOLEAN DEFAULT 1, days TEXT)", []);
 
     // Create ai_prompts table
@@ -487,18 +475,6 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     );
 
     // Migrations for Anki FSRS and Sync
-    // Rename card_id to id if it exists (legacy schema)
-    let is_legacy_anki_state = conn
-        .query_row(
-            "SELECT type FROM pragma_table_info('anki_srs_state') WHERE name = 'card_id'",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .is_ok();
-    if is_legacy_anki_state {
-        let _ = conn.execute("ALTER TABLE anki_srs_state RENAME COLUMN card_id TO id", []);
-    }
-
     let _ = conn.execute(
         "ALTER TABLE anki_srs_state ADD COLUMN scheduled_days INTEGER DEFAULT 0",
         [],

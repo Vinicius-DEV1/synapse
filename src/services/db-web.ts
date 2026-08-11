@@ -46,10 +46,6 @@ interface CadernoDBSchema extends DBSchema {
   ai_prompts: { key: string; value: any; indexes: { 'module': string } };
   diagrams: { key: string; value: any };
   
-  // Legacy tables for migration safety
-  items: { key: string; value: any };
-  episodes: { key: string; value: any; indexes: { 'item_id': string } };
-  focus_alarms: { key: number; value: any };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
@@ -222,17 +218,7 @@ export async function getWebDb() {
           db.createObjectStore('diagrams', { keyPath: 'id' });
         }
 
-        // Keep legacy tables for now to avoid errors if any code still uses them locally
-        if (!db.objectStoreNames.contains('items')) {
-          db.createObjectStore('items', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('episodes')) {
-          const store = db.createObjectStore('episodes', { keyPath: 'id' });
-          store.createIndex('item_id', 'item_id');
-        }
-        if (!db.objectStoreNames.contains('focus_alarms')) {
-          db.createObjectStore('focus_alarms', { keyPath: 'id' });
-        }
+
       },
     });
   }
