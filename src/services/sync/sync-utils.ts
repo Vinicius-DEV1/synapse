@@ -108,6 +108,5 @@ export async function hardResetCloud(): Promise<void> {
   } catch (err) {}
 }
 
-if (typeof window !== 'undefined') {
-  window.hardResetCloud = hardResetCloud;
-}
+// Export removido do global window por segurança (B14)
+// se precisar debugar, exporte localmente apenas no ambiente de dev.
