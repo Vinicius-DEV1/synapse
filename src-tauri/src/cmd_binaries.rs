@@ -125,5 +125,13 @@ pub fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn force_download_binaries(app: AppHandle) -> Result<(), String> {
+    let app_data_dir = crate::get_app_data_dir();
+    let bin_dir = app_data_dir.join("bin");
+    
+    // Força a remoção do diretório para garantir que ensure_binaries baixe tudo novamente
+    if bin_dir.exists() {
+        let _ = fs::remove_dir_all(&bin_dir);
+    }
+    
     ensure_binaries(&app).await
 }
