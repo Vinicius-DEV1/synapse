@@ -18,10 +18,12 @@ fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
     Ok(videos_dir)
 }
 
+
 #[tauri::command]
 pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
-    let path = videos_dir.join(&filename);
+    let safe_filename = sanitize_filename(&filename);
+    let path = videos_dir.join(&safe_filename);
     if path.exists() {
         return Ok(path.to_string_lossy().to_string());
     }
@@ -139,7 +141,8 @@ pub async fn video_upload_file_to_drive(
 #[tauri::command]
 pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
     let videos_dir = get_videos_dir(&app)?;
-    let path = videos_dir.join(&filename);
+    let safe_filename = sanitize_filename(&filename);
+    let path = videos_dir.join(&safe_filename);
     if path.exists() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
     }
@@ -418,6 +421,7 @@ pub async fn video_process_upload(
     })
 }
 
+
 #[tauri::command]
 pub async fn video_save_local(
     filename: String,
@@ -426,7 +430,8 @@ pub async fn video_save_local(
     app: AppHandle,
 ) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
-    let filename_enc = format!("{}.enc", filename);
+    let safe_filename = sanitize_filename(&filename);
+    let filename_enc = format!("{}.enc", safe_filename);
     let path = videos_dir.join(&filename_enc);
     let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
 
@@ -748,4 +753,13 @@ pub async fn video_convert_mp4(
         let _ = fs::remove_file(&temp_dest);
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
+}
+
+
+fn sanitize_filename(name: &str) -> String {
+    std::path::Path::new(name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unnamed_file")
+        .to_string()
 }

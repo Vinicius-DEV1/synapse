@@ -120,7 +120,8 @@ fn get_lofi_dir(_app: &AppHandle) -> Result<PathBuf, String> {
 #[tauri::command]
 pub fn lofi_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
     let lofi_dir = get_lofi_dir(&app)?;
-    let path = lofi_dir.join(&filename);
+    let safe_filename = sanitize_filename(&filename);
+    let path = lofi_dir.join(&safe_filename);
     if path.exists() {
         Ok(path.to_string_lossy().to_string())
     } else {
@@ -131,7 +132,8 @@ pub fn lofi_get_local_path(filename: String, app: AppHandle) -> Result<String, S
 #[tauri::command]
 pub fn lofi_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
     let lofi_dir = get_lofi_dir(&app)?;
-    let path = lofi_dir.join(&filename);
+    let safe_filename = sanitize_filename(&filename);
+    let path = lofi_dir.join(&safe_filename);
     if path.exists() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
     }
@@ -146,7 +148,8 @@ pub async fn lofi_save_local(
     app: AppHandle,
 ) -> Result<String, String> {
     let lofi_dir = get_lofi_dir(&app)?;
-    let filename_enc = format!("{}.enc", filename);
+    let safe_filename = sanitize_filename(&filename);
+    let filename_enc = format!("{}.enc", safe_filename);
     let path = lofi_dir.join(&filename_enc);
     let temp_path = lofi_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
 
@@ -200,4 +203,12 @@ pub async fn lofi_copy_local(
     crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_path, &master_key)?;
 
     Ok(dest_path.to_string_lossy().to_string())
+}
+
+fn sanitize_filename(name: &str) -> String {
+    std::path::Path::new(name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unnamed_file")
+        .to_string()
 }
