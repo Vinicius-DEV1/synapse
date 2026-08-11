@@ -15,7 +15,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          PRAGMA synchronous = NORMAL;
          PRAGMA foreign_keys = ON;
          
-         CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT, focus_key_enc TEXT, files_key_enc TEXT, vault_key_enc TEXT);
+         CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT, focus_key_enc TEXT, files_key_enc TEXT, vault_key_enc TEXT, calendar_key_enc TEXT, practice_key_enc TEXT, core_key_enc TEXT);
          CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, data TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, value TEXT);
          
          CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, original_name TEXT NOT NULL, duration REAL, file_path TEXT, progress REAL DEFAULT 0.0, last_watched_at DATETIME, drive_file_id TEXT, drive_web_file_id TEXT, drive_subtitle_id TEXT, local_subtitle_path TEXT, subtitles_json TEXT, audio_tracks_json TEXT, is_local INTEGER DEFAULT 1, collection_id TEXT, collection_name TEXT, youtube_url TEXT, youtube_description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
@@ -84,6 +84,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     // Migrations for existing databases
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN files_key_enc TEXT", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN vault_key_enc TEXT", []);
+    let _ = conn.execute("ALTER TABLE keychain ADD COLUMN calendar_key_enc TEXT", []);
+    let _ = conn.execute("ALTER TABLE keychain ADD COLUMN practice_key_enc TEXT", []);
+    let _ = conn.execute("ALTER TABLE keychain ADD COLUMN core_key_enc TEXT", []);
 
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN crdt_state TEXT", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN encrypted_content TEXT", []);

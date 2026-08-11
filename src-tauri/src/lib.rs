@@ -98,6 +98,7 @@ pub fn run() {
             cmd_auth::auth_login,
             cmd_auth::auth_setup,
             cmd_auth::auth_wipe_local_data,
+            cmd_auth::auth_force_update_keychain,
             cmd_auth::app_open_devtools,
             cmd_notes::notes_get_all_pages,
             cmd_notes::notes_get_page_content,

@@ -82,6 +82,9 @@ pub struct UnlockedKeys {
     pub focus: Option<String>,
     pub files: Option<String>,
     pub vault: Option<String>,
+    pub calendar: Option<String>,
+    pub practice: Option<String>,
+    pub core: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -116,7 +119,7 @@ pub async fn auth_login(
     let modern_key = derive_key_from_password(&password);
     let legacy_key = derive_key_from_password_legacy(&password);
 
-    let mut stmt = conn.prepare("SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc FROM keychain LIMIT 1")
+    let mut stmt = conn.prepare("SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
         .map_err(|e| e.to_string())?;
 
     let row_data = match stmt.query_row([], |row| {
@@ -130,6 +133,9 @@ pub async fn auth_login(
             row.get::<_, Option<String>>(6)?,
             row.get::<_, Option<String>>(7).unwrap_or(None),
             row.get::<_, Option<String>>(8).unwrap_or(None),
+            row.get::<_, Option<String>>(9).unwrap_or(None),
+            row.get::<_, Option<String>>(10).unwrap_or(None),
+            row.get::<_, Option<String>>(11).unwrap_or(None),
         ))
     }) {
         Ok(r) => r,
@@ -195,6 +201,20 @@ pub async fn auth_login(
     let (library, lib_legacy) = try_decrypt(&row_data.1);
     let (finance, fin_legacy) = try_decrypt(&row_data.2);
     let (notes, not_legacy) = try_decrypt(&row_data.3);
+
+    let (calendar, cal_legacy) = {
+        let r = try_decrypt(&row_data.9);
+        if r.0.is_some() { r } else { (notes.clone(), false) }
+    };
+    let (practice, pra_legacy) = {
+        let r = try_decrypt(&row_data.10);
+        if r.0.is_some() { r } else { (notes.clone(), false) }
+    };
+    let (core, cor_legacy) = {
+        let r = try_decrypt(&row_data.11);
+        if r.0.is_some() { r } else { (notes.clone(), false) }
+    };
+
     let (culture, cul_legacy) = {
         let r = try_decrypt(&row_data.4);
         if r.0.is_some() {
@@ -244,7 +264,10 @@ pub async fn auth_login(
         || ank_legacy
         || foc_legacy
         || fil_legacy
-        || vlt_legacy;
+        || vlt_legacy
+        || cal_legacy
+        || pra_legacy
+        || cor_legacy;
 
     // Se usou 100k iterações em qualquer chave, migramos todas para 600k agora mesmo!
     if any_legacy {
@@ -255,7 +278,7 @@ pub async fn auth_login(
         };
 
         let _ = conn.execute(
-            "UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?, focus_key_enc = ?, files_key_enc = ?, vault_key_enc = ?",
+            "UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?, focus_key_enc = ?, files_key_enc = ?, vault_key_enc = ?, calendar_key_enc = ?, practice_key_enc = ?, core_key_enc = ?",
             rusqlite::params![
                 enc_opt(&library),
                 enc_opt(&finance),
@@ -264,7 +287,10 @@ pub async fn auth_login(
                 enc_opt(&anki),
                 enc_opt(&focus),
                 enc_opt(&files),
-                enc_opt(&vault)
+                enc_opt(&vault),
+                enc_opt(&calendar),
+                enc_opt(&practice),
+                enc_opt(&core)
             ]
         );
     }
@@ -294,6 +320,15 @@ pub async fn auth_login(
     if vault.is_some() {
         modules.push("vault".into());
     }
+    if calendar.is_some() {
+        modules.push("calendar".into());
+    }
+    if practice.is_some() {
+        modules.push("practice".into());
+    }
+    if core.is_some() {
+        modules.push("core".into());
+    }
 
     let keys_to_return = UnlockedKeys {
         library: library.clone(),
@@ -304,6 +339,9 @@ pub async fn auth_login(
         focus: focus.clone(),
         files: files.clone(),
         vault: vault.clone(),
+        calendar: calendar.clone(),
+        practice: practice.clone(),
+        core: core.clone(),
     };
 
     // Salva no State
@@ -357,13 +395,16 @@ pub async fn auth_setup(
         let focus_enc = encrypt_module_key(&get_key("focus"), &password)?;
         let files_enc = encrypt_module_key(&get_key("files"), &password)?;
         let vault_enc = encrypt_module_key(&get_key("vault"), &password)?;
+        let calendar_enc = encrypt_module_key(&get_key("calendar"), &password)?;
+        let practice_enc = encrypt_module_key(&get_key("practice"), &password)?;
+        let core_enc = encrypt_module_key(&get_key("core"), &password)?;
 
         let auth_hash = hash_auth_password(&password);
         let id = uuid::Uuid::new_v4().to_string();
 
         conn.execute(
-            "INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            rusqlite::params![&id, &auth_hash, &library_enc, &finance_enc, &notes_enc, &culture_enc, &anki_enc, &focus_enc, &files_enc, &vault_enc],
+            "INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rusqlite::params![&id, &auth_hash, &library_enc, &finance_enc, &notes_enc, &culture_enc, &anki_enc, &focus_enc, &files_enc, &vault_enc, &calendar_enc, &practice_enc, &core_enc],
         ).map_err(|e| e.to_string())?;
     }
 
@@ -373,4 +414,39 @@ pub async fn auth_setup(
 #[tauri::command]
 pub fn app_open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
+}
+
+#[tauri::command]
+pub async fn auth_force_update_keychain(
+    password: String,
+    keys: HashMap<String, String>,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let get_enc = |module: &str| -> Option<String> {
+        keys.get(module).and_then(|k| encrypt_module_key(k, &password).ok())
+    };
+
+    let library_enc = get_enc("library");
+    let finance_enc = get_enc("finance");
+    let notes_enc = get_enc("notes");
+    let culture_enc = get_enc("culture");
+    let anki_enc = get_enc("anki");
+    let focus_enc = get_enc("focus");
+    let files_enc = get_enc("files");
+    let vault_enc = get_enc("vault");
+    let calendar_enc = get_enc("calendar");
+    let practice_enc = get_enc("practice");
+    let core_enc = get_enc("core");
+
+    conn.execute(
+        "UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?, focus_key_enc = ?, files_key_enc = ?, vault_key_enc = ?, calendar_key_enc = ?, practice_key_enc = ?, core_key_enc = ?",
+        rusqlite::params![
+            library_enc, finance_enc, notes_enc, culture_enc, anki_enc, focus_enc, files_enc, vault_enc, calendar_enc, practice_enc, core_enc
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(true)
 }
