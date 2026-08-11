@@ -13,6 +13,7 @@ const MAX_PAYLOAD_BYTES = 900_000;
 interface PreparedDoc {
   id: string;
   encryptedData: string;
+  isCompressed?: boolean;
   updatedAt: string | null;
   createdAt: string | null;
   localTime: number;
@@ -34,18 +35,46 @@ async function prepareRowsForPush(
     const { id, updated_at, created_at, ...sensitiveData } = row;
     const jsonString = JSON.stringify(sensitiveData);
 
+    let payloadString = jsonString;
+    let isCompressed = false;
+
     if (jsonString.length > MAX_PAYLOAD_BYTES) {
-      const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande (${(jsonString.length / 1024).toFixed(0)}KB). Remova imagens Base64 grandes desta página.`;
-      skippedLarge.push(msg);
-      return null;
+      try {
+        const stream = new Blob([jsonString]).stream().pipeThrough(new CompressionStream('gzip'));
+        const buffer = await new Response(stream).arrayBuffer();
+        
+        const bytes = new Uint8Array(buffer);
+        const CHUNK_SIZE = 8192;
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+          const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+          binary += String.fromCodePoint.apply(null, Array.from(chunk));
+        }
+        const b64 = btoa(binary);
+        
+        if (b64.length < MAX_PAYLOAD_BYTES) {
+          payloadString = b64;
+          isCompressed = true;
+          console.log(`[Sync Compress] Doc ${id} comprimido de ${jsonString.length} para ${b64.length} bytes.`);
+        } else {
+          const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande mesmo após compressão (${(b64.length / 1024).toFixed(0)}KB).`;
+          skippedLarge.push(msg);
+          return null;
+        }
+      } catch (err) {
+        console.warn(`Erro ao comprimir doc ${id}`, err);
+        const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande e falha na compressão.`;
+        skippedLarge.push(msg);
+        return null;
+      }
     }
 
-    const encryptedData = await encryptText(jsonString, key);
+    const encryptedData = await encryptText(payloadString, key);
     const safeUpdatedAt = updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null;
     const safeCreatedAt = created_at ? new Date(parseDateSafe(created_at)).toISOString() : null;
     const localTime = Math.max(parseDateSafe(updated_at || created_at || 0), parseDateSafe(row.deleted_at || 0));
 
-    return { id, encryptedData, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
+    return { id, encryptedData, isCompressed, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
   });
 
   const results = await Promise.all(promises);
@@ -129,6 +158,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             const docRef = doc(db, table, item.id);
             batch.set(docRef, {
               encryptedData: item.encryptedData,
+              isCompressed: item.isCompressed || false,
               updatedAt: item.updatedAt,
               createdAt: item.createdAt
             }, { merge: true });
