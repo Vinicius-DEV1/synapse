@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, memo } from 'react';
 import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
@@ -27,7 +27,7 @@ export interface ViewFactoryProps {
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 
-export function ViewFactory({
+export const ViewFactory = memo(function ViewFactory({
   tab,
   page,
   onUpdateContent,
@@ -92,4 +92,4 @@ export function ViewFactory({
       </ErrorBoundary>
     </Suspense>
   );
-}
+});

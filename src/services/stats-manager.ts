@@ -24,8 +24,8 @@ export async function logActivity(
   const id = `${moduleName}_${itemId}_${date}`;
 
   try {
-    const allLogs = await window.api.sync.getTable(ACTIVITY_LOGS_TABLE);
-    const existing = allLogs.find(l => l.id === id);
+    const rows = await window.api.sync.getRowsByIds(ACTIVITY_LOGS_TABLE, [id]);
+    const existing = rows.length > 0 ? rows[0] : null;
 
     const log: ActivityLog = {
       id,
