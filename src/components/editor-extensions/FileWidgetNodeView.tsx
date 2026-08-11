@@ -37,6 +37,17 @@ export default function FileWidgetNodeView(props: any) {
     return () => window.removeEventListener('file-widget-delete-request', handleDeleteRequest);
   }, [fileId]);
 
+  useEffect(() => {
+    const handleOpenQuickViewer = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.fileId === fileId) {
+        setShowViewer(true);
+      }
+    };
+    window.addEventListener('open-quick-viewer', handleOpenQuickViewer);
+    return () => window.removeEventListener('open-quick-viewer', handleOpenQuickViewer);
+  }, [fileId]);
+
   const getIcon = () => {
     switch(fileType) {
       case 'pdf': return <FileText size={16} className="text-blue-400" />;
@@ -118,8 +129,10 @@ export default function FileWidgetNodeView(props: any) {
             dispatch({ type: 'SET_CURRENT_MODULE', payload: 'files' });
             // Should probably emit an event to navigate to that folder inside the module
             window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
-          } else if (fileType === 'pdf' && fileItem) {
-            setShowViewer(true);
+          } else if ((fileType === 'pdf' || fileType === 'epub') && fileItem) {
+            window.dispatchEvent(new CustomEvent('open-file-action', { 
+              detail: { fileId, title: name || fileItem?.name } 
+            }));
           } else {
             if (fileItem) setShowViewer(true);
             else alert("O arquivo ainda está sendo carregado ou não foi encontrado.");

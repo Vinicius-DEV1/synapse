@@ -77,6 +77,11 @@ pub fn trash_restore(
     conn.execute(&query, rusqlite::params![id])
         .map_err(|e| e.to_string())?;
 
+    if item_type == "file" {
+        let _ = conn.execute("UPDATE library_highlights SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+        let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+    }
+
     Ok(true)
 }
 
@@ -102,6 +107,13 @@ pub fn trash_delete_permanently(
     let query = format!("DELETE FROM {} WHERE id = ?", table);
     conn.execute(&query, rusqlite::params![id])
         .map_err(|e| e.to_string())?;
+
+    if item_type == "file" {
+        let _ = conn.execute("DELETE FROM library_highlights WHERE book_id = ?", [&id]);
+        let _ = conn.execute("DELETE FROM library_bookmarks WHERE book_id = ?", [&id]);
+        let _ = conn.execute("DELETE FROM library_reading_sessions WHERE book_id = ?", [&id]);
+        let _ = conn.execute("DELETE FROM library_ocr_cache WHERE book_id = ?", [&id]);
+    }
 
     Ok(true)
 }
