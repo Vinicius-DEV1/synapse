@@ -1,5 +1,5 @@
 use crate::crypto::{
-    decrypt_module_key_with_key, derive_key_from_password, derive_key_from_password_legacy,
+    decrypt_module_key_with_key, derive_key_from_password,
     encrypt_module_key, encrypt_module_key_with_key, generate_module_key, hash_auth_password,
 };
 use crate::db::DbState;
@@ -115,9 +115,7 @@ pub async fn auth_login(
 
     let auth_hash = hash_auth_password(&password);
 
-    // Derivar as chaves PBKDF2 apenas UMA VEZ (operação cara ~1s)
     let modern_key = derive_key_from_password(&password);
-    let legacy_key = derive_key_from_password_legacy(&password);
 
     let mut stmt = conn.prepare("SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
         .map_err(|e| e.to_string())?;
@@ -151,7 +149,6 @@ pub async fn auth_login(
     };
 
     let mut is_valid = false;
-    let mut is_legacy = false;
 
     if row_data.0 == auth_hash {
         is_valid = true;
@@ -161,11 +158,6 @@ pub async fn auth_login(
         if let Some(enc) = test_enc {
             if decrypt_module_key_with_key(enc, &modern_key).is_ok() {
                 is_valid = true;
-            } else if decrypt_module_key_with_key(enc, &legacy_key).is_ok() {
-                is_valid = true;
-                is_legacy = true;
-            }
-            if is_valid {
                 let _ = conn.execute(
                     "UPDATE keychain SET auth_hash = ?",
                     rusqlite::params![&auth_hash],
@@ -183,117 +175,28 @@ pub async fn auth_login(
         });
     }
 
-    // Escolhe a chave correta para decriptar (reutiliza a já derivada!)
-    // let active_key = if is_legacy { &legacy_key } else { &modern_key };
-    // Se não sabemos se é legacy, tenta modern primeiro
-    let try_decrypt = |enc: &Option<String>| -> (Option<String>, bool) {
+    // Escolhe a chave correta para decriptar
+    let try_decrypt = |enc: &Option<String>| -> Option<String> {
         if let Some(e) = enc {
             if let Ok(dec) = decrypt_module_key_with_key(e, &modern_key) {
-                return (Some(dec), false);
-            }
-            if let Ok(dec) = decrypt_module_key_with_key(e, &legacy_key) {
-                return (Some(dec), true);
+                return Some(dec);
             }
         }
-        (None, false)
+        None
     };
 
-    let (library, lib_legacy) = try_decrypt(&row_data.1);
-    let (finance, fin_legacy) = try_decrypt(&row_data.2);
-    let (notes, not_legacy) = try_decrypt(&row_data.3);
-
-    let (calendar, cal_legacy) = {
-        let r = try_decrypt(&row_data.9);
-        if r.0.is_some() { r } else { (notes.clone(), false) }
-    };
-    let (practice, pra_legacy) = {
-        let r = try_decrypt(&row_data.10);
-        if r.0.is_some() { r } else { (notes.clone(), false) }
-    };
-    let (core, cor_legacy) = {
-        let r = try_decrypt(&row_data.11);
-        if r.0.is_some() { r } else { (notes.clone(), false) }
-    };
-
-    let (culture, cul_legacy) = {
-        let r = try_decrypt(&row_data.4);
-        if r.0.is_some() {
-            r
-        } else {
-            (notes.clone(), false)
-        }
-    };
-    let (anki, ank_legacy) = {
-        let r = try_decrypt(&row_data.5);
-        if r.0.is_some() {
-            r
-        } else {
-            (notes.clone(), false)
-        }
-    };
-    let (focus, foc_legacy) = {
-        let r = try_decrypt(&row_data.6);
-        if r.0.is_some() {
-            r
-        } else {
-            (notes.clone(), false)
-        }
-    };
-    let (files, fil_legacy) = {
-        let r = try_decrypt(&row_data.7);
-        if r.0.is_some() {
-            r
-        } else {
-            (notes.clone(), false)
-        }
-    };
-    let (vault, vlt_legacy) = {
-        let r = try_decrypt(&row_data.8);
-        if r.0.is_some() {
-            r
-        } else {
-            (notes.clone(), false)
-        }
-    };
-
-    let any_legacy = is_legacy
-        || lib_legacy
-        || fin_legacy
-        || not_legacy
-        || cul_legacy
-        || ank_legacy
-        || foc_legacy
-        || fil_legacy
-        || vlt_legacy
-        || cal_legacy
-        || pra_legacy
-        || cor_legacy;
-
-    // Se usou 100k iterações em qualquer chave, migramos todas para 600k agora mesmo!
-    if any_legacy {
-        println!("Migrating PBKDF2 iterations from 100k to 600k!");
-        let enc_opt = |val: &Option<String>| -> Option<String> {
-            val.as_ref()
-                .and_then(|v| encrypt_module_key_with_key(v, &modern_key).ok())
-        };
-
-        let _ = conn.execute(
-            "UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?, focus_key_enc = ?, files_key_enc = ?, vault_key_enc = ?, calendar_key_enc = ?, practice_key_enc = ?, core_key_enc = ?",
-            rusqlite::params![
-                enc_opt(&library),
-                enc_opt(&finance),
-                enc_opt(&notes),
-                enc_opt(&culture),
-                enc_opt(&anki),
-                enc_opt(&focus),
-                enc_opt(&files),
-                enc_opt(&vault),
-                enc_opt(&calendar),
-                enc_opt(&practice),
-                enc_opt(&core)
-            ]
-        );
-    }
+    let library = try_decrypt(&row_data.1);
+    let finance = try_decrypt(&row_data.2);
+    let notes = try_decrypt(&row_data.3);
+    
+    let calendar = try_decrypt(&row_data.9).or_else(|| notes.clone());
+    let practice = try_decrypt(&row_data.10).or_else(|| notes.clone());
+    let core = try_decrypt(&row_data.11).or_else(|| notes.clone());
+    let culture = try_decrypt(&row_data.4).or_else(|| notes.clone());
+    let anki = try_decrypt(&row_data.5).or_else(|| notes.clone());
+    let focus = try_decrypt(&row_data.6).or_else(|| notes.clone());
+    let files = try_decrypt(&row_data.7).or_else(|| notes.clone());
+    let vault = try_decrypt(&row_data.8).or_else(|| notes.clone());
 
     let mut modules = Vec::new();
     if library.is_some() {

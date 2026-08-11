@@ -11,16 +11,7 @@ use sha2::Sha256;
 // Type alias for AES-256-GCM with 16-byte nonce (used by the Node.js legacy code)
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
-pub fn derive_key_from_password_legacy(password: &str) -> [u8; 32] {
-    let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(
-        password.as_bytes(),
-        b"caderno-keychain-salt",
-        100000,
-        &mut key,
-    );
-    key
-}
+
 
 pub fn derive_key_from_password(password: &str) -> [u8; 32] {
     let mut key = [0u8; 32];
@@ -106,24 +97,7 @@ pub fn decrypt_module_key_with_key(
     String::from_utf8(decrypted).map_err(|_| "Invalid UTF-8".into())
 }
 
-pub fn decrypt_module_key(
-    encrypted_payload: &str,
-    password: &str,
-) -> Result<(String, bool), String> {
-    // Tenta primeiro com 600k iterações (moderno)
-    let key = derive_key_from_password(password);
-    if let Ok(dec) = decrypt_module_key_with_key(encrypted_payload, &key) {
-        return Ok((dec, false));
-    }
 
-    // Se falhar, tenta com 100k iterações (legado do Node.js/Electron)
-    let legacy_key = derive_key_from_password_legacy(password);
-    if let Ok(dec) = decrypt_module_key_with_key(encrypted_payload, &legacy_key) {
-        return Ok((dec, true));
-    }
-
-    Err("Failed to decrypt with both modern and legacy keys".into())
-}
 
 pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String> {
     let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
