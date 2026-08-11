@@ -10,7 +10,9 @@ const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 };
 
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
-export const DRIVE_CLIENT_SECRET = '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'; // Google requires client_secret even with PKCE for Desktop apps
+// B5: Permitir injeção via .env para maior segurança, mantendo fallback temporário.
+// IMPORTANTE: Rotacionar essa secret caso o repositório seja público.
+export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || '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';
 
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
@@ -62,7 +64,9 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
  */
 export function getDriveAuthUrl(codeChallenge: string): string {
   const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
-  const redirectUri = encodeURIComponent('http://localhost:5173'); 
+  // B19: Permitir injeção da URL via .env para casos onde a porta padrão mude.
+  // IMPORTANTE: Deve bater EXATAMENTE com o que está no GCP Auth Credentials.
+  const redirectUri = encodeURIComponent(import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:5173'); 
   return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${DRIVE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 }
 
@@ -359,12 +363,19 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
     const val = config.data || config.value;
     if (val) {
       try {
-        let decrypted = val;
-        // Se não iniciar com {, assumimos que está encriptado no IndexedDB
-        if (!val.startsWith('{') && _inMemoryMasterKey) {
-          decrypted = await decryptText(val, _inMemoryMasterKey);
+        let parsed;
+        try {
+          // B22: Tenta fazer o parse primeiro (se não estiver encriptado)
+          parsed = JSON.parse(val);
+        } catch {
+          // Se falhou, provavelmente está encriptado e temos a master key na memória
+          if (_inMemoryMasterKey) {
+            const decrypted = await decryptText(val, _inMemoryMasterKey);
+            parsed = JSON.parse(decrypted);
+          } else {
+            return { token: null };
+          }
         }
-        const parsed = JSON.parse(decrypted);
         return parsed ? parsed : { token: null };
       } catch (e) {
         return { token: null };

@@ -9,6 +9,17 @@ import { encryptFile, decryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 import { getWebDb } from './db-web';
 
+// Utilitário para B20: Detectar o mimeType real pelos magic bytes da imagem
+function detectMimeType(buffer: ArrayBuffer): string {
+  const arr = new Uint8Array(buffer).subarray(0, 4);
+  const header = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (header.startsWith('89504e47')) return 'image/png';
+  if (header.startsWith('ffd8ff')) return 'image/jpeg';
+  if (header.startsWith('47494638')) return 'image/gif';
+  if (header.startsWith('52494646')) return 'image/webp'; // RIFF...WEBP
+  return 'image/png'; // fallback
+}
+
 // ---------------------------------------------------------------------------
 // Helpers de cache local
 // ---------------------------------------------------------------------------
@@ -32,12 +43,10 @@ function isDesktopApp(): boolean {
  * Retorna o registro cacheado ou undefined se não existir.
  */
 export async function getCachedImage(id: string): Promise<CachedImage | undefined> {
-  console.log(`[ImageDrive:getCachedImage] Buscando id="${id}", isDesktop=${isDesktopApp()}`);
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri para acessar o cache
     try {
       const cached = await window.api.imageCache.get(id);
-      console.log(`[ImageDrive:getCachedImage] Resultado do Tauri cache:`, cached ? `found (data.length=${cached.data?.length}, mimeType=${cached.mimeType})` : 'null/undefined');
       if (cached) {
         return {
           id,
@@ -65,12 +74,10 @@ export async function setCachedImage(
   data: ArrayBuffer,
   mimeType: string
 ): Promise<void> {
-  console.log(`[ImageDrive:setCachedImage] Salvando id="${id}", dataSize=${data.byteLength}, mimeType="${mimeType}", isDesktop=${isDesktopApp()}`);
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri
     try {
       await window.api.imageCache.put(id, data, mimeType);
-      console.log(`[ImageDrive:setCachedImage] Salvo com sucesso no Tauri cache`);
       
       // Verificação imediata: ler de volta para confirmar persistência
       const verifyResult = await window.api.imageCache.get(id);
@@ -149,21 +156,15 @@ export async function getDecryptedImageUrl(
   driveFileId: string,
   masterKey: CryptoKey
 ): Promise<string> {
-  console.log(`[ImageDrive:getDecryptedImageUrl] Iniciando para driveFileId="${driveFileId}"`);
-  
   // 1. Tenta buscar no cache local primeiro
   const cached = await getCachedImage(driveFileId);
 
   if (cached) {
-    console.log(`[ImageDrive:getDecryptedImageUrl] Cache HIT para "${driveFileId}" (${cached.data.byteLength} bytes, ${cached.mimeType})`);
     // Encontrou no cache — cria blob URL diretamente
     const blob = new Blob([cached.data], { type: cached.mimeType || 'image/png' });
     const url = URL.createObjectURL(blob);
-    console.log(`[ImageDrive:getDecryptedImageUrl] Blob URL criada: ${url}`);
     return url;
   }
-
-  console.log(`[ImageDrive:getDecryptedImageUrl] Cache MISS para "${driveFileId}"`);
 
   // 2. Imagens com ID local_ existem APENAS no cache — se não estão lá, perderam-se
   if (driveFileId.startsWith('local_')) {
@@ -172,7 +173,6 @@ export async function getDecryptedImageUrl(
 
   // 3. Não está no cache — precisa baixar do Drive
   const token = await getValidAccessToken().catch(() => null);
-  console.log(`[ImageDrive:getDecryptedImageUrl] Token para download: ${token ? 'SIM' : 'NÃO'}`);
   if (!token) {
     throw new Error(
       'Sem token do Google Drive. Faça login no Drive nas Configurações.'
@@ -180,22 +180,18 @@ export async function getDecryptedImageUrl(
   }
 
   // 4. Baixa o arquivo criptografado do Drive
-  console.log(`[ImageDrive:getDecryptedImageUrl] Baixando do Drive...`);
   const encryptedBuffer = await downloadFromDrive(token, driveFileId);
-  console.log(`[ImageDrive:getDecryptedImageUrl] Download concluído: ${encryptedBuffer.byteLength} bytes`);
 
   // 5. Descriptografa o conteúdo
   const decryptedBuffer = await decryptFile(encryptedBuffer, masterKey);
-  console.log(`[ImageDrive:getDecryptedImageUrl] Descriptografado: ${decryptedBuffer.byteLength} bytes`);
 
-  // 6. Salva no cache local para próximas consultas
-  // Usa 'image/png' como fallback pois não temos o mimeType original
-  await setCachedImage(driveFileId, decryptedBuffer, 'image/png');
+  // 6. Salva no cache local (B20: detecta mimeType real para evitar inflar JPEGs como PNG)
+  const realMimeType = detectMimeType(decryptedBuffer);
+  await setCachedImage(driveFileId, decryptedBuffer, realMimeType);
 
   // 7. Cria e retorna a blob URL
-  const blob = new Blob([decryptedBuffer], { type: 'image/png' });
+  const blob = new Blob([decryptedBuffer], { type: realMimeType });
   const url = URL.createObjectURL(blob);
-  console.log(`[ImageDrive:getDecryptedImageUrl] Blob URL criada após download: ${url}`);
   return url;
 }
 
