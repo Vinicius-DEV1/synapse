@@ -65,7 +65,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }, []);
 
   // 1. Sync & Collab
-  const { ydocRef, needsLegacyHydration } = useEditorSync({
+  const { ydocRef } = useEditorSync({
     pageId,
     initialCrdtState,
     initialContent,
@@ -293,12 +293,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     }
   }, [pageId]);
 
-  useEffect(() => {
-    if (editor && needsLegacyHydration && editor.isEmpty) {
-      editor.commands.setContent(initialContent);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]);
+
 
   useEffect(() => {
     if (editor && editor.view) {

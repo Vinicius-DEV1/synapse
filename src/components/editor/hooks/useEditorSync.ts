@@ -36,8 +36,6 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
     
 
 
-  const needsLegacyHydration = !hasMeaningfulCrdt && !!initialContent && initialContent !== '' && !window.__cadernoEditorBackup?.has(pageId);
-
   useEffect(() => {
     const handleRemoteUpdate = (e: CustomEvent) => {
       const { pageId: syncPageId, crdtState } = e.detail;
@@ -66,6 +64,6 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
     };
   }, [pageId, latestContentRef, onSaveRef]);
 
-  return { ydocRef, needsLegacyHydration };
+  return { ydocRef };
 }
 
