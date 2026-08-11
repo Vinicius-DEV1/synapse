@@ -54,7 +54,15 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
 
   let localPath = "";
   if (window.api.video.downloadFromDrive) {
-    localPath = await window.api.video.downloadFromDrive(targetDriveId, token, targetFileName);
+    let unlisten: (() => void) | undefined;
+    if (window.api.video.onDownloadProgress && onProgress) {
+      unlisten = window.api.video.onDownloadProgress(onProgress);
+    }
+    try {
+      localPath = await window.api.video.downloadFromDrive(targetDriveId, token, targetFileName);
+    } finally {
+      if (unlisten) unlisten();
+    }
   } else {
     const buffer = await downloadFromDrive(token, targetDriveId, onProgress);
     localPath = await window.api.video.saveLocal(targetFileName, buffer);
@@ -628,6 +636,82 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
     await window.api.sync.upsertRow('videos', {
       ...video,
       deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * Retranscodes an existing local video to a specific web quality, uploads it, and replaces the old web version.
+ */
+export async function generateWebVersionTask(
+  video: VideoItem,
+  webQuality: string,
+  conversionPreset: string = 'medium',
+  onProgress?: (percent: number) => void,
+  onPhaseChange?: (phase: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  if (!video.is_local || !video.file_path) {
+    throw new Error("Vídeo precisa estar baixado localmente para gerar versão web.");
+  }
+  
+  if (!window.api?.video?.generateWebVersion) {
+    throw new Error("API de conversão não suportada.");
+  }
+
+  const token = await getValidAccessToken();
+  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
+
+  if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+
+  // 1. Converter
+  if (onPhaseChange) onPhaseChange('Convertendo vídeo no Desktop...');
+  
+  let unlistenProgress: (() => void) | undefined;
+  if (window.api.video.onDownloadProgress && onProgress) {
+    unlistenProgress = window.api.video.onDownloadProgress((pct) => {
+      onProgress(pct * 0.7); // Converter takes 70% of the progress
+    });
+  }
+
+  let genResult: { web_path: string, web_size: number };
+  try {
+    genResult = await window.api.video.generateWebVersion(
+      video.file_path,
+      video.original_name,
+      webQuality,
+      conversionPreset,
+      video.duration || 0
+    );
+  } finally {
+    if (unlistenProgress) unlistenProgress();
+  }
+
+  if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+
+  // 2. Upload
+  if (onPhaseChange) onPhaseChange('Enviando para o Drive...');
+  const baseName = video.original_name.replace(/\.[^/.]+$/, "");
+  const webFilenameEnc = `${baseName}_web.mp4.enc`;
+
+  const newWebFileId = await uploadLocalFileToDrive(token, genResult.web_path, webFilenameEnc, (p) => {
+    if (signal?.aborted) throw new Error("Cancelado pelo usuário");
+    if (onProgress) onProgress(70 + (p * 0.3)); // Upload is 30% of progress
+  });
+
+  // 3. Delete old web version from drive if different from original
+  if (video.drive_web_file_id && video.drive_web_file_id !== video.drive_file_id) {
+    if (onPhaseChange) onPhaseChange('Limpando versão antiga...');
+    await deleteFromDrive(token, video.drive_web_file_id).catch(e => console.warn("Failed to delete old web version", e));
+  }
+
+  // 4. Update Database
+  if (onPhaseChange) onPhaseChange('Atualizando Banco de Dados...');
+  if (window.api?.sync) {
+    await window.api.sync.upsertRow(VIDEO_TABLE, {
+      ...video,
+      drive_web_file_id: newWebFileId,
       updated_at: new Date().toISOString()
     });
   }

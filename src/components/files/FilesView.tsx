@@ -13,6 +13,7 @@ import RenameModal from './RenameModal';
 import MoveModal from './MoveModal';
 import { getValidAccessToken } from '../../services/drive';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
+import DriveAuthModal from '../library/DriveAuthModal';
 
 export default function FilesView() {
   const { state } = useStore();
@@ -33,6 +34,7 @@ export default function FilesView() {
   const [itemsToMove, setItemsToMove] = useState<Array<{ item: FileItem | FileFolder, isFolder: boolean }> | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [showDriveAuth, setShowDriveAuth] = useState(false);
   
   const loadData = async () => {
     if (window.api && window.api.files) {
@@ -146,10 +148,14 @@ export default function FilesView() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-2 mr-2 text-xs text-white/50">
-                <span className="w-2 h-2 rounded-full bg-brand-500"></span>
-                <span>{driveStatus === 'connected' ? 'Drive Conectado' : driveStatus === 'disconnected' ? 'Drive Desconectado' : 'Verificando...'}</span>
-              </div>
+              <button 
+                onClick={() => setShowDriveAuth(true)}
+                className="hidden md:flex items-center gap-2 mr-2 text-xs text-white/50 hover:text-white transition-colors"
+                title="Gerenciar conexão com o Google Drive"
+              >
+                <span className={`w-2 h-2 rounded-full ${driveStatus === 'connected' ? 'bg-emerald-500' : driveStatus === 'disconnected' ? 'bg-red-500' : 'bg-brand-500'}`}></span>
+                <span>{driveStatus === 'connected' ? 'Drive Conectado' : driveStatus === 'disconnected' ? 'Conectar ao Drive' : 'Verificando...'}</span>
+              </button>
               <button 
                 onClick={() => setShowFolderUploadModal(true)}
                 className="flex items-center gap-2 px-3 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-lg text-sm transition-colors"
@@ -382,7 +388,6 @@ export default function FilesView() {
           }}
         />
       )}
-
       {(itemToMove || itemsToMove) && (
         <MoveModal
           item={itemToMove?.item}
@@ -406,7 +411,7 @@ export default function FilesView() {
           }}
         />
       )}
-      
+
       {itemToInfo && (
         <FileInfoModal
           item={itemToInfo}
@@ -418,6 +423,16 @@ export default function FilesView() {
         <FileViewer
           item={itemToView}
           onClose={() => setItemToView(null)}
+        />
+      )}
+
+      {showDriveAuth && (
+        <DriveAuthModal 
+          onClose={() => setShowDriveAuth(false)}
+          onSuccess={() => {
+            setShowDriveAuth(false);
+            setDriveStatus('connected');
+          }}
         />
       )}
     </div>

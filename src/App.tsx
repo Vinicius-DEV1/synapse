@@ -26,6 +26,8 @@ import { useGarbageCollection } from './hooks/useGarbageCollection';
 import { usePlatform } from './hooks/usePlatform';
 import GlobalSearchModal from './components/GlobalSearchModal';
 import DriveAuthModal from './components/library/DriveAuthModal';
+import { TaskProvider } from './store/TaskContext';
+import BackgroundTaskWidget from './components/layout/BackgroundTaskWidget';
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -309,6 +311,9 @@ function AppContent() {
           onSuccess={() => setIsDriveAuthModalOpen(false)} 
         />
       )}
+
+      {/* Background Tasks Widget */}
+      <BackgroundTaskWidget />
     </div>
   );
 }
@@ -318,7 +323,9 @@ export default function App() {
     <GlobalErrorBoundary>
       <StoreProvider>
         <FocusProvider>
-          <AppContent />
+          <TaskProvider>
+            <AppContent />
+          </TaskProvider>
         </FocusProvider>
       </StoreProvider>
     </GlobalErrorBoundary>

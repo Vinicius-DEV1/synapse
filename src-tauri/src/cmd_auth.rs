@@ -1,6 +1,6 @@
 use crate::crypto::{
     decrypt_module_key_with_key, derive_key_from_password,
-    encrypt_module_key, encrypt_module_key_with_key, generate_module_key, hash_auth_password,
+    encrypt_module_key, generate_module_key, hash_auth_password,
 };
 use crate::db::DbState;
 use serde::{Deserialize, Serialize};

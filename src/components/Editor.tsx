@@ -17,6 +17,8 @@ import FileUploadModal from './files/FileUploadModal';
 import FileSelectModal from './files/FileSelectModal';
 import { useStore } from '../store/useStore';
 import CalendarEventModal from './editor-extensions/CalendarEventModal';
+import MediaSelectModal from './MediaSelectModal';
+import MediaActionModal from './MediaActionModal';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
 import { useEditorSave } from './editor/hooks/useEditorSave';
@@ -45,6 +47,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const [fileSelectModal, setFileSelectModal] = useState(false);
   const [pageSearchMenu, setPageSearchMenu] = useState<{ isOpen: boolean, x: number, y: number, query: string } | null>(null);
   const [calendarEventModal, setCalendarEventModal] = useState<{ isOpen: boolean, initialTitle?: string } | null>(null);
+  const [mediaSelectModal, setMediaSelectModal] = useState<{ isOpen: boolean, type: 'video' | 'book' } | null>(null);
+  const [mediaActionModal, setMediaActionModal] = useState<{ isOpen: boolean, mediaId: string, mediaType: 'video' | 'book', title: string } | null>(null);
   
   const { state } = useStore();
   const currentPage = state.pages.find(p => p.id === pageId);
@@ -91,13 +95,23 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   }, [pageId, cleanupSave]);
 
   useEffect(() => {
-    const handleOpenImageViewer = (e: any) => {
-      if (e.detail && e.detail.src) {
-        setViewerState({ isOpen: true, src: e.detail.src, nodePos: e.detail.nodePos });
+    const handleOpenImageViewer = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.src) {
+        setViewerState({ isOpen: true, src: detail.src, nodePos: detail.nodePos });
       }
     };
     window.addEventListener('open-image-viewer', handleOpenImageViewer);
     return () => window.removeEventListener('open-image-viewer', handleOpenImageViewer);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenMediaAction = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setMediaActionModal({ isOpen: true, mediaId: detail.mediaId, mediaType: detail.mediaType, title: detail.title });
+    };
+    window.addEventListener('open-media-action', handleOpenMediaAction);
+    return () => window.removeEventListener('open-media-action', handleOpenMediaAction);
   }, []);
 
   // 4. Slash Commands
@@ -113,7 +127,8 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     setAlarmModal,
     setFileUploadModal,
     setFileSelectModal,
-    setCalendarEventModal
+    setCalendarEventModal,
+    setMediaSelectModal
   });
 
   const editor = useEditor({
@@ -496,6 +511,33 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           initialTitle={calendarEventModal.initialTitle}
           pageId={pageId}
           pageTitle={currentPage?.title || ''}
+        />
+      )}
+
+      {mediaSelectModal?.isOpen && (
+        <MediaSelectModal
+          isOpen={true}
+          type={mediaSelectModal.type}
+          onClose={() => setMediaSelectModal(null)}
+          onSelect={(item) => {
+            if (editor) {
+              editor.chain().focus().insertContent({
+                type: 'mediaWidget',
+                attrs: { mediaId: item.id, mediaType: mediaSelectModal.type, title: item.title }
+              }).run();
+            }
+            setMediaSelectModal(null);
+          }}
+        />
+      )}
+
+      {mediaActionModal?.isOpen && (
+        <MediaActionModal
+          isOpen={true}
+          mediaId={mediaActionModal.mediaId}
+          mediaType={mediaActionModal.mediaType}
+          title={mediaActionModal.title}
+          onClose={() => setMediaActionModal(null)}
         />
       )}
     </div>

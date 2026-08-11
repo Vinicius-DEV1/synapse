@@ -4,11 +4,13 @@ import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
 import YouTubeDownloadModal from './YouTubeDownloadModal';
-import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, getSubtitleText, deleteVideoAndSync } from '../../services/video-manager';
-import { getCultureKey } from '../../store/useStore';
+import WebVersionModal from './WebVersionModal';
+import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video-manager';
+import { getCultureKey, useStore } from '../../store/useStore';
+import { useTasks } from '../../store/TaskContext';
 import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, MonitorPlay } from 'lucide-react';
 
-export default function VideoView() {
+export default function VideoView({ tabId }: { tabId?: string }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -24,6 +26,13 @@ export default function VideoView() {
   const [activeVideoSrc, setActiveVideoSrc] = useState<string | null>(null);
   const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>();
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [webVersionVideo, setWebVersionVideo] = useState<VideoItem | null>(null);
+  
+  const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
+  
+  const { state } = useStore();
+  const activeTab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
+  const pendingVideoId = activeTab?.moduleState?.videoId;
 
   useEffect(() => {
     loadVideos();
@@ -35,6 +44,18 @@ export default function VideoView() {
     }
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (pendingVideoId && videos.length > 0) {
+      // Check if we haven't already started playing it
+      if (activeVideo?.id !== pendingVideoId) {
+        const vid = videos.find(v => v.id === pendingVideoId);
+        if (vid) {
+          handlePlayVideo(vid);
+        }
+      }
+    }
+  }, [pendingVideoId, videos, activeVideo?.id]);
 
   const loadVideos = async () => {
     try {
@@ -66,14 +87,24 @@ export default function VideoView() {
   };
 
   const handleUpload = async (options: UploadOptions) => {
-    setIsUploading(true);
-    try {
-      const result = await uploadNewVideo(options);
-      await loadVideos();
-      return result;
-    } finally {
-      setIsUploading(false);
-    }
+    const taskId = `upload_${Date.now()}`;
+    const abortController = new AbortController();
+    
+    addTask(taskId, `Importando: ${options.videoFile.name}`, abortController);
+
+    uploadNewVideo({
+      ...options,
+      onProgress: (pct) => updateTaskProgress(taskId, pct),
+      onPhaseChange: (phase) => updateTaskProgress(taskId, 0, `[Upload] ${phase}`),
+      signal: abortController.signal
+    }).then(() => {
+      completeTask(taskId);
+      loadVideos();
+    }).catch((e: any) => {
+      if (e.message !== 'Cancelado pelo usuário') {
+        failTask(taskId, e.message || 'Erro desconhecido');
+      }
+    });
   };
 
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
@@ -136,6 +167,33 @@ export default function VideoView() {
       console.error("Erro ao excluir da nuvem", e);
     } finally {
       setIsDeletingId(null);
+    }
+  };
+
+  const handleStartWebVersion = async (quality: string) => {
+    if (!webVersionVideo) return;
+    const video = webVersionVideo;
+    const taskId = `web_gen_${video.id}_${Date.now()}`;
+    const abortController = new AbortController();
+    
+    addTask(taskId, `Conversão Web: ${video.title}`, abortController);
+    
+    try {
+      await generateWebVersionTask(
+        video,
+        quality,
+        'medium',
+        (pct) => updateTaskProgress(taskId, pct),
+        (phase) => updateTaskProgress(taskId, 0, `[Conversão Web] ${phase}`),
+        abortController.signal
+      );
+      completeTask(taskId);
+      loadVideos(); // Refresh DB
+    } catch (e: any) {
+      const errMsg = typeof e === 'string' ? e : e.message;
+      if (errMsg !== 'Cancelado pelo usuário') {
+        failTask(taskId, errMsg || 'Erro desconhecido');
+      }
     }
   };
 
@@ -292,6 +350,7 @@ export default function VideoView() {
             setSelectedFolderId(id);
             setSelectedFolderName(name);
           }}
+          onGenerateWebVersion={(v) => setWebVersionVideo(v)}
         />
       </div>
 
@@ -312,6 +371,14 @@ export default function VideoView() {
           onSuccess={loadVideos}
         />
       )}
+
+      {/* Web Version Modal */}
+      <WebVersionModal
+        isOpen={!!webVersionVideo}
+        onClose={() => setWebVersionVideo(null)}
+        onConfirm={handleStartWebVersion}
+        videoTitle={webVersionVideo?.title || ''}
+      />
 
       {/* Fullscreen Player */}
       {activeVideoSrc && activeVideo && (

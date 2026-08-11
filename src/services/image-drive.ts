@@ -120,10 +120,13 @@ export async function uploadEncryptedImage(
   console.log(`[ImageDrive:uploadEncryptedImage] Token obtido: ${token ? 'SIM (length=' + token.length + ')' : 'NÃO (null)'}`);
 
   if (!token) {
+    // Dispara o evento para alertar o usuário (abre o modal de auth)
+    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    
     // Modo offline/local: salva apenas no cache com ID permanente
     const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     await setCachedImage(localId, originalBuffer, file.type);
-    console.log(`[ImageDrive] Sem token Drive — imagem salva localmente como ${localId}`);
+    console.log(`[ImageDrive] Sem token Drive — modal disparado e imagem salva localmente como ${localId}`);
     return localId;
   }
 

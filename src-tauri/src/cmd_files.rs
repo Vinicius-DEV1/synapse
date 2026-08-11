@@ -237,10 +237,7 @@ pub fn files_save_local(
     db_state: State<'_, DbState>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_dir = crate::get_app_data_dir();
     let files_dir = app_dir.join("files");
 
     if !files_dir.exists() {

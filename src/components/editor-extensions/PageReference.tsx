@@ -3,7 +3,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { useStore } from '../../store/useStore';
 import { useEffect, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, Plus, GripVertical } from 'lucide-react';
 
 const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
@@ -38,7 +38,32 @@ const PageReferenceComponent = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper as="span" className="inline-block mx-1 align-middle">
+    <NodeViewWrapper as="span" className="inline-block relative group mx-1 align-middle">
+      {/* Custom Drag Handle & Add Below Button */}
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function') {
+              const pos = props.getPos();
+              props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+            }
+          }}
+          className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Adicionar linha abaixo"
+        >
+          <Plus size={16} />
+        </button>
+        <div 
+          data-drag-handle
+          className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Arrastar vínculo"
+        >
+          <GripVertical size={16} />
+        </div>
+      </div>
+
       <span
         onClick={handleClick}
         contentEditable={false}

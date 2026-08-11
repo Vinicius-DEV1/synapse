@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, ExternalLink, Download, FileText, File } from 'lucide-react';
+import { X, ExternalLink, Download, FileText, File, Moon, Sun } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
@@ -14,6 +14,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
+  const [darkMode, setDarkMode] = useState<boolean>(false);
 
   useEffect(() => {
     let url: string | null = null;
@@ -91,10 +92,17 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
         {/* Barra compacta flutuante sobre o PDF */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-dark-bg/80 backdrop-blur-md border border-white/10 rounded-lg px-2 py-1 shadow-lg">
-          <span className="text-xs text-dark-subtext font-medium truncate max-w-48 px-1" title={item.name}>
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-dark-bg/80 backdrop-blur-md border border-white/10 rounded-lg px-2 py-1 shadow-lg max-w-[calc(100vw-24px)]">
+          <span className="text-xs text-dark-subtext font-medium truncate flex-1 min-w-0 max-w-24 sm:max-w-48 px-1" title={item.name}>
             {item.name}
           </span>
+          <button 
+            onClick={() => setDarkMode(!darkMode)} 
+            className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            title="Alternar Tema"
+          >
+            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           {objectUrl && (
             <a 
               href={objectUrl} 
@@ -119,7 +127,8 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         ) : (
           <iframe 
             src={objectUrl} 
-            className="w-full h-full bg-white"
+            className="w-full h-full bg-white transition-all duration-300"
+            style={{ filter: darkMode ? 'invert(100%) hue-rotate(180deg) contrast(90%)' : 'none' }}
             title={item.name}
           />
         )}
@@ -129,11 +138,11 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md">
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/50">
-        <h2 className="text-lg font-semibold text-white truncate max-w-2xl" title={item.name}>
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/50 gap-4">
+        <h2 className="text-lg font-semibold text-white truncate flex-1 min-w-0" title={item.name}>
           {item.name}
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {objectUrl && (
             <a 
               href={objectUrl} 
