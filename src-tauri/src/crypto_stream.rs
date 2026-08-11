@@ -173,8 +173,9 @@ pub fn read_chunked_range<P: AsRef<Path>>(
         }
 
         // Calculate how much encrypted data is in this chunk
-        let current_chunk_original_size = if chunk_idx == (original_size / chunk_size) {
-            original_size % chunk_size
+        let chunk_start_byte = chunk_idx * chunk_size;
+        let current_chunk_original_size = if chunk_start_byte + chunk_size > original_size {
+            original_size - chunk_start_byte
         } else {
             chunk_size
         };
@@ -191,8 +192,7 @@ pub fn read_chunked_range<P: AsRef<Path>>(
             .decrypt(nonce, encrypted_buffer.as_ref())
             .map_err(|e| format!("Decryption failed for chunk {}: {:?}", chunk_idx, e))?;
 
-        // Calculate the overlap of this chunk with the requested range
-        let chunk_start_byte = chunk_idx * chunk_size;
+
 
         let copy_start = if start_byte > chunk_start_byte {
             (start_byte - chunk_start_byte) as usize
@@ -295,8 +295,9 @@ pub async fn read_network_chunked_range_async(
     let mut result_data = Vec::new();
 
     for chunk_idx in start_chunk..=end_chunk {
-        let current_chunk_original_size = if chunk_idx == (original_size / chunk_size) {
-            original_size % chunk_size
+        let chunk_start_byte = chunk_idx * chunk_size;
+        let current_chunk_original_size = if chunk_start_byte + chunk_size > original_size {
+            original_size - chunk_start_byte
         } else {
             chunk_size
         };
@@ -346,7 +347,7 @@ pub async fn read_network_chunked_range_async(
             .decrypt(nonce, encrypted_buffer)
             .map_err(|e| format!("Decryption failed for chunk {}: {:?}", chunk_idx, e))?;
 
-        let chunk_start_byte = chunk_idx * chunk_size;
+
 
         let copy_start = if start_byte > chunk_start_byte {
             (start_byte - chunk_start_byte) as usize
