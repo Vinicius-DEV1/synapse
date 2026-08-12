@@ -15,6 +15,7 @@ import {
   BookOpen, 
   Loader2, 
   ChevronDown, 
+  ChevronUp,
   ChevronRight,
   Trophy,
   Send,
@@ -213,6 +214,20 @@ const QuestionBlockComponent = (props: any) => {
   const handleAddQuestion = () => {
     const newQ = createDefaultQuestion(questions.length + 1);
     updateQuestions([...questions, newQ]);
+  };
+
+  const handleMoveQuestion = (index: number, direction: 'up' | 'down', e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= questions.length) return;
+
+    const newQuestions = [...questions];
+    const [moved] = newQuestions.splice(index, 1);
+    newQuestions.splice(targetIndex, 0, moved);
+    updateQuestions(newQuestions);
   };
 
   const handleRemoveQuestion = (qId: string) => {
@@ -713,13 +728,36 @@ const QuestionBlockComponent = (props: any) => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setDeletingQuestionInfo({ id: q.id, index: qIndex })}
-                      className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded transition-colors"
-                      title="Remover esta questão"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {/* Botão Mover para Cima */}
+                      <button
+                        onClick={(e) => handleMoveQuestion(qIndex, 'up', e)}
+                        disabled={qIndex === 0}
+                        className="p-1 text-dark-subtext hover:text-purple-300 hover:bg-white/10 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                        title="Mover questão para cima"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+
+                      {/* Botão Mover para Baixo */}
+                      <button
+                        onClick={(e) => handleMoveQuestion(qIndex, 'down', e)}
+                        disabled={qIndex === questions.length - 1}
+                        className="p-1 text-dark-subtext hover:text-purple-300 hover:bg-white/10 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                        title="Mover questão para baixo"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+
+                      {/* Remover esta questão específica */}
+                      <button
+                        onClick={() => setDeletingQuestionInfo({ id: q.id, index: qIndex })}
+                        className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded transition-colors"
+                        title="Remover esta questão"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Enunciado Editável */}
