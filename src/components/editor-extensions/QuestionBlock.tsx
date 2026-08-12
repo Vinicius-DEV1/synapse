@@ -552,6 +552,25 @@ const QuestionBlockComponent = (props: any) => {
   };
 
 
+
+  const handleGiveUpAndShowAnswer = (q: QuestionItem) => {
+    const newAttempt: AttemptItem = {
+      id: `att_${Date.now()}`,
+      timestamp: Date.now(),
+      type: q.type,
+      userTypedAnswer: q.type === 'open' ? (q.userTypedAnswer || 'Gabarito consultado diretamente') : undefined,
+      selectedIndex: q.type === 'multiple_choice' ? q.selectedIndex : undefined,
+      isCorrect: false,
+      aiFeedback: q.type === 'open' ? { verdict: 'Incorreto', feedback: 'Gabarito de referência consultado diretamente sem envio para avaliação da IA.' } : null,
+    };
+
+    updateSingleQuestion(q.id, {
+      answered: true,
+      showExplanation: true,
+      attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
+    });
+  };
+
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
     const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
@@ -1379,33 +1398,44 @@ const QuestionBlockComponent = (props: any) => {
                   {/* AÇÕES DA SUB-QUESTÃO (PRÁTICA) */}
                   <div className="flex flex-col gap-2">
                     {!q.answered ? (
-                      q.type === 'multiple_choice' ? (
+                      <div className="flex items-center gap-2">
+                        {q.type === 'multiple_choice' ? (
+                          <button
+                            onClick={() => handleAnswerMultipleChoice(q)}
+                            disabled={q.selectedIndex === null}
+                            className="flex-1 py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
+                          >
+                            Responder Questão {qIndex + 1}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleEvaluateOpenQuestion(q)}
+                            disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs shadow-md"
+                          >
+                            {evaluatingIds[q.id] ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin text-purple-200" />
+                                <span>Avaliando Resposta...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={14} className="text-purple-200" />
+                                <span>Avaliar Resposta com IA</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => handleAnswerMultipleChoice(q)}
-                          disabled={q.selectedIndex === null}
-                          className="w-full py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
+                          onClick={() => handleGiveUpAndShowAnswer(q)}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 hover:border-amber-500/40 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0"
+                          title="Não sei a resposta: ver gabarito de referência e explicação sem enviar para a IA"
                         >
-                          Responder Questão {qIndex + 1}
+                          <HelpCircle size={14} className="text-amber-400 shrink-0" />
+                          <span>Ver Gabarito</span>
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleEvaluateOpenQuestion(q)}
-                          disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
-                          className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs shadow-md"
-                        >
-                          {evaluatingIds[q.id] ? (
-                            <>
-                              <Loader2 size={14} className="animate-spin text-purple-200" />
-                              <span>Avaliando Resposta...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={14} className="text-purple-200" />
-                              <span>Avaliar Resposta com IA</span>
-                            </>
-                          )}
-                        </button>
-                      )
+                      </div>
                     ) : (
                       <div className="flex items-center gap-2">
                         {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
