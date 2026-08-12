@@ -1,3 +1,14 @@
+
+export const sanitizeExpectedAnswer = (text: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/^(O|A)\s+aluno(a)?\s+deve\s+(explicar|responder|descrever|mencionar|citar|demonstrar|afirmar|dizer)\s+que\s+/i, '')
+    .replace(/^(Espera-se\s+que\s+o(a)?\s+aluno(a)?\s+(responda|explique|descreva|demonstre)\s+que\s+)/i, '')
+    .replace(/^(O\s+gabarito\s+esperado\s+é\s+que\s+)/i, '')
+    .replace(/^(Deve\s+ser\s+explicado\s+que\s+)/i, '')
+    .replace(/^[a-z]/, (c) => c.toUpperCase());
+};
+
 import { getSettings } from '../utils/settings';
 import { NetworkResilience } from '../utils/NetworkResilience';
 import { getWebDb } from './db-web';
@@ -450,6 +461,7 @@ export async function promptGeminiQuizAssistant(
    - Para códigos com instruções ou múltiplas linhas, use SEMPRE blocos de código com 3 crases e a linguagem especificada.
    - NUNCA escreva a palavra de uma linguagem após uma única crase como \`javascript const fs = ...\`.
    - Para palavras-chave ou métodos curtos em linha, use crases simples (ex: \`util.promisify\`).
+10. RESPOSTA ESPERADA (expectedAnswer): Deve ser escrita DIRETAMENTE como a resposta modelo esperada (ex: "O Node.js é um ambiente de execução..."). NUNCA comece com metatextos ou instruções em terceira pessoa como "O aluno deve explicar que...", "Espera-se que o aluno diga...", etc.
 9. QUALIDADE DA EXPLICAÇÃO E GABARITO (REGRA OBRIGATÓRIA DE APRENDIZADO):
    - NUNCA gere explicações rasas ou metatextos como "Essa questão valida o conhecimento sobre X". Isso é ESTRITAMENTE PROIBIDO.
    - A "explanation" DEVE SER DIDÁTICA, COMPLETA E ESTRUTURADA (2 a 5 frases ou tópicos), ensinando o conceito teórico real, justificando o porquê da resposta correta e mostrando código/exemplos quando aplicável.
@@ -500,12 +512,40 @@ NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
   const responseText = response.text;
 
   try {
-    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+    let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Extract JSON object using regex if text has leading/trailing prose
+    const match = /{[\s\S]*}/.exec(cleanText);
+    if (match) {
+      cleanText = match[0];
+    }
+
+    const parsed = JSON.parse(cleanText);
+
+    // Ensure expectedAnswer in suggestedActions is sanitized
+    if (Array.isArray(parsed.suggestedActions)) {
+      parsed.suggestedActions = parsed.suggestedActions.map((act: any) => {
+        if (act.expectedAnswer) act.expectedAnswer = sanitizeExpectedAnswer(act.expectedAnswer);
+        if (act.changes?.expectedAnswer) act.changes.expectedAnswer = sanitizeExpectedAnswer(act.changes.expectedAnswer);
+        return act;
+      });
+    }
+
+    // Clean up message if it somehow contained raw JSON
+    if (typeof parsed.message === 'string' && parsed.message.trim().startsWith('{')) {
+      const msgMatch = /"message":\s*"([^"]+)"/.exec(parsed.message);
+      if (msgMatch) parsed.message = msgMatch[1];
+    }
+
+    return parsed;
   } catch (err) {
     console.error('Failed to parse Gemini JSON for quiz assistant:', responseText);
+    
+    // Robust fallback: extract "message" text if present inside JSON string
+    const extractedMsg = msgMatch ? msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : 'Aqui estão as sugestões para a sua bateria:';
+    
     return {
-      message: responseText
+      message: extractedMsg
     };
   }
 }
