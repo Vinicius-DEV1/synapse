@@ -1241,19 +1241,18 @@ const QuestionBlockComponent = (props: any) => {
                         {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
                       </span>
 
-                      {/* BOTÃO DISCRETO DA LÂMPADA/GABARITO NO TOPO ESQUERDO DO CARD */}
+                      {/* BOTÃO DISCRETO DE EMOJI DO GABARITO NO TOPO ESQUERDO DO CARD */}
                       {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
                         <button
                           onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
-                          className={`px-1.5 py-0.5 rounded-md transition-all flex items-center gap-1 text-[11px] font-medium border ${
+                          className={`px-1.5 py-0.5 rounded-md transition-all flex items-center justify-center border text-xs leading-none ${
                             q.showExplanation
-                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
+                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
                               : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-amber-300'
                           }`}
-                          title={q.showExplanation ? 'Ocultar Gabarito / Explicação' : '💡 Consultar Gabarito de Referência e Explicação (sem contabilizar como resposta)'}
+                          title={q.showExplanation ? 'Ocultar Gabarito / Explicação' : '💡 Consultar Gabarito de Referência (sem contabilizar como resposta)'}
                         >
-                          <Lightbulb size={13} className={q.showExplanation ? 'text-amber-300' : 'text-amber-400/80'} />
-                          <span className="text-[10px]">{q.showExplanation ? 'Ocultar Gabarito' : 'Gabarito'}</span>
+                          <span className="text-[12px]">💡</span>
                         </button>
                       )}
 
