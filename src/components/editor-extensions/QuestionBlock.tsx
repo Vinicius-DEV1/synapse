@@ -30,7 +30,8 @@ import {
   Copy,
   Upload,
   FileJson,
-  ClipboardPaste
+  ClipboardPaste,
+  Tag
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { 
@@ -47,6 +48,7 @@ export interface SuggestedAction {
   question?: string;
   options?: string[];
   correctIndex?: number;
+  tags?: string[];
   expectedAnswer?: string;
   explanation?: string;
   // edit / delete
@@ -55,6 +57,7 @@ export interface SuggestedAction {
     question?: string;
     options?: string[];
     correctIndex?: number;
+    tags?: string[];
     expectedAnswer?: string;
     explanation?: string;
   };
@@ -74,6 +77,7 @@ export interface QuestionItem {
   question: string;
   options: string[];
   correctIndex: number;
+  tags?: string[];
   selectedIndex: number | null;
   expectedAnswer: string;
   userTypedAnswer: string;
@@ -147,6 +151,32 @@ const markdownComponents = {
 };
 
 
+
+const generateAutoTags = (question: string, options?: string[], explanation?: string): string[] => {
+  const text = `${question} ${options?.join(' ') || ''} ${explanation || ''}`.toLowerCase();
+  const knownKeywords: Record<string, string[]> = {
+    'javascript': ['javascript', 'js', 'node.js', 'typeof', 'console.log', 'es6', 'npm'],
+    'typescript': ['typescript', 'ts', 'interface', 'type ', 'generics'],
+    'react': ['react', 'usestate', 'useeffect', 'jsx', 'component', 'props'],
+    'python': ['python', 'def ', 'pip', 'list comprehension', 'pandas'],
+    'sql': ['sql', 'select', 'join', 'database', 'where', 'group by'],
+    'html/css': ['html', 'css', 'flexbox', 'grid', 'div', 'style'],
+    'async': ['async', 'await', 'promise', 'callback', 'fetch', 'promisify'],
+    'funcoes': ['function', 'arrow function', 'parâmetro', 'retorno', 'scope'],
+    'estruturas': ['array', 'objeto', 'map', 'filter', 'reduce', 'json'],
+    'algoritmos': ['loop', 'for ', 'while', 'recursão', 'if ', 'else'],
+  };
+
+  const matched: string[] = [];
+  Object.entries(knownKeywords).forEach(([tag, terms]) => {
+    if (terms.some((term) => text.includes(term))) {
+      matched.push(tag);
+    }
+  });
+
+  return matched.length > 0 ? matched.slice(0, 3) : ['estudo'];
+};
+
 const getEditActionChanges = (action: SuggestedAction): Partial<QuestionItem> => {
   const c: Partial<QuestionItem> = { ...(action.changes || {}) };
   if (action.question && !c.question) c.question = action.question;
@@ -155,6 +185,7 @@ const getEditActionChanges = (action: SuggestedAction): Partial<QuestionItem> =>
   if (action.expectedAnswer && !c.expectedAnswer) c.expectedAnswer = action.expectedAnswer;
   if (action.explanation && !c.explanation) c.explanation = action.explanation;
   if (action.type && !c.type) c.type = action.type;
+  if (action.tags && action.tags.length > 0 && !c.tags) c.tags = action.tags;
   return c;
 };
 
@@ -164,6 +195,7 @@ const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
   question: '',
   options: ['', '', '', ''],
   correctIndex: 0,
+  tags: [],
   selectedIndex: null,
   expectedAnswer: '',
   userTypedAnswer: '',
@@ -227,6 +259,7 @@ const QuestionBlockComponent = (props: any) => {
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
   const [copiedJson, setCopiedJson] = useState(false);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
   const [importPreview, setImportPreview] = useState<QuestionItem[] | null>(null);
@@ -236,6 +269,15 @@ const QuestionBlockComponent = (props: any) => {
   // Estados de confirmação de exclusão
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
   const [showDeleteContainerModal, setShowDeleteContainerModal] = useState(false);
+
+
+  const allBatteryTags = Array.from(
+    new Set(questions.flatMap((q) => q.tags || []))
+  ).filter(Boolean);
+
+  const displayedQuestions = selectedTagFilter
+    ? questions.filter((q) => q.tags?.includes(selectedTagFilter))
+    : questions;
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -356,6 +398,7 @@ const QuestionBlockComponent = (props: any) => {
             question: q.question,
             options: q.options.map((opt, oIdx) => `${String.fromCharCode(65 + oIdx)}) ${preprocessMarkdownCode(opt)}`),
             correct_option: `${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex] || ''}`,
+            tags: q.tags && q.tags.length > 0 ? q.tags : undefined,
             explanation: q.explanation || undefined
           };
         } else {
@@ -364,6 +407,7 @@ const QuestionBlockComponent = (props: any) => {
             type: 'open',
             question: q.question,
             expected_answer: q.expectedAnswer,
+            tags: q.tags && q.tags.length > 0 ? q.tags : undefined,
             explanation: q.explanation || undefined
           };
         }
@@ -425,6 +469,7 @@ const QuestionBlockComponent = (props: any) => {
         question: item.question || item.enunciado || item.pergunta || item.texto || '',
         options: options.length >= 2 ? options : ['', '', '', ''],
         correctIndex,
+        tags: Array.isArray(item.tags) ? item.tags : Array.isArray(item.topicos) ? item.topicos : [],
         selectedIndex: null,
         expectedAnswer: item.expected_answer || item.resposta_esperada || item.gabarito || item.answer || '',
         userTypedAnswer: '',
@@ -801,13 +846,52 @@ const QuestionBlockComponent = (props: any) => {
       {/* CORPO DO CONTAINER (RECOLHÍVEL QUANDO isCollapsed === true) */}
       {!isCollapsed && (
         <div className="mt-4 space-y-6">
+          {/* BARRA DE FILTRO POR TAG */}
+          {allBatteryTags.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-2 border-b border-white/10">
+              <span className="text-[11px] text-dark-subtext flex items-center gap-1 shrink-0 font-medium mr-1">
+                <Tag size={12} className="text-purple-400" />
+                <span>Filtrar por Tag:</span>
+              </span>
+              <button
+                onClick={() => setSelectedTagFilter(null)}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+                  selectedTagFilter === null
+                    ? 'bg-purple-600 text-white font-bold shadow-sm'
+                    : 'bg-black/30 text-dark-subtext hover:text-white border border-white/10'
+                }`}
+              >
+                Todas ({questions.length})
+              </button>
+              {allBatteryTags.map((tag) => {
+                const count = questions.filter((q) => q.tags?.includes(tag)).length;
+                const isSelected = selectedTagFilter === tag;
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTagFilter(isSelected ? null : tag)}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 shrink-0 ${
+                      isSelected
+                        ? 'bg-purple-500 text-white font-bold shadow-sm'
+                        : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/30'
+                    }`}
+                  >
+                    <span>#{tag}</span>
+                    <span className="opacity-70 text-[10px]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {/* ======================================================== */}
           {/* MODO 1: EDIÇÃO (Criação, edição de enunciados, gabaritos) */}
           {/* ======================================================== */}
           {mode === 'edit' && (
             <>
-              {questions.map((q, qIndex) => (
-                <div
+              {displayedQuestions.map((q) => {
+                const qIndex = questions.findIndex((orig) => orig.id === q.id);
+                return (
+                  <div
                   key={q.id}
                   className="bg-dark-bg/50 border border-purple-500/20 rounded-xl p-4 relative group transition-all"
                 >
@@ -893,6 +977,70 @@ const QuestionBlockComponent = (props: any) => {
                     rows={3}
                     style={{ minHeight: '4rem' }}
                   />
+
+                  {/* EDITOR DE TAGS DA QUESTÃO */}
+                  <div className="flex items-center gap-1.5 flex-wrap mb-3 text-xs bg-black/20 p-2 rounded-lg border border-white/5">
+                    <div className="flex items-center gap-1 text-purple-300 font-semibold shrink-0">
+                      <Tag size={12} className="text-purple-400" />
+                      <span className="text-[11px]">Tags:</span>
+                    </div>
+
+                    {q.tags && q.tags.map((tag, tIdx) => (
+                      <span key={tIdx} className="inline-flex items-center gap-1 bg-purple-500/20 text-purple-200 border border-purple-500/30 text-[11px] px-2 py-0.5 rounded-full font-medium">
+                        #{tag}
+                        <button
+                          onClick={() => {
+                            const newTags = q.tags?.filter((_, i) => i !== tIdx);
+                            updateSingleQuestion(q.id, { tags: newTags });
+                          }}
+                          className="hover:text-red-400 transition-colors ml-0.5"
+                          title="Remover tag"
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+
+                    <input
+                      type="text"
+                      placeholder="+ Add tag..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                          e.preventDefault();
+                          const val = e.currentTarget.value.trim().replace(/^#/, '').toLowerCase();
+                          if (val && (!q.tags || !q.tags.includes(val))) {
+                            const newTags = [...(q.tags || []), val];
+                            updateSingleQuestion(q.id, { tags: newTags });
+                          }
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const val = e.target.value.trim().replace(/^#/, '').toLowerCase();
+                        if (val && (!q.tags || !q.tags.includes(val))) {
+                          const newTags = [...(q.tags || []), val];
+                          updateSingleQuestion(q.id, { tags: newTags });
+                        }
+                        e.target.value = '';
+                      }}
+                      className="bg-transparent text-xs text-brand-100 placeholder-white/20 outline-none w-24 py-0.5 border-b border-transparent focus:border-purple-500 transition-colors"
+                    />
+
+                    <button
+                      onClick={() => {
+                        const auto = generateAutoTags(q.question, q.options, q.explanation);
+                        if (auto.length > 0) {
+                          const combined = Array.from(new Set([...(q.tags || []), ...auto]));
+                          updateSingleQuestion(q.id, { tags: combined });
+                        }
+                      }}
+                      className="ml-auto text-[10px] text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 flex items-center gap-1 transition-colors"
+                      title="Extrair tags automaticamente a partir do conteúdo"
+                    >
+                      <Sparkles size={11} />
+                      <span>Auto-Tags</span>
+                    </button>
+                  </div>
 
                   {/* Editor MÚLTIPLA ESCOLHA */}
                   {q.type === 'multiple_choice' && (
@@ -1009,7 +1157,8 @@ const QuestionBlockComponent = (props: any) => {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+            })}
 
               {/* Botão Adicionar Questão no Modo Edição */}
               <button
@@ -1027,8 +1176,10 @@ const QuestionBlockComponent = (props: any) => {
           {/* ======================================================== */}
           {mode === 'practice' && (
             <>
-              {questions.map((q, qIndex) => (
-                <div
+              {displayedQuestions.map((q) => {
+                const qIndex = questions.findIndex((orig) => orig.id === q.id);
+                return (
+                  <div
                   key={q.id}
                   className="bg-dark-bg/50 border border-white/10 rounded-xl p-4 relative transition-all"
                 >
@@ -1041,6 +1192,17 @@ const QuestionBlockComponent = (props: any) => {
                       <span className="text-[10px] text-dark-subtext px-2 py-0.5 bg-black/30 rounded">
                         {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
                       </span>
+
+                      {/* Tags em Modo Prática */}
+                      {q.tags && q.tags.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap ml-1">
+                          {q.tags.map((tag) => (
+                            <span key={tag} className="text-[10px] text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 font-medium">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {q.answered && (
@@ -1225,7 +1387,8 @@ const QuestionBlockComponent = (props: any) => {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </>
           )}
         </div>
