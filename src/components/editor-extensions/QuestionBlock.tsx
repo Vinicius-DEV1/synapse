@@ -294,6 +294,7 @@ const QuestionBlockComponent = (props: any) => {
     : questions;
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const blockContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (showAiAssistantModal && chatScrollRef.current) {
@@ -751,7 +752,7 @@ const QuestionBlockComponent = (props: any) => {
 
 
   return (
-    <NodeViewWrapper className="question-block relative bg-dark-card border border-white/10 rounded-xl p-4 my-6 shadow-md block transition-all">
+    <NodeViewWrapper ref={blockContainerRef} className="question-block relative bg-dark-card border border-white/10 rounded-xl p-4 my-6 shadow-md block transition-all">
       {/* HEADER DO CONTAINER */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/10 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
@@ -1515,6 +1516,24 @@ const QuestionBlockComponent = (props: any) => {
               );
             })}
             </>
+          )}
+
+          {/* BOTÃO VOLTAR AO TOPO DO BLOCO */}
+          {questions.length > 0 && (
+            <div className="flex justify-center pt-2 pb-1 border-t border-white/5 mt-6">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  blockContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-purple-300 bg-black/30 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/30 px-3.5 py-1.5 rounded-full transition-all duration-200 group shadow-sm"
+                title="Rolar suavemente até o topo desta bateria de questões"
+              >
+                <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform text-purple-400" />
+                <span>Voltar ao topo da bateria</span>
+              </button>
+            </div>
           )}
         </div>
       )}
