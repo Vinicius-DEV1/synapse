@@ -31,7 +31,8 @@ import {
   Upload,
   FileJson,
   ClipboardPaste,
-  Tag
+  Tag,
+  History
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { 
@@ -71,6 +72,17 @@ export interface QuizChatMessage {
   suggestedActions?: SuggestedAction[];
 }
 
+
+export interface AttemptItem {
+  id: string;
+  timestamp: number;
+  type: 'multiple_choice' | 'open';
+  userTypedAnswer?: string;
+  aiFeedback?: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string } | null;
+  selectedIndex?: number | null;
+  isCorrect?: boolean;
+}
+
 export interface QuestionItem {
   id: string;
   type: 'multiple_choice' | 'open';
@@ -85,6 +97,7 @@ export interface QuestionItem {
   explanation: string;
   showExplanation: boolean;
   answered: boolean;
+  attemptsHistory?: AttemptItem[];
 }
 
 
@@ -259,6 +272,7 @@ const QuestionBlockComponent = (props: any) => {
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
   const [copiedJson, setCopiedJson] = useState(false);
+  const [showHistoryMap, setShowHistoryMap] = useState<Record<string, boolean>>({});
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
@@ -341,6 +355,23 @@ const QuestionBlockComponent = (props: any) => {
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     props.updateAttributes({ title: e.target.value });
+  };
+
+
+  const handleAnswerMultipleChoice = (q: QuestionItem) => {
+    if (q.selectedIndex === null) return;
+    const isCorrect = q.selectedIndex === q.correctIndex;
+    const newAttempt: AttemptItem = {
+      id: `att_${Date.now()}`,
+      timestamp: Date.now(),
+      type: 'multiple_choice',
+      selectedIndex: q.selectedIndex,
+      isCorrect,
+    };
+    updateSingleQuestion(q.id, {
+      answered: true,
+      attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
+    });
   };
 
   const handleResetAll = () => {
@@ -515,6 +546,13 @@ const QuestionBlockComponent = (props: any) => {
 
   const handleDeleteContainer = () => {
     props.deleteNode();
+  };
+
+
+  const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
+    setShowAiAssistantModal(true);
+    const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${q.expectedAnswer || 'N/A'}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
+    handleSendChatMessage(promptText);
   };
 
   // Handlers do Chat do Mini Assistente IA
@@ -1311,6 +1349,17 @@ const QuestionBlockComponent = (props: any) => {
                             <span className="text-[10px] opacity-75 font-normal">✨ Gemini AI</span>
                           </div>
                           <p className="leading-relaxed opacity-95">{q.aiFeedback.feedback}</p>
+
+                          <div className="pt-2 border-t border-white/10 flex justify-end">
+                            <button
+                              onClick={() => handleDiscussEvaluationInChat(q, qIndex)}
+                              className="text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                              title="Abrir o assistente IA para discutir sua nota, tirar dúvidas ou aprimorar sua resposta"
+                            >
+                              <Sparkles size={12} className="text-purple-400" />
+                              <span>💬 Discutir Avaliação no Chat ✨</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1321,7 +1370,7 @@ const QuestionBlockComponent = (props: any) => {
                     {!q.answered ? (
                       q.type === 'multiple_choice' ? (
                         <button
-                          onClick={() => q.selectedIndex !== null && updateSingleQuestion(q.id, { answered: true })}
+                          onClick={() => handleAnswerMultipleChoice(q)}
                           disabled={q.selectedIndex === null}
                           className="w-full py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
                         >
@@ -1383,6 +1432,78 @@ const QuestionBlockComponent = (props: any) => {
                           <span>Explicação / Gabarito Comentado:</span>
                         </div>
                         <div className="leading-relaxed opacity-90"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(q.explanation)}</ReactMarkdown></div>
+                      </div>
+                    )}
+
+                    {/* HISTRÓICO DE TENTATIVAS */}
+                    {q.attemptsHistory && q.attemptsHistory.length > 0 && (
+                      <div className="mt-2 border-t border-white/5 pt-2">
+                        <button
+                          onClick={() => setShowHistoryMap((prev) => ({ ...prev, [q.id]: !prev[q.id] }))}
+                          className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 font-semibold transition-colors"
+                        >
+                          <History size={13} className="text-purple-400" />
+                          <span>📈 Histórico de Tentativas ({q.attemptsHistory.length})</span>
+                          {showHistoryMap[q.id] ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </button>
+
+                        {showHistoryMap[q.id] && (
+                          <div className="mt-2 space-y-2 bg-black/40 border border-purple-500/20 rounded-xl p-3 text-xs max-h-60 overflow-y-auto custom-scrollbar">
+                            <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block border-b border-white/10 pb-1">
+                              Linha do Tempo de Respostas:
+                            </span>
+                            {q.attemptsHistory.map((att, attIdx) => {
+                              const dateStr = new Date(att.timestamp).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              });
+
+                              const isMc = att.type === 'multiple_choice';
+                              const isWin = isMc ? att.isCorrect : att.aiFeedback?.verdict === 'Correto';
+                              const isPartial = !isMc && att.aiFeedback?.verdict === 'Parcial';
+
+                              return (
+                                <div
+                                  key={att.id}
+                                  className={`p-2 rounded-lg border space-y-1 ${
+                                    isWin
+                                      ? 'bg-green-500/10 border-green-500/20 text-green-200'
+                                      : isPartial
+                                      ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                                      : 'bg-red-500/10 border-red-500/20 text-red-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-[10px] font-semibold opacity-90">
+                                    <span>Tentativa #{q.attemptsHistory!.length - attIdx} • {dateStr}</span>
+                                    <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                      isWin ? 'bg-green-500/20 text-green-300' : isPartial ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/20 text-red-300'
+                                    }`}>
+                                      {isMc ? (att.isCorrect ? '✓ Acerto' : '✕ Erro') : att.aiFeedback?.verdict || 'Avaliada'}
+                                    </span>
+                                  </div>
+
+                                  {!isMc && att.userTypedAnswer && (
+                                    <p className="text-[11px] font-mono bg-black/30 p-1.5 rounded border border-white/5 opacity-90 leading-snug">
+                                      "{att.userTypedAnswer}"
+                                    </p>
+                                  )}
+
+                                  {!isMc && att.aiFeedback?.feedback && (
+                                    <p className="text-[10px] opacity-80 italic">💡 {att.aiFeedback.feedback}</p>
+                                  )}
+
+                                  {isMc && typeof att.selectedIndex === 'number' && (
+                                    <p className="text-[11px]">
+                                      Opção Selecionada: <strong>{String.fromCharCode(65 + att.selectedIndex)}) {q.options[att.selectedIndex] || ''}</strong>
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
