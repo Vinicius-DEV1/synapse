@@ -292,7 +292,7 @@ const QuestionBlockComponent = (props: any) => {
 
       // Find correct index
       let correctIndex = 0;
-      const rawCorrect = item.correct_option || item.resposta_correta || item.correctIndex ?? item.correctAnswerIndex;
+      const rawCorrect = item.correct_option || item.resposta_correta || (item.correctIndex ?? item.correctAnswerIndex);
       if (typeof rawCorrect === 'number') {
         correctIndex = rawCorrect;
       } else if (typeof rawCorrect === 'string') {
