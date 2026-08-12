@@ -295,18 +295,18 @@ export async function promptGeminiToGenerateBlockQuestion(
   if (questionType === 'multiple_choice') {
     customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
-  "enunciado": "Texto claro da pergunta",
+  "enunciado": "Texto claro e bem elaborado da pergunta",
   "opcoes": ["Opção A", "Opção B", "Opção C", "Opção D"],
   "correta": 0,
-  "explicacao": "Breve explicação do porquê a opção correta é a verdadeira."
+  "explicacao": "Explicação didática, rica e detalhada (2 a 4 frases) ensinando o conceito teórico por trás da resposta correta e demonstrando o porquê de estar certa. NUNCA gere metatextos rasos como 'Esta questão avalia X'."
 }
 Onde 'correta' é o índice (0 a 3) da opção verdadeira.`;
   } else {
     customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
   "enunciado": "Texto claro da pergunta discursiva",
-  "respostaEsperada": "Resposta correta e completa esperada (gabarito de referência)",
-  "explicacao": "Breve explicação/comentário adicional de apoio pedagógico."
+  "respostaEsperada": "Gabarito exemplar e completo (detalhando todos os pontos conceituais e termos técnicos exigidos para uma resposta nota 10)",
+  "explicacao": "Explicação pedagógica aprofundada (2 a 5 frases ou tópicos) ensinando o conceito teórico envolvido, o contexto de aplicação e exemplos práticos/código se houver. NUNCA gere frases rasas ou metatextos."
 }`;
   }
 
@@ -351,13 +351,13 @@ Responda ESTRITAMENTE em formato JSON com uma ARRAY de objetos com o seguinte sc
     "question": "Enunciado da pergunta",
     "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
     "correctIndex": 0,
-    "explanation": "Explicação da alternativa correta."
+    "explanation": "Explicação didática e detalhada (2 a 4 frases) justificando a alternativa correta e ensinando o conceito teórico subjacente. NUNCA gere metatextos rasos como 'Esta questão avalia X'."
   },
   {
     "type": "open",
     "question": "Enunciado da pergunta discursiva",
-    "expectedAnswer": "Gabarito de referência esperado",
-    "explanation": "Explicação/comentário adicional de apoio pedagógico."
+    "expectedAnswer": "Gabarito exemplar e detalhado (especificando exatamente tudo o que o aluno deve responder para demonstrar domínio)",
+    "explanation": "Explicação pedagógica aprofundada (2 a 5 frases) ensinando o conceito teórico real e o motivo desse conhecimento ser relevante. NUNCA use frases rasas ou metatextos."
   }
 ]
 NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
@@ -450,6 +450,10 @@ export async function promptGeminiQuizAssistant(
    - Para códigos com instruções ou múltiplas linhas, use SEMPRE blocos de código com 3 crases e a linguagem especificada.
    - NUNCA escreva a palavra de uma linguagem após uma única crase como \`javascript const fs = ...\`.
    - Para palavras-chave ou métodos curtos em linha, use crases simples (ex: \`util.promisify\`).
+9. QUALIDADE DA EXPLICAÇÃO E GABARITO (REGRA OBRIGATÓRIA DE APRENDIZADO):
+   - NUNCA gere explicações rasas ou metatextos como "Essa questão valida o conhecimento sobre X". Isso é ESTRITAMENTE PROIBIDO.
+   - A "explanation" DEVE SER DIDÁTICA, COMPLETA E ESTRUTURADA (2 a 5 frases ou tópicos), ensinando o conceito teórico real, justificando o porquê da resposta correta e mostrando código/exemplos quando aplicável.
+   - Para Questões Abertas, a "expectedAnswer" DEVE SER UM GABARITO EXEMPLAR E DETALHADO, especificando exatamente tudo o que o aluno deve responder para obter nota máxima.
 
 Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
