@@ -461,6 +461,7 @@ Responda ESTRITAMENTE em formato JSON com o seguinte schema:
       "question": "Enunciado da nova questão",
       "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
       "correctIndex": 0,
+      "tags": ["topico1", "topico2"],
       "explanation": "Justificativa"
     },
     {
@@ -468,6 +469,7 @@ Responda ESTRITAMENTE em formato JSON com o seguinte schema:
       "type": "open",
       "question": "Enunciado discursivo",
       "expectedAnswer": "Gabarito esperado",
+      "tags": ["topico1", "topico2"],
       "explanation": "Justificativa"
     },
     {
