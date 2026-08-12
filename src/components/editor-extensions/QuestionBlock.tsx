@@ -1,5 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   Trash2, 
   Plus, 
@@ -13,13 +15,38 @@ import {
   Loader2, 
   ChevronDown, 
   ChevronRight,
-  Trophy
+  Trophy,
+  Send,
+  Check,
+  X,
+  MessageSquare,
+  Bot,
+  User,
+  CheckCheck
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   promptGeminiForOpenQuestionEvaluation, 
-  promptGeminiToGenerateBatchQuestions 
+  promptGeminiQuizAssistant 
 } from '../../services/gemini';
+
+export interface ProposedQuestionDraft {
+  id: string;
+  type: 'multiple_choice' | 'open';
+  question: string;
+  options?: string[];
+  correctIndex?: number;
+  expectedAnswer?: string;
+  explanation?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface QuizChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  proposedQuestions?: ProposedQuestionDraft[];
+}
 
 export interface QuestionItem {
   id: string;
@@ -52,9 +79,9 @@ const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
 });
 
 const QuestionBlockComponent = (props: any) => {
-  const { title, isCollapsed, questions: rawQuestions } = props.node.attrs;
+  const { title, isCollapsed, questions: rawQuestions, aiChatHistory: rawChatHistory } = props.node.attrs;
 
-  // Garante retrocompatibilidade se existirem nós salvos no formato antigo de única questão
+  // Garante retrocompatibilidade se existirem nós salvos no formato antigo
   const initialQuestions: QuestionItem[] = Array.isArray(rawQuestions) && rawQuestions.length > 0 
     ? rawQuestions 
     : [
@@ -77,29 +104,39 @@ const QuestionBlockComponent = (props: any) => {
       ];
 
   const questions: QuestionItem[] = initialQuestions;
+  const chatHistory: QuizChatMessage[] = Array.isArray(rawChatHistory) ? rawChatHistory : [];
 
   // Estados locais da UI
   const [evaluatingIds, setEvaluatingIds] = useState<Record<string, boolean>>({});
-  const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
-  const [aiPromptInput, setAiPromptInput] = useState('');
-  const [batchCountInput, setBatchCountInput] = useState(3);
+  const [showAiAssistantModal, setShowAiAssistantModal] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingChat, setIsSendingChat] = useState(false);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
 
   // Estados de confirmação de exclusão
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
   const [showDeleteContainerModal, setShowDeleteContainerModal] = useState(false);
 
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Atualização genérica da lista de questões
+  useEffect(() => {
+    if (showAiAssistantModal && chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [showAiAssistantModal, chatHistory, isSendingChat]);
+
+  // Atualizações genéricas
   const updateQuestions = (newQuestions: QuestionItem[]) => {
     props.updateAttributes({ questions: newQuestions });
   };
 
-  // Atualização genérica de um campo de uma única questão
   const updateSingleQuestion = (qId: string, partial: Partial<QuestionItem>) => {
     const updated = questions.map((q) => (q.id === qId ? { ...q, ...partial } : q));
     updateQuestions(updated);
+  };
+
+  const updateChatHistory = (newHistory: QuizChatMessage[]) => {
+    props.updateAttributes({ aiChatHistory: newHistory });
   };
 
   // Handlers do Container (Header)
@@ -129,7 +166,6 @@ const QuestionBlockComponent = (props: any) => {
 
   const handleRemoveQuestion = (qId: string) => {
     if (questions.length <= 1) {
-      // Se tiver só 1, apenas reseta a questão em vez de deixar vazio
       updateQuestions([createDefaultQuestion(1)]);
       return;
     }
@@ -140,40 +176,123 @@ const QuestionBlockComponent = (props: any) => {
     props.deleteNode();
   };
 
-  // Handlers da Geração em Lote via IA
-  const handleGenerateBatchWithAi = async () => {
-    if (isGeneratingBatch) return;
-    setIsGeneratingBatch(true);
-    try {
-      const promptText = aiPromptInput.trim() || title || 'Bateria de exercícios de fixação';
-      const result = await promptGeminiToGenerateBatchQuestions(promptText, batchCountInput);
+  // Handlers do Chat do Mini Assistente IA
+  const handleSendChatMessage = async (overrideMessage?: string) => {
+    const messageToSend = (overrideMessage || chatInput).trim();
+    if (!messageToSend || isSendingChat) return;
 
-      const generatedQuestions: QuestionItem[] = result.map((item, idx) => ({
-        id: `q_ai_${Date.now()}_${idx}`,
-        type: item.type || 'multiple_choice',
-        question: item.question || '',
-        options: item.options && item.options.length >= 2 ? item.options : ['', '', '', ''],
-        correctIndex: typeof item.correctIndex === 'number' ? item.correctIndex : 0,
-        selectedIndex: null,
-        expectedAnswer: item.expectedAnswer || '',
-        userTypedAnswer: '',
-        aiFeedback: null,
-        explanation: item.explanation || '',
-        showExplanation: false,
-        answered: false,
+    const userMsgId = `user_${Date.now()}`;
+    const userMessageObj: QuizChatMessage = {
+      id: userMsgId,
+      role: 'user',
+      text: messageToSend,
+    };
+
+    const updatedHistoryWithUser = [...chatHistory, userMessageObj];
+    updateChatHistory(updatedHistoryWithUser);
+    if (!overrideMessage) setChatInput('');
+    setIsSendingChat(true);
+
+    try {
+      const response = await promptGeminiQuizAssistant(
+        updatedHistoryWithUser.map((m) => ({ role: m.role, text: m.text })),
+        questions,
+        messageToSend
+      );
+
+      const assistantMsgId = `assistant_${Date.now()}`;
+      const proposedDrafts: ProposedQuestionDraft[] | undefined = response.proposedQuestions?.map((pq, idx) => ({
+        id: `draft_${Date.now()}_${idx}`,
+        type: pq.type || 'multiple_choice',
+        question: pq.question || '',
+        options: pq.options && pq.options.length >= 2 ? pq.options : ['', '', '', ''],
+        correctIndex: typeof pq.correctIndex === 'number' ? pq.correctIndex : 0,
+        expectedAnswer: pq.expectedAnswer || '',
+        explanation: pq.explanation || '',
+        status: 'pending',
       }));
 
-      if (generatedQuestions.length > 0) {
-        updateQuestions(generatedQuestions);
-        setShowAiModal(false);
-        setAiPromptInput('');
-      }
+      const assistantMessageObj: QuizChatMessage = {
+        id: assistantMsgId,
+        role: 'assistant',
+        text: response.message || 'Aqui estão as sugestões de questões para a sua bateria:',
+        proposedQuestions: proposedDrafts,
+      };
+
+      updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
     } catch (err) {
-      console.error('Erro ao gerar bateria com IA:', err);
-      alert('Não foi possível gerar a bateria de questões no momento. Tente novamente.');
+      console.error('Erro ao chamar assistente de questões:', err);
+      const errorMsg: QuizChatMessage = {
+        id: `assistant_err_${Date.now()}`,
+        role: 'assistant',
+        text: 'Desculpe, ocorreu um erro ao se comunicar com a IA. Por favor, tente novamente.',
+      };
+      updateChatHistory([...updatedHistoryWithUser, errorMsg]);
     } finally {
-      setIsGeneratingBatch(false);
+      setIsSendingChat(false);
     }
+  };
+
+  // Handlers para os Cards de Sugestões Interativas (✓ / ✕)
+  const handleDraftStatusChange = (msgId: string, draftId: string, newStatus: 'accepted' | 'rejected' | 'pending') => {
+    const updated = chatHistory.map((msg) => {
+      if (msg.id !== msgId || !msg.proposedQuestions) return msg;
+      const updatedDrafts = msg.proposedQuestions.map((d) => (d.id === draftId ? { ...d, status: newStatus } : d));
+      return { ...msg, proposedQuestions: updatedDrafts };
+    });
+    updateChatHistory(updated);
+  };
+
+  const handleApproveAllDrafts = (msgId: string) => {
+    const updated = chatHistory.map((msg) => {
+      if (msg.id !== msgId || !msg.proposedQuestions) return msg;
+      const updatedDrafts = msg.proposedQuestions.map((d) => ({ ...d, status: 'accepted' as const }));
+      return { ...msg, proposedQuestions: updatedDrafts };
+    });
+    updateChatHistory(updated);
+  };
+
+  const handleInsertAcceptedDrafts = (msgId: string) => {
+    const msg = chatHistory.find((m) => m.id === msgId);
+    if (!msg || !msg.proposedQuestions) return;
+
+    const acceptedDrafts = msg.proposedQuestions.filter((d) => d.status === 'accepted');
+    if (acceptedDrafts.length === 0) {
+      alert('Nenhuma questão aceita nesta mensagem para inserir.');
+      return;
+    }
+
+    const newQuestionItems: QuestionItem[] = acceptedDrafts.map((d, idx) => ({
+      id: `q_inserted_${Date.now()}_${idx}`,
+      type: d.type,
+      question: d.question,
+      options: d.options && d.options.length >= 2 ? d.options : ['', '', '', ''],
+      correctIndex: d.correctIndex || 0,
+      selectedIndex: null,
+      expectedAnswer: d.expectedAnswer || '',
+      userTypedAnswer: '',
+      aiFeedback: null,
+      explanation: d.explanation || '',
+      showExplanation: false,
+      answered: false,
+    }));
+
+    // Se o bloco atualmente tiver apenas 1 questão inicial totalmente em branco, substitui em vez de anexar
+    if (
+      questions.length === 1 &&
+      !questions[0].question.trim() &&
+      !questions[0].answered
+    ) {
+      updateQuestions(newQuestionItems);
+    } else {
+      updateQuestions([...questions, ...newQuestionItems]);
+    }
+
+    setShowAiAssistantModal(false);
+  };
+
+  const handleClearChatHistory = () => {
+    updateChatHistory([]);
   };
 
   // Handlers de Avaliação de Questão Aberta por IA
@@ -198,7 +317,7 @@ const QuestionBlockComponent = (props: any) => {
     }
   };
 
-  // Cálculo de Estatísticas / Métricas em tempo real
+  // Cálculo de Estatísticas
   const totalQuestions = questions.length;
   const answeredQuestions = questions.filter((q) => q.answered).length;
   const correctCount = questions.filter((q) => {
@@ -216,7 +335,7 @@ const QuestionBlockComponent = (props: any) => {
       {/* HEADER DO CONTAINER */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/10 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-          {/* Botão de Seta para Esconder/Expandir */}
+          {/* Seta para Esconder/Expandir */}
           <button
             onClick={handleToggleCollapse}
             className="p-1.5 text-brand-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
@@ -237,7 +356,7 @@ const QuestionBlockComponent = (props: any) => {
           />
         </div>
 
-        {/* Métrica / Placar Badge */}
+        {/* Placar Badge & Controles Globais */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-dark-bg/80 border border-white/10 px-2.5 py-1 rounded-full text-xs font-medium">
             <Trophy size={13} className={correctCount > 0 ? 'text-amber-400' : 'text-dark-subtext'} />
@@ -251,7 +370,7 @@ const QuestionBlockComponent = (props: any) => {
             )}
           </div>
 
-          {/* Botão Refazer Tudo */}
+          {/* Refazer Tudo */}
           {answeredQuestions > 0 && (
             <button
               onClick={handleResetAll}
@@ -263,19 +382,13 @@ const QuestionBlockComponent = (props: any) => {
             </button>
           )}
 
-          {/* Botão Gerar Bateria com IA */}
+          {/* Botão Ícone Minimalista ✨ Assistente IA */}
           <button
-            onClick={() => setShowAiModal(!showAiModal)}
-            disabled={isGeneratingBatch}
-            className="flex items-center gap-1 text-xs px-2.5 py-1 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-medium transition-all"
-            title="Gerar bateria inteira de questões via IA"
+            onClick={() => setShowAiAssistantModal(true)}
+            className="p-1.5 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-bold text-sm transition-all flex items-center justify-center"
+            title="Assistente de Questões IA (Chat, Criação & Análise)"
           >
-            {isGeneratingBatch ? (
-              <Loader2 size={13} className="animate-spin text-purple-400" />
-            ) : (
-              <Sparkles size={13} className="text-purple-400" />
-            )}
-            <span>{isGeneratingBatch ? 'Gerando...' : '✨ Gerar Bateria com IA'}</span>
+            ✨
           </button>
 
           {/* Deletar Bloco Container Inteiro */}
@@ -288,55 +401,6 @@ const QuestionBlockComponent = (props: any) => {
           </button>
         </div>
       </div>
-
-      {/* MODAL / POPOVER DE GERAÇÃO EM LOTE DA IA */}
-      {showAiModal && (
-        <div className="mt-3 p-3.5 bg-purple-950/40 border border-purple-500/30 rounded-xl text-xs space-y-2.5">
-          <div className="flex items-center justify-between text-purple-200 font-medium">
-            <span className="flex items-center gap-1.5">
-              <Sparkles size={14} className="text-purple-400" />
-              Gerar Bateria de Exercícios com IA
-            </span>
-            <button onClick={() => setShowAiModal(false)} className="text-white/50 hover:text-white">
-              ✕
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={aiPromptInput}
-              onChange={(e) => setAiPromptInput(e.target.value)}
-              placeholder="Digite o assunto (ex: 'Ciclo de Krebs e Fosforilação Oxidativa')..."
-              className="flex-1 px-3 py-1.5 bg-black/40 border border-purple-500/20 rounded text-brand-100 placeholder-white/30 outline-none focus:border-purple-400"
-              onKeyDown={(e) => e.key === 'Enter' && handleGenerateBatchWithAi()}
-            />
-            <select
-              value={batchCountInput}
-              onChange={(e) => setBatchCountInput(Number(e.target.value))}
-              className="bg-black/40 border border-purple-500/20 text-brand-100 rounded px-2 text-xs outline-none cursor-pointer"
-            >
-              <option value={2}>2 Questões</option>
-              <option value={3}>3 Questões</option>
-              <option value={5}>5 Questões</option>
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setShowAiModal(false)} className="px-2.5 py-1 rounded text-dark-subtext hover:text-white">
-              Cancelar
-            </button>
-            <button
-              onClick={handleGenerateBatchWithAi}
-              disabled={isGeneratingBatch}
-              className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded flex items-center gap-1"
-            >
-              {isGeneratingBatch && <Loader2 size={12} className="animate-spin" />}
-              Gerar {batchCountInput} Questões
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* CORPO DO CONTAINER (RECOLHÍVEL QUANDO isCollapsed === true) */}
       {!isCollapsed && (
@@ -399,7 +463,7 @@ const QuestionBlockComponent = (props: any) => {
                 rows={2}
               />
 
-              {/* QUESTÃO TIPO MÚLTIPLA ESCOLHA */}
+              {/* MÚLTIPLA ESCOLHA */}
               {q.type === 'multiple_choice' && (
                 <div className="flex flex-col gap-2 mb-3">
                   {q.options.map((opt: string, optIdx: number) => (
@@ -475,7 +539,7 @@ const QuestionBlockComponent = (props: any) => {
                 </div>
               )}
 
-              {/* QUESTÃO TIPO ABERTA */}
+              {/* QUESTÃO ABERTA */}
               {q.type === 'open' && (
                 <div className="flex flex-col gap-2.5 mb-3">
                   {!q.answered && (
@@ -530,7 +594,7 @@ const QuestionBlockComponent = (props: any) => {
                 </div>
               )}
 
-              {/* Explicação da Solução (Gabarito Comentado) */}
+              {/* Explicação da Solução */}
               {!q.answered && (
                 <div className="mb-3">
                   <button
@@ -559,7 +623,7 @@ const QuestionBlockComponent = (props: any) => {
                 </div>
               )}
 
-              {/* Botões da Sub-Questão: Responder / Refazer / Ver Explicação */}
+              {/* Ações da Sub-Questão */}
               <div className="flex flex-col gap-2">
                 {!q.answered ? (
                   q.type === 'multiple_choice' ? (
@@ -632,7 +696,7 @@ const QuestionBlockComponent = (props: any) => {
             </div>
           ))}
 
-          {/* Botão + Adicionar Questão na Bateria */}
+          {/* Adicionar Questão */}
           <button
             onClick={handleAddQuestion}
             className="w-full py-2.5 border-2 border-dashed border-white/10 hover:border-brand-500/40 text-brand-300 hover:text-white rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all bg-black/20 hover:bg-black/30"
@@ -640,6 +704,275 @@ const QuestionBlockComponent = (props: any) => {
             <Plus size={16} />
             <span>Adicionar Nova Questão à Bateria</span>
           </button>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* CLEAN FLOATING MODAL OVERLAY: MINI ASSISTENTE IA CHAT   */}
+      {/* ======================================================== */}
+      {showAiAssistantModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn"
+          onClick={() => setShowAiAssistantModal(false)}
+        >
+          <div
+            className="bg-dark-card border border-white/15 rounded-2xl max-w-2xl w-full max-h-[85vh] h-[650px] flex flex-col shadow-2xl overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header do Modal */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-dark-bg/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-purple-500/20 text-purple-300 rounded-lg border border-purple-500/30">
+                  <Bot size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-brand-100 flex items-center gap-1.5">
+                    Assistente Didático de Questões
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded-full font-medium border border-purple-500/30">
+                      Gemini AI
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-dark-subtext">Crie, filtre e analise sua bateria de exercícios</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {chatHistory.length > 0 && (
+                  <button
+                    onClick={handleClearChatHistory}
+                    className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg text-xs transition-colors flex items-center gap-1"
+                    title="Limpar histórico do chat"
+                  >
+                    <Trash2 size={14} />
+                    <span className="text-[11px]">Limpar</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAiAssistantModal(false)}
+                  className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  title="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Message Trajectory */}
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
+              {chatHistory.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-dark-subtext space-y-3">
+                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl border border-purple-500/20">
+                    <Sparkles size={28} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-200">Como posso ajudar na sua bateria de exercícios?</p>
+                    <p className="text-xs text-dark-subtext mt-1 max-w-sm">
+                      Você pode me pedir para criar questões, fazer um diagnóstico da bateria atual ou refinar os enunciados.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                chatHistory.map((msg) => {
+                  const isUser = msg.role === 'user';
+                  return (
+                    <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                      <div
+                        className={`max-w-[90%] rounded-2xl p-3.5 text-xs shadow-sm ${
+                          isUser
+                            ? 'bg-brand-600 text-white rounded-tr-xs'
+                            : 'bg-dark-bg border border-white/10 text-brand-50 rounded-tl-xs space-y-3'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1 text-[11px] opacity-75 font-medium">
+                          {isUser ? <User size={12} /> : <Bot size={12} className="text-purple-400" />}
+                          <span>{isUser ? 'Você' : 'Assistente IA'}</span>
+                        </div>
+
+                        {/* Texto da Mensagem */}
+                        <div className="leading-relaxed whitespace-pre-wrap">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                        </div>
+
+                        {/* RASCUNHOS DE QUESTÕES GERADAS COM APROVAÇÃO V/X */}
+                        {msg.proposedQuestions && msg.proposedQuestions.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
+                            <div className="flex items-center justify-between font-semibold text-xs text-purple-300">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles size={13} />
+                                {msg.proposedQuestions.length} Sugestões Geradas
+                              </span>
+
+                              <button
+                                onClick={() => handleApproveAllDrafts(msg.id)}
+                                className="text-[11px] text-green-400 hover:text-green-300 underline font-medium"
+                              >
+                                ✓ Aprovar Todas
+                              </button>
+                            </div>
+
+                            {/* Cards de Rascunho */}
+                            <div className="space-y-2.5">
+                              {msg.proposedQuestions.map((draft, dIdx) => {
+                                const isAccepted = draft.status === 'accepted';
+                                const isRejected = draft.status === 'rejected';
+                                return (
+                                  <div
+                                    key={draft.id}
+                                    className={`p-3 rounded-xl border transition-all text-xs space-y-2 ${
+                                      isAccepted
+                                        ? 'bg-green-500/10 border-green-500/40 text-green-200'
+                                        : isRejected
+                                        ? 'bg-red-500/10 border-red-500/30 text-red-300 opacity-60 line-through'
+                                        : 'bg-black/30 border-white/10 text-brand-100'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-bold text-brand-300 text-[11px]">
+                                        Sugestão #{dIdx + 1} ({draft.type === 'open' ? 'Aberta' : 'Múltipla Escolha'})
+                                      </span>
+
+                                      {/* Botões V / X para cada sugestão */}
+                                      <div className="flex items-center gap-1.5 no-underline">
+                                        <button
+                                          onClick={() =>
+                                            handleDraftStatusChange(
+                                              msg.id,
+                                              draft.id,
+                                              isAccepted ? 'pending' : 'accepted'
+                                            )
+                                          }
+                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                                            isAccepted
+                                              ? 'bg-green-500 text-black'
+                                              : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                          }`}
+                                          title="Aceitar esta questão"
+                                        >
+                                          <Check size={12} />
+                                          <span>V</span>
+                                        </button>
+
+                                        <button
+                                          onClick={() =>
+                                            handleDraftStatusChange(
+                                              msg.id,
+                                              draft.id,
+                                              isRejected ? 'pending' : 'rejected'
+                                            )
+                                          }
+                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                                            isRejected
+                                              ? 'bg-red-500 text-white'
+                                              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                          }`}
+                                          title="Rejeitar esta questão"
+                                        >
+                                          <X size={12} />
+                                          <span>X</span>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Enunciado */}
+                                    <p className="font-medium leading-normal">{draft.question}</p>
+
+                                    {/* Opções ou Gabarito */}
+                                    {draft.type === 'multiple_choice' && draft.options && (
+                                      <ul className="space-y-1 text-[11px] opacity-90">
+                                        {draft.options.map((opt, oIdx) => (
+                                          <li
+                                            key={oIdx}
+                                            className={oIdx === draft.correctIndex ? 'text-green-400 font-bold' : ''}
+                                          >
+                                            {String.fromCharCode(65 + oIdx)}) {opt}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+
+                                    {draft.type === 'open' && draft.expectedAnswer && (
+                                      <p className="text-[11px] text-brand-300 font-medium">
+                                        📌 Gabarito: {draft.expectedAnswer}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Botão de Inserir Aceitas */}
+                            {msg.proposedQuestions.some((d) => d.status === 'accepted') && (
+                              <button
+                                onClick={() => handleInsertAcceptedDrafts(msg.id)}
+                                className="w-full py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
+                              >
+                                <CheckCheck size={16} />
+                                <span>
+                                  Inserir {msg.proposedQuestions.filter((d) => d.status === 'accepted').length} Questões Aceitas na Bateria
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {isSendingChat && (
+                <div className="flex items-center gap-2 text-xs text-purple-300 bg-purple-950/30 border border-purple-500/20 rounded-xl p-3 max-w-[200px]">
+                  <Loader2 size={14} className="animate-spin text-purple-400" />
+                  <span>Assistente pensando...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="px-4 py-2 bg-dark-bg/80 border-t border-white/5 flex gap-1.5 overflow-x-auto custom-scrollbar text-[11px]">
+              <button
+                onClick={() => handleSendChatMessage('Analise a bateria de questões atual e diga o que acha.')}
+                disabled={isSendingChat}
+                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-brand-200 rounded-full border border-white/10 shrink-0 transition-colors"
+              >
+                📊 Analise a Bateria Atual
+              </button>
+              <button
+                onClick={() => handleSendChatMessage('Crie 3 questões de múltipla escolha sobre o conteúdo.')}
+                disabled={isSendingChat}
+                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-brand-200 rounded-full border border-white/10 shrink-0 transition-colors"
+              >
+                ✨ Crie 3 Questões
+              </button>
+              <button
+                onClick={() => handleSendChatMessage('Identifique lacunas e sugira 2 questões abertas discursivas.')}
+                disabled={isSendingChat}
+                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-brand-200 rounded-full border border-white/10 shrink-0 transition-colors"
+              >
+                🎯 Sugerir Exercícios
+              </button>
+            </div>
+
+            {/* Input Bar Footer */}
+            <div className="p-3 bg-dark-bg border-t border-white/10 flex gap-2 items-center">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Pergunte à IA ou peça para gerar/analisar questões..."
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-purple-500 transition-colors"
+                onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                disabled={isSendingChat}
+              />
+              <button
+                onClick={() => handleSendChatMessage()}
+                disabled={!chatInput.trim() || isSendingChat}
+                className="p-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl transition-colors flex items-center justify-center shrink-0"
+              >
+                <Send size={15} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -732,6 +1065,7 @@ export const QuestionBlock = Node.create({
     return {
       title: { default: 'Bateria de Exercícios' },
       isCollapsed: { default: false },
+      aiChatHistory: { default: [] },
       questions: {
         default: [
           {
@@ -765,4 +1099,3 @@ export const QuestionBlock = Node.create({
     return ReactNodeViewRenderer(QuestionBlockComponent);
   },
 });
-
