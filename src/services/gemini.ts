@@ -233,6 +233,148 @@ Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA
   }
 }
 
+// Para avaliar resposta discursiva de questão aberta
+export async function promptGeminiForOpenQuestionEvaluation(
+  question: string,
+  expectedAnswer: string,
+  userTypedAnswer: string
+): Promise<{
+  verdict: 'Correto' | 'Parcial' | 'Incorreto';
+  feedback: string;
+}> {
+  const customPrompt = `Você é um professor avaliando a resposta discursiva de um aluno para a seguinte questão:
+
+Enunciado da Questão: "${question}"
+Resposta Esperada (Gabarito de Referência): "${expectedAnswer}"
+Resposta Digitada pelo Aluno: "${userTypedAnswer}"
+
+Regra de Avaliação:
+1. Se a resposta do aluno capta a essência da resposta esperada (mesmo com palavras diferentes), classifique como 'Correto'.
+2. Se a resposta possui a ideia principal certa mas faltam detalhes importantes ou nuances, classifique como 'Parcial'.
+3. Se a resposta contraria o gabarito ou está incorreta/incompleta de forma grave, classifique como 'Incorreto'.
+
+Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+{
+  "verdict": "Correto" | "Parcial" | "Incorreto",
+  "feedback": "Uma breve explicação pedagógica (máx 30 palavras) justificando a classificação e auxiliando o aluno."
+}
+NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
+  
+  try {
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
+  } catch (err) {
+    console.error('Failed to parse Gemini JSON for open question evaluation:', responseText);
+    throw new Error('A IA não retornou um JSON válido na avaliação.');
+  }
+}
+
+// Para gerar ou preencher uma questão inteira no bloco
+export async function promptGeminiToGenerateBlockQuestion(
+  topicOrPrompt: string,
+  questionType: 'multiple_choice' | 'open',
+  contextText?: string
+): Promise<{
+  enunciado: string;
+  opcoes?: string[];
+  correta?: number;
+  respostaEsperada?: string;
+  explicacao?: string;
+}> {
+  let customPrompt = `Crie uma questão de estudo no formato ${questionType === 'multiple_choice' ? 'Múltipla Escolha (com 4 alternativas)' : 'Questão Aberta (discursiva com resposta esperada)'}.\n`;
+  if (contextText && contextText.trim()) {
+    customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 1500)}"\n`;
+  }
+  customPrompt += `Tema / Instrução do Usuário: "${topicOrPrompt}"\n\n`;
+
+  if (questionType === 'multiple_choice') {
+    customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+{
+  "enunciado": "Texto claro da pergunta",
+  "opcoes": ["Opção A", "Opção B", "Opção C", "Opção D"],
+  "correta": 0,
+  "explicacao": "Breve explicação do porquê a opção correta é a verdadeira."
+}
+Onde 'correta' é o índice (0 a 3) da opção verdadeira.`;
+  } else {
+    customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+{
+  "enunciado": "Texto claro da pergunta discursiva",
+  "respostaEsperada": "Resposta correta e completa esperada (gabarito de referência)",
+  "explicacao": "Breve explicação/comentário adicional de apoio pedagógico."
+}`;
+  }
+
+  customPrompt += `\nNÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
+  
+  try {
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
+  } catch (err) {
+    console.error('Failed to parse Gemini JSON for block question generation:', responseText);
+    throw new Error('A IA não retornou um JSON válido ao gerar a questão.');
+  }
+}
+
+// Para gerar uma bateria de N questões de uma vez
+export async function promptGeminiToGenerateBatchQuestions(
+  topicOrPrompt: string,
+  count: number = 3,
+  contextText?: string
+): Promise<Array<{
+  type: 'multiple_choice' | 'open';
+  question: string;
+  options?: string[];
+  correctIndex?: number;
+  expectedAnswer?: string;
+  explanation?: string;
+}>> {
+  let customPrompt = `Crie uma bateria de ${count} questões de estudo baseada na instrução fornecida.\n`;
+  if (contextText && contextText.trim()) {
+    customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 2000)}"\n`;
+  }
+  customPrompt += `Tema / Instrução: "${topicOrPrompt}"\n\n`;
+  customPrompt += `Misture questões de Múltipla Escolha (com 4 alternativas) e Questões Abertas (discursivas com gabarito de referência).
+
+Responda ESTRITAMENTE em formato JSON com uma ARRAY de objetos com o seguinte schema para cada questão:
+[
+  {
+    "type": "multiple_choice",
+    "question": "Enunciado da pergunta",
+    "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
+    "correctIndex": 0,
+    "explanation": "Explicação da alternativa correta."
+  },
+  {
+    "type": "open",
+    "question": "Enunciado da pergunta discursiva",
+    "expectedAnswer": "Gabarito de referência esperado",
+    "explanation": "Explicação/comentário adicional de apoio pedagógico."
+  }
+]
+NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
+  
+  try {
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (err) {
+    console.error('Failed to parse Gemini JSON for batch question generation:', responseText);
+    throw new Error('A IA não retornou um JSON válido ao gerar a bateria de questões.');
+  }
+}
+
+
+
 // Para avaliar flashcards do Anki
 export async function promptGeminiForAnkiEvaluation(front: string, back: string, typedAnswer: string, mediaBase64?: string, customModelId?: string): Promise<{
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
