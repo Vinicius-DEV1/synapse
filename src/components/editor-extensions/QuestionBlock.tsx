@@ -1228,33 +1228,41 @@ const QuestionBlockComponent = (props: any) => {
                 const qIndex = questions.findIndex((orig) => orig.id === q.id);
                 return (
                   <div
-                  key={q.id}
-                  className="bg-dark-bg/50 border border-white/10 rounded-xl p-4 relative transition-all"
-                >
-                  {/* Header da Sub-Questão (Prática) */}
-                  <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-white/5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full border border-brand-500/20">
-                        Questão {qIndex + 1}
-                      </span>
-                      <span className="text-[10px] text-dark-subtext px-2 py-0.5 bg-black/30 rounded">
-                        {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
-                      </span>
+                    key={q.id}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        updateSingleQuestion(q.id, { showExplanation: !q.showExplanation });
+                      }
+                    }}
+                    className="bg-dark-bg/50 border border-white/10 rounded-xl p-4 relative transition-all focus:outline-none focus:border-purple-500/40"
+                  >
+                    {/* Header da Sub-Questão (Prática) */}
+                    <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full border border-brand-500/20">
+                          Questão {qIndex + 1}
+                        </span>
+                        <span className="text-[10px] text-dark-subtext px-2 py-0.5 bg-black/30 rounded">
+                          {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
+                        </span>
 
-                      {/* BOTÃO DISCRETO DE EMOJI DO GABARITO NO TOPO ESQUERDO DO CARD */}
-                      {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
-                        <button
-                          onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
-                          className={`px-1.5 py-0.5 rounded-md transition-all flex items-center justify-center border text-xs leading-none ${
-                            q.showExplanation
-                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
-                              : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-amber-300'
-                          }`}
-                          title={q.showExplanation ? 'Ocultar Gabarito / Explicação' : '💡 Consultar Gabarito de Referência (sem contabilizar como resposta)'}
-                        >
-                          <span className="text-[12px]">💡</span>
-                        </button>
-                      )}
+                        {/* BOTÃO DISCRETO DE EMOJI DO GABARITO NO TOPO ESQUERDO DO CARD */}
+                        {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
+                          <button
+                            onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
+                            className={`px-1.5 py-0.5 rounded-md transition-all flex items-center justify-center border text-xs leading-none ${
+                              q.showExplanation
+                                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                                : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-amber-300'
+                            }`}
+                            title={q.showExplanation ? 'Ocultar Gabarito / Explicação (Alt+G)' : '💡 Consultar Gabarito de Referência (Alt+G)'}
+                          >
+                            <span className="text-[12px]">💡</span>
+                          </button>
+                        )}
 
                       {/* Tags em Modo Prática */}
                       {q.tags && q.tags.length > 0 && (
@@ -1349,6 +1357,14 @@ const QuestionBlockComponent = (props: any) => {
                           onChange={(e) => updateSingleQuestion(q.id, { userTypedAnswer: e.target.value })}
                           onKeyDown={(e) => {
                             e.stopPropagation();
+
+                            // Alt+G ou Ctrl+G para alternar (abrir/fechar) o Gabarito
+                            if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
+                              e.preventDefault();
+                              updateSingleQuestion(q.id, { showExplanation: !q.showExplanation });
+                              return;
+                            }
+
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
                               if (q.userTypedAnswer && q.userTypedAnswer.trim() && !q.answered && !evaluatingIds[q.id]) {
@@ -1357,7 +1373,7 @@ const QuestionBlockComponent = (props: any) => {
                             }
                           }}
                           disabled={q.answered || evaluatingIds[q.id]}
-                          placeholder="Digite sua resposta completa... (Enter para enviar | Shift+Enter para nova linha)"
+                          placeholder="Digite sua resposta completa... (Enter para enviar | Alt+G para Gabarito)"
                           className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-brand-500 resize-none disabled:opacity-80 transition-colors"
                           rows={3}
                         />
