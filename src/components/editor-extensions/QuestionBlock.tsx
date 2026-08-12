@@ -25,7 +25,10 @@ import {
   CheckCheck,
   Pencil,
   Play,
-  Code
+  Code,
+  Upload,
+  FileJson,
+  ClipboardPaste
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { 
@@ -147,6 +150,11 @@ const QuestionBlockComponent = (props: any) => {
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
   const [copiedJson, setCopiedJson] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importPreview, setImportPreview] = useState<QuestionItem[] | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importMode, setImportMode] = useState<'replace' | 'append'>('append');
 
   // Estados de confirmação de exclusão
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
@@ -250,6 +258,98 @@ const QuestionBlockComponent = (props: any) => {
     navigator.clipboard.writeText(jsonString);
     setCopiedJson(true);
     setTimeout(() => setCopiedJson(false), 2000);
+  };
+
+
+  /** Tries to extract a QuestionItem[] from a variety of JSON shapes produced by this app or external AIs */
+  const parseJsonToQuestions = (raw: string): QuestionItem[] => {
+    const json = JSON.parse(raw.replace(/```json/g, '').replace(/```/g, '').trim());
+
+    // Support our exact export format
+    const items: any[] = Array.isArray(json) ? json
+      : Array.isArray(json.questions) ? json.questions
+      : Array.isArray(json.questoes) ? json.questoes
+      : Array.isArray(json.items) ? json.items
+      : null;
+
+    if (!items) throw new Error('Não encontrei uma lista de questões no JSON. Verifique se o campo "questions" (ou "questoes") existe e é um array.');
+
+    return items.map((item, idx): QuestionItem => {
+      const rawType = (item.type || item.tipo || '').toLowerCase();
+      const isOpen = rawType.includes('open') || rawType.includes('aberta') || rawType.includes('discursiva') || rawType.includes('dissertativa');
+
+      // Extract options / alternatives  
+      let options: string[] = [];
+      const rawOpts = item.options || item.alternativas || item.opcoes || item.alternatives || [];
+      if (Array.isArray(rawOpts) && rawOpts.length >= 2) {
+        options = rawOpts.map((o: any) => {
+          const str = typeof o === 'string' ? o : String(o);
+          // Strip leading "A) ", "B) ", "a) ", "1) " etc.
+          return str.replace(/^[A-Za-z0-9][).]\s+/, '').trim();
+        });
+      }
+      if (!isOpen && options.length < 2) options = ['', '', '', ''];
+
+      // Find correct index
+      let correctIndex = 0;
+      const rawCorrect = item.correct_option || item.resposta_correta || item.correctIndex ?? item.correctAnswerIndex;
+      if (typeof rawCorrect === 'number') {
+        correctIndex = rawCorrect;
+      } else if (typeof rawCorrect === 'string') {
+        // "A) Texto..." → index 0, "B) ..." → index 1, etc.
+        const letter = rawCorrect.trim().toUpperCase().charCodeAt(0);
+        if (letter >= 65 && letter <= 90) {
+          correctIndex = letter - 65;
+        }
+      }
+
+      return {
+        id: `q_import_${Date.now()}_${idx}`,
+        type: isOpen ? 'open' : 'multiple_choice',
+        question: item.question || item.enunciado || item.pergunta || item.texto || '',
+        options: isOpen ? ['', '', '', ''] : options,
+        correctIndex,
+        selectedIndex: null,
+        expectedAnswer: item.expected_answer || item.resposta_esperada || item.gabarito || item.answer || '',
+        userTypedAnswer: '',
+        aiFeedback: null,
+        explanation: item.explanation || item.explicacao || item.justificativa || item.comentario || '',
+        showExplanation: false,
+        answered: false,
+      };
+    });
+  };
+
+  const handleParseImportJson = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setImportError(null);
+    setImportPreview(null);
+    try {
+      if (!importJsonText.trim()) throw new Error('Cole o JSON na área de texto antes de continuar.');
+      const parsed = parseJsonToQuestions(importJsonText);
+      if (parsed.length === 0) throw new Error('Nenhuma questão encontrada no JSON.');
+      setImportPreview(parsed);
+    } catch (err: any) {
+      setImportError(err.message || 'Erro ao interpretar o JSON.');
+    }
+  };
+
+  const handleConfirmImport = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!importPreview || importPreview.length === 0) return;
+    if (importMode === 'replace') {
+      updateQuestions(importPreview);
+    } else {
+      const base = questions.length === 1 && !questions[0].question.trim() ? [] : questions;
+      updateQuestions([...base, ...importPreview]);
+    }
+    setShowImportModal(false);
+    setImportJsonText('');
+    setImportPreview(null);
+    setImportError(null);
+    props.updateAttributes({ mode: 'edit' });
   };
 
   const handleDeleteContainer = () => {
@@ -537,6 +637,16 @@ const QuestionBlockComponent = (props: any) => {
               ✨
             </button>
           )}
+
+          {/* Botão Importar JSON de Questões */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowImportModal(true); }}
+            className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
+            title="Importar questões a partir de um JSON (gerado por este app ou por outra IA)"
+          >
+            <Upload size={13} className="text-brand-400" />
+            <span>Import</span>
+          </button>
 
           {/* Botão Copiar JSON das Questões para IA */}
           <button
@@ -1295,6 +1405,154 @@ const QuestionBlockComponent = (props: any) => {
           </div>
         </div>
       )}
+
+      {/* ======================================================== */}
+      {/* MODAL DE IMPORTAÇÃO DE JSON                              */}
+      {/* ======================================================== */}
+      {showImportModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+          onClick={() => { setShowImportModal(false); setImportPreview(null); setImportError(null); setImportJsonText(''); }}
+        >
+          <div
+            className="bg-dark-card border border-white/15 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-dark-bg/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-brand-500/20 text-brand-300 rounded-lg border border-brand-500/30">
+                  <FileJson size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-brand-100">Importar Questões via JSON</h3>
+                  <p className="text-[11px] text-dark-subtext">Cole o JSON gerado por este app ou por qualquer outro chatbot de IA</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowImportModal(false); setImportPreview(null); setImportError(null); setImportJsonText(''); }}
+                className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+              {/* Dicas de formato */}
+              {!importPreview && (
+                <div className="bg-brand-950/40 border border-brand-500/20 rounded-xl p-3.5 text-xs space-y-1.5 text-brand-200">
+                  <p className="font-bold text-brand-300 flex items-center gap-1.5"><ClipboardPaste size={13} /> Formatos aceitos:</p>
+                  <ul className="list-disc list-inside space-y-1 text-dark-subtext text-[11px]">
+                    <li>JSON exportado pelo botão <code className="bg-black/40 px-1 rounded">JSON</code> desta bateria</li>
+                    <li>Resposta de qualquer chatbot com campo <code className="bg-black/40 px-1 rounded">"questions"</code> ou <code className="bg-black/40 px-1 rounded">"questoes"</code></li>
+                    <li>Array direto de objetos de questão <code className="bg-black/40 px-1 rounded">[...]</code></li>
+                    <li>Campos de questão aceitos: <code className="bg-black/40 px-1 rounded">question</code>, <code className="bg-black/40 px-1 rounded">enunciado</code>, <code className="bg-black/40 px-1 rounded">pergunta</code></li>
+                    <li>Tipo: <code className="bg-black/40 px-1 rounded">multiple_choice</code> / <code className="bg-black/40 px-1 rounded">open</code> / <code className="bg-black/40 px-1 rounded">aberta</code></li>
+                  </ul>
+                </div>
+              )}
+
+              {!importPreview ? (
+                <>
+                  <textarea
+                    value={importJsonText}
+                    onChange={(e) => { setImportJsonText(e.target.value); setImportError(null); }}
+                    placeholder={'Cole aqui o JSON das questões...\n\nExemplo:\n{\n  "questions": [\n    {\n      "type": "multiple_choice",\n      "question": "O que é...?",\n      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],\n      "correct_option": "A) ..."\n    }\n  ]\n}'}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-green-300 font-mono placeholder-white/20 outline-none focus:border-brand-500 resize-none transition-colors"
+                    rows={14}
+                    spellCheck={false}
+                  />
+
+                  {importError && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs text-red-300 flex items-start gap-2">
+                      <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                      <span>{importError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleParseImportJson}
+                    disabled={!importJsonText.trim()}
+                    className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <FileJson size={15} />
+                    <span>Interpretar JSON e Ver Preview</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* PREVIEW das questões parseadas */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-green-400">
+                      <span className="flex items-center gap-1.5"><CheckCircle2 size={14} /> {importPreview.length} questão(ões) encontrada(s) — confira antes de importar:</span>
+                      <button onClick={() => { setImportPreview(null); setImportError(null); }} className="text-dark-subtext hover:text-white text-[11px] underline">← Editar JSON</button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
+                      {importPreview.map((q, idx) => (
+                        <div key={q.id} className="bg-black/30 border border-white/10 rounded-xl p-3 text-xs space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
+                              Questão {idx + 1}
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${q.type === 'open' ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' : 'bg-blue-500/10 text-blue-300 border-blue-500/20'}`}>
+                              {q.type === 'open' ? 'Questão Aberta' : 'Múltipla Escolha'}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-brand-100 leading-snug">{q.question || <span className="italic text-dark-subtext">Sem enunciado</span>}</p>
+                          {q.type === 'multiple_choice' && q.options.filter(o => o).length > 0 && (
+                            <ul className="space-y-0.5 text-[11px] text-dark-subtext">
+                              {q.options.map((opt, oIdx) => (
+                                <li key={oIdx} className={oIdx === q.correctIndex ? 'text-green-400 font-bold' : ''}>
+                                  {String.fromCharCode(65 + oIdx)}) {opt || '—'} {oIdx === q.correctIndex ? '✓' : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {q.type === 'open' && q.expectedAnswer && (
+                            <p className="text-[11px] text-brand-300 font-medium">📌 Gabarito: {q.expectedAnswer}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Modo de importação */}
+                  <div className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-semibold text-brand-200">Como deseja importar?</p>
+                    <div className="flex gap-2 text-xs">
+                      <button
+                        onClick={() => setImportMode('append')}
+                        className={`flex-1 py-2 rounded-lg border font-medium transition-colors ${importMode === 'append' ? 'bg-brand-500/20 border-brand-500/50 text-brand-200' : 'bg-black/30 border-white/10 text-dark-subtext hover:border-white/20'}`}
+                      >
+                        ➕ Adicionar ao final da bateria
+                      </button>
+                      <button
+                        onClick={() => setImportMode('replace')}
+                        className={`flex-1 py-2 rounded-lg border font-medium transition-colors ${importMode === 'replace' ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-black/30 border-white/10 text-dark-subtext hover:border-white/20'}`}
+                      >
+                        🔄 Substituir todas as questões
+                      </button>
+                    </div>
+                    {importMode === 'replace' && (
+                      <p className="text-[10px] text-red-400 italic">⚠️ Isso apagará as {questions.length} questão(ões) existentes na bateria.</p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleConfirmImport}
+                    className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <CheckCheck size={15} />
+                    <span>Confirmar: Importar {importPreview.length} questão(ões)</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </NodeViewWrapper>
   );
 };
