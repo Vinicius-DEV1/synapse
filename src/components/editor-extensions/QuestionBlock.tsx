@@ -172,7 +172,11 @@ const QuestionBlockComponent = (props: any) => {
     props.updateAttributes({ aiChatHistory: newHistory });
   };
 
-  const handleSetMode = (newMode: 'edit' | 'practice') => {
+  const handleSetMode = (newMode: 'edit' | 'practice', e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     props.updateAttributes({ mode: newMode });
   };
 
@@ -431,7 +435,7 @@ const QuestionBlockComponent = (props: any) => {
           {/* TOGGLE SEGMENTADO DE MODO: EDICAO vs PRATICA */}
           <div className="flex bg-black/40 border border-white/10 p-0.5 rounded-lg text-xs font-medium">
             <button
-              onClick={() => handleSetMode('edit')}
+              onClick={(e) => handleSetMode('edit', e)}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
                 mode === 'edit'
                   ? 'bg-purple-600 text-white font-bold shadow-sm'
@@ -443,7 +447,7 @@ const QuestionBlockComponent = (props: any) => {
               <span>Modo Edição</span>
             </button>
             <button
-              onClick={() => handleSetMode('practice')}
+              onClick={(e) => handleSetMode('practice', e)}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
                 mode === 'practice'
                   ? 'bg-brand-500 text-white font-bold shadow-sm'
@@ -1251,6 +1255,10 @@ export const QuestionBlock = Node.create({
   group: 'block',
   atom: true,
 
+  stopEvent() {
+    return true;
+  },
+
   addAttributes() {
     return {
       title: { default: 'Bateria de Exercícios' },
@@ -1287,6 +1295,8 @@ export const QuestionBlock = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(QuestionBlockComponent);
+    return ReactNodeViewRenderer(QuestionBlockComponent, {
+      stopEvent: () => true,
+    });
   },
 });
