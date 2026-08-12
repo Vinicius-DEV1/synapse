@@ -373,6 +373,101 @@ NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
   }
 }
 
+// Assistente Conversacional Didático de Questões
+export async function promptGeminiQuizAssistant(
+  chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
+  currentQuestions: any[],
+  userMessage: string,
+  contextText?: string
+): Promise<{
+  message: string;
+  proposedQuestions?: Array<{
+    type: 'multiple_choice' | 'open';
+    question: string;
+    options?: string[];
+    correctIndex?: number;
+    expectedAnswer?: string;
+    explanation?: string;
+  }>;
+}> {
+  let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n`;
+
+  if (contextText && contextText.trim()) {
+    customPrompt += `Contexto do Caderno do Usuário:\n"${contextText.trim().slice(0, 1500)}"\n\n`;
+  }
+
+  if (currentQuestions && currentQuestions.length > 0) {
+    customPrompt += `Questões atualmente cadastradas no bloco da bateria (${currentQuestions.length} questões):\n`;
+    currentQuestions.forEach((q, i) => {
+      customPrompt += `Questão ${i + 1} (${q.type === 'open' ? 'Aberta' : 'Múltipla Escolha'}): "${q.question}"\n`;
+      if (q.type === 'multiple_choice' && q.options) {
+        customPrompt += `  Opções: ${q.options.join(' | ')} (Correta: ${q.options[q.correctIndex] || ''})\n`;
+      } else if (q.expectedAnswer) {
+        customPrompt += `  Gabarito: "${q.expectedAnswer}"\n`;
+      }
+      if (q.explanation) {
+        customPrompt += `  Explicação: "${q.explanation}"\n`;
+      }
+    });
+    customPrompt += `\n`;
+  } else {
+    customPrompt += `Atualmente o bloco da bateria de exercícios está vazio.\n\n`;
+  }
+
+  if (chatHistory && chatHistory.length > 0) {
+    customPrompt += `Histórico da conversa recente:\n`;
+    chatHistory.slice(-6).forEach((msg) => {
+      customPrompt += `${msg.role === 'user' ? 'Usuário' : 'Assistente'}: ${msg.text}\n`;
+    });
+    customPrompt += `\n`;
+  }
+
+  customPrompt += `Nova mensagem do Usuário: "${userMessage}"\n\n`;
+
+  customPrompt += `REGRAS DE RESPOSTA:
+1. Responda de forma conversacional, motivadora, clara e didática em Português.
+2. Se o usuário pedir para analisar a bateria atual, dê um diagnóstico pedagógico sobre a clareza dos enunciados, equilíbrio de dificuldade e sugestões de melhoria.
+3. Se a intenção do usuário for criar/gerar/adicionar questões, sugira as questões adequadas.
+4. Se o usuário apenas disser "oi" ou fizer uma pergunta geral sem especificar exatamente, responda amigavelmente perguntando quantas questões ele deseja e se prefere múltipla escolha ou abertas.
+5. Quando for sugerir/gerar questões, inclua o campo "proposedQuestions" na resposta em formato JSON.
+
+Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+{
+  "message": "Mensagem conversacional de resposta ao usuário (pode usar markdown)",
+  "proposedQuestions": [
+    {
+      "type": "multiple_choice",
+      "question": "Enunciado...",
+      "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
+      "correctIndex": 0,
+      "explanation": "Breve justificativa"
+    },
+    {
+      "type": "open",
+      "question": "Enunciado discursivo...",
+      "expectedAnswer": "Gabarito esperado",
+      "explanation": "Breve justificativa"
+    }
+  ]
+}
+O campo "proposedQuestions" é OPCIONAL (inclua APENAS quando houver geração ou sugestão de novas questões).
+NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
+
+  try {
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
+  } catch (err) {
+    console.error('Failed to parse Gemini JSON for quiz assistant:', responseText);
+    return {
+      message: responseText
+    };
+  }
+}
+
+
 
 
 // Para avaliar flashcards do Anki
