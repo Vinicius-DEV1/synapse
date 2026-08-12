@@ -1382,7 +1382,7 @@ const QuestionBlockComponent = (props: any) => {
                               title="Abrir o assistente IA para discutir sua nota, tirar dúvidas ou aprimorar sua resposta"
                             >
                               <Sparkles size={12} className="text-purple-400" />
-                              <span>💬 Discutir Avaliação no Chat ✨</span>
+                              <span>💬 Discutir</span>
                             </button>
                           </div>
                         </div>
