@@ -302,6 +302,7 @@ export async function promptGeminiToGenerateBlockQuestion(
     customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 1500)}"\n`;
   }
   customPrompt += `Tema / Instrução do Usuário: "${topicOrPrompt}"\n\n`;
+  customPrompt += `REGRA OBRIGATÓRIA DE ATUALIZAÇÃO E DOCUMENTAÇÃO: Baseie-se ESTRITAMENTE na DOCUMENTAÇÃO OFICIAL MAIS RECENTE e nas VERSÕES ATUAIS da tecnologia ou assunto. É PROIBIDO gerar questões com APIs obsoletas, métodos descontinuados ou sintaxes antigas.\n\n`;
 
   if (questionType === 'multiple_choice') {
     customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
@@ -353,6 +354,7 @@ export async function promptGeminiToGenerateBatchQuestions(
     customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 2000)}"\n`;
   }
   customPrompt += `Tema / Instrução: "${topicOrPrompt}"\n\n`;
+  customPrompt += `REGRA OBRIGATÓRIA DE ATUALIZAÇÃO E DOCUMENTAÇÃO: Baseie-se ESTRITAMENTE na DOCUMENTAÇÃO OFICIAL MAIS RECENTE e nas VERSÕES ATUAIS da tecnologia ou assunto. É ESTRITAMENTE PROIBIDO utilizar APIs obsoletas, práticas descontinuadas ou sintaxes antigas.\n\n`;
   customPrompt += `Misture questões de Múltipla Escolha (com 4 alternativas) e Questões Abertas (discursivas com gabarito de referência).
 
 Responda ESTRITAMENTE em formato JSON com uma ARRAY de objetos com o seguinte schema para cada questão:
@@ -473,6 +475,7 @@ export async function promptGeminiQuizAssistant(
    - Para códigos com instruções ou múltiplas linhas, use SEMPRE blocos de código com 3 crases e a linguagem especificada.
    - NUNCA escreva a palavra de uma linguagem após uma única crase como \`javascript const fs = ...\`.
    - Para palavras-chave ou métodos curtos em linha, use crases simples (ex: \`util.promisify\`).
+11. BUSCA E DOCUMENTAÇÃO ATUALIZADA (REGRA ANTI-OBSOLESCÊNCIA): Sempre que for gerar, editar ou avaliar questões sobre tecnologia, linguagens, bibliotecas ou ciência, baseie-se ESTRITAMENTE nas DOCUMENTAÇÕES OFICIAIS ATUALIZADAS e nas VERSÕES MAIS RECENTES (ex: use APIs modernas, ES Modules/promises, métodos vigentes). É ESTRITAMENTE PROIBIDO utilizar sintaxes obsoletas, bibliotecas descontinuadas ou práticas antigas. Garanta que enunciados, alternativas, gabaritos e explicações estejam 100% atualizados com o mercado atual.
 10. RESPOSTA ESPERADA (expectedAnswer): Deve ser escrita DIRETAMENTE como a resposta modelo esperada (ex: "O Node.js é um ambiente de execução..."). NUNCA comece com metatextos ou instruções em terceira pessoa como "O aluno deve explicar que...", "Espera-se que o aluno diga...", etc.
 9. QUALIDADE DA EXPLICAÇÃO E GABARITO (REGRA OBRIGATÓRIA DE APRENDIZADO):
    - NUNCA gere explicações rasas ou metatextos como "Essa questão valida o conhecimento sobre X". Isso é ESTRITAMENTE PROIBIDO.
