@@ -1347,8 +1347,16 @@ const QuestionBlockComponent = (props: any) => {
                         <textarea
                           value={q.userTypedAnswer}
                           onChange={(e) => updateSingleQuestion(q.id, { userTypedAnswer: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (q.userTypedAnswer && q.userTypedAnswer.trim() && !q.answered && !evaluatingIds[q.id]) {
+                                handleEvaluateOpenQuestion(q);
+                              }
+                            }
+                          }}
                           disabled={q.answered || evaluatingIds[q.id]}
-                          placeholder="Digite sua resposta completa..."
+                          placeholder="Digite sua resposta completa... (Pressione Enter para enviar, Shift+Enter para nova linha)"
                           className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-brand-500 resize-none disabled:opacity-80 transition-colors"
                           rows={3}
                         />
