@@ -86,6 +86,11 @@ const QuestionBlockComponent = (props: any) => {
   const [batchCountInput, setBatchCountInput] = useState(3);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
 
+  // Estados de confirmação de exclusão
+  const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
+  const [showDeleteContainerModal, setShowDeleteContainerModal] = useState(false);
+
+
   // Atualização genérica da lista de questões
   const updateQuestions = (newQuestions: QuestionItem[]) => {
     props.updateAttributes({ questions: newQuestions });
@@ -275,7 +280,7 @@ const QuestionBlockComponent = (props: any) => {
 
           {/* Deletar Bloco Container Inteiro */}
           <button
-            onClick={handleDeleteContainer}
+            onClick={() => setShowDeleteContainerModal(true)}
             className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors"
             title="Deletar Bateria de Questões"
           >
@@ -376,7 +381,7 @@ const QuestionBlockComponent = (props: any) => {
 
                 {/* Remover esta questão específica */}
                 <button
-                  onClick={() => handleRemoveQuestion(q.id)}
+                  onClick={() => setDeletingQuestionInfo({ id: q.id, index: qIndex })}
                   className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded transition-colors"
                   title="Remover esta questão"
                 >
@@ -635,6 +640,83 @@ const QuestionBlockComponent = (props: any) => {
             <Plus size={16} />
             <span>Adicionar Nova Questão à Bateria</span>
           </button>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE SUB-QUESTÃO */}
+      {deletingQuestionInfo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setDeletingQuestionInfo(null)}
+        >
+          <div
+            className="bg-dark-card border border-white/10 rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-red-400 font-bold text-sm">
+              <AlertCircle size={20} />
+              <span>Excluir Questão {deletingQuestionInfo.index + 1}</span>
+            </div>
+            <p className="text-xs text-dark-subtext leading-relaxed">
+              Tem certeza que deseja excluir esta questão da bateria? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-2 text-xs pt-1">
+              <button
+                onClick={() => setDeletingQuestionInfo(null)}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-brand-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  handleRemoveQuestion(deletingQuestionInfo.id);
+                  setDeletingQuestionInfo(null);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DA BATERIA INTEIRA */}
+      {showDeleteContainerModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setShowDeleteContainerModal(false)}
+        >
+          <div
+            className="bg-dark-card border border-white/10 rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-red-400 font-bold text-sm">
+              <AlertCircle size={20} />
+              <span>Excluir Bateria de Exercícios</span>
+            </div>
+            <p className="text-xs text-dark-subtext leading-relaxed">
+              Tem certeza que deseja excluir toda a <strong>{title || 'Bateria de Exercícios'}</strong> ({questions.length}{' '}
+              {questions.length === 1 ? 'questão' : 'questões'})? Todos os dados deste bloco serão removidos.
+            </p>
+            <div className="flex justify-end gap-2 text-xs pt-1">
+              <button
+                onClick={() => setShowDeleteContainerModal(false)}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-brand-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteContainer();
+                  setShowDeleteContainerModal(false);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
+              >
+                Sim, Excluir Bateria
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </NodeViewWrapper>
