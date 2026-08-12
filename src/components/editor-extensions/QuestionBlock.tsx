@@ -827,10 +827,19 @@ const QuestionBlockComponent = (props: any) => {
                   {/* Enunciado Editável */}
                   <textarea
                     value={preprocessMarkdownCode(q.question)}
-                    onChange={(e) => updateSingleQuestion(q.id, { question: e.target.value })}
+                    onChange={(e) => {
+                      updateSingleQuestion(q.id, { question: e.target.value });
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
                     placeholder="Escreva o enunciado da pergunta..."
-                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2.5 text-base font-bold text-brand-100 placeholder-white/30 resize-none outline-none mb-3 focus:border-purple-500 transition-colors"
-                    rows={2}
+                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2.5 text-base font-bold text-brand-100 placeholder-white/30 resize-none outline-none mb-3 focus:border-purple-500 transition-colors overflow-hidden"
+                    rows={3}
+                    style={{ minHeight: '4rem' }}
                   />
 
                   {/* Editor MÚLTIPLA ESCOLHA */}
@@ -844,16 +853,23 @@ const QuestionBlockComponent = (props: any) => {
                           <span className="text-xs font-bold text-dark-subtext w-4 text-center">
                             {String.fromCharCode(65 + optIdx)}
                           </span>
-                          <input
-                            type="text"
+                          <textarea
                             value={preprocessMarkdownCode(opt)}
                             onChange={(e) => {
                               const newOpts = [...q.options];
                               newOpts[optIdx] = e.target.value;
                               updateSingleQuestion(q.id, { options: newOpts });
+                              e.target.style.height = 'auto';
+                              e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.height = 'auto';
+                              e.target.style.height = e.target.scrollHeight + 'px';
                             }}
                             placeholder={`Opção ${String.fromCharCode(65 + optIdx)}`}
-                            className="flex-1 bg-black/30 border border-white/10 outline-none focus:border-purple-500 px-2.5 py-1.5 rounded text-xs text-brand-100 transition-colors"
+                            rows={1}
+                            className="flex-1 bg-black/30 border border-white/10 outline-none focus:border-purple-500 px-2.5 py-1.5 rounded text-xs text-brand-100 transition-colors resize-none overflow-hidden leading-relaxed"
+                            style={{ minHeight: '2rem' }}
                           />
 
                           <div className="flex items-center gap-1">
@@ -910,7 +926,7 @@ const QuestionBlockComponent = (props: any) => {
                           onChange={(e) => updateSingleQuestion(q.id, { expectedAnswer: e.target.value })}
                           placeholder="Resposta correta esperada para a IA usar como gabarito ao avaliar o aluno..."
                           className="w-full bg-black/40 border border-white/10 rounded p-2 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-purple-500 resize-none"
-                          rows={2}
+                          rows={3}
                         />
                       </div>
                     </div>
