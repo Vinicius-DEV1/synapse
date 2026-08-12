@@ -251,6 +251,7 @@ const triggerFireworksAnimation = () => {
 const QuestionBlockComponent = (props: any) => {
   const { 
     title, 
+    description, 
     isCollapsed, 
     mode: rawMode, 
     questions: rawQuestions, 
@@ -551,6 +552,14 @@ const QuestionBlockComponent = (props: any) => {
     props.deleteNode();
   };
 
+
+  const autoResizeTextarea = (el: HTMLTextAreaElement | null) => {
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.max(60, el.scrollHeight)}px`;
+    }
+  };
+
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
     const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
@@ -773,20 +782,38 @@ const QuestionBlockComponent = (props: any) => {
 
           <HelpCircle size={18} className="text-brand-400 shrink-0" />
 
-          {/* Título da Bateria */}
-          {mode === 'edit' ? (
-            <input
-              type="text"
-              value={title || 'Bateria de Exercícios'}
-              onChange={handleTitleChange}
-              placeholder="Nome da Bateria de Exercícios..."
-              className="bg-transparent text-base font-bold text-brand-100 placeholder-white/30 outline-none focus:bg-white/5 px-2 py-0.5 rounded flex-1 min-w-[150px]"
-            />
-          ) : (
-            <span className="text-base font-bold text-brand-100 px-2 py-0.5 flex-1 min-w-[150px]">
-              {title || 'Bateria de Exercícios'}
-            </span>
-          )}
+          {/* Título e Descrição da Bateria */}
+          <div className="flex flex-col flex-1 min-w-[200px]">
+            {mode === 'edit' ? (
+              <>
+                <input
+                  type="text"
+                  value={title || ''}
+                  onChange={handleTitleChange}
+                  placeholder="Título da Bateria de Exercícios..."
+                  className="bg-transparent text-base font-bold text-brand-100 placeholder-white/30 outline-none focus:bg-white/5 px-2 py-0.5 rounded"
+                />
+                <input
+                  type="text"
+                  value={description || ''}
+                  onChange={(e) => updateAttributes({ description: e.target.value })}
+                  placeholder="Descrição / orientações do bloco para estudo e IA (opcional)..."
+                  className="bg-transparent text-xs text-dark-subtext placeholder-white/20 outline-none focus:bg-white/5 px-2 py-0.5 rounded mt-0.5"
+                />
+              </>
+            ) : (
+              <>
+                <span className="text-base font-bold text-brand-100 px-2 py-0.5">
+                  {title || 'Bateria de Exercícios'}
+                </span>
+                {description && (
+                  <span className="text-xs text-dark-subtext px-2 opacity-85 leading-snug">
+                    {description}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* CONTROLES DO HEADER & SELETOR DE MODO */}
@@ -1171,10 +1198,15 @@ const QuestionBlockComponent = (props: any) => {
                         </label>
                         <textarea
                           value={q.expectedAnswer}
-                          onChange={(e) => updateSingleQuestion(q.id, { expectedAnswer: e.target.value })}
+                          onChange={(e) => {
+                            updateSingleQuestion(q.id, { expectedAnswer: e.target.value });
+                            autoResizeTextarea(e.target);
+                          }}
+                          onFocus={(e) => autoResizeTextarea(e.target)}
+                          ref={autoResizeTextarea}
                           placeholder="Resposta correta esperada para a IA usar como gabarito ao avaliar o aluno..."
-                          className="w-full bg-black/40 border border-white/10 rounded p-2 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-purple-500 resize-none"
-                          rows={3}
+                          className="w-full bg-black/40 border border-white/10 rounded p-2.5 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-purple-500 resize-none overflow-hidden transition-all leading-relaxed min-h-[60px]"
+                          rows={2}
                         />
                       </div>
                     </div>
@@ -2118,6 +2150,7 @@ export const QuestionBlock = Node.create({
   addAttributes() {
     return {
       title: { default: 'Bateria de Exercícios' },
+      description: { default: '' },
       isCollapsed: { default: false },
       mode: { default: 'edit' },
       aiChatHistory: { default: [] },

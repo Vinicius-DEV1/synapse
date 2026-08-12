@@ -391,7 +391,9 @@ export async function promptGeminiQuizAssistant(
   chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
   currentQuestions: any[],
   userMessage: string,
-  contextText?: string
+  contextText?: string,
+  blockTitle?: string,
+  blockDescription?: string
 ): Promise<{
   message: string;
   suggestedActions?: Array<{
@@ -416,6 +418,16 @@ export async function promptGeminiQuizAssistant(
   }>;
 }> {
   let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n_instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Se solicitado a GERAR NOVAS QUESTÕES, retorne um JSON com o mesmo formato deste arquivo: um objeto com campo 'questions' contendo um array de objetos. Para questões de múltipla escolha use: { type: 'multiple_choice', question, options: ['A) ...', 'B) ...', ...], correct_option: 'A) ...', explanation }. Para questões abertas use: { type: 'open', question, expected_answer, explanation }. REGRA DE CÓDIGO: se a questão, alternativa ou explicação contiver código (JavaScript, Python, SQL, etc.), use SEMPRE blocos markdown com 3 crases e o nome da linguagem para código multilinha. Nunca inclua a linguagem dentro de crases simples.",\n\n`;
+
+  if (blockTitle && blockTitle.trim()) {
+    customPrompt += `Título da Bateria: "${blockTitle.trim()}"\n`;
+  }
+  if (blockDescription && blockDescription.trim()) {
+    customPrompt += `Descrição / Orientações Gerais da Bateria (Definidas pelo Usuário): "${blockDescription.trim()}"\n`;
+  }
+  if ((blockTitle && blockTitle.trim()) || (blockDescription && blockDescription.trim())) {
+    customPrompt += `\n`;
+  }
 
   if (contextText && contextText.trim()) {
     customPrompt += `Contexto do Caderno do Usuário:\n"${contextText.trim().slice(0, 1500)}"\n\n`;
