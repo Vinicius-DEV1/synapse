@@ -242,21 +242,23 @@ export async function promptGeminiForOpenQuestionEvaluation(
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
 }> {
-  const customPrompt = `Você é um professor avaliando a resposta discursiva de um aluno para a seguinte questão:
+  const customPrompt = `Você é um professor especialista avaliando a resposta discursiva de um aluno.
 
 Enunciado da Questão: "${question}"
-Resposta Esperada (Gabarito de Referência): "${expectedAnswer}"
-Resposta Digitada pelo Aluno: "${userTypedAnswer}"
+Gabarito de Referência (escrito pelo autor da questão): "${expectedAnswer}"
+Resposta do Aluno: "${userTypedAnswer}"
 
-Regra de Avaliação:
-1. Se a resposta do aluno capta a essência da resposta esperada (mesmo com palavras diferentes), classifique como 'Correto'.
-2. Se a resposta possui a ideia principal certa mas faltam detalhes importantes ou nuances, classifique como 'Parcial'.
-3. Se a resposta contraria o gabarito ou está incorreta/incompleta de forma grave, classifique como 'Incorreto'.
+Diretrizes de Avaliação:
+1. Analise o conteúdo e a essência, não apenas as palavras exatas. Se o aluno capturou o conceito correto com outras palavras, classifique como 'Correto'.
+2. Classifique como 'Parcial' se a ideia principal está correta, mas faltam detalhes importantes, exemplos necessários ou nuances conceituais relevantes.
+3. Classifique como 'Incorreto' se a resposta contraria o gabarito, demonstra equívoco conceitual grave ou está completamente incompleta.
+4. No feedback, seja pedagógico, construtivo e específico: cite o que o aluno acertou, o que errou ou o que poderia complementar. Se houver código correto ou incorreto na resposta do aluno, mencione-o.
+5. Se a questão envolve código, avalie também se a sintaxe e a lógica estão corretas.
 
-Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+Responda ESTRITAMENTE em formato JSON:
 {
   "verdict": "Correto" | "Parcial" | "Incorreto",
-  "feedback": "Uma breve explicação pedagógica (máx 30 palavras) justificando a classificação e auxiliando o aluno."
+  "feedback": "Explicação pedagógica detalhada (2 a 4 frases) que justifica a classificação, aponta o que foi correto, o que faltou ou o que estava errado, e sugere como o aluno pode aprimorar seu entendimento."
 }
 NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
 
@@ -402,7 +404,7 @@ export async function promptGeminiQuizAssistant(
     reason?: string;
   }>;
 }> {
-  let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n`;
+  let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n_instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Se solicitado a GERAR NOVAS QUESTÕES, retorne um JSON com o mesmo formato deste arquivo: um objeto com campo 'questions' contendo um array de objetos. Para questões de múltipla escolha use: { type: 'multiple_choice', question, options: ['A) ...', 'B) ...', ...], correct_option: 'A) ...', explanation }. Para questões abertas use: { type: 'open', question, expected_answer, explanation }. REGRA DE CÓDIGO: se a questão, alternativa ou explicação contiver código (JavaScript, Python, SQL, etc.), use SEMPRE blocos markdown com 3 crases e o nome da linguagem para código multilinha. Nunca inclua a linguagem dentro de crases simples.",\n\n`;
 
   if (contextText && contextText.trim()) {
     customPrompt += `Contexto do Caderno do Usuário:\n"${contextText.trim().slice(0, 1500)}"\n\n`;

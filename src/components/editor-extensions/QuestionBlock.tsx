@@ -308,7 +308,7 @@ const QuestionBlockComponent = (props: any) => {
     e.stopPropagation();
 
     const exportData = {
-      _instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Forneça parecer e sugestões de aprimoramento se solicitado pelo usuário.",
+      _instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Se solicitado a GERAR NOVAS QUESTÕES no mesmo formato, retorne um JSON com campo 'questions' contendo um array. Cada questão de múltipla escolha deve ter: { type: 'multiple_choice', question, options: ['A) ...', 'B) ...'], correct_option: 'A) ...', explanation }. Cada questão aberta deve ter: { type: 'open', question, expected_answer, explanation }. REGRA DE CÓDIGO OBRIGATÓRIA: se a questão, alternativa ou explicação contiver código-fonte (JavaScript, Python, SQL, HTML, etc.), use SEMPRE blocos markdown com 3 crases e o nome da linguagem para código multilinha. Para termos ou palavras-chave curtas em linha, use crases simples. NUNCA coloque o nome de uma linguagem seguido de código dentro de uma única crase.",
       battery_title: title || 'Bateria de Exercícios',
       total_questions: questions.length,
       questions: questions.map((q, idx) => {
