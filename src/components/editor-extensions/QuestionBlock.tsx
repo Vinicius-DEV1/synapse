@@ -379,6 +379,7 @@ const QuestionBlockComponent = (props: any) => {
       ...q,
       answered: false,
       selectedIndex: null,
+      userTypedAnswer: '',
       aiFeedback: null,
       showExplanation: false,
     }));
@@ -1412,6 +1413,7 @@ const QuestionBlockComponent = (props: any) => {
                             updateSingleQuestion(q.id, {
                               answered: false,
                               selectedIndex: null,
+                              userTypedAnswer: '',
                               aiFeedback: null,
                               showExplanation: false,
                             })
