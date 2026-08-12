@@ -37,7 +37,8 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { 
   promptGeminiForOpenQuestionEvaluation, 
-  promptGeminiQuizAssistant 
+  promptGeminiQuizAssistant, 
+  sanitizeExpectedAnswer 
 } from '../../services/gemini';
 
 export interface SuggestedAction {
@@ -504,7 +505,7 @@ const QuestionBlockComponent = (props: any) => {
         correctIndex,
         tags: Array.isArray(item.tags) ? item.tags : Array.isArray(item.topicos) ? item.topicos : [],
         selectedIndex: null,
-        expectedAnswer: item.expected_answer || item.resposta_esperada || item.gabarito || item.answer || '',
+        expectedAnswer: sanitizeExpectedAnswer(item.expected_answer || item.resposta_esperada || item.gabarito || item.answer || ''),
         userTypedAnswer: '',
         aiFeedback: null,
         explanation: item.explanation || item.explicacao || item.justificativa || item.comentario || '',
@@ -553,7 +554,7 @@ const QuestionBlockComponent = (props: any) => {
 
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
-    const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${q.expectedAnswer || 'N/A'}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
+    const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
     handleSendChatMessage(promptText);
   };
 
@@ -609,10 +610,16 @@ const QuestionBlockComponent = (props: any) => {
         };
       });
 
+      let messageText = response.message || 'Aqui estão as sugestões para a sua bateria:';
+      if (messageText.trim().startsWith('{')) {
+        const msgMatch = /"message":\s*"([^"]+)"/.exec(messageText);
+        messageText = msgMatch ? msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : 'Aqui estão as sugestões para a sua bateria:';
+      }
+
       const assistantMessageObj: QuizChatMessage = {
         id: assistantMsgId,
         role: 'assistant',
-        text: response.message || 'Aqui estão as sugestões para a sua bateria:',
+        text: messageText,
         suggestedActions: actions,
       };
 
