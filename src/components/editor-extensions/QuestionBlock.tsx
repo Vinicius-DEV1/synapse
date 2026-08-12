@@ -27,6 +27,7 @@ import {
   Pencil,
   Play,
   Code,
+  Copy,
   Upload,
   FileJson,
   ClipboardPaste
@@ -81,6 +82,51 @@ export interface QuestionItem {
   showExplanation: boolean;
   answered: boolean;
 }
+
+
+const markdownComponents = {
+  p: ({ children }: any) => <span className="inline-block leading-relaxed">{children}</span>,
+  code: ({ inline, className, children, ...props }: any) => {
+    const match = /language-(\w+)/.exec(className || '');
+    const codeString = String(children).replace(/\n$/, '');
+
+    if (inline) {
+      return (
+        <code className="bg-purple-950/70 text-purple-200 border border-purple-500/30 px-1.5 py-0.5 rounded text-xs font-mono font-semibold" {...props}>
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <div className="my-2.5 rounded-xl overflow-hidden border border-purple-500/30 bg-black/80 shadow-lg text-left font-normal normal-case">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-purple-950/50 border-b border-purple-500/20 text-[11px] font-mono">
+          <span className="font-semibold text-purple-300 flex items-center gap-1.5">
+            <Code size={13} className="text-purple-400" />
+            {match ? match[1] : 'code'}
+          </span>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigator.clipboard.writeText(codeString);
+            }}
+            className="text-dark-subtext hover:text-white transition-colors flex items-center gap-1 text-[10px]"
+            title="Copiar trecho de código"
+          >
+            <Copy size={11} />
+            <span>Copiar</span>
+          </button>
+        </div>
+        <pre className="p-3 overflow-x-auto text-xs text-purple-100 font-mono leading-relaxed custom-scrollbar bg-black/70">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      </div>
+    );
+  },
+};
 
 const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
   id: `q_${Date.now()}_${idSuffix}`,
@@ -930,9 +976,15 @@ const QuestionBlockComponent = (props: any) => {
                     )}
                   </div>
 
-                  {/* Enunciado Limpo Somente Leitura */}
+                  {/* Enunciado Limpo Somente Leitura com Formatação Markdown & Código */}
                   <div className="text-base font-bold text-brand-100 leading-relaxed mb-4">
-                    {q.question || <span className="italic opacity-50">Questão sem enunciado</span>}
+                    {q.question ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {q.question}
+                      </ReactMarkdown>
+                    ) : (
+                      <span className="italic opacity-50">Questão sem enunciado</span>
+                    )}
                   </div>
 
                   {/* MÚLTIPLA ESCOLHA (PRÁTICA) */}
@@ -967,7 +1019,7 @@ const QuestionBlockComponent = (props: any) => {
                             }`}>
                               {String.fromCharCode(65 + optIdx)}
                             </span>
-                            <span className="flex-1 leading-relaxed">{opt || `Opção ${String.fromCharCode(65 + optIdx)}`}</span>
+                            <span className="flex-1 leading-relaxed"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{opt || `Opção ${String.fromCharCode(65 + optIdx)}`}</ReactMarkdown></span>
                             {q.answered && isCorrectOpt && <CheckCircle2 size={16} className="text-green-400 shrink-0" />}
                             {q.answered && isSelected && !isCorrectOpt && <XCircle size={16} className="text-red-400 shrink-0" />}
                           </button>
@@ -1082,7 +1134,7 @@ const QuestionBlockComponent = (props: any) => {
                           <BookOpen size={13} />
                           <span>Explicação / Gabarito Comentado:</span>
                         </div>
-                        <p className="leading-relaxed opacity-90 whitespace-pre-wrap">{q.explanation}</p>
+                        <div className="leading-relaxed opacity-90"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{q.explanation}</ReactMarkdown></div>
                       </div>
                     )}
                   </div>
@@ -1176,7 +1228,7 @@ const QuestionBlockComponent = (props: any) => {
 
                         {/* Texto da Mensagem */}
                         <div className="leading-relaxed whitespace-pre-wrap">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.text}</ReactMarkdown>
                         </div>
 
                         {/* AÇÕES SUGERIDAS PELA IA (create / edit / delete) COM APROVAÇÃO V/X */}
@@ -1248,12 +1300,12 @@ const QuestionBlockComponent = (props: any) => {
 
                                     {action.actionType === 'create' && (
                                       <div className="space-y-1.5">
-                                        <p className="font-semibold text-brand-100 leading-snug">{action.question}</p>
+                                        <div className="font-semibold text-brand-100 leading-snug"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{action.question}</ReactMarkdown></div>
                                         {action.type === 'multiple_choice' && action.options && (
                                           <ul className="space-y-0.5 text-[11px] text-dark-subtext">
                                             {action.options.map((opt: string, oIdx: number) => (
                                               <li key={oIdx} className={oIdx === action.correctIndex ? 'text-green-400 font-bold' : ''}>
-                                                {String.fromCharCode(65 + oIdx)}) {opt}
+                                                {String.fromCharCode(65 + oIdx)}) <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{opt}</ReactMarkdown>
                                               </li>
                                             ))}
                                           </ul>
@@ -1537,7 +1589,7 @@ const QuestionBlockComponent = (props: any) => {
                               {q.type === 'open' ? 'Questão Aberta' : 'Múltipla Escolha'}
                             </span>
                           </div>
-                          <p className="font-semibold text-brand-100 leading-snug">{q.question || <span className="italic text-dark-subtext">Sem enunciado</span>}</p>
+                          <div className="font-semibold text-brand-100 leading-snug"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{q.question || 'Sem enunciado'}</ReactMarkdown></div>
                           {q.type === 'multiple_choice' && q.options.filter(o => o).length > 0 && (
                             <ul className="space-y-0.5 text-[11px] text-dark-subtext">
                               {q.options.map((opt, oIdx) => (

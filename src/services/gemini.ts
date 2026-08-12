@@ -444,6 +444,9 @@ export async function promptGeminiQuizAssistant(
 5. Se o usuário pedir para REMOVER/DELETAR uma questão, use actionType "delete" com "targetQuestionIndex" e "reason" explicando por quê.
 6. Você pode misturar vários tipos de ação na mesma resposta.
 7. Se o usuário apenas disser "oi" ou não especificar nada, responda amigavelmente perguntando o que ele precisa.
+8. FORMATAÇÃO DE CÓDIGO: Sempre que a pergunta, alternativa ou explicação envolver trechos de código (JavaScript, Python, SQL, HTML, etc.), use SEMPRE a sintaxe Markdown adequada:
+   - Para trechos de código multilinha, use blocos de código indicando a linguagem.
+   - Para expressões ou palavras-chave curtas em linha, use crases simples (ex: \`console.log(typeof NaN)\`).
 
 Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
