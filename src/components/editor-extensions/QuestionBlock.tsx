@@ -1401,13 +1401,13 @@ const QuestionBlockComponent = (props: any) => {
                       )
                     ) : (
                       <div className="flex items-center gap-2">
-                        {q.explanation && (
+                        {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
                           <button
                             onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
                             className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 text-brand-200 border border-white/10 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                           >
                             <BookOpen size={13} className="text-brand-400" />
-                            <span>{q.showExplanation ? 'Ocultar Explicação' : '💡 Ver Explicação'}</span>
+                            <span>{q.showExplanation ? 'Ocultar Explicação/Gabarito' : '💡 Ver Explicação / Gabarito'}</span>
                           </button>
                         )}
 
@@ -1429,14 +1429,36 @@ const QuestionBlockComponent = (props: any) => {
                       </div>
                     )}
 
-                    {/* Explicação Revelada */}
-                    {q.answered && q.showExplanation && q.explanation && (
-                      <div className="mt-1 p-3 bg-brand-950/30 border border-brand-500/30 rounded-xl text-xs text-brand-100 space-y-1">
-                        <div className="font-semibold text-brand-300 flex items-center gap-1">
-                          <BookOpen size={13} />
-                          <span>Explicação / Gabarito Comentado:</span>
-                        </div>
-                        <div className="leading-relaxed opacity-90"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(q.explanation)}</ReactMarkdown></div>
+                    {/* Explicação e Gabarito Revelados */}
+                    {q.answered && q.showExplanation && (q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
+                      <div className="mt-2 p-3.5 bg-brand-950/40 border border-brand-500/30 rounded-xl text-xs text-brand-100 space-y-3 shadow-md">
+                        {q.type === 'open' && q.expectedAnswer && (
+                          <div className="space-y-1 bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5">
+                            <div className="font-bold text-purple-300 flex items-center gap-1.5 text-[11px]">
+                              <BookOpen size={13} className="text-purple-400" />
+                              <span>📌 Resposta Esperada (Gabarito de Referência do Autor):</span>
+                            </div>
+                            <div className="leading-relaxed text-purple-100 font-medium">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                {preprocessMarkdownCode(q.expectedAnswer)}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+
+                        {q.explanation && (
+                          <div className="space-y-1">
+                            <div className="font-bold text-brand-300 flex items-center gap-1.5 text-[11px]">
+                              <BookOpen size={13} className="text-brand-400" />
+                              <span>💡 Explicação & Comentário Didático:</span>
+                            </div>
+                            <div className="leading-relaxed text-brand-100 opacity-95">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                {preprocessMarkdownCode(q.explanation)}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
