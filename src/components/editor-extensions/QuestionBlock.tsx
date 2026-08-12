@@ -562,7 +562,21 @@ const QuestionBlockComponent = (props: any) => {
 
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
-    const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
+
+    const questionHeader = `Gostaria de discutir a avaliação da Questão ${qIndex + 1}`;
+
+    // Trava de Deduplicação: Se a discussão para esta questão já foi enviada no histórico, não reenviar prompt duplicado
+    const alreadyDiscussed = chatHistory.some(
+      (m) => m.role === 'user' && m.text.includes(questionHeader)
+    );
+
+    if (alreadyDiscussed) {
+      // Apenas abre o modal sem disparar requisição repetida para a IA
+      return;
+    }
+
+    const promptText = `${questionHeader} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
+
     handleSendChatMessage(promptText);
   };
 
