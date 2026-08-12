@@ -551,26 +551,6 @@ const QuestionBlockComponent = (props: any) => {
     props.deleteNode();
   };
 
-
-
-  const handleGiveUpAndShowAnswer = (q: QuestionItem) => {
-    const newAttempt: AttemptItem = {
-      id: `att_${Date.now()}`,
-      timestamp: Date.now(),
-      type: q.type,
-      userTypedAnswer: q.type === 'open' ? (q.userTypedAnswer || 'Gabarito consultado diretamente') : undefined,
-      selectedIndex: q.type === 'multiple_choice' ? q.selectedIndex : undefined,
-      isCorrect: false,
-      aiFeedback: q.type === 'open' ? { verdict: 'Incorreto', feedback: 'Gabarito de referência consultado diretamente sem envio para avaliação da IA.' } : null,
-    };
-
-    updateSingleQuestion(q.id, {
-      answered: true,
-      showExplanation: true,
-      attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
-    });
-  };
-
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
     const promptText = `Gostaria de discutir a avaliação da Questão ${qIndex + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${sanitizeExpectedAnswer(q.expectedAnswer || 'N/A')}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
@@ -1261,6 +1241,22 @@ const QuestionBlockComponent = (props: any) => {
                         {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
                       </span>
 
+                      {/* BOTÃO DISCRETO DA LÂMPADA/GABARITO NO TOPO ESQUERDO DO CARD */}
+                      {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
+                        <button
+                          onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
+                          className={`px-1.5 py-0.5 rounded-md transition-all flex items-center gap-1 text-[11px] font-medium border ${
+                            q.showExplanation
+                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm'
+                              : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-amber-300'
+                          }`}
+                          title={q.showExplanation ? 'Ocultar Gabarito / Explicação' : '💡 Consultar Gabarito de Referência e Explicação (sem contabilizar como resposta)'}
+                        >
+                          <Lightbulb size={13} className={q.showExplanation ? 'text-amber-300' : 'text-amber-400/80'} />
+                          <span className="text-[10px]">{q.showExplanation ? 'Ocultar Gabarito' : 'Gabarito'}</span>
+                        </button>
+                      )}
+
                       {/* Tags em Modo Prática */}
                       {q.tags && q.tags.length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap ml-1">
@@ -1398,44 +1394,33 @@ const QuestionBlockComponent = (props: any) => {
                   {/* AÇÕES DA SUB-QUESTÃO (PRÁTICA) */}
                   <div className="flex flex-col gap-2">
                     {!q.answered ? (
-                      <div className="flex items-center gap-2">
-                        {q.type === 'multiple_choice' ? (
-                          <button
-                            onClick={() => handleAnswerMultipleChoice(q)}
-                            disabled={q.selectedIndex === null}
-                            className="flex-1 py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
-                          >
-                            Responder Questão {qIndex + 1}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleEvaluateOpenQuestion(q)}
-                            disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
-                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs shadow-md"
-                          >
-                            {evaluatingIds[q.id] ? (
-                              <>
-                                <Loader2 size={14} className="animate-spin text-purple-200" />
-                                <span>Avaliando Resposta...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={14} className="text-purple-200" />
-                                <span>Avaliar Resposta com IA</span>
-                              </>
-                            )}
-                          </button>
-                        )}
-
+                      q.type === 'multiple_choice' ? (
                         <button
-                          onClick={() => handleGiveUpAndShowAnswer(q)}
-                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 hover:border-amber-500/40 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0"
-                          title="Não sei a resposta: ver gabarito de referência e explicação sem enviar para a IA"
+                          onClick={() => handleAnswerMultipleChoice(q)}
+                          disabled={q.selectedIndex === null}
+                          className="w-full py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
                         >
-                          <HelpCircle size={14} className="text-amber-400 shrink-0" />
-                          <span>Ver Gabarito</span>
+                          Responder Questão {qIndex + 1}
                         </button>
-                      </div>
+                      ) : (
+                        <button
+                          onClick={() => handleEvaluateOpenQuestion(q)}
+                          disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
+                          className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs shadow-md"
+                        >
+                          {evaluatingIds[q.id] ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin text-purple-200" />
+                              <span>Avaliando Resposta...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} className="text-purple-200" />
+                              <span>Avaliar Resposta com IA</span>
+                            </>
+                          )}
+                        </button>
+                      )
                     ) : (
                       <div className="flex items-center gap-2">
                         {(q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
@@ -1467,7 +1452,7 @@ const QuestionBlockComponent = (props: any) => {
                     )}
 
                     {/* Explicação e Gabarito Revelados */}
-                    {q.answered && q.showExplanation && (q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
+                    {q.showExplanation && (q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
                       <div className="mt-2 p-3.5 bg-brand-950/40 border border-brand-500/30 rounded-xl text-xs text-brand-100 space-y-3 shadow-md">
                         {q.type === 'open' && q.expectedAnswer && (
                           <div className="space-y-1 bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5">
