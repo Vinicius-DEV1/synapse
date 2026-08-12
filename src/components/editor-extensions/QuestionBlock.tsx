@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import ReactMarkdown from 'react-markdown';
+import confetti from 'canvas-confetti';
 import remarkGfm from 'remark-gfm';
 import { 
   Trash2, 
@@ -90,6 +91,35 @@ const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
   showExplanation: false,
   answered: false,
 });
+
+
+const triggerFireworksAnimation = () => {
+  const duration = 2.5 * 1000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+  const randomInRange = (min: number, max: number) => {
+    return Math.random() * (max - min) + min;
+  };
+
+  const interval: any = setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+    const particleCount = 50 * (timeLeft / duration);
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.4), y: Math.random() - 0.2 },
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.6, 0.9), y: Math.random() - 0.2 },
+    });
+  }, 250);
+};
 
 const QuestionBlockComponent = (props: any) => {
   const { 
@@ -347,6 +377,22 @@ const QuestionBlockComponent = (props: any) => {
   }).length;
 
   const scorePercentage = answeredQuestions > 0 ? Math.round((correctCount / answeredQuestions) * 100) : 0;
+
+  const prevAnsweredCountRef = useRef(0);
+
+  // Efeito de Fogos de Artifício ao concluir a bateria inteira em Modo Prática
+  useEffect(() => {
+    if (
+      mode === 'practice' &&
+      answeredQuestions > 0 &&
+      answeredQuestions === totalQuestions &&
+      prevAnsweredCountRef.current < totalQuestions
+    ) {
+      triggerFireworksAnimation();
+    }
+    prevAnsweredCountRef.current = answeredQuestions;
+  }, [answeredQuestions, totalQuestions, mode]);
+
 
   return (
     <NodeViewWrapper className="question-block relative bg-dark-card border border-white/10 rounded-xl p-4 my-6 shadow-md block transition-all">
