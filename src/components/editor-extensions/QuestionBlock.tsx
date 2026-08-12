@@ -840,45 +840,47 @@ const QuestionBlockComponent = (props: any) => {
             </>
           )}
 
-          {/* CONTROLES DO MODO EDIÇÃO */}
+          {/* CONTROLES EXCLUSIVOS DO MODO EDIÇÃO */}
           {mode === 'edit' && (
-            <button
-              onClick={() => setShowAiAssistantModal(true)}
-              className="p-1.5 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-bold text-sm transition-all flex items-center justify-center"
-              title="Assistente de Questões IA (Chat, Criação & Análise)"
-            >
-              ✨
-            </button>
+            <>
+              <button
+                onClick={() => setShowAiAssistantModal(true)}
+                className="p-1.5 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-bold text-sm transition-all flex items-center justify-center"
+                title="Assistente de Questões IA (Chat, Criação & Análise)"
+              >
+                ✨
+              </button>
+
+              {/* Botão Importar JSON de Questões */}
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowImportModal(true); }}
+                className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
+                title="Importar questões a partir de um JSON (gerado por este app ou por outra IA)"
+              >
+                <Upload size={13} className="text-brand-400" />
+                <span>Import</span>
+              </button>
+
+              {/* Botão Copiar JSON das Questões para IA */}
+              <button
+                onClick={handleCopyQuestionsJson}
+                className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
+                title="Copiar JSON estruturado com instruções para analisar em outro chatbot de IA"
+              >
+                <Code size={13} className="text-brand-400" />
+                <span>{copiedJson ? '✓ Copiado!' : 'JSON'}</span>
+              </button>
+
+              {/* Deletar Bloco Container Inteiro */}
+              <button
+                onClick={() => setShowDeleteContainerModal(true)}
+                className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors"
+                title="Deletar Bateria de Questões"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
           )}
-
-          {/* Botão Importar JSON de Questões */}
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowImportModal(true); }}
-            className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
-            title="Importar questões a partir de um JSON (gerado por este app ou por outra IA)"
-          >
-            <Upload size={13} className="text-brand-400" />
-            <span>Import</span>
-          </button>
-
-          {/* Botão Copiar JSON das Questões para IA */}
-          <button
-            onClick={handleCopyQuestionsJson}
-            className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
-            title="Copiar JSON estruturado com instruções para analisar em outro chatbot de IA"
-          >
-            <Code size={13} className="text-brand-400" />
-            <span>{copiedJson ? '✓ Copiado!' : 'JSON'}</span>
-          </button>
-
-          {/* Deletar Bloco Container Inteiro */}
-          <button
-            onClick={() => setShowDeleteContainerModal(true)}
-            className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-md transition-colors"
-            title="Deletar Bateria de Questões"
-          >
-            <Trash2 size={16} />
-          </button>
         </div>
       </div>
 
