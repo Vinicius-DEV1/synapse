@@ -85,21 +85,24 @@ export interface QuestionItem {
 
 
 const markdownComponents = {
-  p: ({ children }: any) => <span className="inline-block leading-relaxed">{children}</span>,
+  p: ({ children }: any) => <span className="inline leading-relaxed">{children}</span>,
   code: ({ inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
     const codeString = String(children).replace(/\n$/, '');
 
-    if (inline) {
+    // In react-markdown v9, inline is undefined. Check if className or newlines exist.
+    const isInline = inline || (!className && !codeString.includes('\n'));
+
+    if (isInline) {
       return (
-        <code className="bg-purple-950/70 text-purple-200 border border-purple-500/30 px-1.5 py-0.5 rounded text-xs font-mono font-semibold" {...props}>
+        <code className="bg-purple-950/70 text-purple-200 border border-purple-500/30 px-1.5 py-0.5 rounded text-xs font-mono font-semibold mx-0.5 inline-block" {...props}>
           {children}
         </code>
       );
     }
 
     return (
-      <div className="my-2.5 rounded-xl overflow-hidden border border-purple-500/30 bg-black/80 shadow-lg text-left font-normal normal-case">
+      <div className="my-2.5 rounded-xl overflow-hidden border border-purple-500/30 bg-black/80 shadow-lg text-left font-normal normal-case block">
         <div className="flex items-center justify-between px-3 py-1.5 bg-purple-950/50 border-b border-purple-500/20 text-[11px] font-mono">
           <span className="font-semibold text-purple-300 flex items-center gap-1.5">
             <Code size={13} className="text-purple-400" />
