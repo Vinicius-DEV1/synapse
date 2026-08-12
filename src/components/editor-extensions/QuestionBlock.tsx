@@ -146,6 +146,18 @@ const markdownComponents = {
   },
 };
 
+
+const getEditActionChanges = (action: SuggestedAction): Partial<QuestionItem> => {
+  const c: Partial<QuestionItem> = { ...(action.changes || {}) };
+  if (action.question && !c.question) c.question = action.question;
+  if (action.options && action.options.length >= 2 && !c.options) c.options = action.options;
+  if (typeof action.correctIndex === 'number' && c.correctIndex === undefined) c.correctIndex = action.correctIndex;
+  if (action.expectedAnswer && !c.expectedAnswer) c.expectedAnswer = action.expectedAnswer;
+  if (action.explanation && !c.explanation) c.explanation = action.explanation;
+  if (action.type && !c.type) c.type = action.type;
+  return c;
+};
+
 const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
   id: `q_${Date.now()}_${idSuffix}`,
   type: 'multiple_choice',
@@ -485,20 +497,32 @@ const QuestionBlockComponent = (props: any) => {
       );
 
       const assistantMsgId = `assistant_${Date.now()}`;
-      const actions: SuggestedAction[] | undefined = response.suggestedActions?.map((a: any, idx: number) => ({
-        id: `action_${Date.now()}_${idx}`,
-        actionType: a.actionType,
-        status: 'pending' as const,
-        type: a.type || 'multiple_choice',
-        question: a.question || '',
-        options: a.options && a.options.length >= 2 ? a.options : ['', '', '', ''],
-        correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
-        expectedAnswer: a.expectedAnswer || '',
-        explanation: a.explanation || '',
-        targetQuestionIndex: a.targetQuestionIndex,
-        changes: a.changes,
-        reason: a.reason,
-      }));
+      const actions: SuggestedAction[] | undefined = response.suggestedActions?.map((a: any, idx: number) => {
+        const changes = a.changes || {};
+        if (a.actionType === 'edit') {
+          if (a.question && !changes.question) changes.question = a.question;
+          if (a.options && !changes.options) changes.options = a.options;
+          if (typeof a.correctIndex === 'number' && changes.correctIndex === undefined) changes.correctIndex = a.correctIndex;
+          if (a.expectedAnswer && !changes.expectedAnswer) changes.expectedAnswer = a.expectedAnswer;
+          if (a.explanation && !changes.explanation) changes.explanation = a.explanation;
+          if (a.type && !changes.type) changes.type = a.type;
+        }
+
+        return {
+          id: `action_${Date.now()}_${idx}`,
+          actionType: a.actionType,
+          status: 'pending' as const,
+          type: a.type || 'multiple_choice',
+          question: a.question || '',
+          options: a.options && a.options.length >= 2 ? a.options : ['', '', '', ''],
+          correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
+          expectedAnswer: a.expectedAnswer || '',
+          explanation: a.explanation || '',
+          targetQuestionIndex: a.targetQuestionIndex,
+          changes,
+          reason: a.reason,
+        };
+      });
 
       const assistantMessageObj: QuizChatMessage = {
         id: assistantMsgId,
@@ -570,8 +594,9 @@ const QuestionBlockComponent = (props: any) => {
         }
       } else if (action.actionType === 'edit' && action.targetQuestionIndex) {
         const idx = action.targetQuestionIndex - 1;
-        if (idx >= 0 && idx < currentQs.length && action.changes) {
-          currentQs = currentQs.map((q, i) => i === idx ? { ...q, ...action.changes } : q);
+        if (idx >= 0 && idx < currentQs.length) {
+          const editChanges = getEditActionChanges(action);
+          currentQs = currentQs.map((q, i) => i === idx ? { ...q, ...editChanges } : q);
         }
       } else if (action.actionType === 'delete' && action.targetQuestionIndex) {
         const idx = action.targetQuestionIndex - 1;
