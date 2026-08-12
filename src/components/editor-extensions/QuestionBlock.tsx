@@ -19,10 +19,11 @@ import {
   Send,
   Check,
   X,
-  MessageSquare,
   Bot,
   User,
-  CheckCheck
+  CheckCheck,
+  Pencil,
+  Play
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { 
@@ -91,29 +92,19 @@ const createDefaultQuestion = (idSuffix: number = 1): QuestionItem => ({
 });
 
 const QuestionBlockComponent = (props: any) => {
-  const { title, isCollapsed, questions: rawQuestions, aiChatHistory: rawChatHistory } = props.node.attrs;
+  const { 
+    title, 
+    isCollapsed, 
+    mode: rawMode, 
+    questions: rawQuestions, 
+    aiChatHistory: rawChatHistory 
+  } = props.node.attrs;
 
-  // Garante retrocompatibilidade se existirem nós salvos no formato antigo
+  const mode: 'edit' | 'practice' = rawMode === 'practice' ? 'practice' : 'edit';
+
   const initialQuestions: QuestionItem[] = Array.isArray(rawQuestions) && rawQuestions.length > 0 
     ? rawQuestions 
-    : [
-        props.node.attrs.question || props.node.attrs.options 
-          ? {
-              id: `q_legacy_${Date.now()}`,
-              type: props.node.attrs.type || 'multiple_choice',
-              question: props.node.attrs.question || '',
-              options: props.node.attrs.options || ['', '', '', ''],
-              correctIndex: props.node.attrs.correctIndex || 0,
-              selectedIndex: props.node.attrs.selectedIndex ?? null,
-              expectedAnswer: props.node.attrs.expectedAnswer || '',
-              userTypedAnswer: props.node.attrs.userTypedAnswer || '',
-              aiFeedback: props.node.attrs.aiFeedback || null,
-              explanation: props.node.attrs.explanation || '',
-              showExplanation: props.node.attrs.showExplanation || false,
-              answered: props.node.attrs.answered || false,
-            }
-          : createDefaultQuestion(1)
-      ];
+    : [createDefaultQuestion(1)];
 
   const questions: QuestionItem[] = initialQuestions;
   const chatHistory: QuizChatMessage[] = Array.isArray(rawChatHistory) ? rawChatHistory : [];
@@ -149,6 +140,10 @@ const QuestionBlockComponent = (props: any) => {
 
   const updateChatHistory = (newHistory: QuizChatMessage[]) => {
     props.updateAttributes({ aiChatHistory: newHistory });
+  };
+
+  const handleSetMode = (newMode: 'edit' | 'practice') => {
+    props.updateAttributes({ mode: newMode });
   };
 
   // Handlers do Container (Header)
@@ -217,14 +212,12 @@ const QuestionBlockComponent = (props: any) => {
         id: `action_${Date.now()}_${idx}`,
         actionType: a.actionType,
         status: 'pending' as const,
-        // create
         type: a.type || 'multiple_choice',
         question: a.question || '',
         options: a.options && a.options.length >= 2 ? a.options : ['', '', '', ''],
         correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
         expectedAnswer: a.expectedAnswer || '',
         explanation: a.explanation || '',
-        // edit / delete
         targetQuestionIndex: a.targetQuestionIndex,
         changes: a.changes,
         reason: a.reason,
@@ -251,7 +244,6 @@ const QuestionBlockComponent = (props: any) => {
     }
   };
 
-  // Handlers para os Cards de Ações Sugeridas (✓ / ✕)
   const handleActionStatusChange = (msgId: string, actionId: string, newStatus: 'accepted' | 'rejected' | 'pending') => {
     const updated = chatHistory.map((msg) => {
       if (msg.id !== msgId || !msg.suggestedActions) return msg;
@@ -278,7 +270,6 @@ const QuestionBlockComponent = (props: any) => {
 
     let currentQs = [...questions];
 
-    // Process each accepted action in order
     accepted.forEach((action) => {
       if (action.actionType === 'create') {
         const newQ: QuestionItem = {
@@ -295,14 +286,13 @@ const QuestionBlockComponent = (props: any) => {
           showExplanation: false,
           answered: false,
         };
-        // If the battery has only a single blank placeholder, replace it
         if (currentQs.length === 1 && !currentQs[0].question.trim() && !currentQs[0].answered) {
           currentQs = [newQ];
         } else {
           currentQs = [...currentQs, newQ];
         }
       } else if (action.actionType === 'edit' && action.targetQuestionIndex) {
-        const idx = action.targetQuestionIndex - 1; // 1-based → 0-based
+        const idx = action.targetQuestionIndex - 1;
         if (idx >= 0 && idx < currentQs.length && action.changes) {
           currentQs = currentQs.map((q, i) => i === idx ? { ...q, ...action.changes } : q);
         }
@@ -374,50 +364,90 @@ const QuestionBlockComponent = (props: any) => {
 
           <HelpCircle size={18} className="text-brand-400 shrink-0" />
 
-          {/* Título da Bateria Editável */}
-          <input
-            type="text"
-            value={title || 'Bateria de Exercícios'}
-            onChange={handleTitleChange}
-            placeholder="Nome da Bateria de Exercícios..."
-            className="bg-transparent text-base font-bold text-brand-100 placeholder-white/30 outline-none focus:bg-white/5 px-2 py-0.5 rounded flex-1 min-w-[150px]"
-          />
+          {/* Título da Bateria */}
+          {mode === 'edit' ? (
+            <input
+              type="text"
+              value={title || 'Bateria de Exercícios'}
+              onChange={handleTitleChange}
+              placeholder="Nome da Bateria de Exercícios..."
+              className="bg-transparent text-base font-bold text-brand-100 placeholder-white/30 outline-none focus:bg-white/5 px-2 py-0.5 rounded flex-1 min-w-[150px]"
+            />
+          ) : (
+            <span className="text-base font-bold text-brand-100 px-2 py-0.5 flex-1 min-w-[150px]">
+              {title || 'Bateria de Exercícios'}
+            </span>
+          )}
         </div>
 
-        {/* Placar Badge & Controles Globais */}
+        {/* CONTROLES DO HEADER & SELETOR DE MODO */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-dark-bg/80 border border-white/10 px-2.5 py-1 rounded-full text-xs font-medium">
-            <Trophy size={13} className={correctCount > 0 ? 'text-amber-400' : 'text-dark-subtext'} />
-            <span className="text-brand-100">
-              {answeredQuestions}/{totalQuestions} Respondidas
-            </span>
-            {answeredQuestions > 0 && (
-              <span className={`ml-1 font-bold ${scorePercentage >= 70 ? 'text-green-400' : 'text-amber-400'}`}>
-                ({scorePercentage}% Acertos)
-              </span>
-            )}
+          {/* TOGGLE SEGMENTADO DE MODO: EDICAO vs PRATICA */}
+          <div className="flex bg-black/40 border border-white/10 p-0.5 rounded-lg text-xs font-medium">
+            <button
+              onClick={() => handleSetMode('edit')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
+                mode === 'edit'
+                  ? 'bg-purple-600 text-white font-bold shadow-sm'
+                  : 'text-dark-subtext hover:text-white'
+              }`}
+              title="Modo Edição: crie e edite enunciados, gabaritos e opções"
+            >
+              <Pencil size={13} />
+              <span>Modo Edição</span>
+            </button>
+            <button
+              onClick={() => handleSetMode('practice')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
+                mode === 'practice'
+                  ? 'bg-brand-500 text-white font-bold shadow-sm'
+                  : 'text-dark-subtext hover:text-white'
+              }`}
+              title="Modo Prática: responda as questões e receba feedback"
+            >
+              <Play size={13} />
+              <span>Modo Prática</span>
+            </button>
           </div>
 
-          {/* Refazer Tudo */}
-          {answeredQuestions > 0 && (
-            <button
-              onClick={handleResetAll}
-              className="flex items-center gap-1 text-xs px-2.5 py-1 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-md font-medium transition-colors"
-              title="Resetar respostas de todas as questões desta bateria"
-            >
-              <RotateCcw size={13} />
-              <span>Refazer Tudo</span>
-            </button>
+          {/* CONTROLES DO MODO PRÁTICA */}
+          {mode === 'practice' && (
+            <>
+              <div className="flex items-center gap-1.5 bg-dark-bg/80 border border-white/10 px-2.5 py-1 rounded-full text-xs font-medium">
+                <Trophy size={13} className={correctCount > 0 ? 'text-amber-400' : 'text-dark-subtext'} />
+                <span className="text-brand-100">
+                  {answeredQuestions}/{totalQuestions} Respondidas
+                </span>
+                {answeredQuestions > 0 && (
+                  <span className={`ml-1 font-bold ${scorePercentage >= 70 ? 'text-green-400' : 'text-amber-400'}`}>
+                    ({scorePercentage}% Acertos)
+                  </span>
+                )}
+              </div>
+
+              {answeredQuestions > 0 && (
+                <button
+                  onClick={handleResetAll}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-md font-medium transition-colors"
+                  title="Resetar respostas de todas as questões"
+                >
+                  <RotateCcw size={13} />
+                  <span>Refazer Tudo</span>
+                </button>
+              )}
+            </>
           )}
 
-          {/* Botão Ícone Minimalista ✨ Assistente IA */}
-          <button
-            onClick={() => setShowAiAssistantModal(true)}
-            className="p-1.5 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-bold text-sm transition-all flex items-center justify-center"
-            title="Assistente de Questões IA (Chat, Criação & Análise)"
-          >
-            ✨
-          </button>
+          {/* CONTROLES DO MODO EDIÇÃO */}
+          {mode === 'edit' && (
+            <button
+              onClick={() => setShowAiAssistantModal(true)}
+              className="p-1.5 bg-gradient-to-r from-purple-500/20 to-brand-500/20 hover:from-purple-500/30 hover:to-brand-500/30 text-purple-300 rounded-md border border-purple-500/30 font-bold text-sm transition-all flex items-center justify-center"
+              title="Assistente de Questões IA (Chat, Criação & Análise)"
+            >
+              ✨
+            </button>
+          )}
 
           {/* Deletar Bloco Container Inteiro */}
           <button
@@ -433,305 +463,386 @@ const QuestionBlockComponent = (props: any) => {
       {/* CORPO DO CONTAINER (RECOLHÍVEL QUANDO isCollapsed === true) */}
       {!isCollapsed && (
         <div className="mt-4 space-y-6">
-          {questions.map((q, qIndex) => (
-            <div
-              key={q.id}
-              className="bg-dark-bg/50 border border-white/10 rounded-xl p-4 relative group transition-all"
-            >
-              {/* Header da Sub-Questão */}
-              <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-white/5 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
-                    Questão {qIndex + 1}
-                  </span>
+          {/* ======================================================== */}
+          {/* MODO 1: EDIÇÃO (Criação, edição de enunciados, gabaritos) */}
+          {/* ======================================================== */}
+          {mode === 'edit' && (
+            <>
+              {questions.map((q, qIndex) => (
+                <div
+                  key={q.id}
+                  className="bg-dark-bg/50 border border-purple-500/20 rounded-xl p-4 relative group transition-all"
+                >
+                  {/* Header da Sub-Questão (Edição) */}
+                  <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-white/5 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                        Questão {qIndex + 1} (Edição)
+                      </span>
 
-                  {!q.answered && (
-                    <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/10 text-[11px]">
-                      <button
-                        onClick={() => updateSingleQuestion(q.id, { type: 'multiple_choice' })}
-                        className={`px-2 py-0.5 rounded transition-colors ${
-                          q.type === 'multiple_choice'
-                            ? 'bg-brand-500/30 text-brand-200 font-medium'
-                            : 'text-dark-subtext hover:text-white'
-                        }`}
-                      >
-                        Múltipla Escolha
-                      </button>
-                      <button
-                        onClick={() => updateSingleQuestion(q.id, { type: 'open' })}
-                        className={`px-2 py-0.5 rounded transition-colors ${
-                          q.type === 'open'
-                            ? 'bg-brand-500/30 text-brand-200 font-medium'
-                            : 'text-dark-subtext hover:text-white'
-                        }`}
-                      >
-                        Questão Aberta
-                      </button>
+                      <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/10 text-[11px]">
+                        <button
+                          onClick={() => updateSingleQuestion(q.id, { type: 'multiple_choice' })}
+                          className={`px-2 py-0.5 rounded transition-colors ${
+                            q.type === 'multiple_choice'
+                              ? 'bg-purple-500/30 text-purple-200 font-medium'
+                              : 'text-dark-subtext hover:text-white'
+                          }`}
+                        >
+                          Múltipla Escolha
+                        </button>
+                        <button
+                          onClick={() => updateSingleQuestion(q.id, { type: 'open' })}
+                          className={`px-2 py-0.5 rounded transition-colors ${
+                            q.type === 'open'
+                              ? 'bg-purple-500/30 text-purple-200 font-medium'
+                              : 'text-dark-subtext hover:text-white'
+                          }`}
+                        >
+                          Questão Aberta
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setDeletingQuestionInfo({ id: q.id, index: qIndex })}
+                      className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded transition-colors"
+                      title="Remover esta questão"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+
+                  {/* Enunciado Editável */}
+                  <textarea
+                    value={q.question}
+                    onChange={(e) => updateSingleQuestion(q.id, { question: e.target.value })}
+                    placeholder="Escreva o enunciado da pergunta..."
+                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2.5 text-base font-bold text-brand-100 placeholder-white/30 resize-none outline-none mb-3 focus:border-purple-500 transition-colors"
+                    rows={2}
+                  />
+
+                  {/* Editor MÚLTIPLA ESCOLHA */}
+                  {q.type === 'multiple_choice' && (
+                    <div className="flex flex-col gap-2 mb-3">
+                      <label className="text-[11px] font-semibold text-purple-300">
+                        Alternativas (marque a opção correta):
+                      </label>
+                      {q.options.map((opt: string, optIdx: number) => (
+                        <div key={optIdx} className="flex items-center gap-2.5">
+                          <span className="text-xs font-bold text-dark-subtext w-4 text-center">
+                            {String.fromCharCode(65 + optIdx)}
+                          </span>
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => {
+                              const newOpts = [...q.options];
+                              newOpts[optIdx] = e.target.value;
+                              updateSingleQuestion(q.id, { options: newOpts });
+                            }}
+                            placeholder={`Opção ${String.fromCharCode(65 + optIdx)}`}
+                            className="flex-1 bg-black/30 border border-white/10 outline-none focus:border-purple-500 px-2.5 py-1.5 rounded text-xs text-brand-100 transition-colors"
+                          />
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => updateSingleQuestion(q.id, { correctIndex: optIdx })}
+                              className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                                q.correctIndex === optIdx
+                                  ? 'bg-green-500/20 text-green-400 font-bold border border-green-500/30'
+                                  : 'text-dark-subtext hover:bg-white/10 border border-transparent'
+                              }`}
+                            >
+                              {q.correctIndex === optIdx ? '✓ Correta' : 'Marcar Correta'}
+                            </button>
+
+                            {q.options.length > 2 && (
+                              <button
+                                onClick={() => {
+                                  const filtered = q.options.filter((_, i) => i !== optIdx);
+                                  let newCorr = q.correctIndex;
+                                  if (q.correctIndex === optIdx) newCorr = 0;
+                                  else if (q.correctIndex > optIdx) newCorr = q.correctIndex - 1;
+                                  updateSingleQuestion(q.id, { options: filtered, correctIndex: newCorr });
+                                }}
+                                className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded"
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {q.options.length < 6 && (
+                        <button
+                          onClick={() => updateSingleQuestion(q.id, { options: [...q.options, ''] })}
+                          className="self-start flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 font-medium mt-1 px-2 py-0.5 hover:bg-white/5 rounded transition-colors"
+                        >
+                          <Plus size={13} />
+                          <span>Adicionar Alternativa ({q.options.length}/6)</span>
+                        </button>
+                      )}
                     </div>
                   )}
+
+                  {/* Editor QUESTÃO ABERTA */}
+                  {q.type === 'open' && (
+                    <div className="flex flex-col gap-2.5 mb-3">
+                      <div className="bg-black/30 border border-white/10 rounded-lg p-2.5">
+                        <label className="block text-[11px] font-semibold text-purple-300 mb-1">
+                          📌 Gabarito / Resposta Esperada (Autor):
+                        </label>
+                        <textarea
+                          value={q.expectedAnswer}
+                          onChange={(e) => updateSingleQuestion(q.id, { expectedAnswer: e.target.value })}
+                          placeholder="Resposta correta esperada para a IA usar como gabarito ao avaliar o aluno..."
+                          className="w-full bg-black/40 border border-white/10 rounded p-2 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-purple-500 resize-none"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Editor de Explicação */}
+                  <div>
+                    <button
+                      onClick={() => setExplanationEditors((prev) => ({ ...prev, [q.id]: !prev[q.id] }))}
+                      className="flex items-center gap-1 text-xs text-dark-subtext hover:text-purple-300 font-medium transition-colors"
+                    >
+                      <BookOpen size={13} />
+                      <span>
+                        {q.explanation ? '✏️ Editar Explicação / Gabarito Comentado' : '+ Adicionar Explicação / Gabarito Comentado'}
+                      </span>
+                    </button>
+
+                    {explanationEditors[q.id] && (
+                      <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2.5">
+                        <textarea
+                          value={q.explanation}
+                          onChange={(e) => updateSingleQuestion(q.id, { explanation: e.target.value })}
+                          placeholder="Escreva a justificativa/explicação detalhada da resposta..."
+                          className="w-full bg-transparent text-xs text-brand-100 placeholder-white/30 outline-none resize-none"
+                          rows={2}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
+              ))}
 
-                {/* Remover esta questão específica */}
-                <button
-                  onClick={() => setDeletingQuestionInfo({ id: q.id, index: qIndex })}
-                  className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded transition-colors"
-                  title="Remover esta questão"
+              {/* Botão Adicionar Questão no Modo Edição */}
+              <button
+                onClick={handleAddQuestion}
+                className="w-full py-2.5 border-2 border-dashed border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all bg-purple-950/10 hover:bg-purple-950/20"
+              >
+                <Plus size={16} />
+                <span>Adicionar Nova Questão à Bateria</span>
+              </button>
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* MODO 2: PRÁTICA (Resolução limpa de questões pelo aluno)  */}
+          {/* ======================================================== */}
+          {mode === 'practice' && (
+            <>
+              {questions.map((q, qIndex) => (
+                <div
+                  key={q.id}
+                  className="bg-dark-bg/50 border border-white/10 rounded-xl p-4 relative transition-all"
                 >
-                  <Trash2 size={15} />
-                </button>
-              </div>
+                  {/* Header da Sub-Questão (Prática) */}
+                  <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-brand-400 bg-brand-500/10 px-2.5 py-0.5 rounded-full border border-brand-500/20">
+                        Questão {qIndex + 1}
+                      </span>
+                      <span className="text-[10px] text-dark-subtext px-2 py-0.5 bg-black/30 rounded">
+                        {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Questão Aberta'}
+                      </span>
+                    </div>
 
-              {/* Enunciado da Sub-Questão */}
-              <textarea
-                value={q.question}
-                onChange={(e) => updateSingleQuestion(q.id, { question: e.target.value })}
-                disabled={q.answered}
-                placeholder="Escreva o enunciado da pergunta..."
-                className="w-full bg-transparent text-base font-bold text-brand-100 placeholder-white/30 resize-none outline-none mb-3 focus:bg-white/5 rounded p-1 transition-colors disabled:opacity-90"
-                rows={2}
-              />
+                    {q.answered && (
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        q.type === 'multiple_choice'
+                          ? q.selectedIndex === q.correctIndex
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : q.aiFeedback?.verdict === 'Correto'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : q.aiFeedback?.verdict === 'Parcial'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                        {q.type === 'multiple_choice'
+                          ? (q.selectedIndex === q.correctIndex ? '✓ Correto' : '✕ Incorreto')
+                          : `Avaliação: ${q.aiFeedback?.verdict || 'Concluída'}`}
+                      </span>
+                    )}
+                  </div>
 
-              {/* MÚLTIPLA ESCOLHA */}
-              {q.type === 'multiple_choice' && (
-                <div className="flex flex-col gap-2 mb-3">
-                  {q.options.map((opt: string, optIdx: number) => (
-                    <div key={optIdx} className="flex items-center gap-2.5">
-                      <input
-                        type="radio"
-                        name={`question-radio-${q.id}`}
-                        checked={q.selectedIndex === optIdx}
-                        onChange={() => !q.answered && updateSingleQuestion(q.id, { selectedIndex: optIdx })}
-                        disabled={q.answered}
-                        className="w-4 h-4 text-brand-500 focus:ring-brand-500 border-white/20 bg-dark-bg cursor-pointer disabled:cursor-not-allowed"
-                      />
-                      <input
-                        type="text"
-                        value={opt}
-                        onChange={(e) => {
-                          const newOpts = [...q.options];
-                          newOpts[optIdx] = e.target.value;
-                          updateSingleQuestion(q.id, { options: newOpts });
-                        }}
-                        disabled={q.answered}
-                        placeholder={`Opção ${String.fromCharCode(65 + optIdx)}`}
-                        className={`flex-1 bg-transparent outline-none transition-colors px-2.5 py-1 rounded text-xs ${
-                          q.answered && optIdx === q.correctIndex
-                            ? 'text-green-400 font-bold bg-green-500/10 border border-green-500/30'
-                            : q.answered && q.selectedIndex === optIdx && optIdx !== q.correctIndex
-                            ? 'text-red-400 line-through bg-red-500/10 border border-red-500/30'
-                            : 'text-dark-text focus:bg-white/5 border border-transparent'
-                        }`}
-                      />
+                  {/* Enunciado Limpo Somente Leitura */}
+                  <div className="text-base font-bold text-brand-100 leading-relaxed mb-4">
+                    {q.question || <span className="italic opacity-50">Questão sem enunciado</span>}
+                  </div>
 
-                      {!q.answered && (
-                        <div className="flex items-center gap-1">
+                  {/* MÚLTIPLA ESCOLHA (PRÁTICA) */}
+                  {q.type === 'multiple_choice' && (
+                    <div className="flex flex-col gap-2 mb-4">
+                      {q.options.map((opt: string, optIdx: number) => {
+                        const isSelected = q.selectedIndex === optIdx;
+                        const isCorrectOpt = optIdx === q.correctIndex;
+                        let optionStyle = 'bg-black/30 border-white/10 hover:border-brand-500/40 text-brand-100';
+
+                        if (q.answered) {
+                          if (isCorrectOpt) {
+                            optionStyle = 'bg-green-500/15 border-green-500/40 text-green-300 font-bold';
+                          } else if (isSelected && !isCorrectOpt) {
+                            optionStyle = 'bg-red-500/15 border-red-500/40 text-red-300 line-through';
+                          } else {
+                            optionStyle = 'bg-black/20 border-white/5 text-dark-subtext opacity-50';
+                          }
+                        } else if (isSelected) {
+                          optionStyle = 'bg-brand-500/20 border-brand-500 text-brand-100 font-semibold';
+                        }
+
+                        return (
                           <button
-                            onClick={() => updateSingleQuestion(q.id, { correctIndex: optIdx })}
-                            className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
-                              q.correctIndex === optIdx
-                                ? 'bg-green-500/20 text-green-400 font-medium border border-green-500/30'
-                                : 'text-dark-subtext hover:bg-white/10'
-                            }`}
+                            key={optIdx}
+                            onClick={() => !q.answered && updateSingleQuestion(q.id, { selectedIndex: optIdx })}
+                            disabled={q.answered}
+                            className={`flex items-center gap-3 p-3 rounded-xl border text-xs text-left transition-all cursor-pointer disabled:cursor-default ${optionStyle}`}
                           >
-                            {q.correctIndex === optIdx ? '✓ Correta' : 'Marcar Correta'}
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 border ${
+                              isSelected ? 'bg-brand-500 border-brand-400 text-white' : 'border-white/20 bg-black/40 text-dark-subtext'
+                            }`}>
+                              {String.fromCharCode(65 + optIdx)}
+                            </span>
+                            <span className="flex-1 leading-relaxed">{opt || `Opção ${String.fromCharCode(65 + optIdx)}`}</span>
+                            {q.answered && isCorrectOpt && <CheckCircle2 size={16} className="text-green-400 shrink-0" />}
+                            {q.answered && isSelected && !isCorrectOpt && <XCircle size={16} className="text-red-400 shrink-0" />}
                           </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                          {q.options.length > 2 && (
-                            <button
-                              onClick={() => {
-                                const filtered = q.options.filter((_, i) => i !== optIdx);
-                                let newCorr = q.correctIndex;
-                                if (q.correctIndex === optIdx) newCorr = 0;
-                                else if (q.correctIndex > optIdx) newCorr = q.correctIndex - 1;
-                                updateSingleQuestion(q.id, { options: filtered, correctIndex: newCorr });
-                              }}
-                              className="p-1 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded"
-                            >
-                              <XCircle size={14} />
-                            </button>
-                          )}
+                  {/* QUESTÃO ABERTA (PRÁTICA) */}
+                  {q.type === 'open' && (
+                    <div className="flex flex-col gap-3 mb-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[11px] font-medium text-dark-subtext">✍️ Sua Resposta Discursiva:</label>
+                        <textarea
+                          value={q.userTypedAnswer}
+                          onChange={(e) => updateSingleQuestion(q.id, { userTypedAnswer: e.target.value })}
+                          disabled={q.answered || evaluatingIds[q.id]}
+                          placeholder="Digite sua resposta completa..."
+                          className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-brand-500 resize-none disabled:opacity-80 transition-colors"
+                          rows={3}
+                        />
+                      </div>
+
+                      {q.answered && q.aiFeedback && (
+                        <div
+                          className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                            q.aiFeedback.verdict === 'Correto'
+                              ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                              : q.aiFeedback.verdict === 'Parcial'
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                              : 'bg-red-500/10 border-red-500/30 text-red-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="flex items-center gap-1.5">
+                              {q.aiFeedback.verdict === 'Correto' && <CheckCircle2 size={16} className="text-green-400" />}
+                              {q.aiFeedback.verdict === 'Parcial' && <AlertCircle size={16} className="text-amber-400" />}
+                              {q.aiFeedback.verdict === 'Incorreto' && <XCircle size={16} className="text-red-400" />}
+                              Avaliação da IA: {q.aiFeedback.verdict}
+                            </span>
+                            <span className="text-[10px] opacity-75 font-normal">✨ Gemini AI</span>
+                          </div>
+                          <p className="leading-relaxed opacity-95">{q.aiFeedback.feedback}</p>
                         </div>
                       )}
                     </div>
-                  ))}
-
-                  {!q.answered && q.options.length < 6 && (
-                    <button
-                      onClick={() => updateSingleQuestion(q.id, { options: [...q.options, ''] })}
-                      className="self-start flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 font-medium mt-1 px-2 py-0.5 hover:bg-white/5 rounded"
-                    >
-                      <Plus size={13} />
-                      <span>Adicionar Alternativa ({q.options.length}/6)</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* QUESTÃO ABERTA */}
-              {q.type === 'open' && (
-                <div className="flex flex-col gap-2.5 mb-3">
-                  {!q.answered && (
-                    <div className="bg-black/30 border border-white/10 rounded-lg p-2.5">
-                      <label className="block text-[11px] font-semibold text-brand-300 mb-1">
-                        📌 Gabarito / Resposta Esperada (Autor):
-                      </label>
-                      <textarea
-                        value={q.expectedAnswer}
-                        onChange={(e) => updateSingleQuestion(q.id, { expectedAnswer: e.target.value })}
-                        placeholder="Resposta correta esperada para a IA usar como gabarito..."
-                        className="w-full bg-black/30 border border-white/10 rounded p-1.5 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-brand-500 resize-none"
-                        rows={2}
-                      />
-                    </div>
                   )}
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-medium text-dark-subtext">✍️ Sua Resposta Discursiva:</label>
-                    <textarea
-                      value={q.userTypedAnswer}
-                      onChange={(e) => updateSingleQuestion(q.id, { userTypedAnswer: e.target.value })}
-                      disabled={q.answered || evaluatingIds[q.id]}
-                      placeholder="Digite sua resposta..."
-                      className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs text-brand-100 placeholder-white/30 outline-none focus:border-brand-500 resize-none disabled:opacity-80"
-                      rows={2}
-                    />
-                  </div>
-
-                  {q.answered && q.aiFeedback && (
-                    <div
-                      className={`p-3 rounded-lg border text-xs space-y-1 ${
-                        q.aiFeedback.verdict === 'Correto'
-                          ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                          : q.aiFeedback.verdict === 'Parcial'
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                          : 'bg-red-500/10 border-red-500/30 text-red-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="flex items-center gap-1">
-                          {q.aiFeedback.verdict === 'Correto' && <CheckCircle2 size={16} className="text-green-400" />}
-                          {q.aiFeedback.verdict === 'Parcial' && <AlertCircle size={16} className="text-amber-400" />}
-                          {q.aiFeedback.verdict === 'Incorreto' && <XCircle size={16} className="text-red-400" />}
-                          Avaliação da IA: {q.aiFeedback.verdict}
-                        </span>
-                        <span className="text-[10px] opacity-75 font-normal">✨ Gemini AI</span>
-                      </div>
-                      <p className="leading-relaxed opacity-95">{q.aiFeedback.feedback}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Explicação da Solução */}
-              {!q.answered && (
-                <div className="mb-3">
-                  <button
-                    onClick={() =>
-                      setExplanationEditors((prev) => ({ ...prev, [q.id]: !prev[q.id] }))
-                    }
-                    className="flex items-center gap-1 text-xs text-dark-subtext hover:text-brand-300 font-medium transition-colors"
-                  >
-                    <BookOpen size={13} />
-                    <span>
-                      {q.explanation ? '✏️ Editar Explicação / Gabarito Comentado' : '+ Adicionar Explicação / Gabarito Comentado'}
-                    </span>
-                  </button>
-
-                  {explanationEditors[q.id] && (
-                    <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2">
-                      <textarea
-                        value={q.explanation}
-                        onChange={(e) => updateSingleQuestion(q.id, { explanation: e.target.value })}
-                        placeholder="Escreva a justificativa/explicação da resposta..."
-                        className="w-full bg-transparent text-xs text-brand-100 placeholder-white/30 outline-none resize-none"
-                        rows={2}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Ações da Sub-Questão */}
-              <div className="flex flex-col gap-2">
-                {!q.answered ? (
-                  q.type === 'multiple_choice' ? (
-                    <button
-                      onClick={() => q.selectedIndex !== null && updateSingleQuestion(q.id, { answered: true })}
-                      disabled={q.selectedIndex === null}
-                      className="w-full py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                    >
-                      Responder Questão {qIndex + 1}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleEvaluateOpenQuestion(q)}
-                      disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
-                      className="w-full py-1.5 bg-purple-600/30 hover:bg-purple-600/40 text-purple-200 border border-purple-500/40 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs"
-                    >
-                      {evaluatingIds[q.id] ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin text-purple-400" />
-                          <span>Avaliando...</span>
-                        </>
+                  {/* AÇÕES DA SUB-QUESTÃO (PRÁTICA) */}
+                  <div className="flex flex-col gap-2">
+                    {!q.answered ? (
+                      q.type === 'multiple_choice' ? (
+                        <button
+                          onClick={() => q.selectedIndex !== null && updateSingleQuestion(q.id, { answered: true })}
+                          disabled={q.selectedIndex === null}
+                          className="w-full py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs shadow-md"
+                        >
+                          Responder Questão {qIndex + 1}
+                        </button>
                       ) : (
-                        <>
-                          <Sparkles size={14} className="text-purple-400" />
-                          <span>Avaliar Resposta com IA</span>
-                        </>
-                      )}
-                    </button>
-                  )
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {q.explanation && (
-                      <button
-                        onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
-                        className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 text-brand-200 border border-white/10 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                      >
-                        <BookOpen size={13} className="text-brand-400" />
-                        <span>{q.showExplanation ? 'Ocultar Explicação' : '💡 Ver Explicação'}</span>
-                      </button>
+                        <button
+                          onClick={() => handleEvaluateOpenQuestion(q)}
+                          disabled={!q.userTypedAnswer || !q.userTypedAnswer.trim() || evaluatingIds[q.id]}
+                          className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs shadow-md"
+                        >
+                          {evaluatingIds[q.id] ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin text-purple-200" />
+                              <span>Avaliando Resposta...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} className="text-purple-200" />
+                              <span>Avaliar Resposta com IA</span>
+                            </>
+                          )}
+                        </button>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {q.explanation && (
+                          <button
+                            onClick={() => updateSingleQuestion(q.id, { showExplanation: !q.showExplanation })}
+                            className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 text-brand-200 border border-white/10 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                          >
+                            <BookOpen size={13} className="text-brand-400" />
+                            <span>{q.showExplanation ? 'Ocultar Explicação' : '💡 Ver Explicação'}</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() =>
+                            updateSingleQuestion(q.id, {
+                              answered: false,
+                              selectedIndex: null,
+                              aiFeedback: null,
+                              showExplanation: false,
+                            })
+                          }
+                          className="flex-1 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                        >
+                          <RotateCcw size={13} />
+                          <span>🔄 Tentar Novamente</span>
+                        </button>
+                      </div>
                     )}
 
-                    <button
-                      onClick={() =>
-                        updateSingleQuestion(q.id, {
-                          answered: false,
-                          selectedIndex: null,
-                          aiFeedback: null,
-                          showExplanation: false,
-                        })
-                      }
-                      className="flex-1 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                    >
-                      <RotateCcw size={13} />
-                      <span>🔄 Tentar Novamente</span>
-                    </button>
+                    {/* Explicação Revelada */}
+                    {q.answered && q.showExplanation && q.explanation && (
+                      <div className="mt-1 p-3 bg-brand-950/30 border border-brand-500/30 rounded-xl text-xs text-brand-100 space-y-1">
+                        <div className="font-semibold text-brand-300 flex items-center gap-1">
+                          <BookOpen size={13} />
+                          <span>Explicação / Gabarito Comentado:</span>
+                        </div>
+                        <p className="leading-relaxed opacity-90 whitespace-pre-wrap">{q.explanation}</p>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {/* Explicação Revelada */}
-                {q.answered && q.showExplanation && q.explanation && (
-                  <div className="mt-1 p-2.5 bg-brand-950/30 border border-brand-500/30 rounded-lg text-xs text-brand-100 space-y-1">
-                    <div className="font-semibold text-brand-300 flex items-center gap-1">
-                      <BookOpen size={13} />
-                      <span>Explicação / Gabarito Comentado:</span>
-                    </div>
-                    <p className="leading-relaxed opacity-90 whitespace-pre-wrap">{q.explanation}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Adicionar Questão */}
-          <button
-            onClick={handleAddQuestion}
-            className="w-full py-2.5 border-2 border-dashed border-white/10 hover:border-brand-500/40 text-brand-300 hover:text-white rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all bg-black/20 hover:bg-black/30"
-          >
-            <Plus size={16} />
-            <span>Adicionar Nova Questão à Bateria</span>
-          </button>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
@@ -795,7 +906,7 @@ const QuestionBlockComponent = (props: any) => {
                   <div>
                     <p className="text-sm font-semibold text-brand-200">Como posso ajudar na sua bateria de exercícios?</p>
                     <p className="text-xs text-dark-subtext mt-1 max-w-sm">
-                      Você pode me pedir para criar questões, fazer um diagnóstico da bateria atual ou refinar os enunciados.
+                      Você pode me pedir para criar questões, editar/remover existentes ou analisar o conteúdo da bateria.
                     </p>
                   </div>
                 </div>
@@ -838,7 +949,7 @@ const QuestionBlockComponent = (props: any) => {
                             </div>
 
                             <div className="space-y-2">
-                              {msg.suggestedActions.map((action, aIdx) => {
+                              {msg.suggestedActions.map((action) => {
                                 const isAccepted = action.status === 'accepted';
                                 const isRejected = action.status === 'rejected';
                                 const actionLabel =
@@ -853,6 +964,7 @@ const QuestionBlockComponent = (props: any) => {
                                   action.actionType === 'create' ? 'bg-purple-500/5 border-purple-500/25'
                                   : action.actionType === 'edit' ? 'bg-blue-500/5 border-blue-500/25'
                                   : 'bg-red-500/5 border-red-500/25';
+
                                 return (
                                   <div
                                     key={action.id}
@@ -1097,6 +1209,7 @@ export const QuestionBlock = Node.create({
     return {
       title: { default: 'Bateria de Exercícios' },
       isCollapsed: { default: false },
+      mode: { default: 'edit' },
       aiChatHistory: { default: [] },
       questions: {
         default: [
