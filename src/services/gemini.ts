@@ -381,13 +381,25 @@ export async function promptGeminiQuizAssistant(
   contextText?: string
 ): Promise<{
   message: string;
-  proposedQuestions?: Array<{
-    type: 'multiple_choice' | 'open';
-    question: string;
+  suggestedActions?: Array<{
+    actionType: 'create' | 'edit' | 'delete';
+    // create fields
+    type?: 'multiple_choice' | 'open';
+    question?: string;
     options?: string[];
     correctIndex?: number;
     expectedAnswer?: string;
     explanation?: string;
+    // edit / delete fields
+    targetQuestionIndex?: number;
+    changes?: {
+      question?: string;
+      options?: string[];
+      correctIndex?: number;
+      expectedAnswer?: string;
+      explanation?: string;
+    };
+    reason?: string;
   }>;
 }> {
   let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n`;
@@ -399,7 +411,7 @@ export async function promptGeminiQuizAssistant(
   if (currentQuestions && currentQuestions.length > 0) {
     customPrompt += `Questões atualmente cadastradas no bloco da bateria (${currentQuestions.length} questões):\n`;
     currentQuestions.forEach((q, i) => {
-      customPrompt += `Questão ${i + 1} (${q.type === 'open' ? 'Aberta' : 'Múltipla Escolha'}): "${q.question}"\n`;
+      customPrompt += `Questão ${i + 1} [índice ${i + 1}] (${q.type === 'open' ? 'Aberta' : 'Múltipla Escolha'}): "${q.question}"\n`;
       if (q.type === 'multiple_choice' && q.options) {
         customPrompt += `  Opções: ${q.options.join(' | ')} (Correta: ${q.options[q.correctIndex] || ''})\n`;
       } else if (q.expectedAnswer) {
@@ -416,7 +428,7 @@ export async function promptGeminiQuizAssistant(
 
   if (chatHistory && chatHistory.length > 0) {
     customPrompt += `Histórico da conversa recente:\n`;
-    chatHistory.slice(-6).forEach((msg) => {
+    chatHistory.slice(-10).forEach((msg) => {
       customPrompt += `${msg.role === 'user' ? 'Usuário' : 'Assistente'}: ${msg.text}\n`;
     });
     customPrompt += `\n`;
@@ -426,31 +438,50 @@ export async function promptGeminiQuizAssistant(
 
   customPrompt += `REGRAS DE RESPOSTA:
 1. Responda de forma conversacional, motivadora, clara e didática em Português.
-2. Se o usuário pedir para analisar a bateria atual, dê um diagnóstico pedagógico sobre a clareza dos enunciados, equilíbrio de dificuldade e sugestões de melhoria.
-3. Se a intenção do usuário for criar/gerar/adicionar questões, sugira as questões adequadas.
-4. Se o usuário apenas disser "oi" ou fizer uma pergunta geral sem especificar exatamente, responda amigavelmente perguntando quantas questões ele deseja e se prefere múltipla escolha ou abertas.
-5. Quando for sugerir/gerar questões, inclua o campo "proposedQuestions" na resposta em formato JSON.
+2. Se o usuário pedir para ANALISAR a bateria, dê um diagnóstico pedagógico sobre clareza, dificuldade, distratores e lacunas de conteúdo.
+3. Se o usuário pedir para CRIAR questões, use actionType "create" para cada nova questão sugerida.
+4. Se o usuário pedir para EDITAR uma questão existente (melhorar enunciado, corrigir alternativas, etc.), use actionType "edit" com "targetQuestionIndex" (número 1-based) e "changes" com APENAS os campos que mudam.
+5. Se o usuário pedir para REMOVER/DELETAR uma questão, use actionType "delete" com "targetQuestionIndex" e "reason" explicando por quê.
+6. Você pode misturar vários tipos de ação na mesma resposta.
+7. Se o usuário apenas disser "oi" ou não especificar nada, responda amigavelmente perguntando o que ele precisa.
 
 Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
-  "message": "Mensagem conversacional de resposta ao usuário (pode usar markdown)",
-  "proposedQuestions": [
+  "message": "Mensagem conversacional de resposta (pode usar markdown)",
+  "suggestedActions": [
     {
+      "actionType": "create",
       "type": "multiple_choice",
-      "question": "Enunciado...",
+      "question": "Enunciado da nova questão",
       "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
       "correctIndex": 0,
-      "explanation": "Breve justificativa"
+      "explanation": "Justificativa"
     },
     {
+      "actionType": "create",
       "type": "open",
-      "question": "Enunciado discursivo...",
+      "question": "Enunciado discursivo",
       "expectedAnswer": "Gabarito esperado",
-      "explanation": "Breve justificativa"
+      "explanation": "Justificativa"
+    },
+    {
+      "actionType": "edit",
+      "targetQuestionIndex": 2,
+      "changes": {
+        "question": "Enunciado melhorado",
+        "options": ["Nova A", "Nova B", "Nova C", "Nova D"],
+        "correctIndex": 1,
+        "explanation": "Nova justificativa"
+      }
+    },
+    {
+      "actionType": "delete",
+      "targetQuestionIndex": 3,
+      "reason": "Questão ambígua com distratores fracos"
     }
   ]
 }
-O campo "proposedQuestions" é OPCIONAL (inclua APENAS quando houver geração ou sugestão de novas questões).
+O campo "suggestedActions" é OPCIONAL. Inclua APENAS quando houver ações concretas a propor.
 NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
 
   const response = await promptGemini(customPrompt);

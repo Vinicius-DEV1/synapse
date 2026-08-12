@@ -30,22 +30,34 @@ import {
   promptGeminiQuizAssistant 
 } from '../../services/gemini';
 
-export interface ProposedQuestionDraft {
+export interface SuggestedAction {
   id: string;
-  type: 'multiple_choice' | 'open';
-  question: string;
+  actionType: 'create' | 'edit' | 'delete';
+  status: 'pending' | 'accepted' | 'rejected';
+  // create
+  type?: 'multiple_choice' | 'open';
+  question?: string;
   options?: string[];
   correctIndex?: number;
   expectedAnswer?: string;
   explanation?: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  // edit / delete
+  targetQuestionIndex?: number;
+  changes?: {
+    question?: string;
+    options?: string[];
+    correctIndex?: number;
+    expectedAnswer?: string;
+    explanation?: string;
+  };
+  reason?: string;
 }
 
 export interface QuizChatMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
-  proposedQuestions?: ProposedQuestionDraft[];
+  suggestedActions?: SuggestedAction[];
 }
 
 export interface QuestionItem {
@@ -201,22 +213,28 @@ const QuestionBlockComponent = (props: any) => {
       );
 
       const assistantMsgId = `assistant_${Date.now()}`;
-      const proposedDrafts: ProposedQuestionDraft[] | undefined = response.proposedQuestions?.map((pq, idx) => ({
-        id: `draft_${Date.now()}_${idx}`,
-        type: pq.type || 'multiple_choice',
-        question: pq.question || '',
-        options: pq.options && pq.options.length >= 2 ? pq.options : ['', '', '', ''],
-        correctIndex: typeof pq.correctIndex === 'number' ? pq.correctIndex : 0,
-        expectedAnswer: pq.expectedAnswer || '',
-        explanation: pq.explanation || '',
-        status: 'pending',
+      const actions: SuggestedAction[] | undefined = response.suggestedActions?.map((a: any, idx: number) => ({
+        id: `action_${Date.now()}_${idx}`,
+        actionType: a.actionType,
+        status: 'pending' as const,
+        // create
+        type: a.type || 'multiple_choice',
+        question: a.question || '',
+        options: a.options && a.options.length >= 2 ? a.options : ['', '', '', ''],
+        correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
+        expectedAnswer: a.expectedAnswer || '',
+        explanation: a.explanation || '',
+        // edit / delete
+        targetQuestionIndex: a.targetQuestionIndex,
+        changes: a.changes,
+        reason: a.reason,
       }));
 
       const assistantMessageObj: QuizChatMessage = {
         id: assistantMsgId,
         role: 'assistant',
-        text: response.message || 'Aqui estão as sugestões de questões para a sua bateria:',
-        proposedQuestions: proposedDrafts,
+        text: response.message || 'Aqui estão as sugestões para a sua bateria:',
+        suggestedActions: actions,
       };
 
       updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
@@ -233,61 +251,71 @@ const QuestionBlockComponent = (props: any) => {
     }
   };
 
-  // Handlers para os Cards de Sugestões Interativas (✓ / ✕)
-  const handleDraftStatusChange = (msgId: string, draftId: string, newStatus: 'accepted' | 'rejected' | 'pending') => {
+  // Handlers para os Cards de Ações Sugeridas (✓ / ✕)
+  const handleActionStatusChange = (msgId: string, actionId: string, newStatus: 'accepted' | 'rejected' | 'pending') => {
     const updated = chatHistory.map((msg) => {
-      if (msg.id !== msgId || !msg.proposedQuestions) return msg;
-      const updatedDrafts = msg.proposedQuestions.map((d) => (d.id === draftId ? { ...d, status: newStatus } : d));
-      return { ...msg, proposedQuestions: updatedDrafts };
+      if (msg.id !== msgId || !msg.suggestedActions) return msg;
+      const updatedActions = msg.suggestedActions.map((a) => (a.id === actionId ? { ...a, status: newStatus } : a));
+      return { ...msg, suggestedActions: updatedActions };
     });
     updateChatHistory(updated);
   };
 
-  const handleApproveAllDrafts = (msgId: string) => {
+  const handleApproveAllActions = (msgId: string) => {
     const updated = chatHistory.map((msg) => {
-      if (msg.id !== msgId || !msg.proposedQuestions) return msg;
-      const updatedDrafts = msg.proposedQuestions.map((d) => ({ ...d, status: 'accepted' as const }));
-      return { ...msg, proposedQuestions: updatedDrafts };
+      if (msg.id !== msgId || !msg.suggestedActions) return msg;
+      return { ...msg, suggestedActions: msg.suggestedActions.map((a) => ({ ...a, status: 'accepted' as const })) };
     });
     updateChatHistory(updated);
   };
 
-  const handleInsertAcceptedDrafts = (msgId: string) => {
+  const handleApplyAcceptedActions = (msgId: string) => {
     const msg = chatHistory.find((m) => m.id === msgId);
-    if (!msg || !msg.proposedQuestions) return;
+    if (!msg || !msg.suggestedActions) return;
 
-    const acceptedDrafts = msg.proposedQuestions.filter((d) => d.status === 'accepted');
-    if (acceptedDrafts.length === 0) {
-      alert('Nenhuma questão aceita nesta mensagem para inserir.');
-      return;
-    }
+    const accepted = msg.suggestedActions.filter((a) => a.status === 'accepted');
+    if (accepted.length === 0) return;
 
-    const newQuestionItems: QuestionItem[] = acceptedDrafts.map((d, idx) => ({
-      id: `q_inserted_${Date.now()}_${idx}`,
-      type: d.type,
-      question: d.question,
-      options: d.options && d.options.length >= 2 ? d.options : ['', '', '', ''],
-      correctIndex: d.correctIndex || 0,
-      selectedIndex: null,
-      expectedAnswer: d.expectedAnswer || '',
-      userTypedAnswer: '',
-      aiFeedback: null,
-      explanation: d.explanation || '',
-      showExplanation: false,
-      answered: false,
-    }));
+    let currentQs = [...questions];
 
-    // Se o bloco atualmente tiver apenas 1 questão inicial totalmente em branco, substitui em vez de anexar
-    if (
-      questions.length === 1 &&
-      !questions[0].question.trim() &&
-      !questions[0].answered
-    ) {
-      updateQuestions(newQuestionItems);
-    } else {
-      updateQuestions([...questions, ...newQuestionItems]);
-    }
+    // Process each accepted action in order
+    accepted.forEach((action) => {
+      if (action.actionType === 'create') {
+        const newQ: QuestionItem = {
+          id: `q_inserted_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          type: action.type || 'multiple_choice',
+          question: action.question || '',
+          options: action.options && action.options.length >= 2 ? action.options : ['', '', '', ''],
+          correctIndex: typeof action.correctIndex === 'number' ? action.correctIndex : 0,
+          selectedIndex: null,
+          expectedAnswer: action.expectedAnswer || '',
+          userTypedAnswer: '',
+          aiFeedback: null,
+          explanation: action.explanation || '',
+          showExplanation: false,
+          answered: false,
+        };
+        // If the battery has only a single blank placeholder, replace it
+        if (currentQs.length === 1 && !currentQs[0].question.trim() && !currentQs[0].answered) {
+          currentQs = [newQ];
+        } else {
+          currentQs = [...currentQs, newQ];
+        }
+      } else if (action.actionType === 'edit' && action.targetQuestionIndex) {
+        const idx = action.targetQuestionIndex - 1; // 1-based → 0-based
+        if (idx >= 0 && idx < currentQs.length && action.changes) {
+          currentQs = currentQs.map((q, i) => i === idx ? { ...q, ...action.changes } : q);
+        }
+      } else if (action.actionType === 'delete' && action.targetQuestionIndex) {
+        const idx = action.targetQuestionIndex - 1;
+        if (idx >= 0 && idx < currentQs.length) {
+          const filtered = currentQs.filter((_, i) => i !== idx);
+          currentQs = filtered.length > 0 ? filtered : [createDefaultQuestion(1)];
+        }
+      }
+    });
 
+    updateQuestions(currentQs);
     setShowAiAssistantModal(false);
   };
 
@@ -793,122 +821,126 @@ const QuestionBlockComponent = (props: any) => {
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                         </div>
 
-                        {/* RASCUNHOS DE QUESTÕES GERADAS COM APROVAÇÃO V/X */}
-                        {msg.proposedQuestions && msg.proposedQuestions.length > 0 && (
+                        {/* AÇÕES SUGERIDAS PELA IA (create / edit / delete) COM APROVAÇÃO V/X */}
+                        {msg.suggestedActions && msg.suggestedActions.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
                             <div className="flex items-center justify-between font-semibold text-xs text-purple-300">
                               <span className="flex items-center gap-1.5">
                                 <Sparkles size={13} />
-                                {msg.proposedQuestions.length} Sugestões Geradas
+                                {msg.suggestedActions.length} {msg.suggestedActions.length === 1 ? 'Sugestão' : 'Sugestões'} da IA
                               </span>
-
                               <button
-                                onClick={() => handleApproveAllDrafts(msg.id)}
+                                onClick={() => handleApproveAllActions(msg.id)}
                                 className="text-[11px] text-green-400 hover:text-green-300 underline font-medium"
                               >
                                 ✓ Aprovar Todas
                               </button>
                             </div>
 
-                            {/* Cards de Rascunho */}
-                            <div className="space-y-2.5">
-                              {msg.proposedQuestions.map((draft, dIdx) => {
-                                const isAccepted = draft.status === 'accepted';
-                                const isRejected = draft.status === 'rejected';
+                            <div className="space-y-2">
+                              {msg.suggestedActions.map((action, aIdx) => {
+                                const isAccepted = action.status === 'accepted';
+                                const isRejected = action.status === 'rejected';
+                                const actionLabel =
+                                  action.actionType === 'create' ? '✨ Criar'
+                                  : action.actionType === 'edit' ? `✏️ Editar Questão ${action.targetQuestionIndex || '?'}`
+                                  : `🗑️ Remover Questão ${action.targetQuestionIndex || '?'}`;
+                                const badgeClass =
+                                  action.actionType === 'create' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                  : action.actionType === 'edit' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                  : 'bg-red-500/20 text-red-300 border-red-500/30';
+                                const cardClass =
+                                  action.actionType === 'create' ? 'bg-purple-500/5 border-purple-500/25'
+                                  : action.actionType === 'edit' ? 'bg-blue-500/5 border-blue-500/25'
+                                  : 'bg-red-500/5 border-red-500/25';
                                 return (
                                   <div
-                                    key={draft.id}
+                                    key={action.id}
                                     className={`p-3 rounded-xl border transition-all text-xs space-y-2 ${
-                                      isAccepted
-                                        ? 'bg-green-500/10 border-green-500/40 text-green-200'
-                                        : isRejected
-                                        ? 'bg-red-500/10 border-red-500/30 text-red-300 opacity-60 line-through'
-                                        : 'bg-black/30 border-white/10 text-brand-100'
+                                      isAccepted ? 'bg-green-500/10 border-green-500/40'
+                                      : isRejected ? `opacity-40 line-through ${cardClass}`
+                                      : cardClass
                                     }`}
                                   >
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="font-bold text-brand-300 text-[11px]">
-                                        Sugestão #{dIdx + 1} ({draft.type === 'open' ? 'Aberta' : 'Múltipla Escolha'})
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                                        {actionLabel}
+                                        {action.actionType === 'create' && action.type && (
+                                          <span className="ml-1 opacity-70">({action.type === 'open' ? 'Aberta' : 'Múltipla Escolha'})</span>
+                                        )}
                                       </span>
-
-                                      {/* Botões V / X para cada sugestão */}
-                                      <div className="flex items-center gap-1.5 no-underline">
+                                      <div className="flex items-center gap-1.5">
                                         <button
-                                          onClick={() =>
-                                            handleDraftStatusChange(
-                                              msg.id,
-                                              draft.id,
-                                              isAccepted ? 'pending' : 'accepted'
-                                            )
-                                          }
-                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                                            isAccepted
-                                              ? 'bg-green-500 text-black'
-                                              : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                          }`}
-                                          title="Aceitar esta questão"
+                                          onClick={() => handleActionStatusChange(msg.id, action.id, isAccepted ? 'pending' : 'accepted')}
+                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${isAccepted ? 'bg-green-500 text-black' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+                                          title="Aceitar"
                                         >
-                                          <Check size={12} />
-                                          <span>V</span>
+                                          <Check size={12} /><span>V</span>
                                         </button>
-
                                         <button
-                                          onClick={() =>
-                                            handleDraftStatusChange(
-                                              msg.id,
-                                              draft.id,
-                                              isRejected ? 'pending' : 'rejected'
-                                            )
-                                          }
-                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                                            isRejected
-                                              ? 'bg-red-500 text-white'
-                                              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                          }`}
-                                          title="Rejeitar esta questão"
+                                          onClick={() => handleActionStatusChange(msg.id, action.id, isRejected ? 'pending' : 'rejected')}
+                                          className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors ${isRejected ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+                                          title="Rejeitar"
                                         >
-                                          <X size={12} />
-                                          <span>X</span>
+                                          <X size={12} /><span>X</span>
                                         </button>
                                       </div>
                                     </div>
 
-                                    {/* Enunciado */}
-                                    <p className="font-medium leading-normal">{draft.question}</p>
-
-                                    {/* Opções ou Gabarito */}
-                                    {draft.type === 'multiple_choice' && draft.options && (
-                                      <ul className="space-y-1 text-[11px] opacity-90">
-                                        {draft.options.map((opt, oIdx) => (
-                                          <li
-                                            key={oIdx}
-                                            className={oIdx === draft.correctIndex ? 'text-green-400 font-bold' : ''}
-                                          >
-                                            {String.fromCharCode(65 + oIdx)}) {opt}
-                                          </li>
-                                        ))}
-                                      </ul>
+                                    {action.actionType === 'create' && (
+                                      <div className="space-y-1.5">
+                                        <p className="font-semibold text-brand-100 leading-snug">{action.question}</p>
+                                        {action.type === 'multiple_choice' && action.options && (
+                                          <ul className="space-y-0.5 text-[11px] text-dark-subtext">
+                                            {action.options.map((opt: string, oIdx: number) => (
+                                              <li key={oIdx} className={oIdx === action.correctIndex ? 'text-green-400 font-bold' : ''}>
+                                                {String.fromCharCode(65 + oIdx)}) {opt}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        )}
+                                        {action.type === 'open' && action.expectedAnswer && (
+                                          <p className="text-[11px] text-brand-300 font-medium">📌 Gabarito: {action.expectedAnswer}</p>
+                                        )}
+                                      </div>
                                     )}
 
-                                    {draft.type === 'open' && draft.expectedAnswer && (
-                                      <p className="text-[11px] text-brand-300 font-medium">
-                                        📌 Gabarito: {draft.expectedAnswer}
-                                      </p>
+                                    {action.actionType === 'edit' && (
+                                      <div className="space-y-1 text-[11px]">
+                                        {action.changes?.question && (
+                                          <>
+                                            <p className="text-dark-subtext line-through opacity-60">Antes: {questions[(action.targetQuestionIndex || 1) - 1]?.question || '—'}</p>
+                                            <p className="text-blue-300 font-semibold">Depois: {action.changes.question}</p>
+                                          </>
+                                        )}
+                                        {action.changes?.explanation && (
+                                          <p className="text-blue-200 opacity-90">💡 Nova explicação: {action.changes.explanation}</p>
+                                        )}
+                                        {!action.changes?.question && !action.changes?.explanation && (
+                                          <p className="text-blue-200 opacity-80">Atualização de alternativas e/ou gabarito</p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {action.actionType === 'delete' && (
+                                      <div className="space-y-1 text-[11px]">
+                                        <p className="font-semibold text-red-300 leading-snug">"{questions[(action.targetQuestionIndex || 1) - 1]?.question || 'Questão não encontrada'}"</p>
+                                        {action.reason && <p className="text-red-400/80 italic">Motivo: {action.reason}</p>}
+                                      </div>
                                     )}
                                   </div>
                                 );
                               })}
                             </div>
 
-                            {/* Botão de Inserir Aceitas */}
-                            {msg.proposedQuestions.some((d) => d.status === 'accepted') && (
+                            {msg.suggestedActions.some((a) => a.status === 'accepted') && (
                               <button
-                                onClick={() => handleInsertAcceptedDrafts(msg.id)}
+                                onClick={() => handleApplyAcceptedActions(msg.id)}
                                 className="w-full py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
                               >
                                 <CheckCheck size={16} />
                                 <span>
-                                  Inserir {msg.proposedQuestions.filter((d) => d.status === 'accepted').length} Questões Aceitas na Bateria
+                                  Aplicar {msg.suggestedActions.filter((a) => a.status === 'accepted').length} {msg.suggestedActions.filter((a) => a.status === 'accepted').length === 1 ? 'Ação Aceita' : 'Ações Aceitas'} na Bateria
                                 </span>
                               </button>
                             )}
