@@ -238,6 +238,31 @@ const QuestionBlockComponent = (props: any) => {
     props.updateAttributes({ questions: newQuestions });
   };
 
+  const handleToggleQuestionType = (q: QuestionItem, newType: 'multiple_choice' | 'open') => {
+    if (q.type === newType) return;
+
+    const updates: Partial<QuestionItem> = {
+      type: newType,
+      answered: false,
+      selectedIndex: null,
+      userTypedAnswer: '',
+      aiFeedback: null,
+    };
+
+    if (newType === 'multiple_choice') {
+      if (!Array.isArray(q.options) || q.options.length < 2) {
+        updates.options = ['', '', '', ''];
+      }
+    } else if (newType === 'open') {
+      // Smart default: if expectedAnswer is empty, prefill with correct option text if available
+      if (!q.expectedAnswer && Array.isArray(q.options) && q.options[q.correctIndex]) {
+        updates.expectedAnswer = q.options[q.correctIndex];
+      }
+    }
+
+    updateSingleQuestion(q.id, updates);
+  };
+
   const updateSingleQuestion = (qId: string, partial: Partial<QuestionItem>) => {
     const updated = questions.map((q) => (q.id === qId ? { ...q, ...partial } : q));
     updateQuestions(updated);
@@ -386,7 +411,7 @@ const QuestionBlockComponent = (props: any) => {
         id: `q_import_${Date.now()}_${idx}`,
         type: isOpen ? 'open' : 'multiple_choice',
         question: item.question || item.enunciado || item.pergunta || item.texto || '',
-        options: isOpen ? ['', '', '', ''] : options,
+        options: options.length >= 2 ? options : ['', '', '', ''],
         correctIndex,
         selectedIndex: null,
         expectedAnswer: item.expected_answer || item.resposta_esperada || item.gabarito || item.answer || '',
@@ -770,22 +795,24 @@ const QuestionBlockComponent = (props: any) => {
 
                       <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/10 text-[11px]">
                         <button
-                          onClick={() => updateSingleQuestion(q.id, { type: 'multiple_choice' })}
+                          onClick={() => handleToggleQuestionType(q, 'multiple_choice')}
                           className={`px-2 py-0.5 rounded transition-colors ${
                             q.type === 'multiple_choice'
                               ? 'bg-purple-500/30 text-purple-200 font-medium'
                               : 'text-dark-subtext hover:text-white'
                           }`}
+                          title="Converter para Múltipla Escolha (preserva alternativas e resposta aberta)"
                         >
                           Múltipla Escolha
                         </button>
                         <button
-                          onClick={() => updateSingleQuestion(q.id, { type: 'open' })}
+                          onClick={() => handleToggleQuestionType(q, 'open')}
                           className={`px-2 py-0.5 rounded transition-colors ${
                             q.type === 'open'
                               ? 'bg-purple-500/30 text-purple-200 font-medium'
                               : 'text-dark-subtext hover:text-white'
                           }`}
+                          title="Converter para Questão Aberta (preserva alternativas e resposta aberta)"
                         >
                           Questão Aberta
                         </button>
