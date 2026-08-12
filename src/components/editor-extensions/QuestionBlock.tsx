@@ -84,6 +84,21 @@ export interface QuestionItem {
 }
 
 
+
+const preprocessMarkdownCode = (text: string): string => {
+  if (!text) return '';
+  const validLangs = ['js', 'javascript', 'ts', 'typescript', 'python', 'py', 'sql', 'html', 'css', 'json', 'bash', 'sh', 'c', 'cpp', 'java'];
+  
+  // Transform malformed single-backtick code like `javascript const fs = require('fs'); ...` into multiline code blocks
+  return text.replace(/`([a-z]{2,10})\s+([^`\n]{12,})`/gi, (match, lang, codeBody) => {
+    if (validLangs.includes(lang.toLowerCase())) {
+      const formattedCode = codeBody.trim().replace(/;\s*/g, ';\n');
+      return `\n\`\`\`${lang.toLowerCase()}\n${formattedCode}\n\`\`\`\n`;
+    }
+    return match;
+  });
+};
+
 const markdownComponents = {
   p: ({ children }: any) => <span className="inline leading-relaxed">{children}</span>,
   code: ({ inline, className, children, ...props }: any) => {
@@ -302,7 +317,7 @@ const QuestionBlockComponent = (props: any) => {
             index: idx + 1,
             type: 'multiple_choice',
             question: q.question,
-            options: q.options.map((opt, oIdx) => `${String.fromCharCode(65 + oIdx)}) ${opt}`),
+            options: q.options.map((opt, oIdx) => `${String.fromCharCode(65 + oIdx)}) ${preprocessMarkdownCode(opt)}`),
             correct_option: `${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex] || ''}`,
             explanation: q.explanation || undefined
           };
@@ -811,7 +826,7 @@ const QuestionBlockComponent = (props: any) => {
 
                   {/* Enunciado Editável */}
                   <textarea
-                    value={q.question}
+                    value={preprocessMarkdownCode(q.question)}
                     onChange={(e) => updateSingleQuestion(q.id, { question: e.target.value })}
                     placeholder="Escreva o enunciado da pergunta..."
                     className="w-full bg-black/30 border border-white/10 rounded-lg p-2.5 text-base font-bold text-brand-100 placeholder-white/30 resize-none outline-none mb-3 focus:border-purple-500 transition-colors"
@@ -831,7 +846,7 @@ const QuestionBlockComponent = (props: any) => {
                           </span>
                           <input
                             type="text"
-                            value={opt}
+                            value={preprocessMarkdownCode(opt)}
                             onChange={(e) => {
                               const newOpts = [...q.options];
                               newOpts[optIdx] = e.target.value;
@@ -916,7 +931,7 @@ const QuestionBlockComponent = (props: any) => {
                     {explanationEditors[q.id] && (
                       <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2.5">
                         <textarea
-                          value={q.explanation}
+                          value={preprocessMarkdownCode(q.explanation)}
                           onChange={(e) => updateSingleQuestion(q.id, { explanation: e.target.value })}
                           placeholder="Escreva a justificativa/explicação detalhada da resposta..."
                           className="w-full bg-transparent text-xs text-brand-100 placeholder-white/30 outline-none resize-none"
@@ -983,7 +998,7 @@ const QuestionBlockComponent = (props: any) => {
                   <div className="text-base font-bold text-brand-100 leading-relaxed mb-4">
                     {q.question ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {q.question}
+                        {preprocessMarkdownCode(q.question)}
                       </ReactMarkdown>
                     ) : (
                       <span className="italic opacity-50">Questão sem enunciado</span>
@@ -1022,7 +1037,7 @@ const QuestionBlockComponent = (props: any) => {
                             }`}>
                               {String.fromCharCode(65 + optIdx)}
                             </span>
-                            <span className="flex-1 leading-relaxed"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{opt || `Opção ${String.fromCharCode(65 + optIdx)}`}</ReactMarkdown></span>
+                            <span className="flex-1 leading-relaxed"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(opt || `Opção ${String.fromCharCode(65 + optIdx)}`)}</ReactMarkdown></span>
                             {q.answered && isCorrectOpt && <CheckCircle2 size={16} className="text-green-400 shrink-0" />}
                             {q.answered && isSelected && !isCorrectOpt && <XCircle size={16} className="text-red-400 shrink-0" />}
                           </button>
@@ -1137,7 +1152,7 @@ const QuestionBlockComponent = (props: any) => {
                           <BookOpen size={13} />
                           <span>Explicação / Gabarito Comentado:</span>
                         </div>
-                        <div className="leading-relaxed opacity-90"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{q.explanation}</ReactMarkdown></div>
+                        <div className="leading-relaxed opacity-90"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(q.explanation)}</ReactMarkdown></div>
                       </div>
                     )}
                   </div>
@@ -1231,7 +1246,7 @@ const QuestionBlockComponent = (props: any) => {
 
                         {/* Texto da Mensagem */}
                         <div className="leading-relaxed whitespace-pre-wrap">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.text}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(msg.text)}</ReactMarkdown>
                         </div>
 
                         {/* AÇÕES SUGERIDAS PELA IA (create / edit / delete) COM APROVAÇÃO V/X */}
@@ -1303,12 +1318,12 @@ const QuestionBlockComponent = (props: any) => {
 
                                     {action.actionType === 'create' && (
                                       <div className="space-y-1.5">
-                                        <div className="font-semibold text-brand-100 leading-snug"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{action.question}</ReactMarkdown></div>
+                                        <div className="font-semibold text-brand-100 leading-snug"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(action.question)}</ReactMarkdown></div>
                                         {action.type === 'multiple_choice' && action.options && (
                                           <ul className="space-y-0.5 text-[11px] text-dark-subtext">
                                             {action.options.map((opt: string, oIdx: number) => (
                                               <li key={oIdx} className={oIdx === action.correctIndex ? 'text-green-400 font-bold' : ''}>
-                                                {String.fromCharCode(65 + oIdx)}) <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{opt}</ReactMarkdown>
+                                                {String.fromCharCode(65 + oIdx)}) <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{preprocessMarkdownCode(opt)}</ReactMarkdown>
                                               </li>
                                             ))}
                                           </ul>
