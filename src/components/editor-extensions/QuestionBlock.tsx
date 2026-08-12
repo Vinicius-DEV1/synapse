@@ -1454,12 +1454,11 @@ const QuestionBlockComponent = (props: any) => {
                     {q.showExplanation && (q.explanation || (q.type === 'open' && q.expectedAnswer)) && (
                       <div className="mt-2 p-3.5 bg-brand-950/40 border border-brand-500/30 rounded-xl text-xs text-brand-100 space-y-3 shadow-md">
                         {q.type === 'open' && q.expectedAnswer && (
-                          <div className="space-y-1 bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5">
+                          <div className="space-y-1">
                             <div className="font-bold text-purple-300 flex items-center gap-1.5 text-[11px]">
-                              <BookOpen size={13} className="text-purple-400" />
-                              <span>📌 Resposta Esperada (Gabarito de Referência do Autor):</span>
+                              <span>📌 Resposta Esperada:</span>
                             </div>
-                            <div className="leading-relaxed text-purple-100 font-medium">
+                            <div className="leading-relaxed text-purple-100 opacity-95">
                               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                 {preprocessMarkdownCode(q.expectedAnswer)}
                               </ReactMarkdown>
@@ -1470,8 +1469,7 @@ const QuestionBlockComponent = (props: any) => {
                         {q.explanation && (
                           <div className="space-y-1">
                             <div className="font-bold text-brand-300 flex items-center gap-1.5 text-[11px]">
-                              <BookOpen size={13} className="text-brand-400" />
-                              <span>💡 Explicação & Comentário Didático:</span>
+                              <span>💡 Explicação:</span>
                             </div>
                             <div className="leading-relaxed text-brand-100 opacity-95">
                               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
