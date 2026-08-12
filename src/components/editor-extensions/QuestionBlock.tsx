@@ -24,7 +24,8 @@ import {
   User,
   CheckCheck,
   Pencil,
-  Play
+  Play,
+  Code
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { 
@@ -145,6 +146,7 @@ const QuestionBlockComponent = (props: any) => {
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [explanationEditors, setExplanationEditors] = useState<Record<string, boolean>>({});
+  const [copiedJson, setCopiedJson] = useState(false);
 
   // Estados de confirmação de exclusão
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
@@ -211,6 +213,43 @@ const QuestionBlockComponent = (props: any) => {
       return;
     }
     updateQuestions(questions.filter((q) => q.id !== qId));
+  };
+
+
+  const handleCopyQuestionsJson = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const exportData = {
+      _instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Forneça parecer e sugestões de aprimoramento se solicitado pelo usuário.",
+      battery_title: title || 'Bateria de Exercícios',
+      total_questions: questions.length,
+      questions: questions.map((q, idx) => {
+        if (q.type === 'multiple_choice') {
+          return {
+            index: idx + 1,
+            type: 'multiple_choice',
+            question: q.question,
+            options: q.options.map((opt, oIdx) => `${String.fromCharCode(65 + oIdx)}) ${opt}`),
+            correct_option: `${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex] || ''}`,
+            explanation: q.explanation || undefined
+          };
+        } else {
+          return {
+            index: idx + 1,
+            type: 'open',
+            question: q.question,
+            expected_answer: q.expectedAnswer,
+            explanation: q.explanation || undefined
+          };
+        }
+      })
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    navigator.clipboard.writeText(jsonString);
+    setCopiedJson(true);
+    setTimeout(() => setCopiedJson(false), 2000);
   };
 
   const handleDeleteContainer = () => {
@@ -498,6 +537,16 @@ const QuestionBlockComponent = (props: any) => {
               ✨
             </button>
           )}
+
+          {/* Botão Copiar JSON das Questões para IA */}
+          <button
+            onClick={handleCopyQuestionsJson}
+            className="flex items-center gap-1 text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 rounded-md transition-colors font-mono"
+            title="Copiar JSON estruturado com instruções para analisar em outro chatbot de IA"
+          >
+            <Code size={13} className="text-brand-400" />
+            <span>{copiedJson ? '✓ Copiado!' : 'JSON'}</span>
+          </button>
 
           {/* Deletar Bloco Container Inteiro */}
           <button
