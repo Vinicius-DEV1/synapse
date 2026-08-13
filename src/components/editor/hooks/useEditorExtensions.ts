@@ -24,6 +24,7 @@ import { ToggleBlock } from '../../editor-extensions/ToggleBlock';
 import { ColorBlockquote } from '../../editor-extensions/ColorBlockquote';
 import { BlockquoteToggle } from '../../editor-extensions/BlockquoteToggle';
 import { LinkPreviewBlock } from '../../editor-extensions/LinkPreviewBlock';
+import { LinkGroupBlock } from '../../editor-extensions/LinkGroupBlock';
 import { ResizableImage } from '../../editor-extensions/ResizableImage';
 import { EncryptedImage } from '../../editor-extensions/EncryptedImage';
 import { PageReference } from '../../editor-extensions/PageReference';
@@ -91,6 +92,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       ToggleBlock,
       BlockquoteToggle,
       LinkPreviewBlock,
+      LinkGroupBlock,
       EncryptedImage,
       PageReference,
       FocusWidgetBlock,

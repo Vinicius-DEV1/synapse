@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus, ChevronDown, ChevronUp, StickyNote, Trash2 } from 'lucide-react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus, ChevronDown, ChevronUp, StickyNote, Trash2, LayoutGrid, Ungroup } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 import { Portal } from '../ui/Portal';
@@ -40,6 +40,97 @@ const LinkPreviewComponent = (props: any) => {
   const [showVideo, setShowVideo] = useState(false);
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const isInsideGroup = (() => {
+    if (typeof props.getPos === 'function' && props.editor?.state?.doc) {
+      try {
+        const pos = props.getPos();
+        if (typeof pos === 'number') {
+          const $pos = props.editor.state.doc.resolve(pos);
+          return $pos.parent.type.name === 'linkGroup';
+        }
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  })();
+
+  const handleUngroupSelf = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof props.getPos === 'function' && props.editor) {
+      const pos = props.getPos();
+      const node = props.node;
+      const tr = props.editor.state.tr;
+      const $pos = tr.doc.resolve(pos);
+      const parentGroupPos = $pos.before();
+      const parentGroupNode = $pos.parent;
+
+      if (parentGroupNode && parentGroupNode.type.name === 'linkGroup') {
+        tr.delete(pos, pos + node.nodeSize);
+
+        const afterGroupPos = parentGroupPos + parentGroupNode.nodeSize;
+        tr.insert(afterGroupPos, props.editor.schema.nodeFromJSON(node.toJSON()));
+
+        const remainingChildren: any[] = [];
+        parentGroupNode.forEach((c: any, offset: number) => {
+          if (pos !== parentGroupPos + 1 + offset) {
+            remainingChildren.push(c.toJSON());
+          }
+        });
+
+        if (remainingChildren.length <= 1) {
+          const groupPosNow = tr.mapping.map(parentGroupPos);
+          const groupNodeNow = tr.doc.nodeAt(groupPosNow);
+          if (groupNodeNow && groupNodeNow.type.name === 'linkGroup') {
+            const childrenNodes = remainingChildren.map((c) => props.editor.schema.nodeFromJSON(c));
+            tr.replaceWith(groupPosNow, groupPosNow + groupNodeNow.nodeSize, childrenNodes);
+          }
+        }
+
+        props.editor.view.dispatch(tr);
+      }
+    }
+  };
+
+  const handleGroupWithNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof props.getPos === 'function' && props.editor) {
+      const pos = props.getPos();
+      const node = props.node;
+      const tr = props.editor.state.tr;
+
+      const afterPos = pos + node.nodeSize;
+      const nextNode = tr.doc.nodeAt(afterPos);
+
+      let targetJSONs = [node.toJSON()];
+
+      if (nextNode && nextNode.type.name === 'linkPreview') {
+        targetJSONs.push(nextNode.toJSON());
+        tr.delete(pos, pos + node.nodeSize + nextNode.nodeSize);
+      } else {
+        const prevNode = tr.doc.resolve(pos).nodeBefore;
+        if (prevNode && prevNode.type.name === 'linkPreview') {
+          const prevPos = pos - prevNode.nodeSize;
+          targetJSONs = [prevNode.toJSON(), node.toJSON()];
+          tr.delete(prevPos, prevPos + prevNode.nodeSize + node.nodeSize);
+        } else {
+          tr.delete(pos, pos + node.nodeSize);
+        }
+      }
+
+      const groupNode = props.editor.schema.nodes.linkGroup.create(
+        {},
+        targetJSONs.map((j: any) => props.editor.schema.nodeFromJSON(j))
+      );
+
+      const targetPos = tr.mapping.map(pos);
+      tr.insert(targetPos, groupNode);
+      props.editor.view.dispatch(tr);
+    }
+  };
 
   const handleToggleNotes = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -354,7 +445,7 @@ const LinkPreviewComponent = (props: any) => {
         </div>
         <div 
           onClick={() => setShowLinkConfirm(true)}
-          className={`block transition-all rounded-lg p-3 pr-[104px] cursor-pointer ${
+          className={`block transition-all rounded-lg p-3 pr-[132px] cursor-pointer ${
             props.selected 
               ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10' 
               : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
@@ -470,6 +561,23 @@ const LinkPreviewComponent = (props: any) => {
               <ChevronDown size={14} />
             )}
           </button>
+          {isInsideGroup ? (
+            <button
+              onClick={handleUngroupSelf}
+              className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+              title="Desagrupar este link (mover para fora do grupo)"
+            >
+              <Ungroup size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={handleGroupWithNext}
+              className="p-1.5 rounded hover:bg-brand-500/20 text-dark-subtext hover:text-brand-300 bg-dark-card/80 backdrop-blur-sm border border-white/5"
+              title="Agrupar com link vizinho (Lado a Lado)"
+            >
+              <LayoutGrid size={14} />
+            </button>
+          )}
           <button
             onClick={handleReload}
             className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
