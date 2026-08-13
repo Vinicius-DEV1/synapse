@@ -4,6 +4,7 @@ import { X, MessageSquare, Trash2, ChevronRight, FileText, ExternalLink, Image a
 import { promptGemini } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import hljs from 'highlight.js';
 
 export default function AiSidebar() {
   const { state, dispatch } = useStore();
@@ -291,18 +292,56 @@ export default function AiSidebar() {
     ol: ({ children }: any) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
     li: ({ children }: any) => <li>{children}</li>,
     blockquote: ({ children }: any) => <blockquote className="border-l-2 border-brand-500 pl-3 my-2 text-brand-50/80 italic">{children}</blockquote>,
-    code: ({ node, inline, className, children, ...props }: any) => {
+    code: ({ node, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
-      return inline ? (
-        <code className="bg-white/10 px-1 py-0.5 rounded text-brand-300 text-xs font-mono" {...props}>{children}</code>
-      ) : (
-        <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto mb-2 custom-scrollbar">
+      const isBlock = match || String(children).includes('\n');
+      
+      if (isBlock) {
+        const codeText = String(children).replace(/\n$/, '');
+        let highlightedHtml: string | null = null;
+        
+        if (match && hljs.getLanguage(match[1])) {
+          try {
+            highlightedHtml = hljs.highlight(codeText, { language: match[1] }).value;
+          } catch (e) {
+            // fallback
+          }
+        } else {
+          try {
+            highlightedHtml = hljs.highlightAuto(codeText).value;
+          } catch (e) {
+            // fallback
+          }
+        }
+
+        if (highlightedHtml) {
+          return (
+            <code
+              className={`${className || ''} hljs`}
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              {...props}
+            />
+          );
+        }
+
+        return (
           <code className={className} {...props}>
             {children}
           </code>
-        </pre>
+        );
+      }
+
+      return (
+        <code className="bg-white/10 px-1 py-0.5 rounded text-brand-300 text-xs font-mono" {...props}>
+          {children}
+        </code>
       );
-    }
+    },
+    pre: ({ children }: any) => (
+      <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto mb-2 custom-scrollbar">
+        {children}
+      </pre>
+    )
   };
 
   return (

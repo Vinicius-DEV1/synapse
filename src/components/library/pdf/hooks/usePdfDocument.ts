@@ -13,6 +13,11 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   const [tocItems, setTocItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const sessionIdRef = useRef<string | null>(null);
+  
+  const onUpdateBookRef = useRef(onUpdateBook);
+  useEffect(() => {
+    onUpdateBookRef.current = onUpdateBook;
+  }, [onUpdateBook]);
 
   const [highlights, setHighlights] = useState<LibraryHighlight[]>([]);
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
@@ -30,7 +35,13 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
              const { appDataDir, join } = await import('@tauri-apps/api/path');
              const { exists } = await import('@tauri-apps/plugin-fs');
              const dataDir = await appDataDir();
-             let absPath = await join(dataDir, book.file_path);
+             
+             let relativePath = book.file_path;
+             if (book.author === 'Arquivo Avulso' && !relativePath.startsWith('files/') && !relativePath.startsWith('files\\')) {
+                 relativePath = await join('files', relativePath);
+             }
+             
+             let absPath = await join(dataDir, relativePath);
              
              if (!absPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
                  absPath = absPath + '.enc';
@@ -39,7 +50,8 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
              if (await exists(absPath)) {
                  const isWindows = navigator.userAgent.includes('Windows');
                  const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
-                 assetUrl = `${baseUrl}/library/${encodeURIComponent(absPath)}`;
+                 const moduleName = book.author === 'Arquivo Avulso' ? 'files' : 'library';
+                 assetUrl = `${baseUrl}/${moduleName}/${encodeURIComponent(absPath)}`;
              } else {
                  console.log("Arquivo local não encontrado na checagem. Tentando nuvem...");
              }
@@ -53,7 +65,8 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
           const token = await getValidAccessToken();
           if (token) {
              const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-             const masterKey = state.moduleKeys['library'];
+             const moduleKeyName = book.author === 'Arquivo Avulso' ? 'files' : 'library';
+             const masterKey = state.moduleKeys[moduleKeyName];
              if (masterKey) {
                fileData = await decryptFile(encryptedData, masterKey);
              } else {
@@ -77,7 +90,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
         setTotalPages(pdf.numPages);
         
         if (book.total_pages !== pdf.numPages || book.reading_status === 'not_started') {
-          onUpdateBook({ 
+          onUpdateBookRef.current({ 
             id: book.id, 
             total_pages: pdf.numPages,
             reading_status: book.reading_status === 'not_started' ? 'reading' : book.reading_status 
@@ -134,13 +147,14 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
     
     loadPdf();
     return () => { active = false; };
-  }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys, onUpdateBook]);
+  }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys]);
 
   useEffect(() => {
     return () => {
       if (sessionIdRef.current) {
         window.api.library.endReadingSession({
           id: sessionIdRef.current,
+          book_id: book.id,
           end_page: currentPage,
           pages_read: 1
         });

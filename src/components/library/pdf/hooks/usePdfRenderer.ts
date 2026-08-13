@@ -23,8 +23,16 @@ export function usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc
   const saveTimeoutRef = useRef<any>(null);
 
   const getPageHeight = useCallback((pageNum: number) => {
-    return measuredHeights.current.get(pageNum) || estimatedPageHeightRef.current;
-  }, []);
+    const measured = measuredHeights.current.get(pageNum);
+    if (measured) return measured * zoom;
+    // Auto-improve estimate from average of all measured pages
+    if (measuredHeights.current.size > 0) {
+      const values = Array.from(measuredHeights.current.values());
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      estimatedPageHeightRef.current = avg;
+    }
+    return estimatedPageHeightRef.current * zoom;
+  }, [zoom]);
 
   const getPageOffset = useCallback((targetPage: number) => {
     let offset = 0;

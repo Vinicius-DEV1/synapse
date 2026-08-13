@@ -35,7 +35,7 @@ export async function getVideoStreamLink(driveFileId: string, masterKey?: Crypto
 /**
  * Baixa um vídeo do drive e salva localmente (apenas Desktop)
  */
-export async function downloadVideoToLocal(video: VideoItem, onProgress?: (percent: number) => void): Promise<string> {
+export async function downloadVideoToLocal(video: VideoItem, onProgress?: (percent: number) => void, forceOriginal?: boolean): Promise<string> {
   if (!window.api?.video) {
     throw new Error("Download local só está disponível no ambiente Desktop.");
   }
@@ -43,14 +43,16 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
   const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
   const isUnsupported = !['mp4', 'webm'].includes(ext);
   
-  const targetDriveId = isUnsupported && video.drive_web_file_id ? video.drive_web_file_id : video.drive_file_id;
+  const shouldUseWebVersion = isUnsupported && !forceOriginal;
+  
+  const targetDriveId = shouldUseWebVersion && video.drive_web_file_id ? video.drive_web_file_id : video.drive_file_id;
   if (!targetDriveId) throw new Error("Vídeo não está no Drive ou versão compatível indisponível.");
   
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
 
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
-  const targetFileName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
+  const targetFileName = (shouldUseWebVersion && video.drive_web_file_id) ? `${baseName}_web.mp4` : video.original_name;
 
   let localPath = "";
   if (window.api.video.downloadFromDrive) {
@@ -254,12 +256,25 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
            if (onProgress) onProgress(5 + (event.payload * 0.35)); // Map 0-100 to 5-40%
         });
       }
+      const handleAbort = () => {
+        if (window.api?.video?.cancelConversion) {
+          window.api.video.cancelConversion();
+        }
+      };
+      if (signal) signal.addEventListener('abort', handleAbort);
       
-      const processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
+      let processRes;
+      try {
+          processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
+      } finally {
+          if (signal) signal.removeEventListener('abort', handleAbort);
+      }
       
       if (unlistenProgress) {
          unlistenProgress();
       }
+
+      if (signal?.aborted) throw new Error("Cancelado pelo usuário");
 
       isLocal = true;
       localPath = processRes.original_path;
@@ -668,14 +683,22 @@ export async function generateWebVersionTask(
   // 1. Converter
   if (onPhaseChange) onPhaseChange('Convertendo vídeo no Desktop...');
   
-  let unlistenProgress: (() => void) | undefined;
-  if (window.api.video.onDownloadProgress && onProgress) {
-    unlistenProgress = window.api.video.onDownloadProgress((pct) => {
-      onProgress(pct * 0.7); // Converter takes 70% of the progress
+  let unlistenProgress: any = null;
+  if (window.api?.events && onProgress) {
+    unlistenProgress = await window.api.events.listen('video_upload_progress', (event: any) => {
+      onProgress(event.payload * 0.7); // Converter takes 70% of the progress
     });
   }
 
   let genResult: { web_path: string, web_size: number };
+  
+  const handleAbort = () => {
+    if (window.api?.video?.cancelConversion) {
+      window.api.video.cancelConversion();
+    }
+  };
+  if (signal) signal.addEventListener('abort', handleAbort);
+
   try {
     genResult = await window.api.video.generateWebVersion(
       video.file_path,
@@ -686,6 +709,7 @@ export async function generateWebVersionTask(
     );
   } finally {
     if (unlistenProgress) unlistenProgress();
+    if (signal) signal.removeEventListener('abort', handleAbort);
   }
 
   if (signal?.aborted) throw new Error("Cancelado pelo usuário");

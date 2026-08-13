@@ -20,13 +20,20 @@
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-dark-card rounded-full;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-brand-800;
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* Highlight.js Clean Override */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
 }
 
 /* ContentEditable Styles */
@@ -149,6 +156,13 @@
   /* Clean Redesign for Embeds and Groups */
   .group-collection {
     @apply !bg-transparent !border-none !shadow-none !rounded-none !my-2 !overflow-visible;
+  }
+  
+  /* Override the child link-preview-block directly to strip my-4 and w-full */
+  .link-group-block .link-preview-block {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
   }
   .group-header {
     @apply !bg-transparent !border-none !p-0 !gap-2 !opacity-80 hover:!opacity-100 transition-opacity;

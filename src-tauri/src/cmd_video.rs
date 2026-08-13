@@ -58,6 +58,26 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use tauri::AppHandle;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+pub static VIDEO_CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+pub fn video_cancel_conversion() -> Result<bool, String> {
+    VIDEO_CANCEL_FLAG.store(true, Ordering::SeqCst);
+    Ok(true)
+}
+
+pub fn is_file_encrypted(path: &std::path::Path) -> bool {
+    if let Ok(mut f) = std::fs::File::open(path) {
+        use std::io::Read;
+        let mut magic = [0u8; 4];
+        if f.read_exact(&mut magic).is_ok() && &magic == crate::crypto_stream::MAGIC_BYTES {
+            return true;
+        }
+    }
+    false
+}
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -292,6 +312,8 @@ pub async fn video_generate_web(
     db_state: tauri::State<'_, crate::db::DbState>,
     app_handle: AppHandle,
 ) -> Result<GenerateWebResult, String> {
+    VIDEO_CANCEL_FLAG.store(false, Ordering::SeqCst);
+
     let videos_dir = get_videos_dir(&app_handle)?;
     let norm_filename = normalize_to_mp4_name(&dest_filename);
     
@@ -317,9 +339,21 @@ pub async fn video_generate_web(
         return Err("Arquivo fonte não encontrado localmente.".into());
     }
 
-    let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app_handle).0;
-    let url_path = urlencoding::encode(&full_source_path.to_string_lossy());
-    let stream_url = format!("http://127.0.0.1:{}/stream?path={}", port, url_path);
+    let input_path = if is_file_encrypted(&full_source_path) {
+        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app_handle).0;
+        let filename = std::path::Path::new(&source_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        format!(
+            "http://127.0.0.1:{}/stream?file=culture/{}",
+            port,
+            urlencoding::encode(filename)
+        )
+    } else {
+        full_source_path.to_string_lossy().to_string()
+    };
 
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let mut cmd = tokio::process::Command::new(&ffmpeg_path);
@@ -327,7 +361,7 @@ pub async fn video_generate_web(
     let mut args = vec![
         "-y".to_string(),
         "-i".to_string(),
-        stream_url,
+        input_path.clone(),
         "-movflags".to_string(),
         "+faststart".to_string(),
         "-map_chapters".to_string(),
@@ -339,8 +373,8 @@ pub async fn video_generate_web(
     let preset_str = conversion_preset.as_str();
 
     if web_quality == "remux" {
-        let v_codec = video_probe_codec(&stream_url, "v:0").unwrap_or_else(|_| "unknown".to_string());
-        let a_codec = video_probe_codec(&stream_url, "a:0").unwrap_or_default();
+        let v_codec = video_probe_codec(&input_path, "v:0").unwrap_or_else(|_| "unknown".to_string());
+        let a_codec = video_probe_codec(&input_path, "a:0").unwrap_or_default();
 
         if v_codec != "h264" {
             return Err(format!("Modo Expresso bloqueado: O vídeo original está em formato {} e não roda nativamente. Por favor, escolha a conversão 720p ou 1080p.", v_codec.to_uppercase()));
@@ -400,6 +434,12 @@ pub async fn video_generate_web(
 
     let mut error_log = String::new();
     while let Ok(Some(line)) = reader.next_line().await {
+        if VIDEO_CANCEL_FLAG.load(Ordering::SeqCst) {
+            let _ = child.kill().await;
+            let _ = fs::remove_file(&temp_web_mp4);
+            return Err("Conversão cancelada pelo usuário.".into());
+        }
+
         error_log.push_str(&line);
         error_log.push('\n');
 
@@ -456,6 +496,8 @@ pub async fn video_process_upload(
     db_state: tauri::State<'_, crate::db::DbState>,
     app_handle: AppHandle,
 ) -> Result<ProcessUploadResult, String> {
+    VIDEO_CANCEL_FLAG.store(false, Ordering::SeqCst);
+
     let videos_dir = get_videos_dir(&app_handle)?;
     let norm_filename = normalize_to_mp4_name(&dest_filename);
     let dest_filename_enc = format!("{}.enc", dest_filename);
@@ -575,6 +617,12 @@ pub async fn video_process_upload(
 
         let mut error_log = String::new();
         while let Ok(Some(line)) = reader.next_line().await {
+            if VIDEO_CANCEL_FLAG.load(Ordering::SeqCst) {
+                let _ = child.kill().await;
+                let _ = fs::remove_file(&temp_web_mp4);
+                return Err("Conversão cancelada pelo usuário.".into());
+            }
+
             error_log.push_str(&line);
             error_log.push('\n');
             println!("[DEBUG] FFmpeg: {}", line);
@@ -670,8 +718,9 @@ pub async fn video_save_local(
 #[tauri::command]
 pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Value, String> {
     let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
+    let videos_dir = get_videos_dir(&app)?;
 
-    let input_path = if local_path.ends_with(".enc") {
+    let input_path = if is_file_encrypted(&videos_dir.join(&local_path)) {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
@@ -719,8 +768,9 @@ pub async fn video_extract_subtitles(
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
     let vtt_out_path = videos_dir.join(format!("temp_sub_{}.vtt", uuid::Uuid::new_v4()));
+    let full_path = videos_dir.join(&local_path);
 
-    let input_path = if local_path.ends_with(".enc") {
+    let input_path = if is_file_encrypted(&full_path) {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
@@ -782,7 +832,7 @@ pub async fn video_extract_audio(
     let temp_audio = videos_dir.join(format!("temp_audio_{}.m4a", track_clean));
     let final_enc = videos_dir.join(format!("{}_{}.m4a.enc", uuid::Uuid::new_v4(), track_clean));
 
-    let input_path = if local_path.ends_with(".enc") {
+    let input_path = if is_file_encrypted(&videos_dir.join(&local_path)) {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
@@ -850,7 +900,7 @@ pub async fn video_remux_default_track(
     let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
     let final_dest = videos_dir.join(format!("{}.enc", filename));
 
-    let input_path = if source_path.ends_with(".enc") {
+    let input_path = if is_file_encrypted(&videos_dir.join(&source_path)) {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let fname = std::path::Path::new(&source_path)
             .file_name()
@@ -929,7 +979,7 @@ pub async fn video_convert_mp4(
         return Ok(dest_path_str);
     }
 
-    let input_path = if source_path.ends_with(".enc") {
+    let input_path = if is_file_encrypted(&videos_dir.join(&source_path)) {
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let fname = std::path::Path::new(&source_path)
             .file_name()

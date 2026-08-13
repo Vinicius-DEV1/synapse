@@ -46,6 +46,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [showSearch, setShowSearch] = useState(false);
   const [showMobileTools, setShowMobileTools] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context?: string, preloadedData?: any, selection?: any } | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
@@ -161,13 +163,18 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     'high-contrast': 'bg-black text-white'
   };
 
-  const cssFilter = isDarkMode 
-    ? (readingMode === 'high-contrast' 
-        ? 'invert(1) contrast(1.2)' 
-        : (readingMode === 'midnight' 
-            ? 'invert(0.9) hue-rotate(180deg) brightness(0.9)' 
-            : 'invert(0.9) hue-rotate(180deg)')) 
-    : 'none';
+  const getCssFilter = () => {
+    switch (readingMode) {
+      case 'sepia': return 'sepia(0.4) contrast(0.9)';
+      case 'dim': return 'brightness(0.7) contrast(0.85)';
+      case 'nord': return 'invert(0.85) hue-rotate(180deg) sepia(0.1) contrast(0.85) saturate(1.5) brightness(0.95)';
+      case 'high-contrast': return 'invert(1) contrast(1.2) grayscale(1)';
+      case 'midnight': return 'invert(0.95) hue-rotate(180deg) contrast(0.95) brightness(0.8) sepia(0.3) hue-rotate(-30deg)';
+      case 'dark': return 'invert(0.9) hue-rotate(180deg)';
+      default: return 'none';
+    }
+  };
+  const cssFilter = getCssFilter();
 
   const spacerHeights = {
     top: 0,
@@ -239,23 +246,16 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   cssFilter={cssFilter}
                   highlights={highlights.filter(h => h.page_number === pageNum)}
                   activeHighlight={activeHighlight}
-                  ocrProcessing={ocrProcessing.has(pageNum)}
-                  onHeightMeasured={(h) => { measuredHeights.current.set(pageNum, h); }}
+                  ocrProcessing={ocrProcessing}
+                  setOcrProcessing={setOcrProcessing}
+                  readingMode={(book.reading_preferences as any)?.theme || 'light'}
+                  bookId={book.id}
+                  isBookmarked={bookmarks.some(b => b.page_number === pageNum)}
+                  onToggleBookmark={() => toggleBookmark(pageNum)}
+                  pageRefs={pageRefs}
+                  canvasRefs={canvasRefs}
+                  onMeasure={(h) => { measuredHeights.current.set(pageNum, h); }}
                   onHighlightClick={(h, pos) => setActiveHighlight({ highlight: h, position: pos })}
-                  onOcrRequest={async (pageBuffer) => {
-                    setOcrProcessing(prev => new Set(prev).add(pageNum));
-                    try {
-                      // Process OCR logic here if needed (e.g. using Tesseract)
-                    } catch (e) {
-                      console.error("OCR falhou na página", pageNum, e);
-                    } finally {
-                      setOcrProcessing(prev => {
-                        const n = new Set(prev);
-                        n.delete(pageNum);
-                        return n;
-                      });
-                    }
-                  }}
                 />
               ))}
 
@@ -264,27 +264,6 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
               )}
             </div>
           )}
-        </div>
-
-        {/* Toolbar Superior / Mobile */}
-        <div className={`absolute top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none transition-opacity duration-300 ${(showMobileTools || showAnnotations) ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
-          <div className="pointer-events-auto flex gap-2">
-            <button onClick={onBack} className="p-3 md:p-2 rounded-xl bg-white/10 backdrop-blur-md shadow-lg hover:bg-white/20 transition-colors text-current">
-              <ArrowLeft size={24} />
-            </button>
-            <button onClick={() => setShowAnnotations(!showAnnotations)} className={`p-3 md:p-2 rounded-xl backdrop-blur-md shadow-lg transition-colors ${showAnnotations ? 'bg-brand-primary text-white' : 'bg-white/10 hover:bg-white/20 text-current'}`}>
-              <StickyNote size={24} />
-            </button>
-          </div>
-          
-          <div className="pointer-events-auto flex gap-2">
-            <button onClick={() => setShowSearch(!showSearch)} className="p-3 md:p-2 rounded-xl bg-white/10 backdrop-blur-md shadow-lg hover:bg-white/20 transition-colors text-current">
-              <Search size={24} />
-            </button>
-            <button onClick={() => toggleBookmark(currentPage)} className="p-3 md:p-2 rounded-xl bg-white/10 backdrop-blur-md shadow-lg hover:bg-white/20 transition-colors text-current">
-              {bookmarks.some(b => b.page_number === currentPage) ? <BookmarkCheck size={24} className="text-brand-primary" /> : <Bookmark size={24} />}
-            </button>
-          </div>
         </div>
 
         {/* Barra de Busca Flutuante */}
@@ -299,20 +278,26 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           </div>
         )}
 
-        {/* Toolbar Inferior (Zoom & Pager) */}
+        {/* Floating Toolbars */}
         {!loading && (
-          <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 ${showMobileTools ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
-            <PdfToolbar
-              currentPage={currentPage}
-              totalPages={totalPages}
-              zoom={zoom}
-              onPageChange={(p) => scrollToPage(p, false)}
-              onZoomIn={() => handleZoom(z => Math.min(3, z + 0.25))}
-              onZoomOut={() => handleZoom(z => Math.max(0.5, z - 0.25))}
-              onToggleMode={cycleReadingMode}
-              readingMode={readingMode}
-            />
-          </div>
+          <PdfToolbar
+            bookTitle={book.title}
+            onBack={onBack}
+            showMobileTools={showMobileTools}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(p) => scrollToPage(p, false)}
+            zoom={zoom}
+            onZoom={handleZoom}
+            showSearch={showSearch}
+            onToggleSearch={() => setShowSearch(!showSearch)}
+            isBookmarked={bookmarks.some(b => b.page_number === currentPage)}
+            onToggleBookmark={() => toggleBookmark(currentPage)}
+            readingMode={(book.reading_preferences as any)?.theme || 'light'}
+            onCycleReadingMode={cycleReadingMode}
+            showAnnotations={showAnnotations}
+            onToggleAnnotations={() => setShowAnnotations(!showAnnotations)}
+          />
         )}
 
         {/* Toolbars Contextuais (Highlight) */}

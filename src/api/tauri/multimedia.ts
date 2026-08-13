@@ -10,6 +10,7 @@ export const tauriVideoApi = {
   generateWebVersion: async (sourcePath: string, destFilename: string, webQuality: string, conversionPreset: string, duration: number) => {
     return await invoke<{ web_path: string, web_size: number }>('video_generate_web', { sourcePath, destFilename, webQuality, conversionPreset, duration });
   },
+  cancelConversion: async () => await invoke('video_cancel_conversion'),
   onDownloadProgress: (callback: (percent: number) => void) => {
     const unlistenPromise = listen<number>('video_download_progress', (event) => {
       callback(event.payload);

@@ -7,6 +7,7 @@ export interface PdfPageProps {
   pdfDoc: any;
   zoom: number;
   isRendered: boolean;
+  cssFilter?: string;
   readingMode: 'light' | 'sepia' | 'dark' | 'dim' | 'nord' | 'high-contrast' | 'midnight';
   bookId: string;
   highlights: LibraryHighlight[];
@@ -21,7 +22,7 @@ export interface PdfPageProps {
 }
 
 export const PdfPage = React.memo(({
-  pageNum, pdfDoc, zoom, isRendered, readingMode, bookId, highlights: _highlights, isBookmarked,
+  pageNum, pdfDoc, zoom, isRendered, cssFilter, readingMode, bookId, highlights: _highlights, isBookmarked,
   onToggleBookmark, onHighlightClick, pageRefs, canvasRefs, ocrProcessing, setOcrProcessing, onMeasure
 }: PdfPageProps) => {
   const [dimensions, setDimensions] = useState({ width: 600, height: 800 }); // Default
@@ -38,7 +39,7 @@ export const PdfPage = React.memo(({
         const viewport = page.getViewport({ scale: zoom });
         if (active) {
           setDimensions({ width: viewport.width, height: viewport.height });
-          onMeasure?.(viewport.height);
+          onMeasure?.(viewport.height / zoom);
         }
       } catch (e) {
         console.error("Failed to init page", e);
@@ -236,7 +237,8 @@ export const PdfPage = React.memo(({
         <>
           <canvas 
             ref={(el) => { if (el) canvasRefs.current.set(pageNum, el); }}
-            className="w-full h-full block"
+            className="w-full h-full block transition-all duration-300"
+            style={{ filter: cssFilter || 'none' }}
           />
           
           <div className="pdf-text-layer" ref={textLayerRef}>

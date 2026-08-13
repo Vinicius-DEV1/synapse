@@ -112,12 +112,23 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   const handleDownload = async (video: VideoItem) => {
+    let forceOriginal = false;
+    const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
+    const isUnsupported = !['mp4', 'webm'].includes(ext);
+    
+    if (isUnsupported && video.drive_web_file_id) {
+        const confirm = window.api?.app?.showConfirm ? 
+            await window.api.app.showConfirm(`Este vídeo (${video.original_name}) possui um formato que não roda nativamente na web.\n\nPor padrão, o Caderno baixará a "Versão Web" convertida (muito mais leve).\n\nDeseja forçar o download do ARQUIVO ORIGINAL pesado em vez da versão web?`) 
+            : 0;
+        if (confirm === 1) forceOriginal = true;
+    }
+
     setIsDownloadingId(video.id);
     setDownloadProgress(0);
     try {
       await downloadVideoToLocal(video, (percent) => {
         setDownloadProgress(Math.round(percent));
-      });
+      }, forceOriginal);
       await loadVideos();
     } catch (e) {
       console.error("Erro ao baixar:", e);
