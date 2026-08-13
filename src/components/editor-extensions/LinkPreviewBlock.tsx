@@ -418,7 +418,12 @@ const LinkPreviewComponent = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper className="link-preview-block block my-4 group/widget" contentEditable={false}>
+    <NodeViewWrapper
+      className={`link-preview-block group/widget ${
+        isInsideGroup ? 'my-0 flex-1 min-w-[260px] max-w-full' : 'block my-4 w-full'
+      }`}
+      contentEditable={false}
+    >
       <div className="relative group/link">
         <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/widget:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
           <button
