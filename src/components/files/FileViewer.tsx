@@ -32,7 +32,11 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   // Reading progress and bookmark states
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressTextRef = useRef<HTMLSpanElement>(null);
+  const progressPercentRef = useRef<number>(0);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [showResumePrompt, setShowResumePrompt] = useState<boolean>(false);
   const [savedProgressData, setSavedProgressData] = useState<ReadingProgressData | null>(null);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState<boolean>(false);
@@ -89,10 +93,31 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     if (maxScroll <= 0) return;
 
     const pct = Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
-    setProgressPercent(pct);
+    progressPercentRef.current = pct;
+    
+    // Atualiza a UI da barra de progresso diretamente via DOM para não engasgar o render do React
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${pct}%`;
+    }
+    if (progressTextRef.current) {
+      progressTextRef.current.textContent = `${pct}% lido`;
+    }
 
-    saveReadingProgress(item.id, { scrollTop, percentage: pct, scrollHeight });
+    // Throttling: Salva o progresso no localStorage no máximo a cada 500ms
+    if (!saveTimeoutRef.current) {
+      saveTimeoutRef.current = setTimeout(() => {
+        saveReadingProgress(item.id, { scrollTop, percentage: pct, scrollHeight });
+        saveTimeoutRef.current = null;
+      }, 500);
+    }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
 
   const handleResumeReading = () => {
     if (savedProgressData && scrollContainerRef.current) {
@@ -110,7 +135,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const handleAddBookmark = (customLabel?: string) => {
     if (!scrollContainerRef.current) return;
     const scrollTop = scrollContainerRef.current.scrollTop;
-    const autoName = `Marcador ${bookmarks.length + 1} (${progressPercent}%)`;
+    const autoName = `Marcador ${bookmarks.length + 1} (${progressPercentRef.current}%)`;
     const label = customLabel || newBookmarkLabel.trim() || autoName;
     const bm = addBookmark(item.id, label, scrollTop);
     if (bm) {
@@ -411,7 +436,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                   <div className="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     <h4 className="text-xs font-semibold text-white mb-2 flex items-center justify-between">
                       <span>Marcadores Salvos</span>
-                      <span className="text-[10px] text-dark-subtext">{progressPercent}% lido</span>
+                      <span ref={progressTextRef} className="text-[10px] text-dark-subtext">{progressPercentRef.current}% lido</span>
                     </h4>
 
                     {/* Add Bookmark input */}
@@ -548,8 +573,9 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
       {isText && (
         <div className="w-full bg-white/5 h-1.5 relative z-20">
           <div 
+            ref={progressBarRef}
             className="bg-brand-500 h-full transition-all duration-150" 
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${progressPercentRef.current}%` }}
           />
 
           {/* Pins Visuais dos Marcadores */}
