@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Database, Image as ImageIcon, Video, Book, FileQuestion, HardDrive, RefreshCw } from 'lucide-react';
+import { Database, Image as ImageIcon, Video, Book, FileQuestion, HardDrive, RefreshCw, Headphones } from 'lucide-react';
 import { getDriveStorageUsage, type DriveStorageUsage } from '../../../services/drive';
+import StorageFilesModal from './StorageFilesModal';
 
 export default function StorageTab() {
   const [usage, setUsage] = useState<DriveStorageUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<any>(null);
 
   const fetchStorage = async () => {
     setIsLoading(true);
@@ -64,14 +66,12 @@ export default function StorageTab() {
   }
 
   const modules = [
-    { name: 'Biblioteca (PDFs)', icon: Book, size: usage.modules.library, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { name: 'Fotos (Imagens)', icon: ImageIcon, size: usage.modules.photos, color: 'text-pink-400', bg: 'bg-pink-500/20' },
-    { name: 'Vídeos', icon: Video, size: usage.modules.videos, color: 'text-brand-400', bg: 'bg-brand-500/20' },
-    { name: 'Outros', icon: FileQuestion, size: usage.modules.others, color: 'text-gray-400', bg: 'bg-gray-500/20' },
+    { name: 'Biblioteca (PDFs)', icon: Book, size: usage.modules.library.size, files: usage.modules.library.files, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+    { name: 'Fotos (Imagens)', icon: ImageIcon, size: usage.modules.photos.size, files: usage.modules.photos.files, color: 'text-pink-400', bg: 'bg-pink-500/20' },
+    { name: 'Vídeos', icon: Video, size: usage.modules.videos.size, files: usage.modules.videos.files, color: 'text-brand-400', bg: 'bg-brand-500/20' },
+    { name: 'Lofi (Áudio)', icon: Headphones, size: usage.modules.lofi.size, files: usage.modules.lofi.files, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+    { name: 'Outros', icon: FileQuestion, size: usage.modules.others.size, files: usage.modules.others.files, color: 'text-gray-400', bg: 'bg-gray-500/20' },
   ];
-
-  // Filtra módulos com 0 bytes ou os exibe para o usuário ver
-  // Mostrar todos dá uma ideia melhor do que ele pode usar
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -105,7 +105,11 @@ export default function StorageTab() {
         {modules.map((mod, index) => {
           const percentage = usage.total > 0 ? (mod.size / usage.total) * 100 : 0;
           return (
-            <div key={index} className="flex flex-col gap-2 p-3 bg-white/5 border border-white/5 rounded-lg hover:bg-white/10 transition-colors">
+            <div 
+              key={index} 
+              onClick={() => setSelectedModule(mod)}
+              className="flex flex-col gap-2 p-3 bg-white/5 border border-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer active:scale-[0.99]"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${mod.bg} ${mod.color}`}>
@@ -125,6 +129,18 @@ export default function StorageTab() {
           );
         })}
       </div>
+
+      {selectedModule && (
+        <StorageFilesModal
+          isOpen={!!selectedModule}
+          onClose={() => setSelectedModule(null)}
+          moduleName={selectedModule.name}
+          icon={selectedModule.icon}
+          color={selectedModule.color}
+          bg={selectedModule.bg}
+          files={selectedModule.files}
+        />
+      )}
     </div>
   );
 }

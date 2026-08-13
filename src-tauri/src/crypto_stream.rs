@@ -47,6 +47,10 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
     let mut buffer = vec![0u8; CHUNK_SIZE as usize];
 
     loop {
+        if crate::cmd_video::VIDEO_CANCEL_FLAG.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err("Criptografia cancelada pelo usuário.".into());
+        }
+        
         // Lidar com tamanho exato para evitar falhas silenciosas
         let mut bytes_read = 0;
         while bytes_read < CHUNK_SIZE as usize {

@@ -6,7 +6,10 @@ export default defineConfig({
   base: './',
   server: {
     port: 35174,
-    host: '127.0.0.1'
+    host: '127.0.0.1',
+    watch: {
+      ignored: ['**/src-tauri/target/**', '**/dist/**', '**/dist-web/**']
+    }
   },
   optimizeDeps: {
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']

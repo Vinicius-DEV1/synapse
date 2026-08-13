@@ -553,12 +553,12 @@ const QuestionBlockComponent = (props: any) => {
   };
 
 
-  const autoResizeTextarea = (el: HTMLTextAreaElement | null) => {
+  const autoResizeTextarea = useCallback((el: HTMLTextAreaElement | null) => {
     if (el) {
       el.style.height = 'auto';
       el.style.height = `${Math.max(60, el.scrollHeight)}px`;
     }
-  };
+  }, []);
 
   const handleDiscussEvaluationInChat = (q: QuestionItem, qIndex: number) => {
     setShowAiAssistantModal(true);
@@ -594,7 +594,7 @@ const QuestionBlockComponent = (props: any) => {
 
     const updatedHistoryWithUser = [...chatHistory, userMessageObj];
     updateChatHistory(updatedHistoryWithUser);
-    if (!overrideMessage) setChatInput('');
+    setChatInput(''); // Sempre limpar para evitar texto antigo preso
     setIsSendingChat(true);
 
     try {

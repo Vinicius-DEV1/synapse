@@ -184,6 +184,7 @@ pub fn run() {
             cmd_video::video_extract_audio,
             cmd_video::video_remux_default_track,
             cmd_video::video_convert_mp4,
+            cmd_video::video_cancel_conversion,
             cmd_youtube::youtube_fetch_info,
             cmd_youtube::youtube_fetch_playlist_info,
             cmd_youtube::youtube_get_watched,

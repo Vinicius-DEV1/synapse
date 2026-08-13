@@ -472,22 +472,33 @@ export interface DriveFile {
  * Lista todos os arquivos dentro de uma pasta no Google Drive.
  */
 export async function listFiles(accessToken: string, folderId: string): Promise<DriveFile[]> {
-  // Query para pegar os arquivos da pasta que não estão na lixeira
   const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
-  // fields pede arquivos com id, name, data de criação, tamanho e tipo
-  const url = `${DRIVE_API_URL}?q=${query}&fields=files(id,name,createdTime,size,mimeType)&pageSize=1000`;
+  let allFiles: DriveFile[] = [];
+  let pageToken: string | undefined = undefined;
 
-  const res = await resilientFetch(url, {
-    headers: { 'Authorization': `Bearer ${accessToken}` }
-  });
+  do {
+    let url = `${DRIVE_API_URL}?q=${query}&fields=nextPageToken,files(id,name,createdTime,size,mimeType)&pageSize=1000`;
+    if (pageToken) {
+      url += `&pageToken=${pageToken}`;
+    }
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to list files in Drive: ${res.status} - ${errorText}`);
-  }
+    const res = await resilientFetch(url, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
 
-  const data = await res.json();
-  return data.files || [];
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to list files in Drive: ${res.status} - ${errorText}`);
+    }
+
+    const data = await res.json();
+    if (data.files) {
+      allFiles = allFiles.concat(data.files);
+    }
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return allFiles;
 }
 
 /**
@@ -508,11 +519,11 @@ export async function deleteFromDrive(accessToken: string, fileId: string): Prom
 export interface DriveStorageUsage {
   total: number;
   modules: {
-    library: number;
-    photos: number;
-    videos: number;
-    lofi: number;
-    others: number;
+    library: { size: number, files: DriveFile[] };
+    photos: { size: number, files: DriveFile[] };
+    videos: { size: number, files: DriveFile[] };
+    lofi: { size: number, files: DriveFile[] };
+    others: { size: number, files: DriveFile[] };
   }
 }
 
@@ -535,9 +546,9 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
     // Get files in lofi folder
     const lofiFiles = await listFiles(token, lofiFolderId);
 
-    let library = 0;
-    let videos = 0;
-    let others = 0;
+    let library = { size: 0, files: [] as DriveFile[] };
+    let videos = { size: 0, files: [] as DriveFile[] };
+    let others = { size: 0, files: [] as DriveFile[] };
     
     for (const f of mainFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
@@ -545,30 +556,35 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
       const size = parseInt(f.size || '0', 10);
       
       if (f.name.startsWith('Caderno_') && f.name.endsWith('.enc')) {
-        library += size;
+        library.size += size;
+        library.files.push(f);
       } else if (f.name.endsWith('.mp4') || f.name.endsWith('.mkv') || f.name.endsWith('.vtt') || f.name.endsWith('.m4a') || f.name.includes(' - Legenda ') || f.name.includes(' - Audio ')) {
-        videos += size;
+        videos.size += size;
+        videos.files.push(f);
       } else {
-        others += size;
+        others.size += size;
+        others.files.push(f);
       }
     }
 
-    let photos = 0;
+    let photos = { size: 0, files: [] as DriveFile[] };
     for (const f of photoFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
       const size = parseInt(f.size || '0', 10);
-      photos += size;
+      photos.size += size;
+      photos.files.push(f);
     }
 
-    let lofi = 0;
+    let lofi = { size: 0, files: [] as DriveFile[] };
     for (const f of lofiFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
       const size = parseInt(f.size || '0', 10);
-      lofi += size;
+      lofi.size += size;
+      lofi.files.push(f);
     }
 
     return {
-      total: library + videos + photos + lofi + others,
+      total: library.size + videos.size + photos.size + lofi.size + others.size,
       modules: {
         library,
         photos,
