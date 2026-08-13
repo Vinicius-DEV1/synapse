@@ -1,8 +1,8 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus, ChevronDown, ChevronUp, StickyNote, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 import { Portal } from '../ui/Portal';
 
@@ -24,7 +24,11 @@ const formatDate = (dateStr: string) => {
 };
 
 const LinkPreviewComponent = (props: any) => {
-  const { url, title, isLoading, channel, duration, isPlaylist, uploadDate } = props.node.attrs;
+  const { url, title, isLoading, channel, duration, isPlaylist, uploadDate, notes: rawNotes, showNotes: rawShowNotes } = props.node.attrs;
+  const notes = rawNotes || '';
+  const showNotes = !!rawShowNotes;
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
   const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
   const [fetchedDuration, setFetchedDuration] = useState<number | null>(duration);
@@ -36,6 +40,18 @@ const LinkPreviewComponent = (props: any) => {
   const [showVideo, setShowVideo] = useState(false);
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleToggleNotes = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextShow = !showNotes;
+    props.updateAttributes({ showNotes: nextShow });
+    if (nextShow) {
+      setTimeout(() => {
+        notesTextareaRef.current?.focus();
+      }, 50);
+    }
+  };
 
   // Sincroniza o estado local com os atributos do nó toda vez que ele sofrer atualizações,
   // como acontece no drag and drop do TipTap (reciclagem de nós)
@@ -338,7 +354,7 @@ const LinkPreviewComponent = (props: any) => {
         </div>
         <div 
           onClick={() => setShowLinkConfirm(true)}
-          className={`block transition-all rounded-lg p-3 pr-[72px] cursor-pointer ${
+          className={`block transition-all rounded-lg p-3 pr-[104px] cursor-pointer ${
             props.selected 
               ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10' 
               : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
@@ -426,7 +442,34 @@ const LinkPreviewComponent = (props: any) => {
             </div>
           )}
         </div>
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
+        <div className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
+          notes || showNotes ? 'opacity-100' : 'opacity-0 group-hover/link:opacity-100'
+        }`}>
+          <button
+            onClick={handleToggleNotes}
+            className={`p-1.5 rounded transition-all flex items-center gap-1 border backdrop-blur-sm ${
+              showNotes
+                ? 'bg-brand-500/20 text-brand-300 border-brand-500/40 shadow-sm'
+                : notes
+                ? 'bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border-brand-500/30'
+                : 'bg-dark-card/80 hover:bg-white/10 text-dark-subtext hover:text-white border-white/5'
+            }`}
+            title={
+              !showNotes && !notes
+                ? 'Adicionar Anotações ao Link (+)'
+                : showNotes
+                ? 'Recolher Anotações do Link'
+                : 'Expandir Anotações do Link'
+            }
+          >
+            {!notes && !showNotes ? (
+              <Plus size={14} />
+            ) : showNotes ? (
+              <ChevronUp size={14} />
+            ) : (
+              <ChevronDown size={14} />
+            )}
+          </button>
           <button
             onClick={handleReload}
             className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
@@ -442,6 +485,46 @@ const LinkPreviewComponent = (props: any) => {
             <X size={14} />
           </button>
         </div>
+
+        {/* Campo de Anotações Acoplado ao Widget de Link */}
+        {showNotes && (
+          <div 
+            className="mt-1.5 bg-dark-card border border-white/10 rounded-lg p-3 transition-all shadow-md animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-white/5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-300">
+                <StickyNote size={13} className="text-brand-400 shrink-0" />
+                <span>Anotações do Link</span>
+              </div>
+              {notes && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    props.updateAttributes({ notes: '' });
+                  }}
+                  className="text-[10px] text-dark-subtext hover:text-red-400 transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/5"
+                  title="Limpar anotações"
+                >
+                  <Trash2 size={11} />
+                  <span>Limpar</span>
+                </button>
+              )}
+            </div>
+            <textarea
+              ref={notesTextareaRef}
+              value={notes}
+              onChange={(e) => props.updateAttributes({ notes: e.target.value })}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+              }}
+              placeholder="Escreva suas anotações, destaques ou resumo referente a este link aqui..."
+              className="w-full bg-black/40 border border-white/10 focus:border-brand-500/50 rounded-md p-2.5 text-xs text-brand-100 placeholder-white/25 outline-none resize-y min-h-[65px] leading-relaxed transition-colors"
+              rows={3}
+            />
+          </div>
+        )}
         
         {showPlaylistModal && (
           <YouTubePlaylistModal
@@ -635,6 +718,8 @@ export const LinkPreviewBlock = Node.create({
       duration: { default: null },
       isPlaylist: { default: false },
       uploadDate: { default: null },
+      notes: { default: '' },
+      showNotes: { default: false },
     };
   },
 
