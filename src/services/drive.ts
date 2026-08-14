@@ -341,7 +341,17 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
       if (row) {
         const val = row.data || row.value;
         if (val) {
-          const parsed = JSON.parse(val);
+          let parsed;
+          try {
+            parsed = JSON.parse(val);
+          } catch {
+            if (_inMemoryMasterKey) {
+              const decrypted = await decryptText(val, _inMemoryMasterKey);
+              parsed = JSON.parse(decrypted);
+            } else {
+              return { token: null };
+            }
+          }
           return parsed ? parsed : { token: null };
         }
       }

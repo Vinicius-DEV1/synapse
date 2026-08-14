@@ -18,6 +18,7 @@ async function init() {
       mockApi = await createWebApiMock() as any;
     }
     
+    let syncTimeout: any = null;
     const createApiProxy = (obj: any): any => {
       return new Proxy(obj, {
         get(target, prop) {
@@ -29,12 +30,29 @@ async function init() {
               return val;
             }
             return async (...args: any[]) => {
-              const result = await val(...args);
-              if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set') || prop.startsWith('upsert'))) {
-                console.log(`[Proxy] API method '${prop}' modified state. Disparando 'app-sync-trigger'.`);
-                window.dispatchEvent(new Event('app-sync-trigger'));
+              try {
+                const result = await val(...args);
+                if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set') || prop.startsWith('upsert'))) {
+                  if (syncTimeout) clearTimeout(syncTimeout);
+                  syncTimeout = setTimeout(() => {
+                    window.dispatchEvent(new Event('app-sync-trigger'));
+                  }, 500); // Debounce de 500ms
+                }
+                return result;
+              } catch (error: any) {
+                console.error(`[API Proxy Error] Falha ao executar '${prop}':`, error);
+                
+                // Dispara o evento global para o ToastProvider capturar
+                const errorEvent = new CustomEvent('app-api-error', { 
+                  detail: { 
+                    message: `Erro na operação '${prop}': ${error?.message || 'Falha desconhecida'}` 
+                  } 
+                });
+                window.dispatchEvent(errorEvent);
+                
+                // Repassa o erro para o chamador original lidar (ex: parar estado de loading)
+                throw error;
               }
-              return result;
             };
           }
           if (typeof val === 'object' && val !== null) {

@@ -85,7 +85,10 @@ export function getCultureKey(): CryptoKey | undefined {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  _storeStateRef = state;
+  
+  useEffect(() => {
+    _storeStateRef = state;
+  }, [state]);
 
   const lastSavedRef = useRef<string | null>(null);
 
