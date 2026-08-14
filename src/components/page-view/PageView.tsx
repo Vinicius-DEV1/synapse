@@ -47,6 +47,12 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
           setContentData(data);
           if (!page.is_locked) setIsUnlocked(true);
         }
+      }).catch(err => {
+        if (mounted) {
+          console.error(`[Caderno:PageView] Failed to load content for ${page.id}:`, err);
+          // If you had a setContentError or similar, you'd call it here.
+          // For now, logging and letting the global toast handle the UI notification.
+        }
       });
     }
     return () => { mounted = false; };
