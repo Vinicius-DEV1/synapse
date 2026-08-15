@@ -19,6 +19,7 @@ import {
   AlignRight,
   ChevronDown,
   ChevronUp,
+  Columns2,
   Copy,
   Download,
   GripVertical,
@@ -37,6 +38,8 @@ import {
   normalizeAlign,
   safePos,
 } from './imageUtils';
+import { findChildIndex, appendToGroup, createGroup } from '../group-layout/groupCommands';
+import { COLUMN_GROUP_SPEC } from '../group-layout/groupSpecs';
 
 interface ImageFrameProps {
   editor: Editor;
@@ -55,9 +58,6 @@ interface ImageFrameProps {
 }
 
 const HANDLES: Array<{ handle: ResizeHandle; className: string; cursor: string }> = [
-  { handle: 'nw', className: 'left-0 top-0 -translate-x-1/2 -translate-y-1/2', cursor: 'nwse-resize' },
-  { handle: 'ne', className: 'right-0 top-0 translate-x-1/2 -translate-y-1/2', cursor: 'nesw-resize' },
-  { handle: 'sw', className: 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2', cursor: 'nesw-resize' },
   { handle: 'se', className: 'right-0 bottom-0 translate-x-1/2 translate-y-1/2', cursor: 'nwse-resize' },
 ];
 
@@ -135,8 +135,12 @@ export default function ImageFrame({
     const el = wrapperRef.current;
     if (!el) return;
     const target = event.target as HTMLElement | null;
-    el.draggable = !!target?.closest?.('[data-image-drag-grip]');
-  }, []);
+    const isGrip = !!target?.closest?.('[data-image-drag-grip]');
+    el.draggable = isGrip;
+    if (isGrip) {
+      selectSelf();
+    }
+  }, [selectSelf]);
 
   const handleDragEnd = useCallback(() => {
     const el = wrapperRef.current;
@@ -179,6 +183,27 @@ export default function ImageFrame({
   }, [captionDraft, node.attrs.caption, updateAttributes]);
 
   // ── Ações ──────────────────────────────────────────────────────────────────
+  const handleCreateColumn = useCallback(() => {
+    const pos = safePos(getPos);
+    if (pos === null || !editor) return;
+
+    const { state, view } = editor;
+    const { schema } = state;
+    const currentNode = state.doc.nodeAt(pos);
+    if (!currentNode) return;
+
+    const paragraphType = schema.nodes.paragraph;
+    const emptyParagraph = paragraphType ? paragraphType.create() : null;
+    if (!emptyParagraph) return;
+
+    const groupInfo = findChildIndex(state.doc, pos);
+    if (groupInfo) {
+      appendToGroup(view, groupInfo.groupPos, [emptyParagraph], 'right');
+    } else {
+      createGroup(view, COLUMN_GROUP_SPEC, pos, [emptyParagraph], 'right');
+    }
+  }, [editor, getPos]);
+
   const handleCopy = useCallback(async () => {
     try {
       await copyImageToClipboard(src);
@@ -340,6 +365,12 @@ export default function ImageFrame({
             </ToolbarButton>
             <ToolbarButton title="Restaurar tamanho original" onClick={resetSize}>
               <RotateCcw size={14} />
+            </ToolbarButton>
+
+            <Divider />
+
+            <ToolbarButton title="Criar coluna de texto ao lado" onClick={handleCreateColumn}>
+              <Columns2 size={14} />
             </ToolbarButton>
 
             <Divider />

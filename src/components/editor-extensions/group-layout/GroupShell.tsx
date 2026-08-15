@@ -9,9 +9,9 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
-import { Columns2, Ungroup, X } from 'lucide-react';
+import { Columns2, Plus, Ungroup, X } from 'lucide-react';
 import type { GroupSpec } from './groupSpecs';
-import { balanceChildren, removeChild, unwrapGroup } from './groupCommands';
+import { appendToGroup, balanceChildren, removeChild, unwrapGroup } from './groupCommands';
 import { useGroupResize } from './useGroupResize';
 
 interface GroupShellProps {
@@ -58,6 +58,16 @@ export default function GroupShell({
     [editor, resolvePos]
   );
 
+  const handleAddColumn = useCallback(() => {
+    runOnGroup((view, pos) => {
+      const paragraphType = view.state.schema.nodes.paragraph;
+      const emptyParagraph = paragraphType ? paragraphType.create() : null;
+      if (emptyParagraph) {
+        appendToGroup(view, pos, [emptyParagraph], 'right');
+      }
+    });
+  }, [runOnGroup]);
+
   const handleBalance = useCallback(
     () => runOnGroup((view, pos) => balanceChildren(view, pos)),
     [runOnGroup]
@@ -93,6 +103,11 @@ export default function GroupShell({
           className="group-layout__toolbar absolute -top-3 right-0 z-30 flex items-center gap-0.5 rounded-lg border border-white/10 bg-dark-bg/95 p-1 shadow-2xl backdrop-blur-xl"
           onMouseDown={(event) => event.preventDefault()}
         >
+          {childCount < spec.maxChildren && spec.groupName === 'columnGroup' && (
+            <ToolbarButton title="Adicionar coluna (+)" onClick={handleAddColumn}>
+              <Plus size={14} />
+            </ToolbarButton>
+          )}
           {spec.resizable && (
             <ToolbarButton title={spec.labels.balance} onClick={handleBalance}>
               <Columns2 size={14} />
