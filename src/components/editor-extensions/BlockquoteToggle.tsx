@@ -1,9 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { ChevronDown, ChevronRight, Palette, X, Type, Copy, GripVertical, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { DOMSerializer } from 'prosemirror-model';
-import { BG_COLORS } from '../../utils/colors';
+import BlockquoteToggleToolbar from './BlockquoteToggleToolbar';
 
 const BlockquoteToggleComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;
@@ -12,6 +12,7 @@ const BlockquoteToggleComponent = (props: any) => {
   const [copied, setCopied] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -29,12 +30,26 @@ const BlockquoteToggleComponent = (props: any) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColors, showConfirm]);
 
+  useEffect(() => {
+    if (props.node.attrs.title === '' && titleInputRef.current) {
+      const timer = setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     props.updateAttributes({ title: e.target.value });
   };
 
   const handleSetColor = (colorHex: string) => {
     props.updateAttributes({ color: colorHex });
+    setShowColors(false);
+  };
+
+  const handleClearColor = () => {
+    props.updateAttributes({ color: 'default' });
     setShowColors(false);
   };
 
@@ -61,45 +76,39 @@ const BlockquoteToggleComponent = (props: any) => {
     try {
       const serializer = DOMSerializer.fromSchema(editor.schema);
       const inner = serializer.serializeNode(node);
-      // Wrap with data-pm-slice so ProseMirror reconstructs the full node on paste
       const wrapper = document.createElement('div');
       wrapper.setAttribute('data-pm-slice', '0 0 []');
       wrapper.appendChild(inner);
       const html = wrapper.outerHTML;
 
-      const doToast = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+      const doToast = () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
 
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([node.textContent || ''], { type: 'text/plain' }),
-        })
-      ]).then(doToast).catch(() => {
-        // Fallback: select node + execCommand
-        editor.chain().setNodeSelection(getPos()).run();
-        document.execCommand('copy');
-        doToast();
-      });
+      navigator.clipboard
+        .write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([node.textContent || ''], { type: 'text/plain' }),
+          }),
+        ])
+        .then(doToast)
+        .catch(() => {
+          editor.chain().setNodeSelection(getPos()).run();
+          document.execCommand('copy');
+          doToast();
+        });
     } catch (e) {
       console.error('Copy failed', e);
     }
   };
 
-  const titleInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (props.node.attrs.title === '' && titleInputRef.current) {
-      const timer = setTimeout(() => {
-        titleInputRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
   const currentColor = props.node.attrs.color || 'default';
-  const customStyle = currentColor !== 'default'
-    ? { backgroundColor: `${currentColor}15`, borderLeftColor: currentColor }
-    : {};
+  const customStyle =
+    currentColor !== 'default'
+      ? { backgroundColor: `${currentColor}15`, borderLeftColor: currentColor }
+      : {};
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' && isOpen) {
@@ -134,7 +143,7 @@ const BlockquoteToggleComponent = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper 
+    <NodeViewWrapper
       className="toggle-wrapper blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded relative"
       style={customStyle}
       data-color={currentColor}
@@ -147,7 +156,11 @@ const BlockquoteToggleComponent = (props: any) => {
               e.stopPropagation();
               if (typeof props.getPos === 'function') {
                 const pos = props.getPos();
-                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+                props.editor
+                  .chain()
+                  .focus()
+                  .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+                  .run();
               }
             }}
             className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
@@ -155,7 +168,7 @@ const BlockquoteToggleComponent = (props: any) => {
           >
             <Plus size={16} />
           </button>
-          <div 
+          <div
             data-drag-handle
             onMouseDown={() => {
               if (typeof props.getPos === 'function') {
@@ -172,106 +185,42 @@ const BlockquoteToggleComponent = (props: any) => {
           </div>
         </div>
       )}
-      <div 
-        className="absolute top-1 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
-        contentEditable={false}
-      >
-        <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
-          <button
-            onClick={handleConvertToCallout}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Converter em Callout"
-          >
-            <Type size={14} />
-          </button>
-          <div className="relative">
-            <button
-              onClick={handleCopy}
-              className={`p-1 rounded-md transition-all ${copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'}`}
-              title="Copiar toggle callout"
-            >
-              <Copy size={14} />
-            </button>
-            {copied && (
-              <div className="absolute bottom-full right-0 mb-1.5 px-2 py-0.5 bg-dark-bg border border-white/10 rounded-md text-[11px] text-white/70 whitespace-nowrap pointer-events-none shadow-lg">
-                Copiado!
-              </div>
-            )}
-          </div>
-          <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
-          <button
-            onClick={() => {
-              setShowConfirm(false);
-              setShowColors(!showColors);
-            }}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Cor do Destaque"
-          >
-            <Palette size={14} />
-          </button>
-          <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
-          <button
-            onClick={() => {
-              setShowColors(false);
-              setShowConfirm(!showConfirm);
-            }}
-            className={`p-1 rounded-md transition-all ${showConfirm ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:bg-red-500/20 hover:text-red-400'}`}
-            title="Excluir Destaque"
-          >
-            <X size={14} />
-          </button>
-        </div>
-        
-        {showConfirm && (
-          <div ref={confirmRef} className="absolute top-full right-0 mt-1 bg-dark-card border border-red-500/30 rounded-xl p-3 shadow-xl z-50 w-64 animate-fade-in">
-            <p className="text-xs text-dark-text mb-3">Deseja apagar este destaque e todo o conteúdo dentro dele?</p>
-            <div className="flex items-center justify-end gap-2">
-              <button 
-                onClick={() => setShowConfirm(false)}
-                className="px-2 py-1 text-xs text-dark-subtext hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => props.deleteNode()}
-                className="px-3 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 rounded-md transition-colors"
-              >
-                Sim, apagar
-              </button>
-            </div>
-          </div>
-        )}
 
-        {showColors && (
-          <div ref={colorMenuRef} className="absolute top-full right-0 mt-1 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50 w-max">
-            {BG_COLORS.filter(c => c.value !== 'transparent').map(color => (
-              <button 
-                key={color.name}
-                onClick={() => { setShowConfirm(false); handleSetColor(color.hex); }}
-                className="w-6 h-6 rounded-full flex items-center justify-center hover:scale-110 transition-transform focus:outline-none"
-                style={{ backgroundColor: color.hex }}
-                title={color.name}
-              >
-                {currentColor === color.hex && (
-                  <div className="w-2 h-2 bg-dark-bg rounded-full"></div>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Barra de ações desacoplada */}
+      <BlockquoteToggleToolbar
+        currentColor={currentColor}
+        copied={copied}
+        showColors={showColors}
+        showConfirm={showConfirm}
+        colorMenuRef={colorMenuRef}
+        confirmRef={confirmRef}
+        onConvertToCallout={handleConvertToCallout}
+        onCopy={handleCopy}
+        onToggleColors={() => {
+          setShowConfirm(false);
+          setShowColors(!showColors);
+        }}
+        onSelectColor={handleSetColor}
+        onClearColor={handleClearColor}
+        onToggleConfirm={() => {
+          setShowColors(false);
+          setShowConfirm(!showConfirm);
+        }}
+        onDeleteNode={() => props.deleteNode()}
+        onCancelDelete={() => setShowConfirm(false)}
+      />
 
-      <div 
+      <div
         className="flex items-center gap-1 cursor-pointer outline-none font-medium italic text-white/85 pr-16"
         contentEditable={false}
       >
-        <button 
+        <button
           onClick={() => props.updateAttributes({ isOpen: !isOpen })}
           className="p-1 hover:bg-white/10 rounded transition-colors text-white/60 hover:text-white/90"
         >
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
-        <input 
+        <input
           ref={titleInputRef}
           type="text"
           value={props.node.attrs.title}
@@ -281,9 +230,9 @@ const BlockquoteToggleComponent = (props: any) => {
           className="bg-transparent outline-none flex-1 text-white/90 placeholder-white/40 italic"
         />
       </div>
-      
+
       <div className={isOpen ? 'block' : 'hidden'}>
-        <div className="h-px bg-white/5 my-2 ml-7 mr-2"></div>
+        <div className="h-px bg-white/5 my-2 ml-7 mr-2" />
         <div className="toggle-content pl-7 text-white/85 italic">
           <NodeViewContent />
         </div>
@@ -307,23 +256,29 @@ export const BlockquoteToggle = Node.create({
   },
 
   parseHTML() {
-    return [{ 
-      tag: 'div.blockquote-toggle',
-      getAttrs: (node) => {
-        if (typeof node === 'string') return {};
-        const element = node as HTMLElement;
-        return {
-          isOpen: element.getAttribute('data-is-open') !== 'false'
-        };
-      }
-    }];
+    return [
+      {
+        tag: 'div.blockquote-toggle',
+        getAttrs: (node) => {
+          if (typeof node === 'string') return {};
+          const element = node as HTMLElement;
+          return {
+            isOpen: element.getAttribute('data-is-open') !== 'false',
+          };
+        },
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 
-      class: 'blockquote-toggle',
-      'data-is-open': HTMLAttributes.isOpen
-    }), 0];
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, {
+        class: 'blockquote-toggle',
+        'data-is-open': HTMLAttributes.isOpen,
+      }),
+      0,
+    ];
   },
 
   addNodeView() {
@@ -367,7 +322,7 @@ export const BlockquoteToggle = Node.create({
           }
         }
         return false;
-      }
+      },
     };
-  }
+  },
 });

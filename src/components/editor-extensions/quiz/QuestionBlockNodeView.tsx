@@ -23,6 +23,8 @@ import {
 } from '../../../services/gemini';
 import { triggerFireworksAnimation, createDefaultQuestion } from './utils/fireworks';
 import { preprocessMarkdownCode } from './utils/markdownPreprocess';
+import QuizBatteryHeader from './components/QuizBatteryHeader';
+import QuizTagsFilter from './components/QuizTagsFilter';
 import QuizEditor from './components/QuizEditor';
 import QuizPlayer from './components/QuizPlayer';
 import QuizAIAssistant from './components/QuizAIAssistant';
@@ -361,131 +363,30 @@ export default function QuestionBlockNodeView(props: any) {
       <div className="rounded-3xl border border-purple-500/30 bg-dark-bg/95 shadow-2xl overflow-hidden backdrop-blur-xl transition-all">
         {/* Header Principal */}
         <div className="p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-dark-card to-purple-950/20">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-              <div className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-300 shadow-inner">
-                <HelpCircle size={22} />
-              </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={title || ''}
-                  onChange={(e) => props.updateAttributes({ title: e.target.value })}
-                  placeholder="Título da Bateria de Exercícios..."
-                  className="bg-transparent text-base md:text-lg font-bold text-white placeholder-white/30 outline-none w-full border-b border-transparent focus:border-purple-500/50 transition-colors"
-                />
-                <input
-                  type="text"
-                  value={description || ''}
-                  onChange={(e) => props.updateAttributes({ description: e.target.value })}
-                  placeholder="Instruções ou descrição breve..."
-                  className="bg-transparent text-xs text-purple-200/70 placeholder-white/20 outline-none w-full mt-0.5 border-b border-transparent focus:border-purple-500/30 transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* Alternador de Modo (Editar vs Praticar) + Ações */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
-                <button
-                  onClick={(e) => handleSetMode('edit', e)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                    mode === 'edit'
-                      ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
-                      : 'text-dark-subtext hover:text-white'
-                  }`}
-                >
-                  <Edit2 size={13} />
-                  <span>Editar</span>
-                </button>
-                <button
-                  onClick={(e) => handleSetMode('practice', e)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                    mode === 'practice'
-                      ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
-                      : 'text-dark-subtext hover:text-white'
-                  }`}
-                >
-                  <Play size={13} />
-                  <span>Praticar</span>
-                </button>
-              </div>
-
-              {/* Botão Assistente IA */}
-              <button
-                onClick={() => setShowAiAssistantModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-semibold shadow-sm transition-all"
-                title="Abrir Assistente de Exercícios IA"
-              >
-                <Sparkles size={14} className="text-purple-400" />
-                <span>IA</span>
-              </button>
-
-              {/* Importar / Exportar / Excluir */}
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
-                title="Importar questões via JSON"
-              >
-                <UploadCloud size={15} />
-              </button>
-              <button
-                onClick={handleCopyQuestionsJson}
-                className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
-                title="Exportar bateria em JSON"
-              >
-                {copiedJson ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
-              </button>
-              <button
-                onClick={() => setShowDeleteContainerModal(true)}
-                className="p-2 rounded-xl bg-black/40 hover:bg-red-500/20 text-dark-subtext hover:text-red-400 border border-white/10 transition-colors"
-                title="Remover toda a bateria"
-              >
-                <Trash2 size={15} />
-              </button>
-              <button
-                onClick={() => props.updateAttributes({ isCollapsed: !isCollapsed })}
-                className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
-              >
-                {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
-              </button>
-            </div>
-          </div>
+          <QuizBatteryHeader
+            title={title}
+            description={description}
+            mode={mode}
+            isCollapsed={isCollapsed}
+            copiedJson={copiedJson}
+            onUpdateTitle={(val) => props.updateAttributes({ title: val })}
+            onUpdateDescription={(val) => props.updateAttributes({ description: val })}
+            onSetMode={handleSetMode}
+            onOpenAiAssistant={() => setShowAiAssistantModal(true)}
+            onOpenImport={() => setShowImportModal(true)}
+            onCopyJson={handleCopyQuestionsJson}
+            onOpenDeleteModal={() => setShowDeleteContainerModal(true)}
+            onToggleCollapse={() => props.updateAttributes({ isCollapsed: !isCollapsed })}
+          />
 
           {/* Filtro por Tags */}
-          {allBatteryTags.length > 0 && !isCollapsed && (
-            <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-purple-500/10">
-              <span className="text-[11px] font-semibold text-purple-300 flex items-center gap-1 mr-1">
-                <Tag size={11} />
-                <span>Filtrar:</span>
-              </span>
-              <button
-                onClick={() => setSelectedTagFilter(null)}
-                className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors ${
-                  selectedTagFilter === null
-                    ? 'bg-purple-600 border-purple-500 text-white font-semibold'
-                    : 'bg-black/30 border-white/10 text-dark-subtext hover:text-white'
-                }`}
-              >
-                Todas ({questions.length})
-              </button>
-              {allBatteryTags.map((tag) => {
-                const count = questions.filter((q) => q.tags?.includes(tag)).length;
-                return (
-                  <button
-                    key={tag}
-                    onClick={() => setSelectedTagFilter(tag === selectedTagFilter ? null : tag)}
-                    className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors ${
-                      selectedTagFilter === tag
-                        ? 'bg-purple-600 border-purple-500 text-white font-semibold'
-                        : 'bg-black/30 border-white/10 text-purple-300 hover:text-white'
-                    }`}
-                  >
-                    #{tag} ({count})
-                  </button>
-                );
-              })}
-            </div>
+          {!isCollapsed && (
+            <QuizTagsFilter
+              tags={allBatteryTags}
+              questions={questions}
+              selectedTagFilter={selectedTagFilter}
+              onSelectTag={setSelectedTagFilter}
+            />
           )}
         </div>
 
