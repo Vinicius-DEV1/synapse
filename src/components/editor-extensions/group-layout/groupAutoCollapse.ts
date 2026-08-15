@@ -56,16 +56,18 @@ function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
     const spec = getSpecForGroup(node);
     if (!spec) return true;
 
+    // Se o usuário está com o cursor ou seleção em QUALQUER ponto dentro do grupo,
+    // não remove colunas vazias (ele pode estar escrevendo ou acabou de criar a coluna).
+    const selectionInsideGroup = state.selection.from >= pos && state.selection.to <= pos + node.nodeSize;
+    if (selectionInsideGroup) return false;
+
     const children = getChildren(node);
     const positions = getChildPositions(pos, node);
     const indices: number[] = [];
 
     children.forEach((child, index) => {
       if (!spec.isEmptyChild(child)) return;
-      const from = positions[index];
-      const to = from + child.nodeSize;
-      const selectionInside = state.selection.from >= from && state.selection.to <= to;
-      if (!selectionInside) indices.push(index);
+      indices.push(index);
     });
 
     if (indices.length > 0) {
