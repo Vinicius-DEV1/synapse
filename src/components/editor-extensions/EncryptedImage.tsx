@@ -3,43 +3,36 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { getDecryptedImageUrl, uploadEncryptedImage, getCachedImage } from '../../services/image-drive';
+import ImageFrame from './image/ImageFrame';
+import { alignToClass, normalizeAlign, safePos } from './image/imageUtils';
 
 // ─── Componente de NodeView para imagens encriptadas ───────────────────────────
 
 type LoadingState = 'loading' | 'loaded' | 'error';
 
+/** Largura usada pelos placeholders quando a imagem ainda não tem tamanho definido. */
+const PLACEHOLDER_WIDTH = 320;
+
 const EncryptedImageNodeView = (props: any) => {
-  const { node, updateAttributes, selected, editor, getPos, deleteNode } = props;
+  const { node, updateAttributes, selected, editor, getPos } = props;
   const { driveFileId, width, height, caption, alt } = node.attrs;
+  const align = normalizeAlign(node.attrs.align);
 
   const [state, setState] = useState<LoadingState>('loading');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [isResizing, setIsResizing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const imgRef = useRef<HTMLImageElement>(null);
   const blobUrlRef = useRef<string | null>(null);
+  // Evita que o mesmo tempId seja enviado duas vezes se o efeito reexecutar.
+  const uploadingRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const handleDragStart = (e: React.DragEvent) => {
-    if (imgRef.current) {
-      const rect = imgRef.current.getBoundingClientRect();
-      const canvas = document.createElement('canvas');
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(imgRef.current, 0, 0, rect.width, rect.height);
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        e.dataTransfer.setDragImage(canvas, x, y);
-      }
-    }
-  };
-
-  const handleMouseUpSelection = (e: React.MouseEvent) => {
-    if (editor && typeof getPos === 'function' && !isResizing) {
-      editor.commands.setNodeSelection(getPos());
-    }
-  };
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Obtém a chave mestra do módulo de notas
   const { state: storeState } = useStore();
@@ -47,14 +40,16 @@ const EncryptedImageNodeView = (props: any) => {
 
   // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
   const loadImage = useCallback(async () => {
-    console.log(`[EncryptedImage:loadImage] Iniciando. driveFileId="${driveFileId}", masterKey=${!!masterKey}`);
     if (!driveFileId || !masterKey) {
-      console.warn(`[EncryptedImage:loadImage] Abortando - driveFileId ou masterKey ausente`);
+      setErrorMessage(
+        !driveFileId ? 'Imagem sem identificador.' : 'Cofre de notas bloqueado — desbloqueie para ver a imagem.'
+      );
       setState('error');
       return;
     }
 
     setState('loading');
+    setErrorMessage(null);
 
     // Revoga URL anterior se existir
     if (blobUrlRef.current) {
@@ -65,47 +60,50 @@ const EncryptedImageNodeView = (props: any) => {
     try {
       // Se for um upload recém-colado
       if (driveFileId.startsWith('uploading_')) {
-        console.log(`[EncryptedImage:loadImage] Detectado uploading_ prefix. Buscando file pendente...`);
+        if (uploadingRef.current === driveFileId) return;
+        uploadingRef.current = driveFileId;
+
         let file = window.__pendingImageUploads?.get(driveFileId);
-        console.log(`[EncryptedImage:loadImage] File na memória: ${file ? 'SIM' : 'NÃO'}`);
-        
+
         // Se a página foi recarregada e perdemos o file da memória,
         // tentamos recuperar do cache local!
         if (!file) {
           const cached = await getCachedImage(driveFileId);
-          console.log(`[EncryptedImage:loadImage] Cache recovery: ${cached ? 'SIM' : 'NÃO'}`);
           if (cached) {
             file = new File([cached.data], 'image-recovered', { type: cached.mimeType });
           }
         }
 
         if (!file) {
-          throw new Error('File lost from memory and cache.');
+          throw new Error('Upload interrompido: a imagem foi perdida antes de ser enviada.');
         }
 
-        if (file) {
-          console.log(`[EncryptedImage:loadImage] Fazendo upload real...`);
-          const realDriveId = await uploadEncryptedImage(file, masterKey);
-          console.log(`[EncryptedImage:loadImage] Upload concluído! realDriveId="${realDriveId}". Atualizando atributo...`);
-          if (window.__pendingImageUploads) {
-            window.__pendingImageUploads.delete(driveFileId);
-          }
-          // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
-          updateAttributes({ driveFileId: realDriveId });
-          return; // A próxima renderização fará o download da URL limpa ou usará cache
-        } else {
-          throw new Error("Upload interrompido ou imagem perdida (fechou o app antes de concluir).");
-        }
+        const realDriveId = await uploadEncryptedImage(file, masterKey);
+        window.__pendingImageUploads?.delete(driveFileId);
+        uploadingRef.current = null;
+
+        if (!mountedRef.current) return;
+        // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
+        updateAttributes({ driveFileId: realDriveId });
+        return; // A próxima renderização fará o download da URL limpa ou usará cache
       }
 
-      console.log(`[EncryptedImage:loadImage] Buscando URL descriptografada para "${driveFileId}"...`);
       const url = await getDecryptedImageUrl(driveFileId, masterKey);
-      console.log(`[EncryptedImage:loadImage] URL obtida: "${url}"`);
+
+      // O node view pode ter sido destruído durante o download.
+      if (!mountedRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
       blobUrlRef.current = url;
       setBlobUrl(url);
       setState('loaded');
     } catch (err) {
       console.error('[EncryptedImage] Erro ao carregar/upload da imagem:', err);
+      uploadingRef.current = null;
+      if (!mountedRef.current) return;
+      setErrorMessage(err instanceof Error ? err.message : 'Erro desconhecido.');
       setState('error');
     }
   }, [driveFileId, masterKey, updateAttributes]);
@@ -122,159 +120,71 @@ const EncryptedImageNodeView = (props: any) => {
     };
   }, [loadImage]);
 
-  // ─── Lógica de redimensionamento (idêntica ao ResizableImage) ──────────────
-
-  const handleMouseDown = (e: React.MouseEvent, handle: 'bottom-right' | 'right' | 'left' | 'bottom' | 'top') => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-
-    if (editor && typeof getPos === 'function') {
-      editor.commands.setNodeSelection(getPos());
-    }
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = imgRef.current?.offsetWidth || 0;
-    const startHeight = imgRef.current?.offsetHeight || 0;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const diffX = moveEvent.clientX - startX;
-      const diffY = moveEvent.clientY - startY;
-
-      let newWidth = startWidth;
-      let newHeight: number | null = startHeight;
-
-      if (handle === 'bottom-right') {
-        newWidth = Math.max(50, startWidth + diffX);
-        newHeight = null;
-      } else if (handle === 'right') {
-        newWidth = Math.max(50, startWidth + diffX);
-      } else if (handle === 'left') {
-        newWidth = Math.max(50, startWidth - diffX);
-      } else if (handle === 'bottom') {
-        newHeight = Math.max(50, startHeight + diffY);
-      } else if (handle === 'top') {
-        newHeight = Math.max(50, startHeight - diffY);
-      }
-
-      if (handle === 'right' || handle === 'left') {
-        newHeight = startHeight;
-      }
-      if (handle === 'bottom' || handle === 'top') {
-        newWidth = startWidth;
-      }
-
-      updateAttributes({ 
-        width: newWidth,
-        height: newHeight
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+  const openViewer = () => {
+    window.dispatchEvent(
+      new CustomEvent('open-image-viewer', {
+        detail: { src: blobUrl, nodePos: safePos(getPos), nodeType: node.type.name },
+      })
+    );
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const event = new CustomEvent('open-image-viewer', { 
-      detail: { src: blobUrl, nodePos: typeof getPos === 'function' ? getPos() : null } 
-    });
-    window.dispatchEvent(event);
+  const requestDelete = () => {
+    window.dispatchEvent(
+      new CustomEvent('request-image-delete', {
+        detail: { pos: safePos(getPos), node },
+      })
+    );
   };
 
-  // ─── Estilos compartilhados ────────────────────────────────────────────────
-
-  const containerStyle: React.CSSProperties = {
-    width: width ? `${width}px` : '100%',
+  // ─── Estilos compartilhados dos placeholders ───────────────────────────────
+  // Importante: usar largura fixa. `width: 100%` dentro de um wrapper `w-fit`
+  // colapsa para zero e o skeleton some.
+  const placeholderStyle: React.CSSProperties = {
+    width: width ? `${width}px` : `${PLACEHOLDER_WIDTH}px`,
     maxWidth: '100%',
-    height: height ? `${height}px` : 'auto',
+    height: height ? `${height}px` : undefined,
   };
+
+  const placeholderWrapperClass = `image-node block relative w-fit max-w-full my-3 ${alignToClass(align)}`;
 
   // ─── Estado de carregamento — skeleton animado ─────────────────────────────
 
   if (state === 'loading') {
     return (
-      <NodeViewWrapper className="inline-block relative max-w-full m-1 align-bottom">
-        <div
-          className="rounded overflow-hidden"
-          style={{ ...containerStyle, minHeight: '160px' }}
-        >
+      <NodeViewWrapper as="div" data-align={align} className={placeholderWrapperClass}>
+        <div className="rounded-md overflow-hidden border border-white/5" style={{ ...placeholderStyle, minHeight: '160px' }}>
           <div
-            className="relative w-full h-full min-h-[160px] flex flex-col items-center justify-center gap-3 rounded"
+            className="relative w-full h-full min-h-[160px] flex flex-col items-center justify-center gap-3"
             style={{
               background: 'linear-gradient(110deg, #1e1e2e 8%, #2a2a3e 18%, #1e1e2e 33%)',
               backgroundSize: '200% 100%',
               animation: 'shimmer 1.5s linear infinite',
             }}
           >
-            {/* Ícone de spinner */}
-            <svg
-              className="animate-spin h-6 w-6 text-brand-400 opacity-70"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12" cy="12" r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
+            <svg className="animate-spin h-6 w-6 text-brand-400 opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
             <span className="text-xs text-zinc-400 select-none">
-              Carregando imagem...
+              {driveFileId?.startsWith('uploading_') ? 'Enviando imagem...' : 'Carregando imagem...'}
             </span>
           </div>
         </div>
-
-        {/* Animação de shimmer via style tag inline */}
-        <style>{`
-          @keyframes shimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-        `}</style>
       </NodeViewWrapper>
     );
   }
 
   // ─── Estado de erro ────────────────────────────────────────────────────────
 
-  if (state === 'error') {
+  if (state === 'error' || !blobUrl) {
     return (
-      <NodeViewWrapper className="inline-block relative max-w-full m-1 align-bottom">
-        <div
-          className="rounded overflow-hidden border border-red-800/40"
-          style={{ ...containerStyle, minHeight: '120px' }}
-        >
+      <NodeViewWrapper as="div" data-align={align} className={placeholderWrapperClass}>
+        <div className="rounded-md overflow-hidden border border-red-800/40" style={{ ...placeholderStyle, minHeight: '120px' }}>
           <div
-            className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-3 rounded"
-            style={{
-              background: 'linear-gradient(135deg, #1c1017 0%, #2a1520 50%, #1c1017 100%)',
-            }}
+            className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-3 px-4 text-center"
+            style={{ background: 'linear-gradient(135deg, #1c1017 0%, #2a1520 50%, #1c1017 100%)' }}
           >
-            {/* Ícone de erro */}
-            <svg
-              className="h-7 w-7 text-red-400/80"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
+            <svg className="h-7 w-7 text-red-400/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -282,16 +192,24 @@ const EncryptedImageNodeView = (props: any) => {
               />
             </svg>
 
-            <span className="text-xs text-red-300/80 select-none">
-              Erro ao carregar imagem
-            </span>
+            <span className="text-xs text-red-300/80 select-none">{errorMessage || 'Erro ao carregar imagem'}</span>
 
-            <button
-              onClick={loadImage}
-              className="px-3 py-1 text-xs rounded-md bg-red-900/40 text-red-200 hover:bg-red-800/50 transition-colors cursor-pointer border border-red-700/30"
-            >
-              Tentar novamente
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadImage}
+                className="px-3 py-1 text-xs rounded-md bg-red-900/40 text-red-200 hover:bg-red-800/50 transition-colors cursor-pointer border border-red-700/30"
+              >
+                Tentar novamente
+              </button>
+              {editor?.isEditable && (
+                <button
+                  onClick={requestDelete}
+                  className="px-3 py-1 text-xs rounded-md bg-white/5 text-dark-subtext hover:bg-white/10 hover:text-white transition-colors cursor-pointer border border-white/10"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </NodeViewWrapper>
@@ -301,84 +219,18 @@ const EncryptedImageNodeView = (props: any) => {
   // ─── Imagem carregada com sucesso ──────────────────────────────────────────
 
   return (
-    <NodeViewWrapper className={`inline-block relative max-w-full m-1 align-bottom ${isResizing ? 'select-none' : ''}`}>
-      <img
-        ref={imgRef}
-        src={blobUrl!}
-        alt={alt || ''}
-        width={width}
-        height={height}
-        style={{ width: width ? `${width}px` : 'auto', height: height ? `${height}px` : 'auto', maxWidth: '100%' }}
-        className={`rounded-md border border-white/10 cursor-pointer transition-shadow ${selected ? 'ring-2 ring-brand-500' : 'hover:ring-2 hover:ring-brand-500/50'}`}
-        draggable="true"
-        data-drag-handle
-        onDragStart={handleDragStart}
-        onDoubleClick={handleDoubleClick}
-        onMouseUp={handleMouseUpSelection}
-      />
-
-      {/* Alças de redimensionamento */}
-      {(selected || isResizing) && (
-        <>
-          <div className="absolute right-0 bottom-0 w-3 h-3 bg-brand-500 rounded-full border border-white cursor-nwse-resize z-10 translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'bottom-right')} />
-          <div className="absolute right-0 top-1/2 w-1.5 h-4 bg-brand-500 rounded-sm border border-white cursor-ew-resize z-10 translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'right')} />
-          <div className="absolute left-0 top-1/2 w-1.5 h-4 bg-brand-500 rounded-sm border border-white cursor-ew-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'left')} />
-          <div className="absolute bottom-0 left-1/2 w-4 h-1.5 bg-brand-500 rounded-sm border border-white cursor-ns-resize z-10 -translate-x-1/2 translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'bottom')} />
-          <div className="absolute top-0 left-1/2 w-4 h-1.5 bg-brand-500 rounded-sm border border-white cursor-ns-resize z-10 -translate-x-1/2 -translate-y-1/2 shadow-sm" onMouseDown={(e) => handleMouseDown(e, 'top')} />
-        </>
-      )}
-
-      {/* Toolbar Flutuante */}
-      {selected && !isResizing && (
-        <div className="absolute top-2 right-2 flex gap-1 bg-dark-bg/90 backdrop-blur-xl border border-white/10 rounded-lg p-1 shadow-2xl z-20" contentEditable={false}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!blobUrl) return;
-              fetch(blobUrl).then(res => res.blob()).then(blob => {
-                navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-              }).catch(err => console.error(err));
-            }}
-            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-colors"
-            title="Copiar"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-          </button>
-          <a
-            href={blobUrl!}
-            download={`imagem_secreta-${Date.now()}`}
-            onClick={(e) => e.stopPropagation()}
-            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-colors flex items-center justify-center"
-            title="Baixar Original"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          </a>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (typeof deleteNode === 'function') deleteNode();
-            }}
-            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-red-400 transition-colors"
-            title="Deletar"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-          </button>
-        </div>
-      )}
-
-      {/* Legenda (Caption) */}
-      {(selected || caption) && (
-        <div className="mt-2 w-full flex justify-center" contentEditable={false}>
-          <input
-            type="text"
-            value={caption || ''}
-            onChange={(e) => updateAttributes({ caption: e.target.value })}
-            placeholder="Escreva uma legenda..."
-            className="w-full max-w-sm text-center bg-transparent text-sm text-dark-subtext focus:text-white border-none focus:outline-none focus:ring-1 focus:ring-brand-500/50 rounded px-2 py-1 placeholder-white/20"
-          />
-        </div>
-      )}
-    </NodeViewWrapper>
+    <ImageFrame
+      editor={editor}
+      node={node}
+      getPos={getPos}
+      updateAttributes={updateAttributes}
+      selected={selected}
+      src={blobUrl}
+      alt={alt}
+      downloadName={caption ? `imagem_${caption}` : 'imagem_secreta'}
+      onOpenViewer={openViewer}
+      onRequestDelete={requestDelete}
+    />
   );
 };
 
@@ -387,8 +239,8 @@ const EncryptedImageNodeView = (props: any) => {
 export const EncryptedImage = Node.create({
   name: 'encryptedImage',
 
-  inline: true,
-  group: 'inline',
+  inline: false,
+  group: 'block',
 
   atom: true,
   draggable: true,
@@ -439,6 +291,14 @@ export const EncryptedImage = Node.create({
         renderHTML: (attributes) => {
           if (!attributes.alt) return {};
           return { 'data-alt': attributes.alt };
+        },
+      },
+      align: {
+        default: 'center',
+        parseHTML: (element) => element.getAttribute('data-align') || 'center',
+        renderHTML: (attributes) => {
+          if (!attributes.align || attributes.align === 'center') return {};
+          return { 'data-align': attributes.align };
         },
       },
     };

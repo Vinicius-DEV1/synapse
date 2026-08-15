@@ -1,10 +1,12 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Link2, Globe, RefreshCw, X, PlayCircle, Clock, PlaySquare, ListVideo, Calendar, GripVertical, Plus, ChevronDown, ChevronUp, StickyNote, Trash2, LayoutGrid, Ungroup } from 'lucide-react';
+import { Globe, RefreshCw, X, Clock, PlaySquare, ListVideo, Calendar, Plus, ChevronDown, ChevronUp, StickyNote, Trash2, LayoutGrid, Ungroup } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import YouTubePlaylistModal from './YouTubePlaylistModal';
 import { Portal } from '../ui/Portal';
+import { LINK_GROUP_SPEC } from './group-layout/groupSpecs';
+import { findChildIndex, groupWithSibling, removeChild } from './group-layout/groupCommands';
 
 const formatDuration = (seconds: number) => {
   if (!seconds) return '';
@@ -41,95 +43,39 @@ const LinkPreviewComponent = (props: any) => {
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const isInsideGroup = (() => {
-    if (typeof props.getPos === 'function' && props.editor?.state?.doc) {
-      try {
-        const pos = props.getPos();
-        if (typeof pos === 'number') {
-          const $pos = props.editor.state.doc.resolve(pos);
-          return $pos.parent.type.name === 'linkGroup';
-        }
-      } catch {
-        return false;
-      }
-    }
-    return false;
+  /** Posição atual do card, ou null se o node view já foi descartado. */
+  const currentPos = (): number | null => {
+    if (typeof props.getPos !== 'function') return null;
+    const pos = props.getPos();
+    return typeof pos === 'number' ? pos : null;
+  };
+
+  const groupInfo = (() => {
+    const pos = currentPos();
+    if (pos === null || !props.editor?.state?.doc) return null;
+    return findChildIndex(props.editor.state.doc, pos);
   })();
 
+  const isInsideGroup = !!groupInfo;
+
+  // Agrupar/desagrupar agora usam os comandos compartilhados de `group-layout`,
+  // que revalidam posições e remapeiam depois de cada edição. A implementação
+  // anterior calculava `afterGroupPos` no documento pré-transação e inseria sem
+  // passar pelo `tr.mapping` — a posição escorregava quando o card não era o
+  // primeiro do grupo.
   const handleUngroupSelf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (typeof props.getPos === 'function' && props.editor) {
-      const pos = props.getPos();
-      const node = props.node;
-      const tr = props.editor.state.tr;
-      const $pos = tr.doc.resolve(pos);
-      const parentGroupPos = $pos.before();
-      const parentGroupNode = $pos.parent;
-
-      if (parentGroupNode && parentGroupNode.type.name === 'linkGroup') {
-        tr.delete(pos, pos + node.nodeSize);
-
-        const afterGroupPos = parentGroupPos + parentGroupNode.nodeSize;
-        tr.insert(afterGroupPos, props.editor.schema.nodeFromJSON(node.toJSON()));
-
-        const remainingChildren: any[] = [];
-        parentGroupNode.forEach((c: any, offset: number) => {
-          if (pos !== parentGroupPos + 1 + offset) {
-            remainingChildren.push(c.toJSON());
-          }
-        });
-
-        if (remainingChildren.length <= 1) {
-          const groupPosNow = tr.mapping.map(parentGroupPos);
-          const groupNodeNow = tr.doc.nodeAt(groupPosNow);
-          if (groupNodeNow && groupNodeNow.type.name === 'linkGroup') {
-            const childrenNodes = remainingChildren.map((c) => props.editor.schema.nodeFromJSON(c));
-            tr.replaceWith(groupPosNow, groupPosNow + groupNodeNow.nodeSize, childrenNodes);
-          }
-        }
-
-        props.editor.view.dispatch(tr);
-      }
-    }
+    if (!groupInfo || !props.editor) return;
+    removeChild(props.editor.view, groupInfo.groupPos, groupInfo.index);
   };
 
   const handleGroupWithNext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (typeof props.getPos === 'function' && props.editor) {
-      const pos = props.getPos();
-      const node = props.node;
-      const tr = props.editor.state.tr;
-
-      const afterPos = pos + node.nodeSize;
-      const nextNode = tr.doc.nodeAt(afterPos);
-
-      let targetJSONs = [node.toJSON()];
-
-      if (nextNode && nextNode.type.name === 'linkPreview') {
-        targetJSONs.push(nextNode.toJSON());
-        tr.delete(pos, pos + node.nodeSize + nextNode.nodeSize);
-      } else {
-        const prevNode = tr.doc.resolve(pos).nodeBefore;
-        if (prevNode && prevNode.type.name === 'linkPreview') {
-          const prevPos = pos - prevNode.nodeSize;
-          targetJSONs = [prevNode.toJSON(), node.toJSON()];
-          tr.delete(prevPos, prevPos + prevNode.nodeSize + node.nodeSize);
-        } else {
-          tr.delete(pos, pos + node.nodeSize);
-        }
-      }
-
-      const groupNode = props.editor.schema.nodes.linkGroup.create(
-        {},
-        targetJSONs.map((j: any) => props.editor.schema.nodeFromJSON(j))
-      );
-
-      const targetPos = tr.mapping.map(pos);
-      tr.insert(targetPos, groupNode);
-      props.editor.view.dispatch(tr);
-    }
+    const pos = currentPos();
+    if (pos === null || !props.editor) return;
+    groupWithSibling(props.editor.view, LINK_GROUP_SPEC, pos);
   };
 
   const handleToggleNotes = (e: React.MouseEvent) => {
@@ -419,9 +365,9 @@ const LinkPreviewComponent = (props: any) => {
 
   return (
     <NodeViewWrapper
-      className={`link-preview-block group/widget ${
-        isInsideGroup ? 'my-0 flex-1 min-w-[260px] max-w-full' : 'block my-4 w-full'
-      }`}
+      // A largura proporcional dentro do grupo é aplicada no elemento externo
+      // (ver a opção `attrs` no final deste arquivo), não aqui.
+      className={`link-preview-block group/widget ${isInsideGroup ? 'my-0 h-full w-full' : 'block my-4 w-full'}`}
       contentEditable={false}
     >
       <div className="relative group/link">
@@ -801,16 +747,42 @@ export const LinkPreviewBlock = Node.create({
   },
 
   addAttributes() {
+    /**
+     * Atributos booleanos precisam de serialização explícita.
+     * Com o padrão do Tiptap, `false` virava o atributo HTML `showNotes="false"`
+     * e voltava da leitura como a STRING "false" — que é truthy. Na prática, ao
+     * reabrir uma página pelo HTML todo link aparecia com o painel de anotações
+     * aberto e com o botão "Ver Playlist".
+     */
+    const booleanAttr = (name: string, defaultValue: boolean) => ({
+      default: defaultValue,
+      parseHTML: (element: HTMLElement) => element.getAttribute(name) === 'true',
+      renderHTML: (attributes: Record<string, any>) => ({ [name]: attributes[name] ? 'true' : 'false' }),
+    });
+
+    const numberAttr = (name: string, defaultValue: number | null) => ({
+      default: defaultValue,
+      parseHTML: (element: HTMLElement) => {
+        const raw = element.getAttribute(name);
+        const parsed = raw === null ? NaN : Number(raw);
+        return Number.isFinite(parsed) ? parsed : defaultValue;
+      },
+      renderHTML: (attributes: Record<string, any>) =>
+        attributes[name] == null ? {} : { [name]: String(attributes[name]) },
+    });
+
     return {
       url: { default: '' },
       title: { default: null },
-      isLoading: { default: true },
       channel: { default: null },
-      duration: { default: null },
-      isPlaylist: { default: false },
       uploadDate: { default: null },
       notes: { default: '' },
-      showNotes: { default: false },
+      duration: numberAttr('duration', null),
+      // Largura proporcional quando o card está dentro de um `linkGroup`.
+      width: numberAttr('width', 50),
+      isLoading: booleanAttr('isLoading', true),
+      isPlaylist: booleanAttr('isPlaylist', false),
+      showNotes: booleanAttr('showNotes', false),
     };
   },
 
@@ -823,6 +795,20 @@ export const LinkPreviewBlock = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(LinkPreviewComponent);
+    return ReactNodeViewRenderer(LinkPreviewComponent, {
+      /**
+       * Dentro de um `linkGroup`, o flex-item real é o elemento externo que o
+       * Tiptap cria (`.react-renderer`) — o `NodeViewWrapper` fica um nível
+       * abaixo. Estilizar o wrapper não tinha efeito: os cards encolhiam para a
+       * largura do conteúdo (medido: 78px em vez de ~370px).
+       *
+       * `attrs` é reavaliado a cada atualização do node, então a largura
+       * acompanha o redimensionamento.
+       */
+      attrs: ({ node }) => ({
+        'data-group-child': '',
+        style: `--group-flex: ${Number(node.attrs.width) || 50};`,
+      }),
+    });
   },
 });

@@ -36,6 +36,10 @@ import { CalendarEventWidgetBlock } from '../../editor-extensions/CalendarEventW
 import { MediaWidgetBlock } from '../../editor-extensions/MediaWidgetBlock';
 import { CustomDivider } from '../../editor-extensions/CustomDivider';
 import { BlobImageInterceptor } from '../../editor-extensions/BlobImageInterceptor';
+import { ColumnBlock } from '../../editor-extensions/columns/ColumnBlock';
+import { ColumnGroup } from '../../editor-extensions/columns/ColumnGroup';
+import { DragToGroup, GroupAutoCollapse } from '../../editor-extensions/group-layout';
+import { ImageKeymap } from '../../editor-extensions/image/ImageKeymap';
 
 // Only '-' creates bullet list (removes * and + shortcuts)
 const CustomBulletList = BulletList.extend({
@@ -62,7 +66,12 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
     
     return [
       StarterKit.configure({
-        history: false,
+        // No Tiptap 3 a opção chama-se `undoRedo` — `history: false` era
+        // silenciosamente ignorado, então o UndoRedo local rodava junto com o
+        // Collaboration (que traz o próprio histórico via Yjs). O próprio
+        // Tiptap avisa que os dois são incompatíveis: o Ctrl+Z ficava
+        // imprevisível e podia dessincronizar o CRDT.
+        undoRedo: false,
         codeBlock: false,
         blockquote: false,
         bulletList: false,  // replaced by CustomBulletList (only - shortcut)
@@ -82,7 +91,10 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       Highlight.configure({ multicolor: true }),
       Underline,
       Link.configure({ openOnClick: false }),
-      ResizableImage.configure({ inline: true }),
+      // Nada de `.configure({ inline: true })` aqui: a extensão fixa
+      // `inline: false` / `group: 'block'`, então a opção era ignorada e só
+      // confundia quem lesse o código.
+      ResizableImage,
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       TaskList, TaskItem.configure({ nested: true }),
@@ -102,6 +114,12 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       MediaWidgetBlock,
       CustomDivider,
       BlobImageInterceptor,
+      ColumnBlock,
+      ColumnGroup,
+      // Layouts lado a lado (colunas e cards de link) — ver `group-layout/`.
+      DragToGroup,
+      GroupAutoCollapse,
+      ImageKeymap,
     ];
   }, [ydoc]);
 }

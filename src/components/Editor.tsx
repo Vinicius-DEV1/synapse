@@ -20,11 +20,15 @@ import CalendarEventModal from './editor-extensions/CalendarEventModal';
 import MediaSelectModal from './MediaSelectModal';
 import MediaActionModal from './MediaActionModal';
 import FileActionModal from './FileActionModal';
+import ImageDeleteModal from './ImageDeleteModal';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
 import { useEditorSave } from './editor/hooks/useEditorSave';
 import { useSlashCommand } from './editor/hooks/useSlashCommand';
 import { useEditorExtensions } from './editor/hooks/useEditorExtensions';
+import { applyGroupDrop, consumeGroupDropTarget } from './editor-extensions/group-layout';
+import { deleteImageAt, findNodePos } from './editor-extensions/image/imageUtils';
+import type { Node as PMNode } from '@tiptap/pm/model';
 
 interface EditorProps {
   pageId: string | null;
@@ -39,7 +43,7 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Viewer State
-  const [viewerState, setViewerState] = useState<{ isOpen: boolean, src: string, nodePos: number | null }>({ isOpen: false, src: '', nodePos: null });
+  const [viewerState, setViewerState] = useState<{ isOpen: boolean, src: string, nodePos: number | null, nodeType: string | null }>({ isOpen: false, src: '', nodePos: null, nodeType: null });
 
   // Modals States
   const [focusModal, setFocusModal] = useState<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>(null);
@@ -51,6 +55,9 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
   const [mediaSelectModal, setMediaSelectModal] = useState<{ isOpen: boolean, type: 'video' | 'book' } | null>(null);
   const [mediaActionModal, setMediaActionModal] = useState<{ isOpen: boolean, mediaId: string, mediaType: 'video' | 'book', title: string } | null>(null);
   const [fileActionModal, setFileActionModal] = useState<{ isOpen: boolean, fileId: string, title: string } | null>(null);
+  // Guardamos o NODE, não só a posição: entre abrir o modal e confirmar, a
+  // posição pode mudar (edição em outra aba, sincronização CRDT, undo).
+  const [imageToDelete, setImageToDelete] = useState<{ node: PMNode, pos: number | null } | null>(null);
   
   const { state } = useStore();
   const currentPage = state.pages.find(p => p.id === pageId);
@@ -100,7 +107,12 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     const handleOpenImageViewer = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail && detail.src) {
-        setViewerState({ isOpen: true, src: detail.src, nodePos: detail.nodePos });
+        setViewerState({
+          isOpen: true,
+          src: detail.src,
+          nodePos: typeof detail.nodePos === 'number' ? detail.nodePos : null,
+          nodeType: detail.nodeType || null,
+        });
       }
     };
     window.addEventListener('open-image-viewer', handleOpenImageViewer);
@@ -123,6 +135,17 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     };
     window.addEventListener('open-file-action', handleOpenFileAction);
     return () => window.removeEventListener('open-file-action', handleOpenFileAction);
+  }, []);
+
+  useEffect(() => {
+    const handleRequestImageDelete = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.node) {
+        setImageToDelete({ node: detail.node, pos: typeof detail.pos === 'number' ? detail.pos : null });
+      }
+    };
+    window.addEventListener('request-image-delete', handleRequestImageDelete);
+    return () => window.removeEventListener('request-image-delete', handleRequestImageDelete);
   }, []);
 
   // 4. Slash Commands
@@ -191,16 +214,17 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         const items = Array.from(event.clipboardData?.items || []);
         let imagePasted = false;
         
+        const nodesToInsert: any[] = [];
+        const readers: Promise<{src: string}>[] = [];
+        const masterKey = state.moduleKeys?.['notes'];
+
         for (const item of items) {
           if (item.type.indexOf('image') === 0) {
             imagePasted = true;
             const file = item.getAsFile();
             if (file && editor) {
-              const masterKey = state.moduleKeys?.['notes'];
-              console.log(`[Editor:handlePaste] Imagem detectada. masterKey=${!!masterKey}, file.type="${file.type}", file.size=${file.size}`);
               if (masterKey) {
                 const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-                console.log(`[Editor:handlePaste] Usando caminho encryptedImage. tempId="${tempId}"`);
                 if (!window.__pendingImageUploads) {
                   window.__pendingImageUploads = new Map();
                 }
@@ -208,28 +232,35 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
                 file.arrayBuffer().then(buffer => {
                   setCachedImage(tempId, buffer, file.type).catch(console.error);
                 }).catch(console.error);
-                editor.chain().focus().insertContent({
-                  type: 'encryptedImage',
-                  attrs: { driveFileId: tempId }
-                }).run();
+                
+                nodesToInsert.push({ type: 'encryptedImage', attrs: { driveFileId: tempId } });
               } else {
                 if (file.size > 2 * 1024 * 1024) {
                   alert('Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.');
-                  return true;
+                  continue;
                 }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                  const src = e.target?.result;
-                  if (src && editor) {
-                    editor.chain().focus().setImage({ src: src as string }).run();
-                  }
-                };
-                reader.readAsDataURL(file);
+                readers.push(new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = (e) => resolve({ src: e.target?.result as string });
+                  reader.readAsDataURL(file);
+                }));
               }
             }
           }
         }
+        
         if (imagePasted) {
+          if (masterKey && nodesToInsert.length > 0) {
+            editor?.chain().focus().insertContent(nodesToInsert).run();
+          } else if (readers.length > 0) {
+            const { from } = view.state.selection;
+            Promise.all(readers).then((results) => {
+              if (editor) {
+                const nodes = results.map(r => ({ type: 'image', attrs: { src: r.src } }));
+                editor.chain().insertContentAt(from, nodes).focus().run();
+              }
+            });
+          }
           event.preventDefault();
           return true;
         }
@@ -240,14 +271,16 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           const files = Array.from(event.dataTransfer.files);
           let imageDropped = false;
           
+          const nodesToInsert: any[] = [];
+          const readers: Promise<{src: string}>[] = [];
+          const masterKey = state.moduleKeys?.['notes'];
+          const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          const pos = coordinates ? coordinates.pos : undefined;
+          
           for (const file of files) {
             if (file.type.indexOf('image') === 0) {
               imageDropped = true;
               if (editor) {
-                const masterKey = state.moduleKeys?.['notes'];
-                const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
-                const pos = coordinates ? coordinates.pos : undefined;
-
                 if (masterKey) {
                   const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
                   if (!window.__pendingImageUploads) {
@@ -258,60 +291,61 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
                     setCachedImage(tempId, buffer, file.type).catch(console.error);
                   }).catch(console.error);
                   
-                  if (pos !== undefined) {
-                    editor.chain().focus().insertContentAt(pos, {
-                      type: 'encryptedImage',
-                      attrs: { driveFileId: tempId }
-                    }).run();
-                  } else {
-                    editor.chain().focus().insertContent({
-                      type: 'encryptedImage',
-                      attrs: { driveFileId: tempId }
-                    }).run();
-                  }
+                  nodesToInsert.push({ type: 'encryptedImage', attrs: { driveFileId: tempId } });
                 } else {
                   if (file.size > 2 * 1024 * 1024) {
                     alert('Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.');
-                    return true;
+                    continue;
                   }
-                  const reader = new FileReader();
-                  reader.onload = (e) => {
-                    const src = e.target?.result;
-                    if (src && editor) {
-                      if (pos !== undefined) {
-                        editor.chain().focus().insertContentAt(pos, {
-                          type: 'image',
-                          attrs: { src: src as string }
-                        }).run();
-                      } else {
-                        editor.chain().focus().setImage({ src: src as string }).run();
-                      }
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                  readers.push(new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({ src: e.target?.result as string });
+                    reader.readAsDataURL(file);
+                  }));
                 }
               }
             }
           }
+          
           if (imageDropped) {
+            // Consumido AQUI porque `editorProps.handleDrop` roda antes do
+            // `handleDrop` dos plugins — antes isso era lido de um global
+            // preenchido tarde demais e nunca batia com o arrasto atual.
+            const columnTarget = consumeGroupDropTarget();
+
+            const insertNodes = (nodes: any[]) => {
+              if (!editor || nodes.length === 0) return;
+
+              if (columnTarget) {
+                const pmNodes = nodes.map(n => editor.schema.nodeFromJSON(n));
+                if (applyGroupDrop(editor.view, columnTarget, pmNodes)) return;
+                // Se o layout de colunas não pôde ser criado, insere normalmente.
+              }
+
+              if (pos !== undefined) {
+                editor.chain().insertContentAt(pos, nodes).focus().run();
+              } else {
+                editor.chain().focus().insertContent(nodes).run();
+              }
+            };
+
+            if (masterKey && nodesToInsert.length > 0) {
+              insertNodes(nodesToInsert);
+            } else if (readers.length > 0) {
+              Promise.all(readers).then((results) => {
+                insertNodes(results.map(r => ({ type: 'image', attrs: { src: r.src } })));
+              });
+            }
             event.preventDefault();
             return true;
           }
         }
         return false;
       },
-      handleDoubleClickOn: (view, pos, node, nodePos, event, direct) => {
-        if (node.type.name === 'image' || node.type.name === 'encryptedImage') {
-          const target = event.target as HTMLImageElement;
-          const src = target?.src || node.attrs.src;
-          if (src) {
-            setViewerState({ isOpen: true, src, nodePos });
-          }
-          return true;
-        }
-        return false;
-      },
-      handleKeyDown: handleSlashKeyDown
+      // Backspace/Delete perto de imagens é tratado pela extensão ImageKeymap
+      // (seleciona na primeira tecla, apaga na segunda) — sem modal bloqueando
+      // a digitação normal.
+      handleKeyDown: (view, event) => handleSlashKeyDown(view, event)
     },
     onUpdate: (props) => {
       handleUpdate(props);
@@ -319,7 +353,60 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
     }
   }, [pageId]);
 
+  /**
+   * Recebe o recorte feito no visualizador e grava de volta no node.
+   * Para imagens criptografadas o recorte precisa ser reenviado ao Drive —
+   * antes esse fluxo simplesmente não existia (o `onSave` nunca era ligado).
+   */
+  const handleCroppedImage = useCallback(async (croppedDataUrl: string) => {
+    if (!editor || viewerState.nodePos === null) {
+      setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null });
+      return;
+    }
 
+    const pos = viewerState.nodePos;
+    const node = editor.state.doc.nodeAt(pos);
+    setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null });
+    if (!node) return;
+
+    try {
+      if (node.type.name === 'encryptedImage') {
+        const masterKey = state.moduleKeys?.['notes'];
+        if (!masterKey) {
+          alert('Desbloqueie o cofre de notas para salvar o recorte.');
+          return;
+        }
+        const blob = await (await fetch(croppedDataUrl)).blob();
+        const file = new File([blob], 'imagem-recortada.jpg', { type: blob.type || 'image/jpeg' });
+        const driveFileId = await uploadEncryptedImage(file, masterKey);
+
+        const currentPos = findNodePos(editor.state.doc, node, pos);
+        if (currentPos === null) return;
+        editor.view.dispatch(
+          editor.state.tr.setNodeMarkup(currentPos, undefined, {
+            ...node.attrs,
+            driveFileId,
+            width: null,
+            height: null,
+          })
+        );
+      } else {
+        const currentPos = findNodePos(editor.state.doc, node, pos);
+        if (currentPos === null) return;
+        editor.view.dispatch(
+          editor.state.tr.setNodeMarkup(currentPos, undefined, {
+            ...node.attrs,
+            src: croppedDataUrl,
+            width: null,
+            height: null,
+          })
+        );
+      }
+    } catch (err) {
+      console.error('[Editor] Falha ao salvar o recorte da imagem:', err);
+      alert('Não foi possível salvar o recorte da imagem.');
+    }
+  }, [editor, viewerState.nodePos, state.moduleKeys]);
 
   useEffect(() => {
     if (editor && editor.view) {
@@ -410,20 +497,15 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
         />
       )}
 
-      {viewerState.isOpen && (
-        <ImageViewerModal
-          src={viewerState.src}
-          onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null })}
-          onSaveSize={(width, height) => {
-            if (viewerState.nodePos !== null && editor) {
-              editor.commands.setNodeSelection(viewerState.nodePos);
-              editor.commands.updateAttributes('resizableImage', { width, height });
-              editor.commands.updateAttributes('encryptedImage', { width, height });
-              editor.commands.updateAttributes('image', { width, height });
-            }
-          }}
-        />
-      )}
+      {/* O visualizador espera `isOpen`/`imageSrc`/`onSave`. Antes recebia
+          `src`/`onSaveSize`, então `isOpen` era `undefined` e o modal NUNCA
+          abria — dar duplo clique numa imagem não fazia nada. */}
+      <ImageViewerModal
+        isOpen={viewerState.isOpen}
+        imageSrc={viewerState.src}
+        onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null })}
+        onSave={handleCroppedImage}
+      />
 
       {focusModal?.isOpen && (
         <SetupModal
@@ -565,6 +647,18 @@ export default function Editor({ pageId, initialContent, initialCrdtState, onSav
           }}
         />
       )}
+
+      <ImageDeleteModal
+        isOpen={!!imageToDelete}
+        onClose={() => setImageToDelete(null)}
+        onConfirm={() => {
+          if (imageToDelete && editor) {
+            deleteImageAt(editor, imageToDelete.node, imageToDelete.pos);
+            editor.commands.focus();
+          }
+          setImageToDelete(null);
+        }}
+      />
     </div>
   );
 }

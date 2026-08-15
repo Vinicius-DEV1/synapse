@@ -24,6 +24,27 @@ export default async function getCroppedImg(
     return '';
   }
 
+  // Caminho rápido sem rotação: recorta direto.
+  // O caminho geral abaixo aloca um canvas de (2 × maior lado)², ou seja
+  // 8000×8000 px (~256 MB) para uma foto de 4000 px — o suficiente para
+  // derrubar a aba. Como o editor sempre chama com rotation = 0, evitamos isso.
+  if (!rotation) {
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+    return canvas.toDataURL('image/jpeg', 0.92);
+  }
+
   const safeArea = Math.max(image.width, image.height) * 2;
 
   // set each dimensions to double largest dimension to allow for a safe area for the

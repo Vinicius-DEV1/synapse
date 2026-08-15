@@ -67,14 +67,125 @@
 .editor-content img {
   max-width: 100%;
   border-radius: 12px;
-  margin: 8px 4px;
-  display: inline-block;
-  vertical-align: top;
-  cursor: grab;
+  display: block;
 }
 
-.editor-content img:active {
+/* ─── Blocos de imagem ───────────────────────────────────────────────────────
+   A margem que existia aqui (`margin: 8px 4px`) deslocava a imagem dentro do
+   node view, e as alças de redimensionamento — posicionadas em relação ao
+   wrapper — ficavam alguns pixels fora das bordas reais da imagem.
+   O espaçamento agora vem do wrapper (`.image-node`).                        */
+.editor-content .image-node img {
+  margin: 0;
+  cursor: default;
+}
+
+/* O cursor de "arrastar" só aparece na alça dedicada, não na imagem inteira:
+   antes, qualquer clique-e-mover sobre a imagem iniciava um arrasto. */
+.editor-content .image-node [data-image-drag-grip] {
+  cursor: grab;
+}
+.editor-content .image-node [data-image-drag-grip]:active {
   cursor: grabbing;
+}
+
+.editor-content .image-node[data-align='left'] {
+  margin-left: 0;
+  margin-right: auto;
+}
+.editor-content .image-node[data-align='right'] {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Feedback durante o arrasto do bloco de imagem */
+.editor-content .image-node.ProseMirror-selectednode img {
+  outline: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Layouts lado a lado (colunas e cards de link) ──────────────────────────
+   Um único conjunto de regras serve os dois — ver `editor-extensions/group-layout`.
+
+   O Tiptap injeta o contentDOM real DENTRO do elemento do <NodeViewContent>,
+   então as colunas são netas, não filhas. Aplicar `display:flex` só no elemento
+   externo (como faziam as versões antigas de coluna e de link) não tem efeito
+   algum: o container fica com um único item e tudo empilha.                   */
+.group-layout__content,
+.group-layout__content > [data-node-view-content-react] {
+  display: flex;
+  width: 100%;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* O contentDOM injetado precisa ocupar toda a linha do flex externo. */
+.group-layout__content > [data-node-view-content-react] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Cada filho de grupo é um flex-item proporcional.
+   O elemento marcado com `data-group-child` é o que de fato recebe o flex:
+   para `columnBlock` é o próprio node; para `linkPreview` (que tem node view)
+   é o wrapper externo criado pelo Tiptap — estilizar o interno não funcionava,
+   os cards encolhiam para a largura do conteúdo. */
+.group-layout__content > [data-group-child],
+.group-layout__content > [data-node-view-content-react] > [data-group-child] {
+  flex: var(--group-flex, 50) 1 0%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.editor-content .column-block > *:first-child {
+  margin-top: 0;
+}
+.editor-content .column-block > *:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Separador visual entre as colunas ──────────────────────────────────────
+   Antes não havia NADA separando as colunas: só o `gap`. Não dava para
+   perceber que era um layout de colunas nem que a divisa era arrastável.
+   Agora: linha discreta sempre visível → mais forte no hover do grupo →
+   cor de destaque ao passar sobre a alça.                                     */
+.group-layout__divider {
+  width: 1px;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  transition: width 0.12s ease, background-color 0.12s ease;
+}
+
+.group-layout:hover .group-layout__divider {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.group-layout__gutter:hover .group-layout__divider,
+.group-layout__gutter:active .group-layout__divider {
+  width: 3px;
+  background: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+/* Enquanto arrasta, mantém a divisa acesa mesmo se o ponteiro sair da faixa. */
+.group-layout__gutter:has(:active) .group-layout__divider {
+  background: #8b5cf6;
+}
+
+.group-layout__remove,
+.group-layout__toolbar {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.group-layout:hover .group-layout__remove,
+.group-layout:hover .group-layout__toolbar {
+  opacity: 1;
 }
 
 /* List Styles */
@@ -158,12 +269,6 @@
     @apply !bg-transparent !border-none !shadow-none !rounded-none !my-2 !overflow-visible;
   }
   
-  /* Override the child link-preview-block directly to strip my-4 and w-full */
-  .link-group-block .link-preview-block {
-    margin: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
   .group-header {
     @apply !bg-transparent !border-none !p-0 !gap-2 !opacity-80 hover:!opacity-100 transition-opacity;
   }
@@ -1018,21 +1123,11 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   animation: slide-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Link Group Block (Side-by-side link cards layout) */
-.link-group-block [data-node-view-content] {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
-  align-items: stretch !important;
-  gap: 0.75rem !important;
-  width: 100% !important;
-}
-
-.link-group-block [data-node-view-content] > .link-preview-block,
-.link-group-block [data-node-view-content] > div {
-  flex: 1 1 calc(50% - 0.375rem) !important;
-  min-width: 260px !important;
-  max-width: 100% !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
+/* O layout lado a lado dos cards de link agora vem das regras `.group-layout__*`
+   acima, compartilhadas com as colunas. As regras que existiam aqui aplicavam
+   o flex no elemento errado (o contentDOM injetado pelo Tiptap virava o único
+   flex-item) e por isso os cards empilhavam em largura total. */
+.editor-content .link-group-block .link-preview-block {
+  margin: 0;
+  height: 100%;
 }
