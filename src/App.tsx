@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
 import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
@@ -6,29 +6,21 @@ import { FocusProvider, useFocusContext } from './store/FocusContext';
 import Sidebar from './components/layout/sidebar/Sidebar';
 import TabBar from './components/TabBar';
 import ContextMenu from './components/ContextMenu';
-import ConfirmModal from './components/ConfirmModal';
-import GlobalFocusOverlays from './components/focus/GlobalFocusOverlays';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
-import type { AppSettings } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
 import { useSync } from './hooks/useSync';
-import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
-import FloatingPageModal from './components/FloatingPageModal';
-import SyncErrorModal from './components/SyncErrorModal';
-import RenamePageModal from './components/RenamePageModal';
 import { useAppAuth } from './hooks/useAppAuth';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppTitle } from './hooks/useAppTitle';
 import { useGarbageCollection } from './hooks/useGarbageCollection';
 import { usePlatform } from './hooks/usePlatform';
-import GlobalSearchModal from './components/GlobalSearchModal';
-import DriveAuthModal from './components/library/DriveAuthModal';
 import { TaskProvider } from './store/TaskContext';
-import BackgroundTaskWidget from './components/layout/BackgroundTaskWidget';
+import { GlobalModals } from './components/layout/GlobalModals';
+
 
 function AppContent() {
   const { state, dispatch } = useStore();
@@ -244,80 +236,25 @@ function AppContent() {
       )}
 
 
-      {/* Confirm Delete Modal */}
-      {state.confirmDelete && (
-        <ConfirmModal
-          pageId={state.confirmDelete}
-          pageName={state.pages.find((p) => p.id === state.confirmDelete)?.title || 'esta página'}
-          onConfirm={() => handleDeletePage(state.confirmDelete!)}
-          onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
-        />
-      )}
-
-      {/* Rename Page Modal */}
-      {renamePageId && (
-        <RenamePageModal
-          isOpen={!!renamePageId}
-          onClose={() => setRenamePageId(null)}
-          currentTitle={state.pages.find((p) => p.id === renamePageId)?.title || ''}
-          onRename={(newTitle) => handleUpdatePage(renamePageId, { title: newTitle })}
-        />
-      )}
-
-      {/* Sync Status Toast (Ultra Discreet) */}
-      <div
-        className={`fixed bottom-4 right-6 flex items-center gap-1.5 pointer-events-none transition-opacity duration-1000 z-[9999]
-          ${syncStatus === 'idle' ? 'opacity-0' : 'opacity-40'}
-        `}
-      >
-        {syncStatus === 'syncing' && <Cloud size={12} className="text-dark-subtext animate-pulse" />}
-        {syncStatus === 'success' && <CheckCircle2 size={12} className="text-emerald-400" />}
-        {syncStatus === 'error'   && <XCircle size={12} className="text-red-400" />}
-        <span className="text-[10px] font-medium text-dark-subtext uppercase tracking-widest">
-          {syncStatus === 'syncing' ? 'Salvando' :
-           syncStatus === 'success' ? 'Salvo' :
-           syncStatus === 'error'   ? (!navigator.onLine ? 'Offline' : 'Erro') : ''}
-        </span>
-      </div>
-
-      {/* Sync Error Modal */}
-      <SyncErrorModal />
-
-      {/* Focus Overlays */}
-      <GlobalFocusOverlays />
-
-      {/* Floating Page Modal */}
-      {floatingPageId && (
-        <FloatingPageModal
-          pageId={floatingPageId}
-          onClose={() => setFloatingPageId(null)}
-          onExpand={(id) => {
-            setFloatingPageId(null);
-            dispatch({ type: 'NAVIGATE_IN_TAB', pageId: id });
-          }}
-          onUpdateContent={handleUpdateContent}
-          onCreatePage={handleCreatePage}
-          onCreateLinkedPage={handleCreateLinkedPage}
-          onUpdatePage={handleUpdatePage}
-        />
-      )}
-
-      {/* Global Search Modal */}
-      <GlobalSearchModal />
-
-      {/* Drive Auth Modal */}
-      {isDriveAuthModalOpen && (
-        <DriveAuthModal 
-          onClose={() => setIsDriveAuthModalOpen(false)} 
-          onSuccess={() => setIsDriveAuthModalOpen(false)} 
-        />
-      )}
-
-      {/* Background Tasks Widget */}
-      <BackgroundTaskWidget />
+      {/* Global Modals & Overlays Host */}
+      <GlobalModals
+        renamePageId={renamePageId}
+        setRenamePageId={setRenamePageId}
+        floatingPageId={floatingPageId}
+        setFloatingPageId={setFloatingPageId}
+        isDriveAuthModalOpen={isDriveAuthModalOpen}
+        setIsDriveAuthModalOpen={setIsDriveAuthModalOpen}
+        syncStatus={syncStatus}
+        handleDeletePage={handleDeletePage}
+        handleUpdatePage={handleUpdatePage}
+        handleUpdateContent={handleUpdateContent}
+        handleCreatePage={handleCreatePage}
+        handleCreateLinkedPage={handleCreateLinkedPage}
+      />
     </div>
   );
 }
+
 
 export default function App() {
   return (
