@@ -5,8 +5,11 @@ import { MicTestWidget } from './chat/MicTestWidget';
 import { ChatSettingsModal } from './chat/ChatSettingsModal';
 import { ChatSessionSettingsModal } from './chat/ChatSessionSettingsModal';
 import { ChatTranscript } from './chat/ChatTranscript';
-import type { TutorSession, TutorMessage, TutorMemory } from '../../types';
-import { encodeWAV } from '../../utils/audioUtils';
+import { MemoryDrawer } from './chat/MemoryDrawer';
+import { usePracticeData } from './hooks/usePracticeData';
+import type { TutorSession } from '../../types';
+import { encodeWAV } from '../../utils/audio';
+import { arrayBufferToBase64 } from '../../utils/binary';
 
 // Typings para Web Speech API
 declare global {
@@ -14,16 +17,6 @@ declare global {
     SpeechRecognition: any;
     webkitSpeechRecognition: any;
   }
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
 }
 
 
@@ -43,8 +36,7 @@ interface PracticeChatProps {
 }
 
 export default function PracticeChat({ session }: PracticeChatProps) {
-  const [messages, setMessages] = useState<TutorMessage[]>([]);
-  const [memories, setMemories] = useState<TutorMemory[]>([]);
+  const { messages, setMessages, memories, saveMessage, saveMemory, deleteMemory } = usePracticeData(session);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSessionSettingsOpen, setIsSessionSettingsOpen] = useState(false);
@@ -108,65 +100,6 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const aiTurnTextRef = useRef<string>('');
   const aiTurnAudioChunksRef = useRef<Float32Array[]>([]);
 
-  const loadMessages = useCallback(async () => {
-    if (!window.api?.practice) return;
-    try {
-      const msgs = await window.api.practice.getMessages(session.id);
-      setMessages(msgs);
-    } catch (err) {
-      console.error('Failed to load messages', err);
-    }
-  }, [session.id]);
-
-  const loadMemories = useCallback(async () => {
-    if (!window.api?.practice) return;
-    try {
-      const mems = await window.api.practice.getMemories();
-      setMemories(mems);
-    } catch (err) {
-      console.error('Failed to load memories', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadMessages();
-    loadMemories();
-  }, [loadMessages, loadMemories]);
-
-  const saveMessage = async (role: string, text: string) => {
-    if (!window.api?.practice || !text.trim()) return;
-    try {
-      const newMsg = await window.api.practice.createMessage({
-        session_id: session.id,
-        role,
-        text_content: text
-      });
-      setMessages(prev => [...prev, newMsg]);
-    } catch (err) {
-      console.error('Failed to save message', err);
-    }
-  };
-
-  const saveMemory = async (fact: string, category: string) => {
-    if (!window.api?.practice) return;
-    try {
-      const newMem = await window.api.practice.createMemory({ fact, category });
-      setMemories(prev => [newMem, ...prev]);
-      console.log('Saved core memory:', { fact, category });
-    } catch (err) {
-      console.error('Failed to save memory', err);
-    }
-  };
-
-  const deleteMemory = async (id: string) => {
-    if (!window.api?.practice) return;
-    try {
-      await window.api.practice.deleteMemory(id);
-      setMemories(prev => prev.filter(m => m.id !== id));
-    } catch (err) {
-      console.error('Failed to delete memory', err);
-    }
-  };
 
   const previewVoice = (voiceName: string) => {
     if (previewingVoice) return; // Wait until current preview is done
@@ -1170,53 +1103,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       )}
 
       {/* Memory Panel UI */}
-      {isMemoryOpen && (
-        <div className="absolute inset-0 z-[60] bg-dark-bg/80 backdrop-blur-sm flex justify-end">
-          <div className="w-[400px] h-full bg-dark-card border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-brand-400">
-                <Brain size={20} />
-                <h3 className="font-semibold text-white">Memória da IA</h3>
-              </div>
-              <button 
-                onClick={() => setIsMemoryOpen(false)}
-                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-dark-subtext"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-              <p className="text-sm text-dark-subtext mb-2">
-                A IA pode extrair fatos importantes sobre você durante as conversas. Esses fatos são lembrados permanentemente em todas as sessões.
-              </p>
-              
-              {memories.length === 0 ? (
-                <div className="text-center py-10 opacity-50 flex flex-col items-center">
-                  <Brain size={32} className="mb-2 text-dark-subtext" />
-                  <p className="text-sm">A IA ainda não possui memórias globais salvas.</p>
-                </div>
-              ) : (
-                memories.map(mem => (
-                  <div key={mem.id} className="p-4 bg-white/5 border border-white/5 rounded-xl group relative">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-500 mb-1 block">
-                      {mem.category}
-                    </span>
-                    <p className="text-sm text-white/90 pr-8">{mem.fact}</p>
-                    <button
-                      onClick={() => deleteMemory(mem.id)}
-                      className="absolute top-4 right-4 p-1.5 opacity-0 group-hover:opacity-100 text-dark-subtext hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
-                      title="Apagar memória"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <MemoryDrawer
+        isOpen={isMemoryOpen}
+        onClose={() => setIsMemoryOpen(false)}
+        memories={memories}
+        onDeleteMemory={deleteMemory}
+      />
       <ChatSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
