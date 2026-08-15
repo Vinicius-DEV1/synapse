@@ -99,6 +99,29 @@ export function useSlashCommand({
       case 'h1': chain.toggleHeading({ level: 1 }).run(); break;
       case 'h2': chain.toggleHeading({ level: 2 }).run(); break;
       case 'h3': chain.toggleHeading({ level: 3 }).run(); break;
+      case 'cols2':
+      case '2colunas':
+      case '2cols':
+        chain.insertContent({
+          type: 'columnGroup',
+          content: [
+            { type: 'columnBlock', attrs: { width: 50 }, content: [{ type: 'paragraph' }] },
+            { type: 'columnBlock', attrs: { width: 50 }, content: [{ type: 'paragraph' }] }
+          ]
+        }).run();
+        break;
+      case 'cols3':
+      case '3colunas':
+      case '3cols':
+        chain.insertContent({
+          type: 'columnGroup',
+          content: [
+            { type: 'columnBlock', attrs: { width: 33.3 }, content: [{ type: 'paragraph' }] },
+            { type: 'columnBlock', attrs: { width: 33.3 }, content: [{ type: 'paragraph' }] },
+            { type: 'columnBlock', attrs: { width: 33.4 }, content: [{ type: 'paragraph' }] }
+          ]
+        }).run();
+        break;
       case 'todo': chain.toggleTaskList().run(); break;
       case 'bullet': chain.toggleBulletList().run(); break;
       case 'callout': chain.toggleBlockquote().run(); break;

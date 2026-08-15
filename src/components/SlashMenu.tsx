@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar, Film, BookOpen } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar, Film, BookOpen, Columns2, Columns3 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -6,6 +6,8 @@ const SLASH_COMMANDS = [
   { id: 'h1', title: 'Título 1', subtitle: 'Título de seção grande.', icon: Heading1 },
   { id: 'h2', title: 'Título 2', subtitle: 'Título de seção médio.', icon: Heading2 },
   { id: 'h3', title: 'Título 3', subtitle: 'Título de seção pequeno.', icon: Heading3 },
+  { id: 'cols2', title: '2 Colunas', subtitle: 'Dividir o conteúdo em 2 colunas de texto.', icon: Columns2 },
+  { id: 'cols3', title: '3 Colunas', subtitle: 'Dividir o conteúdo em 3 colunas de texto.', icon: Columns3 },
   { id: 'todo', title: 'Lista de tarefas', subtitle: 'Acompanhe tarefas com checkboxes.', icon: CheckSquare },
   { id: 'bullet', title: 'Lista de marcadores', subtitle: 'Crie uma lista simples com bolinhas.', icon: List },
   { id: 'callout', title: 'Destaque', subtitle: 'Faça um texto se destacar.', icon: Info },

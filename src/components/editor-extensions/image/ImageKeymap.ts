@@ -35,17 +35,14 @@ export const ImageKeymap = Extension.create({
       const { state, dispatch } = this.editor.view;
       const { selection } = state;
 
-      // 1) Imagem já selecionada → apaga.
+      // 1) Imagem já selecionada → abre o modal de confirmação de exclusão.
       const selected = getSelectedImage(state);
       if (selected) {
-        const tr = state.tr.delete(selected.pos, selected.pos + selected.node.nodeSize);
-        const mapped = tr.mapping.map(selected.pos, -1);
-        try {
-          tr.setSelection(TextSelection.near(tr.doc.resolve(mapped), key === 'Backspace' ? -1 : 1));
-        } catch {
-          /* documento vazio — o ProseMirror resolve a seleção sozinho */
-        }
-        dispatch(tr.scrollIntoView());
+        window.dispatchEvent(
+          new CustomEvent('request-image-delete', {
+            detail: { pos: selected.pos, node: selected.node },
+          })
+        );
         return true;
       }
 
