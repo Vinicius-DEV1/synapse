@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import { decryptText } from '../crypto';
-import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy } from 'firebase/firestore';
+import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 
@@ -167,7 +167,23 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               batch.map(async (docSnap) => {
                 const cloudData = docSnap.data();
                 try {
-                  const decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
+                  let decryptedJsonOrB64;
+                  let isLegacy = false;
+                  try {
+                    decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
+                  } catch (e) {
+                    if (key !== moduleKeys['core']) {
+                      try {
+                        decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, moduleKeys['core']);
+                        isLegacy = true; // Decrypt success with core key instead of module key
+                      } catch (e2) {
+                        throw e;
+                      }
+                    } else {
+                      throw e;
+                    }
+                  }
+                  
                   let finalJson = decryptedJsonOrB64;
                   
                   if (cloudData.isCompressed) {
@@ -187,9 +203,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   }
                   
                   const parsed = JSON.parse(finalJson);
-                  return { docSnap, cloudData, parsed, error: null };
+                  return { docSnap, cloudData, parsed, isLegacy, error: null };
                 } catch (err: any) {
-                  return { docSnap, cloudData, parsed: null, error: err };
+                  return { docSnap, cloudData, parsed: null, isLegacy: false, error: err };
                 }
               })
             );
@@ -197,10 +213,21 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             // Processar os resultados decriptados
             for (const result of decryptedResults) {
               if (result.error || !result.parsed) {
-                const msg = `PULL erro doc ${result.docSnap.id} (${table}): ${result.error?.message}`;
+                const msg = `PULL erro doc ${result.docSnap.id} (${table}): ${result.error?.message || result.error}`;
                 console.error(msg);
                 (window.api as any).log?.(msg);
                 continue;
+              }
+
+              if (result.isLegacy) {
+                try {
+                  console.log(`[PULL CLEANUP] Deletando documento legado do Firebase: ${result.docSnap.id} (${table})`);
+                  await deleteDoc(doc(db, table, result.docSnap.id));
+                } catch (delErr) {
+                  console.error(`Erro ao deletar documento antigo do Firebase: ${result.docSnap.id}`, delErr);
+                }
+                skippedDocsCount++;
+                continue; // Não salva localmente
               }
 
               const { docSnap, cloudData, parsed } = result;

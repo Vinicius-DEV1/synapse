@@ -110,7 +110,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         }
 
         const masterKey = await deriveMasterKey(password);
-        (window as any).__cadernoVaultKey = await getVaultKeyHash(password);
         const masterHex = await exportKeyToHex(masterKey);
         
         let existingKeysToUse: Record<string, string> = {
@@ -162,6 +161,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             await initializeCloudValidator(masterKey);
           }
           
+          const vaultKeyHash = await getVaultKeyHash(password);
+          (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
+          
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
@@ -189,10 +191,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           const masterKey = await deriveMasterKey(password);
           let rawKeys = res.keys;
 
-          // Deriva a chave do cofre e expõe no objeto global para a webVaultApi
-          const vaultKeyHash = await getVaultKeyHash(password);
-          (window as any).__cadernoVaultKey = vaultKeyHash;
-          
           let cloudKeys = null;
           try {
             cloudKeys = await pullModularKeysFromCloud(masterKey);
@@ -217,8 +215,10 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
           const moduleKeys = await buildModuleKeys(rawKeys, masterKey);
 
-          
-
+          // BUGFIX: Se a chave do cofre existir no rawKeys (nuvem), usamos ela para não quebrar compatibilidade
+          // com vaults mais antigos que usavam a senha original em vez da nova (caso o usuário tenha trocado).
+          const vaultKeyHash = await getVaultKeyHash(password);
+          (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
 
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
