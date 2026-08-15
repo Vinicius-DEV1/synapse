@@ -4,7 +4,7 @@ import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
 import { Play, Pause, XSquare, Plus } from 'lucide-react';
 
-export default function FocusWidgetNodeView({ node, updateAttributes }: NodeViewProps) {
+export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
   const { sessionId, duration, tag, description, status } = node.attrs;
   const { 
     currentSession, 
@@ -70,15 +70,17 @@ export default function FocusWidgetNodeView({ node, updateAttributes }: NodeView
         contentEditable={false}
         data-drag-handle
         onMouseDown={() => {
-          if (typeof props.getPos === 'function') {
-            const pos = props.getPos();
-            if (typeof pos === 'number') {
-              props.editor.commands.setNodeSelection(pos);
+          if (typeof getPos === 'function') {
+            const pos = getPos();
+            if (typeof pos === 'number' && editor) {
+              editor.commands.setNodeSelection(pos);
             }
           }
         }}
         onClick={togglePopover}
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium cursor-pointer transition-colors border select-all ${
+          selected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
+        }${
           status === 'completed' 
             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
             : status === 'cancelled'
