@@ -2,17 +2,16 @@ import React, { useState, useEffect } from 'react';
 import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
-import VideoUploadModal, { type UploadOptions } from './VideoUploadModal';
-import YouTubeDownloadModal from './YouTubeDownloadModal';
-import WebVersionModal from './WebVersionModal';
+import type { UploadOptions } from './VideoUploadModal';
 import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video-manager';
-import { getCultureKey, useStore } from '../../store/useStore';
+import { useStore } from '../../store/useStore';
 import { useTasks } from '../../store/TaskContext';
-import { PlaySquare, Plus, LayoutGrid, List, AlignJustify, MonitorPlay } from 'lucide-react';
+import { useVideoFolders } from './hooks/useVideoFolders';
+import { VideoViewHeader } from './ui/VideoViewHeader';
+import { VideoViewModals } from './ui/VideoViewModals';
 
 export default function VideoView({ tabId }: { tabId?: string }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>(() => {
@@ -28,34 +27,15 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [webVersionVideo, setWebVersionVideo] = useState<VideoItem | null>(null);
   
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+
   const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
   
   const { state } = useStore();
   const activeTab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
   const pendingVideoId = activeTab?.moduleState?.videoId;
-
-  useEffect(() => {
-    loadVideos();
-    
-    // Subscribe to sync changes
-    let unsubscribe = () => {};
-    if (window.api?.onSyncTrigger) {
-      unsubscribe = window.api.onSyncTrigger(() => loadVideos());
-    }
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (pendingVideoId && videos.length > 0) {
-      // Check if we haven't already started playing it
-      if (activeVideo?.id !== pendingVideoId) {
-        const vid = videos.find(v => v.id === pendingVideoId);
-        if (vid) {
-          handlePlayVideo(vid);
-        }
-      }
-    }
-  }, [pendingVideoId, videos, activeVideo?.id]);
 
   const loadVideos = async () => {
     try {
@@ -68,15 +48,28 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     }
   };
 
+  const {
+    folders,
+    handleCreateFolder,
+    handleRenameFolder,
+    handleDeleteFolder,
+    handleMoveVideo
+  } = useVideoFolders(videos, loadVideos);
+
+  useEffect(() => {
+    loadVideos();
+    
+    let unsubscribe = () => {};
+    if (window.api?.onSyncTrigger) {
+      unsubscribe = window.api.onSyncTrigger(() => loadVideos());
+    }
+    return () => unsubscribe();
+  }, []);
+
   const handlePlayVideo = async (video: VideoItem) => {
     try {
       setPlayerError(null);
-      
-      // The VideoPlayer component now handles fetching all subtitles asynchronously
-      // via useVideoTracks and its internal useEffect, so we don't need to block here.
       setActiveSubtitle(undefined);
-      
-      // Resolve URL (local vs drive stream)
       const src = await resolveVideoUrl(video);
       setActiveVideoSrc(src);
       setActiveVideo(video);
@@ -85,6 +78,17 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       setPlayerError(e.message || 'Erro ao carregar o vídeo.');
     }
   };
+
+  useEffect(() => {
+    if (pendingVideoId && videos.length > 0) {
+      if (activeVideo?.id !== pendingVideoId) {
+        const vid = videos.find(v => v.id === pendingVideoId);
+        if (vid) {
+          handlePlayVideo(vid);
+        }
+      }
+    }
+  }, [pendingVideoId, videos, activeVideo?.id]);
 
   const handleUpload = async (options: UploadOptions) => {
     const taskId = `upload_${Date.now()}`;
@@ -107,20 +111,16 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     });
   };
 
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
-  const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
-
   const handleDownload = async (video: VideoItem) => {
     let forceOriginal = false;
     const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
     const isUnsupported = !['mp4', 'webm'].includes(ext);
     
     if (isUnsupported && video.drive_web_file_id) {
-        const confirm = window.api?.app?.showConfirm ? 
-            await window.api.app.showConfirm(`Este vídeo (${video.original_name}) possui um formato que não roda nativamente na web.\n\nPor padrão, o Caderno baixará a "Versão Web" convertida (muito mais leve).\n\nDeseja forçar o download do ARQUIVO ORIGINAL pesado em vez da versão web?`) 
-            : 0;
-        if (confirm === 1) forceOriginal = true;
+      const confirm = window.api?.app?.showConfirm ? 
+        await window.api.app.showConfirm(`Este vídeo (${video.original_name}) possui um formato que não roda nativamente na web.\n\nPor padrão, o Caderno baixará a "Versão Web" convertida (muito mais leve).\n\nDeseja forçar o download do ARQUIVO ORIGINAL pesado em vez da versão web?`) 
+        : 0;
+      if (confirm === 1) forceOriginal = true;
     }
 
     setIsDownloadingId(video.id);
@@ -199,7 +199,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
         abortController.signal
       );
       completeTask(taskId);
-      loadVideos(); // Refresh DB
+      loadVideos();
     } catch (e: any) {
       const errMsg = typeof e === 'string' ? e : e.message;
       if (errMsg !== 'Cancelado pelo usuário') {
@@ -208,131 +208,17 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     }
   };
 
-  // ===== Folder Management =====
-  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
-
-  const loadFolders = async () => {
-    try {
-      if (window.api?.config) {
-        const data = await window.api.config.get('videoFolders');
-        if (Array.isArray(data)) setFolders(data);
-      }
-    } catch (e) {
-      console.error('Failed to load folders:', e);
-    }
-  };
-
-  const saveFolders = async (newFolders: { id: string; name: string }[]) => {
-    setFolders(newFolders);
-    if (window.api?.config) {
-      await window.api.config.set('videoFolders', newFolders);
-    }
-  };
-
-  useEffect(() => { loadFolders(); }, []);
-
-  const handleCreateFolder = (name: string) => {
-    const newFolder = { id: crypto.randomUUID(), name };
-    saveFolders([...folders, newFolder]);
-  };
-
-  const handleRenameFolder = async (id: string, newName: string) => {
-    saveFolders(folders.map(f => f.id === id ? { ...f, name: newName } : f));
-    // Also update videos inside this folder
-    const videosInFolder = videos.filter(v => v.collection_id === id);
-    try {
-      for (const v of videosInFolder) {
-        if (window.api?.sync) {
-          await window.api.sync.upsertRow('videos', { ...v, collection_name: newName, updated_at: new Date().toISOString() });
-        }
-      }
-    } catch (e) { console.error('Error renaming folder videos', e); }
-    await loadVideos();
-  };
-
-  const handleDeleteFolder = async (id: string) => {
-    saveFolders(folders.filter(f => f.id !== id));
-    // Move videos back to root
-    const videosInFolder = videos.filter(v => v.collection_id === id);
-    try {
-      for (const v of videosInFolder) {
-        if (window.api?.sync) {
-          await window.api.sync.upsertRow('videos', { ...v, collection_id: undefined, collection_name: undefined, updated_at: new Date().toISOString() });
-        }
-      }
-    } catch (e) { console.error('Error deleting folder videos', e); }
-    await loadVideos();
-  };
-
-  const handleMoveVideo = async (video: VideoItem, folderId: string | null, folderName: string | null) => {
-    if (window.api?.sync) {
-      await window.api.sync.upsertRow('videos', {
-        ...video,
-        collection_id: folderId || undefined,
-        collection_name: folderName || undefined,
-        updated_at: new Date().toISOString()
-      });
-      await loadVideos();
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text relative">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-dark-card/30">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-brand-500/10 rounded-xl text-brand-400">
-            <PlaySquare size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Player Video</h1>
-            <p className="text-sm text-dark-subtext">Seus vídeos e estudos interativos</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-dark-card border border-white/10 rounded-lg p-1">
-            <button
-              onClick={() => { setViewMode('grid'); localStorage.setItem('videoViewMode', 'grid'); }}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Visualização em Grade"
-            >
-              <LayoutGrid size={18} />
-            </button>
-            <button
-              onClick={() => { setViewMode('list'); localStorage.setItem('videoViewMode', 'list'); }}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Visualização em Lista"
-            >
-              <List size={18} />
-            </button>
-            <button
-              onClick={() => { setViewMode('compact'); localStorage.setItem('videoViewMode', 'compact'); }}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Visualização Compacta"
-            >
-              <AlignJustify size={18} />
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowYoutubeModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 text-white text-sm font-medium rounded-lg transition-colors border border-white/10"
-              title="Baixar do YouTube"
-            >
-              <MonitorPlay size={16} className="text-red-500" />
-              <span className="hidden sm:inline">YouTube</span>
-            </button>
-            <button 
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">Importar</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <VideoViewHeader
+        viewMode={viewMode}
+        onViewModeChange={(mode) => {
+          setViewMode(mode);
+          localStorage.setItem('videoViewMode', mode);
+        }}
+        onOpenYoutubeModal={() => setShowYoutubeModal(true)}
+        onOpenUploadModal={() => setShowUploadModal(true)}
+      />
 
       {playerError && (
         <div className="m-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl">
@@ -365,30 +251,18 @@ export default function VideoView({ tabId }: { tabId?: string }) {
         />
       </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <VideoUploadModal 
-          collectionId={selectedFolderId || undefined}
-          collectionName={selectedFolderName || undefined}
-          onClose={() => setShowUploadModal(false)}
-          onUpload={handleUpload}
-        />
-      )}
-      
-      {/* YouTube Modal */}
-      {showYoutubeModal && (
-        <YouTubeDownloadModal 
-          onClose={() => setShowYoutubeModal(false)}
-          onSuccess={loadVideos}
-        />
-      )}
-
-      {/* Web Version Modal */}
-      <WebVersionModal
-        isOpen={!!webVersionVideo}
-        onClose={() => setWebVersionVideo(null)}
-        onConfirm={handleStartWebVersion}
-        videoTitle={webVersionVideo?.title || ''}
+      <VideoViewModals
+        showUploadModal={showUploadModal}
+        onCloseUploadModal={() => setShowUploadModal(false)}
+        onUpload={handleUpload}
+        selectedFolderId={selectedFolderId}
+        selectedFolderName={selectedFolderName}
+        showYoutubeModal={showYoutubeModal}
+        onCloseYoutubeModal={() => setShowYoutubeModal(false)}
+        onYoutubeSuccess={loadVideos}
+        webVersionVideo={webVersionVideo}
+        onCloseWebVersionModal={() => setWebVersionVideo(null)}
+        onConfirmWebVersion={handleStartWebVersion}
       />
 
       {/* Fullscreen Player */}
