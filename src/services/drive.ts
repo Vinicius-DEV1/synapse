@@ -1,5 +1,6 @@
 import { getWebDb } from './db-web';
-import { encryptText, decryptText } from './crypto';
+import { encryptText, decryptText, exportKeyToHex } from './crypto';
+import { decryptVaultField } from './vault-crypto';
 import { NetworkResilience } from '../utils/NetworkResilience';
 
 const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -294,6 +295,29 @@ export async function uploadToDrive(
 }
 
 /**
+ * Decripta o ID do arquivo caso ele venha criptografado pelo Desktop (Rust)
+ */
+async function decryptDriveFileId(fileId: string): Promise<string> {
+  if (fileId && fileId.includes(':') && fileId.split(':').length === 3) {
+    const keys = (window as any).__cadernoModuleKeys;
+    if (!keys) return fileId;
+    
+    for (const mod of Object.keys(keys)) {
+       try {
+         const hex = await exportKeyToHex(keys[mod]);
+         const decrypted = await decryptVaultField(fileId, hex);
+         if (decrypted && !decrypted.includes(':')) {
+           return decrypted;
+         }
+       } catch (e) {
+         // ignore e tenta a proxima chave
+       }
+    }
+  }
+  return fileId;
+}
+
+/**
  * Baixa um arquivo do Google Drive
  */
 export async function downloadFromDrive(
@@ -301,6 +325,7 @@ export async function downloadFromDrive(
   fileId: string,
   onProgress?: (percent: number) => void
 ): Promise<ArrayBuffer> {
+  fileId = await decryptDriveFileId(fileId);
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', `${DRIVE_API_URL}/${fileId}?alt=media`, true);
@@ -515,6 +540,7 @@ export async function listFiles(accessToken: string, folderId: string): Promise<
  * Deleta um arquivo definitivamente do Google Drive.
  */
 export async function deleteFromDrive(accessToken: string, fileId: string): Promise<void> {
+  fileId = await decryptDriveFileId(fileId);
   const res = await resilientFetch(`${DRIVE_API_URL}/${fileId}`, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${accessToken}` }

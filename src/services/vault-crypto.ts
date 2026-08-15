@@ -73,10 +73,13 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
 }
 
 export async function decryptVaultField(payload: string, keyHex: string): Promise<string> {
-  if (!payload || !payload.includes(':')) return payload;
+  if (!payload || typeof payload !== 'string' || !payload.includes(':')) return payload;
   
   const parts = payload.split(':');
-  if (parts.length !== 3) throw new Error('Invalid vault payload format');
+  if (parts.length !== 3) {
+    // Pode ser um texto plano antigo que calhou de ter ':' (ex: "https://youtube.com" ou "Nota: importante")
+    return payload;
+  }
 
   try {
     const [ivHex, authTagHex, cipherTextHex] = parts;
@@ -112,6 +115,7 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
   } catch (e) {
-    throw new Error('Failed to decrypt vault field');
+    console.warn('Failed to decrypt vault field, returning as plaintext', e);
+    return payload; // Fallback para retornar o texto original se falhar
   }
 }
