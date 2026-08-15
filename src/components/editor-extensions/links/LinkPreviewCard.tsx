@@ -1,0 +1,279 @@
+import React, { useState } from 'react';
+import {
+  Globe,
+  RefreshCw,
+  X,
+  Clock,
+  PlaySquare,
+  ListVideo,
+  Calendar,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  LayoutGrid,
+  Ungroup,
+} from 'lucide-react';
+import YouTubePlaylistModal from '../YouTubePlaylistModal';
+import { Portal } from '../../ui/Portal';
+import { formatDuration, formatDate, isYouTubeUrl, getVideoId } from './youtubeUtils';
+import LinkNotesDrawer from './LinkNotesDrawer';
+
+interface LinkPreviewCardProps {
+  url: string;
+  title: string | null;
+  channel: string | null;
+  duration: number | null;
+  isPlaylist: boolean;
+  uploadDate: string | null;
+  notes: string;
+  showNotes: boolean;
+  loading: boolean;
+  isReloading: boolean;
+  selected: boolean;
+  isInsideGroup: boolean;
+  onOpenConfirm: () => void;
+  onToggleNotes: (e: React.MouseEvent) => void;
+  onChangeNotes: (notes: string) => void;
+  onReload: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onUngroup: (e: React.MouseEvent) => void;
+  onGroupWithNext: (e: React.MouseEvent) => void;
+  onDragStartHandle?: (e: React.MouseEvent) => void;
+}
+
+export default function LinkPreviewCard({
+  url,
+  title,
+  channel,
+  duration,
+  isPlaylist,
+  uploadDate,
+  notes,
+  showNotes,
+  loading,
+  isReloading,
+  selected,
+  isInsideGroup,
+  onOpenConfirm,
+  onToggleNotes,
+  onChangeNotes,
+  onReload,
+  onDelete,
+  onUngroup,
+  onGroupWithNext,
+  onDragStartHandle,
+}: LinkPreviewCardProps) {
+  const [showVideo, setShowVideo] = useState(false);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [faviconError, setFaviconError] = useState(false);
+
+  const isYouTube = isYouTubeUrl(url);
+
+  const domain = (() => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return '';
+    }
+  })();
+
+  const renderIcon = () => {
+    if (!domain || faviconError) {
+      return <Globe size={18} className="text-brand-400" />;
+    }
+    return (
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        alt={`${domain} icon`}
+        className="w-5 h-5 rounded-sm"
+        onError={() => setFaviconError(true)}
+      />
+    );
+  };
+
+  return (
+    <div className="relative group/link">
+      {/* Alça de arrasto dedicada — garante que o arrasto selecione o nó e não duplique */}
+      <div
+        data-drag-handle
+        onMouseDown={onDragStartHandle}
+        contentEditable={false}
+        title="Arraste para mover o card de link"
+        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100 hover:text-white active:cursor-grabbing"
+      >
+        <GripVertical size={14} />
+      </div>
+
+      <div
+        onClick={onOpenConfirm}
+        className={`block transition-all rounded-lg p-3 pr-[132px] cursor-pointer ${
+          selected
+            ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10'
+            : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-hidden">
+            {isYouTube ? (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowVideo(!showVideo);
+                }}
+                className="w-full h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+                title={showVideo ? 'Fechar vídeo' : 'Assistir vídeo'}
+              >
+                <PlaySquare
+                  size={16}
+                  className={`${showVideo ? 'text-white' : 'text-brand-500'} drop-shadow-sm flex-shrink-0 transition-colors`}
+                />
+              </button>
+            ) : (
+              renderIcon()
+            )}
+          </div>
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {loading || isReloading ? (
+              <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1" />
+            ) : (
+              <span className="text-[13px] font-medium text-white/90 truncate leading-tight tracking-wide">
+                {title || domain || url}
+              </span>
+            )}
+            <div className="flex items-center gap-3 mt-1 opacity-60">
+              <span className="text-[11px] truncate tracking-wide text-brand-200">{domain}</span>
+              {channel && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-white/20" />
+                  <span className="text-[11px] truncate">{channel}</span>
+                </>
+              )}
+              {duration && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-white/20" />
+                  <span className="text-[11px] flex items-center gap-1">
+                    <Clock size={10} />
+                    {formatDuration(duration)}
+                  </span>
+                </>
+              )}
+              {uploadDate && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-white/20" />
+                  <span className="text-[11px] flex items-center gap-1">
+                    <Calendar size={10} />
+                    {formatDate(uploadDate)}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {isPlaylist && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowPlaylistModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 rounded-lg text-[11px] font-medium transition-colors border border-brand-500/30 backdrop-blur-sm shadow-sm whitespace-nowrap"
+              >
+                <ListVideo size={14} />
+                Ver Playlist
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showVideo && isYouTube && (
+          <div
+            className="mt-3 w-full aspect-video rounded-md overflow-hidden bg-black border border-white/10 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${getVideoId(url)}?origin=${encodeURIComponent(
+                window.location.origin
+              )}`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Botões de Ação */}
+      <div
+        className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
+          notes || showNotes ? 'opacity-100' : 'opacity-0 group-hover/link:opacity-100'
+        }`}
+      >
+        <button
+          onClick={onToggleNotes}
+          className={`p-1.5 rounded transition-all flex items-center gap-1 border backdrop-blur-sm ${
+            showNotes
+              ? 'bg-brand-500/20 text-brand-300 border-brand-500/40 shadow-sm'
+              : notes
+                ? 'bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border-brand-500/30'
+                : 'bg-dark-card/80 hover:bg-white/10 text-dark-subtext hover:text-white border-white/5'
+          }`}
+          title={
+            !showNotes && !notes
+              ? 'Adicionar Anotações ao Link (+)'
+              : showNotes
+                ? 'Recolher Anotações do Link'
+                : 'Expandir Anotações do Link'
+          }
+        >
+          {!notes && !showNotes ? <Plus size={14} /> : showNotes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {isInsideGroup ? (
+          <button
+            onClick={onUngroup}
+            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+            title="Desagrupar este link (mover para fora do grupo)"
+          >
+            <Ungroup size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={onGroupWithNext}
+            className="p-1.5 rounded hover:bg-brand-500/20 text-dark-subtext hover:text-brand-300 bg-dark-card/80 backdrop-blur-sm border border-white/5"
+            title="Agrupar com link vizinho (Lado a Lado)"
+          >
+            <LayoutGrid size={14} />
+          </button>
+        )}
+
+        <button
+          onClick={onReload}
+          className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+          title="Recarregar título"
+        >
+          <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 rounded hover:bg-red-500/20 text-dark-subtext hover:text-red-400 bg-dark-card/80 backdrop-blur-sm border border-white/5"
+          title="Remover link"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <LinkNotesDrawer showNotes={showNotes} notes={notes} onChangeNotes={onChangeNotes} />
+
+      {showPlaylistModal && (
+        <YouTubePlaylistModal
+          url={url}
+          title={title || 'Playlist'}
+          onClose={() => setShowPlaylistModal(false)}
+        />
+      )}
+    </div>
+  );
+}
