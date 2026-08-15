@@ -101,18 +101,22 @@ export function useSlashCommand({
       case 'h3': chain.toggleHeading({ level: 3 }).run(); break;
       case 'cols2':
       case '2colunas':
+      case '2coluna':
       case '2cols':
+      case '2':
         chain.insertContent({
           type: 'columnGroup',
           content: [
             { type: 'columnBlock', attrs: { width: 50 }, content: [{ type: 'paragraph' }] },
             { type: 'columnBlock', attrs: { width: 50 }, content: [{ type: 'paragraph' }] }
           ]
-        }).run();
+        }).focus(startPos + 2).run();
         break;
       case 'cols3':
       case '3colunas':
+      case '3coluna':
       case '3cols':
+      case '3':
         chain.insertContent({
           type: 'columnGroup',
           content: [
@@ -120,7 +124,7 @@ export function useSlashCommand({
             { type: 'columnBlock', attrs: { width: 33.3 }, content: [{ type: 'paragraph' }] },
             { type: 'columnBlock', attrs: { width: 33.4 }, content: [{ type: 'paragraph' }] }
           ]
-        }).run();
+        }).focus(startPos + 2).run();
         break;
       case 'todo': chain.toggleTaskList().run(); break;
       case 'bullet': chain.toggleBulletList().run(); break;

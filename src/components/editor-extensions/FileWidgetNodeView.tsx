@@ -150,7 +150,7 @@ export default function FileWidgetNodeView(props: any) {
         <div className="flex items-center justify-center p-2 bg-dark-bg rounded-lg border border-white/5 mr-1">
           {getIcon()}
         </div>
-        <span className="flex-1 truncate group-hover:text-white transition-colors">
+        <span className="flex-1 break-words leading-tight group-hover:text-white transition-colors">
           {name || fileItem?.name || 'Arquivo'}
         </span>
         <button 
