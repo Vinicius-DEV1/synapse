@@ -127,7 +127,18 @@ export default function FileWidgetNodeView(props: any) {
       </div>
 
       <div 
+        data-drag-handle
+        onMouseDown={() => {
+          if (typeof props.getPos === 'function') {
+            const pos = props.getPos();
+            if (typeof pos === 'number' && props.editor) {
+              props.editor.commands.setNodeSelection(pos);
+            }
+          }
+        }}
         className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
+          props.selected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
+        }${
           isLink 
             ? 'bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20' 
             : 'bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20'

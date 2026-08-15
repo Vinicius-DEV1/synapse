@@ -74,7 +74,18 @@ export default function MediaWidgetNodeView(props: any) {
       </div>
 
       <div 
-        className="inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20"
+        data-drag-handle
+        onMouseDown={() => {
+          if (typeof props.getPos === 'function') {
+            const pos = props.getPos();
+            if (typeof pos === 'number' && props.editor) {
+              props.editor.commands.setNodeSelection(pos);
+            }
+          }
+        }}
+        className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20 ${
+          props.selected ? 'ring-2 ring-brand-400 border-brand-400' : ''
+        }`}
         onClick={handleOpenAction}
       >
         <div className="flex items-center justify-center p-2 bg-dark-bg rounded-lg border border-white/5 mr-1">

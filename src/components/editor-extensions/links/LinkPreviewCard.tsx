@@ -106,6 +106,8 @@ export default function LinkPreviewCard({
       </div>
 
       <div
+        data-drag-handle
+        onMouseDown={onDragStartHandle}
         onClick={onOpenConfirm}
         className={`block transition-all rounded-lg p-3 ${
           isInsideGroup ? 'pr-20' : 'pr-24'

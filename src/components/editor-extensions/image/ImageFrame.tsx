@@ -102,9 +102,10 @@ export default function ImageFrame({
     const el = wrapperRef.current;
     if (!el) return;
     const target = event.target as HTMLElement | null;
-    const isGrip = !!target?.closest?.('[data-image-drag-grip]');
-    el.draggable = isGrip;
-    if (isGrip) {
+    const isControl = !!target?.closest?.('button, input, textarea, .image-node__handle');
+    
+    if (!isControl) {
+      el.draggable = true;
       selectSelf();
     }
   }, [selectSelf]);
@@ -203,7 +204,6 @@ export default function ImageFrame({
       ref={wrapperRef}
       as="div"
       data-align={align}
-      data-drag-handle
       className={`image-node group relative block w-fit max-w-full my-3 ${alignToClass(align)} ${
         isResizing ? 'select-none' : ''
       }`}
@@ -235,7 +235,9 @@ export default function ImageFrame({
         {showChrome && (
           <div
             data-image-drag-grip
+            data-drag-handle
             contentEditable={false}
+            onMouseDown={selectSelf}
             title="Arraste para mover a imagem"
             className="absolute left-2 top-2 z-20 flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext shadow-lg backdrop-blur-xl transition-colors hover:text-white active:cursor-grabbing"
           >

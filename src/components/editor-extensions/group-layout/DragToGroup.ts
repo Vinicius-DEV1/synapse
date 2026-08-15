@@ -33,44 +33,56 @@ export interface GroupDropTarget {
   spec: GroupSpec;
 }
 
-const EDGE_RATIO = 0.22;
-const EDGE_MAX_PX = 140;
-const EDGE_MIN_PX = 28;
-
 // Estado do arrasto em curso. Module-level de propósito: o Editor.tsx precisa
 // consultá-lo no próprio `handleDrop`, que roda antes do dos plugins.
 let activeTarget: GroupDropTarget | null = null;
 let indicator: HTMLDivElement | null = null;
 let draggedOrigin: { pos: number; node: PMNode; nodeSize: number } | null = null;
+let cleanupTimer: any = null;
 
 function hideIndicator() {
   indicator?.remove();
   indicator = null;
 }
 
-function clearDragState() {
+function clearDragState(immediate = false) {
   hideIndicator();
-  activeTarget = null;
-  draggedOrigin = null;
+  if (cleanupTimer) {
+    clearTimeout(cleanupTimer);
+    cleanupTimer = null;
+  }
+
+  if (immediate) {
+    activeTarget = null;
+    draggedOrigin = null;
+  } else {
+    // Delay de segurança: em alguns navegadores o evento dragend/dragleave dispara
+    // milissegundos antes do ProseMirror processar handleDrop. Manter activeTarget por
+    // 200ms garante que handleDrop receba o alvo sem falhas.
+    cleanupTimer = setTimeout(() => {
+      activeTarget = null;
+      draggedOrigin = null;
+      cleanupTimer = null;
+    }, 200);
+  }
 }
 
 function showIndicator(rect: DOMRect, side: 'left' | 'right') {
   if (!indicator) {
     indicator = document.createElement('div');
-    // `fixed` porque o rect vem em coordenadas de viewport — com `absolute` o
-    // indicador ficava deslocado pelo valor do scroll.
     indicator.style.position = 'fixed';
-    indicator.style.width = '4px';
-    indicator.style.borderRadius = '2px';
+    indicator.style.width = '5px';
+    indicator.style.borderRadius = '3px';
     indicator.style.background = '#8b5cf6';
-    indicator.style.boxShadow = '0 0 10px rgba(139, 92, 246, 0.85)';
+    indicator.style.boxShadow = '0 0 14px 3px rgba(139, 92, 246, 0.95)';
     indicator.style.zIndex = '9999';
     indicator.style.pointerEvents = 'none';
+    indicator.style.transition = 'left 0.05s ease, top 0.05s ease, height 0.05s ease';
     document.body.appendChild(indicator);
   }
-  indicator.style.left = `${side === 'left' ? rect.left - 6 : rect.right + 2}px`;
+  indicator.style.left = `${side === 'left' ? Math.max(0, rect.left - 4) : Math.max(0, rect.right - 1)}px`;
   indicator.style.top = `${rect.top}px`;
-  indicator.style.height = `${Math.max(rect.height, 24)}px`;
+  indicator.style.height = `${Math.max(rect.height, 32)}px`;
 }
 
 /**
@@ -80,7 +92,7 @@ function showIndicator(rect: DOMRect, side: 'left' | 'right') {
  */
 export function consumeGroupDropTarget(): GroupDropTarget | null {
   const target = activeTarget;
-  clearDragState();
+  clearDragState(true);
   return target;
 }
 
@@ -94,7 +106,9 @@ export function applyGroupDrop(
   if (!target.spec.acceptsContent(content)) {
     // Ex.: arrastar uma imagem para a borda de um grupo de links.
     if (target.mode === 'append') return false;
-    const fallback = pickSpecForPair(content, view.state.doc.nodeAt(target.pos)!);
+    const targetNode = view.state.doc.nodeAt(target.pos);
+    if (!targetNode) return false;
+    const fallback = pickSpecForPair(content, targetNode);
     if (!fallback) return false;
     return createGroup(view, fallback, target.pos, content, target.side, removeRange);
   }
@@ -107,40 +121,60 @@ export function applyGroupDrop(
 // ─── Localização do bloco de nível superior sob o ponteiro ────────────────────
 
 function topLevelBlockAt(view: EditorView, x: number, y: number) {
-  const coords = view.posAtCoords({ left: x, top: y });
-  if (!coords) return null;
-
   const doc = view.state.doc;
-  const candidates = [coords.inside, coords.pos].filter(
-    (value): value is number => typeof value === 'number' && value >= 0
-  );
 
-  for (const raw of candidates) {
-    let $pos;
+  const tryResolve = (raw: number) => {
     try {
-      $pos = doc.resolve(raw);
+      const $pos = doc.resolve(raw);
+      const pos = $pos.depth >= 1 ? $pos.before(1) : raw;
+      if (pos >= 0 && pos < doc.content.size) {
+        const node = doc.nodeAt(pos);
+        if (node) {
+          const dom = view.nodeDOM(pos);
+          if (dom instanceof HTMLElement) {
+            return { pos, node, dom };
+          }
+        }
+      }
     } catch {
-      continue;
+      /* ignore */
     }
+    return null;
+  };
 
-    let pos: number | null = null;
-    if ($pos.depth >= 1) {
-      pos = $pos.before(1);
-    } else if ($pos.nodeAfter) {
-      pos = raw;
-    } else if ($pos.nodeBefore) {
-      pos = raw - $pos.nodeBefore.nodeSize;
+  // 1. Tenta posAtCoords do ProseMirror
+  const coords = view.posAtCoords({ left: x, top: y });
+  if (coords) {
+    if (typeof coords.inside === 'number' && coords.inside >= 0) {
+      const found = tryResolve(coords.inside);
+      if (found) return found;
     }
+    if (typeof coords.pos === 'number' && coords.pos >= 0) {
+      const found = tryResolve(coords.pos);
+      if (found) return found;
+    }
+  }
 
-    if (pos === null || pos < 0) continue;
-
-    const node = doc.nodeAt(pos);
-    if (!node) continue;
-
-    const dom = view.nodeDOM(pos);
-    if (!(dom instanceof HTMLElement)) continue;
-
-    return { pos, node, dom };
+  // 2. Fallback via DOM elementFromPoint (garante localização precisa sobre NodeViews)
+  const el = document.elementFromPoint(x, y);
+  if (el) {
+    const editorDom = view.dom;
+    if (editorDom.contains(el)) {
+      let current: HTMLElement | null = el as HTMLElement;
+      while (current && current.parentElement && current.parentElement !== editorDom) {
+        current = current.parentElement;
+      }
+      if (current && current.parentElement === editorDom) {
+        try {
+          const domPos = view.posAtDOM(current, 0);
+          if (typeof domPos === 'number' && domPos >= 0) {
+            return tryResolve(domPos);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
   }
 
   return null;
@@ -150,27 +184,53 @@ function topLevelBlockAt(view: EditorView, x: number, y: number) {
 function isDraggingItself(view: EditorView, pos: number, node: PMNode): boolean {
   const selection = view.state.selection;
   if (selection instanceof NodeSelection) {
-    return selection.from === pos || (selection.from <= pos && selection.to >= pos + node.nodeSize);
+    if (selection.from === pos) return true;
+    if (selection.from >= pos && selection.to <= pos + node.nodeSize) return true;
   }
   if (draggedOrigin) {
-    return draggedOrigin.pos === pos;
+    if (draggedOrigin.pos === pos) return true;
+    if (draggedOrigin.pos >= pos && draggedOrigin.pos + draggedOrigin.nodeSize <= pos + node.nodeSize) {
+      return true;
+    }
   }
-  return selection.from < pos + node.nodeSize && selection.to > pos;
+  return false;
 }
 
-/** Slices parciais (metade de um parágrafo, texto solto) não viram coluna. */
-function sliceIsWholeBlocks(slice: Slice | null | undefined): boolean {
-  if (!slice) return true; // arquivos externos: validado depois
-  if (slice.openStart !== 0 || slice.openEnd !== 0) return false;
-  if (slice.content.childCount === 0) return false;
-  return true;
-}
-
-function sliceNodes(slice: Slice | null | undefined): PMNode[] {
-  if (!slice) return [];
+/** Extrai os nós reais contidos no slice, desembrulhando átomos inline de parágrafos abertos. */
+function extractNodesFromSlice(slice: Slice | null | undefined): PMNode[] {
+  if (!slice || slice.content.childCount === 0) return [];
   const nodes: PMNode[] = [];
-  slice.content.forEach((node) => nodes.push(node));
+
+  slice.content.forEach((node) => {
+    if (node.isBlock && !node.isTextblock) {
+      // Blocos diretos (ex: resizableImage, encryptedImage, linkPreview, etc.)
+      nodes.push(node);
+    } else if (node.isTextblock) {
+      // Parágrafo: verifica se contém átomos inline (ex: widgets)
+      let foundAtom = false;
+      node.forEach((child) => {
+        if (child.isAtom) {
+          nodes.push(child);
+          foundAtom = true;
+        }
+      });
+      // Se não tinha átomo, é bloco de texto normal
+      if (!foundAtom) {
+        nodes.push(node);
+      }
+    } else {
+      nodes.push(node);
+    }
+  });
+
   return nodes;
+}
+
+/** Valida se o slice pode virar coluna (rejeita apenas seleções parciais de caracteres sem átomos). */
+function sliceIsWholeBlocks(slice: Slice | null | undefined): boolean {
+  if (!slice) return true; // arquivos externos
+  if (slice.content.childCount === 0) return false;
+  return extractNodesFromSlice(slice).length > 0;
 }
 
 // ─── Extensão e Plugin ────────────────────────────────────────────────────────
@@ -190,12 +250,26 @@ export const DragToGroup = Extension.create({
               const target = dragEvent.target as HTMLElement | null;
               if (!target) return false;
 
+              // 1. Se já há uma NodeSelection ativa (ex: widget ou imagem clicada)
+              if (view.state.selection instanceof NodeSelection) {
+                const sel = view.state.selection;
+                draggedOrigin = { pos: sel.from, node: sel.node, nodeSize: sel.node.nodeSize };
+                return false;
+              }
+
+              // 2. Tenta obter a posição exata pelo DOM
               let pos: number | null = null;
               try {
                 const domPos = view.posAtDOM(target, 0);
                 if (typeof domPos === 'number' && domPos >= 0) {
                   const $pos = view.state.doc.resolve(domPos);
-                  pos = $pos.depth >= 1 ? $pos.before(1) : domPos;
+                  if ($pos.nodeAfter && $pos.nodeAfter.isAtom) {
+                    pos = domPos;
+                  } else if ($pos.nodeBefore && $pos.nodeBefore.isAtom) {
+                    pos = domPos - $pos.nodeBefore.nodeSize;
+                  } else {
+                    pos = $pos.depth >= 1 ? $pos.before(1) : domPos;
+                  }
                 }
               } catch {
                 /* fallback */
@@ -210,28 +284,23 @@ export const DragToGroup = Extension.create({
                 const node = view.state.doc.nodeAt(pos);
                 if (node) {
                   draggedOrigin = { pos, node, nodeSize: node.nodeSize };
-                  try {
-                    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
-                  } catch {
-                    /* ignore */
-                  }
                 }
               }
               return false;
             },
 
             dragend: () => {
-              clearDragState();
+              clearDragState(false);
               return false;
             },
 
             dragover: (view, event) => {
-              if (!view.isEditable) return false;
+              if (!view.editable) return false;
 
               const dragEvent = event as DragEvent;
               const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
               if (!block) {
-                clearDragState();
+                clearDragState(false);
                 return false;
               }
 
@@ -239,34 +308,30 @@ export const DragToGroup = Extension.create({
 
               // Não cria coluna soltando o bloco sobre ele mesmo.
               if (isDraggingItself(view, pos, node)) {
-                clearDragState();
+                clearDragState(false);
                 return false;
               }
 
               const rect = dom.getBoundingClientRect();
               if (rect.width === 0) {
-                clearDragState();
-                return false;
-              }
-
-              const edgeThreshold = Math.min(EDGE_MAX_PX, Math.max(EDGE_MIN_PX, rect.width * EDGE_RATIO));
-              const mouseX = dragEvent.clientX;
-              const nearLeft = mouseX - rect.left < edgeThreshold;
-              const nearRight = rect.right - mouseX < edgeThreshold;
-
-              if (!nearLeft && !nearRight) {
-                clearDragState();
+                clearDragState(false);
                 return false;
               }
 
               const dragging = (view as any).dragging as { slice: Slice; move: boolean } | null;
               if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
-                clearDragState();
+                clearDragState(false);
                 return false;
               }
 
-              const side = nearLeft ? 'left' : 'right';
-              const dragged = dragging ? sliceNodes(dragging.slice) : [];
+              // Metade esquerda -> coluna à esquerda / Metade direita -> coluna à direita
+              const mouseX = dragEvent.clientX;
+              const side: 'left' | 'right' = mouseX < rect.left + rect.width / 2 ? 'left' : 'right';
+              const dragged = dragging
+                ? extractNodesFromSlice(dragging.slice)
+                : draggedOrigin
+                ? [draggedOrigin.node]
+                : [];
 
               // Alvo já é um grupo → acrescenta uma coluna.
               const groupSpec = getSpecForGroup(node);
@@ -274,7 +339,7 @@ export const DragToGroup = Extension.create({
                 const fits = node.childCount < groupSpec.maxChildren;
                 const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
                 if (!fits || !compatible) {
-                  clearDragState();
+                  clearDragState(false);
                   return false;
                 }
                 activeTarget = { pos, side, mode: 'append', spec: groupSpec };
@@ -283,10 +348,9 @@ export const DragToGroup = Extension.create({
               }
 
               // Alvo é um bloco comum → cria um grupo novo.
-              // Sem payload conhecido (arquivo externo) assumimos colunas.
               const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
               if (!spec) {
-                clearDragState();
+                clearDragState(false);
                 return false;
               }
 
@@ -296,96 +360,82 @@ export const DragToGroup = Extension.create({
             },
 
             dragleave: (view, event) => {
-              // Só limpa ao sair do editor de verdade. Antes, qualquer troca de
-              // elemento filho disparava dragleave e o indicador piscava.
               const related = (event as DragEvent).relatedTarget as Node | null;
-              if (!related || !view.dom.contains(related)) clearDragState();
+              if (!related || !view.dom.contains(related)) {
+                clearDragState(false);
+              }
               return false;
             },
 
-            // IMPORTANTE: nada de limpar `activeTarget` aqui — `handleDrop`
-            // roda DEPOIS deste handler e precisa do alvo. Só o visual sai.
             drop: () => {
               hideIndicator();
               return false;
             },
           },
 
-          handleDrop(view, _event, slice, moved) {
+          handleDrop(view, _event, slice, _moved) {
             const target = activeTarget;
             if (!target) return false;
 
             const origin = draggedOrigin;
-            clearDragState();
+            clearDragState(true);
 
-            if (!sliceIsWholeBlocks(slice)) return false;
-            const content = sliceNodes(slice);
+            let content = extractNodesFromSlice(slice);
+            if (content.length === 0 && origin) {
+              content = [origin.node];
+            }
             if (content.length === 0) return false;
 
             let removeRange: { from: number; to: number } | null = null;
-            if (moved) {
-              // 1. Tenta usar a origem rastreada no dragstart
-              if (origin) {
-                const nodeAtOrigin = view.state.doc.nodeAt(origin.pos);
-                if (nodeAtOrigin && (nodeAtOrigin === origin.node || nodeAtOrigin.type === origin.node.type)) {
-                  removeRange = { from: origin.pos, to: origin.pos + nodeAtOrigin.nodeSize };
-                } else {
-                  // Procura o nó no documento se a posição mudou
-                  let foundPos: number | null = null;
-                  view.state.doc.descendants((candidate, pos) => {
-                    if (foundPos !== null) return false;
-                    if (pos === target.pos) return false;
-                    if (candidate.type === origin.node.type && candidate.eq(origin.node)) {
-                      foundPos = pos;
-                      return false;
-                    }
-                    return true;
-                  });
-                  if (foundPos !== null) {
-                    const foundNode = view.state.doc.nodeAt(foundPos);
-                    if (foundNode) {
-                      removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
-                    }
-                  }
-                }
-              }
 
-              // 2. Se não tinha origin, verifica se view.state.selection é NodeSelection que casa com o conteúdo arrastado
-              if (!removeRange && view.state.selection instanceof NodeSelection) {
-                const selNode = view.state.selection.node;
-                const { from, to } = view.state.selection;
-                if (content.some((c) => c.type === selNode.type)) {
-                  removeRange = { from, to };
-                }
+            // 1. Tenta usar a origem rastreada no dragstart
+            if (origin) {
+              const nodeAtOrigin = view.state.doc.nodeAt(origin.pos);
+              if (nodeAtOrigin && (nodeAtOrigin.type === origin.node.type || nodeAtOrigin.eq(origin.node))) {
+                removeRange = { from: origin.pos, to: origin.pos + nodeAtOrigin.nodeSize };
               }
+            }
 
-              // 3. Se ainda não achou e temos content[0], procura o nó idêntico no documento (diferente do alvo)
-              if (!removeRange && content.length > 0) {
-                const targetContent = content[0];
-                let foundPos: number | null = null;
-                view.state.doc.descendants((candidate, pos) => {
-                  if (foundPos !== null) return false;
-                  if (pos === target.pos) return false;
-                  if (candidate.type === targetContent.type && candidate.eq(targetContent)) {
+            // 2. Se não tinha origin, verifica NodeSelection
+            if (!removeRange && view.state.selection instanceof NodeSelection) {
+              const sel = view.state.selection;
+              removeRange = { from: sel.from, to: sel.to };
+            }
+
+            // 3. Se ainda não achou e temos content[0], procura o nó idêntico no documento
+            if (!removeRange && content.length > 0) {
+              const targetNode = content[0];
+              let foundPos: number | null = null;
+              view.state.doc.descendants((candidate, pos) => {
+                if (foundPos !== null) return false;
+                if (pos === target.pos) return false;
+                if (candidate.type === targetNode.type) {
+                  if (candidate.eq(targetNode)) {
                     foundPos = pos;
                     return false;
                   }
-                  return true;
-                });
-                if (foundPos !== null) {
-                  const foundNode = view.state.doc.nodeAt(foundPos);
-                  if (foundNode) {
-                    removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
+                  if (candidate.attrs && targetNode.attrs) {
+                    const idA = candidate.attrs.url || candidate.attrs.driveFileId || candidate.attrs.sessionId || candidate.attrs.fileId || candidate.attrs.alarmId || candidate.attrs.eventId || candidate.attrs.mediaId || candidate.attrs.src;
+                    const idB = targetNode.attrs.url || targetNode.attrs.driveFileId || targetNode.attrs.sessionId || targetNode.attrs.fileId || targetNode.attrs.alarmId || targetNode.attrs.eventId || targetNode.attrs.mediaId || targetNode.attrs.src;
+                    if (idA && idA === idB) {
+                      foundPos = pos;
+                      return false;
+                    }
                   }
                 }
-              }
-
-              // 4. Se encontrou removeRange, valida se não é destrutivo (soltar em si mesmo)
-              if (removeRange) {
-                if (removeRange.from <= target.pos && removeRange.to >= target.pos) {
-                  return false;
+                return true;
+              });
+              if (foundPos !== null) {
+                const foundNode = view.state.doc.nodeAt(foundPos);
+                if (foundNode) {
+                  removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
                 }
               }
+            }
+
+            // 4. Valida se não é soltar em si mesmo
+            if (removeRange && removeRange.from <= target.pos && removeRange.to >= target.pos) {
+              return false;
             }
 
             return applyGroupDrop(view, target, content, removeRange);
@@ -395,3 +445,4 @@ export const DragToGroup = Extension.create({
     ];
   },
 });
+
