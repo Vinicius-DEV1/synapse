@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { CalendarEvent } from '../../types';
-import { X, Calendar as CalendarIcon, Clock, Type, Palette, Bell, BookOpen } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, Clock, Type, Palette, BookOpen } from 'lucide-react';
 import { Portal } from '../ui/Portal';
-import { parseEventDate } from '../../utils/dateUtils';
 import { useStore } from '../../store/useStore';
+import { useEventForm, CALENDAR_EVENT_COLORS } from './hooks/useEventForm';
+import { EventFormDateTimes } from './ui/EventFormDateTimes';
+import { EventFormReminders } from './ui/EventFormReminders';
+import { EventModalFooter } from './ui/EventModalFooter';
 
 interface EventModalProps {
   event: CalendarEvent | null;
@@ -14,96 +16,35 @@ interface EventModalProps {
   initialDate?: Date;
 }
 
-const COLORS = ['#4F46E5', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899', '#64748B'];
-
 export default function EventModal({ event, onSave, onClose, onDelete, initialDate }: EventModalProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('10:00');
-  const [type, setType] = useState<'event' | 'task'>('event');
-  const [color, setColor] = useState(COLORS[0]);
-  const [isAllDay, setIsAllDay] = useState(false);
-  const [recurrence, setRecurrence] = useState<'none'|'daily'|'weekly'|'monthly'|'yearly'>('none');
-  const [reminders, setReminders] = useState<number[]>([1440, 120, 15, 0]);
   const { state, dispatch } = useStore();
   const linkedPage = state.pages.find(p => p.id === event?.page_id);
 
-  useEffect(() => {
-    if (event) {
-      setTitle(event.title);
-      setDescription(event.description || '');
-      setType(event.type);
-      setColor(event.color || COLORS[0]);
-
-      let remArray: number[] = [1440, 120, 15];
-      if (Array.isArray(event.reminders)) {
-        remArray = event.reminders;
-      } else if (typeof event.reminders === 'string') {
-        try { remArray = JSON.parse(event.reminders); } catch { remArray = [1440, 120, 15]; }
-      }
-      setReminders(remArray);
-
-      if (event.start_date) {
-        const start = parseEventDate(event.start_date);
-        if (!isNaN(start.getTime())) {
-          setStartDate(format(start, 'yyyy-MM-dd'));
-          setStartTime(format(start, 'HH:mm'));
-        }
-      }
-
-      if (event.end_date) {
-        const end = parseEventDate(event.end_date);
-        if (!isNaN(end.getTime())) {
-          setEndDate(format(end, 'yyyy-MM-dd'));
-          setEndTime(format(end, 'HH:mm'));
-        }
-      }
-      
-      // Se for de 00:00 até 23:59, consideramos "Dia Inteiro"
-      if (event.start_date && event.end_date) {
-        const start = parseEventDate(event.start_date);
-        const end = parseEventDate(event.end_date);
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-          if (format(start, 'HH:mm') === '00:00' && format(end, 'HH:mm') === '23:59') {
-            setIsAllDay(true);
-          }
-        }
-      } else {
-        setIsAllDay(false);
-      }
-    } else {
-      const now = initialDate || new Date();
-      setStartDate(format(now, 'yyyy-MM-dd'));
-      setEndDate(format(now, 'yyyy-MM-dd'));
-      setIsAllDay(false);
-    }
-  }, [event]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !startDate || !startTime || !endDate || !endTime) return;
-    const finalStartTime = isAllDay ? '00:00' : startTime;
-    const finalEndTime = isAllDay ? '23:59' : endTime;
-
-    const start_date = new Date(`${startDate}T${finalStartTime}`).toISOString();
-    const end_date = new Date(`${endDate}T${finalEndTime}`).toISOString();
-
-    onSave({
-      title: title.trim(),
-      description: description.trim(),
-      start_date,
-      end_date,
-      type,
-      color,
-      status: event?.status || 'pending',
-      recurrence_rule: recurrence !== 'none' ? recurrence : null,
-      page_id: event?.page_id || null,
-      reminders,
-    });
-  };
+  const {
+    title,
+    setTitle,
+    description,
+    setDescription,
+    startDate,
+    setStartDate,
+    startTime,
+    setStartTime,
+    endDate,
+    setEndDate,
+    endTime,
+    setEndTime,
+    type,
+    setType,
+    color,
+    setColor,
+    isAllDay,
+    setIsAllDay,
+    recurrence,
+    setRecurrence,
+    reminders,
+    toggleReminder,
+    handleSubmit,
+  } = useEventForm(event, initialDate, onSave);
 
   return (
     <Portal>
@@ -160,69 +101,20 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
             </div>
 
             {/* Datas */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={isAllDay} 
-                  onChange={(e) => setIsAllDay(e.target.checked)}
-                  className="rounded border-dark-border bg-dark-bg text-emerald-500 focus:ring-emerald-500/20"
-                />
-                <span className="text-sm text-dark-text">Dia inteiro</span>
-              </label>
+            <EventFormDateTimes
+              isAllDay={isAllDay}
+              setIsAllDay={setIsAllDay}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              startTime={startTime}
+              setStartTime={setStartTime}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              endTime={endTime}
+              setEndTime={setEndTime}
+            />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-                    <CalendarIcon size={14} /> Início
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={e => setStartDate(e.target.value)}
-                      className="w-full bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
-                      required
-                    />
-                    {!isAllDay && (
-                      <input
-                        type="time"
-                        value={startTime}
-                        onChange={e => setStartTime(e.target.value)}
-                        className="w-24 bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
-                        required
-                      />
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-                    <CalendarIcon size={14} /> Fim
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={e => setEndDate(e.target.value)}
-                      className="w-full bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
-                      required
-                    />
-                    {!isAllDay && (
-                      <input
-                        type="time"
-                        value={endTime}
-                        onChange={e => setEndTime(e.target.value)}
-                        className="w-24 bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
-                        required
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Repetição e Cor (Lado a Lado na Criação) */}
+            {/* Repetição e Cor */}
             <div className={`grid ${!event ? 'grid-cols-2' : 'grid-cols-1'} gap-3 items-center`}>
               {!event && (
                 <div className="space-y-1">
@@ -248,7 +140,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                   <Palette size={14} /> Cor
                 </label>
                 <div className="flex gap-2 py-0.5">
-                  {COLORS.map(c => (
+                  {CALENDAR_EVENT_COLORS.map(c => (
                     <button
                       key={c}
                       type="button"
@@ -262,43 +154,10 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
             </div>
 
             {/* Lembretes */}
-            <div className="space-y-1.5 pt-2 border-t border-white/5">
-              <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-                <Bell size={14} className="text-brand-400" /> Avisos / Lembretes Automáticos
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  { value: 1440, label: '1 dia antes (24h)' },
-                  { value: 120, label: '2 horas antes' },
-                  { value: 15, label: '15 minutos antes' },
-                  { value: 0, label: 'No momento do evento' }
-                ].map(opt => {
-                  const checked = reminders.includes(opt.value);
-                  return (
-                    <div
-                      key={opt.value}
-                      onClick={() => {
-                        if (checked) setReminders(reminders.filter(v => v !== opt.value));
-                        else setReminders([...reminders, opt.value].sort((a, b) => b - a));
-                      }}
-                      className={`flex items-center gap-2 p-1.5 rounded-lg border text-xs cursor-pointer select-none transition-all ${
-                        checked
-                          ? 'bg-brand-500/15 border-brand-500/40 text-brand-300 font-medium'
-                          : 'bg-white/5 border-white/5 text-dark-subtext hover:bg-white/10'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        readOnly
-                        className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-0 pointer-events-none"
-                      />
-                      <span>{opt.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <EventFormReminders
+              reminders={reminders}
+              toggleReminder={toggleReminder}
+            />
 
             {/* Vínculo com Página */}
             {event?.page_id && (
@@ -336,54 +195,15 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
             </div>
           </form>
 
-          <div className="px-4 py-3 border-t border-dark-border flex justify-between bg-dark-bg/50 flex-shrink-0">
-            {onDelete && event ? (
-              event.recurrence_rule?.startsWith('group_') ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onDelete(false)}
-                    className="px-2.5 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors"
-                  >
-                    Excluir Este
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(true)}
-                    className="px-2.5 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors"
-                  >
-                    Excluir Série
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onDelete(false)}
-                  className="px-4 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors"
-                >
-                  Excluir
-                </button>
-              )
-            ) : <div></div>}
-            
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-1.5 text-sm font-medium text-dark-subtext hover:text-dark-text hover:bg-dark-hover rounded-md transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-1.5 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors shadow-sm"
-              >
-                Salvar
-              </button>
-            </div>
-          </div>
+          <EventModalFooter
+            event={event}
+            onDelete={onDelete}
+            onClose={onClose}
+            onSubmit={handleSubmit}
+          />
         </div>
       </div>
     </Portal>
   );
 }
+
