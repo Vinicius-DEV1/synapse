@@ -41,6 +41,7 @@ const EDGE_MIN_PX = 28;
 // consultá-lo no próprio `handleDrop`, que roda antes do dos plugins.
 let activeTarget: GroupDropTarget | null = null;
 let indicator: HTMLDivElement | null = null;
+let draggedOrigin: { pos: number; node: PMNode; nodeSize: number } | null = null;
 
 function hideIndicator() {
   indicator?.remove();
@@ -50,6 +51,7 @@ function hideIndicator() {
 function clearDragState() {
   hideIndicator();
   activeTarget = null;
+  draggedOrigin = null;
 }
 
 function showIndicator(rect: DOMRect, side: 'left' | 'right') {
@@ -150,6 +152,9 @@ function isDraggingItself(view: EditorView, pos: number, node: PMNode): boolean 
   if (selection instanceof NodeSelection) {
     return selection.from === pos || (selection.from <= pos && selection.to >= pos + node.nodeSize);
   }
+  if (draggedOrigin) {
+    return draggedOrigin.pos === pos;
+  }
   return selection.from < pos + node.nodeSize && selection.to > pos;
 }
 
@@ -158,20 +163,17 @@ function sliceIsWholeBlocks(slice: Slice | null | undefined): boolean {
   if (!slice) return true; // arquivos externos: validado depois
   if (slice.openStart !== 0 || slice.openEnd !== 0) return false;
   if (slice.content.childCount === 0) return false;
-  let ok = true;
-  slice.content.forEach((child) => {
-    if (!child.isBlock) ok = false;
-  });
-  return ok;
+  return true;
 }
 
-function sliceNodes(slice: Slice): PMNode[] {
+function sliceNodes(slice: Slice | null | undefined): PMNode[] {
+  if (!slice) return [];
   const nodes: PMNode[] = [];
-  slice.content.forEach((child) => nodes.push(child));
+  slice.content.forEach((node) => nodes.push(node));
   return nodes;
 }
 
-// ─── Extensão ─────────────────────────────────────────────────────────────────
+// ─── Extensão e Plugin ────────────────────────────────────────────────────────
 
 export const DragToGroup = Extension.create({
   name: 'dragToGroup',
@@ -181,59 +183,84 @@ export const DragToGroup = Extension.create({
       new Plugin({
         key: new PluginKey('dragToGroup'),
 
-        view() {
-          // O `dragend` nem sempre chega ao editor (drop fora da janela, ESC…).
-          const onGlobalEnd = () => clearDragState();
-          const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') clearDragState();
-          };
-
-          document.addEventListener('dragend', onGlobalEnd);
-          document.addEventListener('keydown', onKeyDown);
-
-          return {
-            destroy() {
-              document.removeEventListener('dragend', onGlobalEnd);
-              document.removeEventListener('keydown', onKeyDown);
-              clearDragState();
-            },
-          };
-        },
-
         props: {
           handleDOMEvents: {
+            dragstart: (view, event) => {
+              const dragEvent = event as DragEvent;
+              const target = dragEvent.target as HTMLElement | null;
+              if (!target) return false;
+
+              let pos: number | null = null;
+              try {
+                const domPos = view.posAtDOM(target, 0);
+                if (typeof domPos === 'number' && domPos >= 0) {
+                  const $pos = view.state.doc.resolve(domPos);
+                  pos = $pos.depth >= 1 ? $pos.before(1) : domPos;
+                }
+              } catch {
+                /* fallback */
+              }
+
+              if (pos === null) {
+                const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
+                if (block) pos = block.pos;
+              }
+
+              if (pos !== null && pos >= 0) {
+                const node = view.state.doc.nodeAt(pos);
+                if (node) {
+                  draggedOrigin = { pos, node, nodeSize: node.nodeSize };
+                  try {
+                    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+                  } catch {
+                    /* ignore */
+                  }
+                }
+              }
+              return false;
+            },
+
+            dragend: () => {
+              clearDragState();
+              return false;
+            },
+
             dragover: (view, event) => {
-              if (!view.editable) return false;
+              if (!view.isEditable) return false;
 
               const dragEvent = event as DragEvent;
-              const dragging = (view as unknown as { dragging?: { slice: Slice } }).dragging;
-              if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
+              const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
+              if (!block) {
                 clearDragState();
                 return false;
               }
 
-              const found = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
-              if (!found) {
-                clearDragState();
-                return false;
-              }
+              const { pos, node, dom } = block;
 
-              const { pos, node, dom } = found;
-              const rect = dom.getBoundingClientRect();
-              if (rect.width <= 0) {
-                clearDragState();
-                return false;
-              }
-
+              // Não cria coluna soltando o bloco sobre ele mesmo.
               if (isDraggingItself(view, pos, node)) {
                 clearDragState();
                 return false;
               }
 
-              const edge = Math.min(Math.max(rect.width * EDGE_RATIO, EDGE_MIN_PX), EDGE_MAX_PX);
-              const nearLeft = dragEvent.clientX - rect.left < edge;
-              const nearRight = rect.right - dragEvent.clientX < edge;
+              const rect = dom.getBoundingClientRect();
+              if (rect.width === 0) {
+                clearDragState();
+                return false;
+              }
+
+              const edgeThreshold = Math.min(EDGE_MAX_PX, Math.max(EDGE_MIN_PX, rect.width * EDGE_RATIO));
+              const mouseX = dragEvent.clientX;
+              const nearLeft = mouseX - rect.left < edgeThreshold;
+              const nearRight = rect.right - mouseX < edgeThreshold;
+
               if (!nearLeft && !nearRight) {
+                clearDragState();
+                return false;
+              }
+
+              const dragging = (view as any).dragging as { slice: Slice; move: boolean } | null;
+              if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
                 clearDragState();
                 return false;
               }
@@ -288,20 +315,76 @@ export const DragToGroup = Extension.create({
             const target = activeTarget;
             if (!target) return false;
 
+            const origin = draggedOrigin;
             clearDragState();
 
             if (!sliceIsWholeBlocks(slice)) return false;
             const content = sliceNodes(slice);
             if (content.length === 0) return false;
 
-            // Num arrasto "mover", o conteúdo original é a seleção atual.
             let removeRange: { from: number; to: number } | null = null;
             if (moved) {
-              const { from, to } = view.state.selection;
-              if (to > from) {
-                // Soltar dentro do próprio bloco arrastado seria destrutivo.
-                if (from <= target.pos && to >= target.pos) return false;
-                removeRange = { from, to };
+              // 1. Tenta usar a origem rastreada no dragstart
+              if (origin) {
+                const nodeAtOrigin = view.state.doc.nodeAt(origin.pos);
+                if (nodeAtOrigin && (nodeAtOrigin === origin.node || nodeAtOrigin.type === origin.node.type)) {
+                  removeRange = { from: origin.pos, to: origin.pos + nodeAtOrigin.nodeSize };
+                } else {
+                  // Procura o nó no documento se a posição mudou
+                  let foundPos: number | null = null;
+                  view.state.doc.descendants((candidate, pos) => {
+                    if (foundPos !== null) return false;
+                    if (pos === target.pos) return false;
+                    if (candidate.type === origin.node.type && candidate.eq(origin.node)) {
+                      foundPos = pos;
+                      return false;
+                    }
+                    return true;
+                  });
+                  if (foundPos !== null) {
+                    const foundNode = view.state.doc.nodeAt(foundPos);
+                    if (foundNode) {
+                      removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
+                    }
+                  }
+                }
+              }
+
+              // 2. Se não tinha origin, verifica se view.state.selection é NodeSelection que casa com o conteúdo arrastado
+              if (!removeRange && view.state.selection instanceof NodeSelection) {
+                const selNode = view.state.selection.node;
+                const { from, to } = view.state.selection;
+                if (content.some((c) => c.type === selNode.type)) {
+                  removeRange = { from, to };
+                }
+              }
+
+              // 3. Se ainda não achou e temos content[0], procura o nó idêntico no documento (diferente do alvo)
+              if (!removeRange && content.length > 0) {
+                const targetContent = content[0];
+                let foundPos: number | null = null;
+                view.state.doc.descendants((candidate, pos) => {
+                  if (foundPos !== null) return false;
+                  if (pos === target.pos) return false;
+                  if (candidate.type === targetContent.type && candidate.eq(targetContent)) {
+                    foundPos = pos;
+                    return false;
+                  }
+                  return true;
+                });
+                if (foundPos !== null) {
+                  const foundNode = view.state.doc.nodeAt(foundPos);
+                  if (foundNode) {
+                    removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
+                  }
+                }
+              }
+
+              // 4. Se encontrou removeRange, valida se não é destrutivo (soltar em si mesmo)
+              if (removeRange) {
+                if (removeRange.from <= target.pos && removeRange.to >= target.pos) {
+                  return false;
+                }
               }
             }
 
