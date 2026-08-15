@@ -1,16 +1,9 @@
 import React from 'react';
-import { Search, Plus, BarChart3, ArrowUpDown, ChevronDown, BookOpen, Library, Cloud, Edit2 } from 'lucide-react';
+import { Search, Plus, BarChart3, Library, Cloud } from 'lucide-react';
 import type { LibraryCollection, ReadingStatus } from '../../../types';
-
-type SortBy = 'last_read' | 'title' | 'created' | 'author';
-type SortOrder = 'asc' | 'desc';
-
-const SORT_LABELS: Record<SortBy, string> = {
-  last_read: 'Último lido',
-  title: 'Título A-Z',
-  created: 'Data de adição',
-  author: 'Autor',
-};
+import { LibrarySortDropdown, type SortBy, type SortOrder } from './LibrarySortDropdown';
+import { LibraryCollectionDropdown } from './LibraryCollectionDropdown';
+import { LibraryAuthorDropdown } from './LibraryAuthorDropdown';
 
 const STATUS_LABELS: Record<ReadingStatus | 'all', string> = {
   all: 'Todos',
@@ -65,7 +58,7 @@ export function LibraryHeader({
   statusFilter, setStatusFilter,
   collections, selectedCollection, setSelectedCollection, showCollectionDropdown, setShowCollectionDropdown,
   editingCollectionId, setEditingCollectionId, editingCollectionName, setEditingCollectionName, handleSaveRename, handleStartRename,
-  authors, selectedAuthor, setSelectedAuthor, showAuthorDropdown, setShowAuthorDropdown
+  authors, selectedAuthor, setSelectedAuthor, showAuthorDropdown, setShowAuthorDropdown,
 }: LibraryHeaderProps) {
   return (
     <div className="relative z-50 flex-shrink-0 border-b border-white/5 bg-dark-bg/80 backdrop-blur-sm">
@@ -131,53 +124,19 @@ export function LibraryHeader({
           </div>
 
           {/* Sort dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowSortDropdown(!showSortDropdown);
-                setShowCollectionDropdown(false);
-                setShowAuthorDropdown(false);
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-white/5 transition-all"
-            >
-              <ArrowUpDown size={14} />
-              <span>{SORT_LABELS[sortBy]}</span>
-              <ChevronDown size={14} />
-            </button>
-            {showSortDropdown && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
-                <div className="absolute top-full mt-1 right-0 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in">
-                  {(Object.keys(SORT_LABELS) as SortBy[]).map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        if (sortBy === key) {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy(key);
-                          setSortOrder(key === 'title' || key === 'author' ? 'asc' : 'desc');
-                        }
-                        setShowSortDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                        sortBy === key
-                          ? 'text-brand-400 bg-brand-500/10'
-                          : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                      }`}
-                    >
-                      {SORT_LABELS[key]}
-                      {sortBy === key && (
-                        <span className="ml-2 text-xs opacity-60">
-                          {sortOrder === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          <LibrarySortDropdown
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            showSortDropdown={showSortDropdown}
+            setShowSortDropdown={setShowSortDropdown}
+            onOpen={() => {
+              setShowSortDropdown(!showSortDropdown);
+              setShowCollectionDropdown(false);
+              setShowAuthorDropdown(false);
+            }}
+          />
 
           {/* Status pills */}
           <div className="flex items-center gap-1 bg-dark-card rounded-lg p-1 border border-white/5">
@@ -197,160 +156,38 @@ export function LibraryHeader({
           </div>
 
           {/* Collection filter */}
-          {collections.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowCollectionDropdown(!showCollectionDropdown);
-                  setShowSortDropdown(false);
-                  setShowAuthorDropdown(false);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${
-                  selectedCollection
-                    ? 'border-brand-500/30 text-brand-400 bg-brand-500/10'
-                    : 'border-white/5 text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                }`}
-              >
-                <BookOpen size={14} />
-                <span>
-                  {selectedCollection
-                    ? collections.find((c) => c.id === selectedCollection)?.name || 'Coleção'
-                    : 'Coleções'}
-                </span>
-                <ChevronDown size={14} />
-              </button>
-              {showCollectionDropdown && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowCollectionDropdown(false)} />
-                  <div className="absolute top-full mt-1 right-0 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in">
-                    <button
-                      onClick={() => {
-                        setSelectedCollection(null);
-                        setShowCollectionDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                        !selectedCollection
-                          ? 'text-brand-400 bg-brand-500/10'
-                          : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                      }`}
-                    >
-                      Todas as coleções
-                    </button>
-                    {collections.map((col) => (
-                      <div key={col.id} className="relative group">
-                        {editingCollectionId === col.id ? (
-                          <div className="px-3 py-1.5 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editingCollectionName}
-                              onChange={e => setEditingCollectionName(e.target.value)}
-                              onKeyDown={async e => {
-                                if (e.key === 'Enter') {
-                                  await handleSaveRename(col);
-                                } else if (e.key === 'Escape') {
-                                  setEditingCollectionId(null);
-                                }
-                              }}
-                              onBlur={() => handleSaveRename(col)}
-                              className="w-full bg-dark-bg/50 border border-brand-500/50 rounded px-2 py-1 text-sm text-dark-text outline-none"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                setSelectedCollection(col.id);
-                                setShowCollectionDropdown(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors pr-10 ${
-                                selectedCollection === col.id
-                                  ? 'text-brand-400 bg-brand-500/10'
-                                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                              }`}
-                            >
-                              <span
-                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: col.color }}
-                              />
-                              {col.name}
-                            </button>
-                            <button
-                              onClick={(e) => handleStartRename(e, col)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded opacity-0 group-hover:opacity-100 transition-all"
-                              title="Renomear coleção"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <LibraryCollectionDropdown
+            collections={collections}
+            selectedCollection={selectedCollection}
+            setSelectedCollection={setSelectedCollection}
+            showCollectionDropdown={showCollectionDropdown}
+            setShowCollectionDropdown={setShowCollectionDropdown}
+            editingCollectionId={editingCollectionId}
+            setEditingCollectionId={setEditingCollectionId}
+            editingCollectionName={editingCollectionName}
+            setEditingCollectionName={setEditingCollectionName}
+            handleSaveRename={handleSaveRename}
+            handleStartRename={handleStartRename}
+            onOpen={() => {
+              setShowCollectionDropdown(!showCollectionDropdown);
+              setShowSortDropdown(false);
+              setShowAuthorDropdown(false);
+            }}
+          />
 
           {/* Author filter */}
-          {authors.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowAuthorDropdown(!showAuthorDropdown);
-                  setShowCollectionDropdown(false);
-                  setShowSortDropdown(false);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all ${
-                  selectedAuthor
-                    ? 'border-brand-500/30 text-brand-400 bg-brand-500/10'
-                    : 'border-white/5 text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                }`}
-              >
-                <BookOpen size={14} className="opacity-70" />
-                <span className="truncate max-w-[120px]">
-                  {selectedAuthor || 'Autor'}
-                </span>
-                <ChevronDown size={14} />
-              </button>
-              {showAuthorDropdown && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowAuthorDropdown(false)} />
-                  <div className="absolute top-full mt-1 right-0 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[200px] max-h-64 overflow-y-auto animate-scale-in">
-                    <button
-                      onClick={() => {
-                        setSelectedAuthor(null);
-                        setShowAuthorDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                        !selectedAuthor
-                          ? 'text-brand-400 bg-brand-500/10'
-                          : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                      }`}
-                    >
-                      Todos os autores
-                    </button>
-                    {authors.map((author) => (
-                      <button
-                        key={author}
-                        onClick={() => {
-                          setSelectedAuthor(author);
-                          setShowAuthorDropdown(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                          selectedAuthor === author
-                            ? 'text-brand-400 bg-brand-500/10'
-                            : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
-                        }`}
-                      >
-                        {author}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <LibraryAuthorDropdown
+            authors={authors}
+            selectedAuthor={selectedAuthor}
+            setSelectedAuthor={setSelectedAuthor}
+            showAuthorDropdown={showAuthorDropdown}
+            setShowAuthorDropdown={setShowAuthorDropdown}
+            onOpen={() => {
+              setShowAuthorDropdown(!showAuthorDropdown);
+              setShowCollectionDropdown(false);
+              setShowSortDropdown(false);
+            }}
+          />
         </div>
       </div>
     </div>

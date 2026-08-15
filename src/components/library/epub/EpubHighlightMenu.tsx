@@ -1,19 +1,33 @@
-import React, { useLayoutEffect, useState, useCallback } from 'react';
-import { Trash2, Sparkles, BookType, X } from 'lucide-react';
+import React, { useLayoutEffect } from 'react';
+import { Sparkles } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import DictionaryModal from '../DictionaryModal';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
+import { useEpubHighlightActions } from './hooks/useEpubHighlightActions';
+import { EpubHighlightColorBar } from './ui/EpubHighlightColorBar';
+import { EpubHighlightNoteEditor } from './ui/EpubHighlightNoteEditor';
 
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
 export default function EpubHighlightMenu() {
   const { dispatch } = useStore();
+  const { readingMode } = useEpub();
   const {
-    book, rendition, selection, setSelection,
-    noteMode, setNoteMode, noteText, setNoteText,
-    readingMode, setHighlights
-  } = useEpub();
+    selection,
+    setSelection,
+    noteMode,
+    setNoteMode,
+    noteText,
+    setNoteText,
+    dictionaryTarget,
+    setDictionaryTarget,
+    confirmDelete,
+    setConfirmDelete,
+    getPageContext,
+    handleCreateHighlight,
+    handleDeleteHighlight,
+  } = useEpubHighlightActions();
 
   // Floating (desktop only)
   const { refs, floatingStyles, isPositioned } = useFloating({
@@ -37,152 +51,37 @@ export default function EpubHighlightMenu() {
     }
   }, [selection]);
 
-
-  const [dictionaryTarget, setDictionaryTarget] = useState<{ word: string, context: string, selection?: any, preloadedData?: any } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const getPageContext = () => {
-    try {
-      if (!rendition || !selection?.text) return selection?.text || '';
-      const contents = (rendition as any).getContents();
-      if (contents && contents.length > 0) {
-        const bodyText = contents[0].document.body.innerText;
-        if (bodyText) {
-          const idx = bodyText.indexOf(selection.text);
-          if (idx !== -1) {
-            const start = Math.max(0, idx - 1600);
-            const end = Math.min(bodyText.length, idx + 1600);
-            return bodyText.substring(start, end);
-          }
-          return bodyText.substring(0, 3200);
-        }
-      }
-    } catch(e) {
-      console.warn('Failed to extract epub context', e);
-    }
-    return selection?.text || '';
-  };
-
-  const handleCreateHighlight = useCallback(async (color: string, noteOverride?: string, selOverride?: any) => {
-    const activeSelection = selOverride || selection;
-    if (!activeSelection || !rendition) return;
-    try {
-      const colorMap: any = { yellow: '#fbbf24', green: '#34d399', blue: '#60a5fa', pink: '#f472b6' };
-      const finalNote = noteOverride !== undefined ? noteOverride : (noteText || undefined);
-      
-      if (activeSelection.existingHighlightId) {
-        await window.api.library.updateHighlight({
-          id: activeSelection.existingHighlightId,
-          color,
-          note: finalNote
-        });
-        setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
-        rendition.annotations.remove(activeSelection.cfiRange, "highlight");
-        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
-          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-          if (e && typeof e.preventDefault === 'function') e.preventDefault();
-          // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
-          window.__lastHighlightClick = Date.now();
-          const rawRect = e.target.getBoundingClientRect();
-          let offsetX = 0; let offsetY = 0;
-          const iframe = e.target.ownerDocument?.defaultView?.frameElement;
-          if (iframe) {
-              const iframeRect = iframe.getBoundingClientRect();
-              offsetX = iframeRect.left; offsetY = iframeRect.top;
-          }
-          const rect = {
-              top: rawRect.top + offsetY, left: rawRect.left + offsetX,
-              bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
-              x: rawRect.x + offsetX, y: rawRect.y + offsetY,
-              width: rawRect.width, height: rawRect.height, toJSON: rawRect.toJSON
-          } as DOMRect;
-          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: activeSelection.existingHighlightId });
-          setNoteMode(color);
-          setNoteText(finalNote || '');
-        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
-      } else {
-        const hl = await window.api.library.createHighlight({
-          book_id: book.id,
-          page_number: 0,
-          text_content: activeSelection.text,
-          color,
-          rects: activeSelection.cfiRange,
-          highlight_type: 'text',
-          note: finalNote
-        });
-        setHighlights((prev: any[]) => [...prev, hl]);
-        rendition.annotations.highlight(activeSelection.cfiRange, {}, (e: any) => {
-          if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-          if (e && typeof e.preventDefault === 'function') e.preventDefault();
-          // Sinaliza para o EpubReader que um grifo foi clicado (evita ghost click)
-          window.__lastHighlightClick = Date.now();
-          const rawRect = e.target.getBoundingClientRect();
-          let offsetX = 0; let offsetY = 0;
-          const iframe = e.target.ownerDocument?.defaultView?.frameElement;
-          if (iframe) {
-              const iframeRect = iframe.getBoundingClientRect();
-              offsetX = iframeRect.left; offsetY = iframeRect.top;
-          }
-          const rect = {
-              top: rawRect.top + offsetY, left: rawRect.left + offsetX,
-              bottom: rawRect.bottom + offsetY, right: rawRect.right + offsetX,
-              x: rawRect.x + offsetX, y: rawRect.y + offsetY,
-              width: rawRect.width, height: rawRect.height, toJSON: rawRect.toJSON
-          } as DOMRect;
-          setSelection({ cfiRange: activeSelection.cfiRange, text: activeSelection.text, rect, existingHighlightId: hl.id });
-          setNoteMode(color);
-          setNoteText(hl.note || '');
-        }, '', { fill: colorMap[color], 'fill-opacity': '0.3', 'cursor': 'pointer' });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setSelection(null);
-    setNoteMode(null);
-    setNoteText('');
-  }, [selection, rendition, book.id, noteText, setHighlights, setSelection, setNoteMode, setNoteText]);
-
-  const handleDeleteHighlight = async (id: string, cfi: string) => {
-    await window.api.library.deleteHighlight(id);
-    setHighlights((prev: any[]) => prev.filter(h => h.id !== id));
-    rendition?.annotations.remove(cfi, "highlight");
-  };
-
   if (!selection && !dictionaryTarget?.selection) {
-
     if (dictionaryTarget) {
       return (
-        <DictionaryModal 
+        <DictionaryModal
           text={dictionaryTarget.word}
           pageContext={dictionaryTarget.context}
           preloadedData={dictionaryTarget.preloadedData}
           onSaveHighlight={dictionaryTarget.selection ? (color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection) : undefined}
-          onClose={() => setDictionaryTarget(null)} 
+          onClose={() => setDictionaryTarget(null)}
         />
       );
     }
     return null;
   }
 
-  // Se o Modal do Dicionário estiver aberto MAS a seleção foi mantida, renderizamos o modal SOBRE o menu
-  // Mas para não renderizar o menu por trás ou perder o foco, na verdade o Floating-UI fica posicionado pela selection
   if (dictionaryTarget) {
     return (
-      <DictionaryModal 
+      <DictionaryModal
         text={dictionaryTarget.word}
         pageContext={dictionaryTarget.context}
         preloadedData={dictionaryTarget.preloadedData}
         onSaveHighlight={(color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection)}
         onClose={() => {
           if (dictionaryTarget.selection) {
-             setSelection(dictionaryTarget.selection);
+            setSelection(dictionaryTarget.selection);
           }
           setDictionaryTarget(null);
-        }} 
+        }}
       />
     );
   }
-
 
   const modeClass = readingMode === 'dark'
     ? 'bg-[#1a1a1a] border-gray-700 text-white'
@@ -198,9 +97,28 @@ export default function EpubHighlightMenu() {
     ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]'
     : 'bg-gray-50 border-gray-200 text-gray-900';
 
-  // ────────────────────────────────────────────
-  // Conteúdo do menu (igual nos dois layouts)
-  // ────────────────────────────────────────────
+  const handleOpenDictionary = () => {
+    let preloadedData = null;
+    if (noteText.startsWith('<!-- AI_DICT -->')) {
+      try {
+        preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+      } catch {}
+    }
+    setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
+    setSelection(null);
+    setNoteMode(null);
+  };
+
+  const handleOpenDictionaryFull = () => {
+    let preloadedData = null;
+    try {
+      preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+    } catch {}
+    setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
+    setSelection(null);
+    setNoteMode(null);
+  };
+
   const menuContent = (
     <>
       {/* Texto Selecionado (Preview) */}
@@ -211,184 +129,54 @@ export default function EpubHighlightMenu() {
       )}
 
       {/* Barra de cores + ações rápidas */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => handleCreateHighlight('yellow')} className={`w-7 h-7 rounded-full bg-yellow-400 hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'yellow' || (!noteMode && selection.existingHighlightId) ? 'ring-2 ring-offset-2 ring-yellow-500' : ''}`} />
-          <button onClick={() => handleCreateHighlight('green')}  className={`w-7 h-7 rounded-full bg-green-400 hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'green'  ? 'ring-2 ring-offset-2 ring-green-500'  : ''}`} />
-          <button onClick={() => handleCreateHighlight('blue')}   className={`w-7 h-7 rounded-full bg-blue-400  hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'blue'   ? 'ring-2 ring-offset-2 ring-blue-500'   : ''}`} />
-          <button onClick={() => handleCreateHighlight('pink')}   className={`w-7 h-7 rounded-full bg-pink-400  hover:scale-110 active:scale-95 transition-transform shadow-sm ${noteMode === 'pink'   ? 'ring-2 ring-offset-2 ring-pink-500'   : ''}`} />
-        </div>
-
-        {!noteMode && (
-          <div className="flex items-center gap-1">
-            <div className={`w-px h-5 mx-1 ${dividerClass}`} />
-            {/* Copiar */}
-            <button
-              onClick={() => { navigator.clipboard.writeText(selection.text); setSelection(null); }}
-              className="text-2xl opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
-              title="Copiar texto"
-            >📋</button>
-
-            {/* Dicionário */}
-            {(!selection.existingHighlightId || selection.text) && (
-              <button
-                onClick={() => { 
-                  let preloadedData = null;
-                  if (noteText.startsWith('<!-- AI_DICT -->')) {
-                    try { preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')); } catch(e){}
-                  }
-                  setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
-                  setSelection(null);
-                  setNoteMode(null);
-                }}
-                className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
-                title="Dicionário / Traduzir"
-              >
-                <BookType size={22} />
-              </button>
-            )}
-
-            {/* Nota (só para novos grifos) */}
-            {!selection.existingHighlightId && (
-              <button onClick={() => setNoteMode('yellow')} className="text-sm font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1.5">
-                <span className="text-2xl">📝</span> Nota
-              </button>
-            )}
-
-            {/* Lixeira (grifos existentes) */}
-            {selection.existingHighlightId && (
-              confirmDelete ? (
-                <div className="flex items-center gap-1 bg-red-500/10 rounded-lg px-1 animate-fade-in">
-                  <button
-                    onClick={() => { handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange); setSelection(null); setNoteMode(null); setConfirmDelete(false); }}
-                    className="text-red-500 text-xs font-bold px-2 py-1.5 hover:bg-red-500/20 rounded-md transition-colors"
-                  >
-                    Confirmar
-                  </button>
-                  <button onClick={() => setConfirmDelete(false)} className="text-dark-subtext px-1.5 py-1.5 hover:bg-black/10 rounded-md transition-colors">
-                    <X size={16} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-colors"
-                  title="Excluir Grifo"
-                >
-                  <Trash2 size={22} />
-                </button>
-              )
-            )}
-          </div>
-        )}
-      </div>
+      <EpubHighlightColorBar
+        noteMode={noteMode}
+        selection={selection}
+        dividerClass={dividerClass}
+        confirmDelete={confirmDelete}
+        onSelectColor={(color) => handleCreateHighlight(color)}
+        onCopyText={() => {
+          navigator.clipboard.writeText(selection.text);
+          setSelection(null);
+        }}
+        onOpenDictionary={handleOpenDictionary}
+        onOpenNote={() => setNoteMode('yellow')}
+        onConfirmDelete={() => {
+          handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange);
+          setSelection(null);
+          setNoteMode(null);
+          setConfirmDelete(false);
+        }}
+        onRequestDelete={() => setConfirmDelete(true)}
+        onCancelDelete={() => setConfirmDelete(false)}
+      />
 
       {/* Área de nota */}
-      {noteMode && (
-        noteText.startsWith('<!-- AI_DICT -->') ? (
-          <div className={`mt-2 border-t pt-2 ${noteAreaClass}`}>
-            <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-2.5 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-brand-500">
-                  <Sparkles size={13} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider">IA Salva</span>
-                </div>
-                {(() => {
-                  try {
-                    const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-                    const wc = data.english?.word_class || data.portuguese?.word_class;
-                    return wc ? <span className="text-[10px] opacity-60 italic">{wc}</span> : null;
-                  } catch { return null; }
-                })()}
-              </div>
+      <EpubHighlightNoteEditor
+        noteText={noteText}
+        noteMode={noteMode}
+        noteAreaClass={noteAreaClass}
+        textareaClass={textareaClass}
+        onChangeNoteText={(txt) => setNoteText(txt)}
+        onCloseNote={() => {
+          setNoteMode(null);
+          setNoteText('');
+        }}
+        onSaveNote={() => handleCreateHighlight(noteMode || 'yellow')}
+        onOpenDictionaryFull={handleOpenDictionaryFull}
+      />
 
-              {/* Definições */}
-              {(() => {
-                try {
-                  const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-                  
-                  // Tenta pegar definições em inglês primeiro
-                  let defs: string[] = [];
-                  if (data.english?.definitions) defs = data.english.definitions;
-                  else if (data.english?.definition) defs = [data.english.definition];
-                  else if (data.definitions) defs = data.definitions;
-                  else if (data.definition) defs = [data.definition];
-
-                  if (defs.length > 0) {
-                    return (
-                      <ul className="flex flex-col gap-0.5 pl-1">
-                        {defs.slice(0, 3).map((def, i) => (
-                          <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
-                            {defs.length > 1 && <span className="opacity-40 shrink-0">{i + 1}.</span>}
-                            <span>{def}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    );
-                  }
-
-                  // Fallback: português
-                  let ptDefs: string[] = [];
-                  if (data.portuguese?.definitions) ptDefs = data.portuguese.definitions;
-                  else if (data.portuguese?.definition) ptDefs = [data.portuguese.definition];
-
-                  if (ptDefs.length > 0) {
-                    return (
-                      <ul className="flex flex-col gap-0.5 pl-1">
-                        {ptDefs.slice(0, 2).map((def, i) => (
-                          <li key={i} className="text-[11px] opacity-85 leading-snug flex gap-1">
-                            {ptDefs.length > 1 && <span className="opacity-40 shrink-0">{i + 1}.</span>}
-                            <span>{def}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    );
-                  }
-                } catch { return null; }
-                return null;
-              })()}
-
-              <div className="flex justify-between items-center mt-0.5">
-                <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-2 py-1 text-[10px] font-medium opacity-60 hover:opacity-100 transition-colors">Fechar</button>
-                <button 
-                  onClick={() => {
-                    let preloadedData = null;
-                    try { preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')); } catch(e){}
-                    setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
-                    setSelection(null);
-                    setNoteMode(null);
-                  }} 
-                  className="px-2.5 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold hover:bg-brand-600 transition-colors flex items-center gap-1"
-                >
-                  <BookType size={11}/> Ver completo
-                </button>
-              </div>
-            </div>
-          </div>
-
-        ) : (
-          <div className={`flex flex-col gap-1.5 mt-2 border-t pt-2 ${noteAreaClass}`}>
-            <textarea
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              placeholder="Escreva sua nota aqui..."
-              className={`w-full text-xs p-2 border rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-brand-500 ${textareaClass}`}
-              rows={3}
-            />
-            <div className="flex justify-end gap-1.5">
-              <button onClick={() => { setNoteMode(null); setNoteText(''); }} className="px-3 py-1.5 text-xs opacity-70 hover:opacity-100 rounded-lg hover:bg-black/10 transition-colors">Cancelar</button>
-              <button onClick={() => handleCreateHighlight(noteMode || 'yellow')} className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-bold hover:bg-brand-600 transition-colors">Salvar</button>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* Botão de IA (só para novos grifos, sem nota aberta) */}
+      {/* Botão de IA */}
       {!noteMode && !selection.existingHighlightId && (
         <div className={`flex items-center gap-1 border-t pt-1.5 mt-0.5 ${noteAreaClass}`}>
           <button
-            onClick={() => { dispatch({ type: 'TOGGLE_AI_SIDEBAR' }); setSelection(null); }}
-            className={`flex-1 px-2 py-1.5 bg-brand-500/10 rounded-lg text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${readingMode === 'dark' ? 'text-brand-400' : 'text-brand-600'}`}
+            onClick={() => {
+              dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
+              setSelection(null);
+            }}
+            className={`flex-1 px-2 py-1.5 bg-brand-500/10 rounded-lg text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${
+              readingMode === 'dark' ? 'text-brand-400' : 'text-brand-600'
+            }`}
           >
             <Sparkles size={11} />
             Explicar com IA
@@ -398,46 +186,36 @@ export default function EpubHighlightMenu() {
     </>
   );
 
-  // ────────────────────────────────────────────
-  // MOBILE: Bottom Sheet deslizante (ou Top Sheet se seleção for na base)
-  // ────────────────────────────────────────────
+  // MOBILE: Bottom Sheet
   if (isMobile) {
-    // Se o texto selecionado está na metade inferior da tela, exibir o menu no topo
     const selectionIsLow = selection.rect && selection.rect.top > window.innerHeight * 0.5;
 
     return (
       <>
-        {/* Overlay acima do iframe para fechar ao tocar fora */}
         <div
           className="fixed inset-0 z-[100]"
-          onClick={() => { 
-            if (Date.now() - openTimeRef.current < 400) return; // Ignorar ghost clicks do Android
-            setSelection(null); 
-            setNoteMode(null); 
-            setNoteText(''); 
+          onClick={() => {
+            if (Date.now() - openTimeRef.current < 400) return;
+            setSelection(null);
+            setNoteMode(null);
+            setNoteText('');
           }}
         />
 
         {selectionIsLow ? (
-          /* Top Sheet — seleção está na base da tela */
-          <div
-            className={`fixed top-0 left-0 right-0 z-[101] border-b rounded-b-2xl shadow-2xl p-4 pt-6 flex flex-col gap-2 animate-slide-down ${modeClass}`}
-          >
+          <div className={`fixed top-0 left-0 right-0 z-[101] border-b rounded-b-2xl shadow-2xl p-4 pt-6 flex flex-col gap-2 animate-slide-down ${modeClass}`}>
             {menuContent}
             <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-1 opacity-60" />
           </div>
         ) : (
-          /* Bottom Sheet — seleção está na parte superior da tela */
-          <div
-            className={`fixed bottom-0 left-0 right-0 z-[101] border-t rounded-t-2xl shadow-2xl p-4 pb-6 flex flex-col gap-2 animate-slide-up ${modeClass}`}
-          >
+          <div className={`fixed bottom-0 left-0 right-0 z-[101] border-t rounded-t-2xl shadow-2xl p-4 pb-6 flex flex-col gap-2 animate-slide-up ${modeClass}`}>
             <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-1 opacity-60" />
             {menuContent}
           </div>
         )}
 
         {dictionaryTarget && (
-          <DictionaryModal 
+          <DictionaryModal
             text={dictionaryTarget.word}
             pageContext={dictionaryTarget.context}
             preloadedData={dictionaryTarget.preloadedData}
@@ -445,26 +223,16 @@ export default function EpubHighlightMenu() {
             onClose={() => {
               if (dictionaryTarget.selection) setSelection(dictionaryTarget.selection);
               setDictionaryTarget(null);
-            }} 
+            }}
           />
         )}
       </>
     );
   }
 
-  // ────────────────────────────────────────────
-  // DESKTOP: Floating menu (comportamento anterior)
-  // ────────────────────────────────────────────
+  // DESKTOP: Floating menu
   return (
     <>
-      {/* 
-        Correção do Pulo (Flash) no Posicionamento:
-        O 'floatingStyles' injeta a posição exata via CSS inline (ex: transform: translate(x,y)).
-        Nossa classe 'animate-fade-in' também usa 'transform' (translateY) no CSS.
-        Se os dois ficarem na mesma tag, a animação CSS sobrescreve o posicionamento do Floating UI
-        durante 0.2s, jogando o menu pra posição (0,0).
-        A solução é ter uma div "pai" apenas para a posição e uma div "filha" apenas para a animação.
-      */}
       <div
         key={selection?.existingHighlightId || selection?.cfiRange || 'menu'}
         ref={refs.setFloating}
@@ -477,12 +245,12 @@ export default function EpubHighlightMenu() {
       </div>
 
       {dictionaryTarget && (
-        <DictionaryModal 
+        <DictionaryModal
           text={dictionaryTarget.word}
           pageContext={dictionaryTarget.context}
           preloadedData={dictionaryTarget.preloadedData}
           onSaveHighlight={(color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection)}
-          onClose={() => setDictionaryTarget(null)} 
+          onClose={() => setDictionaryTarget(null)}
         />
       )}
     </>
