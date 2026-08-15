@@ -156,6 +156,14 @@ export default function CalendarEventWidgetNodeView(props: any) {
       <span
         ref={widgetRef}
         onClick={() => setShowPopover(!showPopover)}
+        onMouseDown={() => {
+          if (typeof props.getPos === 'function') {
+            const pos = props.getPos();
+            if (typeof pos === 'number') {
+              props.editor.commands.setNodeSelection(pos);
+            }
+          }
+        }}
         contentEditable={false}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
           props.selected || showPopover

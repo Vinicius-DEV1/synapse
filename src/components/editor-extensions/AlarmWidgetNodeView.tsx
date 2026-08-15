@@ -4,7 +4,7 @@ import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
 import { XSquare } from 'lucide-react';
 
-export default function AlarmWidgetNodeView({ node, updateAttributes }: NodeViewProps) {
+export default function AlarmWidgetNodeView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const { alarmId, timeStr, label, status } = node.attrs;
   const { alarms, handleToggleAlarm, handleDeleteAlarm } = useFocusContext();
 
@@ -54,6 +54,14 @@ export default function AlarmWidgetNodeView({ node, updateAttributes }: NodeView
     <NodeViewWrapper as="span" className="inline-block relative mx-1" ref={containerRef}>
       <span 
         onClick={togglePopover}
+        onMouseDown={() => {
+          if (typeof getPos === 'function') {
+            const pos = getPos();
+            if (typeof pos === 'number') {
+              editor.commands.setNodeSelection(pos);
+            }
+          }
+        }}
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium cursor-pointer transition-colors border select-all ${
           status === 'triggered' 
             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 

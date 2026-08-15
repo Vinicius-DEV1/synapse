@@ -57,6 +57,14 @@ const PageReferenceComponent = (props: any) => {
         </button>
         <div 
           data-drag-handle
+          onMouseDown={() => {
+            if (typeof props.getPos === 'function') {
+              const pos = props.getPos();
+              if (typeof pos === 'number') {
+                props.editor.commands.setNodeSelection(pos);
+              }
+            }
+          }}
           className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
           title="Arrastar vínculo"
         >
