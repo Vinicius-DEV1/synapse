@@ -9,14 +9,18 @@ interface ImageDeleteModalProps {
 
 export default function ImageDeleteModal({ isOpen, onClose, onConfirm }: ImageDeleteModalProps) {
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        onConfirm();
+      }
     };
     if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
+      window.addEventListener('keydown', handleKeyDown);
     }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, onConfirm]);
 
   if (!isOpen) return null;
 
