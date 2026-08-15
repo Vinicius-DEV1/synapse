@@ -66,6 +66,8 @@ export async function exportKeyToHex(key: CryptoKey): Promise<string> {
     .join('');
 }
 
+import { uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
+
 /**
  * Encripta um texto (string) usando a Chave Mestra.
  * Retorna uma string base64 combinando o IV e o texto encriptado.
@@ -92,7 +94,7 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
   combinedBuffer.set(new Uint8Array(encryptedBuffer), iv.length);
 
   // Converte para Base64 para facilitar o armazenamento no Firebase (JSON)
-  return bufferToBase64(combinedBuffer);
+  return uint8ArrayToBase64(combinedBuffer);
 }
 
 /**
@@ -100,7 +102,7 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
  * Retorna a string original.
  */
 export async function decryptText(encryptedBase64: string, masterKey: CryptoKey): Promise<string> {
-  const combinedBuffer = base64ToBuffer(encryptedBase64);
+  const combinedBuffer = base64ToUint8Array(encryptedBase64);
 
   // Extrai o IV (primeiros IV_LENGTH bytes)
   const iv = combinedBuffer.slice(0, IV_LENGTH);
@@ -119,27 +121,3 @@ export async function decryptText(encryptedBase64: string, masterKey: CryptoKey)
   return decoder.decode(decryptedBuffer);
 }
 
-// === Funções Utilitárias para conversão Base64 / ArrayBuffer ===
-
-function bufferToBase64(buffer: Uint8Array): string {
-  const bytes = new Uint8Array(buffer);
-  
-  // Otimização para buffers maiores: processa em chunks para não estourar a call stack
-  const CHUNK_SIZE = 8192;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
-    binary += String.fromCodePoint.apply(null, Array.from(chunk));
-  }
-  return btoa(binary); // Função global do navegador/Tauri
-}
-
-function base64ToBuffer(base64: string): Uint8Array {
-  const binary_string = atob(base64);
-  const len = binary_string.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary_string.charCodeAt(i);
-  }
-  return bytes;
-}
