@@ -1,0 +1,27 @@
+export type TransactionType = 'income' | 'expense' | 'loan_made' | 'loan_taken';
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+  status: string;
+  is_paid?: number;
+  paid_amount?: number;
+  created_at: string;
+}
+
+export interface WishlistItem {
+  id: string;
+  title: string;
+  price: number;
+  priority: 'high' | 'medium' | 'low';
+  category?: string;
+  expected_date: string | null;
+  description: string | null;
+  link: string | null;
+  created_at: string;
+  updated_at: string;
+}
