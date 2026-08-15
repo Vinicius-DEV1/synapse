@@ -107,14 +107,16 @@ export default function LinkPreviewCard({
 
       <div
         onClick={onOpenConfirm}
-        className={`block transition-all rounded-lg p-3 pr-[132px] cursor-pointer ${
+        className={`block transition-all rounded-lg p-3 ${
+          isInsideGroup ? 'pr-20' : 'pr-24'
+        } cursor-pointer ${
           selected
             ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10'
             : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-hidden mt-0.5">
             {isYouTube ? (
               <button
                 onClick={(e) => {
@@ -134,36 +136,36 @@ export default function LinkPreviewCard({
               renderIcon()
             )}
           </div>
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-col flex-1 min-w-0">
             {loading || isReloading ? (
               <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1" />
             ) : (
-              <span className="text-[13px] font-medium text-white/90 truncate leading-tight tracking-wide">
+              <span className="text-[13px] font-medium text-white/95 leading-snug tracking-wide break-words">
                 {title || domain || url}
               </span>
             )}
-            <div className="flex items-center gap-3 mt-1 opacity-60">
-              <span className="text-[11px] truncate tracking-wide text-brand-200">{domain}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[11px] text-zinc-400">
+              {domain && <span className="text-brand-300 font-medium tracking-wide shrink-0">{domain}</span>}
               {channel && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-white/20" />
-                  <span className="text-[11px] truncate">{channel}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                  <span className="text-zinc-300 font-normal break-words">{channel}</span>
                 </>
               )}
               {duration && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-white/20" />
-                  <span className="text-[11px] flex items-center gap-1">
-                    <Clock size={10} />
+                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                  <span className="flex items-center gap-1 text-zinc-400 shrink-0">
+                    <Clock size={11} className="text-zinc-500" />
                     {formatDuration(duration)}
                   </span>
                 </>
               )}
               {uploadDate && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-white/20" />
-                  <span className="text-[11px] flex items-center gap-1">
-                    <Calendar size={10} />
+                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                  <span className="flex items-center gap-1 text-zinc-400 shrink-0">
+                    <Calendar size={11} className="text-zinc-500" />
                     {formatDate(uploadDate)}
                   </span>
                 </>
@@ -171,8 +173,8 @@ export default function LinkPreviewCard({
             </div>
           </div>
 
-          <div className="flex gap-2">
-            {isPlaylist && (
+          {isPlaylist && (
+            <div className="flex gap-2 shrink-0">
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -184,8 +186,8 @@ export default function LinkPreviewCard({
                 <ListVideo size={14} />
                 Ver Playlist
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {showVideo && isYouTube && (

@@ -2,34 +2,34 @@ import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Cod
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
-  { id: 'text', title: 'Texto', subtitle: 'Comece a escrever com texto normal.', icon: Type },
-  { id: 'h1', title: 'Título 1', subtitle: 'Título de seção grande.', icon: Heading1 },
-  { id: 'h2', title: 'Título 2', subtitle: 'Título de seção médio.', icon: Heading2 },
-  { id: 'h3', title: 'Título 3', subtitle: 'Título de seção pequeno.', icon: Heading3 },
-  { id: 'cols2', title: '2 Colunas', subtitle: 'Dividir o conteúdo em 2 colunas de texto.', icon: Columns2 },
-  { id: 'cols3', title: '3 Colunas', subtitle: 'Dividir o conteúdo em 3 colunas de texto.', icon: Columns3 },
-  { id: 'todo', title: 'Lista de tarefas', subtitle: 'Acompanhe tarefas com checkboxes.', icon: CheckSquare },
-  { id: 'bullet', title: 'Lista de marcadores', subtitle: 'Crie uma lista simples com bolinhas.', icon: List },
-  { id: 'callout', title: 'Destaque', subtitle: 'Faça um texto se destacar.', icon: Info },
-  { id: 'code', title: 'Código', subtitle: 'Adicione um bloco de código de programação.', icon: Code },
-  { id: 'page', title: 'Página', subtitle: 'Embutir uma página existente.', icon: FileText },
-  { id: 'group', title: 'Coleção', subtitle: 'Agrupe páginas em uma coleção expansível.', icon: Folder },
-  { id: 'toggle', title: 'Lista Oculta', subtitle: 'Lista que pode ser recolhida.', icon: ListTree },
-  { id: 'blockquoteToggle', title: 'Toggle Destaque', subtitle: 'Toggle com visual de destaque (Callout).', icon: Info },
-  { id: 'table', title: 'Tabela', subtitle: 'Adicione uma tabela estruturada.', icon: Table },
-  { id: 'table-week', title: 'Tabela: Semana', subtitle: 'Tabela 7 colunas (Dias da semana).', icon: Table },
-  { id: 'table-day', title: 'Tabela: Dia', subtitle: 'Tabela de horários diários.', icon: Table },
-  { id: 'table-habit', title: 'Tabela: Hábitos', subtitle: 'Matriz para rastreio de hábitos.', icon: Table },
-  { id: 'question', title: 'Questão', subtitle: 'Crie uma questão de múltipla escolha com IA.', icon: HelpCircle },
-  { id: 'ia', title: 'Pedir à IA', subtitle: 'Peça para a IA escrever qualquer coisa.', icon: Sparkles },
-  { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus },
-  { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock },
-  { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock },
-  { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive },
-  { id: 'documento-link', title: 'Vincular Arquivo', subtitle: 'Vincular um arquivo existente do módulo.', icon: Link },
-  { id: 'video', title: 'Vincular Vídeo', subtitle: 'Vincular um vídeo da sua galeria.', icon: Film },
-  { id: 'livro', title: 'Vincular Livro', subtitle: 'Vincular um livro da sua biblioteca.', icon: BookOpen },
-  { id: 'evento', title: 'Evento da Agenda', subtitle: 'Criar e vincular um evento na agenda com avisos.', icon: Calendar },
+  { id: 'text', title: 'Texto', subtitle: 'Comece a escrever com texto normal.', icon: Type, keywords: ['texto', 'paragrafo', 'p'] },
+  { id: 'h1', title: 'Título 1', subtitle: 'Título de seção grande.', icon: Heading1, keywords: ['h1', 'titulo 1', 'header 1'] },
+  { id: 'h2', title: 'Título 2', subtitle: 'Título de seção médio.', icon: Heading2, keywords: ['h2', 'titulo 2', 'header 2'] },
+  { id: 'h3', title: 'Título 3', subtitle: 'Título de seção pequeno.', icon: Heading3, keywords: ['h3', 'titulo 3', 'header 3'] },
+  { id: 'cols2', title: '2 Colunas', subtitle: 'Dividir o conteúdo em 2 colunas de texto.', icon: Columns2, keywords: ['2colunas', '2coluna', 'cols2', '2cols', 'colunas', 'coluna', 'duas colunas', '2 colunas', '2'] },
+  { id: 'cols3', title: '3 Colunas', subtitle: 'Dividir o conteúdo em 3 colunas de texto.', icon: Columns3, keywords: ['3colunas', '3coluna', 'cols3', '3cols', 'tres colunas', '3 colunas', '3'] },
+  { id: 'todo', title: 'Lista de tarefas', subtitle: 'Acompanhe tarefas com checkboxes.', icon: CheckSquare, keywords: ['todo', 'tarefa', 'check'] },
+  { id: 'bullet', title: 'Lista de marcadores', subtitle: 'Crie uma lista simples com bolinhas.', icon: List, keywords: ['bullet', 'lista', 'pontos'] },
+  { id: 'callout', title: 'Destaque', subtitle: 'Faça um texto se destacar.', icon: Info, keywords: ['callout', 'destaque', 'aviso'] },
+  { id: 'code', title: 'Código', subtitle: 'Adicione um bloco de código de programação.', icon: Code, keywords: ['code', 'codigo', 'js', 'ts'] },
+  { id: 'page', title: 'Página', subtitle: 'Embutir uma página existente.', icon: FileText, keywords: ['pagina', 'page', 'vinculo'] },
+  { id: 'group', title: 'Coleção', subtitle: 'Agrupe páginas em uma coleção expansível.', icon: Folder, keywords: ['colecao', 'grupo', 'pasta'] },
+  { id: 'toggle', title: 'Lista Oculta', subtitle: 'Lista que pode ser recolhida.', icon: ListTree, keywords: ['toggle', 'oculta', 'dropdown'] },
+  { id: 'blockquoteToggle', title: 'Toggle Destaque', subtitle: 'Toggle com visual de destaque (Callout).', icon: Info, keywords: ['toggle destaque', 'callout toggle'] },
+  { id: 'table', title: 'Tabela', subtitle: 'Adicione uma tabela estruturada.', icon: Table, keywords: ['tabela', 'table'] },
+  { id: 'table-week', title: 'Tabela: Semana', subtitle: 'Tabela 7 colunas (Dias da semana).', icon: Table, keywords: ['semana', 'dias'] },
+  { id: 'table-day', title: 'Tabela: Dia', subtitle: 'Tabela de horários diários.', icon: Table, keywords: ['dia', 'horarios'] },
+  { id: 'table-habit', title: 'Tabela: Hábitos', subtitle: 'Matriz para rastreio de hábitos.', icon: Table, keywords: ['habitos', 'habit'] },
+  { id: 'question', title: 'Questão', subtitle: 'Crie uma questão de múltipla escolha com IA.', icon: HelpCircle, keywords: ['questao', 'quiz', 'pergunta'] },
+  { id: 'ia', title: 'Pedir à IA', subtitle: 'Peça para a IA escrever qualquer coisa.', icon: Sparkles, keywords: ['ia', 'ai', 'prompt'] },
+  { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus, keywords: ['divisor', 'linha', 'hr'] },
+  { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock, keywords: ['foco', 'timer', 'pomodoro'] },
+  { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock, keywords: ['alarme', 'despertador'] },
+  { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive, keywords: ['documento', 'arquivo', 'upload'] },
+  { id: 'documento-link', title: 'Vincular Arquivo', subtitle: 'Vincular um arquivo existente do módulo.', icon: Link, keywords: ['vincular', 'link arquivo'] },
+  { id: 'video', title: 'Vincular Vídeo', subtitle: 'Vincular um vídeo da sua galeria.', icon: Film, keywords: ['video', 'midia'] },
+  { id: 'livro', title: 'Vincular Livro', subtitle: 'Vincular um livro da sua biblioteca.', icon: BookOpen, keywords: ['livro', 'epub', 'pdf'] },
+  { id: 'evento', title: 'Evento da Agenda', subtitle: 'Criar e vincular um evento na agenda com avisos.', icon: Calendar, keywords: ['evento', 'agenda', 'calendario'] },
 ];
 
 interface SlashMenuProps {
@@ -45,10 +45,18 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   const menuRef = useRef<HTMLDivElement>(null);
 
   const filteredCommands = SLASH_COMMANDS.filter(cmd => {
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().trim();
+    if (!q) return true;
     const cmdId = cmd.id.toLowerCase();
     const cmdTitle = cmd.title.toLowerCase();
-    return cmdId.includes(q) || cmdTitle.includes(q) || q.startsWith(cmdId) || q.startsWith(cmdTitle);
+    const cmdSubtitle = cmd.subtitle.toLowerCase();
+    const keywords = (cmd as any).keywords || [];
+    return (
+      cmdId.includes(q) ||
+      cmdTitle.includes(q) ||
+      cmdSubtitle.includes(q) ||
+      keywords.some((k: string) => k.includes(q) || q.includes(k))
+    );
   });
 
   useEffect(() => {

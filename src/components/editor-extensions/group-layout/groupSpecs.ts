@@ -100,10 +100,7 @@ export const COLUMN_GROUP_SPEC: GroupSpec = {
   },
 
   isEmptyChild(child) {
-    if (child.childCount === 0) return true;
-    // Depois de arrastar o único bloco para fora, o ProseMirror recoloca um
-    // parágrafo vazio para manter `block+` válido — é esse caso que detectamos.
-    return child.childCount === 1 && child.firstChild!.isTextblock && child.firstChild!.content.size === 0;
+    return child.childCount === 0;
   },
 };
 
