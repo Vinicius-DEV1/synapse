@@ -69,6 +69,14 @@ export default function FocusWidgetNodeView({ node, updateAttributes }: NodeView
       <span 
         contentEditable={false}
         data-drag-handle
+        onMouseDown={() => {
+          if (typeof props.getPos === 'function') {
+            const pos = props.getPos();
+            if (typeof pos === 'number') {
+              props.editor.commands.setNodeSelection(pos);
+            }
+          }
+        }}
         onClick={togglePopover}
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium cursor-pointer transition-colors border select-all ${
           status === 'completed' 

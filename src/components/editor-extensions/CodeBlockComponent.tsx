@@ -25,6 +25,14 @@ export default function CodeBlockComponent(props: any) {
         </button>
         <div 
           data-drag-handle
+          onMouseDown={() => {
+            if (typeof getPos === 'function') {
+              const pos = getPos();
+              if (typeof pos === 'number') {
+                editor.commands.setNodeSelection(pos);
+              }
+            }
+          }}
           className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
           title="Arrastar bloco"
         >
