@@ -112,7 +112,9 @@ function clearTarget(view: EditorView) {
 }
 
 /**
- * Fim do arrasto: esquece também a origem.
+ * Fim do arrasto: esquece também a origem e cancela qualquer avaliação de
+ * `dragover` ainda agendada — ela rodaria DEPOIS do drop e repintaria um
+ * indicador para um arrasto que já acabou.
  *
  * A origem é capturada no `dragstart` e precisa sobreviver ao arrasto inteiro —
  * antes ela era descartada junto com o alvo em toda rejeição do `dragover`, e
@@ -120,6 +122,7 @@ function clearTarget(view: EditorView) {
  * estava sendo movido (que então era copiado, em vez de movido).
  */
 function endDrag(view: EditorView) {
+  cancelPendingEvaluate();
   clearTarget(view);
   const state = dragStates.get(view);
   if (state) state.origin = null;
@@ -135,7 +138,6 @@ function showIndicator(rect: DOMRect, side: 'left' | 'right') {
     indicator.style.boxShadow = '0 0 14px 3px rgba(139, 92, 246, 0.95)';
     indicator.style.zIndex = '9999';
     indicator.style.pointerEvents = 'none';
-    indicator.style.transition = 'left 0.05s ease, top 0.05s ease, height 0.05s ease';
     document.body.appendChild(indicator);
   }
   document.body.classList.add(DROP_CURSOR_SUPPRESSOR);
@@ -271,6 +273,121 @@ function sliceIsWholeBlocks(slice: Slice | null | undefined): boolean {
   return extractNodesFromSlice(slice).length > 0;
 }
 
+/*
+ * O `dragover` dispara continuamente — dezenas de vezes por segundo, e mesmo
+ * com o ponteiro parado. Cada avaliação faz `posAtCoords`, `getBoundingClientRect`
+ * e às vezes `elementFromPoint`: ler layout nessa cadência trava o arrasto.
+ *
+ * Duas barreiras: o ponteiro precisa ter andado alguns pixels, e a avaliação
+ * acontece no máximo uma vez por frame. O alvo pode ficar um frame atrás do
+ * cursor, o que é irrelevante — entre o último movimento e soltar o botão passa
+ * muito mais que 16ms.
+ */
+const MIN_MOVE_PX = 3;
+let pendingFrame: number | null = null;
+let lastEvaluated = { x: NaN, y: NaN };
+
+function cancelPendingEvaluate() {
+  if (pendingFrame !== null) {
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+  lastEvaluated = { x: NaN, y: NaN };
+}
+
+function scheduleEvaluate(view: EditorView, event: DragEvent) {
+  const { clientX: x, clientY: y } = event;
+  if (Math.abs(x - lastEvaluated.x) < MIN_MOVE_PX && Math.abs(y - lastEvaluated.y) < MIN_MOVE_PX) {
+    return;
+  }
+  lastEvaluated = { x, y };
+
+  if (pendingFrame !== null) return;
+  pendingFrame = requestAnimationFrame(() => {
+    pendingFrame = null;
+    evaluateDropTarget(view, lastEvaluated.x, lastEvaluated.y);
+  });
+}
+
+/**
+ * Decide (e desenha) o alvo do arrasto para um ponto da tela.
+ * Chamada no máximo uma vez por frame — ver `scheduleEvaluate`.
+ */
+function evaluateDropTarget(view: EditorView, x: number, y: number) {
+    const block = topLevelBlockAt(view, x, y);
+    if (!block) {
+      clearTarget(view);
+      return;
+    }
+
+    const { pos, node, dom } = block;
+
+    // Não cria coluna soltando o bloco sobre ele mesmo.
+    if (isDraggingItself(view, pos, node)) {
+      clearTarget(view);
+      return;
+    }
+
+    const rect = dom.getBoundingClientRect();
+    if (rect.width === 0) {
+      clearTarget(view);
+      return;
+    }
+
+    const dragging = (view as unknown as { dragging: { slice: Slice; move: boolean } | null })
+      .dragging;
+    if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
+      clearTarget(view);
+      return;
+    }
+
+    // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
+    const mouseX = x;
+    const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
+    let side: 'left' | 'right';
+    if (mouseX <= rect.left + edge) {
+      side = 'left';
+    } else if (mouseX >= rect.right - edge) {
+      side = 'right';
+    } else {
+      // Zona morta: cede o drop ao ProseMirror, que move o bloco.
+      clearTarget(view);
+      return;
+    }
+
+    const origin = dragStateFor(view).origin;
+    const dragged = dragging
+      ? extractNodesFromSlice(dragging.slice)
+      : origin
+      ? [origin.node]
+      : [];
+
+    // Alvo já é um grupo → acrescenta uma coluna.
+    const groupSpec = getSpecForGroup(node);
+    if (groupSpec) {
+      const fits = node.childCount < groupSpec.maxChildren;
+      const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
+      if (!fits || !compatible) {
+        clearTarget(view);
+        return;
+      }
+      dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
+      showIndicator(rect, side);
+      return;
+    }
+
+    // Alvo é um bloco comum → cria um grupo novo.
+    const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
+    if (!spec) {
+      clearTarget(view);
+      return;
+    }
+
+    dragStateFor(view).target = { pos, side, mode: 'create', spec };
+    showIndicator(rect, side);
+    return;
+}
+
 // ─── Extensão e Plugin ────────────────────────────────────────────────────────
 
 export const DragToGroup = Extension.create({
@@ -334,78 +451,7 @@ export const DragToGroup = Extension.create({
 
             dragover: (view, event) => {
               if (!view.editable) return false;
-
-              const dragEvent = event as DragEvent;
-              const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
-              if (!block) {
-                clearTarget(view);
-                return false;
-              }
-
-              const { pos, node, dom } = block;
-
-              // Não cria coluna soltando o bloco sobre ele mesmo.
-              if (isDraggingItself(view, pos, node)) {
-                clearTarget(view);
-                return false;
-              }
-
-              const rect = dom.getBoundingClientRect();
-              if (rect.width === 0) {
-                clearTarget(view);
-                return false;
-              }
-
-              const dragging = (view as any).dragging as { slice: Slice; move: boolean } | null;
-              if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
-                clearTarget(view);
-                return false;
-              }
-
-              // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
-              const mouseX = dragEvent.clientX;
-              const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
-              let side: 'left' | 'right';
-              if (mouseX <= rect.left + edge) {
-                side = 'left';
-              } else if (mouseX >= rect.right - edge) {
-                side = 'right';
-              } else {
-                // Zona morta: cede o drop ao ProseMirror, que move o bloco.
-                clearTarget(view);
-                return false;
-              }
-
-              const origin = dragStateFor(view).origin;
-              const dragged = dragging
-                ? extractNodesFromSlice(dragging.slice)
-                : origin
-                ? [origin.node]
-                : [];
-
-              // Alvo já é um grupo → acrescenta uma coluna.
-              const groupSpec = getSpecForGroup(node);
-              if (groupSpec) {
-                const fits = node.childCount < groupSpec.maxChildren;
-                const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
-                if (!fits || !compatible) {
-                  clearTarget(view);
-                  return false;
-                }
-                dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
-                showIndicator(rect, side);
-                return false;
-              }
-
-              // Alvo é um bloco comum → cria um grupo novo.
-              const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
-              if (!spec) {
-                clearTarget(view);
-                return false;
-              }
-
-              dragStateFor(view).target = { pos, side, mode: 'create', spec };
-              showIndicator(rect, side);
+              scheduleEvaluate(view, event as DragEvent);
               return false;
             },
 
@@ -418,6 +464,10 @@ export const DragToGroup = Extension.create({
             },
 
             drop: () => {
+              // Só o visual e o frame agendado. O ALVO tem de sobreviver até o
+              // `handleDrop`, que roda logo depois deste handler — zerá-lo aqui
+              // foi o bug original que impedia qualquer coluna de ser criada.
+              cancelPendingEvaluate();
               hideIndicator();
               return false;
             },
