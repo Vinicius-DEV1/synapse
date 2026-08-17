@@ -14,6 +14,8 @@ import { useSlashCommand } from './editor/hooks/useSlashCommand';
 import { useEditorExtensions } from './editor/hooks/useEditorExtensions';
 import { useEditorModals } from './editor/hooks/useEditorModals';
 import { useEditorDropPaste } from './editor/hooks/useEditorDropPaste';
+import { useBlockHandle } from './editor/hooks/useBlockHandle';
+import BlockHandle from './BlockHandle';
 import EditorModalHost from './editor/components/EditorModalHost';
 
 interface EditorProps {
@@ -160,6 +162,10 @@ export default function Editor({
     editorRef.current = editor;
   }, [editor]);
 
+  // 7. Alça de arrasto — vale para todo bloco de nível superior, inclusive os
+  //    que não têm node view (parágrafo, título, listas).
+  const blockHandle = useBlockHandle(editor, wrapperRef);
+
   return (
     <div
       ref={wrapperRef}
@@ -199,6 +205,16 @@ export default function Editor({
       <div className="editor-container relative z-0">
         <EditorContent editor={editor} />
       </div>
+
+      {blockHandle.anchor && (
+        <BlockHandle
+          x={blockHandle.anchor.x}
+          y={blockHandle.anchor.y}
+          onDragStart={blockHandle.onDragStart}
+          onDragEnd={blockHandle.onDragEnd}
+          onDelete={blockHandle.onDelete}
+        />
+      )}
 
       <EditorModalHost
         editor={editor}

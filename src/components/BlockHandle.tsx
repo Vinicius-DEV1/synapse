@@ -54,16 +54,24 @@ export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, on
         >
           {!showColorSubmenu ? (
             <div className="py-1">
-              <button
-                onClick={() => setShowColorSubmenu(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
-              >
-                <Palette size={14} />
-                Cor do bloco
-              </button>
-              
-              <div className="h-px bg-white/10 my-1 mx-2" />
-              
+              {/* Só aparece se houver de fato quem aplique a cor. O app não
+                  registra as extensões TextStyle/Color, então enquanto ninguém
+                  passar `onChangeColor` este botão abriria uma paleta sem
+                  efeito nenhum. */}
+              {onChangeColor && (
+                <>
+                  <button
+                    onClick={() => setShowColorSubmenu(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                  >
+                    <Palette size={14} />
+                    Cor do bloco
+                  </button>
+
+                  <div className="h-px bg-white/10 my-1 mx-2" />
+                </>
+              )}
+
               <button
                 onClick={() => {
                   onDelete();

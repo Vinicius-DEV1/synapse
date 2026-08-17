@@ -11,7 +11,7 @@ export {
   DragToGroup,
   consumeGroupDropTarget,
   applyGroupDrop,
-  setExternalDragOrigin,
+  startExternalBlockDrag,
   endExternalDrag,
 } from './DragToGroup';
 export type { GroupDropTarget } from './DragToGroup';
