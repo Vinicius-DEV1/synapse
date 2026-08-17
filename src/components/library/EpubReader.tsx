@@ -39,10 +39,10 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     const prefs = { fontSize, readingMode, fontFamily, textWidth };
     const str = JSON.stringify(prefs);
-    if (str !== (book as any).reading_preferences) {
+    if (str !== book.reading_preferences) {
       const timeout = setTimeout(() => {
-        onUpdateBook({ reading_preferences: str } as any);
-        (book as any).reading_preferences = str;
+        onUpdateBook({ reading_preferences: str });
+        book.reading_preferences = str;
       }, 1000);
       return () => clearTimeout(timeout);
     }
@@ -178,8 +178,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
-        if ((window.api?.app as any)?.toggleFullScreen) {
-          (window.api.app as any).toggleFullScreen();
+        if (window.api?.app?.toggleFullScreen) {
+          window.api.app.toggleFullScreen();
         }
         return;
       }

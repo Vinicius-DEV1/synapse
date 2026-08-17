@@ -1,10 +1,6 @@
 import type { ActivityLog } from '../types';
 
-declare module '../api/types' {
-  interface SyncApi {
-    getRowsByIds: (table: string, ids: string[]) => Promise<Array<Record<string, unknown> & { id: string, created_at?: string, updated_at?: string, crdt_state?: string, deleted_at?: string }>>;
-  }
-}
+
 
 const ACTIVITY_LOGS_TABLE = 'activity_logs';
 

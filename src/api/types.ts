@@ -86,6 +86,10 @@ export interface LibraryApi {
 export interface SyncApi {
   getTable: (tableName: string) => Promise<any[]>;
   upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
+  /** Busca linhas de uma tabela por lista de IDs. Existe na implementação real. */
+  getRowsByIds: (tableName: string, ids: string[]) => Promise<any[]>;
+  /** Enfileira uma operação de push imediato para um módulo. */
+  push?: (type: string) => void;
 }
 
 export interface ICadernoAPI {
@@ -97,7 +101,11 @@ export interface ICadernoAPI {
     getPathForFile: (file: File) => string;
     showConfirm: (message: string) => Promise<number>;
     openFocusWindow: () => Promise<void>;
+    /** Alterna fullscreen (Tauri). Pode não existir em builds web. */
+    toggleFullScreen?: () => void;
   };
+  /** Logging via IPC (Tauri). Pode não existir em builds web. */
+  log?: (msg: string) => void;
   _setMasterKey?: (key: CryptoKey | null) => void;
   onSyncTrigger?: (callback: () => void) => () => void;
   getAllPages: () => Promise<Page[]>;
@@ -140,6 +148,11 @@ export interface ICadernoAPI {
     scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;
     openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
     openFolderDialog: () => Promise<string | null>;
+    // Métodos extendidos
+    onDownloadProgress?: (callback: (progress: any) => void) => () => void;
+    getStreamPort?: () => Promise<number>;
+    cancelConversion?: (jobId: string) => Promise<{ success: boolean }>;
+    generateWebVersion?: (sourcePath: string, options?: any) => Promise<{ success: boolean; outputPath?: string; error?: string }>;
   };
 
   anki?: {
@@ -159,6 +172,15 @@ export interface ICadernoAPI {
     updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
     deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
     resetDeckProgress: (deckId: string) => Promise<{ success: boolean; error?: string }>;
+    // Métodos extendidos (existem nas implementações Tauri/Web, faltavam na interface)
+    migrateToNotes?: () => Promise<{ success: boolean; error?: string }>;
+    updateDeckSettings?: (deckId: string, settings: any) => Promise<{ success: boolean; error?: string }>;
+    getDeckSettings?: (deckId: string) => Promise<any>;
+    importDeck?: (payload: any) => Promise<{ success: boolean; stats?: any; error?: string }>;
+    exportDeckRecursive?: (deckId: string) => Promise<{ success: boolean; payload?: any; error?: string }>;
+    getReviews?: (deckId?: string, limit?: number) => Promise<{ success: boolean; reviews?: any[]; error?: string }>;
+    getCardIntervals?: (cardId: string) => Promise<{ success: boolean; intervals?: any[]; error?: string }>;
+    getCard?: (cardId: string) => Promise<any>;
   };
 
   focus?: {

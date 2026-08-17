@@ -1,12 +1,4 @@
 interface CloudData { encryptedData?: string; isCompressed?: boolean; createdAt?: unknown; updatedAt?: unknown; [key: string]: unknown; }
-declare module "../../api/types" {
-  interface SyncApi {
-    getRowsByIds: (table: string, ids: string[]) => Promise<Array<Record<string, unknown> & { id: string, created_at?: string, updated_at?: string, crdt_state?: string, deleted_at?: string }>>;
-  }
-  interface ICadernoAPI {
-    log?: (msg: string) => void;
-  }
-}
 import { db } from '../firebase';
 import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc } from 'firebase/firestore';

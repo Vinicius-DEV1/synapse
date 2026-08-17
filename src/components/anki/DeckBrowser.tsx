@@ -144,8 +144,8 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const handleUpdateDeck = async (name: string, desc: string, newLim: number, revLim: number, weights: string) => {
     if (window.api?.anki) {
       await window.api.anki.updateDeck(deck.id, name, desc);
-      if ((window.api.anki as any).updateDeckSettings) {
-        await (window.api.anki as any).updateDeckSettings(deck.id, {
+      if (window.api.anki.updateDeckSettings) {
+        await window.api.anki.updateDeckSettings(deck.id, {
           new_limit: newLim,
           review_limit: revLim,
           fsrs_weights: weights.trim() || null

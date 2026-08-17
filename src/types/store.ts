@@ -2,7 +2,7 @@ import type { Page } from './notes';
 
 export interface Tab {
   id: string;
-  module: 'home' | 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams';
+  module: 'home' | 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams' | 'settings';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;

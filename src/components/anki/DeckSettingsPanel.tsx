@@ -21,8 +21,8 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
 
   const loadSettings = async () => {
     setLoading(true);
-    if ((window.api?.anki as any)?.getDeckSettings) {
-      const s = await (window.api.anki as any).getDeckSettings(deck.id);
+    if (window.api?.anki?.getDeckSettings) {
+      const s = await window.api.anki.getDeckSettings(deck.id);
       if (s) {
         setNewLimit(s.new_limit || 20);
         setReviewLimit(s.review_limit || 200);
@@ -45,8 +45,8 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
     try {
       const text = await file.text();
       const payload = JSON.parse(text);
-      if ((window.api?.anki as any)?.importDeck) {
-        const res = await (window.api.anki as any).importDeck(payload);
+      if (window.api?.anki?.importDeck) {
+        const res = await window.api.anki.importDeck(payload);
         if (res.success && res.stats) {
           const { stats } = res;
           alert(`Resumo da Importação:\n\nSub-baralhos:\nCriados: ${stats.decksCreated} | Atualizados: ${stats.decksUpdated} | Iguais (Ignorados): ${stats.decksIgnored}\n\nCartões:\nCriados: ${stats.cardsCreated} | Atualizados: ${stats.cardsUpdated} | Iguais (Ignorados): ${stats.cardsIgnored}`);
@@ -69,9 +69,9 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
   };
 
   const handleExport = async () => {
-    if ((window.api?.anki as any)?.exportDeckRecursive) {
+    if (window.api?.anki?.exportDeckRecursive) {
       try {
-        const res = await (window.api.anki as any).exportDeckRecursive(deck.id);
+        const res = await window.api.anki.exportDeckRecursive(deck.id);
         if (res.success && res.payload) {
           const jsonString = JSON.stringify(res.payload, null, 2);
           const blob = new Blob([jsonString], { type: 'application/json' });
