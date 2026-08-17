@@ -444,7 +444,7 @@ export const DragToGroup = Extension.create({
             },
           },
 
-          handleDrop(view, _event, slice, _moved) {
+          handleDrop(view, _event, slice, moved) {
             const state = dragStateFor(view);
             const target = state.target;
             if (!target) return false;
@@ -460,7 +460,7 @@ export const DragToGroup = Extension.create({
 
             let removeRange: { from: number; to: number } | null = null;
 
-            // 1. Tenta usar a origem rastreada no dragstart
+            // 1. A origem rastreada no `dragstart` — a única fonte confiável.
             if (origin) {
               const nodeAtOrigin = view.state.doc.nodeAt(origin.pos);
               if (nodeAtOrigin && (nodeAtOrigin.type === origin.node.type || nodeAtOrigin.eq(origin.node))) {
@@ -468,44 +468,28 @@ export const DragToGroup = Extension.create({
               }
             }
 
-            // 2. Se não tinha origin, verifica NodeSelection
+            // 2. Sem origem rastreada, uma NodeSelection ainda diz de onde veio.
             if (!removeRange && view.state.selection instanceof NodeSelection) {
               const sel = view.state.selection;
               removeRange = { from: sel.from, to: sel.to };
             }
 
-            // 3. Se ainda não achou e temos content[0], procura o nó idêntico no documento
-            if (!removeRange && content.length > 0) {
-              const targetNode = content[0];
-              let foundPos: number | null = null;
-              view.state.doc.descendants((candidate, pos) => {
-                if (foundPos !== null) return false;
-                if (pos === target.pos) return false;
-                if (candidate.type === targetNode.type) {
-                  if (candidate.eq(targetNode)) {
-                    foundPos = pos;
-                    return false;
-                  }
-                  if (candidate.attrs && targetNode.attrs) {
-                    const idA = candidate.attrs.url || candidate.attrs.driveFileId || candidate.attrs.sessionId || candidate.attrs.fileId || candidate.attrs.alarmId || candidate.attrs.eventId || candidate.attrs.mediaId || candidate.attrs.src;
-                    const idB = targetNode.attrs.url || targetNode.attrs.driveFileId || targetNode.attrs.sessionId || targetNode.attrs.fileId || targetNode.attrs.alarmId || targetNode.attrs.eventId || targetNode.attrs.mediaId || targetNode.attrs.src;
-                    if (idA && idA === idB) {
-                      foundPos = pos;
-                      return false;
-                    }
-                  }
-                }
-                return true;
-              });
-              if (foundPos !== null) {
-                const foundNode = view.state.doc.nodeAt(foundPos);
-                if (foundNode) {
-                  removeRange = { from: foundPos, to: foundPos + foundNode.nodeSize };
-                }
-              }
-            }
+            /*
+             * Havia aqui um terceiro passo: varrer o documento atrás de um nó
+             * "igual" ao que foi solto (`candidate.eq`, ou o mesmo `url`/`src`/
+             * `fileId`). Ele achava o PRIMEIRO nó parecido, não o que estava
+             * sendo arrastado — dois parágrafos com o mesmo texto, ou dois
+             * cards da mesma URL, e o bloco apagado era o errado. O sintoma era
+             * o conteúdo sumindo de um lugar que ninguém tinha tocado.
+             *
+             * Sem palpite: se a origem não é conhecida com certeza e o arrasto é
+             * um MOVER, devolvemos o drop ao ProseMirror. Ele sabe exatamente o
+             * que remover, e o pior caso vira "não agrupou" em vez de "duplicou
+             * o bloco" ou "apagou o bloco errado".
+             */
+            if (!removeRange && moved) return false;
 
-            // 4. Valida se não é soltar em si mesmo
+            // Soltar dentro da própria origem não faz sentido.
             if (removeRange && removeRange.from <= target.pos && removeRange.to >= target.pos) {
               return false;
             }
