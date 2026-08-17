@@ -9,9 +9,9 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
-import { Columns2, Plus, Ungroup, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Columns2, Plus, Ungroup, X } from 'lucide-react';
 import type { GroupSpec } from './groupSpecs';
-import { appendToGroup, balanceChildren, removeChild, unwrapGroup } from './groupCommands';
+import { appendToGroup, balanceChildren, moveChild, removeChild, unwrapGroup } from './groupCommands';
 import { useGroupResize } from './useGroupResize';
 
 interface GroupShellProps {
@@ -83,6 +83,11 @@ export default function GroupShell({
     [runOnGroup]
   );
 
+  const handleMoveChild = useCallback(
+    (from: number, to: number) => runOnGroup((view, pos) => moveChild(view, pos, from, to)),
+    [runOnGroup]
+  );
+
   const showChrome = editor.isEditable && (hovered || isResizing);
   const childCount = node.childCount;
 
@@ -140,14 +145,15 @@ export default function GroupShell({
         childCount > 1 &&
         handleOffsets.length > 0 &&
         Array.from({ length: childCount }, (_, index) => (
-          <RemoveChildButton
+          <ChildControls
             key={index}
-            title={spec.labels.removeChild}
+            removeTitle={spec.labels.removeChild}
             index={index}
             childCount={childCount}
             handleOffsets={handleOffsets}
             wrapperRef={wrapperRef}
             onRemove={handleRemoveChild}
+            onMove={handleMoveChild}
           />
         ))}
 
@@ -167,23 +173,29 @@ export default function GroupShell({
 }
 
 /**
- * O "×" fica no topo de cada coluna. A posição horizontal é derivada dos vãos
- * já medidos, então acompanha o redimensionamento sem medir nada de novo.
+ * Controles de cada coluna, no topo dela: mover para a esquerda, remover, mover
+ * para a direita. A posição horizontal é derivada dos vãos já medidos, então
+ * acompanha o redimensionamento sem medir nada de novo.
+ *
+ * Reordenar por botão, e não por arrasto: o `dragover` do `DragToGroup` só
+ * reconhece blocos de nível superior, e uma coluna nunca é um deles.
  */
-function RemoveChildButton({
-  title,
+function ChildControls({
+  removeTitle,
   index,
   childCount,
   handleOffsets,
   wrapperRef,
   onRemove,
+  onMove,
 }: {
-  title: string;
+  removeTitle: string;
   index: number;
   childCount: number;
   handleOffsets: number[];
   wrapperRef: React.RefObject<HTMLDivElement | null>;
   onRemove: (index: number) => void;
+  onMove: (from: number, to: number) => void;
 }) {
   const width = wrapperRef.current?.getBoundingClientRect().width ?? 0;
   const start = index === 0 ? 0 : handleOffsets[index - 1];
@@ -191,21 +203,66 @@ function RemoveChildButton({
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
 
   return (
+    <div
+      contentEditable={false}
+      className="group-layout__remove absolute -top-2 z-30 flex items-center gap-0.5 rounded-full border border-white/10 bg-dark-bg/95 px-0.5 shadow-lg backdrop-blur-xl"
+      style={{ left: `${(start + end) / 2}px`, transform: 'translateX(-50%)' }}
+    >
+      <ChildButton
+        title="Mover esta coluna para a esquerda"
+        disabled={index === 0}
+        onClick={() => onMove(index, index - 1)}
+      >
+        <ChevronLeft size={11} />
+      </ChildButton>
+
+      <ChildButton title={removeTitle} danger onClick={() => onRemove(index)}>
+        <X size={11} />
+      </ChildButton>
+
+      <ChildButton
+        title="Mover esta coluna para a direita"
+        disabled={index === childCount - 1}
+        onClick={() => onMove(index, index + 1)}
+      >
+        <ChevronRight size={11} />
+      </ChildButton>
+    </div>
+  );
+}
+
+function ChildButton({
+  title,
+  onClick,
+  children,
+  disabled = false,
+  danger = false,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
     <button
       type="button"
       title={title}
       aria-label={title}
+      disabled={disabled}
       contentEditable={false}
+      // Sem isto o clique tira o foco do editor e a posição do grupo se perde.
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        onRemove(index);
+        onClick();
       }}
-      className="group-layout__remove absolute -top-2 z-30 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-dark-bg/95 text-dark-subtext shadow-lg backdrop-blur-xl transition-colors hover:border-red-500/40 hover:text-red-400"
-      style={{ left: `${(start + end) / 2}px`, transform: 'translateX(-50%)' }}
+      className={`flex h-5 w-5 items-center justify-center rounded-full text-dark-subtext transition-colors disabled:opacity-25 ${
+        danger ? 'hover:text-red-400' : 'hover:text-brand-300'
+      } disabled:hover:text-dark-subtext`}
     >
-      <X size={11} />
+      {children}
     </button>
   );
 }
