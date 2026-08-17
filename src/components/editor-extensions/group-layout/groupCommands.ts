@@ -365,13 +365,40 @@ export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: Gr
     if (!nodeSpec) return true;
     if (spec && nodeSpec !== spec) return false;
     targets.push({ pos, node });
-    return false; // grupos não aninham
+    // Continua descendo. Antes parava aqui, alegando que "grupos não aninham" —
+    // mas isso é uma regra que o schema NÃO impõe: `columnBlock` aceita `block+`
+    // e os grupos são `group: 'block'`, então colar (ou usar o slash-menu) põe
+    // um grupo dentro de uma coluna. O aninhado nunca era sequer visitado.
+    return true;
   });
+
+  /** Este alvo contém outro alvo? */
+  const containsAnotherTarget = (candidate: { pos: number; node: PMNode }) =>
+    targets.some(
+      (other) =>
+        other !== candidate &&
+        other.pos > candidate.pos &&
+        other.pos < candidate.pos + candidate.node.nodeSize
+    );
 
   // De trás para frente para não invalidar as posições anteriores.
   for (const { pos, node } of targets.reverse()) {
     const nodeSpec = getSpecForGroup(node)!;
-    if (node.childCount >= 2) continue;
+
+    /*
+     * Um grupo que contém outro alvo é deixado para a próxima passada. O `node`
+     * aqui é um retrato de antes da transação: desfazer o externo agora
+     * reinseriria o conteúdo antigo, ressuscitando o grupo interno que acabamos
+     * de desfazer. O `appendTransaction` reentra (MAX_CASCADE), então o de fora
+     * é tratado no ciclo seguinte, já com o retrato atualizado.
+     */
+    if (containsAnotherTarget({ pos, node })) continue;
+
+    // Desfaz se ficou degenerado OU se está aninhado dentro de outro grupo.
+    const nested = targets.some(
+      (other) => other.pos < pos && pos < other.pos + other.node.nodeSize
+    );
+    if (node.childCount >= 2 && !nested) continue;
 
     const content = flattenGroup(nodeSpec, node);
     // Mesmo cuidado do `groupAutoCollapse`: as duas pontas são remapeadas. O
