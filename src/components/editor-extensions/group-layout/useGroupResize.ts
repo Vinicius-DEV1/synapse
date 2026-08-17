@@ -101,9 +101,17 @@ export function useGroupResize({
     );
   }, [wrapperRef, getChildElements]);
 
+  /*
+   * `node` é um objeto novo a cada transação do ProseMirror, então usá-lo como
+   * dependência remedia o grupo a cada tecla digitada em QUALQUER lugar do
+   * documento. O que de fato muda o layout é o número de colunas e as larguras;
+   * é isso que a assinatura acompanha.
+   */
+  const widthSignature = getWidths(spec, node).join(',');
+
   useLayoutEffect(() => {
     remeasure();
-  }, [remeasure, childCount, node]);
+  }, [remeasure, childCount, widthSignature]);
 
   /**
    * As colunas são montadas pelo ProseMirror DEPOIS deste efeito rodar — medir
@@ -137,8 +145,31 @@ export function useGroupResize({
       getChildElements().forEach((el) => resizeObserver.observe(el));
     };
 
+    /*
+     * O MutationObserver serve só para reatar o ResizeObserver quando o
+     * CONJUNTO de colunas muda. Antes ele reagia a qualquer mutação da subárvore
+     * — ou seja, a cada tecla digitada dentro de uma coluna, disparando
+     * remedição, `setState` e um re-render do grupo inteiro no meio da digitação.
+     *
+     * Observar a subárvore continua necessário (o Tiptap injeta um <div> entre
+     * o wrapper e as colunas reais), mas agora as mutações são filtradas.
+     */
+    const touchesChildren = (records: MutationRecord[]) =>
+      records.some((record) =>
+        [...record.addedNodes, ...record.removedNodes].some(
+          (candidate) =>
+            candidate instanceof HTMLElement &&
+            (candidate.matches(GROUP_CHILD_SELECTOR) ||
+              candidate.querySelector(GROUP_CHILD_SELECTOR) !== null)
+        )
+      );
+
     const mutationObserver =
-      typeof MutationObserver !== 'undefined' ? new MutationObserver(() => schedule()) : null;
+      typeof MutationObserver !== 'undefined'
+        ? new MutationObserver((records) => {
+            if (touchesChildren(records)) schedule();
+          })
+        : null;
     mutationObserver?.observe(wrapper, { childList: true, subtree: true });
 
     observeChildren();
