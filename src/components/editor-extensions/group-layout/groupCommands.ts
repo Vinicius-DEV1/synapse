@@ -225,6 +225,8 @@ export function createGroup(
   const groupType = schema.nodes[spec.groupName];
   if (!groupType) return false;
 
+  const expected = view.state.doc.nodeAt(targetPos);
+
   const tr = view.state.tr;
   if (removeRange && removeRange.to > removeRange.from) {
     tr.delete(removeRange.from, removeRange.to);
@@ -235,6 +237,13 @@ export function createGroup(
   const pos = tr.mapping.map(targetPos, -1);
   const target = tr.doc.nodeAt(pos);
   if (!target) return false;
+
+  // Havia um node ali antes; se agora a posição remapeada aponta para outro
+  // TIPO, o mapeamento escorregou e envolver esse node significaria agrupar o
+  // bloco errado. Comparar por tipo e não por `eq`: quando a origem removida
+  // estava DENTRO do alvo (arrastar um bloco de dentro do grupo para a borda
+  // dele), o conteúdo muda de forma legítima e `eq` rejeitaria a operação.
+  if (expected && target.type !== expected.type) return false;
 
   const droppedChild = spec.wrapAsChild(schema, dropped, 50);
   const targetChild = spec.wrapAsChild(schema, [target], 50);
