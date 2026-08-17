@@ -159,7 +159,11 @@ export function removeChild(
     );
     tr.replaceWith(groupPos, groupEnd, node.type.create(node.attrs, rebalanced));
     if (rescued.length > 0) {
-      tr.insert(tr.mapping.map(groupEnd), Fragment.fromArray(rescued));
+      // Bias +1: mapeia para DEPOIS do novo grupo.
+      // Com bias -1 (padrão), o ProseMirror mapeava `groupEnd` de volta para
+      // `groupPos` — e o conteúdo resgatado era inserido DENTRO do grupo,
+      // no início, causando duplicação e corrupção do documento.
+      tr.insert(tr.mapping.map(groupEnd, 1), Fragment.fromArray(rescued));
     }
   }
 
@@ -287,7 +291,7 @@ export function appendToGroup(
   if (!group || group.type.name !== spec.groupName) return false;
   if (group.childCount >= spec.maxChildren) return false;
 
-  const newChild = spec.wrapAsChild(view.state.schema, dropped, spec.defaultWidth);
+  const newChild = spec.wrapAsChild(tr.doc.type.schema, dropped, spec.defaultWidth);
   if (!newChild) return false;
 
   const children = getChildren(group);
