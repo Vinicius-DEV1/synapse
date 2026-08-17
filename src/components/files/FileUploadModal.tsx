@@ -6,6 +6,11 @@ import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
 import { Portal } from '../ui/Portal';
 
+// The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
+// the filename plus the raw bytes; the declared ICadernoAPI signature only has one
+// param. Type the runtime function reference to match its actual shape.
+type SaveLocalFn = (filename: string, data: Uint8Array) => Promise<string>;
+
 interface FileUploadModalProps {
   onClose: () => void;
   onUploadComplete?: (file: FileItem) => void;
@@ -38,6 +43,12 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
     setProgress(0);
     setError(null);
     
+    if (!window.api.files) {
+      setError('Módulo de arquivos indisponível');
+      setIsUploading(false);
+      return;
+    }
+
     let lastCreated: any = null;
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
@@ -55,8 +66,9 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         let driveFileName = file.name;
         let uploadBuffer = arrayBuffer;
 
-        if (window.api?.files?.saveLocal) {
-          localPath = await window.api.files.saveLocal(file.name, new Uint8Array(bytes));
+        const saveLocal = window.api?.files?.saveLocal as SaveLocalFn | undefined;
+        if (saveLocal) {
+          localPath = await saveLocal(file.name, new Uint8Array(bytes));
         }
         
         setProgress(40);

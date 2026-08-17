@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowUpDown, ChevronDown } from 'lucide-react';
 
 export type SortBy = 'last_read' | 'title' | 'created' | 'author';

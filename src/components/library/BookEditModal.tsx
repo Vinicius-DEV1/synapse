@@ -43,7 +43,7 @@ export default function BookEditModal({
   const [loading, setLoading] = useState(false);
 
   const uniqueAuthors = Array.from(new Set(allBooks.map(b => b.author).filter(Boolean)));
-  const uniquePublishers = Array.from(new Set(allBooks.map(b => b.publisher).filter(Boolean)));
+  const uniquePublishers = Array.from(new Set(allBooks.map(b => b.publisher).filter((p): p is string => Boolean(p))));
 
   // New collection form
   const [showNewCollection, setShowNewCollection] = useState(false);
@@ -68,7 +68,7 @@ export default function BookEditModal({
       const publisherMatch = uniquePublishers.find(p => p.toLowerCase() === publisher.trim().toLowerCase());
       const finalPublisher = publisherMatch || publisher.trim();
 
-      await window.api.library.updateBook({
+      const bookUpdate = {
         id: book.id,
         title: title.trim(),
         author: finalAuthor,
@@ -77,7 +77,8 @@ export default function BookEditModal({
         language: language.trim() || null,
         reading_status: status,
         cover_image: coverImage,
-      });
+      };
+      await window.api.library.updateBook(bookUpdate);
 
       let finalCollections = [...selectedCollections];
       if (showNewCollection && newCollectionName.trim()) {

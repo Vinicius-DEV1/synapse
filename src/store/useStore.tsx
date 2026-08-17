@@ -94,7 +94,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stateToSave = {
-      activeModule: state.activeModule,
+      // `module` migrou para dentro de cada Tab; `activeModule` (campo global)
+      // não existe mais em AppState — persisti-lo sempre gravava `undefined`.
       tabs: state.tabs.map(t => ({ ...t, unsavedContent: null })), // don't persist huge unsaved text
       activeTabId: state.activeTabId,
       sidebarCollapsed: state.sidebarCollapsed,
@@ -117,7 +118,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     
     if (window.api?.config) {
       const dbState = {
-        activeModule: state.activeModule,
         sidebarCollapsed: state.sidebarCollapsed,
         expandedNodes: state.expandedNodes,
         aiChatSessions: state.aiChatSessions,
@@ -125,7 +125,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       };
       window.api.config.set('appLayoutState', dbState).catch(console.error);
     }
-  }, [state.activeModule, state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
+  }, [state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

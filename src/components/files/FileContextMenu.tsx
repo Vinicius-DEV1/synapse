@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import type { FileItem, FileFolder } from '../../types';
+import { useEffect, useRef } from 'react';
+import type { FileItem } from '../../types';
 import { Eye, Info, Trash2, ArrowRightCircle, Download } from 'lucide-react';
 
 interface FileContextMenuProps {

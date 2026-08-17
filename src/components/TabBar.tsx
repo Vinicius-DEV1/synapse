@@ -15,7 +15,7 @@ interface TabItemProps {
   tabCount: number;
 }
 
-function TabItem({ tab, index, isActive, page, onSelect, onClose, onDropTab, tabCount }: TabItemProps) {
+function TabItem({ tab, index, isActive, page, onSelect, onClose, tabCount }: TabItemProps) {
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 

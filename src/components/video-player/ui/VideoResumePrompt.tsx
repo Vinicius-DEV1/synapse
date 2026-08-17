@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatVideoTime } from '../helpers/videoContextHelper';
 
 interface VideoResumePromptProps {

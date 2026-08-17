@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Bell, Calendar, Clock, BookOpen, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { AppNotification } from '../../types/core';

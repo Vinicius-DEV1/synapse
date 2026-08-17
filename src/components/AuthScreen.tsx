@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldAlert, KeyRound, Timer } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert, Timer } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
 import { getVaultKeyHash } from '../services/vault-crypto';
@@ -28,6 +28,12 @@ async function buildModuleKeys(rawKeys: Record<string, string> | null | undefine
   }
   return keys;
 }
+
+// A interface AuthApi (src/api/types.ts) não declara forceUpdateKeychain, mas tanto
+// tauriAuthApi (src/api/tauri/auth.ts) quanto webAuthApi (src/api/web/auth.ts) o implementam.
+type AuthApiWithKeychain = typeof window.api.auth & {
+  forceUpdateKeychain?: (password: string, keys: Record<string, string>) => Promise<{ success: boolean; error?: string }>;
+};
 
 interface AuthScreenProps {
   status: 'new' | 'unencrypted' | 'encrypted' | 'error';
@@ -140,8 +146,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
         const res = await window.api.auth.setup(password, existingKeysToUse);
         if (res.success) {
-          let rawKeys = res.keys;
-          
+          let rawKeys: Record<string, string> | null | undefined = res.keys;
+
           if (rawKeys) {
             if (cloudCheck.isNew) {
               pushModularKeysToCloud(rawKeys, masterKey).catch(e => console.error(e));
@@ -165,7 +171,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
           
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
-          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }
@@ -189,7 +194,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         if (res.success) {
           await clearFailedAttempts();
           const masterKey = await deriveMasterKey(password);
-          let rawKeys = res.keys;
+          let rawKeys: Record<string, string> | null | undefined = res.keys;
 
           let cloudKeys = null;
           try {
@@ -199,11 +204,12 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.");
             }
           }
-          
+
           if (cloudKeys) {
              rawKeys = cloudKeys;
-             if (window.api.auth.forceUpdateKeychain) {
-               await window.api.auth.forceUpdateKeychain(password, rawKeys);
+             const authApi = window.api.auth as AuthApiWithKeychain;
+             if (authApi.forceUpdateKeychain) {
+               await authApi.forceUpdateKeychain(password, rawKeys);
              }
           } else if (!rawKeys) {
              try {
@@ -221,7 +227,6 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
 
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
-          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }

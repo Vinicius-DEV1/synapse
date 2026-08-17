@@ -1,4 +1,3 @@
-import React from 'react';
 import { BG_COLORS } from '../../utils/colors';
 
 interface ColorPalettePickerProps {
@@ -30,11 +29,11 @@ export default function ColorPalettePicker({
         {BG_COLORS.map((c) => (
           <button
             key={c.name}
-            onClick={() => onSelectColor(c.color)}
+            onClick={() => onSelectColor(c.value)}
             className={`w-7 h-7 rounded-lg transition-transform hover:scale-110 flex items-center justify-center ${
-              currentColor === c.color ? 'ring-2 ring-white ring-offset-1 ring-offset-dark-bg' : ''
+              currentColor === c.value ? 'ring-2 ring-white ring-offset-1 ring-offset-dark-bg' : ''
             }`}
-            style={{ backgroundColor: c.color }}
+            style={{ backgroundColor: c.value }}
             title={c.name}
           />
         ))}

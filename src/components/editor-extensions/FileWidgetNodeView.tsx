@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
-import { File, FileText, Image as ImageIcon, Film, Download, Trash2, X, Folder, Plus, GripVertical } from 'lucide-react';
+import { File, FileText, Image as ImageIcon, Film, X, Folder, Plus, GripVertical } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import FileViewer from '../files/FileViewer';
 import FloatingPdfViewer from './FloatingPdfViewer';
 
 export default function FileWidgetNodeView(props: any) {
-  const { node, deleteNode, updateAttributes } = props;
+  const { node, deleteNode } = props;
   const { fileId, name, fileType, isLink } = node.attrs;
   
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [keepInDrive, setKeepInDrive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
@@ -65,12 +64,13 @@ export default function FileWidgetNodeView(props: any) {
   const confirmDelete = async () => {
     setIsDeleting(true);
     try {
-      if (fileItem) {
+      if (fileItem && window.api.files) {
         // Remove from DB
         await window.api.files.delete(fileItem.id);
         
-        // Remove from Drive if requested
-        if (!keepInDrive && fileItem.drive_file_id) {
+        // Não há opção de "manter no Drive" na UI — o botão "Excluir de Tudo"
+        // sempre remove de lá também quando existe um drive_file_id.
+        if (fileItem.drive_file_id) {
           try {
             const token = await getValidAccessToken();
             if (token) {
@@ -145,7 +145,8 @@ export default function FileWidgetNodeView(props: any) {
         }`}
         onClick={() => {
           if (fileType === 'folder') {
-            dispatch({ type: 'SET_CURRENT_MODULE', payload: 'files' });
+            // Não existe ação global "trocar módulo" — o módulo é por aba.
+            dispatch({ type: 'UPDATE_TAB_MODULE', tabId: state.activeTabId, module: 'files' });
             // Should probably emit an event to navigate to that folder inside the module
             window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
           } else if ((fileType === 'pdf' || fileType === 'epub') && fileItem) {

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CultureSearchResult } from '../../../services/culture-apis';
 
 interface CultureSearchResultsListProps {

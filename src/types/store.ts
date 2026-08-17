@@ -72,4 +72,5 @@ export type Action =
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
   | { type: 'SET_NAV_DIRECTION'; direction: 'forward' | 'backward' | null }
+  | { type: 'SET_READING_MODE_FULLSCREEN'; isFullScreen: boolean }
   | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
 import type { BreachCheckResult } from '../../types';
 

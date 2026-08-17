@@ -1,4 +1,3 @@
-import React from 'react';
 import type { VideoItem } from '../../../types';
 import VideoUploadModal, { type UploadOptions } from '../VideoUploadModal';
 import YouTubeDownloadModal from '../YouTubeDownloadModal';

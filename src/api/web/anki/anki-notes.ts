@@ -64,7 +64,7 @@ export async function deleteNote(db: any, noteId: string) {
   return { success: false, error: 'Note not found' };
 }
 
-export async function deleteCard(db: any, generateId: () => string, cardId: string) {
+export async function deleteCard(db: any, _generateId: () => string, cardId: string) {
   const card = await db.get('anki_cards', cardId);
   if (card && card.note_id) {
     return await deleteNote(db, card.note_id);
@@ -73,10 +73,10 @@ export async function deleteCard(db: any, generateId: () => string, cardId: stri
 }
 
 export async function getAllCards(db: any, deckId?: string) {
-  const allCards = (await db.getAll('anki_cards')) || [];
-  const allNotes = (await db.getAll('anki_notes')) || [];
+  const allCards: any[] = (await db.getAll('anki_cards')) || [];
+  const allNotes: any[] = (await db.getAll('anki_notes')) || [];
   const notesMap = new Map(
-    allNotes.filter((n: any) => !n.deleted_at).map((n: any) => [n.id, n])
+    allNotes.filter((n: any) => !n.deleted_at).map((n: any): [string, any] => [n.id, n])
   );
 
   let validCards = allCards.filter((c: any) => !c.deleted_at);

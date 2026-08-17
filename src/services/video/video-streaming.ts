@@ -3,6 +3,13 @@ import type { VideoItem } from '../../types';
 
 const VIDEO_TABLE = 'videos';
 
+// `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara esses métodos
+// nativos do desktop (implementados em src/api/tauri/multimedia.ts).
+type DesktopVideoApi = NonNullable<typeof window.api.video> & {
+  onDownloadProgress: (callback: (percent: number) => void) => () => void;
+  getStreamPort: () => Promise<number>;
+};
+
 /**
  * Obtém link de streaming a partir do ID do Drive.
  */
@@ -53,11 +60,12 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
   const targetFileName = (shouldUseWebVersion && video.drive_web_file_id) ? `${baseName}_web.mp4` : video.original_name;
 
+  const desktopVideoApi = window.api.video as DesktopVideoApi;
   let localPath = "";
   if (window.api.video.downloadFromDrive) {
     let unlisten: (() => void) | undefined;
-    if (window.api.video.onDownloadProgress && onProgress) {
-      unlisten = window.api.video.onDownloadProgress(onProgress);
+    if (desktopVideoApi.onDownloadProgress && onProgress) {
+      unlisten = desktopVideoApi.onDownloadProgress(onProgress);
     }
     try {
       localPath = await window.api.video.downloadFromDrive(targetDriveId, token, targetFileName);
@@ -84,7 +92,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
  * Verifica se um vídeo está disponível localmente.
  * Se sim, retorna a URL com protocolo file:// ou streaming port. Se não, retorna link do Drive.
  */
-export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
+export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
   const { getSettings } = await import('../../utils/settings');
   const pref = getSettings().videoPlaybackPreference;
   
@@ -101,11 +109,12 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, f
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
 
   if (window.api?.video && video.is_local) {
+    const desktopVideoApi = window.api.video as DesktopVideoApi;
     // Quando sincroniza de outro SO, o file_path salvo pode ser do Windows e não existir no Linux.
     // Vamos sempre verificar a existência real do arquivo usando o filename.
     const fileNameFallback = video.file_path ? video.file_path.split(/[/\\]/).pop() : undefined;
     const searchName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
-    
+
     let localPath = await window.api.video.getLocalPath(searchName);
     if (!localPath) {
       localPath = await window.api.video.getLocalPath(searchName + ".enc");
@@ -113,11 +122,11 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, f
     if (!localPath && fileNameFallback) {
       localPath = await window.api.video.getLocalPath(fileNameFallback);
     }
-    
+
     if (localPath) {
-      if (window.api?.video?.getStreamPort) {
+      if (desktopVideoApi.getStreamPort) {
         try {
-          const port = await window.api.video.getStreamPort();
+          const port = await desktopVideoApi.getStreamPort();
           const fileName = localPath.split(/[/\\]/).pop();
           return `http://127.0.0.1:${port}/stream?file=culture/${encodeURIComponent(fileName || '')}`;
         } catch (e) {
@@ -147,9 +156,10 @@ export async function resolveVideoUrl(video: VideoItem, masterKey?: CryptoKey, f
       ? video.drive_web_file_id 
       : (video.drive_file_id || video.drive_web_file_id);
       
-    if (targetDriveId && window.api?.video?.getStreamPort) {
+    const desktopVideoApi = window.api?.video as DesktopVideoApi | undefined;
+    if (targetDriveId && desktopVideoApi?.getStreamPort) {
       try {
-        const port = await window.api.video.getStreamPort();
+        const port = await desktopVideoApi.getStreamPort();
         const token = await getValidAccessToken();
         if (token) {
           return `http://127.0.0.1:${port}/stream-drive?file_id=${targetDriveId}&token=${token}&module=culture`;

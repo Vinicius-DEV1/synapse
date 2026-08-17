@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, X, DatabaseBackup } from 'lucide-react';
+import { AlertTriangle, DatabaseBackup } from 'lucide-react';
 import { Portal } from './ui/Portal';
 
 export default function SyncErrorModal() {

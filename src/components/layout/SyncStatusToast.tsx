@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
 
 interface SyncStatusToastProps {

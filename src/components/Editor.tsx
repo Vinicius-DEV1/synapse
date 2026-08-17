@@ -64,7 +64,6 @@ export default function Editor({
   const { ydocRef } = useEditorSync({
     pageId,
     initialCrdtState,
-    initialContent,
     onSaveRef,
     latestContentRef,
   });
@@ -125,7 +124,7 @@ export default function Editor({
         }`,
         spellcheck: settings.spellcheck ? 'true' : 'false',
       },
-      handleClick: (view, pos, event) => {
+      handleClick: (view, _pos, event) => {
         if (event.target && (event.target as HTMLElement).tagName === 'MARK') {
           const target = event.target as HTMLElement;
           const targetPos = view.posAtDOM(target, 0);
@@ -143,7 +142,7 @@ export default function Editor({
         }
         return false;
       },
-      handlePaste: (view, event, slice) => handlePaste(view, event),
+      handlePaste: (view, event, _slice) => handlePaste(view, event),
       handleDrop: (view, event, slice, moved) => handleDrop(view, event, slice, moved),
       handleKeyDown: (view, event) => handleSlashKeyDown(view, event),
     },
@@ -169,16 +168,17 @@ export default function Editor({
   return (
     <div
       ref={wrapperRef}
-      className={`editor-wrapper relative ${
-        settings.zenMode ? 'zen-mode-active max-w-2xl mx-auto py-12' : ''
-      }`}
+      // `settings.zenMode` nunca existiu em AppSettings (nem `zen-mode-active`
+      // tem CSS definido em lugar nenhum) — sempre `undefined`, então este
+      // ramo nunca aplicou nada. Stub de um "modo zen" que não foi implementado.
+      className="editor-wrapper relative"
     >
       {editor && (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 150, placement: 'top' }}
+          options={{ placement: 'top' }}
           pluginKey="floatingToolbarBubbleMenu"
-          shouldShow={({ editor, view, state, from, to }) => {
+          shouldShow={({ editor, from, to }) => {
             if (from === to) return false;
             if (editor.isActive('table')) return false;
             if (editor.isActive('image') || editor.isActive('encryptedImage') || editor.isActive('resizableImage')) return false;
@@ -193,7 +193,7 @@ export default function Editor({
       {editor && (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 150, placement: 'bottom' }}
+          options={{ placement: 'bottom' }}
           pluginKey="tableBubbleMenu"
           shouldShow={({ editor }) => editor.isActive('table')}
           className="flex shadow-elevated rounded-xl overflow-hidden border border-white/5 bg-dark-bg/80 backdrop-blur-xl mt-2"

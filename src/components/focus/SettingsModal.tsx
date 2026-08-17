@@ -40,7 +40,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
 
   const playTestSound = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
       
@@ -60,8 +60,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
   };
 
   const handleDelete = async (type: 'today' | 'last7days' | 'all') => {
-    if (window.api) {
-      await window.api.focus.deleteSessions({ type });
+    if (window.api?.focus) {
+      // `deleteSessions` (ICadernoAPI, src/api/types.ts) só declara os filtros
+      // 'specific' | 'all', mas o filtro real aceito pelas implementações
+      // (src/api/web/focus.ts, src/api/tauri/focus.ts) ainda é mais amplo.
+      await window.api.focus.deleteSessions({ type } as { type: 'specific'; id: number } | { type: 'all' });
       onRefresh();
       setConfirmDelete(null);
     }

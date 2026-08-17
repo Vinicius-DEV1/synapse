@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, FolderInput, ArrowLeft, Info, Folder, MonitorPlay } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { VideoItem } from '../../../types';
@@ -138,9 +138,9 @@ export const VideoCard = React.memo(({
             ) : null}
             
             {video.is_local ? (
-              <HardDrive size={14} className="text-green-500/80" title="Baixado (Local)" />
+              <span title="Baixado (Local)"><HardDrive size={14} className="text-green-500/80" /></span>
             ) : (
-              <Cloud size={14} className="text-blue-500/80" title="No Drive (Nuvem)" />
+              <span title="No Drive (Nuvem)"><Cloud size={14} className="text-blue-500/80" /></span>
             )}
           </div>
         )}

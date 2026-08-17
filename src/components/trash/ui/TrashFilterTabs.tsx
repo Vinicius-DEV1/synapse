@@ -1,4 +1,3 @@
-import React from 'react';
 
 const FILTER_TABS = [
   { id: 'all', label: 'Todos os Itens' },

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, FolderUp, Plus } from 'lucide-react';
 
 interface FilesHeaderProps {

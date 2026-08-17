@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bell, Plus, ArrowLeft, Trash2, Clock } from 'lucide-react';
-import type { Alarm } from '../types';
+import type { Alarm } from './types';
 
 interface AlarmsListProps {
   alarms: Alarm[];

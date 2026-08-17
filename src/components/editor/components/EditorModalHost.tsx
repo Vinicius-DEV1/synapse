@@ -14,6 +14,7 @@ import FileActionModal from '../../FileActionModal';
 import ImageDeleteModal from '../../ImageDeleteModal';
 import { deleteImageAt } from '../../editor-extensions/image/imageUtils';
 import type { SlashMenuState } from '../hooks/useSlashCommand';
+import type { Alarm } from '../../focus/types';
 
 interface EditorModalHostProps {
   editor: Editor | null;
@@ -56,18 +57,24 @@ interface EditorModalHostProps {
       initialDesc?: string;
     } | null>
   >;
-  handleStartTimer: (time: number, tag?: string, desc?: string) => void;
+  // Mesma assinatura de `useFocusContext().handleStartTimer` — a interface
+  // antiga (`time, tag?, desc?`) nunca bateu com o real
+  // `(tag, description, targetTime, explicitId?)`, e com `isOpen`/`onClose`/
+  // `initialTime`/`initialDesc` como props fantasma o botão de fechar do
+  // SetupModal (que espera `onCancel`) nunca foi ligado a nada.
+  handleStartTimer: (
+    tag: string,
+    description: string,
+    targetTime: number,
+    explicitId?: string
+  ) => string | void;
   alarmModal: { isOpen: boolean; initialTimeStr?: string } | null;
   setAlarmModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; initialTimeStr?: string } | null>
   >;
-  handleSaveAlarm: (
-    time: string,
-    days: number[],
-    tag?: string,
-    label?: string,
-    onlyOnce?: boolean
-  ) => void;
+  // Mesma assinatura de `useFocusContext().handleSaveAlarm` — o AlarmSetupModal
+  // real recebe um único objeto `Alarm`, não 5 parâmetros posicionais.
+  handleSaveAlarm: (alarm: Alarm) => Promise<void>;
   fileUploadModal: { isOpen: boolean; isLink: boolean } | null;
   setFileUploadModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; isLink: boolean } | null>
@@ -188,24 +195,22 @@ export default function EditorModalHost({
 
       {focusModal?.isOpen && (
         <SetupModal
-          isOpen={true}
-          onClose={() => setFocusModal(null)}
-          onStart={(t, tag, d) => {
-            handleStartTimer(t, tag, d);
+          onCancel={() => setFocusModal(null)}
+          onStart={(tag, description, targetTime) => {
+            handleStartTimer(tag, description, targetTime);
             setFocusModal(null);
           }}
-          initialTime={focusModal.initialTime}
           initialTag={focusModal.initialTag}
-          initialDesc={focusModal.initialDesc}
+          initialDescription={focusModal.initialDesc}
+          initialTargetTime={focusModal.initialTime}
         />
       )}
 
       {alarmModal?.isOpen && (
         <AlarmSetupModal
-          isOpen={true}
-          onClose={() => setAlarmModal(null)}
-          onSave={(t, days, tag, l, o) => {
-            handleSaveAlarm(t, days, tag, l, o);
+          onCancel={() => setAlarmModal(null)}
+          onSave={(alarm) => {
+            handleSaveAlarm(alarm);
             setAlarmModal(null);
           }}
           initialTimeStr={alarmModal.initialTimeStr}
@@ -250,7 +255,6 @@ export default function EditorModalHost({
 
       {fileSelectModal && (
         <FileSelectModal
-          isOpen={true}
           onClose={() => setFileSelectModal(false)}
           onSelect={(item) => {
             if (editor) {

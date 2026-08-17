@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Plus, Key, Star, GripVertical } from 'lucide-react';
 import type { VaultItem } from '../../types';
 

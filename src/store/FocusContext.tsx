@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import type { Session, Alarm } from '../components/focus/types';
 import type { LofiItem } from '../types';
 import { useLofiAudio } from './focus/useLofiAudio';
@@ -79,10 +80,10 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   } = useLofiAudio();
 
   const loadData = useCallback(async () => {
-    if (window.api) {
+    if (window.api?.focus) {
       try {
         const data = await window.api.focus.getSessions();
-        const formattedData = (data.sessions || data || []).map((s: any) => {
+        const formattedData = (data || []).map((s: any) => {
           let iso = s.created_at;
           if (iso && !iso.includes('T')) {
             iso = iso.replace(' ', 'T') + 'Z';
@@ -95,7 +96,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setSessions(formattedData);
         if (window.api.focus.getAlarms) {
           const alarmsData = await window.api.focus.getAlarms();
-          alarmControls.setAlarms(alarmsData.alarms || alarmsData || []);
+          alarmControls.setAlarms(alarmsData || []);
         }
         await loadLofis();
       } catch (err) {
@@ -118,7 +119,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [loadLofis, loadData]);
 
   const handleDeleteSession = async (id: number) => {
-    if (window.api) {
+    if (window.api?.focus) {
       await window.api.focus.deleteSessions({ type: 'specific', id });
       loadData();
     }

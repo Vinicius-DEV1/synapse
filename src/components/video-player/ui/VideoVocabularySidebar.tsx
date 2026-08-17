@@ -6,13 +6,13 @@ interface VideoVocabularySidebarProps {
   video: VideoItem;
   videoWords: any[];
   setShowVocabDrawer: (val: boolean) => void;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   loadVideoWords: () => void;
   setDictState: (state: any) => void;
 }
 
 export function VideoVocabularySidebar({
-  video, videoWords, setShowVocabDrawer, videoRef, loadVideoWords, setDictState
+  video: _video, videoWords, setShowVocabDrawer, videoRef, loadVideoWords, setDictState
 }: VideoVocabularySidebarProps) {
   return (
     <div className="absolute inset-y-0 right-0 w-96 max-w-full bg-dark-card border-l border-white/10 shadow-2xl z-50 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">

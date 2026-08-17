@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Bell, BellOff } from 'lucide-react';
-import type { Alarm } from '../types';
+import type { Alarm } from './types';
 import { Portal } from '../ui/Portal';
 
 interface AlarmTriggerModalProps {
@@ -17,7 +17,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
     const type = localStorage.getItem('defaultAlarmType') || 'beep';
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
     

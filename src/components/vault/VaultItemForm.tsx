@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, RefreshCw, Star } from 'lucide-react';
 import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
@@ -58,7 +58,10 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
       password_changed_at: item?.password_changed_at || null,
     };
 
-    await window.api.vault?.upsertItem(itemToSave);
+    // `group_id` é nulo quando o item não pertence a nenhum grupo ("Nenhum Grupo"),
+    // embora o tipo `VaultItem.group_id` (src/types/vault.ts) ainda esteja declarado
+    // como não-nulo. O cast reflete o formato real gravado no banco.
+    await window.api.vault?.upsertItem(itemToSave as VaultItem);
     onSave();
   };
 

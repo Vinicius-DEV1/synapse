@@ -1,5 +1,6 @@
 import { getWebDb } from './db-web';
-import { uploadEncryptedPdf, getDecryptedPdf } from './storage';
+import type { CadernoDBSchema } from './db-web';
+import type { StoreNames, StoreKey } from 'idb';
 import { PayloadOptimizer } from '../utils/PayloadOptimizer';
 import { webFinanceApi } from '../api/web/finance';
 import { webAuthApi } from '../api/web/auth';
@@ -23,14 +24,6 @@ const generateId = () => crypto.randomUUID();
 // Variável para guardar a chave mestra no escopo da API Web
 let _masterKey: CryptoKey | null = null;
 
-async function hashLocalPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + "caderno-local-auth-salt");
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 export const createWebApiMock = async () => {
   const db = await getWebDb();
 
@@ -40,22 +33,22 @@ export const createWebApiMock = async () => {
   const originalPut = db.put.bind(db);
   const originalDelete = db.delete.bind(db);
 
-  db.put = async (storeName: string, val: any, key?: IDBValidKey) => {
+  db.put = (async <Name extends StoreNames<CadernoDBSchema>>(storeName: Name, val: CadernoDBSchema[Name]['value'], key?: IDBKeyRange | StoreKey<CadernoDBSchema, Name>) => {
     const optimizedVal = PayloadOptimizer.optimize(val);
-    const res = await originalPut(storeName, optimizedVal, key);
+    const res = await originalPut<Name>(storeName, optimizedVal, key);
     if (storeName !== 'config' || (val && !['sync_signal', 'auth_validator', 'module_keys'].includes(val.id))) {
       triggerSync();
     }
     return res;
-  };
-  
-  db.delete = async (storeName: string, key: IDBValidKey | IDBKeyRange) => {
-    const res = await originalDelete(storeName, key);
+  }) as typeof db.put;
+
+  db.delete = (async <Name extends StoreNames<CadernoDBSchema>>(storeName: Name, key: IDBKeyRange | StoreKey<CadernoDBSchema, Name>) => {
+    const res = await originalDelete<Name>(storeName, key);
     if (storeName !== 'config' || !['sync_signal', 'auth_validator', 'module_keys'].includes(key as string)) {
       triggerSync();
     }
     return res;
-  };
+  }) as typeof db.delete;
 
   return {
     // FUNÇÃO EXCLUSIVA DA WEB PARA INJETAR A CHAVE MESTRA
@@ -106,8 +99,7 @@ export const createWebApiMock = async () => {
         is_locked: 0,
       };
       await db.put('pages', page);
-      const { content, encrypted_content, ...rest } = page;
-      return rest;
+      return page;
     },
     updatePage: async (page: any) => {
       const existing = await db.get('pages', page.id);
@@ -165,7 +157,7 @@ export const createWebApiMock = async () => {
       await tx.done;
       return true;
     },
-    getPageHistory: async (pageId: string) => [],
+    getPageHistory: async (_pageId: string) => [],
     exportBackup: async () => ({ success: false, error: "Backup não suportado na versão Web" }),
 
     // --- AUTH ---

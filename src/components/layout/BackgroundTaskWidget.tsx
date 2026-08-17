@@ -1,5 +1,5 @@
 import { useTasks } from '../../store/TaskContext';
-import { X, CheckCircle2, AlertCircle, Loader2, Play } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function BackgroundTaskWidget() {
   const { tasks, cancelTask, removeTask } = useTasks();

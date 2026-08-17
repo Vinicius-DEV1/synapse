@@ -1,7 +1,4 @@
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { copyFile, readFile, mkdir } from '@tauri-apps/plugin-fs';
-import { BaseDirectory } from '@tauri-apps/api/path';
 import { tauriAuthApi } from './api/tauri/auth';
 import { tauriFinanceApi } from './api/tauri/finance';
 import { tauriLibraryApi } from './api/tauri/library';

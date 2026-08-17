@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Session } from '../types';
+import type { Session } from './types';
 
 interface DashboardProps {
   sessions: Session[];

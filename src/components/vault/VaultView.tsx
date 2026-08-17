@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Shield } from 'lucide-react';
 import { VaultItemForm } from './VaultItemForm';
 import { VaultSecurityDashboard } from './VaultSecurityDashboard';

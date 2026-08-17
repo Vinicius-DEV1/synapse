@@ -1,4 +1,3 @@
-import React from 'react';
 import { File, AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
 import type { UploadTask } from '../hooks/useFolderUpload';
 

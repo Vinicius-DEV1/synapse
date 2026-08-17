@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FileFolder, FileItem } from '../../../types';
 import FileUploadModal from '../FileUploadModal';
 import FolderUploadModal from '../FolderUploadModal';

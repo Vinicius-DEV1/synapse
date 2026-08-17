@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, StickyNote, Trash2 } from 'lucide-react';
 import type { LibraryHighlight } from '../../../types';
 import { AnnotationItem } from './AnnotationItem';

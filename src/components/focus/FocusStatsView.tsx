@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Activity, BookOpen, PlaySquare, Music, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getActivityLogs } from '../../services/stats-manager';
@@ -28,8 +28,6 @@ export default function FocusStatsView({ onBack }: FocusStatsViewProps) {
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
   };
 
-  const todayStr = getLocalIsoDate();
-  
   // Calculate Totals
   const totalTimeSeconds = logs.reduce((acc, log) => acc + log.duration_seconds, 0);
   const totalTimeHours = (totalTimeSeconds / 3600).toFixed(1);

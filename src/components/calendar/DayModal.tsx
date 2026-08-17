@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CalendarEvent } from '../../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotificationScheduler } from './useNotificationScheduler';
 import NotificationCenterModal from './NotificationCenterModal';

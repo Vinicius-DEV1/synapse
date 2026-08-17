@@ -1,4 +1,3 @@
-import React from 'react';
 import { FileText, Sparkles, Plus } from 'lucide-react';
 import { AiChatMarkdown } from './AiChatMarkdown';
 
@@ -19,7 +18,7 @@ export function AiChatMessageItem({ msg, idx, onInsert }: AiChatMessageItemProps
   if (isUser && textContent.startsWith('[Anexos: ')) {
     const match = textContent.match(/^\[Anexos: (.*?)\]/);
     if (match && match[1]) {
-      attachedNames = match[1].split(', ').map(s => s.trim());
+      attachedNames = match[1].split(', ').map((s: string) => s.trim());
     }
     const split = textContent.split('Instrução:\n');
     if (split.length > 1) {

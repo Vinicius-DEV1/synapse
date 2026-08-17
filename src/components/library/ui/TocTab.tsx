@@ -1,4 +1,3 @@
-import React from 'react';
 import { BookOpen, ChevronRight } from 'lucide-react';
 
 export interface TocItem {

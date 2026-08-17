@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CalendarEvent } from '../../../types';
 
 interface EventModalFooterProps {

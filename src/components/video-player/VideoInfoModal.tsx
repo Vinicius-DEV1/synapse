@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay, Copy, Check, FileVideo } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types';
 import { Portal } from '../ui/Portal';
 
 interface VideoInfoModalProps {
-  video: VideoItem;
+  // `local_subtitle_path` ainda não está declarado em VideoItem (src/types/video.ts),
+  // mas já é usado como campo opcional para legendas avulsas baixadas do YouTube.
+  video: VideoItem & { local_subtitle_path?: string };
   onClose: () => void;
 }
 

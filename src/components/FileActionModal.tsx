@@ -1,4 +1,3 @@
-import React from 'react';
 import { FileText, X, ExternalLink, ArrowRight, Maximize2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 

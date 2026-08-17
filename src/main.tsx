@@ -40,12 +40,12 @@ async function init() {
                 }
                 return result;
               } catch (error: any) {
-                console.error(`[API Proxy Error] Falha ao executar '${prop}':`, error);
+                console.error(`[API Proxy Error] Falha ao executar '${String(prop)}':`, error);
                 
                 // Dispara o evento global para o ToastProvider capturar
                 const errorEvent = new CustomEvent('app-api-error', { 
                   detail: { 
-                    message: `Erro na operação '${prop}': ${error?.message || 'Falha desconhecida'}` 
+                    message: `Erro na operação '${String(prop)}': ${error?.message || 'Falha desconhecida'}`
                   } 
                 });
                 window.dispatchEvent(errorEvent);

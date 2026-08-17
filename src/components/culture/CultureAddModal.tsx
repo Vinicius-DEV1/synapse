@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Search, Loader2, Save, Trash2 } from 'lucide-react';
 import type { CultureItem, CultureType } from '../../types';
 import { CultureService } from '../../services/culture';
@@ -33,7 +33,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     access_link: '',
     progress: 0,
     total_progress: 0,
-    is_goal: 0,
+    is_goal: false,
     goal_note: '',
   });
 
@@ -65,7 +65,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       total_progress: result.total > 0 ? result.total : prev.total_progress,
       type: result.type as CultureType,
       api_id: result.api_id,
-      api_source: result.api_source,
+      api_source: result.api_source as CultureItem['api_source'],
       status: result.status || 'unknown',
       volumes: result.volumes ?? null,
       chapters: result.chapters ?? null,
@@ -245,7 +245,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 <input
                   type="checkbox"
                   checked={!!formData.is_goal}
-                  onChange={e => setFormData({ ...formData, is_goal: e.target.checked ? 1 : 0 })}
+                  onChange={e => setFormData({ ...formData, is_goal: e.target.checked })}
                   className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500/20"
                 />
                 <span className="text-sm font-semibold text-white">Marcar como Objetivo / Meta Ativa 🎯</span>

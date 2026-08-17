@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, File, Calendar, HardDrive, Type, Share2, Tag } from 'lucide-react';
 import type { FileItem, FilePageLink } from '../../types';
 import { Portal } from '../ui/Portal';

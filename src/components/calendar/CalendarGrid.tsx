@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { CalendarEvent } from '../../types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, getDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';

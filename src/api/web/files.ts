@@ -40,11 +40,11 @@ export const webFilesApi = (db: any, generateId: () => string) => {
       await db.put('files', existing);
       return true;
     },
-    saveLocal: async (filename: string, fileData: any) => {
+    saveLocal: async (_filename: string, _fileData: any) => {
       // Stub for Web: we don't save binary files locally via API, they go to Drive or IndexedDB
       return "";
     },
-    getLocal: async (id: string) => {
+    getLocal: async (_id: string) => {
       return "";
     },
     folders: {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { Portal } from '../ui/Portal';
@@ -22,6 +22,7 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
   const foldersCount = list.filter(x => x.isFolder).length;
 
   const handleDelete = async () => {
+    if (!window.api.files) return;
     setIsDeleting(true);
     try {
       for (const entry of list) {
@@ -29,7 +30,7 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
           await window.api.files.folders.delete(entry.item.id);
         } else {
           const fileItem = entry.item as FileItem;
-          
+
           // Remove do BD (e exclui localmente pelo rust backend)
           await window.api.files.delete(fileItem.id);
           

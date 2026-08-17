@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus, Calendar, BrainCircuit, FolderUp } from 'lucide-react';
 
 interface HomeQuickActionsProps {

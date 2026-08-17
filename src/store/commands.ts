@@ -1,4 +1,4 @@
-import type { AppState, Action, Tab, Page } from '../types';
+import type { AppState, Action } from '../types';
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {

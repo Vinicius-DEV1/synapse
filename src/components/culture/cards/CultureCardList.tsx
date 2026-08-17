@@ -50,7 +50,11 @@ export function CultureCardList({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {hasNewRelease && <span className="flex-shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-          {item.is_goal && <Target size={11} className="flex-shrink-0 text-brand-400" title={item.goal_note || 'Objetivo'} />}
+          {item.is_goal && (
+            <span className="flex-shrink-0" title={item.goal_note || 'Objetivo'}>
+              <Target size={11} className="text-brand-400" />
+            </span>
+          )}
           <span className="text-sm font-medium text-dark-text truncate">{item.title}</span>
         </div>
         {item.is_goal && item.goal_note && (

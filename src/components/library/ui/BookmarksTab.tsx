@@ -1,4 +1,3 @@
-import React from 'react';
 import { Bookmark, Pencil, Trash2 } from 'lucide-react';
 import type { LibraryBookmark } from '../../../types';
 

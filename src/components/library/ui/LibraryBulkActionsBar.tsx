@@ -1,4 +1,3 @@
-import React from 'react';
 import { BookOpen, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import type { ReadingStatus } from '../../../types';
 

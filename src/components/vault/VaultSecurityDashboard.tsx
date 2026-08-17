@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldAlert, ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
-import type { VaultItem, BreachCheckResult } from '../../types';
+import { useState } from 'react';
+import { ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import type { VaultItem } from '../../types';
 
 interface VaultSecurityDashboardProps {
   items: VaultItem[];
@@ -45,7 +45,6 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
     });
 
     // We only need to check breach once per unique password
-    const uniquePasswords = Array.from(passwordMap.keys());
     const breachCache = new Map<string, number>();
 
     let totalChecks = items.length; // items to check strength + unique to check breach

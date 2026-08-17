@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles } from 'lucide-react';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';

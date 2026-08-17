@@ -44,7 +44,7 @@ export function useTrash() {
         await window.api.trash.restore(item.id, item.item_type);
         setItems(prev => prev.filter(i => i.id !== item.id));
         if (item.item_type === 'page') {
-          dispatch({ type: 'LOAD_PAGES_REQUEST' });
+          window.dispatchEvent(new Event('app-sync-trigger'));
         }
         if (item.item_type === 'lofi') {
           window.dispatchEvent(new Event('app-sync-trigger'));
@@ -65,7 +65,7 @@ export function useTrash() {
     try {
       if (item.item_type === 'lofi' && window.api?.sync) {
         try {
-          const rows = await window.api.sync.getAllRows('lofis');
+          const rows = await window.api.sync.getTable('lofis');
           const lofi = rows?.find((r: any) => r.id === item.id);
           if (lofi) {
             await hardDeleteLofiPermanently(lofi);
@@ -97,7 +97,7 @@ export function useTrash() {
     try {
       if (window.api?.sync) {
         try {
-          const rows = await window.api.sync.getAllRows('lofis');
+          const rows = await window.api.sync.getTable('lofis');
           const trashed = rows?.filter((r: any) => r.deleted_at);
           if (trashed) {
             for (const lofi of trashed) {

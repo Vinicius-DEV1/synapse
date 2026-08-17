@@ -1,4 +1,3 @@
-import React from 'react';
 import Dashboard from './Dashboard';
 import SetupModal from './SetupModal';
 import ActiveTimer from './ActiveTimer';
@@ -12,11 +11,11 @@ import { useFocusContext } from '../../store/FocusContext';
 
 export default function FocusApp() {
   const {
-    view, setView, sessions, alarms, currentSession, setCurrentSession, resumeMinutes,
-    triggeredAlarm, setTriggeredAlarm, showAlarmSetup, setShowAlarmSetup,
+    view, setView, sessions, alarms, currentSession,
+    showAlarmSetup, setShowAlarmSetup,
     toastMessage, loadData, handleStartSetup, handleStartTimer,
-    handleAddTimeFromSuccess, handleDeleteSession, handleSaveAlarm,
-    handleToggleAlarm, handleDeleteAlarm, handleSaveSuccess,
+    handleDeleteSession, handleSaveAlarm,
+    handleToggleAlarm, handleDeleteAlarm,
     handleSaveCancel, handleAbortSetup
   } = useFocusContext();
 
@@ -60,19 +59,14 @@ export default function FocusApp() {
         <ActiveTimer />
       )}
       {view === 'cancel' && (
-        <CancelModal 
-          onSave={handleSaveCancel} 
-          onDiscard={() => {
-            setView('dashboard');
-            setCurrentSession(null);
-          }}
-          onBack={() => setView('timer')} 
+        <CancelModal
+          onSave={handleSaveCancel}
         />
       )}
 
       {showAlarmSetup && (
         <AlarmSetupModal
-          onClose={() => setShowAlarmSetup(false)}
+          onCancel={() => setShowAlarmSetup(false)}
           onSave={handleSaveAlarm}
         />
       )}

@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
+import type { Tab } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
+
+// A UI ainda navega para o módulo 'settings' como uma aba, embora o tipo
+// `Tab['module']` (definido em src/types/store.ts) ainda não inclua esse
+// valor. Ampliamos o tipo aqui apenas para refletir o valor real em runtime.
+type ModuleId = Tab['module'] | 'settings';
 
 interface SidebarProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
@@ -25,9 +31,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       }).catch(console.error);
     }
   }, []);
-  
+
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
-  const activeModule = activeTab.module;
+  const activeModule = activeTab.module as ModuleId;
 
   if (state.sidebarCollapsed) {
     return (
@@ -196,7 +202,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => dispatch({ type: 'NAVIGATE_IN_TAB', tabId: activeTab.id, pageId: tab.id })}
+                onClick={() => dispatch({ type: 'NAVIGATE_IN_TAB', pageId: tab.id })}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mx-2 shrink-0 ${
                   (activeTab.pageId || 'general') === tab.id
                     ? 'bg-brand-500/10 text-brand-400'

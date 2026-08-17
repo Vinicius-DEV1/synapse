@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Loader2, Download, Video, FolderPlus, MonitorPlay } from 'lucide-react';
 import { useTasks } from '../../store/TaskContext';
 import { downloadYouTubeAndSync } from '../../services/video-manager';

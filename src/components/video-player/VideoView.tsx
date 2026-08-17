@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
