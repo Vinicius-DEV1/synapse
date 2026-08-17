@@ -8,7 +8,7 @@ export interface PdfPageProps {
   zoom: number;
   isRendered: boolean;
   cssFilter?: string;
-  readingMode: 'light' | 'sepia' | 'dark' | 'dim' | 'nord' | 'high-contrast' | 'midnight';
+  readingMode: 'light' | 'sepia' | 'mint' | 'dark' | 'dim' | 'nord' | 'high-contrast' | 'midnight';
   bookId: string;
   highlights: LibraryHighlight[];
   isBookmarked: boolean;

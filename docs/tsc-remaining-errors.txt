@@ -1,0 +1,2 @@
+src/components/library/PdfReader.tsx(255,19): error TS2322: Type '"light" | "sepia" | "mint" | "dim" | "nord" | "midnight" | "dark" | "high-contrast"' is not assignable to type '"light" | "sepia" | "dim" | "nord" | "midnight" | "dark" | "high-contrast"'.
+  Type '"mint"' is not assignable to type '"light" | "sepia" | "dim" | "nord" | "midnight" | "dark" | "high-contrast"'.

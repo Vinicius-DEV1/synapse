@@ -38,7 +38,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   });
   
   const [readingMode, setReadingMode] = useState<'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast'>(
-    (settings.defaultReadingMode as any) || 'light'
+    (() => { try { return JSON.parse(book.reading_preferences || '{}')?.theme; } catch { return undefined; } })()
+    || (settings.defaultReadingMode as any) || 'light'
   );
   
   const [showAnnotations, setShowAnnotations] = useState(false);
@@ -251,7 +252,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   activeHighlight={activeHighlight}
                   ocrProcessing={ocrProcessing}
                   setOcrProcessing={setOcrProcessing}
-                  readingMode={(book as any).reading_preferences?.theme || 'light'}
+                  readingMode={readingMode}
                   bookId={book.id}
                   isBookmarked={bookmarks.some(b => b.page_number === pageNum)}
                   onToggleBookmark={() => toggleBookmark(pageNum)}
@@ -299,7 +300,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             onToggleSearch={() => setShowSearch(!showSearch)}
             isBookmarked={bookmarks.some(b => b.page_number === currentPage)}
             onToggleBookmark={() => toggleBookmark(currentPage)}
-            readingMode={(book as any).reading_preferences?.theme || 'light'}
+            readingMode={readingMode}
             onCycleReadingMode={cycleReadingMode}
             showAnnotations={showAnnotations}
             onToggleAnnotations={() => setShowAnnotations(!showAnnotations)}

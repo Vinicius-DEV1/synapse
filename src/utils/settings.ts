@@ -21,6 +21,8 @@ export interface AppSettings {
   videoConversionPreset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
   videoPlaybackPreference: 'auto' | 'force_original' | 'force_web';
   videoDefaultWebQuality: 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
+  /** Bloquear automaticamente após N minutos de inatividade (0 = desativado) */
+  autoLockMinutes?: number;
 }
 
 export function getSettings(): AppSettings {
