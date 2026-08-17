@@ -203,7 +203,7 @@ export function useEditorDropPaste({
         }
 
         if (imageDropped) {
-          const columnTarget = consumeGroupDropTarget();
+          const columnTarget = consumeGroupDropTarget(view);
 
           const insertNodes = (nodes: any[]) => {
             if (!editor || nodes.length === 0) return;
