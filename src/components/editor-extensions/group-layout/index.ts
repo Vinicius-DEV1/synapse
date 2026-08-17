@@ -7,7 +7,13 @@
  */
 
 export { default as GroupShell } from './GroupShell';
-export { DragToGroup, consumeGroupDropTarget, applyGroupDrop } from './DragToGroup';
+export {
+  DragToGroup,
+  consumeGroupDropTarget,
+  applyGroupDrop,
+  setExternalDragOrigin,
+  endExternalDrag,
+} from './DragToGroup';
 export type { GroupDropTarget } from './DragToGroup';
 export { GroupAutoCollapse } from './groupAutoCollapse';
 export {

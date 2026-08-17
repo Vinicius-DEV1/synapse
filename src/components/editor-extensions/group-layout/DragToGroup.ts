@@ -24,6 +24,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { getSpecForGroup, pickSpecForPair } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
 import { appendToGroup, createGroup } from './groupCommands';
+import { topLevelBlockAt } from '../topLevelBlock';
 
 export interface GroupDropTarget {
   pos: number;
@@ -154,6 +155,26 @@ export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null
   return target;
 }
 
+/**
+ * Registra a origem de um arrasto iniciado FORA do `view.dom`.
+ *
+ * A alça de bloco é um elemento flutuante irmão do editor, então o
+ * `handleDOMEvents.dragstart` deste plugin — que só enxerga eventos dentro do
+ * `view.dom` — nunca dispara para ela. Sem isto o arrasto pela alça chegaria ao
+ * `handleDrop` sem origem, e o bloco seria copiado em vez de movido.
+ */
+export function setExternalDragOrigin(view: EditorView, pos: number): boolean {
+  const node = view.state.doc.nodeAt(pos);
+  if (!node) return false;
+  dragStateFor(view).origin = { pos, node, nodeSize: node.nodeSize };
+  return true;
+}
+
+/** Contrapartida do acima: o `dragend` da alça também não passa pelo plugin. */
+export function endExternalDrag(view: EditorView) {
+  endDrag(view);
+}
+
 /** Aplica um alvo já consumido — o Editor.tsx usa isso para imagens soltas. */
 export function applyGroupDrop(
   view: EditorView,
@@ -174,68 +195,6 @@ export function applyGroupDrop(
   return target.mode === 'append'
     ? appendToGroup(view, target.pos, content, target.side, removeRange)
     : createGroup(view, target.spec, target.pos, content, target.side, removeRange);
-}
-
-// ─── Localização do bloco de nível superior sob o ponteiro ────────────────────
-
-function topLevelBlockAt(view: EditorView, x: number, y: number) {
-  const doc = view.state.doc;
-
-  const tryResolve = (raw: number) => {
-    try {
-      const $pos = doc.resolve(raw);
-      const pos = $pos.depth >= 1 ? $pos.before(1) : raw;
-      if (pos >= 0 && pos < doc.content.size) {
-        const node = doc.nodeAt(pos);
-        if (node) {
-          const dom = view.nodeDOM(pos);
-          if (dom instanceof HTMLElement) {
-            return { pos, node, dom };
-          }
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return null;
-  };
-
-  // 1. Tenta posAtCoords do ProseMirror
-  const coords = view.posAtCoords({ left: x, top: y });
-  if (coords) {
-    if (typeof coords.inside === 'number' && coords.inside >= 0) {
-      const found = tryResolve(coords.inside);
-      if (found) return found;
-    }
-    if (typeof coords.pos === 'number' && coords.pos >= 0) {
-      const found = tryResolve(coords.pos);
-      if (found) return found;
-    }
-  }
-
-  // 2. Fallback via DOM elementFromPoint (garante localização precisa sobre NodeViews)
-  const el = document.elementFromPoint(x, y);
-  if (el) {
-    const editorDom = view.dom;
-    if (editorDom.contains(el)) {
-      let current: HTMLElement | null = el as HTMLElement;
-      while (current && current.parentElement && current.parentElement !== editorDom) {
-        current = current.parentElement;
-      }
-      if (current && current.parentElement === editorDom) {
-        try {
-          const domPos = view.posAtDOM(current, 0);
-          if (typeof domPos === 'number' && domPos >= 0) {
-            return tryResolve(domPos);
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-  }
-
-  return null;
 }
 
 /** O bloco alvo faz parte do que está sendo arrastado? */
