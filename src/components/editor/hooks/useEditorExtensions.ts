@@ -6,7 +6,7 @@ import { createLowlight, common } from 'lowlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Highlight } from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Link } from '@tiptap/extension-link';
 import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
