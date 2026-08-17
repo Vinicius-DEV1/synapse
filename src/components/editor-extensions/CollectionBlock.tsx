@@ -3,7 +3,7 @@ import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap
 import { ChevronDown, ChevronRight, Folder } from 'lucide-react';
 import { useState } from 'react';
 
-const GroupBlockComponent = (props: any) => {
+const CollectionBlockComponent = (props: any) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,7 +41,7 @@ const GroupBlockComponent = (props: any) => {
   );
 };
 
-export const GroupBlock = Node.create({
+export const CollectionBlock = Node.create({
   name: 'groupBlock',
   group: 'block',
   content: 'block+',
@@ -68,6 +68,6 @@ export const GroupBlock = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(GroupBlockComponent);
+    return ReactNodeViewRenderer(CollectionBlockComponent);
   },
 });

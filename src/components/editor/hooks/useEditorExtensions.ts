@@ -20,7 +20,7 @@ import * as Y from 'yjs';
 
 // Custom Extensions
 import { TableCell } from '../../editor-extensions/TableCell';
-import { GroupBlock } from '../../editor-extensions/GroupBlock';
+import { CollectionBlock } from '../../editor-extensions/CollectionBlock';
 import { QuestionBlock } from '../../editor-extensions/QuestionBlock';
 import { ToggleBlock } from '../../editor-extensions/ToggleBlock';
 import { ColorBlockquote } from '../../editor-extensions/ColorBlockquote';
@@ -101,7 +101,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       TableRow, TableHeader, TableCell,
       TaskList, TaskItem.configure({ nested: true }),
       Collaboration.configure({ document: ydoc || new Y.Doc() }),
-      GroupBlock,
+      CollectionBlock,
       QuestionBlock,
       ToggleBlock,
       BlockquoteToggle,
