@@ -214,6 +214,18 @@ export default function Editor({
           onDragEnd={blockHandle.onDragEnd}
           onDelete={blockHandle.onDelete}
           onMenuOpenChange={blockHandle.onMenuOpenChange}
+          onChangeColor={(color, isBackground) => {
+            if (!editor) return;
+            if (isBackground) {
+              // Cor de fundo: usa o atributo HTMLAttributes do node selecionado
+              // via mark de highlight com a cor escolhida (backgroundColor).
+              // TextStyle/Color não cobrem background nativamente, então usamos
+              // o Highlight multicolor como substituto controlado.
+              editor.chain().focus().toggleHighlight({ color }).run();
+            } else {
+              editor.chain().focus().setColor(color).run();
+            }
+          }}
         />
       )}
 
