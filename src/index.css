@@ -178,6 +178,15 @@
   background: #8b5cf6;
 }
 
+/* Um indicador de arrasto de cada vez.
+   O dropcursor do ProseMirror (linha horizontal, ligado pelo StarterKit) diz
+   "solto aqui e o bloco se move". A barra vertical roxa do `DragToGroup` diz
+   "solto aqui e vira coluna". Os dois apareciam juntos, prometendo coisas
+   diferentes; a classe é posta no <body> enquanto a barra vertical manda. */
+body.group-drop-active .ProseMirror-dropcursor {
+  display: none !important;
+}
+
 .group-layout__remove,
 .group-layout__toolbar {
   opacity: 0;
