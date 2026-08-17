@@ -60,4 +60,18 @@ describe('groupCommands (pure functions)', () => {
     const widths = getWidths(COLUMN_GROUP_SPEC, cg);
     expect(widths).toEqual([50]); // COLUMN_GROUP_SPEC.defaultWidth is 50
   });
+
+  it('getChildPositions handles variable-size columns correctly', () => {
+    // Regression test: ensures positions are additive and not offset
+    const p = mockSchema.nodes.paragraph.create(null, mockSchema.text('hello')); // 7 bytes
+    const cb1 = mockSchema.nodes.columnBlock.create({ width: 30 }, [p]); // 2 + 7 = 9
+    const cb2 = mockSchema.nodes.columnBlock.create({ width: 30 }, [p]); // 9
+    const cb3 = mockSchema.nodes.columnBlock.create({ width: 40 }, [p]); // 9
+    const cg = mockSchema.nodes.columnGroup.create(null, [cb1, cb2, cb3]);
+
+    const positions = getChildPositions(5, cg); // groupPos = 5
+    expect(positions[0]).toBe(6);           // 5 + 1 (opening tag)
+    expect(positions[1]).toBe(6 + 9);       // after cb1
+    expect(positions[2]).toBe(6 + 9 + 9);   // after cb2
+  });
 });
