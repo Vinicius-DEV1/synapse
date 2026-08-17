@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { Database, CheckCircle2, Settings } from 'lucide-react';
 
 export function ExternalAiTab() {

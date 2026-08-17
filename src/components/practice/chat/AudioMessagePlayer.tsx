@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import  { useState, useRef } from 'react';
 import { Play, Square } from 'lucide-react';
 
 export function AudioMessagePlayer({ src }: { src: string }) {

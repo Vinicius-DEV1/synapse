@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Video, Settings2, PlayCircle, Zap } from 'lucide-react';
 import { getSettings, saveSettings, type AppSettings } from '../../../utils/settings';
 

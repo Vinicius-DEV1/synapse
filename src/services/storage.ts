@@ -109,6 +109,7 @@ export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer
       const driveFileId = await uploadToDrive(token, `library_${bookId}.enc`, encrypted);
       return `drive://${driveFileId}`;
     }
+    throw new Error('Google Drive não autenticado');
   } catch (err) {
     throw err;
   }

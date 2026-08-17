@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, DatabaseBackup, Trash2, Plus, Clock, CheckCircle2 } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
 import { fetchGeminiModels, getGeminiKeys, saveGeminiKeys } from '../../../services/gemini';
@@ -114,7 +114,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         </p>
 
         <div className="space-y-2 mb-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-          {keys.map((k, idx) => (
+          {keys.map((k, ) => (
             <div key={k.id} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-lg p-2.5">
               <div className="flex items-center gap-3">
                 <div className="text-[10px] font-mono text-dark-subtext bg-white/5 px-2 py-1 rounded">

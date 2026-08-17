@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { X, Edit3, Trash2 } from 'lucide-react';
 import type { Card } from '../types';
 import { HtmlRenderer } from '../components/HtmlRenderer';

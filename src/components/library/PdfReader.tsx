@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import  { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import { ArrowLeft, Search, Bookmark, BookmarkCheck, Sun, Moon, ZoomIn, ZoomOut, StickyNote } from 'lucide-react';
-import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../types';
+import type { LibraryBook } from '../../types';
 
 import HighlightToolbar from './HighlightToolbar';
 import AnnotationPanel from './AnnotationPanel';
@@ -27,7 +26,7 @@ interface PdfReaderProps {
 }
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
-  const { state, dispatch } = useStore();
+  const {  dispatch } = useStore();
   const settings = getSettings();
 
   useTimeTracker({
@@ -55,7 +54,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   // Hook 1: Document Loading & Sync
   const { 
     pdfDoc, totalPages, pdfError, loading, tocItems, 
-    highlights, setHighlights, bookmarks, toggleBookmark 
+    highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark 
   } = usePdfDocument(book, onUpdateBook, book.last_read_page || 1);
 
   // Hook 2: Virtualization & Zoom
@@ -199,17 +198,21 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       {showAnnotations && (
         <div className="w-80 flex-shrink-0 border-r border-black/10 dark:border-white/10 flex flex-col bg-white/5 backdrop-blur-md">
           <AnnotationPanel
+            bookId={book.id}
             highlights={highlights}
             bookmarks={bookmarks}
-            toc={tocItems}
-            onClose={() => setShowAnnotations(false)}
-            onNavigate={(page) => scrollToPage(page, false)}
+            tocItems={tocItems}
+            currentPage={currentPage}
+            onNavigateToPage={(page: number) => scrollToPage(page, false)}
+            onUpdateHighlight={() => {}}
             onDeleteHighlight={handleDeleteHighlight}
-            onDeleteBookmark={(id) => {
+            onUpdateBookmark={() => {}}
+            onDeleteBookmark={(id: string) => {
               window.api.library.deleteBookmark(id).then(() => {
                 setBookmarks(prev => prev.filter(b => b.id !== id));
               }).catch(console.error);
             }}
+            onClose={() => setShowAnnotations(false)}
           />
         </div>
       )}
@@ -248,7 +251,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   activeHighlight={activeHighlight}
                   ocrProcessing={ocrProcessing}
                   setOcrProcessing={setOcrProcessing}
-                  readingMode={(book.reading_preferences as any)?.theme || 'light'}
+                  readingMode={(book as any).reading_preferences?.theme || 'light'}
                   bookId={book.id}
                   isBookmarked={bookmarks.some(b => b.page_number === pageNum)}
                   onToggleBookmark={() => toggleBookmark(pageNum)}
@@ -271,8 +274,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           <div className="absolute top-20 right-4 w-80 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
              <PdfSearchBar 
                 pdfDoc={pdfDoc} 
+                bookId={book.id}
                 totalPages={totalPages} 
-                onResultClick={(page) => scrollToPage(page, false)} 
+                currentPage={currentPage}
+                onNavigateToPage={(page) => scrollToPage(page, false)}
+                onHighlightResults={() => {}}
                 onClose={() => setShowSearch(false)}
              />
           </div>
@@ -293,7 +299,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             onToggleSearch={() => setShowSearch(!showSearch)}
             isBookmarked={bookmarks.some(b => b.page_number === currentPage)}
             onToggleBookmark={() => toggleBookmark(currentPage)}
-            readingMode={(book.reading_preferences as any)?.theme || 'light'}
+            readingMode={(book as any).reading_preferences?.theme || 'light'}
             onCycleReadingMode={cycleReadingMode}
             showAnnotations={showAnnotations}
             onToggleAnnotations={() => setShowAnnotations(!showAnnotations)}
@@ -304,10 +310,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         {selection && (
           <HighlightToolbar
             position={selection.position}
-            onColorSelect={handleSaveHighlight}
+            onHighlight={handleSaveHighlight}
             onDictionary={() => {
               setDictionaryTarget({ word: selection.text, context: selection.pageContext });
             }}
+            onDismiss={() => setSelection(null)}
           />
         )}
 
@@ -330,8 +337,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         {/* Dicionário Modal */}
         {dictionaryTarget && (
           <DictionaryModal
-            word={dictionaryTarget.word}
-            context={dictionaryTarget.context}
+            text={dictionaryTarget.word}
+            pageContext={dictionaryTarget.context}
             onClose={() => setDictionaryTarget(null)}
           />
         )}

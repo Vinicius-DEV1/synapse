@@ -78,13 +78,15 @@ export function useEpubTheme(
           });
 
           try {
-            rendition.annotations.clear();
+            (rendition.annotations as unknown as { clear: () => void }).clear();
           } catch (e) {
             // Ignore if there are no annotations to clear or view isn't ready
           }
           
           try {
-            rendition.getContents().forEach((content: any) => {
+            const contents = rendition.getContents();
+            const contentsArray = Array.isArray(contents) ? contents : [contents];
+            contentsArray.forEach((content: any) => {
               const doc = content.document;
               if (doc) {
                 const orphanedHighlights = doc.querySelectorAll('svg[class*="epubjs-hl"], svg[class*="epubjs-annotation"]');

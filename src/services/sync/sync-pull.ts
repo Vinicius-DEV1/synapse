@@ -1,3 +1,12 @@
+interface CloudData { encryptedData?: string; isCompressed?: boolean; createdAt?: unknown; updatedAt?: unknown; [key: string]: unknown; }
+declare module "../../api/types" {
+  interface SyncApi {
+    getRowsByIds: (table: string, ids: string[]) => Promise<Array<Record<string, unknown> & { id: string, created_at?: string, updated_at?: string, crdt_state?: string, deleted_at?: string }>>;
+  }
+  interface ICadernoAPI {
+    log?: (msg: string) => void;
+  }
+}
 import { db } from '../firebase';
 import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc } from 'firebase/firestore';
@@ -95,7 +104,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           
           let chunkBytes = 0;
           querySnapshot.docs.forEach(docSnap => {
-            const data = docSnap.data();
+            const data = docSnap.data() as CloudData;
             chunkBytes += docSnap.id.length + (data.encryptedData?.length || 0) + 150;
           });
           logFirebaseTraffic(chunkBytes, 0);
@@ -111,7 +120,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           if (!localMap) {
             if (window.api.sync.getRowsByIds) {
               const cloudIds = querySnapshot.docs
-                .filter(d => d.data().encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys')
+                .filter(d => (d.data() as CloudData).encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys')
                 .map(d => d.id);
               if (cloudIds.length > 0) {
                 const localRows = await window.api.sync.getRowsByIds(table, cloudIds);
@@ -127,7 +136,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           } else if (window.api.sync.getRowsByIds) {
             // Para chunks subsequentes, buscar apenas novos IDs
             const newIds = querySnapshot.docs
-              .filter(d => d.data().encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys' && !localMap!.has(d.id))
+              .filter(d => (d.data() as CloudData).encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys' && !localMap!.has(d.id))
               .map(d => d.id);
             if (newIds.length > 0) {
               const newRows = await window.api.sync.getRowsByIds(table, newIds);
@@ -139,11 +148,11 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
           // Filtrar docs válidos para processar
           const docsToProcess = querySnapshot.docs.filter(docSnap => {
-            const cloudData = docSnap.data();
+            const cloudData = docSnap.data() as CloudData;
             if (!cloudData.encryptedData) return false;
             if (['auth_validator', 'module_keys', 'sync_manifest', 'sync_signal', 'security_lock'].includes(docSnap.id)) return false;
             
-            const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+            const cloudTime = parseDateSafe((cloudData.updatedAt || cloudData.createdAt || 0) as string | number);
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
             }
@@ -161,20 +170,20 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             // Busca fresh data em batch para evitar race condition (B10)
             const batchIds = batch.map(d => d.id);
             const freshRowsList = await window.api.sync.getRowsByIds(table, batchIds);
-            const freshMap = new Map(freshRowsList.map(r => [r.id, r]));
+            const freshMap = new Map(freshRowsList.map((r: any) => [r.id, r]));
 
             const decryptedResults = await Promise.all(
               batch.map(async (docSnap) => {
-                const cloudData = docSnap.data();
+                const cloudData = docSnap.data() as CloudData;
                 try {
                   let decryptedJsonOrB64;
                   let isLegacy = false;
                   try {
-                    decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
+                    decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, key);
                   } catch (e) {
                     if (key !== moduleKeys['core']) {
                       try {
-                        decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, moduleKeys['core']);
+                        decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, moduleKeys['core']);
                         isLegacy = true; // Decrypt success with core key instead of module key
                       } catch (e2) {
                         throw e;
@@ -231,7 +240,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               }
 
               const { docSnap, cloudData, parsed } = result;
-              const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+              const cloudTime = parseDateSafe((cloudData.updatedAt || cloudData.createdAt || 0) as string | number);
               const localRow = localMap!.get(docSnap.id);
               const localTime = localRow ? parseDateSafe(localRow.updated_at || localRow.created_at || 0) : -1;
 
@@ -386,7 +395,7 @@ export function listenForCloudSyncSignal(onSignal: (deviceId?: string) => void) 
   return onSnapshot(signalRef, (docSnap) => {
     logFirebaseOp('read', 1);
     if (docSnap.exists()) {
-      const data = docSnap.data();
+      const data = docSnap.data() as { deviceId?: string };
       onSignal(data?.deviceId);
     }
   });

@@ -46,13 +46,12 @@ export const ResizableImage = TiptapImage.extend({
   draggable: true,
 
   addOptions() {
+    const parentOptions = this.parent?.();
     return {
-      ...this.parent?.(),
-      // Sem isso o parseHTML do Tiptap é `img[src]:not([src^="data:"])`: as
-      // imagens coladas sem criptografia (data URL) eram salvas no HTML e
-      // simplesmente DESAPARECIAM ao reabrir a página a partir dele.
+      ...parentOptions,
+      inline: parentOptions?.inline ?? false,
       allowBase64: true,
-    };
+    } as any;
   },
 
   addAttributes() {

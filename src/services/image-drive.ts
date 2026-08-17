@@ -46,7 +46,7 @@ export async function getCachedImage(id: string): Promise<CachedImage | undefine
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri para acessar o cache
     try {
-      const cached = await window.api.imageCache.get(id);
+      const cached = await window.api?.imageCache?.get(id);
       if (cached) {
         return {
           id,
@@ -77,10 +77,10 @@ export async function setCachedImage(
   if (isDesktopApp()) {
     // Desktop - usa comandos nativos do Tauri
     try {
-      await window.api.imageCache.put(id, data, mimeType);
+      await window.api?.imageCache?.put(id, data, mimeType);
       
       // Verificação imediata: ler de volta para confirmar persistência
-      const verifyResult = await window.api.imageCache.get(id);
+      const verifyResult = await window.api?.imageCache?.get(id);
       console.log(`[ImageDrive:setCachedImage] Verificação pós-save:`, verifyResult ? `OK (data.length=${verifyResult.data?.length})` : 'FALHOU - retornou null!');
     } catch (e) {
       console.error('[ImageDrive:setCachedImage] Erro ao salvar no cache local via Tauri:', e);

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

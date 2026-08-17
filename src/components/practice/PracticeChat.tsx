@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import  { useState, useEffect} from 'react';
 import { Mic, MicOff, Play, PhoneOff, AlertCircle } from 'lucide-react';
 import { MicTestWidget } from './chat/MicTestWidget';
 import { ChatSettingsModal } from './chat/ChatSettingsModal';
@@ -31,7 +31,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState(() => localStorage.getItem('globalSystemPrompt') || DEFAULT_SYSTEM_INSTRUCTION);
   const [customPrompt, setCustomPrompt] = useState(session.custom_prompt || '');
   const [presets, setPresets] = useState<{id: string, name: string, prompt: string}[]>([]);
-  const [aiVoice, setAiVoice] = useState(() => localStorage.getItem('aiVoice') || 'Puck');
+  const [aiVoice] = useState(localStorage.getItem('aiVoice') || 'Puck');
   
   const [liveTranscript, setLiveTranscript] = useState('');
   const [isInCall, setIsInCall] = useState(false);
@@ -60,7 +60,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     nextAudioTimeRef,
     isPlayingRef,
     isConnected,
-    setIsConnected,
+    
     error,
     setError,
     connectWebSocket,
@@ -109,6 +109,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     nextAudioTimeRef
   });
 
+  /*
   const changeVoiceAndReconnect = (newVoice: string) => {
     setAiVoice(newVoice);
     localStorage.setItem('aiVoice', newVoice);
@@ -120,6 +121,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       }, 500);
     }
   };
+  */
 
   const startCall = () => {
     setIsInCall(true);
@@ -150,7 +152,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const saveCustomPrompt = async () => {
     try {
       const val = customPrompt.trim() === '' ? null : customPrompt;
-      await window.api.practice.updateSession({
+      await window.api?.practice?.updateSession({
         ...session,
         custom_prompt: val
       });
@@ -191,6 +193,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     }
   };
 
+  /*
   const deletePreset = async (id: string) => {
     if (!window.api?.config) return;
     const newPresets = presets.filter(p => p.id !== id);
@@ -201,6 +204,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       console.error('Failed to delete preset', err);
     }
   };
+  */
 
   return (
     <div className="flex flex-col h-full bg-dark-bg/80 relative">
@@ -297,12 +301,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       <ChatSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        aiVoice={aiVoice}
-        onChangeVoice={changeVoiceAndReconnect}
+        globalSystemPrompt={globalSystemPrompt}
+        setGlobalSystemPrompt={setGlobalSystemPrompt}
+        saveGlobalPrompt={saveGlobalPrompt}
+        defaultSystemInstruction={DEFAULT_SYSTEM_INSTRUCTION}
         previewVoice={previewVoice}
         previewingVoice={previewingVoice}
-        globalSystemPrompt={globalSystemPrompt}
-        onSaveGlobalPrompt={saveGlobalPrompt}
       />
 
       {/* Modal de Configurações da Sessão Atual */}
@@ -312,10 +316,9 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         session={session}
         customPrompt={customPrompt}
         setCustomPrompt={setCustomPrompt}
-        onSaveCustomPrompt={saveCustomPrompt}
+        saveCustomPrompt={saveCustomPrompt}
         presets={presets}
-        onSaveAsNewPreset={saveAsNewPreset}
-        onDeletePreset={deletePreset}
+        saveAsNewPreset={saveAsNewPreset}
       />
     </div>
   );

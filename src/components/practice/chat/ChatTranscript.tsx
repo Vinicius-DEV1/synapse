@@ -1,4 +1,3 @@
-import React from 'react';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
 import type { TutorMessage } from '../../../types';
 

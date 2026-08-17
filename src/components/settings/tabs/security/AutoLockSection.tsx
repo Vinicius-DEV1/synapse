@@ -1,4 +1,3 @@
-import React from 'react';
 import type { AppSettings } from '../../../../utils/settings';
 
 interface AutoLockSectionProps {
@@ -32,8 +31,8 @@ export function AutoLockSection({ appSettings, setAppSettings }: AutoLockSection
       <div className="border-t border-white/5 pt-4">
         <label className="block text-sm font-medium text-white mb-2">Bloqueio por Inatividade</label>
         <select 
-          value={appSettings.autoLockMinutes}
-          onChange={(e) => setAppSettings({ ...appSettings, autoLockMinutes: parseInt(e.target.value) })}
+          value={appSettings.inactivityTimeoutMinutes}
+          onChange={(e) => setAppSettings({ ...appSettings, inactivityTimeoutMinutes: parseInt(e.target.value) })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
           <option className="bg-dark-bg text-white" value="0">Nunca</option>

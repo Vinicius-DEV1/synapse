@@ -1,5 +1,11 @@
 import type { ActivityLog } from '../types';
 
+declare module '../api/types' {
+  interface SyncApi {
+    getRowsByIds: (table: string, ids: string[]) => Promise<Array<Record<string, unknown> & { id: string, created_at?: string, updated_at?: string, crdt_state?: string, deleted_at?: string }>>;
+  }
+}
+
 const ACTIVITY_LOGS_TABLE = 'activity_logs';
 
 const getLocalIsoDate = (d: Date = new Date()) => {
@@ -25,7 +31,7 @@ export async function logActivity(
 
   try {
     const rows = await window.api.sync.getRowsByIds(ACTIVITY_LOGS_TABLE, [id]);
-    const existing = rows.length > 0 ? rows[0] : null;
+    const existing = rows.length > 0 ? (rows[0] as unknown as ActivityLog) : null;
 
     const log: ActivityLog = {
       id,

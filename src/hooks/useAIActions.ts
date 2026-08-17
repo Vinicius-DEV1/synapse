@@ -1,5 +1,11 @@
 import { useState } from 'react';
 
+declare module '../api/types' {
+  interface AnkiApi {
+    getCard?: (id: string) => Promise<any>;
+  }
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
@@ -18,9 +24,9 @@ export function useAIActions(deckId: string) {
     if (!window.api?.anki) return;
     try {
       if (action.type === 'edit') {
-        const card = await window.api.anki.getCard(action.card_id);
+        const card = await (window.api.anki as any).getCard(action.card_id);
         if (card) {
-          await window.api.anki.updateCard(action.card_id, {
+          await (window.api.anki as any).updateCard(action.card_id, {
             deck_id: deckId,
             front: action.new_front !== undefined ? action.new_front : card.front,
             back: action.new_back !== undefined ? action.new_back : card.back,
@@ -28,10 +34,10 @@ export function useAIActions(deckId: string) {
           });
         }
       } else if (action.type === 'delete') {
-        await window.api.anki.deleteCardsBulk([action.card_id]);
+        await (window.api.anki as any).deleteCardsBulk([action.card_id]);
       } else if (action.type === 'delete_bulk') {
         const ids = (action.cards_to_delete || []).map((c: any) => c.card_id);
-        await window.api.anki.deleteCardsBulk(ids);
+        await (window.api.anki as any).deleteCardsBulk(ids);
       }
       setActionStatus(prev => ({ ...prev, [actionKey]: true }));
     } catch (e) {

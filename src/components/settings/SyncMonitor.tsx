@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop, getSyncEvents } from '../../services/sync/sync-monitor';
 import type { SyncStats, SyncEventLog } from '../../services/sync/sync-monitor';
-import { Database, AlertTriangle, RefreshCw, CheckCircle2, ArrowDownToLine, ArrowUpFromLine, Terminal } from 'lucide-react';
+import { Database, AlertTriangle, RefreshCw,  ArrowDownToLine, ArrowUpFromLine, Terminal } from 'lucide-react';
 
 export default function SyncMonitor() {
   const [today, setToday] = useState<SyncStats | null>(null);

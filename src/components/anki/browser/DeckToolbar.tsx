@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Filter, Trash2, LayoutGrid, LayoutList, Table } from 'lucide-react';
 import type { Deck } from '../types';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Play, Plus, Trash2, Edit3, Settings, BrainCircuit, X, Layers, HelpCircle, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, Plus,   Settings, BrainCircuit,  Layers, HelpCircle, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
 import StudySession from './StudySession';
 import DeckBrowser from './DeckBrowser';
 import AnkiStats from './AnkiStats';
@@ -33,8 +33,8 @@ export default function AnkiView() {
 
   useEffect(() => {
     const init = async () => {
-      if (window.api?.anki?.migrateToNotes) {
-         try { await window.api.anki.migrateToNotes(); } catch (e) { console.error('Migration error', e); }
+      if ((window.api?.anki as any)?.migrateToNotes) {
+         try { await (window.api.anki as any).migrateToNotes(); } catch (e) { console.error('Migration error', e); }
       }
       loadDecks();
     };

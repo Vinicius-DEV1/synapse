@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2, XCircle, Ban } from 'lucide-react';
+import  { useState, useEffect, useRef } from 'react';
+import { FolderOpen, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2,  Ban } from 'lucide-react';
 import { getValidAccessToken } from '../../../services/drive';
 
 export function BackupTab() {

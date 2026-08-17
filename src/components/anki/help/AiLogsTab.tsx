@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Database, CheckCircle2, AlertTriangle, Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import  { useState, useEffect } from 'react';
+import {  CheckCircle2, AlertTriangle, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { getWebDb } from '../../../services/db-web';
 
 export function AiLogsTab() {

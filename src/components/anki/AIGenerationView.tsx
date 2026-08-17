@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Sparkles, AlertTriangle, Plus } from 'lucide-react';
+import React, {  useState } from 'react';
+import {  AlertTriangle, Plus } from 'lucide-react';
 import { promptGeminiForCardSuggestions } from '../../services/gemini';
 
 interface AIGenerationViewProps {
@@ -26,7 +26,7 @@ interface AIGenerationViewProps {
 export default function AIGenerationView({
   deckId, prompt, setPrompt, selectedModel, models, setSelectedModel,
   includeContext, setIncludeContext, getContextData,
-  loading, setLoading, error, setError, allDecksMap,
+   setLoading, error, setError, allDecksMap,
   onAddCards, onClose, isGeneratingRef, setFooterState
 }: AIGenerationViewProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);

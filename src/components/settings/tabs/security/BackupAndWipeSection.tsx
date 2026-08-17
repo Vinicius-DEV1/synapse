@@ -1,4 +1,3 @@
-import React from 'react';
 import { DatabaseBackup, ShieldAlert } from 'lucide-react';
 
 export function BackupAndWipeSection() {

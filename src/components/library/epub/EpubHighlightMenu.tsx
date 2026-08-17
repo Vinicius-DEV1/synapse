@@ -104,7 +104,7 @@ export default function EpubHighlightMenu() {
         preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
       } catch {}
     }
-    setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
+    setDictionaryTarget({ word: selection!.text, context: getPageContext(), selection: { ...selection! }, preloadedData });
     setSelection(null);
     setNoteMode(null);
   };
@@ -114,7 +114,7 @@ export default function EpubHighlightMenu() {
     try {
       preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
     } catch {}
-    setDictionaryTarget({ word: selection.text, context: getPageContext(), selection: { ...selection }, preloadedData });
+    setDictionaryTarget({ word: selection!.text, context: getPageContext(), selection: { ...selection! }, preloadedData });
     setSelection(null);
     setNoteMode(null);
   };
@@ -122,27 +122,27 @@ export default function EpubHighlightMenu() {
   const menuContent = (
     <>
       {/* Texto Selecionado (Preview) */}
-      {selection.text && (
+      {selection!.text && (
         <div className={`mb-3 border-l-2 pl-2 pr-1 py-0.5 text-xs italic opacity-80 truncate ${readingMode === 'dark' ? 'border-brand-400' : 'border-brand-500'}`}>
-          "{selection.text}"
+          "{selection!.text}"
         </div>
       )}
 
       {/* Barra de cores + ações rápidas */}
       <EpubHighlightColorBar
         noteMode={noteMode}
-        selection={selection}
+        selection={selection!}
         dividerClass={dividerClass}
         confirmDelete={confirmDelete}
         onSelectColor={(color) => handleCreateHighlight(color)}
         onCopyText={() => {
-          navigator.clipboard.writeText(selection.text);
+          navigator.clipboard.writeText(selection!.text);
           setSelection(null);
         }}
         onOpenDictionary={handleOpenDictionary}
         onOpenNote={() => setNoteMode('yellow')}
         onConfirmDelete={() => {
-          handleDeleteHighlight(selection.existingHighlightId!, selection.cfiRange);
+          handleDeleteHighlight(selection!.existingHighlightId!, selection!.cfiRange);
           setSelection(null);
           setNoteMode(null);
           setConfirmDelete(false);
@@ -167,7 +167,7 @@ export default function EpubHighlightMenu() {
       />
 
       {/* Botão de IA */}
-      {!noteMode && !selection.existingHighlightId && (
+      {!noteMode && !selection!.existingHighlightId && (
         <div className={`flex items-center gap-1 border-t pt-1.5 mt-0.5 ${noteAreaClass}`}>
           <button
             onClick={() => {
@@ -188,7 +188,7 @@ export default function EpubHighlightMenu() {
 
   // MOBILE: Bottom Sheet
   if (isMobile) {
-    const selectionIsLow = selection.rect && selection.rect.top > window.innerHeight * 0.5;
+    const selectionIsLow = selection!.rect && selection!.rect.top > window.innerHeight * 0.5;
 
     return (
       <>
@@ -216,12 +216,12 @@ export default function EpubHighlightMenu() {
 
         {dictionaryTarget && (
           <DictionaryModal
-            text={dictionaryTarget.word}
-            pageContext={dictionaryTarget.context}
-            preloadedData={dictionaryTarget.preloadedData}
-            onSaveHighlight={(color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection)}
+            text={(dictionaryTarget as any).word}
+            pageContext={(dictionaryTarget as any).context}
+            preloadedData={(dictionaryTarget as any).preloadedData}
+            onSaveHighlight={(color, note) => handleCreateHighlight(color, note, (dictionaryTarget as any).selection)}
             onClose={() => {
-              if (dictionaryTarget.selection) setSelection(dictionaryTarget.selection);
+              if ((dictionaryTarget as any).selection) setSelection((dictionaryTarget as any).selection);
               setDictionaryTarget(null);
             }}
           />
@@ -246,10 +246,10 @@ export default function EpubHighlightMenu() {
 
       {dictionaryTarget && (
         <DictionaryModal
-          text={dictionaryTarget.word}
-          pageContext={dictionaryTarget.context}
-          preloadedData={dictionaryTarget.preloadedData}
-          onSaveHighlight={(color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection)}
+          text={(dictionaryTarget as any).word}
+          pageContext={(dictionaryTarget as any).context}
+          preloadedData={(dictionaryTarget as any).preloadedData}
+          onSaveHighlight={(color, note) => handleCreateHighlight(color, note, (dictionaryTarget as any).selection)}
           onClose={() => setDictionaryTarget(null)}
         />
       )}

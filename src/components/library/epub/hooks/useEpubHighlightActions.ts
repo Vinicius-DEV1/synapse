@@ -49,7 +49,7 @@ export function useEpubHighlightActions() {
       if (activeSelection.existingHighlightId) {
         await window.api.library.updateHighlight({
           id: activeSelection.existingHighlightId,
-          color,
+          color: color as any,
           note: finalNote,
         });
         setHighlights((prev: any[]) => prev.map(h => h.id === activeSelection.existingHighlightId ? { ...h, color, note: finalNote } : h));
@@ -80,7 +80,7 @@ export function useEpubHighlightActions() {
           book_id: book.id,
           page_number: 0,
           text_content: activeSelection.text,
-          color,
+          color: color as any,
           rects: activeSelection.cfiRange,
           highlight_type: 'text',
           note: finalNote,

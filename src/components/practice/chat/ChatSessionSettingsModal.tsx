@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, FileText } from 'lucide-react';
 import type { TutorSession } from '../../../types';
 

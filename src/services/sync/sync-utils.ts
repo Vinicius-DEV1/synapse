@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs,  doc, writeBatch } from 'firebase/firestore';
 import { logFirebaseOp } from './sync-monitor';
 
 export const MODULE_TABLES: Record<string, string[]> = {

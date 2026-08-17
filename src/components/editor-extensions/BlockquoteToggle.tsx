@@ -16,10 +16,10 @@ const BlockquoteToggleComponent = (props: any) => {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (colorMenuRef.current && !colorMenuRef.current.contains(e.target as Node)) {
+      if (colorMenuRef.current && !colorMenuRef.current.contains(e.target as globalThis.Node)) {
         setShowColors(false);
       }
-      if (confirmRef.current && !confirmRef.current.contains(e.target as Node)) {
+      if (confirmRef.current && !confirmRef.current.contains(e.target as globalThis.Node)) {
         setShowConfirm(false);
       }
     };

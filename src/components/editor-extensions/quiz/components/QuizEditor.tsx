@@ -1,13 +1,12 @@
-import React from 'react';
 import {
-  HelpCircle,
+  
   Plus,
   Trash2,
   ChevronUp,
   ChevronDown,
   Sparkles,
   Tag,
-  CheckCircle2,
+  
   FileText,
   ListOrdered,
 } from 'lucide-react';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft, Activity } from 'lucide-react';
 import { ActivityHeatmap } from './stats/ActivityHeatmap';
 import { MaturityPieChart } from './stats/MaturityPieChart';
@@ -16,7 +15,7 @@ export default function AnkiStats({ onBack }: AnkiStatsProps) {
   const {
     loading,
     stats,
-    historyData,
+    
     forecastData,
     maturityData,
     ratingData,

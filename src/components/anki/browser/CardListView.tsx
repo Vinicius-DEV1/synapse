@@ -1,4 +1,3 @@
-import React from 'react';
 import { Volume2, Edit3, Trash2 } from 'lucide-react';
 import type { Deck, Card } from '../types';
 import { HtmlRenderer } from '../components/HtmlRenderer';

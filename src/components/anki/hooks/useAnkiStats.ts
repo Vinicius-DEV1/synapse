@@ -27,7 +27,7 @@ export function useAnkiStats() {
       let allCards: any[] = [];
 
       if (window.api?.anki) {
-        const revRes = await window.api.anki.getReviews?.();
+        const revRes = await (window.api.anki as any).getReviews?.();
         if (revRes?.success && revRes.reviews) allReviews = revRes.reviews;
         else if (Array.isArray(revRes)) allReviews = revRes;
 

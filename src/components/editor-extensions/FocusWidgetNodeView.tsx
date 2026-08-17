@@ -5,7 +5,7 @@ import { useFocusContext } from '../../store/FocusContext';
 import { Play, Pause, XSquare, Plus } from 'lucide-react';
 
 export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
-  const { sessionId, duration, tag, description, status } = node.attrs;
+  const { sessionId, duration, tag,  status } = node.attrs;
   const { 
     currentSession, 
     timeLeft, 

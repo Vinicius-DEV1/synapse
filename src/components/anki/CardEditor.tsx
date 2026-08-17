@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Save, Volume2, BrainCircuit, Sparkles } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import AIAssistantModal from './AIAssistantModal';

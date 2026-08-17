@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { promptGemini } from '../../services/gemini';
 import { stripHtml, extractImagesFromHtml } from '../../utils/content-extractor';
-import type { Page } from '../../types';
+import type { Page as _Page } from '../../types';
+
+import type { AttachedPage } from './usePageMentions';
 
 interface UseAiChatSubmitProps {
   prompt: string;
   setPrompt: (val: string) => void;
-  attachedPages: Page[];
-  setAttachedPages: (pages: Page[]) => void;
+  attachedPages: AttachedPage[];
+  setAttachedPages: React.Dispatch<React.SetStateAction<AttachedPage[]>>;
   setShowMentionMenu: (show: boolean) => void;
 }
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 

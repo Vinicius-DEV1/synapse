@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import { Rendition, Book } from 'epubjs';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark, ReadingMode } from '../../../types';
 import { getSettings, saveSettings } from '../../../utils/settings';
@@ -69,7 +69,7 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [rendition, setRendition] = useState<Rendition | null>(null);
   const [epubBook, setEpubBook] = useState<Book | null>(null);
   
-  const prefs = book.reading_preferences ? JSON.parse(book.reading_preferences) : {};
+  const prefs = (book as any).reading_preferences ? JSON.parse((book as any).reading_preferences) : {};
     const [fontSize, setFontSize] = useState(prefs.fontSize || 100);
   const [readingMode, setReadingModeState] = useState<ReadingMode>(prefs.readingMode || getSettings().defaultReadingMode || 'light');
 

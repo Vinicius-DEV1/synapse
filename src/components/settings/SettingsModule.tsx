@@ -12,7 +12,7 @@ import StorageTab from './tabs/StorageTab';
 import VideoTab from './tabs/VideoTab';
 import { BackupTab } from './tabs/BackupTab';
 import SyncMonitor from './SyncMonitor';
-import type { Tab } from '../../../types';
+import type { Tab } from '../../types';
 
 export default function SettingsModule({ tab }: { tab?: Tab }) {
   const activeTab = tab?.pageId || 'general';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Flame, CheckCircle2, TrendingUp, BrainCircuit, Target, Zap } from 'lucide-react';
 import type { AnkiStatsSummary } from './ankiStatsCalculator';
 

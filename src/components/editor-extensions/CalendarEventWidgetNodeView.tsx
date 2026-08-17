@@ -7,7 +7,7 @@ import { Portal } from '../ui/Portal';
 import { parseEventDate } from '../../utils/dateUtils';
 
 export default function CalendarEventWidgetNodeView(props: any) {
-  const { eventId, title, dateStr, pageId, status } = props.node.attrs;
+  const { eventId, title, dateStr,  status } = props.node.attrs;
   const { state, dispatch } = useStore();
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
   const [showPopover, setShowPopover] = useState(false);

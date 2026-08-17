@@ -1,5 +1,4 @@
-import React from 'react';
-import { Keyboard, BookOpen, PenTool, Layout, Command } from 'lucide-react';
+import { Keyboard, BookOpen, PenTool, Layout} from 'lucide-react';
 
 export default function ShortcutsTab() {
   const shortcutGroups = [

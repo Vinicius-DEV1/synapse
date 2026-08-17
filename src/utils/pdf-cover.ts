@@ -37,6 +37,7 @@ export async function extractPdfCover(fileData: Uint8Array, targetWidth = 400): 
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
+      canvas: canvas,
     };
     
     await page.render(renderContext).promise;

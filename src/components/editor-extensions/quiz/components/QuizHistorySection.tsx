@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import type { QuestionItem } from '../types';
 

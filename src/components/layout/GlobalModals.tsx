@@ -19,8 +19,8 @@ interface GlobalModalsProps {
   syncStatus: 'idle' | 'syncing' | 'success' | 'error';
   handleDeletePage: (id: string) => void;
   handleUpdatePage: (id: string, updates: any) => void;
-  handleUpdateContent: (id: string, content: string, crdtState?: string) => void;
-  handleCreatePage: (parentId?: string | null, title?: string, icon?: string) => void;
+  handleUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => void;
+  handleCreatePage: (parentId: string | null) => void;
   handleCreateLinkedPage: (title: string, parentId?: string | null) => Promise<string | null>;
 }
 

@@ -7,7 +7,7 @@ interface UsePdfHighlightsProps {
   setHighlights: React.Dispatch<React.SetStateAction<LibraryHighlight[]>>;
 }
 
-export function usePdfHighlights({ book, highlights, setHighlights }: UsePdfHighlightsProps) {
+export function usePdfHighlights({ book,  setHighlights }: UsePdfHighlightsProps) {
   const [activeHighlight, setActiveHighlight] = useState<{ highlight: LibraryHighlight, position: { x: number, y: number } } | null>(null);
   const [selection, setSelection] = useState<{
     text: string;
@@ -97,10 +97,9 @@ export function usePdfHighlights({ book, highlights, setHighlights }: UsePdfHigh
     const newHighlight = await window.api.library.createHighlight({
       book_id: book.id,
       page_number: selection.pageNum,
-      text: selection.text,
-      color,
-      rects: selection.rects,
-      context_text: selection.pageContext || ''
+      text_content: selection.text,
+      color: color as LibraryHighlight['color'],
+      rects: JSON.stringify(selection.rects)
     });
     setHighlights(prev => [...prev, newHighlight]);
     setSelection(null);

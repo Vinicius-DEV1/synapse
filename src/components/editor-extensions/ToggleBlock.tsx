@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { ChevronDown, ChevronRight, GripVertical, Plus } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import {  useRef, useEffect } from 'react';
 
 const ToggleBlockComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;

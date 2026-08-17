@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import  { useState, useRef } from 'react';
 import { Mic, Play, Square } from 'lucide-react';
 
 export function MicTestWidget() {

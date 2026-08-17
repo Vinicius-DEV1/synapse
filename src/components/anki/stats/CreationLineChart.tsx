@@ -1,4 +1,3 @@
-import React from 'react';
 import { PlusCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
