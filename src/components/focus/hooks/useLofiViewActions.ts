@@ -9,7 +9,7 @@ interface UseLofiViewActionsProps {
   isPlayingLofi: boolean;
   setIsPlayingLofi: (playing: boolean) => void;
   loadLofis: () => Promise<void>;
-  masterKey?: string;
+  masterKey?: CryptoKey;
 }
 
 export function useLofiViewActions({

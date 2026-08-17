@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { VideoItem } from '../../types';
-import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, Folder, ArrowLeft, Info, FolderPlus, Pencil, FolderInput } from 'lucide-react';
+import { Cloud, Trash2, MoreVertical, Folder, ArrowLeft, FolderPlus, Pencil } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import VideoInfoModal from './VideoInfoModal';
 import { VideoCard } from './ui/VideoCard';
@@ -54,13 +54,6 @@ export default function VideoGrid({
   useEffect(() => {
     if (isCreatingFolder && newFolderInputRef.current) newFolderInputRef.current.focus();
   }, [isCreatingFolder]);
-
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return '--:--';
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
 
   const isList = viewMode === 'list' || viewMode === 'compact';
   const isCompact = viewMode === 'compact';

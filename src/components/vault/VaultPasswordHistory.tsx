@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { History, Copy, Check } from 'lucide-react';
 import type { VaultPasswordHistoryEntry } from '../../types';
 

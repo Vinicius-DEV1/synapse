@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Download, FileText, File, Moon, Sun, Eye, Code, Bookmark, RotateCcw, BookmarkCheck } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
@@ -23,13 +23,11 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>(isMd ? 'rendered' : 'raw');
 
   const isImage = item.file_type === 'image';
-  const isPdf = item.file_type === 'pdf';
   const isText = item.file_type === 'text';
 
   const {
     scrollContainerRef,
     progressBarRef,
-    progressTextRef,
     progressPercentRef,
     showResumePrompt,
     setShowResumePrompt,

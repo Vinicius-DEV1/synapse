@@ -34,7 +34,7 @@ function handleSyncError(err: any, context: string) {
   }
 }
 
-export function useSync(isAuth: boolean, masterKey: string | null, loadPages: () => void) {
+export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, loadPages: () => void) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

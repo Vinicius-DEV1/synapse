@@ -6,7 +6,7 @@ import { XSquare } from 'lucide-react';
 
 export default function AlarmWidgetNodeView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const { alarmId, timeStr, label, status } = node.attrs;
-  const { alarms, handleToggleAlarm, handleDeleteAlarm } = useFocusContext();
+  const { alarms, handleToggleAlarm } = useFocusContext();
 
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);

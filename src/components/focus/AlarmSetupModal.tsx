@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, X } from 'lucide-react';
-import type { Alarm } from '../types';
+import type { Alarm } from './types';
 import { Portal } from '../ui/Portal';
 
 interface AlarmSetupModalProps {

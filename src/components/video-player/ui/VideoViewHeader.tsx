@@ -1,4 +1,3 @@
-import React from 'react';
 import { PlaySquare, LayoutGrid, List, AlignJustify, MonitorPlay, Plus } from 'lucide-react';
 
 interface VideoViewHeaderProps {

@@ -8,5 +8,5 @@ export const tauriFocusApi = {
   createAlarm: async (a: any) => await invoke('focus_create_alarm', { alarm: a }),
   updateAlarm: async (id: string, a: any) => await invoke('focus_update_alarm', { id, alarm: a }),
   deleteAlarm: async (id: string) => await invoke('focus_delete_alarm', { id }),
-  setAppIcon: async (type: string) => {} // mock
+  setAppIcon: async (_type: string) => {} // mock
 };

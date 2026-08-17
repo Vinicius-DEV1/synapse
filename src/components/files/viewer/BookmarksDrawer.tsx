@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Bookmark, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Bookmark, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import type { Bookmark as BookmarkType } from '../../../utils/reading-progress';
 
 interface BookmarksDrawerProps {

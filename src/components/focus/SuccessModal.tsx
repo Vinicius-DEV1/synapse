@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Music } from 'lucide-react';
 
-import type { Session } from '../types';
+import type { Session } from './types';
 import { Portal } from '../ui/Portal';
 
 interface SuccessModalProps {
   onSave: (summary: string) => void;
   session: Session;
-  onResume: (minutes: number) => void;
+  onAddMoreTime: (minutes: number) => void;
   onCancel: () => void;
 }
 
@@ -17,7 +17,7 @@ const ALARM_TYPES = [
   { id: 'bell', name: 'Tibetan Bell' }
 ];
 
-const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, onCancel }) => {
+const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreTime, onCancel }) => {
   const [summary, setSummary] = useState('');
   const [alarmType, setAlarmType] = useState(localStorage.getItem('defaultAlarmType') || 'beep');
   const [overtime, setOvertime] = useState(0);
@@ -34,7 +34,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
     if (localStorage.getItem('soundEnabled') === 'false') return;
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
     
@@ -140,7 +140,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onResume, 
                 type="button"
                 onClick={() => {
                   stopAlarm();
-                  onResume(mins);
+                  onAddMoreTime(mins);
                 }}
                 className="flex-1 py-2 rounded-xl bg-dark-bg/80 border border-emerald-500/30 text-emerald-300 text-sm font-bold hover:bg-emerald-500/20 hover:text-emerald-100 transition-colors shadow-lg active:scale-95 backdrop-blur-md"
               >

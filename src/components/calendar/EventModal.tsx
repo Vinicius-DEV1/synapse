@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CalendarEvent } from '../../types';
 import { X, Clock, Type, Palette, BookOpen } from 'lucide-react';
 import { Portal } from '../ui/Portal';

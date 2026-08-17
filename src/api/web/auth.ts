@@ -30,12 +30,12 @@ export const webAuthApi = (db: any) => ({
     
     return { success: false, error: 'Senha incorreta' };
   },
-  setup: async (password: string, existingKeys?: any) => {
+  setup: async (password: string, _existingKeys?: any) => {
     const hash = await hashLocalPassword(password);
     await db.put('config', { id: 'masterHash', value: hash });
     return { success: true };
   },
-  forceUpdateKeychain: async (password: string, keys: any) => {
+  forceUpdateKeychain: async (_password: string, _keys: any) => {
     // In Web mode, keys are not saved to a local keychain table, only kept in memory and saved to Firebase.
     return { success: true };
   },

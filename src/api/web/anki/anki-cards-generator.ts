@@ -6,8 +6,8 @@ export async function generateCardsForNote(db: any, note: any, generateId: () =>
   if (note.card_type === 'cloze') {
     const matches = note.front.match(/\{\{c(\d+)::.*?\}\}/g);
     if (matches && matches.length > 0) {
-      const ords = matches.map((m: string) => parseInt(m.match(/c(\d+)::/)![1], 10) - 1); // c1 -> ord 0
-      requiredOrds = Array.from(new Set(ords)).sort((a: any, b: any) => a - b);
+      const ords: number[] = matches.map((m: string) => parseInt(m.match(/c(\d+)::/)![1], 10) - 1); // c1 -> ord 0
+      requiredOrds = Array.from(new Set<number>(ords)).sort((a: number, b: number) => a - b);
     }
   }
 

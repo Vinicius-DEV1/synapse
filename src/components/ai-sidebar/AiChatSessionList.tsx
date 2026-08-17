@@ -1,4 +1,3 @@
-import React from 'react';
 import { MessageSquare, Trash2, FileText, ExternalLink, Image as ImageIcon, Plus } from 'lucide-react';
 import type { AiChatSession } from '../../types';
 

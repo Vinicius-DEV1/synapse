@@ -3,7 +3,7 @@ import { Tldraw, Editor, getSnapshot, loadSnapshot, createTLStore } from 'tldraw
 import type { TLStore } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import type { DiagramMeta, DiagramContent } from '../../types';
+import type { DiagramMeta } from '../../types';
 
 interface DiagramEditorProps {
   diagram: DiagramMeta;
@@ -96,10 +96,9 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
       
       <div className="flex-1 w-full relative">
         {store && (
-          <Tldraw 
+          <Tldraw
             store={store}
-            onMount={handleMount} 
-            inferDarkMode={true}
+            onMount={handleMount}
           />
         )}
       </div>

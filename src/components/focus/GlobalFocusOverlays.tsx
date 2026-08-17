@@ -1,9 +1,9 @@
-import React from 'react';
 import { useFocusContext } from '../../store/FocusContext';
 import AlarmTriggerModal from './AlarmTriggerModal';
 import SuccessModal from './SuccessModal';
 import CancelModal from './CancelModal';
 import { GlobalLofiPlayer } from './GlobalLofiPlayer';
+import type { Session } from './types';
 
 export default function GlobalFocusOverlays() {
   const { 
@@ -28,9 +28,9 @@ export default function GlobalFocusOverlays() {
       )}
 
       {view === 'success' && currentSession && (
-        <SuccessModal 
-          session={currentSession as any} 
-          onSave={handleSaveSuccess} 
+        <SuccessModal
+          session={currentSession as Session}
+          onSave={handleSaveSuccess}
           onAddMoreTime={handleAddTimeFromSuccess}
           onCancel={() => {
             if (currentSession && window.api) {
@@ -43,13 +43,8 @@ export default function GlobalFocusOverlays() {
       )}
 
       {view === 'cancel' && (
-        <CancelModal 
-          onSave={handleSaveCancel} 
-          onDiscard={() => {
-            setView('dashboard');
-            setCurrentSession(null);
-          }}
-          onBack={() => setView('timer')} 
+        <CancelModal
+          onSave={handleSaveCancel}
         />
       )}
       

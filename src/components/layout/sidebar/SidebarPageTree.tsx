@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, Pin, Plus, Upload, GripVertical } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from '../../SidebarItem';
-import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -130,9 +130,11 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     const isPinnedSortOver = over.data.current?.type === 'pinned-sort';
 
     if (isPinnedSortDrag && isPinnedSortOver) {
-      const draggedId = active.data.current.pageId;
-      const targetId = over.data.current.pageId;
-      handleDropPinned(draggedId, targetId);
+      const draggedId = active.data.current?.pageId;
+      const targetId = over.data.current?.pageId;
+      if (draggedId && targetId) {
+        handleDropPinned(draggedId, targetId);
+      }
     } else if (
       active.data.current?.type === 'hierarchy' &&
       (over.data.current?.type === 'hierarchy' || over.data.current?.type === 'pinned-sort')

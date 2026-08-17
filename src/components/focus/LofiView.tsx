@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Plus, Music, Trash2, Cloud, UploadCloud, Clock, GripVertical, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Plus, Music, Trash2 } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { updateLofiOrder } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
-import type { LofiItem } from '../../types';
 import { SortableLofiItem } from './lofi/SortableLofiItem';
 import { useLofiViewActions } from './hooks/useLofiViewActions';
 

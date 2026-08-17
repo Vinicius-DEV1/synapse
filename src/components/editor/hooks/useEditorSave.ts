@@ -1,7 +1,9 @@
-import { useRef, MutableRefObject, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
+import type { MutableRefObject } from 'react';
 import { getYDocStateAsBase64 } from '../../../utils/yjs-utils';
 import * as Y from 'yjs';
 import { Editor } from '@tiptap/core';
+import { getEditorBackupMap } from './editorBackupStore';
 
 interface UseEditorSaveProps {
   pageId: string | null;
@@ -31,7 +33,7 @@ export function useEditorSave({ pageId, ydocRef, onSaveRef, latestContentRef }: 
     }
 
     if (pageId) {
-      window.__cadernoEditorBackup.set(pageId, { html, crdt: crdtState });
+      getEditorBackupMap().set(pageId, { html, crdt: crdtState });
     }
     
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);

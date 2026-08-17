@@ -3,7 +3,7 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 
 // NOTA (B18): O schema utiliza 'value: any' para flexibilidade de CRDT e payloads dinâmicos.
 // Isso reduz o type-safety estrito do TypeScript, mas evita problemas de serialização.
-interface CadernoDBSchema extends DBSchema {
+export interface CadernoDBSchema extends DBSchema {
   pages: { key: string; value: any; indexes: { 'parent_id': string } };
   page_history: { key: string; value: any; indexes: { 'page_id': string } };
   transactions: { key: string; value: any; indexes: { 'date': string } };
@@ -55,7 +55,7 @@ export async function getWebDb() {
     // NOTA (B17): Versão do DB em 18. Como IndexedDB não suporta rollback de schema
     // de forma fácil, qualquer alteração deve ser testada rigorosamente antes do bump.
     dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 18, {
-      upgrade(db, oldVersion, newVersion, transaction) {
+      upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
           store.createIndex('parent_id', 'parent_id');

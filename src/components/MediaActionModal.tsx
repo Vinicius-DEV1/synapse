@@ -1,4 +1,3 @@
-import React from 'react';
 import { Film, BookOpen, X, ExternalLink, ArrowRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 

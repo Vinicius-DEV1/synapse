@@ -7,7 +7,15 @@ import { CultureCardContextMenu } from './cards/CultureCardContextMenu';
 import { CultureCardList } from './cards/CultureCardList';
 import { CultureCardCompact } from './cards/CultureCardCompact';
 import { CultureCardGrid } from './cards/CultureCardGrid';
-import type { ViewMode } from './CultureView';
+import type { ViewMode } from './hooks/useCulture';
+
+declare module '../../api/types' {
+  interface ICadernoAPI {
+    drive?: {
+      openExternalUrl: (url: string) => Promise<void>;
+    };
+  }
+}
 
 interface Props {
   item: CultureItem;
@@ -50,7 +58,7 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
   const handleToggleGoal = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try { 
-      await CultureService.updateItem(item.id, { ...item, is_goal: item.is_goal ? 0 : 1 }); 
+      await CultureService.updateItem(item.id, { ...item, is_goal: !item.is_goal });
       onUpdate(); 
     } catch (err) { 
       console.error(err); 

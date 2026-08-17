@@ -1,4 +1,3 @@
-import React from 'react';
 import { useStore } from '../../store/useStore';
 import { useHomeDashboard } from './hooks/useHomeDashboard';
 import { HomeQuickActions } from './ui/HomeQuickActions';
@@ -26,7 +25,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
 
   const handleOpenPage = (pageId: string) => {
     dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
-    dispatch({ type: 'NAVIGATE_IN_TAB', pageId, tabId });
+    dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
   };
 
   const handleNewPage = async () => {
@@ -35,7 +34,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
       const page = await window.api.createPage({ parentId: null });
       dispatch({ type: 'ADD_PAGE', page });
       dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
-      dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id, tabId });
+      dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id });
     } catch (e) {
       console.error('Erro ao criar página:', e);
     }

@@ -3,6 +3,11 @@ import { useStore } from '../../../store/useStore';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { encryptFile } from '../../../services/storage';
 
+// The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
+// the filename plus the raw bytes; the declared ICadernoAPI signature only has one
+// param. Type the runtime function reference to match its actual shape.
+type SaveLocalFn = (filename: string, data: Uint8Array) => Promise<string>;
+
 export interface UploadTask {
   id: string;
   file: File;
@@ -28,6 +33,8 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
 
   const handleFolderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+    const filesApi = window.api.files;
+    if (!filesApi) return;
 
     setIsProcessing(true);
     const filesList = Array.from(e.target.files);
@@ -48,7 +55,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
 
         if (!folderCache.has(currentPath)) {
           const newFolderId = crypto.randomUUID();
-          await window.api.files.folders.create({
+          await filesApi.folders.create({
             id: newFolderId,
             name: part,
             parent_id: currentParent,
@@ -95,6 +102,11 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
     updateTask(task.id, { status: 'uploading', progress: 0, errorMsg: undefined });
 
     try {
+      if (!window.api.files) {
+        throw new Error('Módulo de arquivos indisponível');
+      }
+      const filesApi = window.api.files;
+
       const arrayBuffer = await task.file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       updateTask(task.id, { progress: 20 });
@@ -103,8 +115,9 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
       let driveFileName = task.file.name;
       let uploadBuffer = arrayBuffer;
 
-      if (window.api?.files?.saveLocal) {
-        localPath = await window.api.files.saveLocal(task.file.name, new Uint8Array(bytes));
+      const saveLocal = filesApi.saveLocal as SaveLocalFn | undefined;
+      if (saveLocal) {
+        localPath = await saveLocal(task.file.name, new Uint8Array(bytes));
       }
 
       updateTask(task.id, { progress: 40 });
@@ -150,7 +163,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
         mime_type: task.file.type,
       };
 
-      await window.api.files.create(fileRecord);
+      await filesApi.create(fileRecord);
       updateTask(task.id, { status: 'completed', progress: 100 });
       return true;
     } catch (err: any) {

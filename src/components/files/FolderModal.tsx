@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Folder } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 
@@ -23,17 +23,15 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    
+    if (!window.api.files) return;
+
     setIsSubmitting(true);
-    
+
     try {
       if (existingFolder) {
-        const updated = await window.api.files.folders.update({
-          ...existingFolder,
-          name: name.trim(),
-          color
-        });
-        onSave(updated);
+        const updatedFolder = { ...existingFolder, name: name.trim(), color };
+        await window.api.files.folders.update(updatedFolder);
+        onSave(updatedFolder);
       } else {
         const newFolder = {
           id: crypto.randomUUID(),

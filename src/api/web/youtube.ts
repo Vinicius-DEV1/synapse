@@ -87,7 +87,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         throw new Error(itemsData.error?.message || 'Falha ao buscar vídeos da playlist.');
       }
       
-      const entries = [];
+      const entries: { id: string; title: string; uploader: string; duration: number | null }[] = [];
       for (const item of itemsData.items || []) {
         if (item.snippet.title === 'Private video' || item.snippet.title === 'Deleted video') continue;
         entries.push({

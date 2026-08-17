@@ -1,4 +1,3 @@
-import React from 'react';
 import { ZoomOut, ZoomIn } from 'lucide-react';
 import { useEpub } from './EpubContext';
 

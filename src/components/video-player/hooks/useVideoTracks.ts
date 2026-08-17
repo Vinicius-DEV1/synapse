@@ -5,8 +5,8 @@ export function useVideoTracks(
   video: VideoItem,
   isPlaying: boolean,
   isMuted: boolean,
-  videoRef: React.RefObject<HTMLVideoElement>,
-  audioRef: React.RefObject<HTMLAudioElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>,
+  audioRef: React.RefObject<HTMLAudioElement | null>
 ) {
   const [audioTracks, setAudioTracks] = useState<TrackItem[]>([]);
   const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>([]);
@@ -14,7 +14,7 @@ export function useVideoTracks(
   const [activeSubtitleIndex, setActiveSubtitleIndex] = useState<number>(0);
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   
-  const syncLoopRef = useRef<number>();
+  const syncLoopRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     try {

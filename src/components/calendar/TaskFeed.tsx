@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { CalendarEvent } from '../../types';
-import { format, isToday, isTomorrow, isPast, isFuture, startOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format } from 'date-fns';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
 import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
 

@@ -8,7 +8,10 @@ import { findNodePos } from '../../editor-extensions/image/imageUtils';
 
 interface UseEditorDropPasteProps {
   editor: Editor | null;
-  masterKey?: string | null;
+  // A chave do módulo é sempre um CryptoKey (ver `state.moduleKeys` em
+  // store/useStore.tsx) — nunca foi uma string. `uploadEncryptedImage` só
+  // aceita CryptoKey; a assinatura antiga estava desatualizada.
+  masterKey?: CryptoKey | null;
   viewerState: {
     isOpen: boolean;
     src: string;

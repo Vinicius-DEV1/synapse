@@ -75,7 +75,7 @@ export const tauriYoutubeApi = {
   fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
   fetchPlaylistInfo: async (url: string) => await invoke('youtube_fetch_playlist_info', { url }),
   download: async (url: string, filename: string, quality: string, subs?: string[]) => await invoke('youtube_download', { url, filename, quality, subs }),
-  onProgress: (callback: (percent: number) => void) => {
+  onProgress: (_callback: (percent: number) => void) => {
     // Usa tauri event listener (listen from @tauri-apps/api/event) no frontend real
   },
   getWatched: async (videoIds: string[]) => await invoke<string[]>('youtube_get_watched', { videoIds }),

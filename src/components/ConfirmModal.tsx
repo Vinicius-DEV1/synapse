@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Calendar, Clock, BookOpen } from 'lucide-react';
 import { Portal } from './ui/Portal';
 import { useStore } from '../store/useStore';
@@ -23,7 +23,7 @@ function isEventExpired(ev: CalendarEvent): boolean {
 export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: ConfirmModalProps) {
   const { state } = useStore();
   const [activeEvents, setActiveEvents] = useState<CalendarEvent[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [_isLoadingEvents, setIsLoadingEvents] = useState(true);
 
   // 1. Coletar o ID da página e todas as subpáginas/descendentes recursivamente
   const targetPageIds = useMemo(() => {

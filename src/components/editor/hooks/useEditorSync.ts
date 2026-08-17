@@ -1,17 +1,17 @@
-import React, { useEffect, useRef, MutableRefObject } from 'react';
+import React, { useEffect, useRef } from 'react';
+import type { MutableRefObject } from 'react';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
+import { getEditorBackupMap } from './editorBackupStore';
 
 interface UseEditorSyncProps {
   pageId: string | null;
   initialCrdtState?: string | null;
-  initialContent: string;
   onSaveRef: MutableRefObject<Function>;
   latestContentRef: MutableRefObject<{ html: string, crdt: string } | null>;
 }
 
-if (!window.__cadernoEditorBackup) { window.__cadernoEditorBackup = new Map(); }
-export function useEditorSync({ pageId, initialCrdtState, initialContent, onSaveRef, latestContentRef }: UseEditorSyncProps) {
+export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestContentRef }: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
   const [ydoc] = React.useState(() => {
@@ -22,10 +22,11 @@ export function useEditorSync({ pageId, initialCrdtState, initialContent, onSave
       applyBase64StateToYDoc(doc, initialCrdtState!);
     }
     
-    const backup = window.__cadernoEditorBackup?.get(pageId);
+    const backupMap = getEditorBackupMap();
+    const backup = backupMap.get(pageId);
     if (backup?.crdt && backup.crdt.length > 8) {
       applyBase64StateToYDoc(doc, backup.crdt);
-      window.__cadernoEditorBackup.delete(pageId);
+      backupMap.delete(pageId);
     }
     return doc;
   });

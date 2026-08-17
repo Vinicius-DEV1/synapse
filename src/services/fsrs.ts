@@ -1,6 +1,6 @@
-import { fsrs, FSRS, generatorParameters, Rating, State } from 'ts-fsrs';
-import type { Card } from 'ts-fsrs';
-import type { AnkiCard, AnkiDeckSettings } from '../types';
+import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
+import type { Card, Grade } from 'ts-fsrs';
+import type { AnkiDeckSettings } from '../types';
 
 const defaultParams = generatorParameters({
   maximum_interval: 36500,
@@ -33,6 +33,7 @@ export const migrateCardToFSRS = (card: any): Card => {
       difficulty: Number(card.difficulty) || 0,
       elapsed_days: Number(card.elapsed_days) || 0,
       scheduled_days: Number(card.scheduled_days) || 0,
+      learning_steps: Number(card.learning_steps) || 0,
       reps: Number(card.reps) || 0,
       lapses: Number(card.lapses) || 0,
       state: parseState(card.state),
@@ -58,6 +59,7 @@ export const migrateCardToFSRS = (card: any): Card => {
     difficulty: Number(card.difficulty) || 0,
     elapsed_days: 0,
     scheduled_days: Math.round(stability),
+    learning_steps: Number(card.learning_steps) || 0,
     reps: Number(card.reps) || 0,
     lapses: Number(card.lapses) || 0,
     state,
@@ -121,7 +123,7 @@ export const previewIntervals = (card: any, settings?: AnkiDeckSettings): string
   const now = new Date();
   
   const intervals: string[] = [];
-  const ratings = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
+  const ratings: Grade[] = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
   
   for (const rating of ratings) {
     const record = f.next(fsrsCard, now, rating);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Folder, FolderPlus, X } from 'lucide-react';
-import type { FileFolder, FileItem } from '../../../types';
+import type { FileFolder } from '../../../types';
 
 interface FilesFolderSidebarProps {
   folders: FileFolder[];

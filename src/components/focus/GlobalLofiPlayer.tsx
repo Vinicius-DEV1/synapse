@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, Play, Pause, VolumeX, SkipForward, X } from 'lucide-react';
+import { Volume2, Play, Pause, VolumeX, X } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { resolveLofiUrl } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Film, BookOpen, Search, X, Loader2 } from 'lucide-react';
 
 interface MediaItem {

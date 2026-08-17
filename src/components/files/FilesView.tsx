@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { FileFolder, FileItem } from '../../types';
 import { useFilesData } from './hooks/useFilesData';
 import { FilesFolderSidebar } from './ui/FilesFolderSidebar';
@@ -16,7 +16,6 @@ export default function FilesView() {
     searchQuery,
     setSearchQuery,
     selectedIds,
-    setSelectedIds,
     toggleSelect,
     toggleSelectAll,
     clearSelection,

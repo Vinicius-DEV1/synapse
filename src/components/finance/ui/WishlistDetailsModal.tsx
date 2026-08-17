@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Edit2, Trash2 } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import { DescriptionRenderer } from '../../ui/RichTextRenderer';

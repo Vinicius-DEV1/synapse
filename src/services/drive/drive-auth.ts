@@ -13,6 +13,15 @@ export const resilientFetch = async (input: RequestInfo | URL, init?: RequestIni
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
 export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || 'REDACTED_DRIVE_CLIENT_SECRET';
 
+// A interface ICadernoAPI (src/api/types.ts) declara `drive` apenas com openExternalUrl,
+// mas tauriDriveApi (src/api/tauri/drive.ts) também implementa getCredentials/saveCredentials
+// (usado como fallback de compatibilidade para credenciais salvas em arquivo local).
+type DriveApiWithCredentials = {
+  openExternalUrl: (url: string) => Promise<void>;
+  getCredentials?: () => Promise<{ token: DriveToken | null } | null>;
+  saveCredentials?: (data: { token: DriveToken | null }) => Promise<void>;
+};
+
 let _inMemoryMasterKey: CryptoKey | null = null;
 
 export function setDriveMasterKey(key: CryptoKey | null) {
@@ -20,8 +29,8 @@ export function setDriveMasterKey(key: CryptoKey | null) {
 }
 
 // === PKCE Helpers ===
-function base64URLEncode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function base64URLEncode(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let str = '';
   for (let i = 0; i < bytes.byteLength; i++) {
     str += String.fromCharCode(bytes[i]);
@@ -139,8 +148,9 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
       console.warn("Failed to read drive_credentials from SQLite", e);
     }
     // Fallback to local file for backwards compatibility
-    if (window.api?.drive) {
-      const creds = await window.api.drive.getCredentials();
+    const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
+    if (driveApi?.getCredentials) {
+      const creds = await driveApi.getCredentials();
       return creds ? creds : { token: null };
     }
     return { token: null };
@@ -190,8 +200,9 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
       data: valToSave,
       updated_at: new Date().toISOString()
     });
-    if (window.api?.drive) {
-      await window.api.drive.saveCredentials(dataPayload);
+    const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
+    if (driveApi?.saveCredentials) {
+      await driveApi.saveCredentials(dataPayload);
     }
     return;
   }
@@ -230,6 +241,9 @@ export async function getValidAccessToken(forceRefresh = false): Promise<string 
   if (!creds.token) return null;
 
   if (Date.now() > (creds.token.expires_at || 0) - 60000) { // 1 min buffer
+    if (!creds.token.refresh_token) {
+      return null;
+    }
     try {
       const newToken = await refreshToken(creds.token.refresh_token);
       await saveDriveCredentials(newToken);

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { X, Maximize2, Loader2, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Maximize2, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';

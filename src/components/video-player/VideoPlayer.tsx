@@ -25,7 +25,7 @@ interface VideoPlayerProps {
   onDurationLoaded?: (duration: number) => void;
 }
 
-export default function VideoPlayer({ src, video, subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
+export default function VideoPlayer({ src, video, subtitleContent: _subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,10 +61,13 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
     setCurrentSrc(src);
   }, [src]);
 
-  const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef);
+  // useVideoProgress e useVideoControls (hooks fora do escopo desta correção) ainda
+  // declaram RefObject<T> sem `| null`, tipagem antiga do React < 19; o objeto de ref
+  // em si é o mesmo e ambos os hooks já checam `.current` antes de usar.
+  const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
   const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
   const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
-  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef, !!dictState);
+  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
 
   useEffect(() => {
     const fetchNewSubtitle = async () => {
@@ -74,8 +77,8 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
           const { getSubtitleText } = await import('../../services/video-manager');
           const { getCultureKey } = await import('../../store/useStore');
           let subText = '';
-          if (track.local_path) subText = await getSubtitleText(undefined, track.local_path, getCultureKey());
-          if (!subText && track.drive_id) subText = await getSubtitleText(track.drive_id, undefined, getCultureKey());
+          if (track.local_path) subText = (await getSubtitleText(undefined, track.local_path, getCultureKey())) || '';
+          if (!subText && track.drive_id) subText = (await getSubtitleText(track.drive_id, undefined, getCultureKey())) || '';
           
           if (subText) {
             const parsed = parseVtt(subText);
@@ -236,7 +239,7 @@ export default function VideoPlayer({ src, video, subtitleContent, title, onClos
       } catch {}
     }
 
-    const video_clip = calculateVideoClip(cues, currentIndex, video.local_path || src);
+    const video_clip = calculateVideoClip(cues, currentIndex, video.file_path || src);
     setDictState({ word, context: extendedContext, preloadedData, video_clip });
   };
 

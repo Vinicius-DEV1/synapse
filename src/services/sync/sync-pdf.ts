@@ -1,5 +1,12 @@
 import { encryptFile } from '../storage';
 import { getValidAccessToken, uploadToDrive } from '../drive';
+import type { LibraryBook } from '../../types/library';
+
+// `library.getBookFile` is declared as returning `Promise<string>` in ICadernoAPI,
+// but the real implementations (src/api/tauri/library.ts and src/api/web/library.ts)
+// can also resolve with an ArrayBuffer/Uint8Array or null. Type the call site to
+// match what actually comes back at runtime.
+type BookFileData = string | ArrayBuffer | Uint8Array | null;
 
 export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
   if (!window.api?.library) return;
@@ -25,7 +32,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
             continue;
           }
 
-          const fileData = await window.api.library.getBookFile(book.id);
+          const fileData = await window.api.library.getBookFile(book.id) as BookFileData;
           if (!fileData) continue;
           
           let buffer: ArrayBuffer;
@@ -46,10 +53,12 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           
           const driveFileId = await uploadToDrive(token, `Caderno_\${book.id}.enc`, encrypted);
           
+          // `LibraryApi.updateBook` is typed without `drive_file_id`, but the real
+          // implementations accept any LibraryBook field and persist it as-is.
           await window.api.library.updateBook({
             id: book.id,
             drive_file_id: driveFileId
-          });
+          } as Partial<LibraryBook> & { id: string });
           
           console.log(`[Sync] PDF subiu com sucesso para o Drive com ID: \${driveFileId}`);
         } catch (err) {

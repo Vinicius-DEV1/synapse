@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { X, UploadCloud, Folder, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useFolderUpload } from './hooks/useFolderUpload';

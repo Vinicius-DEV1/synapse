@@ -1,6 +1,5 @@
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
 import { GripVertical, Plus, X } from 'lucide-react';
-import React from 'react';
 
 export default function CodeBlockComponent(props: any) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -68,7 +67,9 @@ export default function CodeBlockComponent(props: any) {
       </div>
 
       <pre className="hljs" spellCheck={false}>
-        <NodeViewContent as="code" />
+        {/* `as` usa `NoInfer<T>` — sem o genérico explícito, T cai no default
+            'div' e "code" deixa de bater com o tipo. */}
+        <NodeViewContent<'code'> as="code" />
       </pre>
     </NodeViewWrapper>
   );

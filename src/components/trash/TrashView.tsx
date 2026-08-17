@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTrash } from './hooks/useTrash';
 import { TrashHeader } from './ui/TrashHeader';
 import { TrashEmptyConfirmModal } from './ui/TrashEmptyConfirmModal';

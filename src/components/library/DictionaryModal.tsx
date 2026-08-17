@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit } from 'lucide-react';
 import { getSettings } from '../../utils/settings';
 import CardEditor from '../anki/CardEditor';
+import type { CardDraft } from '../anki/types';
 
 import type { DictionaryData, Collocation } from '../../types/dictionary';
 import { useDictionaryQuery } from './dictionary/useDictionaryQuery';
@@ -247,32 +248,40 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
         </div>
       </div>
 
-      {showAnkiEditor && dictionaryData && (
-        <CardEditor 
-          draft={{
-            front: dictionaryData.detected_language === 'en' 
-              ? dictionaryData.english?.anki_card?.front || ''
-              : dictionaryData.portuguese?.anki_card?.front || '',
-            back: dictionaryData.detected_language === 'en'
-              ? dictionaryData.english?.anki_card?.back || ''
-              : dictionaryData.portuguese?.anki_card?.back || '',
-            card_type: sourceType === 'video' ? 'listening' : 'reading',
-            source_module: sourceType === 'video' ? 'video' : 'library',
-            source_id: 'auto',
-            tts_text: sourceType !== 'video' ? (
-              dictionaryData.detected_language === 'en'
-                ? dictionaryData.english?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
-                : dictionaryData.portuguese?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
-            ) : undefined,
-            video_clip: (sourceType === 'video' && dictionaryData.detected_language === 'en' && dictionaryData.english?.anki_card?.video_clip) 
-              ? { path: videoClip!.path, startMs: dictionaryData.english.anki_card.video_clip.startMs, endMs: dictionaryData.english.anki_card.video_clip.endMs }
-              : (sourceType === 'video' && dictionaryData.detected_language === 'pt' && dictionaryData.portuguese?.anki_card?.video_clip)
-                ? { path: videoClip!.path, startMs: dictionaryData.portuguese.anki_card.video_clip.startMs, endMs: dictionaryData.portuguese.anki_card.video_clip.endMs }
-                : videoClip
-          }}
-          onClose={() => setShowAnkiEditor(false)}
-        />
-      )}
+      {showAnkiEditor && dictionaryData && (() => {
+        // CardDraft (src/components/anki/types.ts) ainda não declara `tts_text`/`video_clip`,
+        // usados pelo fluxo de geração de áudio do CardEditor (useCardEditorForm.ts).
+        const cardDraft: CardDraft & {
+          tts_text?: string;
+          video_clip?: { path: string; startMs: number; endMs: number };
+        } = {
+          front: dictionaryData.detected_language === 'en'
+            ? dictionaryData.english?.anki_card?.front || ''
+            : dictionaryData.portuguese?.anki_card?.front || '',
+          back: dictionaryData.detected_language === 'en'
+            ? dictionaryData.english?.anki_card?.back || ''
+            : dictionaryData.portuguese?.anki_card?.back || '',
+          card_type: sourceType === 'video' ? 'listening' : 'reading',
+          source_module: sourceType === 'video' ? 'video' : 'library',
+          source_id: 'auto',
+          tts_text: sourceType !== 'video' ? (
+            dictionaryData.detected_language === 'en'
+              ? dictionaryData.english?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
+              : dictionaryData.portuguese?.anki_card?.front?.replace(/<[^>]*>?/gm, '') || text
+          ) : undefined,
+          video_clip: (sourceType === 'video' && dictionaryData.detected_language === 'en' && dictionaryData.english?.anki_card?.video_clip)
+            ? { path: videoClip!.path, startMs: dictionaryData.english.anki_card.video_clip.startMs, endMs: dictionaryData.english.anki_card.video_clip.endMs }
+            : (sourceType === 'video' && dictionaryData.detected_language === 'pt' && dictionaryData.portuguese?.anki_card?.video_clip)
+              ? { path: videoClip!.path, startMs: dictionaryData.portuguese.anki_card.video_clip.startMs, endMs: dictionaryData.portuguese.anki_card.video_clip.endMs }
+              : videoClip
+        };
+        return (
+          <CardEditor
+            draft={cardDraft}
+            onClose={() => setShowAnkiEditor(false)}
+          />
+        );
+      })()}
 
       {/* Sub-modal para Collocation */}
       {selectedColloc && (

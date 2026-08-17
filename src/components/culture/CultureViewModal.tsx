@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, ExternalLink, Target, CheckCircle, Play } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import { Portal } from '../ui/Portal';
 import { CultureMetaGrid } from './ui/CultureMetaGrid';
+
+declare module '../../api/types' {
+  interface ICadernoAPI {
+    drive?: {
+      openExternalUrl: (url: string) => Promise<void>;
+    };
+  }
+}
 
 interface Props {
   item: CultureItem;

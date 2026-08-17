@@ -30,7 +30,7 @@ export const BlobImageInterceptor = Extension.create({
         key: blobInterceptorKey,
 
         // Observa cada transação e procura por nodes 'image' com blob: URLs
-        appendTransaction(transactions, oldState, newState) {
+        appendTransaction(transactions, _oldState, newState) {
           // Só processa se houve mudanças no documento
           const docChanged = transactions.some(tr => tr.docChanged);
           if (!docChanged) return null;

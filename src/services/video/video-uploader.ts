@@ -5,6 +5,29 @@ import type { UploadStats } from './video-types';
 
 const VIDEO_TABLE = 'videos';
 
+// `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara esses métodos
+// nativos do desktop (implementados em src/api/tauri/multimedia.ts).
+type DesktopVideoApi = NonNullable<typeof window.api.video> & {
+  cancelConversion: () => Promise<void>;
+  generateWebVersion: (
+    sourcePath: string,
+    destFilename: string,
+    webQuality: string,
+    conversionPreset: string,
+    duration: number
+  ) => Promise<{ web_path: string; web_size: number }>;
+};
+
+// A camada nativa também expõe um barramento de eventos Tauri (`video_upload_progress`)
+// via `window.api.events`, ainda não declarado em `ICadernoAPI`.
+declare module '../../api/types' {
+  interface ICadernoAPI {
+    events?: {
+      listen: (channel: string, callback: (event: { payload: any }) => void) => Promise<() => void>;
+    };
+  }
+}
+
 /**
  * Helper to upload a local file to Drive via fetch or Rust bridge
  */
@@ -83,12 +106,13 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
         });
       }
       const handleAbort = () => {
-        if (window.api?.video?.cancelConversion) {
-          window.api.video.cancelConversion();
+        const desktopVideoApi = window.api?.video as DesktopVideoApi | undefined;
+        if (desktopVideoApi?.cancelConversion) {
+          desktopVideoApi.cancelConversion();
         }
       };
       if (signal) signal.addEventListener('abort', handleAbort);
-      
+
       let processRes;
       try {
           processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
@@ -299,8 +323,9 @@ export async function generateWebVersionTask(
   if (!video.is_local || !video.file_path) {
     throw new Error("Vídeo precisa estar baixado localmente para gerar versão web.");
   }
-  
-  if (!window.api?.video?.generateWebVersion) {
+
+  const desktopVideoApi = window.api?.video as DesktopVideoApi | undefined;
+  if (!desktopVideoApi?.generateWebVersion) {
     throw new Error("API de conversão não suportada.");
   }
 
@@ -322,14 +347,14 @@ export async function generateWebVersionTask(
   let genResult: { web_path: string, web_size: number };
   
   const handleAbort = () => {
-    if (window.api?.video?.cancelConversion) {
-      window.api.video.cancelConversion();
+    if (desktopVideoApi?.cancelConversion) {
+      desktopVideoApi.cancelConversion();
     }
   };
   if (signal) signal.addEventListener('abort', handleAbort);
 
   try {
-    genResult = await window.api.video.generateWebVersion(
+    genResult = await desktopVideoApi.generateWebVersion(
       video.file_path,
       video.original_name,
       webQuality,

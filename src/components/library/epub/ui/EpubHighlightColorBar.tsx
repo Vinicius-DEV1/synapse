@@ -1,4 +1,3 @@
-import React from 'react';
 import { BookType, Trash2, X } from 'lucide-react';
 
 interface EpubHighlightColorBarProps {

@@ -1,6 +1,5 @@
-import React from 'react';
 import {
-  X, Check, RefreshCw, AlertCircle, PlayCircle,
+  X, RefreshCw, AlertCircle, PlayCircle,
   ChevronDown, ChevronRight, CalendarClock, Search
 } from 'lucide-react';
 import type { CultureItem } from '../../types';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FolderUp, X } from 'lucide-react';
 
 interface FilesBulkActionsBarProps {

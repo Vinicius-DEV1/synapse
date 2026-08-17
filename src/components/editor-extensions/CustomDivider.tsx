@@ -1,4 +1,3 @@
-import { mergeAttributes } from '@tiptap/core';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { Plus, GripVertical } from 'lucide-react';

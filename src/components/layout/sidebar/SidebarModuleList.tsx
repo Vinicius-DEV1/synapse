@@ -1,22 +1,28 @@
 import { MAIN_MODULES, SPECIAL_MODULES } from './modules.config';
 import type { ModuleConfig } from './modules.config';
 import { useStore } from '../../../store/useStore';
+import type { Action, Tab } from '../../../types';
 import { Settings } from 'lucide-react';
 
 interface SidebarModuleListProps {
   isCollapsedView?: boolean;
-  onOpenSettings?: () => void;
   onModuleSelect?: () => void;
 }
 
-export function SidebarModuleList({ isCollapsedView, onOpenSettings, onModuleSelect }: SidebarModuleListProps) {
+// A UI navega para módulos como 'home', 'trash' e 'settings' como abas,
+// embora `Action['UPDATE_TAB_MODULE'].module` (definido em src/types/store.ts)
+// ainda não inclua todos esses valores. Ampliamos o tipo aqui apenas para
+// refletir o valor real em runtime.
+type ModuleId = Tab['module'] | 'settings';
+
+export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarModuleListProps) {
   const { state, dispatch } = useStore();
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
-  const activeModule = activeTab?.module;
+  const activeModule = activeTab?.module as ModuleId | undefined;
 
-  const handleModuleClick = (moduleId: string) => {
+  const handleModuleClick = (moduleId: ModuleId) => {
     if (activeTab) {
-      dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: moduleId });
+      dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: moduleId } as Extract<Action, { type: 'UPDATE_TAB_MODULE' }>);
     }
     if (onModuleSelect) {
       onModuleSelect();
@@ -26,16 +32,16 @@ export function SidebarModuleList({ isCollapsedView, onOpenSettings, onModuleSel
   const renderModuleButton = (mod: ModuleConfig) => {
     const isActive = activeModule === mod.id;
     const Icon = mod.icon;
-    
+
     if (isCollapsedView) {
-      const activeClass = mod.color === 'red' 
-        ? 'bg-red-500/20 text-red-400' 
+      const activeClass = mod.color === 'red'
+        ? 'bg-red-500/20 text-red-400'
         : 'bg-brand-500/20 text-brand-400';
-      
+
       return (
         <button
           key={mod.id}
-          onClick={() => handleModuleClick(mod.id)}
+          onClick={() => handleModuleClick(mod.id as ModuleId)}
           className={`p-2 rounded-lg transition-all active:scale-95 ${
             isActive ? activeClass : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
@@ -53,7 +59,7 @@ export function SidebarModuleList({ isCollapsedView, onOpenSettings, onModuleSel
     return (
       <button
         key={mod.id}
-        onClick={() => handleModuleClick(mod.id)}
+        onClick={() => handleModuleClick(mod.id as ModuleId)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
           mod.isSpecial ? 'mt-2' : ''
         } ${
@@ -72,7 +78,7 @@ export function SidebarModuleList({ isCollapsedView, onOpenSettings, onModuleSel
     <>
       {MAIN_MODULES.map(renderModuleButton)}
       {SPECIAL_MODULES.map(renderModuleButton)}
-      
+
       {/* Settings Button */}
       {isCollapsedView ? (
         <button

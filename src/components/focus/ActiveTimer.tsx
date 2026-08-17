@@ -8,9 +8,8 @@ const ActiveTimer: React.FC = () => {
     currentSession, 
     timeLeft, 
     isPaused, 
-    setIsPaused, 
+    setIsPaused,
     handleAddQuickTime,
-    handleTimerFinish,
     handleTimerCancel
   } = useFocusContext();
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { X, ChevronRight, FileText, ExternalLink, Sparkles, Send, Plus, Minimize2, AtSign, Check, Paperclip } from 'lucide-react';
 import { useAiSidebarResize } from './ai-sidebar/useAiSidebarResize';
@@ -54,7 +54,20 @@ export default function AiSidebar() {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
     if (contextText) {
       setTimeout(() => {
-        window.find(contextText, false, false, true, false, true, false);
+        // window.find é uma API legada não padronizada (suportada em Firefox/Safari/Chromium),
+        // ausente das definições de tipos do DOM do TypeScript.
+        const legacyWindow = window as Window & {
+          find?: (
+            searchString: string,
+            caseSensitive?: boolean,
+            backwards?: boolean,
+            wrapAround?: boolean,
+            wholeWord?: boolean,
+            searchInFrames?: boolean,
+            showDialog?: boolean
+          ) => boolean;
+        };
+        legacyWindow.find?.(contextText, false, false, true, false, true, false);
       }, 300);
     }
   };

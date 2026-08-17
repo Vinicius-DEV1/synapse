@@ -1,8 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Session } from '../../components/focus/types';
 import { playAlarmSound } from './focus-sound';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi' | 'stats';
+
+// `setAppIcon` é implementado dentro de `window.api.focus` (ver
+// src/api/web/focus.ts e src/api/tauri/focus.ts), embora o tipo
+// `ICadernoAPI['focus']` (src/api/types.ts) ainda não declare esse campo.
+type FocusApiWithIcon = NonNullable<NonNullable<typeof window.api>['focus']> & {
+  setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>;
+};
 
 export function useFocusTimer(
   view: ViewState,
@@ -47,10 +54,11 @@ export function useFocusTimer(
   // Tray icon manager
   useEffect(() => {
     const int = setInterval(() => {
+      const focusApi = window.api?.focus as FocusApiWithIcon | undefined;
       if (view === 'timer' && currentSession && !isPaused) {
-        if (window.api?.setAppIcon) window.api.setAppIcon('normal');
+        if (focusApi?.setAppIcon) focusApi.setAppIcon('normal');
       } else {
-        if (window.api?.setAppIcon) window.api.setAppIcon('zzz');
+        if (focusApi?.setAppIcon) focusApi.setAppIcon('zzz');
       }
     }, 10000);
     return () => clearInterval(int);
@@ -110,7 +118,7 @@ export function useFocusTimer(
   const handleAbortSetup = () => setView('dashboard');
 
   const handleSaveSuccess = async (summary: string) => {
-    if (currentSession && window.api) {
+    if (currentSession && window.api?.focus) {
       await window.api.focus.createSession({
         ...currentSession,
         status: 'completed',
@@ -124,7 +132,7 @@ export function useFocusTimer(
   };
 
   const handleSaveCancel = async (justification: string) => {
-    if (currentSession && window.api) {
+    if (currentSession && window.api?.focus) {
       await window.api.focus.createSession({
         ...currentSession,
         status: 'cancelled',

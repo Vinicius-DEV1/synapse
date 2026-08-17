@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Filter, Calendar, LayoutGrid, AlignJustify, Rows3, ChevronUp, ChevronDown, ArrowUpDown, Target } from 'lucide-react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
@@ -6,7 +6,7 @@ import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
 import CultureViewModal from './CultureViewModal';
 import CultureGoalModal from './CultureGoalModal';
-import { useCulture, TYPE_LABELS, sortItems, SORT_OPTIONS, type SortMode } from './hooks/useCulture';
+import { useCulture, TYPE_LABELS, sortItems, SORT_OPTIONS, type SortMode, type FilterType } from './hooks/useCulture';
 
 export default function CultureView() {
   const {
@@ -16,7 +16,6 @@ export default function CultureView() {
     setSearch,
     activeFilter,
     setActiveFilter,
-    isLoading,
     viewMode,
     setViewMode,
     sortMode,
@@ -301,20 +300,19 @@ export default function CultureView() {
       </div>
 
       {isAddModalOpen && (
-        <CultureAddModal 
-          isOpen={isAddModalOpen} 
-          onClose={handleCloseModal} 
-          onAdd={loadData}
-          editItem={editingItem}
+        <CultureAddModal
+          isOpen={isAddModalOpen}
+          onClose={handleCloseModal}
+          onSuccess={loadData}
+          itemToEdit={editingItem}
         />
       )}
-      
+
       {viewingItem && (
         <CultureViewModal
           isOpen={!!viewingItem}
           onClose={handleCloseViewModal}
           item={viewingItem}
-          onUpdate={loadData}
         />
       )}
 
