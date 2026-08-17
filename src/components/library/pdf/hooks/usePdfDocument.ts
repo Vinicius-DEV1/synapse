@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef} from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { getValidAccessToken, downloadFromDrive } from '../../../../services/drive';
 import { decryptFile } from '../../../../services/storage';
@@ -154,7 +154,6 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
       if (sessionIdRef.current) {
         window.api.library.endReadingSession({
           id: sessionIdRef.current,
-          book_id: book.id,
           end_page: currentPage,
           pages_read: 1
         });
@@ -178,6 +177,6 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   };
 
   return {
-    pdfDoc, totalPages, pdfError, loading, tocItems, highlights, setHighlights, bookmarks, toggleBookmark
+    pdfDoc, totalPages, pdfError, loading, tocItems, highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark
   };
 }

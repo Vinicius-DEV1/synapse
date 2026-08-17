@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Palette, ImageIcon, FileText, Upload, FileCode2, Loader2 } from 'lucide-react';
+import { Palette, ImageIcon,  Upload, FileCode2, Loader2 } from 'lucide-react';
 import { extractPdfCover } from '../../../utils/pdf-cover';
 import { compressBase64Image } from '../../../utils/image';
 
@@ -69,7 +69,20 @@ export function CoverPickerSection({
         throw new Error("Arquivo PDF não encontrado localmente.");
       }
       
-      const base64 = await extractPdfCover(fileData);
+      let uintArray: Uint8Array;
+      if (typeof fileData === 'string') {
+        const binaryString = atob(fileData);
+        uintArray = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          uintArray[i] = binaryString.charCodeAt(i);
+        }
+      } else if ((fileData as unknown) instanceof ArrayBuffer) {
+        uintArray = new Uint8Array(fileData);
+      } else {
+        uintArray = fileData as Uint8Array;
+      }
+      
+      const base64 = await extractPdfCover(uintArray);
       const compressed = await compressBase64Image(base64);
       setCoverImage(compressed);
     } catch (err) {

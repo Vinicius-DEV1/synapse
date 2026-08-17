@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import  { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, Plus, Send } from 'lucide-react';
 import { fetchGeminiModels, type GeminiModel } from '../../services/gemini';
 import { getSettings } from '../../utils/settings';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback} from 'react';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
@@ -8,6 +8,14 @@ import { findChildIndex, groupWithSibling, removeChild } from '../group-layout/g
 import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
+
+declare module '../../../api/types' {
+  interface ICadernoAPI {
+    os?: {
+      openInBrowser: (url: string) => void;
+    };
+  }
+}
 
 const LinkPreviewComponent = (props: any) => {
   const {

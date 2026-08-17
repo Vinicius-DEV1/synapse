@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ePub from 'epubjs';
+
 import { ArrowLeft } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 import { useStore } from '../../store/useStore';
@@ -39,10 +39,10 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     const prefs = { fontSize, readingMode, fontFamily, textWidth };
     const str = JSON.stringify(prefs);
-    if (str !== book.reading_preferences) {
+    if (str !== (book as any).reading_preferences) {
       const timeout = setTimeout(() => {
-        onUpdateBook({ reading_preferences: str });
-        book.reading_preferences = str;
+        onUpdateBook({ reading_preferences: str } as any);
+        (book as any).reading_preferences = str;
       }, 1000);
       return () => clearTimeout(timeout);
     }
@@ -62,7 +62,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     isFullScreenRef.current = state.isReadingModeFullScreen;
   }, [state.isReadingModeFullScreen]);
 
-  const turnPage = (direction: 'next' | 'prev', r: ePub.Rendition = rendition!) => {
+  const turnPage = (direction: 'next' | 'prev', r: any = rendition!) => {
     if (!r) return;
     if (viewerRef.current) {
       viewerRef.current.style.transition = 'opacity 0.05s ease-out';
@@ -104,7 +104,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
 
   useEpubLoader(
     book,
-    viewerRef,
+    viewerRef as React.RefObject<HTMLDivElement>,
     onUpdateBook,
     setLoading,
     setEpubError,
@@ -118,8 +118,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!selection && rendition) {
       try {
-        rendition.getContents().forEach((content: any) => {
-          content.window.getSelection()?.removeAllRanges();
+        ((rendition.getContents() as unknown) as any[]).forEach((content: any) => {
+          content.window?.getSelection()?.removeAllRanges();
         });
       } catch (e) {}
     }
@@ -134,8 +134,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         const percentage = epubBook.locations.percentageFromCfi(location.start.cfi);
         setProgress(percentage);
         const current = epubBook.locations.locationFromCfi(location.start.cfi);
-        setCurrentPage(current);
-        updates.current_page = current as any;
+        setCurrentPage(current as unknown as number);
+        (updates as any).current_page = current;
       }
       onUpdateBook(updates);
     };
@@ -168,7 +168,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const changeZoom = (delta: number) => {
     setFontSize((prev: number) => {
       const next = Math.max(50, Math.min(300, prev + delta));
-      setTimeout(() => setModeToast(`Zoom: \${next}%`), 0);
+      setTimeout(() => setModeToast(`Zoom: ${next}%`), 0);
       return next;
     });
   };
@@ -178,8 +178,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
-        if (window.api?.app?.toggleFullScreen) {
-          window.api.app.toggleFullScreen();
+        if ((window.api?.app as any)?.toggleFullScreen) {
+          (window.api.app as any).toggleFullScreen();
         }
         return;
       }
@@ -222,7 +222,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!rendition) return;
     const timer = setTimeout(() => {
-      rendition.resize('100%', '100%');
+      rendition.resize('100%' as any, '100%' as any);
     }, 350);
     return () => clearTimeout(timer);
   }, [textWidth, state.isReadingModeFullScreen, showMobileTools, rendition]);
@@ -250,11 +250,11 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   };
 
   return (
-    <div className={`h-full flex flex-col relative overflow-hidden reading-mode-\${readingMode} \${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
+    <div className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
       <div className={`
         transition-all duration-300 z-30
-        \${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
-        \${state.isReadingModeFullScreen ? 'hidden' : ''}
+        ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
+        ${state.isReadingModeFullScreen ? 'hidden' : ''}
         absolute md:relative top-0 left-0 right-0
       `}>
         <EpubTopBar onBack={onBack} />
@@ -284,9 +284,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
 
         <EpubHighlightMenu />
 
-        <div className={`relative w-full h-full flex-1 bg-transparent overflow-hidden \${showMobileTools ? 'z-0' : 'z-10'}`}>
+        <div className={`relative w-full h-full flex-1 bg-transparent overflow-hidden ${showMobileTools ? 'z-0' : 'z-10'}`}>
         <button onClick={() => turnPage('prev')} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center \${isDark ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
+          <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
             <ArrowLeft size={24} />
           </div>
         </button>
@@ -297,7 +297,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         />
 
         <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center \${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
+          <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
              <ArrowLeft size={24} className="rotate-180" />
           </div>
         </button>
@@ -307,8 +307,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       <div className={`
           group relative flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-[60]
           fixed md:relative bottom-0 left-0 right-0
-          \${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
-          \${bottomBarClasses}
+          ${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+          ${bottomBarClasses}
         `}>
         <div>
            {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}

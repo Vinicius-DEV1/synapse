@@ -15,7 +15,6 @@ import {
   Ungroup,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
-import { Portal } from '../../ui/Portal';
 import { formatDuration, formatDate, isYouTubeUrl, getVideoId } from './youtubeUtils';
 import LinkNotesDrawer from './LinkNotesDrawer';
 

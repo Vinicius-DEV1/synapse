@@ -25,7 +25,7 @@ export default function EpubSidebars() {
     
     try {
       await Promise.all(
-        epubBook.spine.spineItems.map(async (item: any) => {
+        (epubBook.spine as any).spineItems.map(async (item: any) => {
           try {
             await item.load(epubBook.load.bind(epubBook));
             const matches = item.find(searchQuery);

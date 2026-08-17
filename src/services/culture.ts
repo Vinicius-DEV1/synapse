@@ -1,4 +1,10 @@
-import type { CultureItem } from '../types';
+import type { CultureItem, CultureEpisode } from '../types';
+
+declare module '../api/types' {
+  interface CultureApi {
+    getRecentReleases?: () => Promise<(CultureEpisode & { item_title: string, item_cover: string })[]>;
+  }
+}
 
 export const CultureService = {
   async getItems(): Promise<CultureItem[]> {
@@ -42,7 +48,7 @@ export const CultureService = {
   },
 
   async getRecentReleases(): Promise<(CultureEpisode & { item_title: string, item_cover: string })[]> {
-    if (!window.api?.culture) return [];
+    if (!window.api?.culture?.getRecentReleases) return [];
     return await window.api.culture.getRecentReleases();
   },
 

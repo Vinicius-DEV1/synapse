@@ -7,6 +7,12 @@ import { platform } from '../../../services/platform';
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
 
+declare global {
+  interface Window {
+    __lastHighlightClick?: number;
+  }
+}
+
 export function useEpubLoader(
   book: LibraryBook,
   viewerRef: React.RefObject<HTMLDivElement>,
@@ -23,7 +29,7 @@ export function useEpubLoader(
   const {
     scrollMode, setEpubBook, epubBook, setRendition,
     setLocationsReady, setTotalPages, setProgress, setCurrentPage,
-    setHighlights, setBookmarks, setToc, setSelection, setNoteMode, setNoteText,
+    setHighlights, setBookmarks, setToc, setSelection, setNoteMode, 
     setShowSettings, originalFontName, setOriginalFontName,
     detectedFontSizePx, setDetectedFontSizePx
   } = useEpub();
@@ -39,7 +45,6 @@ export function useEpubLoader(
         let arrayBuffer: ArrayBuffer | null = null;
         let assetUrl: string | null = null;
         
-        let originalAbsPath = '';
         try {
           // Apenas tenta stream local HTTP se a plataforma suportar acesso ao FileSystem local
           if (platform.canReadLocalFilesystem && window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
@@ -55,7 +60,7 @@ export function useEpubLoader(
              if (absPath.startsWith('/')) {
                  absPath = absPath.substring(1);
              }
-             originalAbsPath = absPath;
+             // removed originalAbsPath assignment
              
              let encPath = absPath;
              if (!encPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
@@ -84,8 +89,8 @@ export function useEpubLoader(
             console.log("Obtendo arquivo do livro via API nativa/web...");
             const res = await window.api.library.getBookFile(book.id);
             if (res) {
-              if (res instanceof ArrayBuffer) {
-                arrayBuffer = res;
+              if ((res as unknown) instanceof ArrayBuffer) {
+                arrayBuffer = res as any;
               } else if (typeof res === 'string') {
                 const binaryString = atob(res);
                 const bytes = new Uint8Array(binaryString.length);
@@ -160,7 +165,7 @@ export function useEpubLoader(
               if (book.epub_locations) {
                 try {
                   newEpubBook.locations.load(book.epub_locations);
-                  return newEpubBook.locations;
+                  return newEpubBook.locations as unknown as string[];
                 } catch (e) {
                   console.error('Failed to load cached locations:', e);
                   return newEpubBook.locations.generate(1600);
@@ -180,7 +185,7 @@ export function useEpubLoader(
               }
             }).then((locations: any) => {
                if (!active) return;
-               const total = newEpubBook.locations.total ? newEpubBook.locations.total : (locations.length || 0);
+               const total = (newEpubBook.locations as any).total ? (newEpubBook.locations as any).total : (locations.length || 0);
                setTotalPages(total);
                setLocationsReady(true);
                
@@ -190,8 +195,8 @@ export function useEpubLoader(
                  const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
                  setProgress(percentage);
                  const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
-                 setCurrentPage(current);
-                 updates.current_page = current as any;
+                 setCurrentPage(current as unknown as number);
+                 (updates as any).current_page = current;
                }
                
                onUpdateBook(updates);
@@ -288,7 +293,7 @@ export function useEpubLoader(
              (newRendition as any)._touchStartX = touch.screenX;
            });
 
-           newRendition.on('rendered', (section: any, view: any) => {
+           newRendition.on('rendered', (_: any, view: any) => {
              const doc = view.document;
              if (!doc) return;
              

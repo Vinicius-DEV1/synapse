@@ -1,7 +1,6 @@
-import React from 'react';
 import { Sparkles, Trash2, Edit3, Check } from 'lucide-react';
 
-export function ActionCreateCards({ act, msgIdx, actIdx, actionStatus, actionKey, setActiveReviewAction, setSuggestions }: any) {
+export function ActionCreateCards({ act, msgIdx, actIdx,   setActiveReviewAction, setSuggestions }: any) {
   if (!act.cards || act.cards.length === 0) {
     return (
       <div className="mt-2 ml-4 bg-green-500/10 border border-green-500/20 p-4 rounded-xl w-full max-w-[80%] flex items-center gap-3 text-green-300">

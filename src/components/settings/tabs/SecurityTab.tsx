@@ -1,4 +1,3 @@
-import React from 'react';
 import { KeyRound } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
 import { MasterPasswordSection } from './security/MasterPasswordSection';

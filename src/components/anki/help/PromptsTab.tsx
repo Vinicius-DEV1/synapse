@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Edit3, Save, RotateCcw } from 'lucide-react';
+import  { useState, useEffect } from 'react';
+import {  Save, RotateCcw } from 'lucide-react';
 import { getAiPrompt, saveAiPrompt, getWebDb } from '../../../services/db-web';
 import { DEFAULT_CARD_GENERATION_PROMPT, DEFAULT_CHAT_ANALYSIS_PROMPT } from '../../../services/gemini';
 

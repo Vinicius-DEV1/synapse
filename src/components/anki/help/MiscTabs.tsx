@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrainCircuit, Search, Tag } from 'lucide-react';
 
 export function AiCorrectionTab() {

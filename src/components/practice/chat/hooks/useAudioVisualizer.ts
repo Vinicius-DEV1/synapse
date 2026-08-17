@@ -32,11 +32,11 @@ export function useAudioVisualizer({
       
       if (isPlayingRef.current && playbackAnalyserRef.current) {
         dataArray = new Uint8Array(playbackAnalyserRef.current.frequencyBinCount);
-        playbackAnalyserRef.current.getByteFrequencyData(dataArray);
+        playbackAnalyserRef.current.getByteFrequencyData(dataArray as unknown as Uint8Array<ArrayBuffer>);
         active = true;
       } else if (isRecordingRef.current && analyserRef.current) {
         dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
+        analyserRef.current.getByteFrequencyData(dataArray as unknown as Uint8Array<ArrayBuffer>);
         active = true;
       }
       

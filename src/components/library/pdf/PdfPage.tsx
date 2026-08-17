@@ -18,6 +18,7 @@ export interface PdfPageProps {
   canvasRefs: React.MutableRefObject<Map<number, HTMLCanvasElement>>;
   ocrProcessing: Set<number>;
   setOcrProcessing: React.Dispatch<React.SetStateAction<Set<number>>>;
+  activeHighlight?: { highlight: LibraryHighlight; position: any } | null;
   onMeasure?: (height: number) => void;
 }
 

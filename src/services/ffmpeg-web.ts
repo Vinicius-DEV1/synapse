@@ -83,7 +83,8 @@ export async function processVideoWeb(
     await ffmpegInstance.exec(args);
 
     const data = await ffmpegInstance.readFile(outputName);
-    return new Blob([data], { type: 'video/mp4' });
+    const blobPart = typeof data === 'string' ? data : new Uint8Array(data);
+    return new Blob([blobPart], { type: 'video/mp4' });
   } finally {
     // Cleanup memory in finally block to avoid MEMFS leaks (OOM)
     try { await ffmpegInstance.deleteFile(inputName); } catch(e) {}

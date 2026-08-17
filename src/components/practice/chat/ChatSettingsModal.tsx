@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Sliders, Play, Loader2 } from 'lucide-react';
 
 interface ChatSettingsModalProps {

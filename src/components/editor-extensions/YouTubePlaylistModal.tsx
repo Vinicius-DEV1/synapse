@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
-import { X, PlayCircle, Loader2, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { X, PlayCircle, Loader2, CheckCircle2, Circle} from 'lucide-react';
 import { Portal } from '../ui/Portal';
+
+
+declare module '../../api/types' {
+  interface SyncApi {
+    push?: (type: string) => void;
+  }
+}
 
 interface YouTubePlaylistModalProps {
   url: string;

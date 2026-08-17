@@ -1,4 +1,3 @@
-import React from 'react';
 import { Brain, X, Trash2 } from 'lucide-react';
 import type { TutorMemory } from '../../../types';
 

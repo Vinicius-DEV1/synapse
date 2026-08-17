@@ -32,23 +32,23 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
             file_path: file.local_path,
             drive_file_id: file.drive_file_id,
             cover_color: '#3b82f6',
-            cover_image: null,
+            cover_image: undefined,
             collections: [],
             total_pages: storedPrefs.total_pages || 0,
             current_page: storedPrefs.current_page || 0,
             reading_status: 'reading',
-            last_read_page: storedPrefs.last_read_page || null,
-            epub_locations: storedPrefs.epub_locations || null,
+            last_read_page: storedPrefs.last_read_page || undefined,
+            epub_locations: storedPrefs.epub_locations || undefined,
             created_at: file.created_at || new Date().toISOString(),
             updated_at: file.updated_at || new Date().toISOString(),
-            deleted_at: null,
-            reading_preferences: storedPrefs.reading_preferences || null,
-            language: null,
+            deleted_at: undefined,
+            reading_preferences: storedPrefs.reading_preferences || undefined,
+            language: undefined,
             last_read_at: new Date().toISOString(),
             original_name: file.name,
-            published_year: null,
-            publisher: null
-          } as LibraryBook);
+            published_year: undefined,
+            publisher: undefined
+          } as unknown as LibraryBook);
         }
       }).catch(console.error);
     }
@@ -157,12 +157,13 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       } else if (virtualBook && virtualBook.id === id) {
         const updatedAvulso = { ...virtualBook, ...updates };
         setVirtualBook(updatedAvulso);
+        const updatedExtended = updatedAvulso as LibraryBook & { current_page?: number, reading_preferences?: unknown };
         const prefsToSave = {
-          total_pages: updatedAvulso.total_pages,
-          current_page: updatedAvulso.current_page,
-          last_read_page: updatedAvulso.last_read_page,
-          epub_locations: updatedAvulso.epub_locations,
-          reading_preferences: updatedAvulso.reading_preferences,
+          total_pages: updatedExtended.total_pages,
+          current_page: updatedExtended.current_page,
+          last_read_page: updatedExtended.last_read_page,
+          epub_locations: updatedExtended.epub_locations,
+          reading_preferences: updatedExtended.reading_preferences,
         };
         localStorage.setItem(`caderno_avulso_${id}`, JSON.stringify(prefsToSave));
       }

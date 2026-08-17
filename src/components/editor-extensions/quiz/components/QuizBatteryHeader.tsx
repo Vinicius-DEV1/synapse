@@ -23,7 +23,7 @@ interface QuizBatteryHeaderProps {
   onSetMode: (mode: 'edit' | 'practice', e: React.MouseEvent) => void;
   onOpenAiAssistant: () => void;
   onOpenImport: () => void;
-  onCopyJson: () => void;
+  onCopyJson: (e: React.MouseEvent) => void;
   onOpenDeleteModal: () => void;
   onToggleCollapse: () => void;
 }

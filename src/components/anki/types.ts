@@ -43,4 +43,6 @@ export interface CardDraft {
   source_id?: string;
   deck_id?: string;
   tags?: string[];
+  video_clip?: any;
+  tts_text?: string;
 }

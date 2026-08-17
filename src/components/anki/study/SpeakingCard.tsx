@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import  { useEffect } from 'react';
 import { Mic, Square } from 'lucide-react';
 import type { StudyCardProps } from './ReadingCard';
 import { HtmlRenderer } from '../components/HtmlRenderer';

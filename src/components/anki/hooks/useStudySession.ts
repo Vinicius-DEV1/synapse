@@ -71,7 +71,7 @@ export function useStudySession(deckId: string) {
   useEffect(() => {
     if (showingAnswer && cards[currentIndex] && !isRetry) {
       if (window.api?.anki) {
-        window.api.anki
+        (window.api.anki as any)
           .getCardIntervals?.(cards[currentIndex].id)
           .then((res: any) => {
             if (res?.success && res.intervals) {

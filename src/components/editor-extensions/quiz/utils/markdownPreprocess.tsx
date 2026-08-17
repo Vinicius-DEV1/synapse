@@ -1,4 +1,3 @@
-import React from 'react';
 import { Code, Copy } from 'lucide-react';
 
 export const preprocessMarkdownCode = (text: string): string => {

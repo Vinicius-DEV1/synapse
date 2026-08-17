@@ -67,7 +67,7 @@ export default function CalendarEventModal({
         description: pageTitle ? `Evento vinculado à página: ${pageTitle}` : '',
         start_date: isoDateStr,
         end_date: isoDateStr,
-        type_: type_,
+        type: type_ as 'event' | 'task',
         status: 'pending',
         color: '#8B5CF6',
         page_id: pageId || null,
@@ -83,7 +83,7 @@ export default function CalendarEventModal({
         created = {
           id: crypto.randomUUID(),
           ...newEventData,
-          type_: newEventData.type_ || 'geral',
+          type: newEventData.type || 'geral',
           status: 'pending',
           color: '#8B5CF6'
         } as CalendarEvent;

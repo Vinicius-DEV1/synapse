@@ -22,7 +22,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
   const {
     books,
     collections,
-    setCollections,
+    
     loading,
     uploadResult,
     setUploadResult,

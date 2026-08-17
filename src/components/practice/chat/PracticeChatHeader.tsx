@@ -1,4 +1,3 @@
-import React from 'react';
 import { Brain, FileText, Sliders } from 'lucide-react';
 import type { TutorSession, TutorMemory } from '../../../types';
 

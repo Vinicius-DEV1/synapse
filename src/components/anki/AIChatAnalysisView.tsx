@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, AlertTriangle, Check, Edit3, Trash2, RefreshCw } from 'lucide-react';
+import { Sparkles,     RefreshCw } from 'lucide-react';
 import { promptGeminiForChatAnalysis } from '../../services/gemini';
 import { useAIActions } from '../../hooks/useAIActions';
 import type { ChatMessage } from '../../hooks/useAIActions';
