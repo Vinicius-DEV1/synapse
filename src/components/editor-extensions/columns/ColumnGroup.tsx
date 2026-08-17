@@ -17,7 +17,7 @@ export const ColumnGroup = Node.create({
   name: 'columnGroup',
 
   group: 'block',
-  content: 'columnBlock{2,5}',
+  content: 'columnBlock{1,5}',
   isolating: true,
 
   parseHTML() {
