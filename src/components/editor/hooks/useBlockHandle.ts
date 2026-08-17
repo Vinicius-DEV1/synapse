@@ -23,6 +23,8 @@ export interface BlockHandleState {
   onDragStart: (event: React.DragEvent) => void;
   onDragEnd: () => void;
   onDelete: () => void;
+  /** A alça avisa quando abre/fecha o menu — ver `menuOpenRef`. */
+  onMenuOpenChange: (open: boolean) => void;
 }
 
 export function useBlockHandle(
@@ -33,9 +35,29 @@ export function useBlockHandle(
   const posRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
 
-  const hide = useCallback(() => {
+  /*
+   * Com o menu aberto a alça não pode sumir. O menu é filho dela, mas fica
+   * deslocado alguns pixels para o lado: ao atravessar essa fresta o ponteiro
+   * passa sobre o conteúdo do editor, o que escondia a alça — e o menu junto,
+   * antes de dar tempo de clicar em nada dentro dele.
+   */
+  const menuOpenRef = useRef(false);
+
+  /** Esconde de verdade, ignorando o menu. Usado quando o bloco deixa de existir. */
+  const forceHide = useCallback(() => {
+    menuOpenRef.current = false;
     posRef.current = null;
     setAnchor(null);
+  }, []);
+
+  const hide = useCallback(() => {
+    if (menuOpenRef.current) return;
+    posRef.current = null;
+    setAnchor(null);
+  }, []);
+
+  const onMenuOpenChange = useCallback((open: boolean) => {
+    menuOpenRef.current = open;
   }, []);
 
   useEffect(() => {
@@ -48,7 +70,8 @@ export function useBlockHandle(
 
     const onMouseMove = (event: MouseEvent) => {
       // Durante o arrasto a alça é a fonte do evento: não pode se mover nem sumir.
-      if (draggingRef.current) return;
+      // Com o menu aberto ela também fica ancorada onde está.
+      if (draggingRef.current || menuOpenRef.current) return;
 
       const view = editor.view;
       if (!view.editable) {
@@ -89,7 +112,9 @@ export function useBlockHandle(
       // todos os listeners a cada bloco percorrido).
       if (posRef.current === block.pos) return;
       posRef.current = block.pos;
-      setAnchor({ x: rect.left - HANDLE_GAP, y: rect.top + 2 });
+      // Sem o piso a alça cai em x negativo quando o editor encosta na borda
+      // esquerda da janela — fora da tela e impossível de pegar.
+      setAnchor({ x: Math.max(4, rect.left - HANDLE_GAP), y: rect.top + 2 });
     };
 
     const onMouseLeave = (event: MouseEvent) => {
@@ -119,17 +144,23 @@ export function useBlockHandle(
 
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
+      // Se não dá para arrastar, o arrasto precisa ser CANCELADO. Sem o
+      // preventDefault o navegador inicia mesmo assim, com o dataTransfer vazio
+      // e sem `view.dragging`: um arrasto fantasma, que ao ser solto não move
+      // nada e ainda atravessa os handlers como se fosse legítimo.
+      const abort = () => event.preventDefault();
+
       const pos = posRef.current;
-      if (!editor || pos === null) return;
+      if (!editor || pos === null) return abort();
 
       const view = editor.view;
       const node = view.state.doc.nodeAt(pos);
-      if (!node) return;
+      if (!node) return abort();
 
       // Seleciona o nó, marca o arrasto como MOVER interno e registra a origem.
       // Mora na extensão porque é o protocolo de arrasto do editor: a alça vive
       // fora do `view.dom` e nenhum `dragstart` do ProseMirror dispara para ela.
-      if (!startExternalBlockDrag(view, pos)) return;
+      if (!startExternalBlockDrag(view, pos)) return abort();
       draggingRef.current = true;
 
       event.dataTransfer.effectAllowed = 'move';
@@ -147,8 +178,8 @@ export function useBlockHandle(
   const onDragEnd = useCallback(() => {
     draggingRef.current = false;
     if (editor) endExternalDrag(editor.view);
-    hide();
-  }, [editor, hide]);
+    forceHide();
+  }, [editor, forceHide]);
 
   const onDelete = useCallback(() => {
     const pos = posRef.current;
@@ -156,8 +187,10 @@ export function useBlockHandle(
     const node = editor.view.state.doc.nodeAt(pos);
     if (!node) return;
     editor.view.dispatch(editor.state.tr.delete(pos, pos + node.nodeSize));
-    hide();
-  }, [editor, hide]);
+    // `forceHide` e não `hide`: o menu ainda está aberto neste instante (a alça
+    // só o fecha depois do callback), e o bloco que a ancorava acabou de sumir.
+    forceHide();
+  }, [editor, forceHide]);
 
-  return { anchor, onDragStart, onDragEnd, onDelete };
+  return { anchor, onDragStart, onDragEnd, onDelete, onMenuOpenChange };
 }

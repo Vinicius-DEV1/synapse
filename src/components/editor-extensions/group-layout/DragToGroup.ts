@@ -314,78 +314,76 @@ function scheduleEvaluate(view: EditorView, event: DragEvent) {
  * Chamada no máximo uma vez por frame — ver `scheduleEvaluate`.
  */
 function evaluateDropTarget(view: EditorView, x: number, y: number) {
-    const block = topLevelBlockAt(view, x, y);
-    if (!block) {
+  const block = topLevelBlockAt(view, x, y);
+  if (!block) {
+    clearTarget(view);
+    return;
+  }
+
+  const { pos, node, dom } = block;
+
+  // Não cria coluna soltando o bloco sobre ele mesmo.
+  if (isDraggingItself(view, pos, node)) {
+    clearTarget(view);
+    return;
+  }
+
+  const rect = dom.getBoundingClientRect();
+  if (rect.width === 0) {
+    clearTarget(view);
+    return;
+  }
+
+  const dragging = (view as unknown as { dragging: { slice: Slice; move: boolean } | null })
+    .dragging;
+  if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
+    clearTarget(view);
+    return;
+  }
+
+  // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
+  const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
+  let side: 'left' | 'right';
+  if (x <= rect.left + edge) {
+    side = 'left';
+  } else if (x >= rect.right - edge) {
+    side = 'right';
+  } else {
+    // Zona morta: cede o drop ao ProseMirror, que move o bloco.
+    clearTarget(view);
+    return;
+  }
+
+  const origin = dragStateFor(view).origin;
+  const dragged = dragging
+    ? extractNodesFromSlice(dragging.slice)
+    : origin
+    ? [origin.node]
+    : [];
+
+  // Alvo já é um grupo → acrescenta uma coluna.
+  const groupSpec = getSpecForGroup(node);
+  if (groupSpec) {
+    const fits = node.childCount < groupSpec.maxChildren;
+    const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
+    if (!fits || !compatible) {
       clearTarget(view);
       return;
     }
-
-    const { pos, node, dom } = block;
-
-    // Não cria coluna soltando o bloco sobre ele mesmo.
-    if (isDraggingItself(view, pos, node)) {
-      clearTarget(view);
-      return;
-    }
-
-    const rect = dom.getBoundingClientRect();
-    if (rect.width === 0) {
-      clearTarget(view);
-      return;
-    }
-
-    const dragging = (view as unknown as { dragging: { slice: Slice; move: boolean } | null })
-      .dragging;
-    if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
-      clearTarget(view);
-      return;
-    }
-
-    // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
-    const mouseX = x;
-    const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
-    let side: 'left' | 'right';
-    if (mouseX <= rect.left + edge) {
-      side = 'left';
-    } else if (mouseX >= rect.right - edge) {
-      side = 'right';
-    } else {
-      // Zona morta: cede o drop ao ProseMirror, que move o bloco.
-      clearTarget(view);
-      return;
-    }
-
-    const origin = dragStateFor(view).origin;
-    const dragged = dragging
-      ? extractNodesFromSlice(dragging.slice)
-      : origin
-      ? [origin.node]
-      : [];
-
-    // Alvo já é um grupo → acrescenta uma coluna.
-    const groupSpec = getSpecForGroup(node);
-    if (groupSpec) {
-      const fits = node.childCount < groupSpec.maxChildren;
-      const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
-      if (!fits || !compatible) {
-        clearTarget(view);
-        return;
-      }
-      dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
-      showIndicator(rect, side);
-      return;
-    }
-
-    // Alvo é um bloco comum → cria um grupo novo.
-    const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
-    if (!spec) {
-      clearTarget(view);
-      return;
-    }
-
-    dragStateFor(view).target = { pos, side, mode: 'create', spec };
+    dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
     showIndicator(rect, side);
     return;
+  }
+
+  // Alvo é um bloco comum → cria um grupo novo.
+  const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
+  if (!spec) {
+    clearTarget(view);
+    return;
+  }
+
+  dragStateFor(view).target = { pos, side, mode: 'create', spec };
+  showIndicator(rect, side);
 }
 
 // ─── Extensão e Plugin ────────────────────────────────────────────────────────
@@ -458,6 +456,10 @@ export const DragToGroup = Extension.create({
             dragleave: (view, event) => {
               const related = (event as DragEvent).relatedTarget as Node | null;
               if (!related || !view.dom.contains(related)) {
+                // Cancelar o frame é indispensável aqui: ele foi agendado com o
+                // ponteiro ainda dentro do editor e, se rodasse, repintaria o
+                // indicador depois de o cursor já ter saído.
+                cancelPendingEvaluate();
                 clearTarget(view);
               }
               return false;
