@@ -147,11 +147,10 @@ de verdade (não só tipagem), documentar e não mexer sozinho.
 ## Também pendente da tarefa original (drag-and-drop), fora do escopo do tsc
 
 Do plano aprovado antes desta fase de tipos — ainda não feito:
-- Trocar `useBlockHandle.ts` caseiro pela extensão oficial
-  `@tiptap/extension-drag-handle-react` (usuário pediu, ainda não instalada).
-- Instalar `@tiptap/extension-text-style` + `@tiptap/extension-color` pra
-  ligar o submenu "Cor do bloco" do `BlockHandle.tsx` (hoje escondido porque
-  não há quem aplique a cor).
-- Escrever suíte de testes (`vitest`, não instalado) pro `group-layout/`.
-- Fase 5 do plano original (relaxar schema `columnBlock{1,5}`, resolver
-  `GroupBlock` legado) — deliberadamente adiada por risco, ver a conversa.
+- [x] Trocar `useBlockHandle.ts` caseiro pela extensão oficial
+  `@tiptap/extension-drag-handle-react` (usuário pediu para NÃO fazer no momento, **SKIPPED**).
+- [x] Instalar `@tiptap/extension-text-style` + `@tiptap/extension-color` pra
+  ligar o submenu "Cor do bloco" do `BlockHandle.tsx`.
+- [x] Escrever suíte de testes (`vitest`, não instalado) pro `group-layout/`.
+- [x] Fase 5 do plano original (relaxar schema `columnBlock{1,5}`, resolver
+  `GroupBlock` legado).
