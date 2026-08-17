@@ -35,6 +35,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { Fragment } from '@tiptap/pm/model';
 import { getSpecForGroup } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
+import { ySyncPluginKey } from 'y-prosemirror';
 import { getChildren, pruneGroupsInTransaction } from './groupCommands';
 
 /** Conta quantas vezes o colapso já reentrou, para não haver laço infinito. */
@@ -52,27 +53,28 @@ interface EmptyChildTarget {
 function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
   const targets: EmptyChildTarget[] = [];
 
-  state.doc.descendants((node, pos) => {
+  // Só os filhos diretos do documento. Era um `descendants` do documento
+  // inteiro, rodando a cada tecla digitada mesmo em páginas sem uma única
+  // coluna — e como o callback já devolvia `false` em todo grupo encontrado
+  // ("grupos não aninham"), varrer as profundezas nunca serviu para nada.
+  state.doc.forEach((node, offset) => {
     const spec = getSpecForGroup(node);
-    if (!spec) return true;
+    if (!spec) return;
 
     // Se o usuário está com o cursor ou seleção em QUALQUER ponto dentro do grupo,
     // não remove colunas vazias (ele pode estar escrevendo ou acabou de criar a coluna).
-    const selectionInsideGroup = state.selection.from >= pos && state.selection.to <= pos + node.nodeSize;
-    if (selectionInsideGroup) return false;
+    const selectionInsideGroup =
+      state.selection.from >= offset && state.selection.to <= offset + node.nodeSize;
+    if (selectionInsideGroup) return;
 
-    const children = getChildren(node);
     const indices: number[] = [];
-
-    children.forEach((child, index) => {
-      if (!spec.isEmptyChild(child)) return;
-      indices.push(index);
+    getChildren(node).forEach((child, index) => {
+      if (spec.isEmptyChild(child)) indices.push(index);
     });
 
     if (indices.length > 0) {
-      targets.push({ spec, groupPos: pos, groupNode: node, indices });
+      targets.push({ spec, groupPos: offset, groupNode: node, indices });
     }
-    return false; // grupos não aninham
   });
 
   return targets;
@@ -124,6 +126,19 @@ export const GroupAutoCollapse = Extension.create({
 
         appendTransaction(transactions, _oldState, newState) {
           if (!transactions.some((tr) => tr.docChanged)) return null;
+
+          /*
+           * Edições que chegaram de OUTRO cliente pelo Yjs não podem passar por
+           * aqui. A heurística abaixo pergunta "a seleção está dentro do
+           * grupo?" para distinguir quem apagou o texto para redigitar de quem
+           * arrastou o conteúdo para fora — e numa edição remota a seleção
+           * LOCAL está sempre em outro lugar. O resultado era este cliente
+           * colapsar a coluna que o outro acabou de criar, e propagar a
+           * remoção de volta: dois usuários derrubando o layout um do outro.
+           */
+          if (transactions.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
+            return null;
+          }
 
           const depth = transactions.reduce(
             (max, tr) => Math.max(max, Number(tr.getMeta(AUTO_COLLAPSE_META)) || 0),
