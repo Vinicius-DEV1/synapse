@@ -107,6 +107,16 @@ export function useBlockHandle(
         return;
       }
 
+      // Grupos (columnGroup / linkGroup) têm sua própria barra de ações no
+      // GroupShell — mostrar a alça externa em cima causa a aparência de
+      // "múltiplas alças de arrastar". Suprimimos a alça para esses nós;
+      // cada coluna filha ainda pode ser arrastada pelo conteúdo interno.
+      if (block.node.type.spec.group === 'block' &&
+          (block.node.type.name === 'columnGroup' || block.node.type.name === 'linkGroup')) {
+        hide();
+        return;
+      }
+
       // `hide()` zera posRef, entao a alca reaparece sozinha quando volta ao
       // mesmo bloco — nao ha por que observar o `anchor` aqui (o que reassinaria
       // todos os listeners a cada bloco percorrido).
