@@ -33,12 +33,36 @@ export interface GroupDropTarget {
   spec: GroupSpec;
 }
 
-// Estado do arrasto em curso. Module-level de propósito: o Editor.tsx precisa
-// consultá-lo no próprio `handleDrop`, que roda antes do dos plugins.
-let activeTarget: GroupDropTarget | null = null;
+interface DragOrigin {
+  pos: number;
+  node: PMNode;
+  nodeSize: number;
+}
+
+interface DragState {
+  target: GroupDropTarget | null;
+  origin: DragOrigin | null;
+}
+
+/**
+ * Estado do arrasto, por EditorView. O `Editor.tsx` precisa consultá-lo no
+ * próprio `handleDrop` (que roda antes do dos plugins), por isso ele vive fora
+ * do state do ProseMirror — mas amarrado à view, e não ao módulo, para que dois
+ * editores montados ao mesmo tempo não disputem a mesma variável.
+ */
+const dragStates = new WeakMap<EditorView, DragState>();
+
+/** O indicador é um só: existe no máximo um arrasto por vez na página inteira. */
 let indicator: HTMLDivElement | null = null;
-let draggedOrigin: { pos: number; node: PMNode; nodeSize: number } | null = null;
-let cleanupTimer: any = null;
+
+function dragStateFor(view: EditorView): DragState {
+  let state = dragStates.get(view);
+  if (!state) {
+    state = { target: null, origin: null };
+    dragStates.set(view, state);
+  }
+  return state;
+}
 
 /**
  * Fração da largura do bloco, de cada lado, que ativa o agrupamento.
@@ -65,26 +89,39 @@ function hideIndicator() {
   document.body.classList.remove(DROP_CURSOR_SUPPRESSOR);
 }
 
-function clearDragState(immediate = false) {
+/**
+ * Esquece o alvo — imediatamente.
+ *
+ * Havia aqui um `setTimeout` de 200ms, justificado como rede de segurança para
+ * o caso de `dragend`/`dragleave` chegarem antes do `handleDrop`. Isso não
+ * acontece: num drop o navegador dispara `drop` (onde o ProseMirror roda
+ * `handleDOMEvents.drop` e logo depois `handleDrop`) e só então `dragend`;
+ * `dragleave` nem chega a disparar no elemento que recebeu o drop.
+ *
+ * O que o atraso de fato fazia era manter alvos INVÁLIDOS vivos: as rejeições
+ * do `dragover` (soltar sobre si mesmo, rect zerado, slice incompatível, zona
+ * morta) passam por aqui, e o alvo descartado sobrevivia 200ms. Bastava passar
+ * rápido por uma região inválida e soltar para o bloco aterrissar num alvo de
+ * 200ms atrás — a origem do "o elemento pulou para um lugar aleatório".
+ */
+function clearTarget(view: EditorView) {
   hideIndicator();
-  if (cleanupTimer) {
-    clearTimeout(cleanupTimer);
-    cleanupTimer = null;
-  }
+  const state = dragStates.get(view);
+  if (state) state.target = null;
+}
 
-  if (immediate) {
-    activeTarget = null;
-    draggedOrigin = null;
-  } else {
-    // Delay de segurança: em alguns navegadores o evento dragend/dragleave dispara
-    // milissegundos antes do ProseMirror processar handleDrop. Manter activeTarget por
-    // 200ms garante que handleDrop receba o alvo sem falhas.
-    cleanupTimer = setTimeout(() => {
-      activeTarget = null;
-      draggedOrigin = null;
-      cleanupTimer = null;
-    }, 200);
-  }
+/**
+ * Fim do arrasto: esquece também a origem.
+ *
+ * A origem é capturada no `dragstart` e precisa sobreviver ao arrasto inteiro —
+ * antes ela era descartada junto com o alvo em toda rejeição do `dragover`, e
+ * bastava passar por uma região inválida para perder a referência do bloco que
+ * estava sendo movido (que então era copiado, em vez de movido).
+ */
+function endDrag(view: EditorView) {
+  clearTarget(view);
+  const state = dragStates.get(view);
+  if (state) state.origin = null;
 }
 
 function showIndicator(rect: DOMRect, side: 'left' | 'right') {
@@ -111,9 +148,9 @@ function showIndicator(rect: DOMRect, side: 'left' | 'right') {
  * Usado pelo Editor.tsx ao soltar ARQUIVOS, já que `editorProps.handleDrop`
  * roda antes do `handleDrop` dos plugins.
  */
-export function consumeGroupDropTarget(): GroupDropTarget | null {
-  const target = activeTarget;
-  clearDragState(true);
+export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null {
+  const target = dragStates.get(view)?.target ?? null;
+  endDrag(view);
   return target;
 }
 
@@ -208,9 +245,10 @@ function isDraggingItself(view: EditorView, pos: number, node: PMNode): boolean 
     if (selection.from === pos) return true;
     if (selection.from >= pos && selection.to <= pos + node.nodeSize) return true;
   }
-  if (draggedOrigin) {
-    if (draggedOrigin.pos === pos) return true;
-    if (draggedOrigin.pos >= pos && draggedOrigin.pos + draggedOrigin.nodeSize <= pos + node.nodeSize) {
+  const origin = dragStates.get(view)?.origin;
+  if (origin) {
+    if (origin.pos === pos) return true;
+    if (origin.pos >= pos && origin.pos + origin.nodeSize <= pos + node.nodeSize) {
       return true;
     }
   }
@@ -274,7 +312,7 @@ export const DragToGroup = Extension.create({
               // 1. Se já há uma NodeSelection ativa (ex: widget ou imagem clicada)
               if (view.state.selection instanceof NodeSelection) {
                 const sel = view.state.selection;
-                draggedOrigin = { pos: sel.from, node: sel.node, nodeSize: sel.node.nodeSize };
+                dragStateFor(view).origin = { pos: sel.from, node: sel.node, nodeSize: sel.node.nodeSize };
                 return false;
               }
 
@@ -304,14 +342,14 @@ export const DragToGroup = Extension.create({
               if (pos !== null && pos >= 0) {
                 const node = view.state.doc.nodeAt(pos);
                 if (node) {
-                  draggedOrigin = { pos, node, nodeSize: node.nodeSize };
+                  dragStateFor(view).origin = { pos, node, nodeSize: node.nodeSize };
                 }
               }
               return false;
             },
 
-            dragend: () => {
-              clearDragState(false);
+            dragend: (view) => {
+              endDrag(view);
               return false;
             },
 
@@ -321,7 +359,7 @@ export const DragToGroup = Extension.create({
               const dragEvent = event as DragEvent;
               const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
               if (!block) {
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
@@ -329,19 +367,19 @@ export const DragToGroup = Extension.create({
 
               // Não cria coluna soltando o bloco sobre ele mesmo.
               if (isDraggingItself(view, pos, node)) {
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
               const rect = dom.getBoundingClientRect();
               if (rect.width === 0) {
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
               const dragging = (view as any).dragging as { slice: Slice; move: boolean } | null;
               if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
@@ -355,14 +393,15 @@ export const DragToGroup = Extension.create({
                 side = 'right';
               } else {
                 // Zona morta: cede o drop ao ProseMirror, que move o bloco.
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
+              const origin = dragStateFor(view).origin;
               const dragged = dragging
                 ? extractNodesFromSlice(dragging.slice)
-                : draggedOrigin
-                ? [draggedOrigin.node]
+                : origin
+                ? [origin.node]
                 : [];
 
               // Alvo já é um grupo → acrescenta uma coluna.
@@ -371,10 +410,10 @@ export const DragToGroup = Extension.create({
                 const fits = node.childCount < groupSpec.maxChildren;
                 const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
                 if (!fits || !compatible) {
-                  clearDragState(false);
+                  clearTarget(view);
                   return false;
                 }
-                activeTarget = { pos, side, mode: 'append', spec: groupSpec };
+                dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
                 showIndicator(rect, side);
                 return false;
               }
@@ -382,11 +421,11 @@ export const DragToGroup = Extension.create({
               // Alvo é um bloco comum → cria um grupo novo.
               const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
               if (!spec) {
-                clearDragState(false);
+                clearTarget(view);
                 return false;
               }
 
-              activeTarget = { pos, side, mode: 'create', spec };
+              dragStateFor(view).target = { pos, side, mode: 'create', spec };
               showIndicator(rect, side);
               return false;
             },
@@ -394,7 +433,7 @@ export const DragToGroup = Extension.create({
             dragleave: (view, event) => {
               const related = (event as DragEvent).relatedTarget as Node | null;
               if (!related || !view.dom.contains(related)) {
-                clearDragState(false);
+                clearTarget(view);
               }
               return false;
             },
@@ -406,11 +445,12 @@ export const DragToGroup = Extension.create({
           },
 
           handleDrop(view, _event, slice, _moved) {
-            const target = activeTarget;
+            const state = dragStateFor(view);
+            const target = state.target;
             if (!target) return false;
 
-            const origin = draggedOrigin;
-            clearDragState(true);
+            const origin = state.origin;
+            endDrag(view);
 
             let content = extractNodesFromSlice(slice);
             if (content.length === 0 && origin) {
