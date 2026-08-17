@@ -365,11 +365,15 @@ export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: Gr
     if (node.childCount >= 2) continue;
 
     const content = flattenGroup(nodeSpec, node);
-    const mapped = tr.mapping.map(pos, -1);
+    // Mesmo cuidado do `groupAutoCollapse`: as duas pontas são remapeadas. O
+    // fim era calculado como `mapped + node.nodeSize`, usando o tamanho de
+    // antes da transação, e errava a faixa assim que houvesse mais de um grupo.
+    const from = tr.mapping.map(pos, -1);
+    const to = tr.mapping.map(pos + node.nodeSize, 1);
     if (content.length === 0) {
-      tr.delete(mapped, mapped + node.nodeSize);
+      tr.delete(from, to);
     } else {
-      tr.replaceWith(mapped, mapped + node.nodeSize, Fragment.fromArray(content));
+      tr.replaceWith(from, to, Fragment.fromArray(content));
     }
     changed = true;
   }
