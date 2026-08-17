@@ -40,7 +40,7 @@ export default function GroupShell({
     return typeof pos === 'number' ? pos : undefined;
   }, [getPos]);
 
-  const { handleOffsets, isResizing, previewWidths, startResize } = useGroupResize({
+  const { handleOffsets, wrapperWidth, isResizing, previewWidths, startResize } = useGroupResize({
     spec,
     node,
     view: editor.view,
@@ -151,7 +151,7 @@ export default function GroupShell({
             index={index}
             childCount={childCount}
             handleOffsets={handleOffsets}
-            wrapperRef={wrapperRef}
+            wrapperWidth={wrapperWidth}
             onRemove={handleRemoveChild}
             onMove={handleMoveChild}
           />
@@ -185,7 +185,7 @@ function ChildControls({
   index,
   childCount,
   handleOffsets,
-  wrapperRef,
+  wrapperWidth,
   onRemove,
   onMove,
 }: {
@@ -193,13 +193,19 @@ function ChildControls({
   index: number;
   childCount: number;
   handleOffsets: number[];
-  wrapperRef: React.RefObject<HTMLDivElement | null>;
+  wrapperWidth: number;
   onRemove: (index: number) => void;
   onMove: (from: number, to: number) => void;
 }) {
-  const width = wrapperRef.current?.getBoundingClientRect().width ?? 0;
+  /*
+   * A largura vem medida do `useGroupResize`, não de um
+   * `wrapperRef.current.getBoundingClientRect()` lido aqui no corpo do render.
+   * Aquela leitura era impura, devolvia 0 na primeira renderização (jogando os
+   * controles da última coluna para a metade errada do grupo) e nunca
+   * acompanhava um redimensionamento da janela, porque nada a re-disparava.
+   */
   const start = index === 0 ? 0 : handleOffsets[index - 1];
-  const end = index === childCount - 1 ? width : handleOffsets[index];
+  const end = index === childCount - 1 ? wrapperWidth : handleOffsets[index];
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
 
   return (

@@ -44,6 +44,8 @@ interface UseGroupResizeOptions {
 export interface GroupResizeState {
   /** Distância, em px a partir da borda esquerda do wrapper, de cada vão. */
   handleOffsets: number[];
+  /** Largura do wrapper, medida junto com os vãos. */
+  wrapperWidth: number;
   isResizing: boolean;
   /** Larguras mostradas durante o arrasto (null quando parado). */
   previewWidths: number[] | null;
@@ -59,7 +61,12 @@ export function useGroupResize({
   wrapperRef,
   enabled,
 }: UseGroupResizeOptions): GroupResizeState {
-  const [handleOffsets, setHandleOffsets] = useState<number[]>([]);
+  // Vãos e largura num state só: são medidos na mesma passada e mudam juntos,
+  // então separá-los custaria dois renders por remedição.
+  const [metrics, setMetrics] = useState<{ offsets: number[]; width: number }>({
+    offsets: [],
+    width: 0,
+  });
   const [isResizing, setIsResizing] = useState(false);
   const [previewWidths, setPreviewWidths] = useState<number[] | null>(null);
 
@@ -80,25 +87,25 @@ export function useGroupResize({
 
   const remeasure = useCallback(() => {
     const wrapper = wrapperRef.current;
-    const children = getChildElements();
-    if (!wrapper || children.length < 2) {
-      setHandleOffsets((prev) => (prev.length === 0 ? prev : []));
-      return;
-    }
+    if (!wrapper) return;
 
-    const wrapperLeft = wrapper.getBoundingClientRect().left;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const children = getChildElements();
+
     const offsets: number[] = [];
     for (let i = 0; i < children.length - 1; i += 1) {
       const current = children[i].getBoundingClientRect();
       const next = children[i + 1].getBoundingClientRect();
-      offsets.push((current.right + next.left) / 2 - wrapperLeft);
+      offsets.push((current.right + next.left) / 2 - wrapperRect.left);
     }
 
-    setHandleOffsets((prev) =>
-      prev.length === offsets.length && prev.every((value, i) => Math.abs(value - offsets[i]) < 0.5)
-        ? prev
-        : offsets
-    );
+    setMetrics((prev) => {
+      const sameWidth = Math.abs(prev.width - wrapperRect.width) < 0.5;
+      const sameOffsets =
+        prev.offsets.length === offsets.length &&
+        prev.offsets.every((value, i) => Math.abs(value - offsets[i]) < 0.5);
+      return sameWidth && sameOffsets ? prev : { offsets, width: wrapperRect.width };
+    });
   }, [wrapperRef, getChildElements]);
 
   /*
@@ -262,6 +269,14 @@ export function useGroupResize({
         setIsResizing(false);
         setPreviewWidths(null);
 
+        // O preview escreve `style.flex` direto no DOM. Sem limpar, ele
+        // sobrevive ao fim do arrasto e passa a divergir do atributo: quando
+        // `setChildWidths` nada dispara (larguras arredondadas iguais) ou o
+        // filho tem node view proprio (o ProseMirror nao reescreve o `style`
+        // do wrapper do React), a coluna fica com uma largura fantasma.
+        left.style.flex = '';
+        right.style.flex = '';
+
         const pos = getPos();
         if (typeof pos === 'number') setChildWidths(view, pos, latest);
       };
@@ -273,5 +288,12 @@ export function useGroupResize({
     [enabled, getChildElements, spec, node, view, getPos, remeasure]
   );
 
-  return { handleOffsets, isResizing, previewWidths, startResize, remeasure };
+  return {
+    handleOffsets: metrics.offsets,
+    wrapperWidth: metrics.width,
+    isResizing,
+    previewWidths,
+    startResize,
+    remeasure,
+  };
 }
