@@ -6,6 +6,8 @@ import { createLowlight, common } from 'lowlight';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Highlight } from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
+import TextStyle from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import { Link } from '@tiptap/extension-link';
 import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
 import { TaskList } from '@tiptap/extension-task-list';
@@ -119,6 +121,10 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       // Layouts lado a lado (colunas e cards de link) — ver `group-layout/`.
       DragToGroup,
       GroupAutoCollapse,
+      // Estilo inline (necessário para que Color funcione).
+      TextStyle,
+      // Permite definir cor de texto via editor.chain().setColor(hex).
+      Color,
       ImageKeymap,
     ];
   }, [ydoc]);
