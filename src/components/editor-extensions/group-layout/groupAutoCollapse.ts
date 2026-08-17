@@ -35,7 +35,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { Fragment } from '@tiptap/pm/model';
 import { getSpecForGroup } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
-import { getChildPositions, getChildren, pruneGroupsInTransaction } from './groupCommands';
+import { getChildren, pruneGroupsInTransaction } from './groupCommands';
 
 /** Conta quantas vezes o colapso já reentrou, para não haver laço infinito. */
 const AUTO_COLLAPSE_META = 'groupLayout:autoCollapse';
@@ -62,7 +62,6 @@ function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
     if (selectionInsideGroup) return false;
 
     const children = getChildren(node);
-    const positions = getChildPositions(pos, node);
     const indices: number[] = [];
 
     children.forEach((child, index) => {
@@ -85,8 +84,12 @@ function removeChildrenInTransaction(tr: Transaction, target: EmptyChildTarget):
   const drop = new Set(indices);
   const remaining = getChildren(groupNode).filter((_, index) => !drop.has(index));
 
+  // As DUAS pontas precisam ser remapeadas. Antes o início era mapeado e o fim
+  // era `from + groupNode.nodeSize` — o tamanho de ANTES da transação. Com dois
+  // grupos afetados na mesma transação, a faixa do segundo caía no lugar errado
+  // e a substituição corrompia o documento.
   const from = tr.mapping.map(groupPos, -1);
-  const to = from + groupNode.nodeSize;
+  const to = tr.mapping.map(groupPos + groupNode.nodeSize, 1);
 
   try {
     if (remaining.length <= 1) {
