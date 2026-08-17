@@ -40,9 +40,29 @@ let indicator: HTMLDivElement | null = null;
 let draggedOrigin: { pos: number; node: PMNode; nodeSize: number } | null = null;
 let cleanupTimer: any = null;
 
+/**
+ * Fração da largura do bloco, de cada lado, que ativa o agrupamento.
+ * O miolo é ZONA MORTA: ali o arrasto é uma movimentação comum e quem responde
+ * é o ProseMirror. Sem isso não havia como mover um bloco verticalmente — toda
+ * posição sobre todo bloco era metade esquerda ou metade direita, então todo
+ * arrasto virava coluna.
+ */
+const EDGE_RATIO = 0.25;
+/** Tetos em px, para que blocos muito largos não virem alvo de borda gigante. */
+const EDGE_MAX_PX = 120;
+
+/**
+ * O dropcursor (linha horizontal do ProseMirror, ligado pelo StarterKit) promete
+ * "solte aqui para mover". Enquanto a barra vertical de agrupamento está
+ * visível a promessa é outra, e os dois juntos apareciam ao mesmo tempo dizendo
+ * coisas diferentes. A classe no <body> esconde um enquanto o outro manda.
+ */
+const DROP_CURSOR_SUPPRESSOR = 'group-drop-active';
+
 function hideIndicator() {
   indicator?.remove();
   indicator = null;
+  document.body.classList.remove(DROP_CURSOR_SUPPRESSOR);
 }
 
 function clearDragState(immediate = false) {
@@ -80,6 +100,7 @@ function showIndicator(rect: DOMRect, side: 'left' | 'right') {
     indicator.style.transition = 'left 0.05s ease, top 0.05s ease, height 0.05s ease';
     document.body.appendChild(indicator);
   }
+  document.body.classList.add(DROP_CURSOR_SUPPRESSOR);
   indicator.style.left = `${side === 'left' ? Math.max(0, rect.left - 4) : Math.max(0, rect.right - 1)}px`;
   indicator.style.top = `${rect.top}px`;
   indicator.style.height = `${Math.max(rect.height, 32)}px`;
@@ -324,9 +345,20 @@ export const DragToGroup = Extension.create({
                 return false;
               }
 
-              // Metade esquerda -> coluna à esquerda / Metade direita -> coluna à direita
+              // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
               const mouseX = dragEvent.clientX;
-              const side: 'left' | 'right' = mouseX < rect.left + rect.width / 2 ? 'left' : 'right';
+              const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
+              let side: 'left' | 'right';
+              if (mouseX <= rect.left + edge) {
+                side = 'left';
+              } else if (mouseX >= rect.right - edge) {
+                side = 'right';
+              } else {
+                // Zona morta: cede o drop ao ProseMirror, que move o bloco.
+                clearDragState(false);
+                return false;
+              }
+
               const dragged = dragging
                 ? extractNodesFromSlice(dragging.slice)
                 : draggedOrigin
