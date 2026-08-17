@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Schema, Node as PMNode, Fragment } from '@tiptap/pm/model';
-import { COLUMN_GROUP_SPEC, LINK_GROUP_SPEC, getSpecForGroup, getSpecByName, pickSpecForPair } from './groupSpecs';
+import { Schema } from '@tiptap/pm/model';
+import { COLUMN_GROUP_SPEC, LINK_GROUP_SPEC, getSpecByName, pickSpecForPair } from './groupSpecs';
 
 // Mock schema for testing
 const mockSchema = new Schema({
