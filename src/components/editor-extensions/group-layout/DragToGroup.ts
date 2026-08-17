@@ -156,22 +156,42 @@ export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null
 }
 
 /**
- * Registra a origem de um arrasto iniciado FORA do `view.dom`.
+ * Abre um arrasto de bloco iniciado FORA do `view.dom` — hoje, a alça flutuante.
  *
- * A alça de bloco é um elemento flutuante irmão do editor, então o
- * `handleDOMEvents.dragstart` deste plugin — que só enxerga eventos dentro do
- * `view.dom` — nunca dispara para ela. Sem isto o arrasto pela alça chegaria ao
- * `handleDrop` sem origem, e o bloco seria copiado em vez de movido.
+ * Os `handleDOMEvents` do ProseMirror só enxergam eventos dentro do `view.dom`,
+ * e a alça é um elemento irmão do editor: nem o `dragstart` deste plugin nem o
+ * do próprio ProseMirror disparam para ela. Tudo que os dois fariam precisa ser
+ * feito aqui, e é por isso que esta função mora na extensão e não no hook da
+ * alça — é o protocolo de arrasto do editor, não detalhe de UI.
  */
-export function setExternalDragOrigin(view: EditorView, pos: number): boolean {
+export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return false;
+
+  // Selecionar o nó é o que faz o ProseMirror tratar isto como o arrasto de um
+  // bloco inteiro, e não de uma seleção de texto.
+  const selection = NodeSelection.create(view.state.doc, pos);
+  view.dispatch(view.state.tr.setSelection(selection));
+
+  // `view.dragging` é como o ProseMirror sabe, no drop, que se trata de um
+  // MOVER interno. Sem isso o bloco seria remontado a partir do HTML do
+  // dataTransfer e perderia os atributos dos node views.
+  (view as unknown as { dragging: unknown }).dragging = {
+    slice: selection.content(),
+    move: true,
+  };
+
   dragStateFor(view).origin = { pos, node, nodeSize: node.nodeSize };
   return true;
 }
 
-/** Contrapartida do acima: o `dragend` da alça também não passa pelo plugin. */
+/**
+ * Contrapartida da função acima: o `dragend` da alça também não passa pelo
+ * plugin, então nem o alvo nem o `view.dragging` seriam limpos — e o drop
+ * seguinte herdaria o slice do arrasto anterior.
+ */
 export function endExternalDrag(view: EditorView) {
+  (view as unknown as { dragging: unknown }).dragging = null;
   endDrag(view);
 }
 
