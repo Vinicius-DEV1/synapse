@@ -1,0 +1,336 @@
+src/App.tsx(250,9): error TS2322: Type '(id: string, content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string; }[]) => Promise<void>' is not assignable to type '(id: string, content: string, crdtState?: string | undefined) => void'.
+  Types of parameters 'crdtState' and 'crdtState' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/App.tsx(251,9): error TS2322: Type '(parentId: string | null) => Promise<void>' is not assignable to type '(parentId?: string | null | undefined, title?: string | undefined, icon?: string | undefined) => void'.
+  Types of parameters 'parentId' and 'parentId' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/components/AiSidebar.tsx(33,5): error TS2322: Type 'AttachedPage[]' is not assignable to type 'Page[]'.
+  Type 'AttachedPage' is missing the following properties from type 'Page': parent_id, icon, sort_order, created_at, updated_at
+src/components/anki/AIAssistantModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/AIChatAnalysisView.tsx(2,20): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/components/anki/AIChatAnalysisView.tsx(2,35): error TS6133: 'Check' is declared but its value is never read.
+src/components/anki/AIChatAnalysisView.tsx(2,42): error TS6133: 'Edit3' is declared but its value is never read.
+src/components/anki/AIChatAnalysisView.tsx(2,49): error TS6133: 'Trash2' is declared but its value is never read.
+src/components/anki/AIGenerationView.tsx(1,17): error TS6133: 'useRef' is declared but its value is never read.
+src/components/anki/AIGenerationView.tsx(2,10): error TS6133: 'Sparkles' is declared but its value is never read.
+src/components/anki/AIGenerationView.tsx(29,3): error TS6133: 'loading' is declared but its value is never read.
+src/components/anki/AnkiStats.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/AnkiStats.tsx(19,5): error TS6133: 'historyData' is declared but its value is never read.
+src/components/anki/AnkiView.tsx(2,22): error TS6133: 'Trash2' is declared but its value is never read.
+src/components/anki/AnkiView.tsx(2,30): error TS6133: 'Edit3' is declared but its value is never read.
+src/components/anki/AnkiView.tsx(2,61): error TS6133: 'X' is declared but its value is never read.
+src/components/anki/AnkiView.tsx(36,29): error TS2339: Property 'migrateToNotes' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/AnkiView.tsx(37,38): error TS2339: Property 'migrateToNotes' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/CardEditor.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/CreateDeckModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/DeckBrowser.tsx(20,27): error TS6196: 'CardDraft' is declared but never used.
+src/components/anki/DeckBrowser.tsx(147,27): error TS2339: Property 'updateDeckSettings' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckBrowser.tsx(148,31): error TS2339: Property 'updateDeckSettings' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(24,27): error TS2339: Property 'getDeckSettings' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(25,39): error TS2339: Property 'getDeckSettings' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(48,29): error TS2339: Property 'importDeck' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(49,43): error TS2339: Property 'importDeck' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(72,27): error TS2339: Property 'exportDeckRecursive' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/DeckSettingsPanel.tsx(74,43): error TS2339: Property 'exportDeckRecursive' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/StudySession.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/ai-chat/ChatActionBlocks.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/ai-chat/ChatActionBlocks.tsx(4,58): error TS6133: 'actionStatus' is declared but its value is never read.
+src/components/anki/ai-chat/ChatActionBlocks.tsx(4,72): error TS6133: 'actionKey' is declared but its value is never read.
+src/components/anki/ai-chat/ChatSetupForm.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/ai-chat/ChatSuggestionsReview.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/browser/CardGridView.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/browser/CardListView.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/browser/CardPreviewModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/browser/DeckToolbar.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/editor/AudioPreview.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/editor/AudioPreview.tsx(12,14): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/editor/AudioPreview.tsx(12,35): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/help/AiLogsTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/AiLogsTab.tsx(2,10): error TS6133: 'Database' is declared but its value is never read.
+src/components/anki/help/ExternalAiTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/FsrsTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/IntroTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/MiscTabs.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/PromptsTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/help/PromptsTab.tsx(2,10): error TS6133: 'Edit3' is declared but its value is never read.
+src/components/anki/help/TypesTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/hooks/useAnkiStats.ts(30,46): error TS2339: Property 'getReviews' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/hooks/useCardEditorForm.ts(37,29): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(37,49): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(57,19): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(58,50): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(61,26): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(62,69): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(97,19): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(98,50): error TS2339: Property 'video_clip' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(101,26): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useCardEditorForm.ts(102,69): error TS2339: Property 'tts_text' does not exist on type 'CardDraft'.
+src/components/anki/hooks/useStudySession.ts(75,12): error TS2339: Property 'getCardIntervals' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/components/anki/stats/ActivityHeatmap.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/stats/CreationLineChart.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/stats/ForecastBarChart.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/stats/MaturityPieChart.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/stats/RatingDistributionChart.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/stats/StatsOverviewGrid.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/study/ListeningCard.tsx(1,1): error TS6192: All imports in import declaration are unused.
+src/components/anki/study/ReadingCard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/study/SessionSummary.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/anki/study/SpeakingCard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/BlockquoteToggle.tsx(19,66): error TS2345: Argument of type 'Node<any, any>' is not assignable to parameter of type 'Node'.
+  Type 'Node<any, any>' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 46 more.
+src/components/editor-extensions/BlockquoteToggle.tsx(19,66): error TS2352: Conversion of type 'EventTarget | null' to type 'Node<any, any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'EventTarget' is missing the following properties from type 'Node<any, any>': type, configure, extend, parent, and 5 more.
+src/components/editor-extensions/BlockquoteToggle.tsx(22,62): error TS2345: Argument of type 'Node<any, any>' is not assignable to parameter of type 'Node'.
+  Type 'Node<any, any>' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 46 more.
+src/components/editor-extensions/BlockquoteToggle.tsx(22,62): error TS2352: Conversion of type 'EventTarget | null' to type 'Node<any, any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'EventTarget' is missing the following properties from type 'Node<any, any>': type, configure, extend, parent, and 5 more.
+src/components/editor-extensions/CalendarEventModal.tsx(70,9): error TS2561: Object literal may only specify known properties, but 'type_' does not exist in type 'Partial<CalendarEvent>'. Did you mean to write 'type'?
+src/components/editor-extensions/CalendarEventModal.tsx(86,31): error TS2551: Property 'type_' does not exist on type 'Partial<CalendarEvent>'. Did you mean 'type'?
+src/components/editor-extensions/CalendarEventWidgetNodeView.tsx(10,36): error TS6133: 'pageId' is declared but its value is never read.
+src/components/editor-extensions/FocusWidgetNodeView.tsx(8,37): error TS6133: 'description' is declared but its value is never read.
+src/components/editor-extensions/ResizableImage.tsx(48,3): error TS2322: Type '(this: { name: string; parent: (() => ImageOptions) | undefined; }) => { allowBase64: true; inline?: boolean | undefined; HTMLAttributes?: Record<string, any> | undefined; resize?: false | ... 1 more ... | undefined; }' is not assignable to type '(this: { name: string; parent: (() => ImageOptions) | undefined; }) => ImageOptions'.
+  Call signature return types '{ allowBase64: true; inline?: boolean | undefined; HTMLAttributes?: Record<string, any> | undefined; resize?: false | { enabled: boolean; directions?: ResizableNodeViewDirection[] | undefined; minWidth?: number | undefined; minHeight?: number | undefined; alwaysPreserveAspectRatio?: boolean | undefined; } | undefine...' and 'ImageOptions' are incompatible.
+    The types of 'inline' are incompatible between these types.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/components/editor-extensions/ToggleBlock.tsx(4,10): error TS6133: 'useState' is declared but its value is never read.
+src/components/editor-extensions/YouTubePlaylistModal.tsx(2,56): error TS6133: 'Clock' is declared but its value is never read.
+src/components/editor-extensions/YouTubePlaylistModal.tsx(65,46): error TS2339: Property 'push' does not exist on type 'SyncApi'.
+src/components/editor-extensions/YouTubePlaylistModal.tsx(66,25): error TS2339: Property 'push' does not exist on type 'SyncApi'.
+src/components/editor-extensions/image/ImageCaption.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/links/LinkNotesDrawer.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/links/LinkPreviewBlock.tsx(1,51): error TS6133: 'useRef' is declared but its value is never read.
+src/components/editor-extensions/links/LinkPreviewBlock.tsx(219,37): error TS2339: Property 'os' does not exist on type 'ICadernoAPI'.
+src/components/editor-extensions/links/LinkPreviewBlock.tsx(220,34): error TS2339: Property 'os' does not exist on type 'ICadernoAPI'.
+src/components/editor-extensions/links/LinkPreviewCard.tsx(18,1): error TS6133: 'Portal' is declared but its value is never read.
+src/components/editor-extensions/quiz/QuestionBlockNodeView.tsx(220,13): error TS2322: Type '(e: React.MouseEvent) => void' is not assignable to type '() => void'.
+  Target signature provides too few arguments. Expected 1 or more, but got 0.
+src/components/editor-extensions/quiz/components/QuizAIAssistant.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizAIAssistant.tsx(43,3): error TS6133: 'questions' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizDeleteModals.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizEditor.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizEditor.tsx(3,3): error TS6133: 'HelpCircle' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizEditor.tsx(10,3): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizHistorySection.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizPlayer.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizPlayer.tsx(5,3): error TS6133: 'HelpCircle' is declared but its value is never read.
+src/components/editor-extensions/quiz/components/QuizTagsFilter.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/editor-extensions/quiz/utils/markdownPreprocess.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/library/EpubReader.tsx(2,1): error TS6133: 'ePub' is declared but its value is never read.
+src/components/library/EpubReader.tsx(42,22): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/EpubReader.tsx(44,24): error TS2353: Object literal may only specify known properties, and 'reading_preferences' does not exist in type 'Partial<LibraryBook>'.
+src/components/library/EpubReader.tsx(45,14): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/EpubReader.tsx(107,5): error TS2345: Argument of type 'RefObject<HTMLDivElement | null>' is not assignable to parameter of type 'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to type 'HTMLDivElement'.
+src/components/library/EpubReader.tsx(121,33): error TS2339: Property 'forEach' does not exist on type 'Contents'.
+src/components/library/EpubReader.tsx(137,24): error TS2345: Argument of type 'Location' is not assignable to parameter of type 'number'.
+src/components/library/EpubReader.tsx(138,17): error TS2339: Property 'current_page' does not exist on type 'Partial<LibraryBook>'.
+src/components/library/EpubReader.tsx(181,30): error TS2339: Property 'toggleFullScreen' does not exist on type '{ getDbPath: () => Promise<string>; quit: () => void; minimize: () => void; maximize: () => void; getPathForFile: (file: File) => string; showConfirm: (message: string) => Promise<number>; openFocusWindow: () => Promise<...>; }'.
+src/components/library/EpubReader.tsx(182,26): error TS2339: Property 'toggleFullScreen' does not exist on type '{ getDbPath: () => Promise<string>; quit: () => void; minimize: () => void; maximize: () => void; getPathForFile: (file: File) => string; showConfirm: (message: string) => Promise<number>; openFocusWindow: () => Promise<...>; }'.
+src/components/library/EpubReader.tsx(225,24): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/components/library/EpubReader.tsx(234,9): error TS6133: 'isDark' is declared but its value is never read.
+src/components/library/EpubReader.tsx(236,9): error TS6133: 'bottomBarClasses' is declared but its value is never read.
+src/components/library/LibraryView.tsx(25,5): error TS6133: 'setCollections' is declared but its value is never read.
+src/components/library/PdfReader.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/library/PdfReader.tsx(4,1): error TS6192: All imports in import declaration are unused.
+src/components/library/PdfReader.tsx(5,28): error TS6196: 'LibraryHighlight' is declared but never used.
+src/components/library/PdfReader.tsx(5,46): error TS6196: 'LibraryBookmark' is declared but never used.
+src/components/library/PdfReader.tsx(30,11): error TS6133: 'state' is declared but its value is never read.
+src/components/library/PdfReader.tsx(69,53): error TS6133: 'setSelection' is declared but its value is never read.
+src/components/library/PdfReader.tsx(204,13): error TS2322: Type '{ highlights: LibraryHighlight[]; bookmarks: LibraryBookmark[]; toc: any[]; onClose: () => void; onNavigate: (page: any) => void; onDeleteHighlight: (id: string) => Promise<...>; onDeleteBookmark: (id: string) => void; }' is not assignable to type 'IntrinsicAttributes & AnnotationPanelProps'.
+  Property 'toc' does not exist on type 'IntrinsicAttributes & AnnotationPanelProps'.
+src/components/library/PdfReader.tsx(206,26): error TS7006: Parameter 'page' implicitly has an 'any' type.
+src/components/library/PdfReader.tsx(210,17): error TS2552: Cannot find name 'setBookmarks'. Did you mean 'bookmarks'?
+src/components/library/PdfReader.tsx(210,30): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/components/library/PdfReader.tsx(210,50): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/components/library/PdfReader.tsx(248,19): error TS2322: Type '{ key: number; pageNum: number; pdfDoc: any; zoom: number; isRendered: boolean; cssFilter: string; highlights: LibraryHighlight[]; activeHighlight: { highlight: LibraryHighlight; position: { ...; }; } | null; ... 9 more ...; onHighlightClick: (h: LibraryHighlight, pos: DOMRect) => void; }' is not assignable to type 'IntrinsicAttributes & PdfPageProps'.
+  Property 'activeHighlight' does not exist on type 'IntrinsicAttributes & PdfPageProps'.
+src/components/library/PdfReader.tsx(251,38): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/PdfReader.tsx(275,17): error TS2322: Type '{ pdfDoc: any; totalPages: number; onResultClick: (page: any) => void; onClose: () => void; }' is not assignable to type 'IntrinsicAttributes & PdfSearchBarProps'.
+  Property 'onResultClick' does not exist on type 'IntrinsicAttributes & PdfSearchBarProps'.
+src/components/library/PdfReader.tsx(275,33): error TS7006: Parameter 'page' implicitly has an 'any' type.
+src/components/library/PdfReader.tsx(296,32): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/PdfReader.tsx(307,13): error TS2322: Type '{ position: { x: number; y: number; }; onColorSelect: (color: string) => Promise<void>; onDictionary: () => void; }' is not assignable to type 'IntrinsicAttributes & HighlightToolbarProps'.
+  Property 'onColorSelect' does not exist on type 'IntrinsicAttributes & HighlightToolbarProps'.
+src/components/library/PdfReader.tsx(333,13): error TS2322: Type '{ word: string; context: string | undefined; onClose: () => void; }' is not assignable to type 'IntrinsicAttributes & DictionaryModalProps'.
+  Property 'word' does not exist on type 'IntrinsicAttributes & DictionaryModalProps'.
+src/components/library/epub/EpubContext.tsx(1,54): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/library/epub/EpubContext.tsx(72,22): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/epub/EpubContext.tsx(72,60): error TS2339: Property 'reading_preferences' does not exist on type 'LibraryBook'.
+src/components/library/epub/EpubHighlightMenu.tsx(107,33): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(117,33): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(125,8): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(127,13): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(139,41): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(145,33): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(145,65): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(170,22): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(191,28): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(191,46): error TS18047: 'selection' is possibly 'null'.
+src/components/library/epub/EpubHighlightMenu.tsx(219,36): error TS2339: Property 'word' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(220,43): error TS2339: Property 'context' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(221,45): error TS2339: Property 'preloadedData' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(222,99): error TS2339: Property 'selection' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(224,36): error TS2339: Property 'selection' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(224,77): error TS2339: Property 'selection' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(249,34): error TS2339: Property 'word' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(250,41): error TS2339: Property 'context' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(251,43): error TS2339: Property 'preloadedData' does not exist on type 'never'.
+src/components/library/epub/EpubHighlightMenu.tsx(252,97): error TS2339: Property 'selection' does not exist on type 'never'.
+src/components/library/epub/EpubSidebars.tsx(28,24): error TS2339: Property 'spineItems' does not exist on type 'Spine'.
+src/components/library/epub/hooks/useEpubHighlightActions.ts(52,11): error TS2322: Type 'string' is not assignable to type 'HighlightColor | undefined'.
+src/components/library/epub/hooks/useEpubHighlightActions.ts(60,18): error TS2339: Property '__lastHighlightClick' does not exist on type 'Window & typeof globalThis'.
+src/components/library/epub/hooks/useEpubHighlightActions.ts(83,11): error TS2322: Type 'string' is not assignable to type 'HighlightColor | undefined'.
+src/components/library/epub/hooks/useEpubHighlightActions.ts(92,18): error TS2339: Property '__lastHighlightClick' does not exist on type 'Window & typeof globalThis'.
+src/components/library/epub/useEpubLoader.ts(26,69): error TS6133: 'setNoteText' is declared but its value is never read.
+src/components/library/epub/useEpubLoader.ts(42,13): error TS6133: 'originalAbsPath' is declared but its value is never read.
+src/components/library/epub/useEpubLoader.ts(87,19): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+src/components/library/epub/useEpubLoader.ts(157,35): error TS2345: Argument of type '() => Locations | Promise<string[]>' is not assignable to parameter of type '(value: void) => string[] | PromiseLike<string[]>'.
+  Type 'Locations | Promise<string[]>' is not assignable to type 'string[] | PromiseLike<string[]>'.
+    Type 'Locations' is not assignable to type 'string[] | PromiseLike<string[]>'.
+      Type 'Locations' is missing the following properties from type 'string[]': pop, push, concat, join, and 34 more.
+src/components/library/epub/useEpubLoader.ts(183,52): error TS2339: Property 'total' does not exist on type 'Locations'.
+src/components/library/epub/useEpubLoader.ts(183,82): error TS2339: Property 'total' does not exist on type 'Locations'.
+src/components/library/epub/useEpubLoader.ts(193,33): error TS2345: Argument of type 'Location' is not assignable to parameter of type 'number'.
+src/components/library/epub/useEpubLoader.ts(194,26): error TS2339: Property 'current_page' does not exist on type 'Partial<LibraryBook>'.
+src/components/library/epub/useEpubLoader.ts(267,88): error TS2339: Property '__lastHighlightClick' does not exist on type 'Window & typeof globalThis'.
+src/components/library/epub/useEpubLoader.ts(275,94): error TS2339: Property '__lastHighlightClick' does not exist on type 'Window & typeof globalThis'.
+src/components/library/epub/useEpubLoader.ts(291,41): error TS6133: 'section' is declared but its value is never read.
+src/components/library/epub/useEpubTheme.ts(81,35): error TS2341: Property 'clear' is private and only accessible within class 'Annotations'.
+src/components/library/epub/useEpubTheme.ts(81,35): error TS2554: Expected 1 arguments, but got 0.
+src/components/library/epub/useEpubTheme.ts(87,37): error TS2339: Property 'forEach' does not exist on type 'Contents'.
+src/components/library/hooks/useLibraryData.ts(28,26): error TS2352: Conversion of type '{ id: any; title: any; author: string; file_path: any; drive_file_id: any; cover_color: string; cover_image: null; collections: never[]; total_pages: any; current_page: any; reading_status: "reading"; ... 10 more ...; publisher: null; }' to type 'LibraryBook' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'cover_image' are incompatible.
+    Type 'null' is not comparable to type 'string'.
+src/components/library/hooks/useLibraryData.ts(162,39): error TS2339: Property 'current_page' does not exist on type '{ id: string; title: string; author: string; file_path: string; original_name: string; cover_image: string; total_pages: number; last_read_page: number; reading_status: ReadingStatus; ... 8 more ...; epub_locations?: string | ... 1 more ... | undefined; }'.
+src/components/library/hooks/useLibraryData.ts(165,46): error TS2339: Property 'reading_preferences' does not exist on type '{ id: string; title: string; author: string; file_path: string; original_name: string; cover_image: string; total_pages: number; last_read_page: number; reading_status: ReadingStatus; ... 8 more ...; epub_locations?: string | ... 1 more ... | undefined; }'.
+src/components/library/pdf/hooks/usePdfDocument.ts(1,39): error TS6133: 'useCallback' is declared but its value is never read.
+src/components/library/pdf/hooks/usePdfDocument.ts(157,11): error TS2353: Object literal may only specify known properties, and 'book_id' does not exist in type '{ id: string; end_page: number; pages_read: number; }'.
+src/components/library/pdf/hooks/usePdfHighlights.ts(10,42): error TS6133: 'highlights' is declared but its value is never read.
+src/components/library/pdf/hooks/usePdfHighlights.ts(101,7): error TS2322: Type 'string' is not assignable to type 'HighlightColor | undefined'.
+src/components/library/pdf/hooks/usePdfHighlights.ts(102,7): error TS2322: Type 'any[]' is not assignable to type 'string'.
+src/components/library/ui/CoverPickerSection.tsx(2,30): error TS6133: 'FileText' is declared but its value is never read.
+src/components/library/ui/CoverPickerSection.tsx(72,44): error TS2345: Argument of type 'string' is not assignable to parameter of type 'Uint8Array<ArrayBufferLike>'.
+src/components/practice/PracticeChat.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/PracticeChat.tsx(1,38): error TS6133: 'useRef' is declared but its value is never read.
+src/components/practice/PracticeChat.tsx(63,5): error TS6133: 'setIsConnected' is declared but its value is never read.
+src/components/practice/PracticeChat.tsx(153,13): error TS18048: 'window.api.practice' is possibly 'undefined'.
+src/components/practice/PracticeChat.tsx(300,9): error TS2322: Type '{ isOpen: boolean; onClose: () => void; aiVoice: string; onChangeVoice: (newVoice: string) => void; previewVoice: (voiceName: string) => void; previewingVoice: string | null; globalSystemPrompt: string; onSaveGlobalPrompt: (newPrompt: string) => void; }' is not assignable to type 'IntrinsicAttributes & ChatSettingsModalProps'.
+  Property 'aiVoice' does not exist on type 'IntrinsicAttributes & ChatSettingsModalProps'.
+src/components/practice/PracticeChat.tsx(315,9): error TS2322: Type '{ isOpen: boolean; onClose: () => void; session: TutorSession; customPrompt: string; setCustomPrompt: Dispatch<SetStateAction<string>>; onSaveCustomPrompt: () => Promise<...>; presets: { ...; }[]; onSaveAsNewPreset: () => Promise<...>; onDeletePreset: (id: string) => Promise<...>; }' is not assignable to type 'IntrinsicAttributes & ChatSessionSettingsModalProps'.
+  Property 'onSaveCustomPrompt' does not exist on type 'IntrinsicAttributes & ChatSessionSettingsModalProps'. Did you mean 'saveCustomPrompt'?
+src/components/practice/chat/AudioMessagePlayer.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/ChatSessionSettingsModal.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/ChatSettingsModal.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/ChatTranscript.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/MemoryDrawer.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/MicTestWidget.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/PracticeChatHeader.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/practice/chat/hooks/useAudioVisualizer.ts(35,58): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'Uint8Array<ArrayBuffer>'.
+  Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+    Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+      Types of property '[Symbol.toStringTag]' are incompatible.
+        Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/components/practice/chat/hooks/useAudioVisualizer.ts(39,50): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'Uint8Array<ArrayBuffer>'.
+  Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+    Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+      Types of property '[Symbol.toStringTag]' are incompatible.
+        Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/components/settings/SettingsModule.tsx(15,26): error TS2307: Cannot find module '../../../types' or its corresponding type declarations.
+src/components/settings/SyncMonitor.tsx(4,46): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/components/settings/tabs/AiTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/AiTab.tsx(117,25): error TS6133: 'idx' is declared but its value is never read.
+src/components/settings/tabs/BackupTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/BackupTab.tsx(2,75): error TS6133: 'XCircle' is declared but its value is never read.
+src/components/settings/tabs/EditorTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/SecurityTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/ShortcutsTab.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/ShortcutsTab.tsx(2,47): error TS6133: 'Command' is declared but its value is never read.
+src/components/settings/tabs/StorageFilesModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/StorageTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/VideoTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/security/AutoLockSection.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/settings/tabs/security/AutoLockSection.tsx(35,30): error TS2339: Property 'autoLockMinutes' does not exist on type 'AppSettings'.
+src/components/settings/tabs/security/AutoLockSection.tsx(36,61): error TS2353: Object literal may only specify known properties, and 'autoLockMinutes' does not exist in type 'AppSettings'.
+src/components/settings/tabs/security/BackupAndWipeSection.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/hooks/useAIActions.ts(21,44): error TS2339: Property 'getCard' does not exist on type '{ getDecks: () => Promise<{ success: boolean; decks?: any[] | undefined; error?: string | undefined; }>; createDeck: (name: string, desc?: string | undefined) => Promise<{ success: boolean; id?: string | undefined; error?: string | undefined; }>; ... 13 more ...; resetDeckProgress: (deckId: string) => Promise<...>; }'.
+src/hooks/usePageActions.ts(88,50): error TS2353: Object literal may only specify known properties, and 'crdt_state' does not exist in type '{ id: string; title?: string | undefined; icon?: string | undefined; content?: string | undefined; is_locked?: number | undefined; password_salt?: string | null | undefined; encrypted_content?: string | ... 1 more ... | undefined; parent_id?: string | ... 1 more ... | undefined; cover_image?: string | ... 1 more ......'.
+src/services/culture.ts(29,46): error TS2304: Cannot find name 'CultureEpisode'.
+src/services/culture.ts(44,39): error TS2304: Cannot find name 'CultureEpisode'.
+src/services/culture.ts(46,37): error TS2339: Property 'getRecentReleases' does not exist on type 'CultureApi'.
+src/services/ffmpeg-web.ts(86,22): error TS2322: Type 'FileData' is not assignable to type 'BlobPart'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+    Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+      Types of property 'buffer' are incompatible.
+        Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+          Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+            Types of property '[Symbol.toStringTag]' are incompatible.
+              Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/services/image-drive.ts(49,28): error TS18048: 'window.api.imageCache' is possibly 'undefined'.
+src/services/image-drive.ts(80,13): error TS18048: 'window.api.imageCache' is possibly 'undefined'.
+src/services/image-drive.ts(83,34): error TS18048: 'window.api.imageCache' is possibly 'undefined'.
+src/services/lofi-manager.ts(29,20): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(42,34): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(56,19): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(59,42): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(91,19): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(93,36): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(162,36): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(163,22): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(177,36): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/lofi-manager.ts(178,22): error TS2339: Property 'lofi' does not exist on type 'ICadernoAPI'.
+src/services/stats-manager.ts(27,40): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/storage.ts(103,106): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+src/services/sync/sync-pdf.ts(47,13): error TS2322: Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+  Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+    Types of property '[Symbol.toStringTag]' are incompatible.
+      Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/services/sync/sync-pdf.ts(58,47): error TS2345: Argument of type 'Partial<LibraryBook> & { id: string; }' is not assignable to parameter of type '{ id: string; title?: string | undefined; author?: string | undefined; current_page?: number | undefined; last_read_page?: string | number | undefined; total_pages?: number | undefined; reading_status?: ReadingStatus | undefined; last_read_at?: string | undefined; }'.
+  Types of property 'last_read_at' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/services/sync/sync-pull.ts(99,48): error TS18046: 'data' is of type 'unknown'.
+src/services/sync/sync-pull.ts(112,33): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/sync/sync-pull.ts(114,30): error TS2571: Object is of type 'unknown'.
+src/services/sync/sync-pull.ts(117,57): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/sync/sync-pull.ts(127,38): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/sync/sync-pull.ts(130,28): error TS2571: Object is of type 'unknown'.
+src/services/sync/sync-pull.ts(133,53): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/sync/sync-pull.ts(143,18): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(146,45): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(146,68): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(163,57): error TS2339: Property 'getRowsByIds' does not exist on type 'SyncApi'.
+src/services/sync/sync-pull.ts(164,56): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/services/sync/sync-pull.ts(173,60): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(177,64): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(189,23): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(234,47): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(234,70): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(251,19): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(251,93): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(251,117): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(252,19): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(252,93): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(252,117): error TS18046: 'cloudData' is of type 'unknown'.
+src/services/sync/sync-pull.ts(254,64): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(255,28): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(273,37): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(274,35): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(294,68): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(295,32): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(305,60): error TS2339: Property 'updated_at' does not exist on type '{}'.
+src/services/sync/sync-pull.ts(305,83): error TS2339: Property 'created_at' does not exist on type '{}'.
+src/services/sync/sync-pull.ts(341,66): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-pull.ts(342,30): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(137,60): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(138,24): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(155,62): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(156,26): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(214,54): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-push.ts(215,18): error TS2339: Property 'log' does not exist on type 'ICadernoAPI'.
+src/services/sync/sync-utils.ts(2,31): error TS6133: 'deleteDoc' is declared but its value is never read.
+src/utils/pdf-cover.ts(42,23): error TS2345: Argument of type '{ canvasContext: CanvasRenderingContext2D; viewport: PageViewport; }' is not assignable to parameter of type 'RenderParameters'.
+  Property 'canvas' is missing in type '{ canvasContext: CanvasRenderingContext2D; viewport: PageViewport; }' but required in type 'RenderParameters'.
