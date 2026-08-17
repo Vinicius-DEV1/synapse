@@ -35,6 +35,7 @@ export {
   getChildren,
   getWidths,
   groupWithSibling,
+  moveChild,
   removeChild,
   resolveGroup,
   setChildWidths,

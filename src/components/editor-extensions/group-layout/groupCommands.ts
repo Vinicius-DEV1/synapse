@@ -169,6 +169,47 @@ export function removeChild(
 }
 
 /**
+ * Troca uma coluna de lugar dentro do grupo.
+ *
+ * Não passa pelo arrasto de propósito: o `dragover` do `DragToGroup` só
+ * reconhece blocos de NÍVEL SUPERIOR, e uma coluna nunca é um deles — arrastar
+ * colunas por ali exigiria um segundo sistema de alvos, com a mesma matemática
+ * de bordas que já é a parte frágil. Aqui a operação é determinística.
+ *
+ * A largura viaja junto com a coluna, que é o esperado: reordenar não
+ * redimensiona.
+ */
+export function moveChild(view: EditorView, groupPos: number, from: number, to: number): boolean {
+  const group = resolveGroup(view, groupPos);
+  if (!group) return false;
+
+  const children = getChildren(group.node);
+  if (from === to) return false;
+  if (from < 0 || from >= children.length) return false;
+  if (to < 0 || to >= children.length) return false;
+
+  const reordered = children.slice();
+  const [moved] = reordered.splice(from, 1);
+  reordered.splice(to, 0, moved);
+
+  const tr = view.state.tr;
+  try {
+    tr.replaceWith(
+      groupPos,
+      groupPos + group.node.nodeSize,
+      group.node.type.create(group.node.attrs, reordered)
+    );
+  } catch (err) {
+    console.warn('[group-layout] Não foi possível reordenar a coluna:', err);
+    return false;
+  }
+
+  if (!tr.docChanged) return false;
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+/**
  * Cria um grupo a partir de dois conjuntos de conteúdo, substituindo o node em
  * `targetPos`. `removeRange` é a faixa de origem num arrasto do tipo "mover".
  */
