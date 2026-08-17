@@ -213,6 +213,7 @@ export default function Editor({
           onDragStart={blockHandle.onDragStart}
           onDragEnd={blockHandle.onDragEnd}
           onDelete={blockHandle.onDelete}
+          onMenuOpenChange={blockHandle.onMenuOpenChange}
         />
       )}
 

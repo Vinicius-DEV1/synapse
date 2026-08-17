@@ -9,12 +9,22 @@ interface BlockHandleProps {
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onChangeColor?: (color: string, isBackground: boolean) => void;
+  /** Avisa quem posiciona a alça que ela não pode sumir agora. */
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
-export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, onChangeColor }: BlockHandleProps) {
+export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, onChangeColor, onMenuOpenChange }: BlockHandleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Enquanto o menu está aberto a alça precisa ficar ancorada: o menu fica
+  // deslocado alguns pixels para o lado e, ao atravessar essa fresta, o ponteiro
+  // passa sobre o editor — o que fazia a alça (e o menu junto) desaparecer antes
+  // de dar tempo de clicar em qualquer coisa.
+  useEffect(() => {
+    onMenuOpenChange?.(isOpen);
+  }, [isOpen, onMenuOpenChange]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
