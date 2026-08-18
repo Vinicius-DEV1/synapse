@@ -92,43 +92,53 @@ async function convertBlobToEncryptedImage(
 
     console.log(`[BlobInterceptor] Blob salvo no cache. tempId="${tempId}" (${buffer.byteLength} bytes). Substituindo node...`);
 
-    // 4. Agora procura o node image com esse blob URL no documento atual (a posição pode ter mudado)
-    let foundPos: number | null = null;
+    // 4. Agora procura TODOS os nodes image com esse blob URL no documento atual
+    // (a posição pode ter mudado). Pode haver mais de um: o usuário pode ter
+    // duplicado/colado de novo o mesmo node 'image' enquanto o upload ainda
+    // estava em voo — um único blobUrl processado (ver `processingBlobs`) não
+    // significa um único node com esse src. Substituir só o primeiro deixava
+    // os demais presos como <img src="blob:...">, que quebra assim que o
+    // browser revoga o blob.
+    const foundPositions: number[] = [];
     editor.state.doc.descendants((node: any, pos: number) => {
-      if (
-        node.type.name === 'image' &&
-        node.attrs.src === blobUrl &&
-        foundPos === null
-      ) {
-        foundPos = pos;
+      if (node.type.name === 'image' && node.attrs.src === blobUrl) {
+        foundPositions.push(pos);
       }
     });
 
-    if (foundPos === null) {
+    if (foundPositions.length === 0) {
       console.warn(`[BlobInterceptor] Node image com blob URL não encontrado mais. Pode já ter sido convertido.`);
       return;
     }
 
-    // 5. Substitui o node image pelo encryptedImage usando a API do editor
+    // 5. Substitui cada node image pelo encryptedImage usando a API do editor
     const { tr } = editor.state;
     const encryptedImageType = editor.state.schema.nodes.encryptedImage;
-    
+
     if (!encryptedImageType) {
       console.error('[BlobInterceptor] Node type "encryptedImage" não encontrado no schema!');
       return;
     }
 
-    const newNode = encryptedImageType.create({
-      driveFileId: tempId,
-      width: attrs.width,
-      height: attrs.height,
-    });
+    // De trás para frente: substituir da esquerda para a direita invalidaria as
+    // posições já coletadas à direita (o tamanho do node muda na substituição).
+    let replaced = 0;
+    for (const pos of foundPositions.slice().reverse()) {
+      const mappedPos = tr.mapping.map(pos, -1);
+      const node = tr.doc.nodeAt(mappedPos);
+      if (!node || node.type.name !== 'image' || node.attrs.src !== blobUrl) continue;
+      const newNode = encryptedImageType.create({
+        driveFileId: tempId,
+        width: attrs.width,
+        height: attrs.height,
+      });
+      tr.replaceWith(mappedPos, mappedPos + node.nodeSize, newNode);
+      replaced += 1;
+    }
 
-    const node = editor.state.doc.nodeAt(foundPos);
-    if (node && node.type.name === 'image') {
-      tr.replaceWith(foundPos, foundPos + node.nodeSize, newNode);
+    if (replaced > 0) {
       editor.view.dispatch(tr);
-      console.log(`[BlobInterceptor] Node substituído com sucesso! encryptedImage com tempId="${tempId}"`);
+      console.log(`[BlobInterceptor] ${replaced} node(s) substituído(s) com sucesso! encryptedImage com tempId="${tempId}"`);
     }
   } catch (err) {
     console.error('[BlobInterceptor] Erro ao converter blob:', err);
