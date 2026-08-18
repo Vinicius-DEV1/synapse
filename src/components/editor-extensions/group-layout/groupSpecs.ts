@@ -32,8 +32,16 @@ export interface GroupSpec {
   childContent(child: PMNode): PMNode[];
   /** Este conteúdo pode virar (ou entrar num) grupo deste tipo? */
   acceptsContent(nodes: PMNode[]): boolean;
-  /** Um filho ficou sem conteúdo útil? (atoms nunca ficam) */
+  /** Um filho ficou sem conteúdo útil? */
   isEmptyChild(child: PMNode): boolean;
+  /**
+   * O conteúdo dos filhos é editável no lugar?
+   *
+   * Sendo, um filho vazio pode ser alguém que apagou o texto para redigitar, e o
+   * auto-colapso precisa respeitar a seleção. Não sendo (cards de link), vazio
+   * só pode ser lixo, e some na hora.
+   */
+  editableChildren: boolean;
 }
 
 function toBlocks(schema: Schema, nodes: PMNode[]): PMNode[] | null {
@@ -65,6 +73,7 @@ export const COLUMN_GROUP_SPEC: GroupSpec = {
   groupName: 'columnGroup',
   childName: 'columnBlock',
   maxChildren: 5,
+  editableChildren: true,
   resizable: true,
   widthAttr: 'width',
   defaultWidth: 50,
@@ -119,6 +128,7 @@ export const LINK_GROUP_SPEC: GroupSpec = {
   groupName: 'linkGroup',
   childName: 'linkPreview',
   maxChildren: 4,
+  editableChildren: false,
   resizable: true,
   widthAttr: 'width',
   defaultWidth: 50,
@@ -145,9 +155,17 @@ export const LINK_GROUP_SPEC: GroupSpec = {
     return nodes.length > 0 && nodes.every((node) => node.type.name === 'linkPreview');
   },
 
-  isEmptyChild() {
-    // `linkPreview` é atom: ou existe, ou foi removido. Nunca fica "vazio".
-    return false;
+  isEmptyChild(child) {
+    /*
+     * Sendo atom, um `linkPreview` não fica "sem conteúdo" — fica sem URL.
+     *
+     * E isso acontece sozinho: `linkGroup` é `linkPreview{2,4}`, então ao tirar
+     * um card de um grupo de DOIS o ProseMirror preenche o mínimo do schema com
+     * um card em branco, para manter o documento válido. Esse fantasma é o
+     * "movi e duplicou" — e só aparece quando o grupo tinha exatamente dois
+     * cards, que é o que tornava o sintoma intermitente.
+     */
+    return !String(child.attrs.url ?? '').trim();
   },
 };
 
