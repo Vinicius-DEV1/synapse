@@ -1,15 +1,12 @@
 /**
  * groupSpecs.ts
  *
- * Descreve os tipos de "grupo lado a lado" do editor.
+ * Descreve os tipos de "grupo lado a lado" do editor: colunas (`columnGroup`) e
+ * cards de link (`linkGroup`).
  *
- * Hoje existem dois — colunas (`columnGroup`) e cards de link (`linkGroup`) —
- * e antes cada um tinha a própria implementação (as duas quebradas, pelo mesmo
- * motivo). Tudo que o resto do módulo precisa saber sobre um grupo está aqui:
- * como embrulhar conteúdo num filho, como desembrulhar, quantos filhos cabem e
- * onde fica a largura.
- *
- * Para adicionar um novo tipo de grupo, basta acrescentar um spec nesta lista.
+ * Tudo que o resto do módulo precisa saber sobre um grupo está aqui — como
+ * embrulhar conteúdo num filho, como desembrulhar, quantos filhos cabem e onde
+ * fica a largura. Para acrescentar um tipo novo, basta somar um spec à lista.
  */
 
 import { Fragment } from '@tiptap/pm/model';
@@ -100,7 +97,19 @@ export const COLUMN_GROUP_SPEC: GroupSpec = {
   },
 
   isEmptyChild(child) {
-    return child.childCount === 0;
+    if (child.childCount === 0) return true;
+
+    /*
+     * `columnBlock` é `block+`, então nunca fica com `childCount === 0`: o
+     * ProseMirror insere um parágrafo vazio para manter o documento válido.
+     * Vazio, aqui, é conter só blocos de texto sem conteúdo — uma imagem, um
+     * card ou um widget não são textblocks, e mantêm a coluna viva.
+     */
+    let empty = true;
+    child.forEach((node) => {
+      if (!node.isTextblock || node.content.size > 0) empty = false;
+    });
+    return empty;
   },
 };
 
