@@ -8,7 +8,6 @@
 
 export { default as GroupShell } from './GroupShell';
 export {
-  BLOCK_HANDLE_GAP,
   DragToGroup,
   consumeGroupDropTarget,
   applyGroupDrop,
