@@ -1,30 +1,36 @@
 /**
  * DragToGroup.ts
  *
- * Arrastar um bloco para a borda esquerda/direita de outro cria um layout lado
- * a lado. O tipo de grupo é escolhido pelo conteúdo: dois cards de link viram
- * um `linkGroup`; qualquer outra combinação vira um `columnGroup`.
+ * Arrastar um bloco até a borda esquerda/direita de outro cria um layout lado a
+ * lado. O tipo de grupo vem do conteúdo: dois cards de link viram um
+ * `linkGroup`; qualquer outra combinação vira um `columnGroup`.
  *
- * ─── Histórico dos bugs corrigidos aqui ──────────────────────────────────────
- * A versão original nunca funcionou: dois plugins separados, o primeiro tratava
- * o evento DOM `drop` e zerava o alvo, o segundo lia esse alvo em `handleDrop`.
- * Como o ProseMirror executa `handleDOMEvents.drop` ANTES de `handleDrop`, o
- * alvo já era nulo e nenhuma coluna era criada.
+ * Divisão de responsabilidade com o ProseMirror:
  *
- * Também corrigidos: indicador `absolute` posicionado com coordenadas de
- * viewport (errava o lugar com a página rolada), `dragleave` disparando entre
- * elementos filhos (piscava sem parar), soltar um bloco sobre ele mesmo, e uso
- * do tamanho antigo do node depois de uma exclusão.
+ *   • A ORIGEM é sempre dele. A extensão nunca calcula de onde o bloco veio: ela
+ *     usa a mesma `Selection` que o `prosemirror-view` usaria, com a mesma
+ *     precedência — `view.dragging.node` quando existe, senão a seleção do
+ *     documento (ver `draggedSelection`). Remover é `selection.replace(tr)`.
+ *
+ *   • A ESTRUTURA é nossa: dado o alvo e o lado, envolvemos os dois blocos num
+ *     grupo (ou acrescentamos uma coluna a um grupo existente).
+ *
+ * Só as bordas agrupam; o miolo do bloco é zona morta, onde o arrasto é uma
+ * movimentação vertical comum resolvida pelo ProseMirror.
  */
 
 import { Extension } from '@tiptap/core';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Selection, Transaction } from '@tiptap/pm/state';
 import type { Node as PMNode, Slice } from '@tiptap/pm/model';
 import type { EditorView } from '@tiptap/pm/view';
 import { getSpecForGroup, pickSpecForPair } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
-import { appendToGroup, createGroup } from './groupCommands';
+import { appendToGroupInTr, createGroupInTr } from './groupCommands';
+import type { GroupContentSource } from './groupCommands';
 import { topLevelBlockAt } from '../topLevelBlock';
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface GroupDropTarget {
   pos: number;
@@ -34,110 +40,82 @@ export interface GroupDropTarget {
   spec: GroupSpec;
 }
 
-interface DragOrigin {
-  pos: number;
-  node: PMNode;
-  nodeSize: number;
-}
-
-interface DragState {
-  target: GroupDropTarget | null;
-  origin: DragOrigin | null;
-}
+/**
+ * `view.dragging` é declarado somente-leitura nos tipos, mas o protocolo de
+ * arrasto exige escrevê-lo. O campo `node` é a `NodeSelection` que o `dragstart`
+ * do ProseMirror monta para um node view arrastado — e que ele NÃO despacha
+ * para o state.
+ */
+type DraggingState = { slice: Slice; move: boolean; node?: Selection | null };
+type DraggingView = EditorView & { dragging: DraggingState | null };
+const draggable = (view: EditorView) => view as DraggingView;
 
 /**
- * Estado do arrasto, por EditorView. O `Editor.tsx` precisa consultá-lo no
- * próprio `handleDrop` (que roda antes do dos plugins), por isso ele vive fora
- * do state do ProseMirror — mas amarrado à view, e não ao módulo, para que dois
- * editores montados ao mesmo tempo não disputem a mesma variável.
+ * A seleção que representa o que está sendo arrastado.
+ *
+ * Mesma precedência do handler de drop do ProseMirror: `dragging.node` quando
+ * existe (arrasto de node view — card de link, imagem, widget), senão a seleção
+ * do documento (arrasto de texto, ou a alça flutuante, que a despacha).
+ *
+ * Usar só a seleção do documento fazia o node arrastado sobreviver ao "mover":
+ * ele reaparecia no destino sem sair da origem, ou seja, duplicava.
  */
-const dragStates = new WeakMap<EditorView, DragState>();
+function draggedSelection(view: EditorView): Selection {
+  return draggable(view).dragging?.node ?? view.state.selection;
+}
 
-/** O indicador é um só: existe no máximo um arrasto por vez na página inteira. */
-let indicator: HTMLDivElement | null = null;
+// ─── Estado do arrasto ────────────────────────────────────────────────────────
 
-function dragStateFor(view: EditorView): DragState {
+/**
+ * Amarrado à view, e não ao módulo, para que dois editores montados ao mesmo
+ * tempo não disputem a mesma variável. O `Editor.tsx` precisa consultá-lo no
+ * próprio `handleDrop`, que roda antes do dos plugins.
+ */
+const dragStates = new WeakMap<EditorView, { target: GroupDropTarget | null }>();
+
+function dragStateFor(view: EditorView) {
   let state = dragStates.get(view);
   if (!state) {
-    state = { target: null, origin: null };
+    state = { target: null };
     dragStates.set(view, state);
   }
   return state;
 }
 
-/**
- * Fração da largura do bloco, de cada lado, que ativa o agrupamento.
- * O miolo é ZONA MORTA: ali o arrasto é uma movimentação comum e quem responde
- * é o ProseMirror. Sem isso não havia como mover um bloco verticalmente — toda
- * posição sobre todo bloco era metade esquerda ou metade direita, então todo
- * arrasto virava coluna.
- */
+// ─── Geometria ────────────────────────────────────────────────────────────────
+
+/** Fração da largura do bloco, de cada lado, que ativa o agrupamento. */
 const EDGE_RATIO = 0.25;
-/** Tetos em px, para que blocos muito largos não virem alvo de borda gigante. */
+/** Teto em px, para que blocos muito largos não virem alvo de borda gigante. */
 const EDGE_MAX_PX = 120;
+/** O ponteiro precisa andar isto para uma nova avaliação de `dragover`. */
+const MIN_MOVE_PX = 3;
+
+// ─── Indicador visual ─────────────────────────────────────────────────────────
+
+/** Existe no máximo um arrasto por vez na página, logo um indicador só. */
+let indicator: HTMLDivElement | null = null;
 
 /**
- * O dropcursor (linha horizontal do ProseMirror, ligado pelo StarterKit) promete
- * "solte aqui para mover". Enquanto a barra vertical de agrupamento está
- * visível a promessa é outra, e os dois juntos apareciam ao mesmo tempo dizendo
- * coisas diferentes. A classe no <body> esconde um enquanto o outro manda.
+ * O dropcursor do ProseMirror promete "solte aqui para mover". Enquanto a barra
+ * vertical de agrupamento está visível a promessa é outra, e os dois juntos
+ * diziam coisas diferentes ao mesmo tempo. A classe no `<body>` esconde um
+ * enquanto o outro manda.
  */
 const DROP_CURSOR_SUPPRESSOR = 'group-drop-active';
-
-function hideIndicator() {
-  indicator?.remove();
-  indicator = null;
-  document.body.classList.remove(DROP_CURSOR_SUPPRESSOR);
-}
-
-/**
- * Esquece o alvo — imediatamente.
- *
- * Havia aqui um `setTimeout` de 200ms, justificado como rede de segurança para
- * o caso de `dragend`/`dragleave` chegarem antes do `handleDrop`. Isso não
- * acontece: num drop o navegador dispara `drop` (onde o ProseMirror roda
- * `handleDOMEvents.drop` e logo depois `handleDrop`) e só então `dragend`;
- * `dragleave` nem chega a disparar no elemento que recebeu o drop.
- *
- * O que o atraso de fato fazia era manter alvos INVÁLIDOS vivos: as rejeições
- * do `dragover` (soltar sobre si mesmo, rect zerado, slice incompatível, zona
- * morta) passam por aqui, e o alvo descartado sobrevivia 200ms. Bastava passar
- * rápido por uma região inválida e soltar para o bloco aterrissar num alvo de
- * 200ms atrás — a origem do "o elemento pulou para um lugar aleatório".
- */
-function clearTarget(view: EditorView) {
-  hideIndicator();
-  const state = dragStates.get(view);
-  if (state) state.target = null;
-}
-
-/**
- * Fim do arrasto: esquece também a origem e cancela qualquer avaliação de
- * `dragover` ainda agendada — ela rodaria DEPOIS do drop e repintaria um
- * indicador para um arrasto que já acabou.
- *
- * A origem é capturada no `dragstart` e precisa sobreviver ao arrasto inteiro —
- * antes ela era descartada junto com o alvo em toda rejeição do `dragover`, e
- * bastava passar por uma região inválida para perder a referência do bloco que
- * estava sendo movido (que então era copiado, em vez de movido).
- */
-function endDrag(view: EditorView) {
-  cancelPendingEvaluate();
-  clearTarget(view);
-  const state = dragStates.get(view);
-  if (state) state.origin = null;
-}
 
 function showIndicator(rect: DOMRect, side: 'left' | 'right') {
   if (!indicator) {
     indicator = document.createElement('div');
-    indicator.style.position = 'fixed';
-    indicator.style.width = '5px';
-    indicator.style.borderRadius = '3px';
-    indicator.style.background = '#8b5cf6';
-    indicator.style.boxShadow = '0 0 14px 3px rgba(139, 92, 246, 0.95)';
-    indicator.style.zIndex = '9999';
-    indicator.style.pointerEvents = 'none';
+    Object.assign(indicator.style, {
+      position: 'fixed',
+      width: '5px',
+      borderRadius: '3px',
+      background: '#8b5cf6',
+      boxShadow: '0 0 14px 3px rgba(139, 92, 246, 0.95)',
+      zIndex: '9999',
+      pointerEvents: 'none',
+    } satisfies Partial<CSSStyleDeclaration>);
     document.body.appendChild(indicator);
   }
   document.body.classList.add(DROP_CURSOR_SUPPRESSOR);
@@ -146,10 +124,33 @@ function showIndicator(rect: DOMRect, side: 'left' | 'right') {
   indicator.style.height = `${Math.max(rect.height, 32)}px`;
 }
 
+function hideIndicator() {
+  indicator?.remove();
+  indicator = null;
+  document.body.classList.remove(DROP_CURSOR_SUPPRESSOR);
+}
+
+// ─── Ciclo de vida do arrasto ─────────────────────────────────────────────────
+
 /**
- * Devolve (e limpa) o alvo do arrasto atual.
- * Usado pelo Editor.tsx ao soltar ARQUIVOS, já que `editorProps.handleDrop`
- * roda antes do `handleDrop` dos plugins.
+ * Esquece o alvo imediatamente. Um alvo rejeitado que sobrevivesse alguns
+ * milissegundos faria o bloco aterrissar num destino já inválido.
+ */
+function clearTarget(view: EditorView) {
+  hideIndicator();
+  const state = dragStates.get(view);
+  if (state) state.target = null;
+}
+
+/** Fim do arrasto: cancela também a avaliação de `dragover` ainda agendada. */
+function endDrag(view: EditorView) {
+  cancelPendingEvaluate();
+  clearTarget(view);
+}
+
+/**
+ * Devolve (e limpa) o alvo atual. Usado pelo `Editor.tsx` ao soltar ARQUIVOS,
+ * já que `editorProps.handleDrop` roda antes do `handleDrop` dos plugins.
  */
 export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null {
   const target = dragStates.get(view)?.target ?? null;
@@ -161,129 +162,60 @@ export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null
  * Abre um arrasto de bloco iniciado FORA do `view.dom` — hoje, a alça flutuante.
  *
  * Os `handleDOMEvents` do ProseMirror só enxergam eventos dentro do `view.dom`,
- * e a alça é um elemento irmão do editor: nem o `dragstart` deste plugin nem o
- * do próprio ProseMirror disparam para ela. Tudo que os dois fariam precisa ser
- * feito aqui, e é por isso que esta função mora na extensão e não no hook da
- * alça — é o protocolo de arrasto do editor, não detalhe de UI.
+ * e a alça é irmã do editor: nenhum `dragstart` dispara para ela. Selecionar o
+ * node e preencher `view.dragging` é exatamente o que o ProseMirror faria — e é
+ * o que permite que ele próprio remova a origem no drop.
  */
 export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return false;
 
-  // Selecionar o nó é o que faz o ProseMirror tratar isto como o arrasto de um
-  // bloco inteiro, e não de uma seleção de texto.
   const selection = NodeSelection.create(view.state.doc, pos);
   view.dispatch(view.state.tr.setSelection(selection));
-
-  // `view.dragging` é como o ProseMirror sabe, no drop, que se trata de um
-  // MOVER interno. Sem isso o bloco seria remontado a partir do HTML do
-  // dataTransfer e perderia os atributos dos node views.
-  (view as unknown as { dragging: unknown }).dragging = {
-    slice: selection.content(),
-    move: true,
-  };
-
-  dragStateFor(view).origin = { pos, node, nodeSize: node.nodeSize };
+  // `node` preenchido de propósito: assim este caminho e o do ProseMirror
+  // removem a origem exatamente pelo mesmo mecanismo.
+  draggable(view).dragging = { slice: selection.content(), move: true, node: selection };
   return true;
 }
 
-/**
- * Contrapartida da função acima: o `dragend` da alça também não passa pelo
- * plugin, então nem o alvo nem o `view.dragging` seriam limpos — e o drop
- * seguinte herdaria o slice do arrasto anterior.
- */
+/** Contrapartida: sem isto o drop seguinte herdaria o slice do arrasto anterior. */
 export function endExternalDrag(view: EditorView) {
-  (view as unknown as { dragging: unknown }).dragging = null;
+  draggable(view).dragging = null;
   endDrag(view);
 }
 
-/** Aplica um alvo já consumido — o Editor.tsx usa isso para imagens soltas. */
-export function applyGroupDrop(
-  view: EditorView,
-  target: GroupDropTarget,
-  content: PMNode[],
-  removeRange?: { from: number; to: number } | null
-): boolean {
-  if (!target.spec.acceptsContent(content)) {
-    // Ex.: arrastar uma imagem para a borda de um grupo de links.
-    if (target.mode === 'append') return false;
-    const targetNode = view.state.doc.nodeAt(target.pos);
-    if (!targetNode) return false;
-    const fallback = pickSpecForPair(content, targetNode);
-    if (!fallback) return false;
-    return createGroup(view, fallback, target.pos, content, target.side, removeRange);
-  }
+// ─── Conteúdo arrastado ───────────────────────────────────────────────────────
 
-  return target.mode === 'append'
-    ? appendToGroup(view, target.pos, content, target.side, removeRange)
-    : createGroup(view, target.spec, target.pos, content, target.side, removeRange);
-}
-
-/** O bloco alvo faz parte do que está sendo arrastado? */
-function isDraggingItself(view: EditorView, pos: number, node: PMNode): boolean {
-  const selection = view.state.selection;
-  if (selection instanceof NodeSelection) {
-    if (selection.from === pos) return true;
-    if (selection.from >= pos && selection.to <= pos + node.nodeSize) return true;
-  }
-  const origin = dragStates.get(view)?.origin;
-  if (origin) {
-    if (origin.pos === pos) return true;
-    if (origin.pos >= pos && origin.pos + origin.nodeSize <= pos + node.nodeSize) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Extrai os nós reais contidos no slice, desembrulhando átomos inline de parágrafos abertos. */
+/** Nós reais contidos no slice, desembrulhando átomos inline de parágrafos abertos. */
 function extractNodesFromSlice(slice: Slice | null | undefined): PMNode[] {
   if (!slice || slice.content.childCount === 0) return [];
   const nodes: PMNode[] = [];
 
   slice.content.forEach((node) => {
-    if (node.isBlock && !node.isTextblock) {
-      // Blocos diretos (ex: resizableImage, encryptedImage, linkPreview, etc.)
+    if (!node.isTextblock) {
       nodes.push(node);
-    } else if (node.isTextblock) {
-      // Parágrafo: verifica se contém átomos inline (ex: widgets)
-      let foundAtom = false;
-      node.forEach((child) => {
-        if (child.isAtom) {
-          nodes.push(child);
-          foundAtom = true;
-        }
-      });
-      // Se não tinha átomo, é bloco de texto normal
-      if (!foundAtom) {
-        nodes.push(node);
-      }
-    } else {
-      nodes.push(node);
+      return;
     }
+    // Parágrafo: um átomo inline (widget, card) vale mais que o parágrafo que o embrulha.
+    const atoms: PMNode[] = [];
+    node.forEach((child) => {
+      if (child.isAtom) atoms.push(child);
+    });
+    nodes.push(...(atoms.length > 0 ? atoms : [node]));
   });
 
   return nodes;
 }
 
-/** Valida se o slice pode virar coluna (rejeita apenas seleções parciais de caracteres sem átomos). */
-function sliceIsWholeBlocks(slice: Slice | null | undefined): boolean {
-  if (!slice) return true; // arquivos externos
-  if (slice.content.childCount === 0) return false;
-  return extractNodesFromSlice(slice).length > 0;
+/** O bloco alvo faz parte do que está sendo arrastado? */
+function isDraggingItself(view: EditorView, pos: number, node: PMNode): boolean {
+  const selection = draggedSelection(view);
+  if (!(selection instanceof NodeSelection)) return false;
+  return selection.from === pos || (selection.from >= pos && selection.to <= pos + node.nodeSize);
 }
 
-/*
- * O `dragover` dispara continuamente — dezenas de vezes por segundo, e mesmo
- * com o ponteiro parado. Cada avaliação faz `posAtCoords`, `getBoundingClientRect`
- * e às vezes `elementFromPoint`: ler layout nessa cadência trava o arrasto.
- *
- * Duas barreiras: o ponteiro precisa ter andado alguns pixels, e a avaliação
- * acontece no máximo uma vez por frame. O alvo pode ficar um frame atrás do
- * cursor, o que é irrelevante — entre o último movimento e soltar o botão passa
- * muito mais que 16ms.
- */
-const MIN_MOVE_PX = 3;
+// ─── Avaliação do alvo ────────────────────────────────────────────────────────
+
 let pendingFrame: number | null = null;
 let lastEvaluated = { x: NaN, y: NaN };
 
@@ -295,6 +227,11 @@ function cancelPendingEvaluate() {
   lastEvaluated = { x: NaN, y: NaN };
 }
 
+/**
+ * O `dragover` dispara dezenas de vezes por segundo, mesmo com o ponteiro
+ * parado, e cada avaliação lê layout. Duas barreiras: o ponteiro precisa ter
+ * andado alguns pixels, e a avaliação acontece no máximo uma vez por frame.
+ */
 function scheduleEvaluate(view: EditorView, event: DragEvent) {
   const { clientX: x, clientY: y } = event;
   if (Math.abs(x - lastEvaluated.x) < MIN_MOVE_PX && Math.abs(y - lastEvaluated.y) < MIN_MOVE_PX) {
@@ -309,84 +246,93 @@ function scheduleEvaluate(view: EditorView, event: DragEvent) {
   });
 }
 
-/**
- * Decide (e desenha) o alvo do arrasto para um ponto da tela.
- * Chamada no máximo uma vez por frame — ver `scheduleEvaluate`.
- */
+/** Decide (e desenha) o alvo do arrasto para um ponto da tela. */
 function evaluateDropTarget(view: EditorView, x: number, y: number) {
   const block = topLevelBlockAt(view, x, y);
-  if (!block) {
-    clearTarget(view);
-    return;
-  }
+  if (!block) return clearTarget(view);
 
   const { pos, node, dom } = block;
-
-  // Não cria coluna soltando o bloco sobre ele mesmo.
-  if (isDraggingItself(view, pos, node)) {
-    clearTarget(view);
-    return;
-  }
+  if (isDraggingItself(view, pos, node)) return clearTarget(view);
 
   const rect = dom.getBoundingClientRect();
-  if (rect.width === 0) {
-    clearTarget(view);
-    return;
+  if (rect.width === 0) return clearTarget(view);
+
+  /*
+   * O ponteiro precisa estar DENTRO do bloco. `posAtCoords` nunca devolve nulo
+   * por distância — ele encaixa no bloco mais próximo —, então sem estes
+   * limites a zona de borda era ilimitada para fora: arrastando pela margem do
+   * editor (que é onde fica a alça flutuante), todo bloco sob o cursor virava
+   * alvo de agrupamento pela esquerda.
+   */
+  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    return clearTarget(view);
   }
 
-  const dragging = (view as unknown as { dragging: { slice: Slice; move: boolean } | null })
-    .dragging;
-  if (dragging && !sliceIsWholeBlocks(dragging.slice)) {
-    clearTarget(view);
-    return;
-  }
-
-  // Só as bordas agrupam. O miolo é movimentação comum — ver EDGE_RATIO.
   const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
   let side: 'left' | 'right';
-  if (x <= rect.left + edge) {
-    side = 'left';
-  } else if (x >= rect.right - edge) {
-    side = 'right';
-  } else {
-    // Zona morta: cede o drop ao ProseMirror, que move o bloco.
-    clearTarget(view);
-    return;
-  }
+  if (x <= rect.left + edge) side = 'left';
+  else if (x >= rect.right - edge) side = 'right';
+  else return clearTarget(view); // zona morta: o drop é do ProseMirror
 
-  const origin = dragStateFor(view).origin;
-  const dragged = dragging
-    ? extractNodesFromSlice(dragging.slice)
-    : origin
-    ? [origin.node]
-    : [];
+  const dragged = extractNodesFromSlice(draggable(view).dragging?.slice);
 
   // Alvo já é um grupo → acrescenta uma coluna.
   const groupSpec = getSpecForGroup(node);
   if (groupSpec) {
     const fits = node.childCount < groupSpec.maxChildren;
     const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
-    if (!fits || !compatible) {
-      clearTarget(view);
-      return;
-    }
+    if (!fits || !compatible) return clearTarget(view);
+
     dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
     showIndicator(rect, side);
     return;
   }
 
   // Alvo é um bloco comum → cria um grupo novo.
-  const spec = dragged.length > 0 ? pickSpecForPair(dragged, node) : pickSpecForPair([node], node);
-  if (!spec) {
-    clearTarget(view);
-    return;
-  }
+  const spec = pickSpecForPair(dragged.length > 0 ? dragged : [node], node);
+  if (!spec) return clearTarget(view);
 
   dragStateFor(view).target = { pos, side, mode: 'create', spec };
   showIndicator(rect, side);
 }
 
-// ─── Extensão e Plugin ────────────────────────────────────────────────────────
+// ─── Aplicação ────────────────────────────────────────────────────────────────
+
+function applyInTr(
+  tr: Transaction,
+  target: GroupDropTarget,
+  content: PMNode[],
+  source: GroupContentSource
+): boolean {
+  if (target.spec.acceptsContent(content)) {
+    return target.mode === 'append'
+      ? appendToGroupInTr(tr, target.pos, content, target.side, source)
+      : createGroupInTr(tr, target.spec, target.pos, content, target.side, source);
+  }
+
+  // Ex.: arrastar uma imagem para a borda de um grupo de links.
+  if (target.mode === 'append') return false;
+  const targetNode = tr.doc.nodeAt(target.pos);
+  if (!targetNode) return false;
+  const fallback = pickSpecForPair(content, targetNode);
+  if (!fallback) return false;
+  return createGroupInTr(tr, fallback, target.pos, content, target.side, source);
+}
+
+/** Aplica um alvo já consumido — o `Editor.tsx` usa isso para imagens soltas. */
+export function applyGroupDrop(
+  view: EditorView,
+  target: GroupDropTarget,
+  content: PMNode[],
+  source?: GroupContentSource
+): boolean {
+  const tr = view.state.tr;
+  if (!applyInTr(tr, target, content, source) || !tr.docChanged) return false;
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+// ─── Extensão ─────────────────────────────────────────────────────────────────
 
 export const DragToGroup = Extension.create({
   name: 'dragToGroup',
@@ -398,67 +344,20 @@ export const DragToGroup = Extension.create({
 
         props: {
           handleDOMEvents: {
-            dragstart: (view, event) => {
-              const dragEvent = event as DragEvent;
-              const target = dragEvent.target as HTMLElement | null;
-              if (!target) return false;
-
-              // 1. Se já há uma NodeSelection ativa (ex: widget ou imagem clicada)
-              if (view.state.selection instanceof NodeSelection) {
-                const sel = view.state.selection;
-                dragStateFor(view).origin = { pos: sel.from, node: sel.node, nodeSize: sel.node.nodeSize };
-                return false;
-              }
-
-              // 2. Tenta obter a posição exata pelo DOM
-              let pos: number | null = null;
-              try {
-                const domPos = view.posAtDOM(target, 0);
-                if (typeof domPos === 'number' && domPos >= 0) {
-                  const $pos = view.state.doc.resolve(domPos);
-                  if ($pos.nodeAfter && $pos.nodeAfter.isAtom) {
-                    pos = domPos;
-                  } else if ($pos.nodeBefore && $pos.nodeBefore.isAtom) {
-                    pos = domPos - $pos.nodeBefore.nodeSize;
-                  } else {
-                    pos = $pos.depth >= 1 ? $pos.before(1) : domPos;
-                  }
-                }
-              } catch {
-                /* fallback */
-              }
-
-              if (pos === null) {
-                const block = topLevelBlockAt(view, dragEvent.clientX, dragEvent.clientY);
-                if (block) pos = block.pos;
-              }
-
-              if (pos !== null && pos >= 0) {
-                const node = view.state.doc.nodeAt(pos);
-                if (node) {
-                  dragStateFor(view).origin = { pos, node, nodeSize: node.nodeSize };
-                }
-              }
-              return false;
-            },
-
             dragend: (view) => {
               endDrag(view);
               return false;
             },
 
             dragover: (view, event) => {
-              if (!view.editable) return false;
-              scheduleEvaluate(view, event as DragEvent);
+              if (view.editable) scheduleEvaluate(view, event as DragEvent);
               return false;
             },
 
             dragleave: (view, event) => {
               const related = (event as DragEvent).relatedTarget as Node | null;
               if (!related || !view.dom.contains(related)) {
-                // Cancelar o frame é indispensável aqui: ele foi agendado com o
-                // ponteiro ainda dentro do editor e, se rodasse, repintaria o
-                // indicador depois de o cursor já ter saído.
+                // O frame agendado rodaria com o cursor já fora do editor.
                 cancelPendingEvaluate();
                 clearTarget(view);
               }
@@ -466,9 +365,8 @@ export const DragToGroup = Extension.create({
             },
 
             drop: () => {
-              // Só o visual e o frame agendado. O ALVO tem de sobreviver até o
-              // `handleDrop`, que roda logo depois deste handler — zerá-lo aqui
-              // foi o bug original que impedia qualquer coluna de ser criada.
+              // Só o visual. O ALVO tem de sobreviver até o `handleDrop`, que
+              // roda logo depois deste handler.
               cancelPendingEvaluate();
               hideIndicator();
               return false;
@@ -476,60 +374,24 @@ export const DragToGroup = Extension.create({
           },
 
           handleDrop(view, _event, slice, moved) {
-            const state = dragStateFor(view);
-            const target = state.target;
+            const target = dragStateFor(view).target;
+            endDrag(view);
             if (!target) return false;
 
-            const origin = state.origin;
-            endDrag(view);
-
-            let content = extractNodesFromSlice(slice);
-            if (content.length === 0 && origin) {
-              content = [origin.node];
-            }
+            const content = extractNodesFromSlice(draggable(view).dragging?.slice ?? slice);
             if (content.length === 0) return false;
 
-            let removeRange: { from: number; to: number } | null = null;
+            // Num "copiar" nada é removido da origem.
+            const dragged = draggedSelection(view);
+            const source: GroupContentSource = moved ? dragged : null;
 
-            // 1. A origem rastreada no `dragstart` — a única fonte confiável.
-            if (origin) {
-              const nodeAtOrigin = view.state.doc.nodeAt(origin.pos);
-              if (nodeAtOrigin && (nodeAtOrigin.type === origin.node.type || nodeAtOrigin.eq(origin.node))) {
-                removeRange = { from: origin.pos, to: origin.pos + nodeAtOrigin.nodeSize };
-              }
-            }
+            // Soltar um node sobre ele mesmo não faz sentido.
+            if (moved && dragged.from <= target.pos && dragged.to >= target.pos) return false;
 
-            // 2. Sem origem rastreada, uma NodeSelection ainda diz de onde veio.
-            if (!removeRange && view.state.selection instanceof NodeSelection) {
-              const sel = view.state.selection;
-              removeRange = { from: sel.from, to: sel.to };
-            }
-
-            /*
-             * Havia aqui um terceiro passo: varrer o documento atrás de um nó
-             * "igual" ao que foi solto (`candidate.eq`, ou o mesmo `url`/`src`/
-             * `fileId`). Ele achava o PRIMEIRO nó parecido, não o que estava
-             * sendo arrastado — dois parágrafos com o mesmo texto, ou dois
-             * cards da mesma URL, e o bloco apagado era o errado. O sintoma era
-             * o conteúdo sumindo de um lugar que ninguém tinha tocado.
-             *
-             * Sem palpite: se a origem não é conhecida com certeza e o arrasto é
-             * um MOVER, devolvemos o drop ao ProseMirror. Ele sabe exatamente o
-             * que remover, e o pior caso vira "não agrupou" em vez de "duplicou
-             * o bloco" ou "apagou o bloco errado".
-             */
-            if (!removeRange && moved) return false;
-
-            // Soltar dentro da própria origem não faz sentido.
-            if (removeRange && removeRange.from <= target.pos && removeRange.to >= target.pos) {
-              return false;
-            }
-
-            return applyGroupDrop(view, target, content, removeRange);
+            return applyGroupDrop(view, target, content, source);
           },
         },
       }),
     ];
   },
 });
-
