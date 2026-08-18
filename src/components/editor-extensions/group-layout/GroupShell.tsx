@@ -10,15 +10,19 @@
 import { useCallback, useRef, useState } from 'react';
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
 import { ChevronLeft, ChevronRight, Columns2, Plus, Ungroup, X } from 'lucide-react';
+import type { Editor } from '@tiptap/core';
+import type { Node as PMNode } from '@tiptap/pm/model';
+import type { EditorView } from '@tiptap/pm/view';
 import type { GroupSpec } from './groupSpecs';
 import { appendToGroup, balanceChildren, moveChild, removeChild, unwrapGroup } from './groupCommands';
 import { useGroupResize } from './useGroupResize';
 
 interface GroupShellProps {
   spec: GroupSpec;
-  /** Props cruas do node view do Tiptap. */
-  node: any;
-  editor: any;
+  /** O node do grupo, vindo do node view do Tiptap. */
+  node: PMNode;
+  editor: Editor;
+  /** O Tiptap entrega `getPos` como função, mas ela some quando o node view morre. */
   getPos: unknown;
   /** Classe extra no wrapper. */
   className?: string;
@@ -50,7 +54,7 @@ export default function GroupShell({
   });
 
   const runOnGroup = useCallback(
-    (action: (view: any, pos: number) => void) => {
+    (action: (view: EditorView, pos: number) => void) => {
       const pos = resolvePos();
       if (pos === undefined) return;
       action(editor.view, pos);
@@ -197,13 +201,9 @@ function ChildControls({
   onRemove: (index: number) => void;
   onMove: (from: number, to: number) => void;
 }) {
-  /*
-   * A largura vem medida do `useGroupResize`, não de um
-   * `wrapperRef.current.getBoundingClientRect()` lido aqui no corpo do render.
-   * Aquela leitura era impura, devolvia 0 na primeira renderização (jogando os
-   * controles da última coluna para a metade errada do grupo) e nunca
-   * acompanhava um redimensionamento da janela, porque nada a re-disparava.
-   */
+  // A largura vem medida do `useGroupResize`. Lê-la do DOM aqui no corpo do
+  // render seria impuro, devolveria 0 na primeira passada e não acompanharia
+  // um redimensionamento da janela.
   const start = index === 0 ? 0 : handleOffsets[index - 1];
   const end = index === childCount - 1 ? wrapperWidth : handleOffsets[index];
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
