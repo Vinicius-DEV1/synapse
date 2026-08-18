@@ -94,6 +94,16 @@ function dragStateFor(view: EditorView) {
 
 // ─── Geometria ────────────────────────────────────────────────────────────────
 
+/**
+ * Distância entre a alça flutuante e a borda esquerda do bloco.
+ *
+ * Mora aqui, e não no hook da alça, porque é o arrasto que depende dela: quem
+ * arrasta pela alça mantém o cursor deslocado deste tanto para a ESQUERDA do
+ * conteúdo, e a zona de borda precisa alcançá-lo. Se as duas constantes se
+ * separarem, agrupar pela alça deixa de funcionar.
+ */
+export const BLOCK_HANDLE_GAP = 26;
+
 /** Fração da largura do bloco, de cada lado, que ativa o agrupamento. */
 const EDGE_RATIO = 0.25;
 /** Teto em px, para que blocos muito largos não virem alvo de borda gigante. */
@@ -268,13 +278,21 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
   if (rect.width === 0) return clearTarget(view);
 
   /*
-   * O ponteiro precisa estar DENTRO do bloco. `posAtCoords` nunca devolve nulo
-   * por distância — ele encaixa no bloco mais próximo —, então sem estes
-   * limites a zona de borda era ilimitada para fora: arrastando pela margem do
-   * editor (que é onde fica a alça flutuante), todo bloco sob o cursor virava
-   * alvo de agrupamento pela esquerda.
+   * A zona de borda vale um pouco para FORA do bloco, mas só um pouco.
+   *
+   * Ilimitada para fora (o que acontece sem checagem alguma, já que
+   * `posAtCoords` encaixa no bloco mais próximo e nunca devolve nulo por
+   * distância) todo ponto da margem virava "borda esquerda", e arrastar pela
+   * margem criava coluna atrás de coluna.
+   *
+   * Restrita ao rect, o oposto: a alça flutuante fica em `rect.left - GAP`, e o
+   * cursor de quem arrasta por ela nunca entra no bloco — não dá para agrupar.
+   *
+   * A folga é exatamente o deslocamento da alça, que é o único motivo
+   * legítimo para o cursor estar fora do bloco durante um arrasto.
    */
-  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+  const folga = BLOCK_HANDLE_GAP;
+  if (x < rect.left - folga || x > rect.right + folga || y < rect.top || y > rect.bottom) {
     return clearTarget(view);
   }
 

@@ -11,10 +11,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { topLevelBlockAt } from '../../editor-extensions/topLevelBlock';
-import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions/group-layout';
-
-/** Distância entre a alça e a borda esquerda do bloco. */
-const HANDLE_GAP = 26;
+import {
+  BLOCK_HANDLE_GAP,
+  endExternalDrag,
+  startExternalBlockDrag,
+} from '../../editor-extensions/group-layout';
 
 /**
  * Nodes cujo node view já desenha um `data-drag-handle` visível — ver a
@@ -138,7 +139,7 @@ export function useBlockHandle(
       posRef.current = block.pos;
       // O piso evita que a alça caia em x negativo — fora da tela — quando o
       // editor encosta na borda esquerda da janela.
-      setAnchor({ x: Math.max(4, rect.left - HANDLE_GAP), y: rect.top + 2 });
+      setAnchor({ x: Math.max(4, rect.left - BLOCK_HANDLE_GAP), y: rect.top + 2 });
     };
 
     const onMouseLeave = (event: MouseEvent) => {
