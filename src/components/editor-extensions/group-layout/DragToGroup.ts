@@ -29,6 +29,7 @@ import type { GroupSpec } from './groupSpecs';
 import { appendToGroupInTr, createGroupInTr, safeNodeAt } from './groupCommands';
 import type { GroupContentSource } from './groupCommands';
 import { topLevelBlockAt } from '../topLevelBlock';
+import { traceDrop } from './dropDiagnostics';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -395,7 +396,8 @@ export const DragToGroup = Extension.create({
             endDrag(view);
             if (!target) return false;
 
-            const content = extractNodesFromSlice(draggable(view).dragging?.slice ?? slice);
+            const dragging = draggable(view).dragging;
+            const content = extractNodesFromSlice(dragging?.slice ?? slice);
             if (content.length === 0) return false;
 
             // Num "copiar" nada é removido da origem.
@@ -417,7 +419,26 @@ export const DragToGroup = Extension.create({
               if (!atOrigin || atOrigin.type !== dragged.node.type) return false;
             }
 
-            return applyGroupDrop(view, target, content, source);
+            const trace = traceDrop(view, {
+              origem: !dragging
+                ? 'sem dragging (externo)'
+                : dragging.node
+                  ? 'dragging.node'
+                  : 'seleção do documento',
+              moved,
+              selecaoUsada: dragged,
+              alvo: {
+                pos: target.pos,
+                typeName: target.typeName,
+                mode: target.mode,
+                side: target.side,
+              },
+              conteudo: content,
+            });
+
+            const aplicado = applyGroupDrop(view, target, content, source);
+            trace(aplicado);
+            return aplicado;
           },
         },
       }),
