@@ -15,8 +15,10 @@
  *   • A ESTRUTURA é nossa: dado o alvo e o lado, envolvemos os dois blocos num
  *     grupo (ou acrescentamos uma coluna a um grupo existente).
  *
- * Só as bordas agrupam; o miolo do bloco é zona morta, onde o arrasto é uma
- * movimentação vertical comum resolvida pelo ProseMirror.
+ * Soltar em QUALQUER ponto sobre um bloco agrupa — metade esquerda cria a
+ * coluna à esquerda, metade direita à direita. Mover continua possível soltando
+ * na margem do editor ou no vão entre dois blocos, onde quem responde é o
+ * dropcursor do ProseMirror.
  */
 
 import { Extension } from '@tiptap/core';
@@ -94,20 +96,6 @@ function dragStateFor(view: EditorView) {
 
 // ─── Geometria ────────────────────────────────────────────────────────────────
 
-/**
- * Distância entre a alça flutuante e a borda esquerda do bloco.
- *
- * Mora aqui, e não no hook da alça, porque é o arrasto que depende dela: quem
- * arrasta pela alça mantém o cursor deslocado deste tanto para a ESQUERDA do
- * conteúdo, e a zona de borda precisa alcançá-lo. Se as duas constantes se
- * separarem, agrupar pela alça deixa de funcionar.
- */
-export const BLOCK_HANDLE_GAP = 26;
-
-/** Fração da largura do bloco, de cada lado, que ativa o agrupamento. */
-const EDGE_RATIO = 0.25;
-/** Teto em px, para que blocos muito largos não virem alvo de borda gigante. */
-const EDGE_MAX_PX = 120;
 /** O ponteiro precisa andar isto para uma nova avaliação de `dragover`. */
 const MIN_MOVE_PX = 3;
 
@@ -278,29 +266,23 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
   if (rect.width === 0) return clearTarget(view);
 
   /*
-   * A zona de borda vale um pouco para FORA do bloco, mas só um pouco.
+   * O ponteiro precisa estar SOBRE o bloco.
    *
-   * Ilimitada para fora (o que acontece sem checagem alguma, já que
    * `posAtCoords` encaixa no bloco mais próximo e nunca devolve nulo por
-   * distância) todo ponto da margem virava "borda esquerda", e arrastar pela
-   * margem criava coluna atrás de coluna.
+   * distância, então sem estes limites todo ponto da margem contaria como
+   * "borda esquerda" de algum bloco, e arrastar pela margem criaria coluna
+   * atrás de coluna.
    *
-   * Restrita ao rect, o oposto: a alça flutuante fica em `rect.left - GAP`, e o
-   * cursor de quem arrasta por ela nunca entra no bloco — não dá para agrupar.
-   *
-   * A folga é exatamente o deslocamento da alça, que é o único motivo
-   * legítimo para o cursor estar fora do bloco durante um arrasto.
+   * É também o que preserva o MOVER: fora do bloco — na margem do editor, onde
+   * fica a alça flutuante, ou no vão entre dois blocos — não há alvo de
+   * agrupamento, e o drop volta a ser do ProseMirror.
    */
-  const folga = BLOCK_HANDLE_GAP;
-  if (x < rect.left - folga || x > rect.right + folga || y < rect.top || y > rect.bottom) {
+  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
     return clearTarget(view);
   }
 
-  const edge = Math.min(EDGE_MAX_PX, rect.width * EDGE_RATIO);
-  let side: 'left' | 'right';
-  if (x <= rect.left + edge) side = 'left';
-  else if (x >= rect.right - edge) side = 'right';
-  else return clearTarget(view); // zona morta: o drop é do ProseMirror
+  // Sem zona morta: metade esquerda agrupa à esquerda, metade direita à direita.
+  const side: 'left' | 'right' = x < rect.left + rect.width / 2 ? 'left' : 'right';
 
   const dragged = extractNodesFromSlice(draggable(view).dragging?.slice);
 

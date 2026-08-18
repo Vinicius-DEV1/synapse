@@ -11,11 +11,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { topLevelBlockAt } from '../../editor-extensions/topLevelBlock';
-import {
-  BLOCK_HANDLE_GAP,
-  endExternalDrag,
-  startExternalBlockDrag,
-} from '../../editor-extensions/group-layout';
+import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions/group-layout';
+
+/** Distância entre a alça e a borda esquerda do bloco. */
+const BLOCK_HANDLE_GAP = 26;
 
 /**
  * Nodes cujo node view já desenha um `data-drag-handle` visível — ver a
