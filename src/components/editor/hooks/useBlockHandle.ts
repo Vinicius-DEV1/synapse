@@ -3,11 +3,9 @@
  *
  * A alça flutuante que aparece à esquerda do bloco sob o cursor.
  *
- * O componente `BlockHandle` existia há tempos, completo, e nunca foi importado
- * por ninguém — era código morto. Sem ele, `paragraph`, `heading` e listas (que
- * não declaram `draggable` nem têm node view com `data-drag-handle`) não tinham
- * como ser arrastados: só os widgets se moviam, e um layout de colunas com
- * texto só nascia arrastando um widget SOBRE o texto, nunca o contrário.
+ * É o que torna arrastáveis os blocos SEM node view — `paragraph`, `heading`,
+ * listas —, que não declaram `draggable` nem têm `data-drag-handle`. Os que já
+ * trazem a própria alça são suprimidos aqui (ver `OWN_DRAG_HANDLE_NODES`).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -17,6 +15,18 @@ import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions
 
 /** Distância entre a alça e a borda esquerda do bloco. */
 const HANDLE_GAP = 26;
+
+/**
+ * Nodes cujo node view já desenha um `data-drag-handle` visível — ver a
+ * supressão em `onMouseMove`. Os grupos não entram aqui: eles são pegos pela
+ * consulta ao DOM, porque quem traz o grip são os filhos.
+ */
+const OWN_DRAG_HANDLE_NODES = new Set([
+  'linkPreview', // LinkPreviewCard
+  'image', // ImageFrame (ResizableImage)
+  'resizableImage',
+  'encryptedImage', // ImageFrame (EncryptedImage)
+]);
 
 export interface BlockHandleState {
   anchor: { x: number; y: number } | null;
@@ -35,11 +45,10 @@ export function useBlockHandle(
   const posRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
 
-  /*
-   * Com o menu aberto a alça não pode sumir. O menu é filho dela, mas fica
-   * deslocado alguns pixels para o lado: ao atravessar essa fresta o ponteiro
-   * passa sobre o conteúdo do editor, o que escondia a alça — e o menu junto,
-   * antes de dar tempo de clicar em nada dentro dele.
+  /**
+   * Com o menu aberto a alça fica ancorada. O menu é filho dela, mas deslocado
+   * alguns pixels para o lado: ao atravessar essa fresta o ponteiro passa sobre
+   * o editor e esconderia a alça — junto com o menu, antes de dar para clicar.
    */
   const menuOpenRef = useRef(false);
 
@@ -107,23 +116,28 @@ export function useBlockHandle(
         return;
       }
 
-      // Grupos (columnGroup / linkGroup) têm sua própria barra de ações no
-      // GroupShell — mostrar a alça externa em cima causa a aparência de
-      // "múltiplas alças de arrastar". Suprimimos a alça para esses nós;
-      // cada coluna filha ainda pode ser arrastada pelo conteúdo interno.
-      if (block.node.type.spec.group === 'block' &&
-          (block.node.type.name === 'columnGroup' || block.node.type.name === 'linkGroup')) {
+      /*
+       * Blocos que já trazem a própria alça não recebem a flutuante — seriam
+       * dois grips sobrepostos na mesma margem, cada um iniciando o arrasto por
+       * um caminho diferente.
+       *
+       * As duas checagens se completam: a lista cobre os node views cujo grip
+       * só é montado no hover (consultar o DOM agora ainda devolveria nada), e
+       * a consulta ao DOM cobre o resto, inclusive os grupos, cujos filhos
+       * trazem o `data-drag-handle`.
+       */
+      if (
+        OWN_DRAG_HANDLE_NODES.has(block.node.type.name) ||
+        block.dom.querySelector('[data-drag-handle]')
+      ) {
         hide();
         return;
       }
 
-      // `hide()` zera posRef, entao a alca reaparece sozinha quando volta ao
-      // mesmo bloco — nao ha por que observar o `anchor` aqui (o que reassinaria
-      // todos os listeners a cada bloco percorrido).
       if (posRef.current === block.pos) return;
       posRef.current = block.pos;
-      // Sem o piso a alça cai em x negativo quando o editor encosta na borda
-      // esquerda da janela — fora da tela e impossível de pegar.
+      // O piso evita que a alça caia em x negativo — fora da tela — quando o
+      // editor encosta na borda esquerda da janela.
       setAnchor({ x: Math.max(4, rect.left - HANDLE_GAP), y: rect.top + 2 });
     };
 
@@ -167,9 +181,9 @@ export function useBlockHandle(
       const node = view.state.doc.nodeAt(pos);
       if (!node) return abort();
 
-      // Seleciona o nó, marca o arrasto como MOVER interno e registra a origem.
-      // Mora na extensão porque é o protocolo de arrasto do editor: a alça vive
-      // fora do `view.dom` e nenhum `dragstart` do ProseMirror dispara para ela.
+      // Seleciona o nó e marca o arrasto como MOVER interno. Mora na extensão
+      // porque é o protocolo de arrasto do editor: a alça vive fora do
+      // `view.dom`, e nenhum `dragstart` do ProseMirror dispara para ela.
       if (!startExternalBlockDrag(view, pos)) return abort();
       draggingRef.current = true;
 
