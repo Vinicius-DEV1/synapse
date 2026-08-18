@@ -38,7 +38,7 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
  * `appendTransaction`, o próprio drop). Nesses casos a resposta certa é "não
  * existe mais", não uma exceção subindo pelo meio de um handler de drop.
  */
-function nodeAt(doc: PMNode, pos: number): PMNode | null {
+export function safeNodeAt(doc: PMNode, pos: number): PMNode | null {
   if (!Number.isInteger(pos) || pos < 0 || pos >= doc.content.size) return null;
   return doc.nodeAt(pos);
 }
@@ -48,7 +48,7 @@ function nodeAt(doc: PMNode, pos: number): PMNode | null {
 /** Localiza o grupo em `pos`, garantindo que ele ainda existe e é do tipo esperado. */
 export function resolveGroup(view: EditorView, pos: number | null | undefined): GroupRef | null {
   if (typeof pos !== 'number') return null;
-  const node = nodeAt(view.state.doc, pos);
+  const node = safeNodeAt(view.state.doc, pos);
   if (!node) return null;
   const spec = getSpecForGroup(node);
   return spec ? { spec, pos, node } : null;
@@ -204,7 +204,7 @@ export function createGroupInTr(
   const groupType = schema.nodes[spec.groupName];
   if (!groupType) return false;
 
-  const expected = nodeAt(tr.doc, targetPos);
+  const expected = safeNodeAt(tr.doc, targetPos);
   if (!expected) return false;
 
   const base = removeSource(tr, source);
@@ -212,7 +212,7 @@ export function createGroupInTr(
   // `slice(base)` mapeia só pelos passos desta operação, para funcionar também
   // quando a transação já vinha com passos de outra.
   const pos = tr.mapping.slice(base).map(targetPos, -1);
-  const target = nodeAt(tr.doc, pos);
+  const target = safeNodeAt(tr.doc, pos);
   if (!target) return false;
 
   /*
@@ -250,14 +250,14 @@ export function appendToGroupInTr(
   side: 'left' | 'right',
   source?: GroupContentSource
 ): boolean {
-  const initial = nodeAt(tr.doc, groupPos);
+  const initial = safeNodeAt(tr.doc, groupPos);
   const spec = initial ? getSpecForGroup(initial) : null;
   if (!spec) return false;
 
   const base = removeSource(tr, source);
 
   const pos = tr.mapping.slice(base).map(groupPos, -1);
-  const group = nodeAt(tr.doc, pos);
+  const group = safeNodeAt(tr.doc, pos);
   if (!group || group.type.name !== spec.groupName) return false;
   if (group.childCount >= spec.maxChildren) return false;
 
