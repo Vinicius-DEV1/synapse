@@ -1,11 +1,9 @@
 /**
  * topLevelBlock.ts
  *
- * Localiza o bloco de nível superior sob um ponto da tela.
- *
- * Vivia dentro de `group-layout/DragToGroup`, mas não tem nada de específico de
- * grupos: é a pergunta "que bloco está debaixo do cursor?", que a alça de
- * arrasto também precisa fazer.
+ * Localiza o bloco de nível superior sob um ponto da tela — a pergunta "que
+ * bloco está debaixo do cursor?", que tanto o arrasto quanto a alça precisam
+ * fazer.
  */
 
 import type { EditorView } from '@tiptap/pm/view';
