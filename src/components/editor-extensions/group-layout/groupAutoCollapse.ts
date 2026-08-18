@@ -51,9 +51,11 @@ function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
     const spec = getSpecForGroup(node);
     if (!spec) return true;
 
+    // A seleção só protege grupos cujos filhos são editados no lugar — ver
+    // `editableChildren`. Um card de link em branco é lixo do schema e sai já.
     const selectionInside =
       state.selection.from >= pos && state.selection.to <= pos + node.nodeSize;
-    if (selectionInside) return true;
+    if (spec.editableChildren && selectionInside) return true;
 
     const indices: number[] = [];
     getChildren(node).forEach((child, index) => {
