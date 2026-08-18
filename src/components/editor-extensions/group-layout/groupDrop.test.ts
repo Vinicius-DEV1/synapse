@@ -15,6 +15,8 @@ import { Schema } from '@tiptap/pm/model';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { appendToGroupInTr, createGroupInTr } from './groupCommands';
+import { applyGroupDropInTr } from './DragToGroup';
+import type { GroupDropTarget } from './DragToGroup';
 import { COLUMN_GROUP_SPEC } from './groupSpecs';
 
 const schema = new Schema({
@@ -195,6 +197,47 @@ describe('soltar um bloco na borda de outro', () => {
 
     // Posição além do fim do documento.
     expect(createGroupInTr(tr, COLUMN_GROUP_SPEC, 999, [p('X')], 'left', null)).toBe(false);
+    expect(tr.docChanged).toBe(false);
+  });
+});
+
+describe('revalidação do alvo antes de aplicar', () => {
+  const target = (pos: number, typeName: string): GroupDropTarget => ({
+    pos,
+    side: 'left',
+    mode: 'create',
+    spec: COLUMN_GROUP_SPEC,
+    typeName,
+  });
+
+  it('aplica quando o node no alvo ainda é do tipo esperado', () => {
+    const state = stateWith(p('A'), p('B'));
+    const tr = state.tr;
+
+    expect(applyGroupDropInTr(tr, target(3, 'paragraph'), [p('X')], null)).toBe(true);
+    expect(shape(state.apply(tr).doc)).toBe('doc(A,columnGroup(columnBlock(X),columnBlock(B)))');
+  });
+
+  it('recusa quando o node no alvo mudou de tipo desde o dragover', () => {
+    /*
+     * O caso real: ao soltar ARQUIVOS, `applyGroupDrop` só roda quando o
+     * FileReader termina — bem depois do drop. Se o documento mudou nesse
+     * intervalo, a posição aponta para outro bloco, e agrupar ali formaria o
+     * grupo em volta do bloco errado.
+     */
+    const state = stateWith(p('A'), columnGroup(column(p('B')), column(p('C'))));
+    const tr = state.tr;
+
+    // O alvo foi decidido quando havia um parágrafo em 3; hoje há um grupo.
+    expect(applyGroupDropInTr(tr, target(3, 'paragraph'), [p('X')], null)).toBe(false);
+    expect(tr.docChanged).toBe(false);
+  });
+
+  it('recusa quando o alvo já não existe', () => {
+    const state = stateWith(p('A'));
+    const tr = state.tr;
+
+    expect(applyGroupDropInTr(tr, target(999, 'paragraph'), [p('X')], null)).toBe(false);
     expect(tr.docChanged).toBe(false);
   });
 });

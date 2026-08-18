@@ -26,7 +26,7 @@ import type { Node as PMNode, Slice } from '@tiptap/pm/model';
 import type { EditorView } from '@tiptap/pm/view';
 import { getSpecForGroup, pickSpecForPair } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
-import { appendToGroupInTr, createGroupInTr } from './groupCommands';
+import { appendToGroupInTr, createGroupInTr, safeNodeAt } from './groupCommands';
 import type { GroupContentSource } from './groupCommands';
 import { topLevelBlockAt } from '../topLevelBlock';
 
@@ -38,6 +38,15 @@ export interface GroupDropTarget {
   /** `create`: envolve o bloco alvo num grupo novo. `append`: soma uma coluna a um grupo existente. */
   mode: 'create' | 'append';
   spec: GroupSpec;
+  /**
+   * Tipo do node que estava em `pos` quando o alvo foi decidido, no `dragover`.
+   *
+   * O alvo pode ser aplicado bem depois disso: ao soltar ARQUIVOS, o
+   * `useEditorDropPaste` só chama `applyGroupDrop` quando o `FileReader`
+   * termina. Sem reconferir o tipo, uma edição nesse intervalo faria a posição
+   * apontar para outro bloco, e o grupo se formaria em volta do bloco errado.
+   */
+  typeName: string;
 }
 
 /**
@@ -283,7 +292,7 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
     const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
     if (!fits || !compatible) return clearTarget(view);
 
-    dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec };
+    dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec, typeName: node.type.name };
     showIndicator(rect, side);
     return;
   }
@@ -292,18 +301,28 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
   const spec = pickSpecForPair(dragged.length > 0 ? dragged : [node], node);
   if (!spec) return clearTarget(view);
 
-  dragStateFor(view).target = { pos, side, mode: 'create', spec };
+  dragStateFor(view).target = { pos, side, mode: 'create', spec, typeName: node.type.name };
   showIndicator(rect, side);
 }
 
 // ─── Aplicação ────────────────────────────────────────────────────────────────
 
-function applyInTr(
+/**
+ * Aplica um alvo sobre uma transação. Exportada para teste: é aqui que mora a
+ * revalidação do alvo, e ela não deveria exigir uma `EditorView` para ser
+ * verificada.
+ */
+export function applyGroupDropInTr(
   tr: Transaction,
   target: GroupDropTarget,
   content: PMNode[],
   source: GroupContentSource
 ): boolean {
+  // O alvo foi decidido no `dragover`, possivelmente há bastante tempo. Se o
+  // node em `pos` já não é o mesmo, agrupar ali seria agrupar o bloco errado.
+  const current = safeNodeAt(tr.doc, target.pos);
+  if (!current || current.type.name !== target.typeName) return false;
+
   if (target.spec.acceptsContent(content)) {
     return target.mode === 'append'
       ? appendToGroupInTr(tr, target.pos, content, target.side, source)
@@ -312,9 +331,7 @@ function applyInTr(
 
   // Ex.: arrastar uma imagem para a borda de um grupo de links.
   if (target.mode === 'append') return false;
-  const targetNode = tr.doc.nodeAt(target.pos);
-  if (!targetNode) return false;
-  const fallback = pickSpecForPair(content, targetNode);
+  const fallback = pickSpecForPair(content, current);
   if (!fallback) return false;
   return createGroupInTr(tr, fallback, target.pos, content, target.side, source);
 }
@@ -327,7 +344,7 @@ export function applyGroupDrop(
   source?: GroupContentSource
 ): boolean {
   const tr = view.state.tr;
-  if (!applyInTr(tr, target, content, source) || !tr.docChanged) return false;
+  if (!applyGroupDropInTr(tr, target, content, source) || !tr.docChanged) return false;
   view.dispatch(tr.scrollIntoView());
   return true;
 }
@@ -387,6 +404,18 @@ export const DragToGroup = Extension.create({
 
             // Soltar um node sobre ele mesmo não faz sentido.
             if (moved && dragged.from <= target.pos && dragged.to >= target.pos) return false;
+
+            /*
+             * A seleção do arrasto foi montada no `dragstart` e não acompanha
+             * mudanças do documento. Se uma edição remota do Yjs chegou durante
+             * o arrasto, ela aponta para outro lugar, e removê-la apagaria o
+             * node errado. Devolver o drop ao ProseMirror é o pior caso
+             * aceitável: no máximo não agrupa.
+             */
+            if (moved && dragged instanceof NodeSelection) {
+              const atOrigin = safeNodeAt(view.state.doc, dragged.from);
+              if (!atOrigin || atOrigin.type !== dragged.node.type) return false;
+            }
 
             return applyGroupDrop(view, target, content, source);
           },
