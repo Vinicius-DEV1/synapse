@@ -11,14 +11,15 @@ import type { Transaction } from '@tiptap/pm/state';
 import type { GroupSpec } from './groupSpecs';
 import { getSpecForGroup } from './groupSpecs';
 import { triggerToast } from '../../ui/ToastContext';
+import { readWidth, getWidths, rebalance, round1, normalizeWidths } from './groupWidths';
+
+export { readWidth, getWidths, rebalance, round1, normalizeWidths };
 
 export interface GroupRef {
   spec: GroupSpec;
   pos: number;
   node: PMNode;
 }
-
-const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /**
  * Retorna o nó em `pos` com validação de limites para evitar exceções caso o doc tenha mudado.
@@ -56,26 +57,9 @@ export function getChildPositions(groupPos: number, groupNode: PMNode): number[]
   return positions;
 }
 
-function readWidth(spec: GroupSpec, child: PMNode): number {
-  const raw = Number(child.attrs[spec.widthAttr]);
-  return Number.isFinite(raw) && raw > 0 ? raw : spec.defaultWidth;
-}
-
-export function getWidths(spec: GroupSpec, groupNode: PMNode): number[] {
-  return getChildren(groupNode).map((child) => readWidth(spec, child));
-}
-
 /** Retorna o conteúdo achatado de todos os filhos do grupo. */
 export function flattenGroup(spec: GroupSpec, groupNode: PMNode): PMNode[] {
   return getChildren(groupNode).flatMap((child) => spec.childContent(child));
-}
-
-/** Redistribui as larguras igualmente entre os filhos fornecidos. */
-export function rebalance(spec: GroupSpec, children: PMNode[]): PMNode[] {
-  const width = round1(100 / children.length);
-  return children.map((child) =>
-    child.type.create({ ...child.attrs, [spec.widthAttr]: width }, child.content, child.marks)
-  );
 }
 
 /**
