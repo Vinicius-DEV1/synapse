@@ -22,7 +22,6 @@ export default function VaultView() {
     isEditingItem,
     setIsEditingItem,
     isLoading,
-    dragOverGroupId,
     groupContextMenu,
     setGroupContextMenu,
     loadData,
@@ -34,7 +33,6 @@ export default function VaultView() {
     filteredItems,
   } = useVault();
 
-  // Fechar context menu se clicar fora
   useEffect(() => {
     const handleClick = () => setGroupContextMenu(null);
     window.addEventListener('click', handleClick);
@@ -50,7 +48,6 @@ export default function VaultView() {
         setSelectedGroupId={setSelectedGroupId}
         viewMode={viewMode}
         setViewMode={setViewMode}
-        dragOverGroupId={dragOverGroupId}
         groupContextMenu={groupContextMenu}
         setGroupContextMenu={setGroupContextMenu}
         handleCreateGroup={handleCreateGroup}

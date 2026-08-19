@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { VaultGroup, VaultItem } from '../../../types';
 
+/**
+ * Hook de gerenciamento de estado e operações do Cofre de Senhas.
+ */
 export function useVault() {
   const [groups, setGroups] = useState<VaultGroup[]>([]);
   const [items, setItems] = useState<VaultItem[]>([]);
@@ -12,23 +15,18 @@ export function useVault() {
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Drag and Drop States
-  const [draggedGroup, setDraggedGroup] = useState<VaultGroup | null>(null);
-  const [draggedItem, setDraggedItem] = useState<VaultItem | null>(null);
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
-  
-  // Context Menu States
-  const [groupContextMenu, setGroupContextMenu] = useState<{ id: string, x: number, y: number } | null>(null);
+  // Estados de menu de contexto
+  const [groupContextMenu, setGroupContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const g = await window.api?.vault?.getGroups() || [];
-      const i = await window.api?.vault?.getItems(selectedGroupId || undefined) || [];
+      const g = (await window.api?.vault?.getGroups()) || [];
+      const i = (await window.api?.vault?.getItems(selectedGroupId || undefined)) || [];
       setGroups(g);
       setItems(i);
     } catch (e) {
-      console.error("Erro ao carregar cofre:", e);
+      console.error('Erro ao carregar dados do cofre:', e);
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +37,7 @@ export function useVault() {
   }, [loadData]);
 
   const handleCreateGroup = useCallback(async () => {
-    const name = prompt("Nome do Grupo:");
+    const name = prompt('Nome do Grupo:');
     if (!name) return;
     const newGroup = {
       id: crypto.randomUUID(),
@@ -49,14 +47,14 @@ export function useVault() {
       position: groups.length,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      deleted_at: null
+      deleted_at: null,
     };
     await window.api?.vault?.upsertGroup(newGroup);
     loadData();
   }, [groups.length, loadData]);
 
   const handleEditGroup = useCallback(async (group: VaultGroup) => {
-    const newName = prompt("Novo nome para o grupo:", group.name);
+    const newName = prompt('Novo nome para o grupo:', group.name);
     if (!newName || newName === group.name) return;
     await window.api?.vault?.upsertGroup({ ...group, name: newName });
     loadData();
@@ -77,7 +75,7 @@ export function useVault() {
   }, []);
 
   const handleDeleteItem = useCallback(async (id: string) => {
-    if (confirm("Tem certeza que deseja apagar este item?")) {
+    if (confirm('Tem certeza que deseja apagar este item?')) {
       await window.api?.vault?.deleteItem(id);
       setSelectedItem(null);
       loadData();
@@ -108,22 +106,14 @@ export function useVault() {
     isEditingItem,
     setIsEditingItem,
     isLoading,
-    
-    // DND
-    draggedGroup, setDraggedGroup,
-    draggedItem, setDraggedItem,
-    dragOverGroupId, setDragOverGroupId,
-    
-    // Context Menu
-    groupContextMenu, setGroupContextMenu,
-
-    // Methods
+    groupContextMenu,
+    setGroupContextMenu,
     loadData,
     handleCreateGroup,
     handleEditGroup,
     handleDeleteGroup,
     handleSelectItem,
     handleDeleteItem,
-    filteredItems
+    filteredItems,
   };
 }
