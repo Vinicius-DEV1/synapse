@@ -206,7 +206,12 @@ export function useEditorDropPaste({
         }
 
         if (imageDropped) {
-          const columnTarget = consumeGroupDropTarget(view);
+          // O ponto do drop: sem ele o alvo seria o do último frame avaliado
+          // no `dragover`, que pode nunca ter chegado a rodar.
+          const columnTarget = consumeGroupDropTarget(view, {
+            x: event.clientX,
+            y: event.clientY,
+          });
 
           const insertNodes = (nodes: any[]) => {
             if (!editor || nodes.length === 0) return;
