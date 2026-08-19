@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { File, FileText, Image as ImageIcon, Film, X, Folder } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
@@ -16,6 +17,14 @@ export default function FileWidgetNodeView(props: any) {
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
   const [fileItem, setFileItem] = useState<any>(null);
+
+  const pos = typeof props.getPos === 'function' ? props.getPos() : null;
+  const isNodeSelected = !!(
+    props.selected &&
+    props.editor?.state?.selection instanceof NodeSelection &&
+    typeof pos === 'number' &&
+    props.editor.state.selection.from === pos
+  );
 
   useEffect(() => {
     // Fetch file data if needed for viewer
@@ -103,7 +112,7 @@ export default function FileWidgetNodeView(props: any) {
           }
         }}
         className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
-          props.selected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
+          isNodeSelected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
         }${
           isLink 
             ? 'bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20' 

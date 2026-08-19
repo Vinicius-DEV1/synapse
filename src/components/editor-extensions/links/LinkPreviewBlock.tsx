@@ -195,7 +195,7 @@ const LinkPreviewComponent = (props: any) => {
         showNotes={showNotes}
         loading={loading}
         isReloading={isReloading}
-        selected={props.selected}
+        selected={!!(props.selected && props.editor?.state?.selection instanceof NodeSelection && props.editor.state.selection.from === currentPos())}
         isInsideGroup={isInsideGroup}
         onOpenConfirm={() => setShowLinkConfirm(true)}
         onToggleNotes={handleToggleNotes}
