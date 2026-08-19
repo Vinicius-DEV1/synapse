@@ -92,6 +92,13 @@ export function appReducer(state: AppState, action: Action): AppState {
         expandedNodes: exists ? state.expandedNodes.filter((n) => n !== action.nodeId) : [...state.expandedNodes, action.nodeId],
       };
     }
+    case 'EXPAND_NODE': {
+      if (state.expandedNodes.includes(action.nodeId)) return state;
+      return {
+        ...state,
+        expandedNodes: [...state.expandedNodes, action.nodeId],
+      };
+    }
     case 'SHOW_CONTEXT_MENU':
       return {
         ...state,
