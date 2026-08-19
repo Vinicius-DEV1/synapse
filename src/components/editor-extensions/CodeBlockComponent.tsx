@@ -18,7 +18,10 @@ export default function CodeBlockComponent(props: any) {
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative group/code">
-      <div className="absolute -left-16 top-1 opacity-0 group-hover/code:opacity-100 flex items-center gap-0.5 z-10 bg-dark-bg/80 backdrop-blur-md rounded-lg border border-white/10 p-0.5 shadow-xl">
+      <div
+        contentEditable={false}
+        className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/code:opacity-100"
+      >
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -28,7 +31,7 @@ export default function CodeBlockComponent(props: any) {
               if (typeof pos === 'number') moveBlockUp(editor.view, pos);
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
           title="Subir bloco de código (Mover para cima)"
         >
           <ArrowUp size={11} />
@@ -42,15 +45,15 @@ export default function CodeBlockComponent(props: any) {
               editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-          title="Adicionar linha abaixo"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+          title="Adicionar linha abaixo (+)"
         >
-          <Plus size={13} />
+          <Plus size={11} />
         </button>
         <div 
           data-drag-handle
           onMouseDown={handleDragMouseDown}
-          className="cursor-grab active:cursor-grabbing hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
           title="Arrastar bloco de código"
         >
           <GripVertical size={13} />
@@ -64,7 +67,7 @@ export default function CodeBlockComponent(props: any) {
               if (typeof pos === 'number') moveBlockDown(editor.view, pos);
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
           title="Descer bloco de código (Mover para baixo)"
         >
           <ArrowDown size={11} />
