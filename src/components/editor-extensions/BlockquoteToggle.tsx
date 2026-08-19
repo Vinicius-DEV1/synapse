@@ -107,10 +107,19 @@ const BlockquoteToggleComponent = (props: any) => {
   };
 
   const currentColor = props.node.attrs.color || 'default';
-  const customStyle =
-    currentColor !== 'default'
-      ? { backgroundColor: `${currentColor}15`, borderLeftColor: currentColor }
-      : {};
+  const customStyle = (() => {
+    if (!currentColor || currentColor === 'default') return {};
+    if (currentColor.startsWith('#')) {
+      return {
+        backgroundColor: `${currentColor}18`,
+        borderLeftColor: currentColor,
+      };
+    }
+    return {
+      backgroundColor: currentColor,
+      borderLeftColor: currentColor,
+    };
+  })();
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' && isOpen) {
@@ -279,8 +288,16 @@ export const BlockquoteToggle = Node.create({
   addAttributes() {
     return {
       title: { default: '' },
-      color: { default: 'default' },
-      isOpen: { default: true },
+      color: {
+        default: 'default',
+        parseHTML: (element) => element.getAttribute('data-color') || 'default',
+        renderHTML: (attributes) => ({ 'data-color': attributes.color || 'default' }),
+      },
+      isOpen: {
+        default: true,
+        parseHTML: (element) => element.getAttribute('data-is-open') !== 'false',
+        renderHTML: (attributes) => ({ 'data-is-open': String(attributes.isOpen) }),
+      },
     };
   },
 
@@ -293,6 +310,7 @@ export const BlockquoteToggle = Node.create({
           const element = node as HTMLElement;
           return {
             isOpen: element.getAttribute('data-is-open') !== 'false',
+            color: element.getAttribute('data-color') || 'default',
           };
         },
       },
@@ -305,6 +323,7 @@ export const BlockquoteToggle = Node.create({
       mergeAttributes(HTMLAttributes, {
         class: 'blockquote-toggle',
         'data-is-open': HTMLAttributes.isOpen,
+        'data-color': HTMLAttributes.color || 'default',
       }),
       0,
     ];
