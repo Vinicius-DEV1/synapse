@@ -1,9 +1,19 @@
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
 import { GripVertical, Plus, X } from 'lucide-react';
+import { selectNodeForDrag } from './group-layout/DragToGroup';
 
 export default function CodeBlockComponent(props: any) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
   const defaultLanguage = node.attrs.language;
+
+  const handleDragMouseDown = () => {
+    if (typeof getPos === 'function' && editor?.view) {
+      const pos = getPos();
+      if (typeof pos === 'number') {
+        selectNodeForDrag(editor.view, pos, node);
+      }
+    }
+  };
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative group/code">
@@ -24,16 +34,9 @@ export default function CodeBlockComponent(props: any) {
         </button>
         <div 
           data-drag-handle
-          onMouseDown={() => {
-            if (typeof getPos === 'function') {
-              const pos = getPos();
-              if (typeof pos === 'number') {
-                editor.commands.setNodeSelection(pos);
-              }
-            }
-          }}
+          onMouseDown={handleDragMouseDown}
           className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-          title="Arrastar bloco"
+          title="Arrastar bloco de código"
         >
           <GripVertical size={16} />
         </div>
@@ -67,8 +70,6 @@ export default function CodeBlockComponent(props: any) {
       </div>
 
       <pre className="hljs" spellCheck={false}>
-        {/* `as` usa `NoInfer<T>` — sem o genérico explícito, T cai no default
-            'div' e "code" deixa de bater com o tipo. */}
         <NodeViewContent<'code'> as="code" />
       </pre>
     </NodeViewWrapper>

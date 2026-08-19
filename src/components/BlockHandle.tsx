@@ -18,10 +18,7 @@ export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, on
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Enquanto o menu está aberto a alça precisa ficar ancorada: o menu fica
-  // deslocado alguns pixels para o lado e, ao atravessar essa fresta, o ponteiro
-  // passa sobre o editor — o que fazia a alça (e o menu junto) desaparecer antes
-  // de dar tempo de clicar em qualquer coisa.
+  // Mantém a alça visível e ancorada enquanto o menu de opções estiver aberto
   useEffect(() => {
     onMenuOpenChange?.(isOpen);
   }, [isOpen, onMenuOpenChange]);
@@ -64,10 +61,6 @@ export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, on
         >
           {!showColorSubmenu ? (
             <div className="py-1">
-              {/* Só aparece se houver de fato quem aplique a cor. O app não
-                  registra as extensões TextStyle/Color, então enquanto ninguém
-                  passar `onChangeColor` este botão abriria uma paleta sem
-                  efeito nenhum. */}
               {onChangeColor && (
                 <>
                   <button
