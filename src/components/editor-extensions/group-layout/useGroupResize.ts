@@ -70,16 +70,13 @@ export function useGroupResize({
 
   const childCount = node.childCount;
 
-  /**
-   * O `NodeViewContent` do Tiptap sobrescreve qualquer `ref` recebido e o
-   * contentDOM real é um <div> injetado dentro dele — por isso as colunas são
-   * localizadas a partir do wrapper, e não por `children`.
-   */
   const getChildElements = useCallback((): HTMLElement[] => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return [];
-    return Array.from(wrapper.querySelectorAll<HTMLElement>(GROUP_CHILD_SELECTOR)).filter(
-      (el) => el.closest('[data-group-root]') === wrapper
+    const content = wrapper.querySelector('.group-layout__content');
+    if (!content) return [];
+    return Array.from(content.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement
     );
   }, [wrapperRef]);
 
@@ -89,6 +86,15 @@ export function useGroupResize({
 
     const wrapperRect = wrapper.getBoundingClientRect();
     const children = getChildElements();
+
+    if (children.length <= 1) {
+      setMetrics((prev) =>
+        prev.offsets.length === 0 && Math.abs(prev.width - wrapperRect.width) < 0.5
+          ? prev
+          : { offsets: [], width: wrapperRect.width }
+      );
+      return;
+    }
 
     const offsets: number[] = [];
     for (let i = 0; i < children.length - 1; i += 1) {

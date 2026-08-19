@@ -1155,3 +1155,10 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.85);
   pointer-events: none;
 }
+
+body.group-drop-active .caderno-dropcursor,
+body.group-drop-active .prosemirror-dropcursor-block {
+  display: none !important;
+  opacity: 0 !important;
+}
+

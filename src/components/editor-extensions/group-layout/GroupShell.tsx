@@ -1,12 +1,3 @@
-/**
- * GroupShell.tsx
- *
- * Node view compartilhado por todos os grupos lado a lado.
- * Cuida do wrapper, dos divisores visuais, das alças de redimensionamento, da
- * barra de ações e dos botões de remover coluna. Os node views concretos
- * (`ColumnGroup`, `LinkGroupBlock`) viram invólucros de poucas linhas.
- */
-
 import { useCallback, useRef, useState } from 'react';
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
 import { ChevronLeft, ChevronRight, Columns2, Plus, Ungroup, X } from 'lucide-react';
@@ -19,15 +10,16 @@ import { useGroupResize } from './useGroupResize';
 
 interface GroupShellProps {
   spec: GroupSpec;
-  /** O node do grupo, vindo do node view do Tiptap. */
   node: PMNode;
   editor: Editor;
-  /** O Tiptap entrega `getPos` como função, mas ela some quando o node view morre. */
   getPos: unknown;
-  /** Classe extra no wrapper. */
   className?: string;
 }
 
+/**
+ * Componente NodeView estrutural compartilhado para layouts em grupo (colunas, cards).
+ * Fornece divisores de redimensionamento interativos, barra de ferramentas de controle e balanceamento.
+ */
 export default function GroupShell({
   spec,
   node,
@@ -105,7 +97,6 @@ export default function GroupShell({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Barra de ações do grupo */}
       {showChrome && (
         <div
           contentEditable={false}
@@ -128,22 +119,21 @@ export default function GroupShell({
         </div>
       )}
 
-      {/* Divisores + alças de redimensionamento, um por vão */}
-      {handleOffsets.map((offset, index) => (
-        <div
-          key={index}
-          contentEditable={false}
-          className={`group-layout__gutter absolute top-0 bottom-0 z-20 flex w-4 -translate-x-1/2 justify-center ${
-            spec.resizable && editor.isEditable ? 'cursor-col-resize' : 'pointer-events-none'
-          }`}
-          style={{ left: `${offset}px` }}
-          onPointerDown={spec.resizable ? (event) => startResize(event, index) : undefined}
-        >
-          <span className="group-layout__divider" />
-        </div>
-      ))}
+      {childCount > 1 &&
+        handleOffsets.map((offset, index) => (
+          <div
+            key={index}
+            contentEditable={false}
+            className={`group-layout__gutter absolute top-0 bottom-0 z-20 flex w-4 -translate-x-1/2 justify-center ${
+              spec.resizable && editor.isEditable ? 'cursor-col-resize' : 'pointer-events-none'
+            }`}
+            style={{ left: `${offset}px` }}
+            onPointerDown={spec.resizable ? (event) => startResize(event, index) : undefined}
+          >
+            <span className="group-layout__divider" />
+          </div>
+        ))}
 
-      {/* Botão de remover, um por coluna */}
       {showChrome &&
         !isResizing &&
         childCount > 1 &&
@@ -161,7 +151,6 @@ export default function GroupShell({
           />
         ))}
 
-      {/* Badge com as proporções durante o arrasto */}
       {isResizing && previewWidths && (
         <div
           contentEditable={false}
@@ -176,14 +165,6 @@ export default function GroupShell({
   );
 }
 
-/**
- * Controles de cada coluna, no topo dela: mover para a esquerda, remover, mover
- * para a direita. A posição horizontal é derivada dos vãos já medidos, então
- * acompanha o redimensionamento sem medir nada de novo.
- *
- * Reordenar por botão, e não por arrasto: o `dragover` do `DragToGroup` só
- * reconhece blocos de nível superior, e uma coluna nunca é um deles.
- */
 function ChildControls({
   removeTitle,
   index,
@@ -201,9 +182,6 @@ function ChildControls({
   onRemove: (index: number) => void;
   onMove: (from: number, to: number) => void;
 }) {
-  // A largura vem medida do `useGroupResize`. Lê-la do DOM aqui no corpo do
-  // render seria impuro, devolveria 0 na primeira passada e não acompanharia
-  // um redimensionamento da janela.
   const start = index === 0 ? 0 : handleOffsets[index - 1];
   const end = index === childCount - 1 ? wrapperWidth : handleOffsets[index];
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
@@ -257,7 +235,6 @@ function ChildButton({
       aria-label={title}
       disabled={disabled}
       contentEditable={false}
-      // Sem isto o clique tira o foco do editor e a posição do grupo se perde.
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
         event.preventDefault();
