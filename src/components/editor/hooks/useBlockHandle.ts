@@ -19,6 +19,9 @@ const OWN_DRAG_HANDLE_NODES = new Set([
   'encryptedImage',
   'codeBlock',
   'codeBlockLowlight',
+  'blockquoteToggle',
+  'toggleBlock',
+  'horizontalRule',
 ]);
 
 export interface BlockHandleState {

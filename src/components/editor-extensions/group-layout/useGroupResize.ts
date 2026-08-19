@@ -73,8 +73,12 @@ export function useGroupResize({
   const getChildElements = useCallback((): HTMLElement[] => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return [];
-    const content = wrapper.querySelector('.group-layout__content');
+    let content: Element | null = wrapper.querySelector('.group-layout__content');
     if (!content) return [];
+    const reactContainer = content.querySelector(':scope > [data-node-view-content-react]');
+    if (reactContainer) {
+      content = reactContainer;
+    }
     return Array.from(content.children).filter(
       (el): el is HTMLElement => el instanceof HTMLElement
     );
