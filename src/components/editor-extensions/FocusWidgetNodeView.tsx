@@ -3,7 +3,8 @@ import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
-import { Play, Pause, XSquare, Plus } from 'lucide-react';
+import { Play, Pause, XSquare, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
 export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
   const { sessionId, duration, tag,  status } = node.attrs;
@@ -104,6 +105,32 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
         </span>
         <span className="opacity-50">-</span>
         <span className="font-mono">{displayTime}</span>
+        <span className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && editor) {
+                moveBlockUp(editor.view, pos);
+              }
+            }}
+            className="p-0.5 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Subir bloco (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && editor) {
+                moveBlockDown(editor.view, pos);
+              }
+            }}
+            className="p-0.5 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Descer bloco (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
+        </span>
       </span>
 
       {showPopover && isMySessionRunning && (

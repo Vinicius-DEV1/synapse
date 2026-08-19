@@ -6,6 +6,7 @@ import { Portal } from '../../ui/Portal';
 import { LINK_GROUP_SPEC } from '../group-layout/groupSpecs';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { findChildIndex, groupWithSibling, removeChild } from '../group-layout/groupCommands';
+import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
@@ -205,6 +206,14 @@ const LinkPreviewComponent = (props: any) => {
         onUngroup={handleUngroupSelf}
         onGroupWithNext={handleGroupWithNext}
         onDragStartHandle={handleSelectSelf}
+        onMoveUp={() => {
+          const pos = currentPos();
+          if (pos !== null && props.editor) moveBlockUp(props.editor.view, pos);
+        }}
+        onMoveDown={() => {
+          const pos = currentPos();
+          if (pos !== null && props.editor) moveBlockDown(props.editor.view, pos);
+        }}
       />
 
       {showLinkConfirm && (

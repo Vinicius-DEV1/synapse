@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { File, FileText, Image as ImageIcon, Film, X, Folder } from 'lucide-react';
+import { File, FileText, Image as ImageIcon, Film, X, Folder, ArrowUp, ArrowDown } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
+import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import FileViewer from '../files/FileViewer';
 import FloatingPdfViewer from './FloatingPdfViewer';
 
@@ -140,9 +141,36 @@ export default function FileWidgetNodeView(props: any) {
         <span className="flex-1 break-words leading-tight group-hover:text-white transition-colors">
           {name || fileItem?.name || 'Arquivo'}
         </span>
+        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && props.editor) {
+                moveBlockUp(props.editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Subir bloco (Mover para cima)"
+          >
+            <ArrowUp size={12} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && props.editor) {
+                moveBlockDown(props.editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Descer bloco (Mover para baixo)"
+          >
+            <ArrowDown size={12} />
+          </button>
+        </div>
         <button 
           onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-          className="p-1 ml-1 rounded-md text-dark-subtext hover:bg-black/20 hover:text-red-400 transition-colors"
+          className="p-1 ml-0.5 rounded-md text-dark-subtext hover:bg-black/20 hover:text-red-400 transition-colors"
+          title="Remover anexo"
         >
           <X size={14} />
         </button>
