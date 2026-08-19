@@ -324,6 +324,8 @@ export function appendToGroup(
 
 /**
  * Agrupa nós irmãos adjacentes (usado pelos botões de ação 'agrupar com o vizinho').
+ * Prioridade: agrupar com o elemento de CIMA (anterior), que é o fluxo natural
+ * de digitação/criação, e fallback para o elemento de BAIXO (posterior).
  */
 export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number): boolean {
   const { state } = view;
@@ -334,14 +336,26 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
 
   const range = { from: pos, to: pos + node.nodeSize };
 
-  const after = state.doc.resolve(range.to).nodeAfter;
-  if (after && spec.acceptsContent([after])) {
-    return createGroup(view, spec, range.to, [node], 'left', range);
+  // 1ª Prioridade: Irmão de CIMA (anterior)
+  const before = state.doc.resolve(pos).nodeBefore;
+  if (before) {
+    if (spec.acceptsContent([before])) {
+      return createGroup(view, spec, pos - before.nodeSize, [node], 'right', range);
+    }
+    if (before.type.name === spec.groupName && before.childCount < spec.maxChildren) {
+      return appendToGroup(view, pos - before.nodeSize, [node], 'right', range);
+    }
   }
 
-  const before = state.doc.resolve(pos).nodeBefore;
-  if (before && spec.acceptsContent([before])) {
-    return createGroup(view, spec, pos - before.nodeSize, [node], 'right', range);
+  // 2ª Prioridade (fallback): Irmão de BAIXO (posterior)
+  const after = state.doc.resolve(range.to).nodeAfter;
+  if (after) {
+    if (spec.acceptsContent([after])) {
+      return createGroup(view, spec, range.to, [node], 'left', range);
+    }
+    if (after.type.name === spec.groupName && after.childCount < spec.maxChildren) {
+      return appendToGroup(view, range.to, [node], 'left', range);
+    }
   }
 
   return false;
