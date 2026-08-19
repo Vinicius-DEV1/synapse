@@ -79,6 +79,19 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
         bulletList: false,  // replaced by CustomBulletList (only - shortcut)
         bold: false,        // replaced by CustomBold (no ** shortcut, Ctrl+B only)
         horizontalRule: false, // replaced by CustomDivider (for draggable node views)
+        /*
+         * O dropcursor é METADE do vocabulário do arrasto: a linha horizontal
+         * diz "solto aqui e o bloco se MOVE", enquanto a barra vertical roxa do
+         * `DragToGroup` diz "solto aqui e vira COLUNA". Um exclui o outro (ver
+         * `body.group-drop-active` no index.css).
+         *
+         * No padrão do plugin ele é uma linha PRETA de 1px — invisível sobre o
+         * fundo escuro do app. Metade do vocabulário simplesmente não existia:
+         * quem soltasse na faixa de mover não via nada acontecer antes de
+         * soltar, e o arrasto virava adivinhação. Âmbar para não se confundir
+         * com o roxo do agrupamento.
+         */
+        dropcursor: { color: '#f59e0b', width: 3, class: 'caderno-dropcursor' },
       }),
       CustomBulletList,
       CustomBold,

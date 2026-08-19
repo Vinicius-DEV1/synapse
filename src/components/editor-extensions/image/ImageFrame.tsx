@@ -22,6 +22,7 @@ import {
   safePos,
 } from './imageUtils';
 import { findChildIndex, appendToGroup, createGroup } from '../group-layout/groupCommands';
+import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { COLUMN_GROUP_SPEC } from '../group-layout/groupSpecs';
 import ImageToolbar from './ImageToolbar';
 import ImageResizeHandles from './ImageResizeHandles';
@@ -67,15 +68,13 @@ export default function ImageFrame({
   const width: number | null = node.attrs.width ? Number(node.attrs.width) : null;
   const height: number | null = node.attrs.height ? Number(node.attrs.height) : null;
 
+  // A seleção é o que o drop apaga ao mover: `selectNodeForDrag` só a move
+  // depois de confirmar que a posição é mesmo desta imagem.
   const selectSelf = useCallback(() => {
     const pos = safePos(getPos);
     if (pos === null) return;
-    try {
-      editor.commands.setNodeSelection(pos);
-    } catch {
-      /* posição já inválida — ignora em vez de derrubar o node view */
-    }
-  }, [editor, getPos]);
+    selectNodeForDrag(editor.view, pos, node);
+  }, [editor, getPos, node]);
 
   const commitSize = useCallback(
     (size: ImageSize) => updateAttributes({ width: size.width, height: size.height }),

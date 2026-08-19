@@ -1140,3 +1140,18 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   margin: 0;
   height: 100%;
 }
+
+/* ── Vocabulário do arrasto ────────────────────────────────────────────────
+   Duas promessas, dois desenhos, nunca os dois ao mesmo tempo:
+
+     linha ÂMBAR horizontal  → "solto aqui e o bloco se move para cá"
+     barra ROXA vertical     → "solto aqui e vira coluna deste lado"
+
+   O brilho é o que os torna visíveis sobre o fundo escuro — sem ele a linha
+   de 1px do padrão do ProseMirror desaparecia, e a faixa de mover parecia
+   uma zona morta onde soltar não fazia nada. */
+.caderno-dropcursor {
+  border-radius: 3px;
+  box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.85);
+  pointer-events: none;
+}

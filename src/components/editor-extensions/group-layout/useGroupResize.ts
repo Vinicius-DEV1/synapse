@@ -3,16 +3,14 @@
  *
  * Redimensionamento das colunas de um grupo.
  *
- * Dois cuidados que a versão anterior não tinha:
+ * Dois cuidados sustentam o resto do arquivo:
  *
- *  • As alças são posicionadas a partir do DOM real, medindo o vão entre as
- *    colunas. Antes usavam `left: <soma das larguras>%`, ignorando o `gap` —
- *    com 2+ colunas a alça ficava visivelmente fora do vão.
+ *  • As alças são posicionadas medindo o vão real entre as colunas no DOM.
+ *    Derivar a posição das larguras em % ignora o `gap` e erra o lugar.
  *
- *  • Durante o arrasto só o DOM é tocado. A versão anterior chamava
- *    `setNodeMarkup` a cada `mousemove`, ou seja uma transação ProseMirror +
- *    escrita no Y.Doc + serialização do documento inteiro a ~60fps.
- *    A gravação acontece uma única vez, no `pointerup`.
+ *  • Durante o arrasto só o DOM é tocado; a gravação acontece uma vez só, no
+ *    `pointerup`. Uma transação por `mousemove` significaria escrita no Y.Doc e
+ *    serialização do documento inteiro a ~60fps.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
@@ -109,10 +107,9 @@ export function useGroupResize({
   }, [wrapperRef, getChildElements]);
 
   /*
-   * `node` é um objeto novo a cada transação do ProseMirror, então usá-lo como
-   * dependência remedia o grupo a cada tecla digitada em QUALQUER lugar do
-   * documento. O que de fato muda o layout é o número de colunas e as larguras;
-   * é isso que a assinatura acompanha.
+   * `node` é um objeto novo a cada transação, então usá-lo como dependência
+   * remediria o grupo a cada tecla digitada em qualquer lugar do documento. O
+   * que muda o layout é o número de colunas e as larguras.
    */
   const widthSignature = getWidths(spec, node).join(',');
 
@@ -153,13 +150,10 @@ export function useGroupResize({
     };
 
     /*
-     * O MutationObserver serve só para reatar o ResizeObserver quando o
-     * CONJUNTO de colunas muda. Antes ele reagia a qualquer mutação da subárvore
-     * — ou seja, a cada tecla digitada dentro de uma coluna, disparando
-     * remedição, `setState` e um re-render do grupo inteiro no meio da digitação.
-     *
-     * Observar a subárvore continua necessário (o Tiptap injeta um <div> entre
-     * o wrapper e as colunas reais), mas agora as mutações são filtradas.
+     * O MutationObserver só reata o ResizeObserver quando o CONJUNTO de colunas
+     * muda. Observar a subárvore é necessário (o Tiptap injeta um <div> entre o
+     * wrapper e as colunas reais), mas sem o filtro cada tecla digitada dentro
+     * de uma coluna dispararia remedição e re-render do grupo inteiro.
      */
     const touchesChildren = (records: MutationRecord[]) =>
       records.some((record) =>
@@ -270,10 +264,8 @@ export function useGroupResize({
         setPreviewWidths(null);
 
         // O preview escreve `style.flex` direto no DOM. Sem limpar, ele
-        // sobrevive ao fim do arrasto e passa a divergir do atributo: quando
-        // `setChildWidths` nada dispara (larguras arredondadas iguais) ou o
-        // filho tem node view proprio (o ProseMirror nao reescreve o `style`
-        // do wrapper do React), a coluna fica com uma largura fantasma.
+        // sobrevive ao arrasto e diverge do atributo — largura fantasma quando
+        // `setChildWidths` não dispara nada ou o filho tem node view próprio.
         left.style.flex = '';
         right.style.flex = '';
 
