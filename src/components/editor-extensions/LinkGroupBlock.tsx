@@ -18,9 +18,7 @@ export const LinkGroupBlock = Node.create({
   name: 'linkGroup',
 
   group: 'block',
-  // `{2,4}` e não `+`: um grupo de um card só deixaria o card órfão dentro de
-  // um container invisível.
-  content: 'linkPreview{2,4}',
+  content: 'linkPreview{1,4}',
   isolating: true,
   selectable: true,
   draggable: true,

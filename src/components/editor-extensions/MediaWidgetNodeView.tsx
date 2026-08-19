@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { Film, BookOpen, X } from 'lucide-react';
 
 export default function MediaWidgetNodeView(props: any) {
   const { node, deleteNode } = props;
   const { mediaId, mediaType, title } = node.attrs;
+
+  const pos = typeof props.getPos === 'function' ? props.getPos() : null;
+  const isNodeSelected = !!(
+    props.selected &&
+    props.editor?.state?.selection instanceof NodeSelection &&
+    typeof pos === 'number' &&
+    props.editor.state.selection.from === pos
+  );
 
   const getIcon = () => {
     switch(mediaType) {
@@ -42,15 +51,12 @@ export default function MediaWidgetNodeView(props: any) {
     <NodeViewWrapper as="span" className="inline-block relative group align-middle mx-1 my-1">
       <div 
         onMouseDown={() => {
-          if (typeof props.getPos === 'function') {
-            const pos = props.getPos();
-            if (typeof pos === 'number' && props.editor) {
-              props.editor.commands.setNodeSelection(pos);
-            }
+          if (typeof pos === 'number' && props.editor) {
+            props.editor.commands.setNodeSelection(pos);
           }
         }}
         className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20 ${
-          props.selected ? 'ring-2 ring-brand-400 border-brand-400' : ''
+          isNodeSelected ? 'ring-2 ring-brand-400 border-brand-400' : ''
         }`}
         onClick={handleOpenAction}
       >

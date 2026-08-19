@@ -462,11 +462,11 @@ export function findChildIndex(
 /**
  * Remove grupos degenerados (< 2 filhos) ou nós aninhados de forma inválida no documento.
  */
-export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: GroupSpec): boolean {
+export function pruneGroupsInTransaction(tr: Transaction, _doc?: PMNode, spec?: GroupSpec): boolean {
   let changed = false;
   const targets: Array<{ pos: number; node: PMNode }> = [];
 
-  doc.descendants((node, pos) => {
+  tr.doc.descendants((node, pos) => {
     const nodeSpec = getSpecForGroup(node);
     if (!nodeSpec) return true;
     if (spec && nodeSpec !== spec) return false;
@@ -478,20 +478,16 @@ export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: Gr
     innerPos > outer.pos && innerPos < outer.pos + outer.node.nodeSize;
 
   for (const target of targets.slice().reverse()) {
-    const { pos, node } = target;
-    const nodeSpec = getSpecForGroup(node)!;
+    const current = safeNodeAt(tr.doc, target.pos);
+    if (!current) continue;
+    const nodeSpec = getSpecForGroup(current);
+    if (!nodeSpec) continue;
 
-    if (targets.some((other) => other !== target && contains(target, other.pos))) continue;
+    const nested = targets.some((other) => other !== target && contains(other, target.pos));
+    if (current.childCount >= 2 && !nested) continue;
 
-    const nested = targets.some((other) => other !== target && contains(other, pos));
-    if (node.childCount >= 2 && !nested) continue;
-
-    const from = tr.mapping.map(pos, -1);
-    const to = tr.mapping.map(pos + node.nodeSize, 1);
-
-    const current = safeNodeAt(tr.doc, from);
-    if (!current || current.type !== node.type) continue;
-
+    const from = target.pos;
+    const to = from + current.nodeSize;
     const content = flattenGroup(nodeSpec, current);
 
     if (content.length === 0) tr.delete(from, to);

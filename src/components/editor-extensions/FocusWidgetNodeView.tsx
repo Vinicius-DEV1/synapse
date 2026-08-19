@@ -1,11 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
 import { Play, Pause, XSquare, Plus } from 'lucide-react';
 
 export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
   const { sessionId, duration, tag,  status } = node.attrs;
+
+  const pos = typeof getPos === 'function' ? getPos() : null;
+  const isNodeSelected = !!(
+    selected &&
+    editor?.state?.selection instanceof NodeSelection &&
+    typeof pos === 'number' &&
+    editor.state.selection.from === pos
+  );
   const { 
     currentSession, 
     timeLeft, 
@@ -78,7 +87,7 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
         }}
         onClick={togglePopover}
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium cursor-pointer transition-colors border select-all ${
-          selected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
+          isNodeSelected ? 'ring-2 ring-brand-400 border-brand-400 ' : ''
         }${
           status === 'completed' 
             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 

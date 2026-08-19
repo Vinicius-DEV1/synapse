@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
@@ -13,6 +14,14 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const [showPopover, setShowPopover] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const pos = typeof props.getPos === 'function' ? props.getPos() : null;
+  const isNodeSelected = !!(
+    props.selected &&
+    props.editor?.state?.selection instanceof NodeSelection &&
+    typeof pos === 'number' &&
+    props.editor.state.selection.from === pos
+  );
 
   useEffect(() => {
     setIsCompleted(status === 'completed');
@@ -166,7 +175,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
         }}
         contentEditable={false}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
-          props.selected || showPopover
+          isNodeSelected || showPopover
             ? 'ring-2 ring-brand-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] border-brand-400 bg-brand-500/25 scale-[1.03]'
             : isCompleted
             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 line-through opacity-80'
