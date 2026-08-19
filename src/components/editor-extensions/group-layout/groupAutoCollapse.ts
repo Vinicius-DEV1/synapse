@@ -1,24 +1,8 @@
 /**
- * groupAutoCollapse.ts
+ * Extensão GroupAutoCollapse
  *
- * Faz o layout se desmontar sozinho quando deixa de fazer sentido.
- *
- * `columnBlock` é `block+`: ao arrastar o único bloco de uma coluna para fora, o
- * ProseMirror recoloca um parágrafo vazio para manter o documento válido, e a
- * coluna morta continua ocupando espaço. Apagá-la à mão também não resolve — o
- * schema a recria na mesma transação.
- *
- * A heurística: colapsa se o filho está vazio E a seleção NÃO está dentro do
- * grupo. É isso que separa os dois casos, porque ao arrastar o conteúdo para
- * fora o cursor o acompanha e termina fora do grupo, enquanto quem apagou o
- * texto para redigitar deixa o cursor exatamente ali dentro.
- *
- * Como a UI nunca cria uma coluna vazia (os dois caminhos de criação exigem
- * conteúdo), "vazio" só pode ter vindo de uma remoção — o que também limpa, na
- * primeira edição, documentos que já ficaram com colunas mortas.
- *
- * Rede de segurança à parte: qualquer grupo que fique com menos de dois filhos
- * é desfeito. Esse caso é inequívoco.
+ * Desfaz automaticamente colunas ou grupos vazios após remoção ou arrasto de conteúdo,
+ * garantindo a integridade da estrutura sem deixar blocos órfãos ou vazios.
  */
 
 import { Extension } from '@tiptap/core';
@@ -35,7 +19,6 @@ import {
   writeGroupRemainderInTr,
 } from './groupCommands';
 
-/** Quantas vezes o colapso pode reentrar, para não haver laço infinito. */
 const AUTO_COLLAPSE_META = 'groupLayout:autoCollapse';
 const MAX_CASCADE = 3;
 
@@ -46,18 +29,14 @@ interface EmptyChildTarget {
   indices: number[];
 }
 
-/** Filhos vazios cuja remoção é segura (seleção fora do grupo). */
+/** Identifica filhos vazios cuja seleção não esteja ativamente dentro do grupo. */
 function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
   const targets: EmptyChildTarget[] = [];
 
-  // `descendants` e não `forEach`: o schema permite um grupo dentro de uma
-  // coluna, e uma coluna vazia lá dentro também precisa colapsar.
   state.doc.descendants((node, pos) => {
     const spec = getSpecForGroup(node);
     if (!spec) return true;
 
-    // A seleção só protege grupos cujos filhos são editados no lugar — ver
-    // `editableChildren`. Um card de link em branco é lixo do schema e sai já.
     const selectionInside =
       state.selection.from >= pos && state.selection.to <= pos + node.nodeSize;
     if (spec.editableChildren && selectionInside) return true;
@@ -79,24 +58,11 @@ function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
 function removeChildrenInTransaction(tr: Transaction, target: EmptyChildTarget): boolean {
   const { spec, groupPos, groupNode, indices } = target;
 
-  // As DUAS pontas são remapeadas: calcular o fim como `início + nodeSize`
-  // usaria o tamanho de antes da transação e erraria a faixa quando houvesse
-  // mais de um grupo afetado.
   const range = {
     from: tr.mapping.map(groupPos, -1),
     to: tr.mapping.map(groupPos + groupNode.nodeSize, 1),
   };
 
-  /*
-   * O grupo é relido do documento JÁ alterado, e não usado do retrato tirado
-   * antes da transação.
-   *
-   * Com grupos aninhados, o colapso do de dentro roda primeiro; reescrever o de
-   * fora a partir do retrato antigo devolveria o de dentro inteiro, desfazendo
-   * o que acabou de ser feito. Se a contagem de filhos mudou nesse meio-tempo,
-   * `indices` já não descreve este grupo: melhor não mexer e deixar o ciclo
-   * seguinte do `appendTransaction` reavaliar (ver MAX_CASCADE).
-   */
   const current = safeNodeAt(tr.doc, range.from);
   if (!current || current.type !== groupNode.type) return false;
   if (current.childCount !== groupNode.childCount) return false;
@@ -107,7 +73,7 @@ function removeChildrenInTransaction(tr: Transaction, target: EmptyChildTarget):
   try {
     writeGroupRemainderInTr(tr, spec, current, range, remaining);
   } catch (err) {
-    console.warn('[group-layout] Falha ao colapsar coluna vazia:', err);
+    console.warn('[group-layout] Erro ao colapsar coluna vazia:', err);
     return false;
   }
 
@@ -125,13 +91,7 @@ export const GroupAutoCollapse = Extension.create({
         appendTransaction(transactions, _oldState, newState) {
           if (!transactions.some((tr) => tr.docChanged)) return null;
 
-          /*
-           * Edições vindas de outro cliente pelo Yjs não passam por aqui: a
-           * heurística pergunta "a seleção está dentro do grupo?", e numa edição
-           * remota a seleção LOCAL está sempre em outro lugar. Sem esta guarda,
-           * este cliente colapsaria a coluna que o outro acabou de criar e
-           * propagaria a remoção de volta.
-           */
+          // Ignora transações originadas remotamente via Yjs para respeitar a seleção do autor
           if (transactions.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
             return null;
           }
@@ -145,7 +105,6 @@ export const GroupAutoCollapse = Extension.create({
           const tr = newState.tr;
           tr.setMeta(AUTO_COLLAPSE_META, depth + 1);
 
-          // De trás para frente: as posições anteriores continuam válidas.
           const targets = findCollapsibleChildren(newState).reverse();
           let changed = false;
           for (const target of targets) {

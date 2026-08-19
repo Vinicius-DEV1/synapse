@@ -1,16 +1,6 @@
 /**
- * groupCommands.ts
- *
- * Operações de documento sobre grupos lado a lado — sem React, sem DOM.
- *
- * Cada operação existe em duas formas: uma que trabalha sobre uma `Transaction`
- * (`...InTr`, componível, usada quando já há uma transação em andamento) e um
- * invólucro que monta a transação e despacha. A lógica mora só na primeira.
- *
- * Duas regras valem em todas elas:
- *   • a posição do alvo é remapeada DEPOIS de qualquer remoção;
- *   • o tamanho do node é lido de novo do documento já alterado, nunca guardado
- *     de antes.
+ * Comandos e operações transacionais sobre grupos e colunas lado a lado.
+ * Provê funções puras de manipulação de Transaction no ProseMirror e invólucros executáveis.
  */
 
 import { Fragment } from '@tiptap/pm/model';
@@ -20,6 +10,7 @@ import { NodeSelection, Selection, TextSelection } from '@tiptap/pm/state';
 import type { Transaction } from '@tiptap/pm/state';
 import type { GroupSpec } from './groupSpecs';
 import { getSpecForGroup } from './groupSpecs';
+import { triggerToast } from '../../ui/ToastContext';
 
 export interface GroupRef {
   spec: GroupSpec;
@@ -30,22 +21,16 @@ export interface GroupRef {
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /**
- * `doc.nodeAt` LANÇA para posições fora do documento, em vez de devolver null.
- *
- * Toda posição usada aqui foi capturada antes da operação — o alvo de um
- * arrasto vem do `dragover`, o `getPos` de um node view vem do render anterior —
- * e o documento pode ter encolhido nesse meio-tempo (edição remota do Yjs, um
- * `appendTransaction`, o próprio drop). Nesses casos a resposta certa é "não
- * existe mais", não uma exceção subindo pelo meio de um handler de drop.
+ * Retorna o nó em `pos` com validação de limites para evitar exceções caso o doc tenha mudado.
  */
 export function safeNodeAt(doc: PMNode, pos: number): PMNode | null {
   if (!Number.isInteger(pos) || pos < 0 || pos >= doc.content.size) return null;
   return doc.nodeAt(pos);
 }
 
-// ─── Leitura ──────────────────────────────────────────────────────────────────
-
-/** Localiza o grupo em `pos`, garantindo que ele ainda existe e é do tipo esperado. */
+/**
+ * Localiza e resolve a especificação de um grupo na posição indicada.
+ */
 export function resolveGroup(view: EditorView, pos: number | null | undefined): GroupRef | null {
   if (typeof pos !== 'number') return null;
   const node = safeNodeAt(view.state.doc, pos);
@@ -60,10 +45,10 @@ export function getChildren(groupNode: PMNode): PMNode[] {
   return children;
 }
 
-/** Posição absoluta de cada filho dentro do documento. */
+/** Retorna a posição absoluta de cada filho dentro do documento. */
 export function getChildPositions(groupPos: number, groupNode: PMNode): number[] {
   const positions: number[] = [];
-  let offset = groupPos + 1; // pula a tag de abertura do grupo
+  let offset = groupPos + 1;
   groupNode.forEach((child) => {
     positions.push(offset);
     offset += child.nodeSize;
@@ -80,12 +65,12 @@ export function getWidths(spec: GroupSpec, groupNode: PMNode): number[] {
   return getChildren(groupNode).map((child) => readWidth(spec, child));
 }
 
-/** Conteúdo do grupo achatado, na ordem das colunas. */
+/** Retorna o conteúdo achatado de todos os filhos do grupo. */
 export function flattenGroup(spec: GroupSpec, groupNode: PMNode): PMNode[] {
   return getChildren(groupNode).flatMap((child) => spec.childContent(child));
 }
 
-/** Redistribui as larguras igualmente entre um conjunto de filhos. */
+/** Redistribui as larguras igualmente entre os filhos fornecidos. */
 export function rebalance(spec: GroupSpec, children: PMNode[]): PMNode[] {
   const width = round1(100 / children.length);
   return children.map((child) =>
@@ -94,14 +79,7 @@ export function rebalance(spec: GroupSpec, children: PMNode[]): PMNode[] {
 }
 
 /**
- * Escreve o que deve sobrar de um grupo na faixa `range`.
- *
- * Com dois filhos ou mais, o grupo é reescrito com as larguras redistribuídas.
- * Com menos, ele é desfeito e fica só o conteúdo achatado — o schema não admite
- * grupo degenerado, e insistir nele faz o ProseMirror recriar a coluna.
- *
- * `extra` é conteúdo resgatado de um filho removido: ele sai do grupo, mas não
- * é destruído.
+ * Reescreve a faixa de um grupo com os filhos restantes, desfazendo o grupo se restar <= 1 filho.
  */
 export function writeGroupRemainderInTr(
   tr: Transaction,
@@ -125,36 +103,38 @@ export function writeGroupRemainderInTr(
   );
 
   if (extra.length > 0) {
-    // Bias +1: com o padrão (-1) o fim do grupo mapeia de volta para dentro
-    // dele, e o conteúdo resgatado voltaria para o grupo de onde saiu.
     tr.insert(tr.mapping.map(range.to, 1), Fragment.fromArray(extra));
   }
 }
 
-// ─── Larguras ─────────────────────────────────────────────────────────────────
-
-/** Grava as larguras dos filhos numa única transação. */
+/** Define as larguras de todas as colunas de um grupo em uma única transação. */
 export function setChildWidths(view: EditorView, groupPos: number, widths: number[]): boolean {
-  const group = resolveGroup(view, groupPos);
-  if (!group) return false;
+  try {
+    const group = resolveGroup(view, groupPos);
+    if (!group) return false;
 
-  const { spec, node } = group;
-  const tr = view.state.tr;
-  const positions = getChildPositions(groupPos, node);
+    const { spec, node } = group;
+    const tr = view.state.tr;
+    const positions = getChildPositions(groupPos, node);
 
-  getChildren(node).forEach((child, index) => {
-    const next = widths[index];
-    if (typeof next !== 'number' || !Number.isFinite(next)) return;
-    if (round1(next) === round1(readWidth(spec, child))) return;
-    tr.setNodeMarkup(positions[index], undefined, {
-      ...child.attrs,
-      [spec.widthAttr]: round1(next),
+    getChildren(node).forEach((child, index) => {
+      const next = widths[index];
+      if (typeof next !== 'number' || !Number.isFinite(next)) return;
+      if (round1(next) === round1(readWidth(spec, child))) return;
+      tr.setNodeMarkup(positions[index], undefined, {
+        ...child.attrs,
+        [spec.widthAttr]: round1(next),
+      });
     });
-  });
 
-  if (!tr.docChanged) return false;
-  view.dispatch(tr);
-  return true;
+    if (!tr.docChanged) return false;
+    view.dispatch(tr);
+    return true;
+  } catch (err) {
+    console.error('[group-layout] Erro ao redimensionar colunas:', err);
+    triggerToast('Não foi possível redimensionar a coluna.', 'error');
+    return false;
+  }
 }
 
 export function balanceChildren(view: EditorView, groupPos: number): boolean {
@@ -163,31 +143,8 @@ export function balanceChildren(view: EditorView, groupPos: number): boolean {
   return setChildWidths(view, groupPos, new Array(group.node.childCount).fill(100 / group.node.childCount));
 }
 
-// ─── Entrada de conteúdo ──────────────────────────────────────────────────────
-
-/**
- * De onde sai o conteúdo que está entrando no grupo.
- *
- * Num arrasto isto é uma `Selection` — a mesma que o `prosemirror-view` usa
- * para remover a origem no handler de drop dele:
- *
- *     if (move) { const { node } = dragging;
- *                 if (node) node.replace(tr); else tr.deleteSelection(); }
- *
- * Repare que num arrasto de node view a seleção do DOCUMENTO não é atualizada:
- * o `dragstart` do ProseMirror monta a `NodeSelection` e a guarda em
- * `dragging.node` sem despachá-la. Quem resolve qual das duas vale é o
- * `DragToGroup`; aqui só se aplica a que chegou. Nenhuma posição é
- * reconstruída em lugar nenhum.
- */
 export type GroupContentSource = { from: number; to: number } | Selection | null | undefined;
 
-/**
- * A faixa que a origem ocupa, quando ela é um NODE inteiro.
- *
- * Só esse caso interessa ao tratamento especial abaixo: uma seleção de texto
- * nunca é filha direta de um grupo.
- */
 function nodeRangeOf(source: GroupContentSource): { from: number; to: number } | null {
   if (source instanceof NodeSelection) return { from: source.from, to: source.to };
   if (source instanceof Selection) return null;
@@ -195,19 +152,7 @@ function nodeRangeOf(source: GroupContentSource): { from: number; to: number } |
 }
 
 /**
- * Tira um filho do grupo reescrevendo o grupo inteiro, quando `childPos` é
- * mesmo um filho direto de um.
- *
- * Deixar essa remoção para o ProseMirror é o que fabrica o card fantasma:
- * `linkGroup` é `linkPreview{2,4}`, e ao apagar um card de um grupo de DOIS o
- * schema recompõe o mínimo inventando um `linkPreview` em branco. O usuário vê
- * um card a mais aparecer do nada — o "movi e duplicou".
- *
- * Antes isso era limpo depois, pelo auto-colapso, numa segunda transação. Duas
- * coisas o faziam falhar: ele desiste do ciclo inteiro quando uma edição remota
- * do Yjs chega junto, e o node view do fantasma chega a montar e disparar
- * `fetchLinkMetadata('')` antes de morrer. Aqui o fantasma simplesmente não
- * nasce.
+ * Remove um filho de um grupo reescrevendo o grupo para manter o schema íntegro.
  */
 function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
   const found = findChildIndex(tr.doc, childPos);
@@ -224,13 +169,12 @@ function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
       to: found.groupPos + group.nodeSize,
     }, remaining);
   } catch (err) {
-    console.warn('[group-layout] Não foi possível reescrever o grupo de origem:', err);
+    console.warn('[group-layout] Erro ao reescrever grupo de origem:', err);
     return false;
   }
   return true;
 }
 
-/** Remove a origem e devolve o índice do passo a partir do qual remapear. */
 function removeSource(tr: Transaction, source: GroupContentSource): number {
   const base = tr.steps.length;
   if (!source) return base;
@@ -238,21 +182,11 @@ function removeSource(tr: Transaction, source: GroupContentSource): number {
   const range = nodeRangeOf(source);
   if (range && removeGroupChildInTr(tr, range.from)) return base;
 
-  // `Selection` primeiro: ela também tem `from`/`to`, e a faixa crua é o outro caso.
   if (source instanceof Selection) source.replace(tr);
   else if (range) tr.delete(range.from, range.to);
   return base;
 }
 
-/**
- * Deixa a seleção sobre o conteúdo que acabou de ser solto.
- *
- * Sem isto a seleção fica onde `Selection.replace` a largou — ela chama
- * `selectionToInsertionEnd`, que a ancora no BURACO deixado pela origem. Depois
- * do agrupamento esse buraco pertence ao bloco vizinho, e era ele que aparecia
- * selecionado: "movi um card e o outro ficou aceso". O ProseMirror faz o mesmo
- * ajuste no fim do drop dele.
- */
 function selectGroupChildInTr(tr: Transaction, groupPos: number, index: number): void {
   try {
     const group = safeNodeAt(tr.doc, groupPos);
@@ -262,19 +196,17 @@ function selectGroupChildInTr(tr: Transaction, groupPos: number, index: number):
     const child = safeNodeAt(tr.doc, childPos);
     if (!child) return;
 
-    // Um card é átomo selecionável: a seleção é ele mesmo. Uma coluna tem
-    // conteúdo editável: o cursor entra nela, como num mover comum.
     tr.setSelection(
       child.isAtom && NodeSelection.isSelectable(child)
         ? NodeSelection.create(tr.doc, childPos)
         : TextSelection.near(tr.doc.resolve(childPos + 1))
     );
   } catch {
-    /* A seleção é conveniência: um erro aqui nunca derruba o drop. */
+    // Falha silenciosa aceitável na redefinição de seleção opcional pós-drop
   }
 }
 
-/** Cria um grupo envolvendo o node em `targetPos` e o conteúdo solto. */
+/** Cria um grupo contendo o nó em `targetPos` e o conteúdo fornecido em `dropped`. */
 export function createGroupInTr(
   tr: Transaction,
   spec: GroupSpec,
@@ -290,45 +222,41 @@ export function createGroupInTr(
   const expected = safeNodeAt(tr.doc, targetPos);
   if (!expected) return false;
 
-  /*
-   * Tudo que dá para decidir SEM tocar no documento é decidido antes da
-   * remoção. Uma recusa depois dela deixaria a transação com a origem apagada e
-   * nada no lugar — conteúdo perdido para quem despachasse mesmo assim. Os
-   * invólucros aqui do módulo descartam a transação quando o retorno é `false`,
-   * mas essa é uma garantia frágil de manter à distância.
-   */
-  if (!spec.wrapAsChild(schema, dropped, 50)) return false;
-  if (!spec.wrapAsChild(schema, [expected], 50)) return false;
+  const droppedChild = spec.wrapAsChild(schema, dropped, 50);
+  const targetChild = spec.wrapAsChild(schema, [expected], 50);
+  if (!droppedChild || !targetChild) return false;
+
+  const initialStepsCount = tr.steps.length;
 
   const base = removeSource(tr, source);
-
-  // `slice(base)` mapeia só pelos passos desta operação, para funcionar também
-  // quando a transação já vinha com passos de outra.
   const pos = tr.mapping.slice(base).map(targetPos, -1);
   const target = safeNodeAt(tr.doc, pos);
-  if (!target) return false;
+  if (!target || target.type !== expected.type) {
+    while (tr.steps.length > initialStepsCount) {
+      tr.steps.pop();
+    }
+    return false;
+  }
 
-  /*
-   * Se a posição remapeada passou a apontar para outro TIPO, o mapeamento
-   * escorregou e envolver esse node agruparia o bloco errado. A comparação é
-   * por tipo, e não por `eq`: quando a origem removida estava dentro do alvo
-   * (arrastar um bloco de dentro do grupo para a borda dele) o conteúdo muda de
-   * forma legítima, e `eq` rejeitaria a operação.
-   */
-  if (target.type !== expected.type) return false;
-
-  const droppedChild = spec.wrapAsChild(schema, dropped, 50);
-  const targetChild = spec.wrapAsChild(schema, [target], 50);
-  if (!droppedChild || !targetChild) return false;
+  const reloadedTargetChild = spec.wrapAsChild(schema, [target], 50);
+  if (!reloadedTargetChild) {
+    while (tr.steps.length > initialStepsCount) {
+      tr.steps.pop();
+    }
+    return false;
+  }
 
   try {
     const group = groupType.create(
       null,
-      side === 'left' ? [droppedChild, targetChild] : [targetChild, droppedChild]
+      side === 'left' ? [droppedChild, reloadedTargetChild] : [reloadedTargetChild, droppedChild]
     );
     tr.replaceWith(pos, pos + target.nodeSize, group);
   } catch (err) {
-    console.warn(`[group-layout] Não foi possível criar ${spec.groupName}:`, err);
+    console.warn(`[group-layout] Erro ao criar ${spec.groupName}:`, err);
+    while (tr.steps.length > initialStepsCount) {
+      tr.steps.pop();
+    }
     return false;
   }
 
@@ -336,7 +264,7 @@ export function createGroupInTr(
   return tr.docChanged;
 }
 
-/** Acrescenta uma coluna a um grupo existente, redistribuindo as larguras. */
+/** Adiciona uma coluna a um grupo existente redistribuindo as larguras. */
 export function appendToGroupInTr(
   tr: Transaction,
   groupPos: number,
@@ -348,21 +276,21 @@ export function appendToGroupInTr(
   const spec = initial ? getSpecForGroup(initial) : null;
   if (!spec || !initial) return false;
 
-  // Antes da remoção — ver a mesma nota em `createGroupInTr`. Sem isto, soltar
-  // numa coluna já cheia apagava o bloco arrastado e não o punha em lugar
-  // nenhum.
   if (initial.childCount >= spec.maxChildren) return false;
-  if (!spec.wrapAsChild(tr.doc.type.schema, dropped, spec.defaultWidth)) return false;
-
-  const base = removeSource(tr, source);
-
-  const pos = tr.mapping.slice(base).map(groupPos, -1);
-  const group = safeNodeAt(tr.doc, pos);
-  if (!group || group.type.name !== spec.groupName) return false;
-  if (group.childCount >= spec.maxChildren) return false;
-
   const newChild = spec.wrapAsChild(tr.doc.type.schema, dropped, spec.defaultWidth);
   if (!newChild) return false;
+
+  const initialStepsCount = tr.steps.length;
+
+  const base = removeSource(tr, source);
+  const pos = tr.mapping.slice(base).map(groupPos, -1);
+  const group = safeNodeAt(tr.doc, pos);
+  if (!group || group.type.name !== spec.groupName || group.childCount >= spec.maxChildren) {
+    while (tr.steps.length > initialStepsCount) {
+      tr.steps.pop();
+    }
+    return false;
+  }
 
   const children = getChildren(group);
   const next = side === 'left' ? [newChild, ...children] : [...children, newChild];
@@ -370,7 +298,10 @@ export function appendToGroupInTr(
   try {
     tr.replaceWith(pos, pos + group.nodeSize, group.type.create(group.attrs, rebalance(spec, next)));
   } catch (err) {
-    console.warn(`[group-layout] Não foi possível expandir ${spec.groupName}:`, err);
+    console.warn(`[group-layout] Erro ao expandir ${spec.groupName}:`, err);
+    while (tr.steps.length > initialStepsCount) {
+      tr.steps.pop();
+    }
     return false;
   }
 
@@ -408,17 +339,13 @@ export function appendToGroup(
 }
 
 /**
- * Agrupa dois nodes irmãos já existentes (botões "agrupar com o vizinho").
- * `pos` é o node âncora; procura o irmão seguinte e, se não houver, o anterior.
+ * Agrupa nós irmãos adjacentes (usado pelos botões de ação 'agrupar com o vizinho').
  */
 export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number): boolean {
   const { state } = view;
   const node = state.doc.nodeAt(pos);
   if (!node) return false;
 
-  // Já dentro de um grupo não há o que agrupar: o vizinho seria uma coluna irmã,
-  // e o grupo resultante nasceria aninhado — algo que o schema recusa. A UI não
-  // oferece o botão nesse caso; aqui é a garantia de que continua assim.
   if (findChildIndex(state.doc, pos)) return false;
 
   const range = { from: pos, to: pos + node.nodeSize };
@@ -436,90 +363,86 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
   return false;
 }
 
-// ─── Saída de conteúdo ────────────────────────────────────────────────────────
-
-/**
- * Desfaz o grupo: substitui-o pelo conteúdo de todos os filhos, empilhado.
- * É a saída de emergência — sem ela o schema recria qualquer coluna que o
- * usuário tente apagar, e não há como voltar ao layout normal.
- */
+/** Desfaz o layout em colunas substituindo o grupo por seu conteúdo em fluxo vertical. */
 export function unwrapGroup(view: EditorView, groupPos: number): boolean {
-  const group = resolveGroup(view, groupPos);
-  if (!group) return false;
+  try {
+    const group = resolveGroup(view, groupPos);
+    if (!group) return false;
 
-  const content = flattenGroup(group.spec, group.node);
-  const tr = view.state.tr;
-  const end = groupPos + group.node.nodeSize;
+    const content = flattenGroup(group.spec, group.node);
+    const tr = view.state.tr;
+    const end = groupPos + group.node.nodeSize;
 
-  if (content.length === 0) tr.delete(groupPos, end);
-  else tr.replaceWith(groupPos, end, Fragment.fromArray(content));
+    if (content.length === 0) tr.delete(groupPos, end);
+    else tr.replaceWith(groupPos, end, Fragment.fromArray(content));
 
-  return dispatchIfChanged(view, tr, true);
+    return dispatchIfChanged(view, tr, true);
+  } catch (err) {
+    console.error('[group-layout] Falha ao desfazer agrupamento:', err);
+    triggerToast('Não foi possível desfazer as colunas.', 'error');
+    return false;
+  }
 }
 
-/**
- * Remove um filho do grupo. Por padrão o conteúdo não é destruído: ele é
- * reinserido logo depois do grupo. Se sobrar um filho só, o grupo é desfeito.
- */
+/** Remove uma coluna específica do grupo, preservando opcionalmente seu conteúdo. */
 export function removeChild(
   view: EditorView,
   groupPos: number,
   index: number,
   options: { keepContent?: boolean } = {}
 ): boolean {
-  const group = resolveGroup(view, groupPos);
-  if (!group) return false;
+  try {
+    const group = resolveGroup(view, groupPos);
+    if (!group) return false;
 
-  const { spec, node } = group;
-  const children = getChildren(node);
-  if (index < 0 || index >= children.length) return false;
+    const { spec, node } = group;
+    const children = getChildren(node);
+    if (index < 0 || index >= children.length) return false;
 
-  const remaining = children.filter((_, i) => i !== index);
-  const rescued = (options.keepContent ?? true) ? spec.childContent(children[index]) : [];
+    const remaining = children.filter((_, i) => i !== index);
+    const rescued = (options.keepContent ?? true) ? spec.childContent(children[index]) : [];
 
-  const tr = view.state.tr;
-  const range = { from: groupPos, to: groupPos + node.nodeSize };
-  writeGroupRemainderInTr(tr, spec, node, range, remaining, rescued);
+    const tr = view.state.tr;
+    const range = { from: groupPos, to: groupPos + node.nodeSize };
+    writeGroupRemainderInTr(tr, spec, node, range, remaining, rescued);
 
-  return dispatchIfChanged(view, tr, true);
+    return dispatchIfChanged(view, tr, true);
+  } catch (err) {
+    console.error('[group-layout] Falha ao remover coluna:', err);
+    triggerToast('Não foi possível remover a coluna.', 'error');
+    return false;
+  }
 }
 
-/**
- * Troca uma coluna de lugar dentro do grupo.
- *
- * Não passa pelo arrasto de propósito: o `dragover` do `DragToGroup` só
- * reconhece blocos de nível superior, e uma coluna nunca é um deles. A largura
- * viaja junto com a coluna — reordenar não redimensiona.
- */
+/** Reordena uma coluna dentro do grupo mudando sua posição indexada. */
 export function moveChild(view: EditorView, groupPos: number, from: number, to: number): boolean {
-  const group = resolveGroup(view, groupPos);
-  if (!group) return false;
-
-  const children = getChildren(group.node);
-  if (from === to) return false;
-  if (from < 0 || from >= children.length || to < 0 || to >= children.length) return false;
-
-  const reordered = children.slice();
-  reordered.splice(to, 0, ...reordered.splice(from, 1));
-
-  const tr = view.state.tr;
   try {
+    const group = resolveGroup(view, groupPos);
+    if (!group) return false;
+
+    const children = getChildren(group.node);
+    if (from === to) return false;
+    if (from < 0 || from >= children.length || to < 0 || to >= children.length) return false;
+
+    const reordered = children.slice();
+    reordered.splice(to, 0, ...reordered.splice(from, 1));
+
+    const tr = view.state.tr;
     tr.replaceWith(
       groupPos,
       groupPos + group.node.nodeSize,
       group.node.type.create(group.node.attrs, reordered)
     );
+
+    return dispatchIfChanged(view, tr, true);
   } catch (err) {
-    console.warn('[group-layout] Não foi possível reordenar a coluna:', err);
+    console.error('[group-layout] Erro ao reordenar coluna:', err);
+    triggerToast('Não foi possível reordenar a coluna.', 'error');
     return false;
   }
-
-  return dispatchIfChanged(view, tr, true);
 }
 
-// ─── Limpeza ──────────────────────────────────────────────────────────────────
-
-/** Índice de um filho dentro do grupo pai, a partir da posição do filho. */
+/** Retorna a posição do grupo pai e o índice do filho a partir da posição absoluta do filho. */
 export function findChildIndex(
   doc: PMNode,
   childPos: number
@@ -537,14 +460,12 @@ export function findChildIndex(
 }
 
 /**
- * Desfaz grupos degenerados (menos de dois filhos) e grupos aninhados dentro de
- * outros, numa transação já em andamento.
+ * Remove grupos degenerados (< 2 filhos) ou nós aninhados de forma inválida no documento.
  */
 export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: GroupSpec): boolean {
   let changed = false;
   const targets: Array<{ pos: number; node: PMNode }> = [];
 
-  // Desce a árvore inteira: o schema não impede um grupo dentro de uma coluna.
   doc.descendants((node, pos) => {
     const nodeSpec = getSpecForGroup(node);
     if (!nodeSpec) return true;
@@ -556,33 +477,18 @@ export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: Gr
   const contains = (outer: { pos: number; node: PMNode }, innerPos: number) =>
     innerPos > outer.pos && innerPos < outer.pos + outer.node.nodeSize;
 
-  // De trás para frente, para não invalidar as posições anteriores.
   for (const target of targets.slice().reverse()) {
     const { pos, node } = target;
     const nodeSpec = getSpecForGroup(node)!;
 
-    /*
-     * Um grupo que contém outro alvo fica para a próxima passada: `node` é um
-     * retrato de antes da transação, e desfazê-lo agora reinseriria o conteúdo
-     * antigo, ressuscitando o grupo interno recém-desfeito. O `appendTransaction`
-     * reentra (MAX_CASCADE), então o de fora é tratado no ciclo seguinte.
-     */
     if (targets.some((other) => other !== target && contains(target, other.pos))) continue;
 
     const nested = targets.some((other) => other !== target && contains(other, pos));
     if (node.childCount >= 2 && !nested) continue;
 
-    // As DUAS pontas são remapeadas: calcular o fim como `início + nodeSize`
-    // usaria o tamanho de antes da transação e erraria a faixa.
     const from = tr.mapping.map(pos, -1);
     const to = tr.mapping.map(pos + node.nodeSize, 1);
 
-    /*
-     * O conteúdo é relido do documento JÁ alterado. `node` é um retrato de
-     * antes da transação: desfazer o grupo a partir dele reescreveria por cima
-     * do que outra passada deste mesmo laço acabou de mudar lá dentro,
-     * ressuscitando conteúdo removido — o grupo aninhado volta do nada.
-     */
     const current = safeNodeAt(tr.doc, from);
     if (!current || current.type !== node.type) continue;
 
