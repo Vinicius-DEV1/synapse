@@ -28,7 +28,12 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { ySyncPluginKey } from 'y-prosemirror';
 import { getSpecForGroup } from './groupSpecs';
 import type { GroupSpec } from './groupSpecs';
-import { getChildren, pruneGroupsInTransaction, writeGroupRemainderInTr } from './groupCommands';
+import {
+  getChildren,
+  pruneGroupsInTransaction,
+  safeNodeAt,
+  writeGroupRemainderInTr,
+} from './groupCommands';
 
 /** Quantas vezes o colapso pode reentrar, para não haver laço infinito. */
 const AUTO_COLLAPSE_META = 'groupLayout:autoCollapse';
@@ -73,8 +78,6 @@ function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
 
 function removeChildrenInTransaction(tr: Transaction, target: EmptyChildTarget): boolean {
   const { spec, groupPos, groupNode, indices } = target;
-  const drop = new Set(indices);
-  const remaining = getChildren(groupNode).filter((_, index) => !drop.has(index));
 
   // As DUAS pontas são remapeadas: calcular o fim como `início + nodeSize`
   // usaria o tamanho de antes da transação e erraria a faixa quando houvesse
@@ -84,8 +87,25 @@ function removeChildrenInTransaction(tr: Transaction, target: EmptyChildTarget):
     to: tr.mapping.map(groupPos + groupNode.nodeSize, 1),
   };
 
+  /*
+   * O grupo é relido do documento JÁ alterado, e não usado do retrato tirado
+   * antes da transação.
+   *
+   * Com grupos aninhados, o colapso do de dentro roda primeiro; reescrever o de
+   * fora a partir do retrato antigo devolveria o de dentro inteiro, desfazendo
+   * o que acabou de ser feito. Se a contagem de filhos mudou nesse meio-tempo,
+   * `indices` já não descreve este grupo: melhor não mexer e deixar o ciclo
+   * seguinte do `appendTransaction` reavaliar (ver MAX_CASCADE).
+   */
+  const current = safeNodeAt(tr.doc, range.from);
+  if (!current || current.type !== groupNode.type) return false;
+  if (current.childCount !== groupNode.childCount) return false;
+
+  const drop = new Set(indices);
+  const remaining = getChildren(current).filter((_, index) => !drop.has(index));
+
   try {
-    writeGroupRemainderInTr(tr, spec, groupNode, range, remaining);
+    writeGroupRemainderInTr(tr, spec, current, range, remaining);
   } catch (err) {
     console.warn('[group-layout] Falha ao colapsar coluna vazia:', err);
     return false;
