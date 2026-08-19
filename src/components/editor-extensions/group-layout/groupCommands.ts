@@ -16,7 +16,7 @@
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { EditorView } from '@tiptap/pm/view';
-import { Selection } from '@tiptap/pm/state';
+import { NodeSelection, Selection, TextSelection } from '@tiptap/pm/state';
 import type { Transaction } from '@tiptap/pm/state';
 import type { GroupSpec } from './groupSpecs';
 import { getSpecForGroup } from './groupSpecs';
@@ -182,13 +182,96 @@ export function balanceChildren(view: EditorView, groupPos: number): boolean {
  */
 export type GroupContentSource = { from: number; to: number } | Selection | null | undefined;
 
+/**
+ * A faixa que a origem ocupa, quando ela é um NODE inteiro.
+ *
+ * Só esse caso interessa ao tratamento especial abaixo: uma seleção de texto
+ * nunca é filha direta de um grupo.
+ */
+function nodeRangeOf(source: GroupContentSource): { from: number; to: number } | null {
+  if (source instanceof NodeSelection) return { from: source.from, to: source.to };
+  if (source instanceof Selection) return null;
+  return source && source.to > source.from ? source : null;
+}
+
+/**
+ * Tira um filho do grupo reescrevendo o grupo inteiro, quando `childPos` é
+ * mesmo um filho direto de um.
+ *
+ * Deixar essa remoção para o ProseMirror é o que fabrica o card fantasma:
+ * `linkGroup` é `linkPreview{2,4}`, e ao apagar um card de um grupo de DOIS o
+ * schema recompõe o mínimo inventando um `linkPreview` em branco. O usuário vê
+ * um card a mais aparecer do nada — o "movi e duplicou".
+ *
+ * Antes isso era limpo depois, pelo auto-colapso, numa segunda transação. Duas
+ * coisas o faziam falhar: ele desiste do ciclo inteiro quando uma edição remota
+ * do Yjs chega junto, e o node view do fantasma chega a montar e disparar
+ * `fetchLinkMetadata('')` antes de morrer. Aqui o fantasma simplesmente não
+ * nasce.
+ */
+function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
+  const found = findChildIndex(tr.doc, childPos);
+  if (!found) return false;
+
+  const group = safeNodeAt(tr.doc, found.groupPos);
+  const spec = group ? getSpecForGroup(group) : null;
+  if (!group || !spec) return false;
+
+  const remaining = getChildren(group).filter((_, index) => index !== found.index);
+  try {
+    writeGroupRemainderInTr(tr, spec, group, {
+      from: found.groupPos,
+      to: found.groupPos + group.nodeSize,
+    }, remaining);
+  } catch (err) {
+    console.warn('[group-layout] Não foi possível reescrever o grupo de origem:', err);
+    return false;
+  }
+  return true;
+}
+
 /** Remove a origem e devolve o índice do passo a partir do qual remapear. */
 function removeSource(tr: Transaction, source: GroupContentSource): number {
   const base = tr.steps.length;
+  if (!source) return base;
+
+  const range = nodeRangeOf(source);
+  if (range && removeGroupChildInTr(tr, range.from)) return base;
+
   // `Selection` primeiro: ela também tem `from`/`to`, e a faixa crua é o outro caso.
   if (source instanceof Selection) source.replace(tr);
-  else if (source && source.to > source.from) tr.delete(source.from, source.to);
+  else if (range) tr.delete(range.from, range.to);
   return base;
+}
+
+/**
+ * Deixa a seleção sobre o conteúdo que acabou de ser solto.
+ *
+ * Sem isto a seleção fica onde `Selection.replace` a largou — ela chama
+ * `selectionToInsertionEnd`, que a ancora no BURACO deixado pela origem. Depois
+ * do agrupamento esse buraco pertence ao bloco vizinho, e era ele que aparecia
+ * selecionado: "movi um card e o outro ficou aceso". O ProseMirror faz o mesmo
+ * ajuste no fim do drop dele.
+ */
+function selectGroupChildInTr(tr: Transaction, groupPos: number, index: number): void {
+  try {
+    const group = safeNodeAt(tr.doc, groupPos);
+    if (!group || index < 0 || index >= group.childCount) return;
+
+    const childPos = getChildPositions(groupPos, group)[index];
+    const child = safeNodeAt(tr.doc, childPos);
+    if (!child) return;
+
+    // Um card é átomo selecionável: a seleção é ele mesmo. Uma coluna tem
+    // conteúdo editável: o cursor entra nela, como num mover comum.
+    tr.setSelection(
+      child.isAtom && NodeSelection.isSelectable(child)
+        ? NodeSelection.create(tr.doc, childPos)
+        : TextSelection.near(tr.doc.resolve(childPos + 1))
+    );
+  } catch {
+    /* A seleção é conveniência: um erro aqui nunca derruba o drop. */
+  }
 }
 
 /** Cria um grupo envolvendo o node em `targetPos` e o conteúdo solto. */
@@ -206,6 +289,16 @@ export function createGroupInTr(
 
   const expected = safeNodeAt(tr.doc, targetPos);
   if (!expected) return false;
+
+  /*
+   * Tudo que dá para decidir SEM tocar no documento é decidido antes da
+   * remoção. Uma recusa depois dela deixaria a transação com a origem apagada e
+   * nada no lugar — conteúdo perdido para quem despachasse mesmo assim. Os
+   * invólucros aqui do módulo descartam a transação quando o retorno é `false`,
+   * mas essa é uma garantia frágil de manter à distância.
+   */
+  if (!spec.wrapAsChild(schema, dropped, 50)) return false;
+  if (!spec.wrapAsChild(schema, [expected], 50)) return false;
 
   const base = removeSource(tr, source);
 
@@ -239,6 +332,7 @@ export function createGroupInTr(
     return false;
   }
 
+  selectGroupChildInTr(tr, pos, side === 'left' ? 0 : 1);
   return tr.docChanged;
 }
 
@@ -252,7 +346,13 @@ export function appendToGroupInTr(
 ): boolean {
   const initial = safeNodeAt(tr.doc, groupPos);
   const spec = initial ? getSpecForGroup(initial) : null;
-  if (!spec) return false;
+  if (!spec || !initial) return false;
+
+  // Antes da remoção — ver a mesma nota em `createGroupInTr`. Sem isto, soltar
+  // numa coluna já cheia apagava o bloco arrastado e não o punha em lugar
+  // nenhum.
+  if (initial.childCount >= spec.maxChildren) return false;
+  if (!spec.wrapAsChild(tr.doc.type.schema, dropped, spec.defaultWidth)) return false;
 
   const base = removeSource(tr, source);
 
@@ -274,6 +374,7 @@ export function appendToGroupInTr(
     return false;
   }
 
+  selectGroupChildInTr(tr, pos, side === 'left' ? 0 : next.length - 1);
   return tr.docChanged;
 }
 
@@ -314,6 +415,11 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
   const { state } = view;
   const node = state.doc.nodeAt(pos);
   if (!node) return false;
+
+  // Já dentro de um grupo não há o que agrupar: o vizinho seria uma coluna irmã,
+  // e o grupo resultante nasceria aninhado — algo que o schema recusa. A UI não
+  // oferece o botão nesse caso; aqui é a garantia de que continua assim.
+  if (findChildIndex(state.doc, pos)) return false;
 
   const range = { from: pos, to: pos + node.nodeSize };
 
@@ -470,7 +576,17 @@ export function pruneGroupsInTransaction(tr: Transaction, doc: PMNode, spec?: Gr
     // usaria o tamanho de antes da transação e erraria a faixa.
     const from = tr.mapping.map(pos, -1);
     const to = tr.mapping.map(pos + node.nodeSize, 1);
-    const content = flattenGroup(nodeSpec, node);
+
+    /*
+     * O conteúdo é relido do documento JÁ alterado. `node` é um retrato de
+     * antes da transação: desfazer o grupo a partir dele reescreveria por cima
+     * do que outra passada deste mesmo laço acabou de mudar lá dentro,
+     * ressuscitando conteúdo removido — o grupo aninhado volta do nada.
+     */
+    const current = safeNodeAt(tr.doc, from);
+    if (!current || current.type !== node.type) continue;
+
+    const content = flattenGroup(nodeSpec, current);
 
     if (content.length === 0) tr.delete(from, to);
     else tr.replaceWith(from, to, Fragment.fromArray(content));
