@@ -206,7 +206,10 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
             const newOrder = arrayMove(siblings, oldIndex, newIndex);
             newOrder.forEach((p: Page, index: number) => {
               if (p.sort_order !== index) {
-                onUpdatePage(p.id, { sort_order: index });
+                onUpdatePage(p.id, { sort_order: index }).catch((err) => {
+                  console.error('[SubPageGrid] Falha ao reordenar página:', err);
+                  triggerToast('Falha ao salvar a nova ordem das páginas.', 'error');
+                });
               }
             });
           }

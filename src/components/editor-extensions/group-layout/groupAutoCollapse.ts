@@ -89,31 +89,36 @@ export const GroupAutoCollapse = Extension.create({
         key: new PluginKey('groupAutoCollapse'),
 
         appendTransaction(transactions, _oldState, newState) {
-          if (!transactions.some((tr) => tr.docChanged)) return null;
+          try {
+            if (!transactions.some((tr) => tr.docChanged)) return null;
 
-          // Ignora transações originadas remotamente via Yjs para respeitar a seleção do autor
-          if (transactions.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
+            // Ignora transações originadas remotamente via Yjs para respeitar a seleção do autor
+            if (transactions.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
+              return null;
+            }
+
+            const depth = transactions.reduce(
+              (max, tr) => Math.max(max, Number(tr.getMeta(AUTO_COLLAPSE_META)) || 0),
+              0
+            );
+            if (depth >= MAX_CASCADE) return null;
+
+            const tr = newState.tr;
+            tr.setMeta(AUTO_COLLAPSE_META, depth + 1);
+
+            const targets = findCollapsibleChildren(newState).reverse();
+            let changed = false;
+            for (const target of targets) {
+              if (removeChildrenInTransaction(tr, target)) changed = true;
+            }
+
+            if (!changed) changed = pruneGroupsInTransaction(tr, newState.doc);
+
+            return changed && tr.docChanged ? tr : null;
+          } catch (err) {
+            console.error('[group-layout] Erro inesperado em GroupAutoCollapse:', err);
             return null;
           }
-
-          const depth = transactions.reduce(
-            (max, tr) => Math.max(max, Number(tr.getMeta(AUTO_COLLAPSE_META)) || 0),
-            0
-          );
-          if (depth >= MAX_CASCADE) return null;
-
-          const tr = newState.tr;
-          tr.setMeta(AUTO_COLLAPSE_META, depth + 1);
-
-          const targets = findCollapsibleChildren(newState).reverse();
-          let changed = false;
-          for (const target of targets) {
-            if (removeChildrenInTransaction(tr, target)) changed = true;
-          }
-
-          if (!changed) changed = pruneGroupsInTransaction(tr, newState.doc);
-
-          return changed && tr.docChanged ? tr : null;
         },
       }),
     ];

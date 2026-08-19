@@ -5,6 +5,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { uploadEncryptedImage, setCachedImage } from '../../../services/image-drive';
 import { applyGroupDrop, consumeGroupDropTarget } from '../../editor-extensions/group-layout';
 import { findNodePos } from '../../editor-extensions/image/imageUtils';
+import { triggerToast } from '../../ui/ToastContext';
 
 interface UseEditorDropPasteProps {
   editor: Editor | null;
@@ -36,139 +37,43 @@ export function useEditorDropPaste({
 }: UseEditorDropPasteProps) {
   const handlePaste = useCallback(
     (view: EditorView, event: ClipboardEvent) => {
-      if (!editor) return false;
+      try {
+        if (!editor) return false;
 
-      const textPasted = event.clipboardData?.getData('text/plain');
-      if (textPasted) {
-        const urlStr = textPasted.trim();
-        let isUrl = false;
-        try {
-          new URL(urlStr);
-          isUrl = urlStr.startsWith('http');
-        } catch {
-          isUrl = false;
-        }
+        const textPasted = event.clipboardData?.getData('text/plain');
+        if (textPasted) {
+          const urlStr = textPasted.trim();
+          let isUrl = false;
+          try {
+            new URL(urlStr);
+            isUrl = urlStr.startsWith('http');
+          } catch {
+            isUrl = false;
+          }
 
-        if (isUrl && view.state.selection.empty) {
-          editor.chain().focus().insertContent({
-            type: 'linkPreview',
-            attrs: { url: urlStr, isLoading: true },
-          }).run();
-          event.preventDefault();
-          return true;
-        }
-      }
-
-      const items = Array.from(event.clipboardData?.items || []);
-      let imagePasted = false;
-      const nodesToInsert: any[] = [];
-      const readers: Promise<{ src: string }>[] = [];
-
-      for (const item of items) {
-        if (item.type.indexOf('image') === 0) {
-          imagePasted = true;
-          const file = item.getAsFile();
-          if (file) {
-            if (masterKey) {
-              const tempId =
-                'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-              if (!window.__pendingImageUploads) {
-                window.__pendingImageUploads = new Map();
-              }
-              window.__pendingImageUploads.set(tempId, file);
-              file
-                .arrayBuffer()
-                .then((buffer) => {
-                  setCachedImage(tempId, buffer, file.type).catch(console.error);
-                })
-                .catch(console.error);
-
-              nodesToInsert.push({
-                type: 'encryptedImage',
-                attrs: { driveFileId: tempId },
-              });
-            } else {
-              if (file.size > 2 * 1024 * 1024) {
-                alert(
-                  'Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.'
-                );
-                continue;
-              }
-              readers.push(
-                new Promise((resolve) => {
-                  const reader = new FileReader();
-                  reader.onload = (e) =>
-                    resolve({ src: e.target?.result as string });
-                  reader.readAsDataURL(file);
-                })
-              );
-            }
+          if (isUrl && view.state.selection.empty) {
+            editor.chain().focus().insertContent({
+              type: 'linkPreview',
+              attrs: { url: urlStr, isLoading: true },
+            }).run();
+            event.preventDefault();
+            return true;
           }
         }
-      }
 
-      if (imagePasted) {
-        const { selection } = view.state;
-        const isNodeSelected = selection instanceof NodeSelection;
-        const insertPos = isNodeSelected ? selection.to : null;
-
-        const insertPastedNodes = (nodes: any[]) => {
-          if (nodes.length === 0) return;
-          if (insertPos !== null) {
-            editor.chain().insertContentAt(insertPos, nodes).focus().run();
-          } else {
-            editor.chain().focus().insertContent(nodes).run();
-          }
-        };
-
-        if (masterKey && nodesToInsert.length > 0) {
-          insertPastedNodes(nodesToInsert);
-        } else if (readers.length > 0) {
-          Promise.all(readers).then((results) => {
-            if (editor) {
-              insertPastedNodes(
-                results.map((r) => ({ type: 'image', attrs: { src: r.src } }))
-              );
-            }
-          });
-        }
-        event.preventDefault();
-        return true;
-      }
-
-      return false;
-    },
-    [editor, masterKey]
-  );
-
-  const handleDrop = useCallback(
-    (view: EditorView, event: DragEvent, _slice: any, moved: boolean) => {
-      if (
-        !moved &&
-        event.dataTransfer &&
-        event.dataTransfer.files &&
-        event.dataTransfer.files.length > 0
-      ) {
-        const files = Array.from(event.dataTransfer.files);
-        let imageDropped = false;
-
+        const items = Array.from(event.clipboardData?.items || []);
+        let imagePasted = false;
         const nodesToInsert: any[] = [];
         const readers: Promise<{ src: string }>[] = [];
-        const coordinates = view.posAtCoords({
-          left: event.clientX,
-          top: event.clientY,
-        });
-        const pos = coordinates ? coordinates.pos : undefined;
 
-        for (const file of files) {
-          if (file.type.indexOf('image') === 0) {
-            imageDropped = true;
-            if (editor) {
+        for (const item of items) {
+          if (item.type.indexOf('image') === 0) {
+            imagePasted = true;
+            const file = item.getAsFile();
+            if (file) {
               if (masterKey) {
                 const tempId =
-                  'uploading_' +
-                  Date.now() +
-                  Math.random().toString(36).substring(2, 6);
+                  'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
                 if (!window.__pendingImageUploads) {
                   window.__pendingImageUploads = new Map();
                 }
@@ -178,7 +83,10 @@ export function useEditorDropPaste({
                   .then((buffer) => {
                     setCachedImage(tempId, buffer, file.type).catch(console.error);
                   })
-                  .catch(console.error);
+                  .catch((err) => {
+                    console.error('[Editor] Erro ao fazer buffer da imagem colada:', err);
+                    triggerToast('Falha ao processar imagem para criptografia.', 'error');
+                  });
 
                 nodesToInsert.push({
                   type: 'encryptedImage',
@@ -186,8 +94,9 @@ export function useEditorDropPaste({
                 });
               } else {
                 if (file.size > 2 * 1024 * 1024) {
-                  alert(
-                    'Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou espere a sincronização.'
+                  triggerToast(
+                    'Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou conecte o cofre.',
+                    'error'
                   );
                   continue;
                 }
@@ -196,6 +105,10 @@ export function useEditorDropPaste({
                     const reader = new FileReader();
                     reader.onload = (e) =>
                       resolve({ src: e.target?.result as string });
+                    reader.onerror = () => {
+                      triggerToast('Erro ao ler arquivo de imagem.', 'error');
+                      resolve({ src: '' });
+                    };
                     reader.readAsDataURL(file);
                   })
                 );
@@ -204,39 +117,167 @@ export function useEditorDropPaste({
           }
         }
 
-        if (imageDropped) {
-          const columnTarget = consumeGroupDropTarget(view, {
-            x: event.clientX,
-            y: event.clientY,
-          });
+        if (imagePasted) {
+          const { selection } = view.state;
+          const isNodeSelected = selection instanceof NodeSelection;
+          const insertPos = isNodeSelected ? selection.to : null;
 
-          const insertNodes = (nodes: any[]) => {
-            if (!editor || nodes.length === 0) return;
-
-            if (columnTarget) {
-              const pmNodes = nodes.map((n) => editor.schema.nodeFromJSON(n));
-              if (applyGroupDrop(editor.view, columnTarget, pmNodes)) return;
-            }
-
-            if (pos !== undefined) {
-              editor.chain().insertContentAt(pos, nodes).focus().run();
-            } else {
-              editor.chain().focus().insertContent(nodes).run();
+          const insertPastedNodes = (nodes: any[]) => {
+            if (nodes.length === 0) return;
+            try {
+              if (insertPos !== null) {
+                editor.chain().insertContentAt(insertPos, nodes).focus().run();
+              } else {
+                editor.chain().focus().insertContent(nodes).run();
+              }
+            } catch (err) {
+              console.error('[Editor] Erro ao inserir nós de imagem:', err);
+              triggerToast('Não foi possível inserir a imagem no documento.', 'error');
             }
           };
 
           if (masterKey && nodesToInsert.length > 0) {
-            insertNodes(nodesToInsert);
+            insertPastedNodes(nodesToInsert);
           } else if (readers.length > 0) {
             Promise.all(readers).then((results) => {
-              insertNodes(
-                results.map((r) => ({ type: 'image', attrs: { src: r.src } }))
-              );
+              const validResults = results.filter((r) => r.src);
+              if (editor && validResults.length > 0) {
+                insertPastedNodes(
+                  validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
+                );
+              }
             });
           }
           event.preventDefault();
           return true;
         }
+      } catch (err) {
+        console.error('[Editor] Erro inesperado ao colar:', err);
+        triggerToast('Erro ao colar conteúdo no editor.', 'error');
+      }
+
+      return false;
+    },
+    [editor, masterKey]
+  );
+
+  const handleDrop = useCallback(
+    (view: EditorView, event: DragEvent, _slice: any, moved: boolean) => {
+      try {
+        if (
+          !moved &&
+          event.dataTransfer &&
+          event.dataTransfer.files &&
+          event.dataTransfer.files.length > 0
+        ) {
+          const files = Array.from(event.dataTransfer.files);
+          let imageDropped = false;
+
+          const nodesToInsert: any[] = [];
+          const readers: Promise<{ src: string }>[] = [];
+          const coordinates = view.posAtCoords({
+            left: event.clientX,
+            top: event.clientY,
+          });
+          const pos = coordinates ? coordinates.pos : undefined;
+
+          for (const file of files) {
+            if (file.type.indexOf('image') === 0) {
+              imageDropped = true;
+              if (editor) {
+                if (masterKey) {
+                  const tempId =
+                    'uploading_' +
+                    Date.now() +
+                    Math.random().toString(36).substring(2, 6);
+                  if (!window.__pendingImageUploads) {
+                    window.__pendingImageUploads = new Map();
+                  }
+                  window.__pendingImageUploads.set(tempId, file);
+                  file
+                    .arrayBuffer()
+                    .then((buffer) => {
+                      setCachedImage(tempId, buffer, file.type).catch(console.error);
+                    })
+                    .catch((err) => {
+                      console.error('[Editor] Erro ao carregar buffer de imagem solta:', err);
+                      triggerToast('Falha ao processar arquivo para o cofre.', 'error');
+                    });
+
+                  nodesToInsert.push({
+                    type: 'encryptedImage',
+                    attrs: { driveFileId: tempId },
+                  });
+                } else {
+                  if (file.size > 2 * 1024 * 1024) {
+                    triggerToast(
+                      'Imagem muito grande para soltar sem criptografia (limite 2MB).',
+                      'error'
+                    );
+                    continue;
+                  }
+                  readers.push(
+                    new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = (e) =>
+                        resolve({ src: e.target?.result as string });
+                      reader.onerror = () => {
+                        triggerToast('Falha ao ler arquivo de imagem arrastado.', 'error');
+                        resolve({ src: '' });
+                      };
+                      reader.readAsDataURL(file);
+                    })
+                  );
+                }
+              }
+            }
+          }
+
+          if (imageDropped) {
+            const columnTarget = consumeGroupDropTarget(view, {
+              x: event.clientX,
+              y: event.clientY,
+            });
+
+            const insertNodes = (nodes: any[]) => {
+              if (!editor || nodes.length === 0) return;
+
+              try {
+                if (columnTarget) {
+                  const pmNodes = nodes.map((n) => editor.schema.nodeFromJSON(n));
+                  if (applyGroupDrop(editor.view, columnTarget, pmNodes)) return;
+                }
+
+                if (pos !== undefined) {
+                  editor.chain().insertContentAt(pos, nodes).focus().run();
+                } else {
+                  editor.chain().focus().insertContent(nodes).run();
+                }
+              } catch (err) {
+                console.error('[Editor] Erro ao posicionar imagem no documento:', err);
+                triggerToast('Não foi possível inserir a imagem na posição indicada.', 'error');
+              }
+            };
+
+            if (masterKey && nodesToInsert.length > 0) {
+              insertNodes(nodesToInsert);
+            } else if (readers.length > 0) {
+              Promise.all(readers).then((results) => {
+                const validResults = results.filter((r) => r.src);
+                if (validResults.length > 0) {
+                  insertNodes(
+                    validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
+                  );
+                }
+              });
+            }
+            event.preventDefault();
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error('[Editor] Erro inesperado no manipulador de drop:', err);
+        triggerToast('Erro ao soltar arquivo no editor.', 'error');
       }
       return false;
     },
@@ -258,7 +299,7 @@ export function useEditorDropPaste({
       try {
         if (node.type.name === 'encryptedImage') {
           if (!masterKey) {
-            alert('Desbloqueie o cofre de notas para salvar o recorte.');
+            triggerToast('Desbloqueie o cofre de notas para salvar o recorte.', 'error');
             return;
           }
           const blob = await (await fetch(croppedDataUrl)).blob();
@@ -277,6 +318,7 @@ export function useEditorDropPaste({
               height: null,
             })
           );
+          triggerToast('Recorte salvo no cofre com sucesso!', 'success');
         } else {
           const currentPos = findNodePos(editor.state.doc, node, pos);
           if (currentPos === null) return;
@@ -288,10 +330,11 @@ export function useEditorDropPaste({
               height: null,
             })
           );
+          triggerToast('Recorte de imagem aplicado!', 'success');
         }
       } catch (err) {
         console.error('[Editor] Falha ao salvar o recorte da imagem:', err);
-        alert('Não foi possível salvar o recorte da imagem.');
+        triggerToast('Não foi possível salvar o recorte da imagem.', 'error');
       }
     },
     [editor, viewerState.nodePos, masterKey, setViewerState]
