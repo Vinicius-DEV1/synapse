@@ -4,6 +4,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { Portal } from '../../ui/Portal';
 import { LINK_GROUP_SPEC } from '../group-layout/groupSpecs';
+import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { findChildIndex, groupWithSibling, removeChild } from '../group-layout/groupCommands';
 import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
@@ -57,15 +58,13 @@ const LinkPreviewComponent = (props: any) => {
 
   const isInsideGroup = !!groupInfo;
 
+  // Selecionar a si mesmo é o que faz o arrasto remover ESTE card, e não outro
+  // — ver `selectNodeForDrag`, que confere a posição antes de mexer na seleção.
   const handleSelectSelf = useCallback(() => {
     const pos = currentPos();
     if (pos === null || !props.editor) return;
-    try {
-      props.editor.commands.setNodeSelection(pos);
-    } catch {
-      /* ignore */
-    }
-  }, [currentPos, props.editor]);
+    selectNodeForDrag(props.editor.view, pos, props.node);
+  }, [currentPos, props.editor, props.node]);
 
   const handleUngroupSelf = (e: React.MouseEvent) => {
     e.preventDefault();

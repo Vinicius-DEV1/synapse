@@ -120,7 +120,7 @@ export function moveBlockNode(editor: Editor, pos: number, direction: -1 | 1): b
   } else {
     const sibling = state.doc.resolve(to).nodeAfter;
     if (!sibling) return false;
-    insertPos = from + sibling.nodeSize;
+    insertPos = to + sibling.nodeSize;
   }
 
   const tr = state.tr;

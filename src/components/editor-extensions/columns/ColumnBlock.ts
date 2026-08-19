@@ -5,9 +5,8 @@ export const ColumnBlock = Node.create({
 
   group: 'column',
   content: 'block+',
-  // Era `isolates: true` — propriedade inexistente no ProseMirror, então não
-  // fazia nada e o Backspace no início de uma coluna juntava conteúdo através
-  // da fronteira, destruindo o layout.
+  // Sem isto, o Backspace no início de uma coluna junta conteúdo através da
+  // fronteira e destrói o layout.
   isolating: true,
 
   addAttributes() {
@@ -24,8 +23,8 @@ export const ColumnBlock = Node.create({
           return {
             'data-width': width,
             // `--group-flex` alimenta a regra compartilhada em `group-layout`.
-            // Com `width: X%` + `gap`, a soma passava de 100% e a última coluna
-            // transbordava do editor.
+            // Com `width: X%` + `gap` a soma passa de 100% e a última coluna
+            // transborda do editor.
             style: `--group-flex: ${width};`,
           };
         },
