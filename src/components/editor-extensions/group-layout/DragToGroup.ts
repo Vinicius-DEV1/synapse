@@ -159,9 +159,16 @@ function endDrag(view: EditorView) {
 /**
  * Devolve (e limpa) o alvo atual. Usado pelo `Editor.tsx` ao soltar ARQUIVOS,
  * já que `editorProps.handleDrop` roda antes do `handleDrop` dos plugins.
+ *
+ * Passando o ponto do drop, o alvo é refeito ali mesmo — pelo mesmo motivo que
+ * o `handleDrop` refaz: o guardado é de um frame que pode nunca ter rodado.
  */
-export function consumeGroupDropTarget(view: EditorView): GroupDropTarget | null {
-  const target = dragStates.get(view)?.target ?? null;
+export function consumeGroupDropTarget(
+  view: EditorView,
+  point?: { x: number; y: number }
+): GroupDropTarget | null {
+  const fresh = point ? computeDropTarget(view, point.x, point.y)?.target : null;
+  const target = fresh ?? dragStates.get(view)?.target ?? null;
   endDrag(view);
   return target;
 }
@@ -178,41 +185,144 @@ export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return false;
 
-  const selection = NodeSelection.create(view.state.doc, pos);
+  let selection: NodeSelection;
+  try {
+    // Lança quando a posição não admite uma seleção de node — vale abortar o
+    // arrasto, não derrubar o editor no meio de um `dragstart`.
+    selection = NodeSelection.create(view.state.doc, pos);
+  } catch {
+    return false;
+  }
+
   view.dispatch(view.state.tr.setSelection(selection));
   // `node` preenchido de propósito: assim este caminho e o do ProseMirror
   // removem a origem exatamente pelo mesmo mecanismo.
   draggable(view).dragging = { slice: selection.content(), move: true, node: selection };
+  armExternalDragCleanup(view);
   return true;
+}
+
+/**
+ * Seleciona o node em `pos` para que um arrasto começado nele remova a ORIGEM
+ * certa. É o que os node views com alça própria (card de link, imagem) chamam
+ * no `mousedown`.
+ *
+ * Por que eles precisam: o `dragstart` do ProseMirror só preenche
+ * `dragging.node` quando a seleção do documento NÃO cobre o ponto clicado.
+ * Cobrindo, ele deixa o campo vazio e, ao soltar, apaga a SELEÇÃO — que
+ * portanto tem de ser o node arrastado.
+ *
+ * A conferência é o ponto. Um `getPos` atrasado — o node view renderiza antes
+ * de o documento assentar — apontaria para o VIZINHO, e seria o vizinho que o
+ * drop apagaria: o bloco arrastado reaparecia no destino sem sair da origem, o
+ * "movi e duplicou". Sem certeza de qual node está ali, é melhor não mexer na
+ * seleção: no pior caso o ProseMirror cai no `mightDrag`, que resolve sozinho.
+ */
+export function selectNodeForDrag(view: EditorView, pos: number, node: PMNode): boolean {
+  const at = safeNodeAt(view.state.doc, pos);
+  if (!at || (at !== node && !at.eq(node))) return false;
+
+  try {
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Contrapartida: sem isto o drop seguinte herdaria o slice do arrasto anterior. */
 export function endExternalDrag(view: EditorView) {
+  disarmExternalCleanup?.();
   draggable(view).dragging = null;
   endDrag(view);
 }
 
+/** Remove a rede de segurança armada por `armExternalDragCleanup`. */
+let disarmExternalCleanup: (() => void) | null = null;
+
+/**
+ * Rede de segurança do arrasto externo.
+ *
+ * O `dragend` da alça é um handler React NO PRÓPRIO elemento, e a alça pode
+ * desaparecer no meio do arrasto: qualquer atualização do documento a esconde —
+ * a resposta de metadados de um card, um upload que terminou, uma edição remota
+ * do Yjs. Some a alça, some o handler, e ninguém limpa `view.dragging`: ele
+ * sobrevive ao arrasto guardando o slice antigo, e o PRÓXIMO drop — de um
+ * arquivo, de um texto de fora — reinsere aquele conteúdo. O bloco aparece
+ * duplicado sem que ninguém o tenha arrastado.
+ *
+ * Ouvir no `window` fecha o buraco independentemente do que aconteça com a
+ * alça. Fase de BOLHA de propósito: na captura, o `drop` seria limpo antes de o
+ * ProseMirror chegar a usar `view.dragging`.
+ */
+function armExternalDragCleanup(view: EditorView) {
+  disarmExternalCleanup?.();
+  if (typeof window === 'undefined') return;
+
+  const finish = () => endExternalDrag(view);
+  window.addEventListener('dragend', finish);
+  window.addEventListener('drop', finish);
+
+  disarmExternalCleanup = () => {
+    window.removeEventListener('dragend', finish);
+    window.removeEventListener('drop', finish);
+    disarmExternalCleanup = null;
+  };
+}
+
 // ─── Conteúdo arrastado ───────────────────────────────────────────────────────
 
-/** Nós reais contidos no slice, desembrulhando átomos inline de parágrafos abertos. */
-function extractNodesFromSlice(slice: Slice | null | undefined): PMNode[] {
+/**
+ * O átomo inline que está SOZINHO dentro de um parágrafo — um card, um alarme,
+ * uma referência de página. Aí o parágrafo é só embalagem: o que foi arrastado
+ * é o widget.
+ *
+ * `isAtom` sozinho não serve de teste: no ProseMirror TEXTO também é átomo. A
+ * regra antiga recolhia todo filho `isAtom` de um textblock e descartava o
+ * resto, o que picotava um parágrafo formatado em um bloco por trecho de marca
+ * ("Olá **mundo**" virava dois parágrafos, sem o negrito) e rebaixava qualquer
+ * título a parágrafo — o bloco era remontado a partir dos pedaços e perdia a
+ * própria identidade no caminho.
+ */
+function unwrapLoneInlineAtom(node: PMNode): PMNode | null {
+  if (!node.isTextblock || node.childCount !== 1) return null;
+  const only = node.firstChild;
+  if (!only || only.isText || !only.isAtom) return null;
+  return only;
+}
+
+/**
+ * Nós reais contidos no slice, desembrulhando átomos inline de parágrafos
+ * abertos. Exportada para teste: é a fronteira por onde o conteúdo arrastado
+ * entra, e onde um bloco já foi picotado em pedaços mais de uma vez.
+ */
+export function extractNodesFromSlice(slice: Slice | null | undefined): PMNode[] {
   if (!slice || slice.content.childCount === 0) return [];
   const nodes: PMNode[] = [];
-
-  slice.content.forEach((node) => {
-    if (!node.isTextblock) {
-      nodes.push(node);
-      return;
-    }
-    // Parágrafo: um átomo inline (widget, card) vale mais que o parágrafo que o embrulha.
-    const atoms: PMNode[] = [];
-    node.forEach((child) => {
-      if (child.isAtom) atoms.push(child);
-    });
-    nodes.push(...(atoms.length > 0 ? atoms : [node]));
-  });
-
+  slice.content.forEach((node) => nodes.push(unwrapLoneInlineAtom(node) ?? node));
   return nodes;
+}
+
+/**
+ * O conteúdo que vai entrar no grupo.
+ *
+ * Num MOVER o node é lido do documento AGORA, e não do slice montado lá atrás
+ * no `dragstart`. Entre um instante e outro cabem a resposta de metadados de um
+ * card de link, um upload de imagem que virou atributo, uma edição remota do
+ * Yjs: reinserir o slice antigo desfazia tudo isso — a origem sumia com o valor
+ * novo e o destino nascia com o velho, e o card recomeçava o "carregando…".
+ */
+function contentToDrop(
+  view: EditorView,
+  dragged: Selection,
+  moved: boolean,
+  fallback: Slice | null | undefined
+): PMNode[] {
+  if (moved && dragged instanceof NodeSelection) {
+    const live = safeNodeAt(view.state.doc, dragged.from);
+    if (live && live.type === dragged.node.type) return [live];
+  }
+  return extractNodesFromSlice(fallback);
 }
 
 /** O bloco alvo faz parte do que está sendo arrastado? */
@@ -254,16 +364,26 @@ function scheduleEvaluate(view: EditorView, event: DragEvent) {
   });
 }
 
-/** Decide (e desenha) o alvo do arrasto para um ponto da tela. */
-function evaluateDropTarget(view: EditorView, x: number, y: number) {
+/**
+ * Decide o alvo do arrasto para um ponto da tela.
+ *
+ * Não guarda estado nem desenha nada: é a conta pura. O `drop` precisa refazê-la
+ * na hora, com as coordenadas de onde o botão foi de fato solto — ver
+ * `handleDrop`.
+ */
+function computeDropTarget(
+  view: EditorView,
+  x: number,
+  y: number
+): { target: GroupDropTarget; rect: DOMRect } | null {
   const block = topLevelBlockAt(view, x, y);
-  if (!block) return clearTarget(view);
+  if (!block) return null;
 
   const { pos, node, dom } = block;
-  if (isDraggingItself(view, pos, node)) return clearTarget(view);
+  if (isDraggingItself(view, pos, node)) return null;
 
   const rect = dom.getBoundingClientRect();
-  if (rect.width === 0) return clearTarget(view);
+  if (rect.width === 0) return null;
 
   /*
    * O ponteiro precisa estar SOBRE o bloco.
@@ -278,7 +398,7 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
    * agrupamento, e o drop volta a ser do ProseMirror.
    */
   if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-    return clearTarget(view);
+    return null;
   }
 
   // Sem zona morta: metade esquerda agrupa à esquerda, metade direita à direita.
@@ -291,19 +411,28 @@ function evaluateDropTarget(view: EditorView, x: number, y: number) {
   if (groupSpec) {
     const fits = node.childCount < groupSpec.maxChildren;
     const compatible = dragged.length === 0 || groupSpec.acceptsContent(dragged);
-    if (!fits || !compatible) return clearTarget(view);
+    if (!fits || !compatible) return null;
 
-    dragStateFor(view).target = { pos, side, mode: 'append', spec: groupSpec, typeName: node.type.name };
-    showIndicator(rect, side);
-    return;
+    return {
+      target: { pos, side, mode: 'append', spec: groupSpec, typeName: node.type.name },
+      rect,
+    };
   }
 
   // Alvo é um bloco comum → cria um grupo novo.
   const spec = pickSpecForPair(dragged.length > 0 ? dragged : [node], node);
-  if (!spec) return clearTarget(view);
+  if (!spec) return null;
 
-  dragStateFor(view).target = { pos, side, mode: 'create', spec, typeName: node.type.name };
-  showIndicator(rect, side);
+  return { target: { pos, side, mode: 'create', spec, typeName: node.type.name }, rect };
+}
+
+/** Decide, guarda e desenha o alvo — o caminho do `dragover`. */
+function evaluateDropTarget(view: EditorView, x: number, y: number) {
+  const found = computeDropTarget(view, x, y);
+  if (!found) return clearTarget(view);
+
+  dragStateFor(view).target = found.target;
+  showIndicator(found.rect, found.target.side);
 }
 
 // ─── Aplicação ────────────────────────────────────────────────────────────────
@@ -391,14 +520,23 @@ export const DragToGroup = Extension.create({
             },
           },
 
-          handleDrop(view, _event, slice, moved) {
-            const target = dragStateFor(view).target;
+          handleDrop(view, event, slice, moved) {
+            const dragging = draggable(view).dragging;
+
+            /*
+             * O alvo é REFEITO aqui, com as coordenadas de onde o botão foi
+             * solto.
+             *
+             * O `dragover` avalia no máximo uma vez por frame, e o handler de
+             * `drop` cancela o frame que ainda não rodou. Quem entrasse na
+             * metade do bloco e soltasse em seguida — que é como se solta,
+             * rápido — caía com o alvo do frame ANTERIOR, quase sempre nenhum:
+             * o "às vezes não agrupa". Refazendo a conta, o alvo passa a ser
+             * sempre o do ponto onde o usuário realmente soltou.
+             */
+            const target = computeDropTarget(view, event.clientX, event.clientY)?.target ?? null;
             endDrag(view);
             if (!target) return false;
-
-            const dragging = draggable(view).dragging;
-            const content = extractNodesFromSlice(dragging?.slice ?? slice);
-            if (content.length === 0) return false;
 
             // Num "copiar" nada é removido da origem.
             const dragged = draggedSelection(view);
@@ -418,6 +556,9 @@ export const DragToGroup = Extension.create({
               const atOrigin = safeNodeAt(view.state.doc, dragged.from);
               if (!atOrigin || atOrigin.type !== dragged.node.type) return false;
             }
+
+            const content = contentToDrop(view, dragged, moved, dragging?.slice ?? slice);
+            if (content.length === 0) return false;
 
             const trace = traceDrop(view, {
               origem: !dragging
