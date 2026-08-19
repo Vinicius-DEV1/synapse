@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
-import { topLevelBlockAt } from '../../editor-extensions/topLevelBlock';
+import { draggableBlockAt } from '../../editor-extensions/topLevelBlock';
 import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions/group-layout';
 
 /** Distância entre a alça e a borda esquerda do bloco. */
@@ -104,7 +104,10 @@ export function useBlockHandle(
         Math.max(event.clientX, editorRect.left + 8),
         editorRect.right - 8
       );
-      const block = topLevelBlockAt(view, probeX, event.clientY);
+      // `draggableBlockAt` e não `topLevelBlockAt`: dentro de uma coluna a alça
+      // pega o BLOCO DA COLUNA. Pegando o grupo inteiro, como antes, arrastar
+      // levava o layout junto e não havia como tirar um bloco de uma coluna.
+      const block = draggableBlockAt(view, probeX, event.clientY);
       if (!block) {
         hide();
         return;
@@ -193,7 +196,10 @@ export function useBlockHandle(
       // Seleciona o nó e marca o arrasto como MOVER interno. Mora na extensão
       // porque é o protocolo de arrasto do editor: a alça vive fora do
       // `view.dom`, e nenhum `dragstart` do ProseMirror dispara para ela.
-      if (!startExternalBlockDrag(view, pos)) return abort();
+      // O `clientX` vai junto para que o arrasto meça sozinho o quanto o cursor
+      // fica à esquerda do bloco — ver `measureGrip`. Sem a medida, a zona de
+      // agrupamento nunca alcança o cursor de quem arrasta pela alça.
+      if (!startExternalBlockDrag(view, pos, event.clientX)) return abort();
       draggingRef.current = true;
 
       event.dataTransfer.effectAllowed = 'move';
