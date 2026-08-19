@@ -13,6 +13,7 @@ export {
   applyGroupDrop,
   startExternalBlockDrag,
   endExternalDrag,
+  selectNodeForDrag,
 } from './DragToGroup';
 export type { GroupDropTarget } from './DragToGroup';
 export { GroupAutoCollapse } from './groupAutoCollapse';
