@@ -61,6 +61,7 @@ export type Action =
   | { type: 'SET_SCROLL_Y'; tabId: string; scrollY: number }
   | { type: 'TOGGLE_SIDEBAR' }
   | { type: 'TOGGLE_NODE'; nodeId: string }
+  | { type: 'EXPAND_NODE'; nodeId: string }
   | { type: 'SHOW_CONTEXT_MENU'; x: number; y: number; pageId: string }
   | { type: 'HIDE_CONTEXT_MENU' }
   | { type: 'SET_CONFIRM_DELETE'; pageId: string | null }
