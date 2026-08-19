@@ -21,6 +21,8 @@ import {
   arrayMove
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isValidHierarchyMove } from '../utils/hierarchy';
+import { triggerToast } from './ui/ToastContext';
 
 interface SubPageGridProps {
   pages: Page[];
@@ -144,13 +146,13 @@ function SubPageItem({ page, onNavigate, onUpdatePage, isNested = false }: { pag
 }
 
 export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdatePage }: SubPageGridProps) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const [activeDragData, setActiveDragData] = useState<any>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
     })
   );
@@ -170,8 +172,19 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
     if (overIdString.startsWith('nest-')) {
       const draggedId = active.id.toString();
       const targetId = over.data.current?.page?.id;
-      if (draggedId !== targetId) {
-        onUpdatePage(draggedId, { parent_id: targetId });
+      if (draggedId && targetId && draggedId !== targetId) {
+        if (isValidHierarchyMove(state.pages, draggedId, targetId)) {
+          onUpdatePage(draggedId, { parent_id: targetId })
+            .then(() => {
+              dispatch({ type: 'EXPAND_NODE', nodeId: targetId });
+            })
+            .catch((err) => {
+              console.error('[SubPageGrid] Falha ao atualizar hierarquia:', err);
+              triggerToast('Falha ao mover a página.', 'error');
+            });
+        } else {
+          triggerToast('Não é possível mover uma página para dentro de si mesma ou de suas subpáginas.', 'error');
+        }
       }
       return;
     }
