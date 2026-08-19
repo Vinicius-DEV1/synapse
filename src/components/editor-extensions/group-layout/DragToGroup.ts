@@ -18,6 +18,7 @@ import type { GroupContentSource } from './groupCommands';
 import { topLevelBlockAt } from '../topLevelBlock';
 import { traceDrop } from './dropDiagnostics';
 import { triggerToast } from '../../ui/ToastContext';
+import { showIndicator, hideIndicator } from './groupDropIndicator';
 
 export interface GroupDropTarget {
   pos: number;
@@ -59,36 +60,6 @@ const MIN_MOVE_PX = 3;
 
 /** Proporção da faixa central do bloco destinada à movimentação padrão (não agrupamento). */
 const MOVE_BAND_RATIO = 0.2;
-
-/** Indicador visual do ponto de agrupamento. */
-let indicator: HTMLDivElement | null = null;
-const DROP_CURSOR_SUPPRESSOR = 'group-drop-active';
-
-function showIndicator(rect: DOMRect, side: 'left' | 'right') {
-  if (!indicator) {
-    indicator = document.createElement('div');
-    Object.assign(indicator.style, {
-      position: 'fixed',
-      width: '5px',
-      borderRadius: '3px',
-      background: '#8b5cf6',
-      boxShadow: '0 0 14px 3px rgba(139, 92, 246, 0.95)',
-      zIndex: '9999',
-      pointerEvents: 'none',
-    } satisfies Partial<CSSStyleDeclaration>);
-    document.body.appendChild(indicator);
-  }
-  document.body.classList.add(DROP_CURSOR_SUPPRESSOR);
-  indicator.style.left = `${side === 'left' ? Math.max(0, rect.left - 4) : Math.max(0, rect.right - 1)}px`;
-  indicator.style.top = `${rect.top}px`;
-  indicator.style.height = `${Math.max(rect.height, 32)}px`;
-}
-
-function hideIndicator() {
-  indicator?.remove();
-  indicator = null;
-  document.body.classList.remove(DROP_CURSOR_SUPPRESSOR);
-}
 
 function clearTarget(view: EditorView) {
   hideIndicator();
