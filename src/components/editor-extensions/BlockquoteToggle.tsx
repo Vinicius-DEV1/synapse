@@ -168,7 +168,10 @@ const BlockquoteToggleComponent = (props: any) => {
       style={customStyle}
       data-color={currentColor}
     >
-      <div className="absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/blockquote:opacity-100 flex items-center gap-0.5 z-10 bg-dark-bg/80 backdrop-blur-md rounded-lg border border-white/10 p-0.5 shadow-xl">
+      <div
+        contentEditable={false}
+        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/blockquote:opacity-100"
+      >
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -178,7 +181,7 @@ const BlockquoteToggleComponent = (props: any) => {
               if (typeof pos === 'number') moveBlockUp(props.editor.view, pos);
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
           title="Subir destaque (Mover para cima)"
         >
           <ArrowUp size={11} />
@@ -196,15 +199,15 @@ const BlockquoteToggleComponent = (props: any) => {
                 .run();
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-          title="Adicionar linha abaixo"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+          title="Adicionar linha abaixo (+)"
         >
-          <Plus size={13} />
+          <Plus size={11} />
         </button>
         <div
           data-drag-handle
           onMouseDown={handleDragHandleMouseDown}
-          className="cursor-grab active:cursor-grabbing hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
           title="Arrastar destaque"
         >
           <GripVertical size={13} />
@@ -218,7 +221,7 @@ const BlockquoteToggleComponent = (props: any) => {
               if (typeof pos === 'number') moveBlockDown(props.editor.view, pos);
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
           title="Descer destaque (Mover para baixo)"
         >
           <ArrowDown size={11} />
