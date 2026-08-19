@@ -214,6 +214,16 @@ const LinkPreviewComponent = (props: any) => {
           const pos = currentPos();
           if (pos !== null && props.editor) moveBlockDown(props.editor.view, pos);
         }}
+        onAddLineBelow={() => {
+          const pos = currentPos();
+          if (pos !== null && props.editor && props.node) {
+            props.editor
+              .chain()
+              .focus()
+              .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+              .run();
+          }
+        }}
       />
 
       {showLinkConfirm && (

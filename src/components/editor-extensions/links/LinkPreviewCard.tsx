@@ -43,6 +43,7 @@ interface LinkPreviewCardProps {
   onDragStartHandle?: (e: React.MouseEvent) => void;
   onMoveUp?: (e: React.MouseEvent) => void;
   onMoveDown?: (e: React.MouseEvent) => void;
+  onAddLineBelow?: (e: React.MouseEvent) => void;
 }
 
 export default function LinkPreviewCard({
@@ -68,6 +69,7 @@ export default function LinkPreviewCard({
   onDragStartHandle,
   onMoveUp,
   onMoveDown,
+  onAddLineBelow,
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -99,7 +101,7 @@ export default function LinkPreviewCard({
 
   return (
     <div className="relative group/link">
-      {/* Alça e controles de movimentação discretos — subir, arrastar e descer */}
+      {/* Alça e controles de movimentação discretos — subir, adicionar linha, arrastar e descer */}
       <div
         contentEditable={false}
         className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100"
@@ -115,6 +117,19 @@ export default function LinkPreviewCard({
             title="Subir bloco (Mover para cima)"
           >
             <ArrowUp size={11} />
+          </button>
+        )}
+        {onAddLineBelow && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddLineBelow(e);
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Adicionar linha abaixo (+)"
+          >
+            <Plus size={11} />
           </button>
         )}
         <div

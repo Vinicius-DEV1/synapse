@@ -1,6 +1,7 @@
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
-import { GripVertical, Plus, X } from 'lucide-react';
+import { GripVertical, Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
+import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
 export default function CodeBlockComponent(props: any) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -17,7 +18,21 @@ export default function CodeBlockComponent(props: any) {
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative group/code">
-      <div className="absolute -left-12 top-1 opacity-0 group-hover/code:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
+      <div className="absolute -left-16 top-1 opacity-0 group-hover/code:opacity-100 flex items-center gap-0.5 z-10 bg-dark-bg/80 backdrop-blur-md rounded-lg border border-white/10 p-0.5 shadow-xl">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof getPos === 'function' && editor) {
+              const pos = getPos();
+              if (typeof pos === 'number') moveBlockUp(editor.view, pos);
+            }
+          }}
+          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Subir bloco de código (Mover para cima)"
+        >
+          <ArrowUp size={11} />
+        </button>
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -27,19 +42,33 @@ export default function CodeBlockComponent(props: any) {
               editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
             }
           }}
-          className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
           title="Adicionar linha abaixo"
         >
-          <Plus size={16} />
+          <Plus size={13} />
         </button>
         <div 
           data-drag-handle
           onMouseDown={handleDragMouseDown}
-          className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          className="cursor-grab active:cursor-grabbing hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
           title="Arrastar bloco de código"
         >
-          <GripVertical size={16} />
+          <GripVertical size={13} />
         </div>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof getPos === 'function' && editor) {
+              const pos = getPos();
+              if (typeof pos === 'number') moveBlockDown(editor.view, pos);
+            }
+          }}
+          className="cursor-pointer hover:bg-white/10 p-1 rounded text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Descer bloco de código (Mover para baixo)"
+        >
+          <ArrowDown size={11} />
+        </button>
       </div>
       
       <div className="absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity z-10 flex items-center gap-1" contentEditable={false}>
