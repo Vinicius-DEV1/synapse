@@ -68,11 +68,10 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
     <NodeViewWrapper as="span" className="inline-block relative mx-1" ref={containerRef}>
       <span 
         contentEditable={false}
-        data-drag-handle
         onMouseDown={() => {
-          if (typeof getPos === 'function') {
+          if (typeof getPos === 'function' && editor) {
             const pos = getPos();
-            if (typeof pos === 'number' && editor) {
+            if (typeof pos === 'number') {
               editor.commands.setNodeSelection(pos);
             }
           }

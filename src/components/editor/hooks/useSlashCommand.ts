@@ -226,7 +226,16 @@ export function useSlashCommand({
         break;
       }
     }
-  }, [slashMenu, setPageSearchMenu, setFocusModal, setAlarmModal, setFileUploadModal, setFileSelectModal]);
+  }, [
+    slashMenu,
+    setPageSearchMenu,
+    setFocusModal,
+    setAlarmModal,
+    setFileUploadModal,
+    setFileSelectModal,
+    setCalendarEventModal,
+    setMediaSelectModal,
+  ]);
 
   return { slashMenu, setSlashMenu, handleSlashKeyDown, updateSlashMenuOnUpdate, executeSlashCommand };
 }

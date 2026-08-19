@@ -155,12 +155,11 @@ export default function CalendarEventWidgetNodeView(props: any) {
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
       <span
         ref={widgetRef}
-        data-drag-handle
         onClick={() => setShowPopover(!showPopover)}
         onMouseDown={() => {
-          if (typeof props.getPos === 'function') {
+          if (typeof props.getPos === 'function' && props.editor) {
             const pos = props.getPos();
-            if (typeof pos === 'number' && props.editor) {
+            if (typeof pos === 'number') {
               props.editor.commands.setNodeSelection(pos);
             }
           }

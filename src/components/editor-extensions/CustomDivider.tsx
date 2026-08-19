@@ -1,8 +1,18 @@
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { Plus, GripVertical } from 'lucide-react';
+import { selectNodeForDrag } from './group-layout/DragToGroup';
 
 const DividerComponent = (props: any) => {
+  const handleDragMouseDown = () => {
+    if (typeof props.getPos === 'function' && props.editor?.view) {
+      const pos = props.getPos();
+      if (typeof pos === 'number') {
+        selectNodeForDrag(props.editor.view, pos, props.node);
+      }
+    }
+  };
+
   return (
     <NodeViewWrapper className="group/divider relative flex items-center w-full my-6">
       <div className="absolute -left-12 opacity-0 group-hover/divider:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm" contentEditable={false}>
@@ -22,16 +32,9 @@ const DividerComponent = (props: any) => {
         </button>
         <div 
           data-drag-handle
-          onMouseDown={() => {
-            if (typeof props.getPos === 'function') {
-              const pos = props.getPos();
-              if (typeof pos === 'number') {
-                props.editor.commands.setNodeSelection(pos);
-              }
-            }
-          }}
+          onMouseDown={handleDragMouseDown}
           className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-          title="Arrastar linha"
+          title="Arrastar linha divisória"
         >
           <GripVertical size={16} />
         </div>

@@ -53,13 +53,12 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
   return (
     <NodeViewWrapper as="span" className="inline-block relative mx-1" ref={containerRef}>
       <span 
-        data-drag-handle
         contentEditable={false}
         onClick={togglePopover}
         onMouseDown={() => {
-          if (typeof getPos === 'function') {
+          if (typeof getPos === 'function' && editor) {
             const pos = getPos();
-            if (typeof pos === 'number' && editor) {
+            if (typeof pos === 'number') {
               editor.commands.setNodeSelection(pos);
             }
           }

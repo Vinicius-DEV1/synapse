@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { DOMSerializer } from 'prosemirror-model';
 import BlockquoteToggleToolbar from './BlockquoteToggleToolbar';
+import { selectNodeForDrag } from './group-layout/DragToGroup';
 
 const BlockquoteToggleComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;
@@ -100,7 +101,7 @@ const BlockquoteToggleComponent = (props: any) => {
           doToast();
         });
     } catch (e) {
-      console.error('Copy failed', e);
+      console.error('Falha ao copiar destaque:', e);
     }
   };
 
@@ -142,51 +143,50 @@ const BlockquoteToggleComponent = (props: any) => {
     }
   };
 
+  const handleDragHandleMouseDown = () => {
+    if (typeof props.getPos === 'function' && props.editor?.view) {
+      const pos = props.getPos();
+      if (typeof pos === 'number') {
+        selectNodeForDrag(props.editor.view, pos, props.node);
+      }
+    }
+  };
+
   return (
     <NodeViewWrapper
-      className="toggle-wrapper blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded relative"
+      className="toggle-wrapper blockquote-toggle block border-l-[3px] border-white/20 bg-white/5 px-4 py-3 my-4 rounded relative group/blockquote"
       style={customStyle}
       data-color={currentColor}
     >
-      {!isOpen && (
-        <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (typeof props.getPos === 'function') {
-                const pos = props.getPos();
-                props.editor
-                  .chain()
-                  .focus()
-                  .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
-                  .run();
-              }
-            }}
-            className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-            title="Adicionar linha abaixo"
-          >
-            <Plus size={16} />
-          </button>
-          <div
-            data-drag-handle
-            onMouseDown={() => {
-              if (typeof props.getPos === 'function') {
-                const pos = props.getPos();
-                if (typeof pos === 'number') {
-                  props.editor.commands.setNodeSelection(pos);
-                }
-              }
-            }}
-            className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
-            title="Arrastar destaque"
-          >
-            <GripVertical size={16} />
-          </div>
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/blockquote:opacity-100 flex items-center z-10 bg-dark-bg/50 backdrop-blur-sm rounded-md border border-white/5 shadow-sm">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function') {
+              const pos = props.getPos();
+              props.editor
+                .chain()
+                .focus()
+                .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+                .run();
+            }
+          }}
+          className="cursor-pointer hover:bg-white/10 p-1 rounded-l text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Adicionar linha abaixo"
+        >
+          <Plus size={16} />
+        </button>
+        <div
+          data-drag-handle
+          onMouseDown={handleDragHandleMouseDown}
+          className="cursor-grab hover:bg-white/10 p-1 rounded-r text-dark-subtext hover:text-white flex items-center justify-center transition-colors"
+          title="Arrastar destaque"
+        >
+          <GripVertical size={16} />
         </div>
-      )}
+      </div>
 
-      {/* Barra de ações desacoplada */}
       <BlockquoteToggleToolbar
         currentColor={currentColor}
         copied={copied}

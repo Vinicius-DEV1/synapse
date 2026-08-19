@@ -8,9 +8,6 @@ import { findNodePos } from '../../editor-extensions/image/imageUtils';
 
 interface UseEditorDropPasteProps {
   editor: Editor | null;
-  // A chave do módulo é sempre um CryptoKey (ver `state.moduleKeys` em
-  // store/useStore.tsx) — nunca foi uma string. `uploadEncryptedImage` só
-  // aceita CryptoKey; a assinatura antiga estava desatualizada.
   masterKey?: CryptoKey | null;
   viewerState: {
     isOpen: boolean;
@@ -28,6 +25,9 @@ interface UseEditorDropPasteProps {
   >;
 }
 
+/**
+ * Hook que gerencia o fluxo de colagem (paste) e soltura (drop) de arquivos e imagens no editor.
+ */
 export function useEditorDropPaste({
   editor,
   masterKey,
@@ -115,7 +115,6 @@ export function useEditorDropPaste({
         const insertPastedNodes = (nodes: any[]) => {
           if (nodes.length === 0) return;
           if (insertPos !== null) {
-            // Se houver imagem/nó selecionado, cola ABAIXO sem substituir o nó existente!
             editor.chain().insertContentAt(insertPos, nodes).focus().run();
           } else {
             editor.chain().focus().insertContent(nodes).run();
@@ -206,8 +205,6 @@ export function useEditorDropPaste({
         }
 
         if (imageDropped) {
-          // O ponto do drop: sem ele o alvo seria o do último frame avaliado
-          // no `dragover`, que pode nunca ter chegado a rodar.
           const columnTarget = consumeGroupDropTarget(view, {
             x: event.clientX,
             y: event.clientY,

@@ -69,12 +69,14 @@ function TabItem({ tab, index, isActive, page, onSelect, onClose, tabCount }: Ta
       <span className="truncate flex-1 text-left">{title}</span>
       {tabCount > 1 && (
         <span
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => onClose(e, tab.id)}
           className={`p-0.5 rounded-md transition-all flex-shrink-0 ${
             isActive
               ? 'hover:bg-white/10 text-dark-subtext hover:text-dark-text'
               : 'opacity-0 group-hover:opacity-100 hover:bg-white/10 text-dark-subtext hover:text-dark-text'
           }`}
+          title="Fechar aba"
         >
           <X size={12} />
         </span>

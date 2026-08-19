@@ -32,10 +32,6 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   });
   
   const ydocRef = useRef<Y.Doc>(ydoc);
-    
-    // console.log(`[Caderno:Mount] pageId=${pageId}`);
-    
-
 
   useEffect(() => {
     const handleRemoteUpdate = (e: CustomEvent) => {
@@ -54,11 +50,10 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   useEffect(() => {
     return () => {
       if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        // console.log(`[Caderno:Flush] Unmount flush for pageId=${pageId}`);
         const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
         if (result && typeof result.catch === 'function') {
           result.catch((err: any) => {
-            console.error(`[Caderno:Flush] Flush save FAILED for ${pageId}:`, err);
+            console.error(`[Caderno:Flush] Falha ao persistir alterações no unmount de ${pageId}:`, err);
           });
         }
       }
