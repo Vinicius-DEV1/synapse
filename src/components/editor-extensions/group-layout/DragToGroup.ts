@@ -83,12 +83,21 @@ function draggedSelection(view: EditorView): Selection {
  * tempo não disputem a mesma variável. O `Editor.tsx` precisa consultá-lo no
  * próprio `handleDrop`, que roda antes do dos plugins.
  */
-const dragStates = new WeakMap<EditorView, { target: GroupDropTarget | null }>();
+interface DragState {
+  target: GroupDropTarget | null;
+  /**
+   * Quanto o ponteiro está à ESQUERDA do bloco que ele arrasta, medido no
+   * `dragstart`. Ver `computeDropTarget`.
+   */
+  grip: number;
+}
 
-function dragStateFor(view: EditorView) {
+const dragStates = new WeakMap<EditorView, DragState>();
+
+function dragStateFor(view: EditorView): DragState {
   let state = dragStates.get(view);
   if (!state) {
-    state = { target: null };
+    state = { target: null, grip: 0 };
     dragStates.set(view, state);
   }
   return state;
@@ -98,6 +107,21 @@ function dragStateFor(view: EditorView) {
 
 /** O ponteiro precisa andar isto para uma nova avaliação de `dragover`. */
 const MIN_MOVE_PX = 3;
+
+/**
+ * Fatia central da largura do bloco reservada ao MOVER.
+ *
+ * As três zonas de um bloco: 40% à esquerda agrupam à esquerda, 40% à direita
+ * agrupam à direita, os 20% do meio movem. Numa coluna de 600px isso dá 240px
+ * de alvo para cada coluna e 120px para o mover — todos grandes, e o indicador
+ * (barra roxa) ou o dropcursor (linha) dizem qual vai acontecer antes de soltar.
+ *
+ * Antes era metade/metade: agrupar em qualquer ponto do bloco, mover só no vão
+ * entre blocos. Mas o vão é a MARGEM do bloco (`my-4`, 32px), e ali o alvo era
+ * nulo: soltar a poucos pixels do bloco não agrupava nada e virava um mover
+ * silencioso. Era o "arrasto e solto e não forma coluna, só troca de posição".
+ */
+const MOVE_BAND_RATIO = 0.2;
 
 // ─── Indicador visual ─────────────────────────────────────────────────────────
 
@@ -150,10 +174,17 @@ function clearTarget(view: EditorView) {
   if (state) state.target = null;
 }
 
+/** Zera a folga medida: ela vale por arrasto, nunca para o seguinte. */
+function clearGrip(view: EditorView) {
+  const state = dragStates.get(view);
+  if (state) state.grip = 0;
+}
+
 /** Fim do arrasto: cancela também a avaliação de `dragover` ainda agendada. */
 function endDrag(view: EditorView) {
   cancelPendingEvaluate();
   clearTarget(view);
+  clearGrip(view);
 }
 
 /**
@@ -181,7 +212,11 @@ export function consumeGroupDropTarget(
  * node e preencher `view.dragging` é exatamente o que o ProseMirror faria — e é
  * o que permite que ele próprio remova a origem no drop.
  */
-export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
+export function startExternalBlockDrag(
+  view: EditorView,
+  pos: number,
+  pointerX?: number
+): boolean {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return false;
 
@@ -198,8 +233,29 @@ export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
   // `node` preenchido de propósito: assim este caminho e o do ProseMirror
   // removem a origem exatamente pelo mesmo mecanismo.
   draggable(view).dragging = { slice: selection.content(), move: true, node: selection };
+  dragStateFor(view).grip = measureGrip(view, pos, pointerX);
   armExternalDragCleanup(view);
   return true;
+}
+
+/**
+ * Quanto o ponteiro está à esquerda do bloco que ele arrasta.
+ *
+ * A alça flutuante mora FORA do conteúdo, a alguns pixels da margem esquerda do
+ * bloco. Quem arrasta por ela mantém o cursor ali o arrasto inteiro — e um alvo
+ * medido só pelo retângulo do bloco nunca o alcança. Em vez de repetir a
+ * constante do posicionamento da alça (duas constantes que se separam calada e
+ * inevitavelmente), a folga é MEDIDA aqui, uma vez, e vale para o arrasto todo.
+ */
+function measureGrip(view: EditorView, pos: number, pointerX?: number): number {
+  if (typeof pointerX !== 'number' || !Number.isFinite(pointerX)) return 0;
+  const dom = view.nodeDOM(pos);
+  if (!(dom instanceof HTMLElement)) return 0;
+  const rect = dom.getBoundingClientRect();
+  if (rect.width === 0) return 0;
+  // Só a folga à esquerda interessa: é o único motivo legítimo para o cursor
+  // estar fora do bloco durante um arrasto.
+  return Math.max(0, Math.round(rect.left - pointerX));
 }
 
 /**
@@ -219,15 +275,28 @@ export function startExternalBlockDrag(view: EditorView, pos: number): boolean {
  * seleção: no pior caso o ProseMirror cai no `mightDrag`, que resolve sozinho.
  */
 export function selectNodeForDrag(view: EditorView, pos: number, node: PMNode): boolean {
-  const at = safeNodeAt(view.state.doc, pos);
-  if (!at || (at !== node && !at.eq(node))) return false;
+  const doc = view.state.doc;
+  const at = safeNodeAt(doc, pos);
+  const target = at === node || at?.eq(node) ? pos : findNodePos(doc, node);
+  if (target === null) return false;
 
   try {
-    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(doc, target)));
     return true;
   } catch {
     return false;
   }
+}
+
+/** Onde este node está de verdade, quando a posição do node view atrasou. */
+function findNodePos(doc: PMNode, node: PMNode): number | null {
+  let found: number | null = null;
+  doc.descendants((candidate, pos) => {
+    if (found !== null) return false;
+    if (candidate === node) { found = pos; return false; }
+    return true;
+  });
+  return found;
 }
 
 /** Contrapartida: sem isto o drop seguinte herdaria o slice do arrasto anterior. */
@@ -365,6 +434,59 @@ function scheduleEvaluate(view: EditorView, event: DragEvent) {
 }
 
 /**
+ * A faixa vertical que um bloco ocupa, até a METADE do vão que o separa do
+ * vizinho — e não até a borda pintada.
+ *
+ * A margem de um bloco pertence a ele. Cards e grupos usam `my-4`, o que abre
+ * 32px entre um e outro onde o alvo era simplesmente nulo: soltar a poucos
+ * pixels do bloco não agrupava e virava um mover silencioso. Com a faixa indo
+ * até a metade do vão, todo ponto do editor pertence a exatamente um bloco, e
+ * não há mais buraco entre eles.
+ */
+function verticalBand(view: EditorView, dom: HTMLElement, rect: DOMRect) {
+  const editor = view.dom.getBoundingClientRect();
+  const prev = dom.previousElementSibling?.getBoundingClientRect();
+  const next = dom.nextElementSibling?.getBoundingClientRect();
+
+  return {
+    // O irmão só entra na conta se estiver mesmo acima/abaixo: com imagens
+    // alinhadas e flutuantes, o anterior no DOM pode estar ao LADO.
+    top: prev && prev.bottom <= rect.top ? (prev.bottom + rect.top) / 2 : Math.min(rect.top, editor.top),
+    bottom: next && next.top >= rect.bottom ? (rect.bottom + next.top) / 2 : Math.max(rect.bottom, editor.bottom),
+  };
+}
+
+/**
+ * A zona do bloco sob o ponteiro: coluna à esquerda, coluna à direita, ou
+ * nenhuma — e nenhuma significa MOVER, com o dropcursor do ProseMirror
+ * respondendo pelo drop.
+ *
+ * As três faixas horizontais são 40% / 20% / 40%: as pontas agrupam, o miolo
+ * move. É o que dá ao mover um alvo próprio e visível DENTRO do bloco, em vez
+ * de deixá-lo espremido no vão entre dois — que era onde ele estava, e por isso
+ * agrupar falhava tanto.
+ *
+ * A folga da alça estica só a checagem de "está sobre o bloco"; o centro
+ * continua sendo o centro real, para que os dois lados fiquem iguais.
+ */
+function dropZoneFor(
+  view: EditorView,
+  dom: HTMLElement,
+  rect: DOMRect,
+  x: number,
+  y: number,
+  grip: number
+): 'left' | 'right' | null {
+  const band = verticalBand(view, dom, rect);
+  if (y < band.top || y > band.bottom) return null;
+  if (x < rect.left - grip || x > rect.right + grip) return null;
+
+  const center = rect.left + rect.width / 2;
+  if (Math.abs(x - center) <= (rect.width * MOVE_BAND_RATIO) / 2) return null;
+  return x < center ? 'left' : 'right';
+}
+
+/**
  * Decide o alvo do arrasto para um ponto da tela.
  *
  * Não guarda estado nem desenha nada: é a conta pura. O `drop` precisa refazê-la
@@ -385,24 +507,8 @@ function computeDropTarget(
   const rect = dom.getBoundingClientRect();
   if (rect.width === 0) return null;
 
-  /*
-   * O ponteiro precisa estar SOBRE o bloco.
-   *
-   * `posAtCoords` encaixa no bloco mais próximo e nunca devolve nulo por
-   * distância, então sem estes limites todo ponto da margem contaria como
-   * "borda esquerda" de algum bloco, e arrastar pela margem criaria coluna
-   * atrás de coluna.
-   *
-   * É também o que preserva o MOVER: fora do bloco — na margem do editor, onde
-   * fica a alça flutuante, ou no vão entre dois blocos — não há alvo de
-   * agrupamento, e o drop volta a ser do ProseMirror.
-   */
-  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-    return null;
-  }
-
-  // Sem zona morta: metade esquerda agrupa à esquerda, metade direita à direita.
-  const side: 'left' | 'right' = x < rect.left + rect.width / 2 ? 'left' : 'right';
+  const side = dropZoneFor(view, dom, rect, x, y, dragStateFor(view).grip);
+  if (!side) return null;
 
   const dragged = extractNodesFromSlice(draggable(view).dragging?.slice);
 
