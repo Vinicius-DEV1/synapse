@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { draggableBlockAt } from '../../editor-extensions/topLevelBlock';
 import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions/group-layout';
+import { moveBlockUp, moveBlockDown } from '../../editor-extensions/moveBlockCommands';
 import { triggerToast } from '../../ui/ToastContext';
 
 /** Distância em pixels entre a alça flutuante e a borda esquerda do bloco. */
@@ -25,6 +26,8 @@ export interface BlockHandleState {
   onDragStart: (event: React.DragEvent) => void;
   onDragEnd: () => void;
   onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onMenuOpenChange: (open: boolean) => void;
 }
 
@@ -178,5 +181,19 @@ export function useBlockHandle(
     }
   }, [editor, forceHide]);
 
-  return { anchor, onDragStart, onDragEnd, onDelete, onMenuOpenChange };
+  const onMoveUp = useCallback(() => {
+    const pos = posRef.current;
+    if (!editor || pos === null) return;
+    moveBlockUp(editor.view, pos);
+    forceHide();
+  }, [editor, forceHide]);
+
+  const onMoveDown = useCallback(() => {
+    const pos = posRef.current;
+    if (!editor || pos === null) return;
+    moveBlockDown(editor.view, pos);
+    forceHide();
+  }, [editor, forceHide]);
+
+  return { anchor, onDragStart, onDragEnd, onDelete, onMoveUp, onMoveDown, onMenuOpenChange };
 }

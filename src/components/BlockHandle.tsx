@@ -1,4 +1,4 @@
-import { GripVertical, Trash2, Palette } from 'lucide-react';
+import { GripVertical, Trash2, Palette, ArrowUp, ArrowDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../utils/colors';
 
@@ -6,6 +6,8 @@ interface BlockHandleProps {
   x: number;
   y: number;
   onDelete: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onChangeColor?: (color: string, isBackground: boolean) => void;
@@ -13,7 +15,17 @@ interface BlockHandleProps {
   onMenuOpenChange?: (open: boolean) => void;
 }
 
-export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, onChangeColor, onMenuOpenChange }: BlockHandleProps) {
+export default function BlockHandle({
+  x,
+  y,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  onDragStart,
+  onDragEnd,
+  onChangeColor,
+  onMenuOpenChange,
+}: BlockHandleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -40,19 +52,45 @@ export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, on
 
   return (
     <div 
-      className="block-handle fixed z-40 flex items-center justify-center cursor-pointer text-dark-subtext/30 hover:text-dark-subtext transition-colors"
-      style={{ left: x, top: y }}
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      className="block-handle fixed z-40 flex flex-col items-center justify-center cursor-pointer text-dark-subtext/40 hover:text-dark-subtext transition-colors group"
+      style={{ left: x, top: y - 10 }}
     >
+      {onMoveUp && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveUp();
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
+          title="Subir bloco (Mover para cima)"
+        >
+          <ArrowUp size={11} />
+        </button>
+      )}
+
       <div 
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
         onClick={() => setIsOpen(!isOpen)}
         className="p-0.5 rounded hover:bg-white/10"
-        title="Opções do bloco (Arraste para mover)"
+        title="Opções do bloco (Arraste para mover ou clique para opções)"
       >
-        <GripVertical size={18} />
+        <GripVertical size={16} />
       </div>
+
+      {onMoveDown && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveDown();
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
+          title="Descer bloco (Mover para baixo)"
+        >
+          <ArrowDown size={11} />
+        </button>
+      )}
 
       {isOpen && (
         <div 
@@ -61,6 +99,34 @@ export default function BlockHandle({ x, y, onDelete, onDragStart, onDragEnd, on
         >
           {!showColorSubmenu ? (
             <div className="py-1">
+              {onMoveUp && (
+                <button
+                  onClick={() => {
+                    onMoveUp();
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                >
+                  <ArrowUp size={14} />
+                  Subir bloco
+                </button>
+              )}
+
+              {onMoveDown && (
+                <button
+                  onClick={() => {
+                    onMoveDown();
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                >
+                  <ArrowDown size={14} />
+                  Descer bloco
+                </button>
+              )}
+
+              {(onMoveUp || onMoveDown) && <div className="h-px bg-white/10 my-1 mx-2" />}
+
               {onChangeColor && (
                 <>
                   <button

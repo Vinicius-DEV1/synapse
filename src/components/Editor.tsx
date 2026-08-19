@@ -213,6 +213,8 @@ export default function Editor({
           onDragStart={blockHandle.onDragStart}
           onDragEnd={blockHandle.onDragEnd}
           onDelete={blockHandle.onDelete}
+          onMoveUp={blockHandle.onMoveUp}
+          onMoveDown={blockHandle.onMoveDown}
           onMenuOpenChange={blockHandle.onMenuOpenChange}
           onChangeColor={(color, isBackground) => {
             if (!editor) return;

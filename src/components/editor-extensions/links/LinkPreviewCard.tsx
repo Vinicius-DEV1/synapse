@@ -13,6 +13,8 @@ import {
   GripVertical,
   LayoutGrid,
   Ungroup,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import { formatDuration, formatDate, isYouTubeUrl, getVideoId } from './youtubeUtils';
@@ -39,6 +41,8 @@ interface LinkPreviewCardProps {
   onUngroup: (e: React.MouseEvent) => void;
   onGroupWithNext: (e: React.MouseEvent) => void;
   onDragStartHandle?: (e: React.MouseEvent) => void;
+  onMoveUp?: (e: React.MouseEvent) => void;
+  onMoveDown?: (e: React.MouseEvent) => void;
 }
 
 export default function LinkPreviewCard({
@@ -62,6 +66,8 @@ export default function LinkPreviewCard({
   onUngroup,
   onGroupWithNext,
   onDragStartHandle,
+  onMoveUp,
+  onMoveDown,
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -93,15 +99,45 @@ export default function LinkPreviewCard({
 
   return (
     <div className="relative group/link">
-      {/* Alça de arrasto dedicada — garante que o arrasto selecione o nó e não duplique */}
+      {/* Alça e controles de movimentação discretos — subir, arrastar e descer */}
       <div
-        data-drag-handle
-        onMouseDown={onDragStartHandle}
         contentEditable={false}
-        title="Arraste para mover o card de link"
-        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100 hover:text-white active:cursor-grabbing"
+        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100"
       >
-        <GripVertical size={14} />
+        {onMoveUp && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveUp(e);
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Subir bloco (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+        )}
+        <div
+          data-drag-handle
+          onMouseDown={onDragStartHandle}
+          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+          title="Arraste para mover o card de link"
+        >
+          <GripVertical size={13} />
+        </div>
+        {onMoveDown && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveDown(e);
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Descer bloco (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
+        )}
       </div>
 
       <div

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle } from 'lucide-react';
+import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { Portal } from '../ui/Portal';
 import { parseEventDate } from '../../utils/dateUtils';
+import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
 export default function CalendarEventWidgetNodeView(props: any) {
   const { eventId, title, dateStr,  status } = props.node.attrs;
@@ -200,6 +201,32 @@ export default function CalendarEventWidgetNodeView(props: any) {
         <span className="truncate max-w-[180px]">{eventData?.title || title}</span>
         <span className="text-[10px] opacity-75">
           • {formatDateLabel(eventData?.start_date)}
+        </span>
+        <span className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && props.editor) {
+                moveBlockUp(props.editor.view, pos);
+              }
+            }}
+            className="p-0.5 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Subir bloco (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof pos === 'number' && props.editor) {
+                moveBlockDown(props.editor.view, pos);
+              }
+            }}
+            className="p-0.5 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+            title="Descer bloco (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
         </span>
       </span>
 

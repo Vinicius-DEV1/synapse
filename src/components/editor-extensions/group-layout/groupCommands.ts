@@ -154,7 +154,7 @@ function nodeRangeOf(source: GroupContentSource): { from: number; to: number } |
 /**
  * Remove um filho de um grupo reescrevendo o grupo para manter o schema íntegro.
  */
-function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
+export function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
   const found = findChildIndex(tr.doc, childPos);
   if (!found) return false;
 
