@@ -1,4 +1,4 @@
-import { Shield, Plus, ShieldAlert, ShieldCheck, Folder, GripVertical, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Shield, Plus, ShieldAlert, ShieldCheck, Folder, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import type { VaultGroup } from '../../types';
 
 interface VaultSidebarProps {
@@ -7,7 +7,6 @@ interface VaultSidebarProps {
   setSelectedGroupId: (id: string | null) => void;
   viewMode: 'list' | 'security';
   setViewMode: (mode: 'list' | 'security') => void;
-  dragOverGroupId: string | null;
   groupContextMenu: { id: string; x: number; y: number } | null;
   setGroupContextMenu: (ctx: { id: string; x: number; y: number } | null) => void;
   handleCreateGroup: () => void;
@@ -21,7 +20,6 @@ export function VaultSidebar({
   setSelectedGroupId,
   viewMode,
   setViewMode,
-  dragOverGroupId,
   groupContextMenu,
   setGroupContextMenu,
   handleCreateGroup,
@@ -46,8 +44,6 @@ export function VaultSidebar({
 
       <div className="flex-1 overflow-y-auto py-2">
         <button
-          data-droppable-type="vault-group"
-          data-droppable-id="root"
           onClick={() => {
             setViewMode('list');
             setSelectedGroupId(null);
@@ -56,7 +52,7 @@ export function VaultSidebar({
             selectedGroupId === null && viewMode === 'list'
               ? 'bg-brand-500/20 text-brand-400 border-r-2 border-brand-500'
               : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text'
-          } ${dragOverGroupId === 'root' ? 'bg-brand-500/20 border border-dashed border-brand-500' : ''}`}
+          }`}
         >
           <ShieldAlert size={16} />
           <span>Todos os Itens</span>
@@ -80,8 +76,6 @@ export function VaultSidebar({
         {groups.map((g) => (
           <div
             key={g.id}
-            data-droppable-type="vault-group"
-            data-droppable-id={g.id}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -91,7 +85,7 @@ export function VaultSidebar({
               selectedGroupId === g.id && viewMode === 'list'
                 ? 'bg-brand-500/20 text-brand-400 border-r-2 border-brand-500'
                 : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text'
-            } ${dragOverGroupId === g.id ? 'bg-brand-500/30 border border-dashed border-brand-500' : ''}`}
+            }`}
           >
             <div
               className="flex items-center gap-2 flex-1 overflow-hidden px-2 py-1"
@@ -104,9 +98,6 @@ export function VaultSidebar({
               <span className="truncate text-sm">{g.name}</span>
             </div>
             <div className="flex flex-shrink-0 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-dark-subtext/50 mr-1">
-                <GripVertical size={14} />
-              </span>
               <button
                 onClick={(e) => {
                   e.preventDefault();
