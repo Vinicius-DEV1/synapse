@@ -99,14 +99,12 @@ export default function LinkPreviewCard({
         onMouseDown={onDragStartHandle}
         contentEditable={false}
         title="Arraste para mover o card de link"
-        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100 hover:text-white active:cursor-grabbing"
+        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/link:opacity-100 hover:text-white active:cursor-grabbing"
       >
         <GripVertical size={14} />
       </div>
 
       <div
-        data-drag-handle
-        onMouseDown={onDragStartHandle}
         onClick={onOpenConfirm}
         className={`block transition-all rounded-lg p-3 ${
           isInsideGroup ? 'pr-20' : 'pr-24'
