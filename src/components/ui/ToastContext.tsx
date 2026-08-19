@@ -26,6 +26,14 @@ export const useGlobalToast = () => {
   return context;
 };
 
+export function triggerToast(message: string, type: ToastType = 'info', duration: number = 4000) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('app-toast', { detail: { message, type, duration } })
+    );
+  }
+}
+
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -44,7 +52,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [removeToast]);
 
-  // Listen for global API error events
+  // Listen for global API error and toast events
   useEffect(() => {
     const handleApiError = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -52,9 +60,22 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       showToast(errorMsg, 'error', 5000);
     };
 
+    const handleCustomToast = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.message) {
+        showToast(
+          customEvent.detail.message,
+          customEvent.detail.type || 'info',
+          customEvent.detail.duration || 4000
+        );
+      }
+    };
+
     window.addEventListener('app-api-error', handleApiError);
+    window.addEventListener('app-toast', handleCustomToast);
     return () => {
       window.removeEventListener('app-api-error', handleApiError);
+      window.removeEventListener('app-toast', handleCustomToast);
     };
   }, [showToast]);
 
