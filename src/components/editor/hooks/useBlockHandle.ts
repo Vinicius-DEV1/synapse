@@ -147,22 +147,31 @@ export function useBlockHandle(
       hide();
     };
 
-    // Rolar e editar movem os blocos sem gerar `mousemove`; a alça ficaria
-    // ancorada num lugar que não corresponde mais a bloco nenhum.
-    const onScroll = () => {
+    /*
+     * Rolar e editar movem os blocos sem gerar `mousemove`; a alça ficaria
+     * ancorada num lugar que não corresponde mais a bloco nenhum.
+     *
+     * Durante o arrasto, porém, esconder é proibido — e o `update` chega
+     * sozinho, sem ninguém tocar em nada: metadados de um card que voltaram,
+     * um upload que terminou, uma edição remota do Yjs. Esconder a alça a
+     * DESMONTA, e com ela vai embora o `onDragEnd` que fecha o arrasto: o
+     * `view.dragging` sobrevive com o slice antigo e o próximo drop reinsere
+     * aquele conteúdo. Era um dos caminhos do "movi e duplicou".
+     */
+    const hideUnlessDragging = () => {
       if (!draggingRef.current) hide();
     };
 
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('mouseleave', onMouseLeave);
-    window.addEventListener('scroll', onScroll, true);
-    editor.on('update', hide);
+    window.addEventListener('scroll', hideUnlessDragging, true);
+    editor.on('update', hideUnlessDragging);
 
     return () => {
       container.removeEventListener('mousemove', onMouseMove);
       container.removeEventListener('mouseleave', onMouseLeave);
-      window.removeEventListener('scroll', onScroll, true);
-      editor.off('update', hide);
+      window.removeEventListener('scroll', hideUnlessDragging, true);
+      editor.off('update', hideUnlessDragging);
     };
   }, [editor, containerRef, hide]);
 
