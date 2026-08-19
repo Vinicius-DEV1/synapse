@@ -11,11 +11,11 @@ export function usePageActions() {
       const page = await window.api.createPage({ parentId });
       dispatch({ type: 'ADD_PAGE', page });
       dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id });
-      if (parentId && !state.expandedNodes.includes(parentId)) {
-        dispatch({ type: 'TOGGLE_NODE', nodeId: parentId });
+      if (parentId) {
+        dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
       }
     }
-  }, [dispatch, state.expandedNodes]);
+  }, [dispatch]);
 
   const handleCreateLinkedPage = useCallback(async (title: string, parentId: string | null = null) => {
     if (window.api) {
@@ -184,8 +184,8 @@ export function usePageActions() {
         dispatch({ type: 'ADD_PAGE', page: completePage });
         dispatch({ type: 'NAVIGATE_IN_TAB', pageId: newPage.id });
         
-        if (parentId && !state.expandedNodes.includes(parentId)) {
-          dispatch({ type: 'TOGGLE_NODE', nodeId: parentId });
+        if (parentId) {
+          dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
         }
 
         // Disparar trigger de sync

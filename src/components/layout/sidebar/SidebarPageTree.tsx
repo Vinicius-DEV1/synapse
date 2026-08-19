@@ -7,6 +7,8 @@ import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { usePageActions } from '../../../hooks/usePageActions';
+import { isValidHierarchyMove } from '../../../utils/hierarchy';
+import { triggerToast } from '../../ui/ToastContext';
 
 function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any) {
   const {
@@ -76,7 +78,7 @@ interface SidebarPageTreeProps {
 }
 
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const { handleImportPage } = usePageActions();
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
@@ -110,7 +112,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
     })
   );
@@ -142,11 +144,25 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       const draggedId = active.data.current.page.id;
       const targetId = over.data.current?.page?.id || over.data.current?.pageId;
       if (draggedId && targetId && draggedId !== targetId) {
-        onUpdatePage(draggedId, { parent_id: targetId });
+        if (isValidHierarchyMove(state.pages, draggedId, targetId)) {
+          onUpdatePage(draggedId, { parent_id: targetId })
+            .then(() => {
+              dispatch({ type: 'EXPAND_NODE', nodeId: targetId });
+            })
+            .catch((err) => {
+              console.error('[Sidebar] Falha ao atualizar hierarquia:', err);
+              triggerToast('Falha ao mover a página.', 'error');
+            });
+        } else {
+          triggerToast('Não é possível mover uma página para dentro de si mesma ou de suas subpáginas.', 'error');
+        }
       }
     } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy-root') {
       const draggedId = active.data.current.page.id;
-      onUpdatePage(draggedId, { parent_id: null });
+      onUpdatePage(draggedId, { parent_id: null }).catch((err) => {
+        console.error('[Sidebar] Falha ao mover página para raiz:', err);
+        triggerToast('Falha ao mover a página para a raiz.', 'error');
+      });
     }
   };
 
