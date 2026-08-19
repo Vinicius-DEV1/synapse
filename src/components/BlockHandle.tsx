@@ -1,4 +1,4 @@
-import { GripVertical, Trash2, Palette, ArrowUp, ArrowDown } from 'lucide-react';
+import { GripVertical, Trash2, Palette, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../utils/colors';
 
@@ -8,6 +8,7 @@ interface BlockHandleProps {
   onDelete: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onAddBelow?: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onChangeColor?: (color: string, isBackground: boolean) => void;
@@ -21,6 +22,7 @@ export default function BlockHandle({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAddBelow,
   onDragStart,
   onDragEnd,
   onChangeColor,
@@ -65,6 +67,19 @@ export default function BlockHandle({
           title="Subir bloco (Mover para cima)"
         >
           <ArrowUp size={11} />
+        </button>
+      )}
+
+      {onAddBelow && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddBelow();
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
+          title="Adicionar linha abaixo (+)"
+        >
+          <Plus size={11} />
         </button>
       )}
 

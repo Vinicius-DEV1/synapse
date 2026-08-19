@@ -215,6 +215,7 @@ export default function Editor({
           onDelete={blockHandle.onDelete}
           onMoveUp={blockHandle.onMoveUp}
           onMoveDown={blockHandle.onMoveDown}
+          onAddBelow={blockHandle.onAddBelow}
           onMenuOpenChange={blockHandle.onMenuOpenChange}
           onChangeColor={(color, isBackground) => {
             if (!editor) return;

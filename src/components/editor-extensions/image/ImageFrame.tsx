@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { useImageResize } from './useImageResize';
 import type { ImageSize } from './useImageResize';
@@ -24,6 +24,7 @@ import {
 import { findChildIndex, appendToGroup, createGroup } from '../group-layout/groupCommands';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { COLUMN_GROUP_SPEC } from '../group-layout/groupSpecs';
+import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import ImageToolbar from './ImageToolbar';
 import ImageResizeHandles from './ImageResizeHandles';
 import ImageCaption from './ImageCaption';
@@ -230,17 +231,66 @@ export default function ImageFrame({
           }}
         />
 
-        {/* Alça de arrasto dedicada */}
+        {/* Alça e controles de movimentação discretos */}
         {showChrome && (
           <div
-            data-image-drag-grip
-            data-drag-handle
             contentEditable={false}
-            onMouseDown={selectSelf}
-            title="Arraste para mover a imagem"
-            className="absolute left-2 top-2 z-20 flex h-7 w-6 cursor-grab items-center justify-center rounded-md border border-white/10 bg-dark-bg/85 text-dark-subtext shadow-lg backdrop-blur-xl transition-colors hover:text-white active:cursor-grabbing"
+            className="absolute left-2 top-2 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext shadow-lg backdrop-blur-xl transition-all"
           >
-            <GripVertical size={14} />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pos = safePos(getPos);
+                if (pos !== null && editor) moveBlockUp(editor.view, pos);
+              }}
+              className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+              title="Subir imagem (Mover para cima)"
+            >
+              <ArrowUp size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pos = safePos(getPos);
+                if (pos !== null && editor && node) {
+                  editor
+                    .chain()
+                    .focus()
+                    .insertContentAt(pos + node.nodeSize, { type: 'paragraph' })
+                    .run();
+                }
+              }}
+              className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+              title="Adicionar linha abaixo (+)"
+            >
+              <Plus size={11} />
+            </button>
+            <div
+              data-image-drag-grip
+              data-drag-handle
+              onMouseDown={selectSelf}
+              title="Arraste para mover a imagem"
+              className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+            >
+              <GripVertical size={13} />
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pos = safePos(getPos);
+                if (pos !== null && editor) moveBlockDown(editor.view, pos);
+              }}
+              className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+              title="Descer imagem (Mover para baixo)"
+            >
+              <ArrowDown size={11} />
+            </button>
           </div>
         )}
 

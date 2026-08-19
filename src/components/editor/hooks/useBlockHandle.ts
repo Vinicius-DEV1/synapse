@@ -31,6 +31,7 @@ export interface BlockHandleState {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAddBelow: () => void;
   onMenuOpenChange: (open: boolean) => void;
 }
 
@@ -198,5 +199,18 @@ export function useBlockHandle(
     forceHide();
   }, [editor, forceHide]);
 
-  return { anchor, onDragStart, onDragEnd, onDelete, onMoveUp, onMoveDown, onMenuOpenChange };
+  const onAddBelow = useCallback(() => {
+    const pos = posRef.current;
+    if (!editor || pos === null) return;
+    const node = editor.view.state.doc.nodeAt(pos);
+    if (!node) return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(pos + node.nodeSize, { type: 'paragraph' })
+      .run();
+    forceHide();
+  }, [editor, forceHide]);
+
+  return { anchor, onDragStart, onDragEnd, onDelete, onMoveUp, onMoveDown, onAddBelow, onMenuOpenChange };
 }
