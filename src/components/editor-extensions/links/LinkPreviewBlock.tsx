@@ -9,6 +9,7 @@ import { findChildIndex, groupWithSibling, removeChild } from '../group-layout/g
 import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
+import { triggerToast } from '../../ui/ToastContext';
 
 declare module '../../../api/types' {
   interface ICadernoAPI {
@@ -69,16 +70,26 @@ const LinkPreviewComponent = (props: any) => {
   const handleUngroupSelf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!groupInfo || !props.editor) return;
-    removeChild(props.editor.view, groupInfo.groupPos, groupInfo.index);
+    try {
+      if (!groupInfo || !props.editor) return;
+      removeChild(props.editor.view, groupInfo.groupPos, groupInfo.index);
+    } catch (err) {
+      console.error('[LinkPreview] Falha ao desagrupar link:', err);
+      triggerToast('Não foi possível desagrupar o card de link.', 'error');
+    }
   };
 
   const handleGroupWithNext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const pos = currentPos();
-    if (pos === null || !props.editor) return;
-    groupWithSibling(props.editor.view, LINK_GROUP_SPEC, pos);
+    try {
+      const pos = currentPos();
+      if (pos === null || !props.editor) return;
+      groupWithSibling(props.editor.view, LINK_GROUP_SPEC, pos);
+    } catch (err) {
+      console.error('[LinkPreview] Falha ao agrupar link:', err);
+      triggerToast('Não foi possível agrupar os cards de link.', 'error');
+    }
   };
 
   const handleToggleNotes = (e: React.MouseEvent) => {

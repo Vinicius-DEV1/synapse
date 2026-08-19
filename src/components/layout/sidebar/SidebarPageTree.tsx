@@ -104,7 +104,10 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     
     reordered.forEach((p: any, idx: number) => {
       if (p.pinned_order !== idx) {
-        onUpdatePage(p.id, { pinned_order: idx });
+        onUpdatePage(p.id, { pinned_order: idx }).catch((err) => {
+          console.error('[Sidebar] Falha ao atualizar ordem de fixados:', err);
+          triggerToast('Falha ao reordenar páginas fixadas.', 'error');
+        });
       }
     });
   };

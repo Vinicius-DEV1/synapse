@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Editor } from '@tiptap/core';
+import { triggerToast } from '../../ui/ToastContext';
 
 export interface SlashMenuState {
   query: string;
@@ -18,6 +19,9 @@ interface UseSlashCommandProps {
   setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
 }
 
+/**
+ * Hook de controle do menu de comandos '/' (slash commands).
+ */
 export function useSlashCommand({
   setPageSearchMenu,
   setFocusModal,
@@ -25,7 +29,7 @@ export function useSlashCommand({
   setFileUploadModal,
   setFileSelectModal,
   setCalendarEventModal,
-  setMediaSelectModal
+  setMediaSelectModal,
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -34,7 +38,7 @@ export function useSlashCommand({
       const startPos = view.state.selection.$head.pos;
       const coords = view.coordsAtPos(startPos);
       const x = coords.left;
-      const y = coords.top + 24; // 24px below cursor
+      const y = coords.top + 24;
       setSlashMenu({ query: '', startPos, x, y });
       return false;
     }
@@ -46,7 +50,7 @@ export function useSlashCommand({
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         setSlashMenu(null);
-        return false; // let the cursor move
+        return false;
       }
       if (event.key === 'Backspace' && slashMenu.query.length === 0) {
         setSlashMenu(null);
@@ -62,13 +66,12 @@ export function useSlashCommand({
       try {
         const currentPos = editor.state.selection.$head.pos;
         if (prev) {
-          if (currentPos <= prev.startPos) return null; // fechou o menu apagando a barra
+          if (currentPos <= prev.startPos) return null;
           const rawQuery = editor.state.doc.textBetween(prev.startPos, currentPos);
           const query = rawQuery.startsWith('/') ? rawQuery.substring(1) : rawQuery;
           const coords = editor.view.coordsAtPos(prev.startPos);
           return { ...prev, query, x: coords.left, y: coords.top + 24 };
         } else {
-          // Mobile fallback: Check if user just typed a slash
           const { $head } = editor.state.selection;
           const textBefore = $head.parent.textBetween(0, $head.parentOffset);
           if (textBefore.endsWith(' /') || textBefore === '/') {
@@ -87,12 +90,13 @@ export function useSlashCommand({
   const executeSlashCommand = useCallback((commandId: string, editor: Editor | null) => {
     if (!editor || !slashMenu) return;
     
-    const startPos = slashMenu.startPos;
-    const endPos = startPos + slashMenu.query.length + 1; 
-    
-    setSlashMenu(null);
-    
-    const chain = editor.chain().focus().deleteRange({ from: startPos, to: endPos });
+    try {
+      const startPos = slashMenu.startPos;
+      const endPos = startPos + slashMenu.query.length + 1; 
+      
+      setSlashMenu(null);
+      
+      const chain = editor.chain().focus().deleteRange({ from: startPos, to: endPos });
 
     switch (commandId) {
       case 'text': chain.setParagraph().run(); break;
@@ -225,6 +229,10 @@ export function useSlashCommand({
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
+    }
+    } catch (err) {
+      console.error('[SlashCommand] Erro ao executar comando do menu rápido:', err);
+      triggerToast('Falha ao inserir elemento do menu rápido.', 'error');
     }
   }, [
     slashMenu,

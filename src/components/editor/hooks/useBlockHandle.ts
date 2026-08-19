@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { draggableBlockAt } from '../../editor-extensions/topLevelBlock';
 import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions/group-layout';
+import { triggerToast } from '../../ui/ToastContext';
 
 /** Distância em pixels entre a alça flutuante e a borda esquerda do bloco. */
 const BLOCK_HANDLE_GAP = 26;
@@ -164,12 +165,17 @@ export function useBlockHandle(
   }, [editor, forceHide]);
 
   const onDelete = useCallback(() => {
-    const pos = posRef.current;
-    if (!editor || pos === null) return;
-    const node = editor.view.state.doc.nodeAt(pos);
-    if (!node) return;
-    editor.view.dispatch(editor.state.tr.delete(pos, pos + node.nodeSize));
-    forceHide();
+    try {
+      const pos = posRef.current;
+      if (!editor || pos === null) return;
+      const node = editor.view.state.doc.nodeAt(pos);
+      if (!node) return;
+      editor.view.dispatch(editor.state.tr.delete(pos, pos + node.nodeSize));
+      forceHide();
+    } catch (err) {
+      console.error('[BlockHandle] Erro ao excluir bloco:', err);
+      triggerToast('Falha ao excluir o bloco.', 'error');
+    }
   }, [editor, forceHide]);
 
   return { anchor, onDragStart, onDragEnd, onDelete, onMenuOpenChange };

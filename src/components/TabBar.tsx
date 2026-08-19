@@ -112,19 +112,25 @@ export default function TabBar() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
     })
   );
 
   const handleDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (active && over && active.id !== over.id) {
-      if (active.data.current?.type === 'tab' && over.data.current?.type === 'tab') {
-        const sourceIndex = active.data.current.index;
-        const targetIndex = over.data.current.index;
-        handleDropTab(sourceIndex, targetIndex);
+    try {
+      const { active, over } = e;
+      if (active && over && active.id !== over.id) {
+        if (active.data.current?.type === 'tab' && over.data.current?.type === 'tab') {
+          const sourceIndex = active.data.current.index;
+          const targetIndex = over.data.current.index;
+          if (typeof sourceIndex === 'number' && typeof targetIndex === 'number') {
+            handleDropTab(sourceIndex, targetIndex);
+          }
+        }
       }
+    } catch (err) {
+      console.error('[TabBar] Erro ao reordenar abas:', err);
     }
   };
 
