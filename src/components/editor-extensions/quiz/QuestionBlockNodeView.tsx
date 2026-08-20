@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
+import { ChevronUp } from 'lucide-react';
 import { promptGeminiQuizAssistant } from '../../../services/gemini';
 import QuizBatteryHeader from './components/QuizBatteryHeader';
 import QuizTagsFilter from './components/QuizTagsFilter';
@@ -10,6 +11,7 @@ import QuizImportModal from './components/QuizImportModal';
 import { QuizDeleteModals } from './components/QuizDeleteModals';
 import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
+import { normalizeChatHistory } from './utils/quizNormalizer';
 import type { QuestionItem, QuizChatMessage, SuggestedAction } from './types';
 
 export default function QuestionBlockNodeView(props: any) {
@@ -23,7 +25,7 @@ export default function QuestionBlockNodeView(props: any) {
   } = props.node.attrs;
 
   const mode: 'edit' | 'practice' = rawMode === 'practice' ? 'practice' : 'edit';
-  const chatHistory: QuizChatMessage[] = Array.isArray(rawChatHistory) ? rawChatHistory : [];
+  const chatHistory: QuizChatMessage[] = normalizeChatHistory(rawChatHistory);
 
   const {
     questions,
@@ -149,7 +151,7 @@ export default function QuestionBlockNodeView(props: any) {
   const handleAcceptAction = (action: SuggestedAction) => {
     if (action.actionType === 'create') {
       const newQ: QuestionItem = {
-        id: `q_${Date.now()}`,
+        id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         type: action.type === 'open' ? 'open' : 'multiple_choice',
         question: action.question || '',
         options: action.options || ['', '', '', ''],
@@ -201,9 +203,84 @@ export default function QuestionBlockNodeView(props: any) {
     updateChatHistory(updatedChat);
   };
 
+  const handleAcceptAllInMessage = (msgId: string) => {
+    const targetMsg = chatHistory.find((m) => m.id === msgId);
+    if (!targetMsg || !targetMsg.suggestedActions) return;
+
+    const pendingActions = targetMsg.suggestedActions.filter((a) => a.status === 'pending');
+    if (pendingActions.length === 0) return;
+
+    let currentQuestionsList = [...questions];
+
+    pendingActions.forEach((action, idx) => {
+      if (action.actionType === 'create') {
+        const newQ: QuestionItem = {
+          id: `q_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+          type: action.type === 'open' ? 'open' : 'multiple_choice',
+          question: action.question || '',
+          options: action.options || ['', '', '', ''],
+          correctIndex: action.correctIndex ?? 0,
+          tags: action.tags || [],
+          selectedIndex: null,
+          expectedAnswer: action.expectedAnswer || '',
+          userTypedAnswer: '',
+          aiFeedback: null,
+          explanation: action.explanation || '',
+          showExplanation: false,
+          answered: false,
+        };
+        currentQuestionsList.push(newQ);
+      } else if (action.actionType === 'edit' && typeof action.targetQuestionIndex === 'number') {
+        const targetQ = currentQuestionsList[action.targetQuestionIndex];
+        if (targetQ && action.changes) {
+          currentQuestionsList[action.targetQuestionIndex] = {
+            ...targetQ,
+            ...action.changes,
+          };
+        }
+      } else if (action.actionType === 'delete' && typeof action.targetQuestionIndex === 'number') {
+        const targetQ = currentQuestionsList[action.targetQuestionIndex];
+        if (targetQ) {
+          currentQuestionsList = currentQuestionsList.filter((q) => q.id !== targetQ.id);
+        }
+      }
+    });
+
+    updateQuestions(currentQuestionsList);
+
+    const updatedChat = chatHistory.map((m) => {
+      if (m.id !== msgId || !m.suggestedActions) return m;
+      return {
+        ...m,
+        suggestedActions: m.suggestedActions.map((act) =>
+          act.status === 'pending' ? { ...act, status: 'accepted' as const } : act
+        ),
+      };
+    });
+    updateChatHistory(updatedChat);
+  };
+
+  const handleRejectAllInMessage = (msgId: string) => {
+    const updatedChat = chatHistory.map((m) => {
+      if (m.id !== msgId || !m.suggestedActions) return m;
+      return {
+        ...m,
+        suggestedActions: m.suggestedActions.map((act) =>
+          act.status === 'pending' ? { ...act, status: 'rejected' as const } : act
+        ),
+      };
+    });
+    updateChatHistory(updatedChat);
+  };
+
+  const blockContainerRef = useRef<HTMLDivElement>(null);
+
   return (
     <NodeViewWrapper className="question-block my-6 w-full block" contentEditable={false}>
-      <div className="rounded-3xl border border-purple-500/30 bg-dark-bg/95 shadow-2xl overflow-hidden backdrop-blur-xl transition-all">
+      <div
+        ref={blockContainerRef}
+        className="rounded-3xl border border-purple-500/30 bg-dark-bg/95 shadow-2xl overflow-hidden backdrop-blur-xl transition-all"
+      >
         {/* Header Principal */}
         <div className="p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-dark-card to-purple-950/20">
           <QuizBatteryHeader
@@ -235,7 +312,7 @@ export default function QuestionBlockNodeView(props: any) {
 
         {/* Corpo (Lista de Questões) */}
         {!isCollapsed && (
-          <div className="p-6">
+          <div className="p-6 space-y-6">
             {mode === 'edit' ? (
               <QuizEditor
                 questions={displayedQuestions}
@@ -253,10 +330,34 @@ export default function QuestionBlockNodeView(props: any) {
                 evaluatingIds={evaluatingIds}
                 onDiscussInChat={(q, idx) => {
                   setShowAiAssistantModal(true);
-                  const prompt = `Gostaria de discutir a avaliação da Questão ${idx + 1} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer: "${q.aiFeedback?.feedback || ''}"\n\nPode me explicar como melhorar?`;
+                  const questionHeader = `Gostaria de discutir a avaliação da Questão ${idx + 1}`;
+                  const alreadyDiscussed = chatHistory.some(
+                    (m) => m.role === 'user' && m.text.includes(questionHeader)
+                  );
+                  if (alreadyDiscussed) return;
+
+                  const prompt = `${questionHeader} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${q.expectedAnswer || 'N/A'}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
                   handleSendChatMessage(prompt);
                 }}
               />
+            )}
+
+            {/* Botão Voltar ao Topo da Bateria */}
+            {questions.length > 1 && (
+              <div className="flex justify-center pt-3 pb-1 border-t border-white/5">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    blockContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-purple-300 bg-black/40 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/30 px-4 py-1.5 rounded-full transition-all duration-200 group shadow-sm"
+                  title="Rolar suavemente até o topo desta bateria de questões"
+                >
+                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform text-purple-400" />
+                  <span>Voltar ao topo da bateria</span>
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -274,6 +375,8 @@ export default function QuestionBlockNodeView(props: any) {
         onClearHistory={() => updateChatHistory([])}
         onAcceptAction={handleAcceptAction}
         onRejectAction={handleRejectAction}
+        onAcceptAllInMessage={handleAcceptAllInMessage}
+        onRejectAllInMessage={handleRejectAllInMessage}
         questions={questions}
       />
 
