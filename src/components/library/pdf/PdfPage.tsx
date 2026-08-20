@@ -195,9 +195,6 @@ export const PdfPage = React.memo(({
         renderTaskRef.current.cancel();
       }
       if (ocrTimeout) clearTimeout(ocrTimeout);
-      if (tesseractWorker) {
-        tesseractWorker.terminate().catch(() => {});
-      }
     };
   }, [isRendered, pdfDoc, pageNum, zoom, bookId]); // Intentionally omitting ocrProcessing and setOcrProcessing to prevent loops
 
