@@ -71,7 +71,14 @@ export function useBlockHandle(
     const overHandle = (node: EventTarget | null) =>
       node instanceof HTMLElement && !!node.closest('.block-handle');
 
-    const onMouseMove = (event: MouseEvent) => {
+    let rafId: number | null = null;
+    let lastEvent: MouseEvent | null = null;
+
+    const processMouseMove = () => {
+      rafId = null;
+      if (!lastEvent) return;
+      const event = lastEvent;
+
       if (draggingRef.current || menuOpenRef.current) return;
 
       const view = editor.view;
@@ -117,13 +124,28 @@ export function useBlockHandle(
       setAnchor({ x: Math.max(4, rect.left - BLOCK_HANDLE_GAP), y: rect.top + 2 });
     };
 
+    const onMouseMove = (event: MouseEvent) => {
+      lastEvent = event;
+      if (rafId === null) {
+        rafId = window.requestAnimationFrame(processMouseMove);
+      }
+    };
+
     const onMouseLeave = (event: MouseEvent) => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       if (draggingRef.current) return;
       if (overHandle(event.relatedTarget)) return;
       hide();
     };
 
     const hideUnlessDragging = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       if (!draggingRef.current) hide();
     };
 
@@ -133,6 +155,9 @@ export function useBlockHandle(
     editor.on('update', hideUnlessDragging);
 
     return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
       container.removeEventListener('mousemove', onMouseMove);
       container.removeEventListener('mouseleave', onMouseLeave);
       window.removeEventListener('scroll', hideUnlessDragging, true);
