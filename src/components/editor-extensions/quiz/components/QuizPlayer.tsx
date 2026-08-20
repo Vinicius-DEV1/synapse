@@ -42,17 +42,21 @@ export default function QuizPlayer({
 
   const prevAnsweredRef = useRef(0);
 
-  // Efeito de celebração com fogos ao concluir todas as questões da bateria
+  // Efeito de celebração com fogos ao concluir todas as questões com alto aproveitamento (>= 80%)
   useEffect(() => {
-    if (
+    const isCompleted =
       safeQuestions.length > 0 &&
       answeredCount === safeQuestions.length &&
-      prevAnsweredRef.current < safeQuestions.length
-    ) {
-      triggerFireworksAnimation();
+      prevAnsweredRef.current < safeQuestions.length;
+
+    if (isCompleted) {
+      const hitRatio = correctCount / safeQuestions.length;
+      if (hitRatio >= 0.8 && correctCount > 0) {
+        triggerFireworksAnimation();
+      }
     }
     prevAnsweredRef.current = answeredCount;
-  }, [answeredCount, safeQuestions.length]);
+  }, [answeredCount, correctCount, safeQuestions.length]);
 
   return (
     <div className="space-y-6">

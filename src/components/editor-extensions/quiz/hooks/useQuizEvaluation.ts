@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { QuestionItem, AttemptItem } from '../types';
 import { promptGeminiForOpenQuestionEvaluation } from '../../../../services/gemini';
-import { triggerFireworksAnimation } from '../utils/fireworks';
 
 export function useQuizEvaluation(
   updateSingleQuestion: (qId: string, partial: Partial<QuestionItem>) => void
@@ -34,10 +33,6 @@ export function useQuizEvaluation(
           showExplanation: true,
           attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
         });
-
-        if (evaluation?.verdict === 'Correto') {
-          triggerFireworksAnimation();
-        }
       } catch (err) {
         console.error('[QuestionBlock] Falha ao avaliar resposta aberta:', err);
       } finally {
