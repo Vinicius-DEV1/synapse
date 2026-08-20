@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import type { QuestionItem } from '../types';
 
@@ -9,7 +9,9 @@ interface QuizHistorySectionProps {
 export default function QuizHistorySection({ question }: QuizHistorySectionProps) {
   const [showHistory, setShowHistory] = useState(false);
 
-  if (!question.attemptsHistory || question.attemptsHistory.length === 0) {
+  const history = Array.isArray(question.attemptsHistory) ? question.attemptsHistory : [];
+
+  if (history.length === 0) {
     return null;
   }
 
@@ -20,7 +22,7 @@ export default function QuizHistorySection({ question }: QuizHistorySectionProps
         className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 font-semibold transition-colors"
       >
         <History size={13} className="text-purple-400" />
-        <span>📈 Histórico de Tentativas ({question.attemptsHistory.length})</span>
+        <span>📈 Histórico de Tentativas ({history.length})</span>
         {showHistory ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
       </button>
 
@@ -29,21 +31,23 @@ export default function QuizHistorySection({ question }: QuizHistorySectionProps
           <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block border-b border-white/10 pb-1">
             Linha do Tempo de Respostas:
           </span>
-          {question.attemptsHistory.map((att, attIdx) => {
-            const dateStr = new Date(att.timestamp).toLocaleString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            });
+          {history.map((att, attIdx) => {
+            const dateStr = att.timestamp
+              ? new Date(att.timestamp).toLocaleString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : 'Data N/D';
 
             const isMc = att.type === 'multiple_choice';
-            const isWin = isMc ? att.isCorrect : att.aiFeedback?.verdict === 'Correto';
+            const isWin = isMc ? Boolean(att.isCorrect) : att.aiFeedback?.verdict === 'Correto';
             const isPartial = !isMc && att.aiFeedback?.verdict === 'Parcial';
 
             return (
               <div
-                key={att.id}
+                key={att.id || `att_${attIdx}`}
                 className={`p-2 rounded-lg border space-y-1 ${
                   isWin
                     ? 'bg-green-500/10 border-green-500/20 text-green-200'
@@ -54,7 +58,7 @@ export default function QuizHistorySection({ question }: QuizHistorySectionProps
               >
                 <div className="flex items-center justify-between text-[10px] font-semibold opacity-90">
                   <span>
-                    Tentativa #{question.attemptsHistory!.length - attIdx} • {dateStr}
+                    Tentativa #{history.length - attIdx} • {dateStr}
                   </span>
                   <span
                     className={`px-1.5 py-0.5 rounded font-bold ${
@@ -88,7 +92,7 @@ export default function QuizHistorySection({ question }: QuizHistorySectionProps
                     Opção Selecionada:{' '}
                     <strong>
                       {String.fromCharCode(65 + att.selectedIndex)}){' '}
-                      {question.options[att.selectedIndex] || ''}
+                      {question.options?.[att.selectedIndex] || ''}
                     </strong>
                   </p>
                 )}

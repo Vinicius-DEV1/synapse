@@ -13,6 +13,7 @@ export interface SuggestedAction {
   // edit / delete
   targetQuestionIndex?: number;
   changes?: {
+    type?: 'multiple_choice' | 'open';
     question?: string;
     options?: string[];
     correctIndex?: number;
