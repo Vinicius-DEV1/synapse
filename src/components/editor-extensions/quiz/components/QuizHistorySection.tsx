@@ -11,7 +11,7 @@ export default function QuizHistorySection({ question }: QuizHistorySectionProps
 
   const history = Array.isArray(question.attemptsHistory) ? question.attemptsHistory : [];
 
-  if (history.length === 0) {
+  if (!question.answered || history.length === 0) {
     return null;
   }
 

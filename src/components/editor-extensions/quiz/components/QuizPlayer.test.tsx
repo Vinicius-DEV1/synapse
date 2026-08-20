@@ -111,6 +111,34 @@ describe('QuizPlayer Component', () => {
     expect(screen.getByText(/Histórico de Tentativas/)).toBeInTheDocument();
   });
 
+  it('hides history button when question is not answered (answered: false)', () => {
+    const unansweredWithHistory: QuestionItem = {
+      ...sampleQuestions[0],
+      answered: false,
+      attemptsHistory: [
+        {
+          id: 'att_prev',
+          timestamp: Date.now(),
+          type: 'multiple_choice',
+          selectedIndex: 0,
+          isCorrect: false,
+        },
+      ],
+    };
+
+    render(
+      <QuizPlayer
+        questions={[unansweredWithHistory]}
+        onUpdateSingleQuestion={vi.fn()}
+        onEvaluateOpenAnswer={vi.fn()}
+        evaluatingIds={{}}
+        onDiscussInChat={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText(/Histórico de Tentativas/)).toBeNull();
+  });
+
   it('handles open question input and evaluation submission correctly', () => {
     const openQuestion: QuestionItem = {
       id: 'q_open',
