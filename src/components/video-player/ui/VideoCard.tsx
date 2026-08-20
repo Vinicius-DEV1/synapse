@@ -84,18 +84,18 @@ export const VideoCard = React.memo(({
           
           <div className="absolute top-2 right-2 flex gap-1">
             {video.is_local ? (
-              <div className="bg-green-500/20 text-green-400 p-1 rounded-md backdrop-blur-md" title="Baixado (Local)">
+              <div className="bg-emerald-950/80 border border-emerald-500/30 text-green-400 p-1 rounded-md" title="Baixado (Local)">
                 <HardDrive size={12} />
               </div>
             ) : (
-              <div className="bg-blue-500/20 text-blue-400 p-1 rounded-md backdrop-blur-md" title="No Drive (Nuvem)">
+              <div className="bg-blue-950/80 border border-blue-500/30 text-blue-400 p-1 rounded-md" title="No Drive (Nuvem)">
                 <Cloud size={12} />
               </div>
             )}
           </div>
 
           {video.duration ? (
-            <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider backdrop-blur-md">
+            <div className="absolute bottom-2 right-2 bg-black/80 border border-white/10 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider">
               {formatDuration(video.duration)}
             </div>
           ) : null}
