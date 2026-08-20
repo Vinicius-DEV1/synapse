@@ -71,7 +71,8 @@ describe('QuizPlayer Component', () => {
         selectedIndex: 1,
         answered: true,
         showExplanation: true,
-      })
+      }),
+      true
     );
   });
 
