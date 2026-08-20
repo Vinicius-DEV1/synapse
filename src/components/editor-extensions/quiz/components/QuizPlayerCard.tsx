@@ -388,8 +388,8 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
         </div>
       )}
 
-      {/* Histórico */}
-      <QuizHistorySection question={q} />
+      {/* Histórico - só aparece quando a questão já foi respondida */}
+      {q.answered && <QuizHistorySection question={q} />}
     </div>
   );
 });
