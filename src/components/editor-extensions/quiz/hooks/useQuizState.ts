@@ -151,7 +151,7 @@ export function useQuizState(
   );
 
   const handleCopyQuestionsJson = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
