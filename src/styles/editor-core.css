@@ -231,6 +231,17 @@
   width: 100%;
 }
 
+.question-block input,
+.question-block textarea {
+  cursor: text !important;
+  caret-color: #c084fc !important;
+}
+
+.question-block button,
+.question-block [role="button"] {
+  cursor: pointer;
+}
+
 /* Callout (Blockquote) Styling */
 .ProseMirror blockquote {
   border-left: 3px solid rgba(255, 255, 255, 0.2);
