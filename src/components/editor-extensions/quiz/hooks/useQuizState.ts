@@ -1,33 +1,37 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { QuestionItem } from '../types';
 import { createDefaultQuestion } from '../utils/fireworks';
 import { preprocessMarkdownCode } from '../utils/markdownPreprocess';
+import { normalizeQuizQuestions } from '../utils/quizNormalizer';
 
 export function useQuizState(
   rawQuestions: any,
   title: string | undefined,
   updateAttributes: (attrs: Record<string, any>) => void
 ) {
-  const initialQuestions: QuestionItem[] =
-    Array.isArray(rawQuestions) && rawQuestions.length > 0
-      ? rawQuestions
-      : [createDefaultQuestion(1)];
+  const questions: QuestionItem[] = useMemo(() => {
+    return normalizeQuizQuestions(rawQuestions);
+  }, [rawQuestions]);
 
-  const questions: QuestionItem[] = initialQuestions;
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [copiedJson, setCopiedJson] = useState(false);
 
-  const allBatteryTags = Array.from(
-    new Set(questions.flatMap((q) => q.tags || []))
-  ).filter(Boolean);
+  const allBatteryTags = useMemo(() => {
+    return Array.from(
+      new Set(questions.flatMap((q) => q.tags || []))
+    ).filter(Boolean);
+  }, [questions]);
 
-  const displayedQuestions = selectedTagFilter
-    ? questions.filter((q) => q.tags?.includes(selectedTagFilter))
-    : questions;
+  const displayedQuestions = useMemo(() => {
+    return selectedTagFilter
+      ? questions.filter((q) => q.tags?.includes(selectedTagFilter))
+      : questions;
+  }, [questions, selectedTagFilter]);
 
   const updateQuestions = useCallback(
     (newQuestions: QuestionItem[]) => {
-      updateAttributes({ questions: newQuestions });
+      const normalized = normalizeQuizQuestions(newQuestions);
+      updateAttributes({ questions: normalized });
     },
     [updateAttributes]
   );
@@ -110,11 +114,11 @@ export function useQuizState(
               index: idx + 1,
               type: 'multiple_choice',
               question: q.question,
-              options: q.options.map(
+              options: (q.options || []).map(
                 (opt, oIdx) => `${String.fromCharCode(65 + oIdx)}) ${preprocessMarkdownCode(opt)}`
               ),
-              correct_option: `${String.fromCharCode(65 + q.correctIndex)}) ${
-                q.options[q.correctIndex] || ''
+              correct_option: `${String.fromCharCode(65 + (q.correctIndex || 0))}) ${
+                q.options?.[q.correctIndex] || ''
               }`,
               tags: q.tags && q.tags.length > 0 ? q.tags : undefined,
               explanation: q.explanation || undefined,
