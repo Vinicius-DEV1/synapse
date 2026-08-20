@@ -279,7 +279,7 @@ export default function QuestionBlockNodeView(props: any) {
     <NodeViewWrapper className="question-block my-6 w-full block" contentEditable={false}>
       <div
         ref={blockContainerRef}
-        className="rounded-3xl border border-purple-500/30 bg-dark-bg/95 shadow-2xl overflow-hidden backdrop-blur-xl transition-all"
+        className="rounded-3xl border border-purple-500/30 bg-[#100d1c] shadow-2xl overflow-hidden"
       >
         {/* Header Principal */}
         <div className="p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-dark-card to-purple-950/20">
