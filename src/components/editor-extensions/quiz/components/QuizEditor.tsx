@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus } from 'lucide-react';
 import { QuizEditorCard } from './QuizEditorCard';
 import type { QuestionItem } from '../types';
