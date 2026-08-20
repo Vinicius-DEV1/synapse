@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Tesseract from 'tesseract.js';
+import { ocrWorkerPool } from './utils/ocrWorkerPool';
 import type { LibraryHighlight } from '../../../types';
 
 export interface PdfPageProps {
@@ -55,7 +55,6 @@ export const PdfPage = React.memo(({
     
     let active = true;
     let ocrTimeout: any = null;
-    let tesseractWorker: Tesseract.Worker | null = null;
     
     const renderPage = async () => {
       try {
@@ -138,16 +137,7 @@ export const PdfPage = React.memo(({
               
               try {
                 const imgData = canvas.toDataURL('image/png');
-                
-                tesseractWorker = await Tesseract.createWorker('por');
-                if (!active) {
-                  await tesseractWorker.terminate();
-                  return;
-                }
-                
-                const result = await tesseractWorker.recognize(imgData);
-                await tesseractWorker.terminate();
-                tesseractWorker = null;
+                const result = await ocrWorkerPool.recognize(imgData);
                 
                 if (!active) return;
                 
