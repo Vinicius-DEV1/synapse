@@ -8,6 +8,25 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
   if (!driveSubtitleId && !localSubtitlePath) return null;
 
   try {
+    // 1. Tenta carregar do arquivo local primeiro (mais rápido e offline)
+    if (localSubtitlePath) {
+      try {
+        if (window.api?.video?.readLocalFile) {
+          const uint8 = await window.api.video.readLocalFile(localSubtitlePath);
+          if (uint8 && uint8.length > 0) {
+            return new TextDecoder().decode(uint8);
+          }
+        } else {
+          const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
+          const res = await fetch(fileUrl);
+          if (res.ok) return await res.text();
+        }
+      } catch (localErr) {
+        console.warn('Falha ao ler arquivo de legenda local, tentando via Drive...', localErr);
+      }
+    }
+
+    // 2. Fallback: Baixa do Google Drive (com descriptografia caso necessário)
     if (driveSubtitleId) {
       const token = await getValidAccessToken();
       if (!token) return null;
@@ -24,19 +43,10 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
       }
       return new TextDecoder().decode(buffer);
     }
-    if (localSubtitlePath) {
-      if (window.api?.video?.readLocalFile) {
-        const uint8 = await window.api.video.readLocalFile(localSubtitlePath);
-        return new TextDecoder().decode(uint8);
-      } else {
-        const fileUrl = 'file:///' + localSubtitlePath.replace(/\\/g, '/');
-        const res = await fetch(fileUrl);
-        if (res.ok) return await res.text();
-      }
-    }
+    
     return null;
   } catch (e) {
-    console.error("Falha ao ler legendas", e);
+    console.error("Falha ao ler legendas:", e);
     return null;
   }
 }

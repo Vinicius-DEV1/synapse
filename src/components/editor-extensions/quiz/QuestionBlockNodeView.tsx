@@ -12,6 +12,7 @@ import { QuizDeleteModals } from './components/QuizDeleteModals';
 import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeChatHistory } from './utils/quizNormalizer';
+import { triggerToast } from '../../ui/ToastContext';
 import type { QuestionItem, QuizChatMessage, SuggestedAction } from './types';
 
 export default function QuestionBlockNodeView(props: any) {
@@ -90,7 +91,10 @@ export default function QuestionBlockNodeView(props: any) {
       const response = await promptGeminiQuizAssistant(
         updatedHistoryWithUser.map((m) => ({ role: m.role, text: m.text })),
         questions,
-        messageToSend
+        messageToSend,
+        undefined,
+        title,
+        description
       );
 
       const assistantMsgId = `assistant_${Date.now()}`;
@@ -141,8 +145,18 @@ export default function QuestionBlockNodeView(props: any) {
       };
 
       updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[QuestionBlock] Falha ao comunicar com assistente de IA:', err);
+      const errorMessage =
+        err?.message || 'Falha na comunicação com a API de IA. Verifique sua conexão e chave de API.';
+      triggerToast(`Erro na IA: ${errorMessage}`, 'error', 4500);
+
+      const assistantErrorMsg: QuizChatMessage = {
+        id: `assistant_err_${Date.now()}`,
+        role: 'assistant',
+        text: `⚠️ **Erro de Comunicação com a IA**\n\nNão foi possível processar sua solicitação no momento.\n\n*Detalhes:* ${errorMessage}\n\nPor favor, verifique suas configurações de API ou conexão e tente novamente.`,
+      };
+      updateChatHistory([...updatedHistoryWithUser, assistantErrorMsg]);
     } finally {
       setIsSendingChat(false);
     }

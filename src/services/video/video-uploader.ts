@@ -239,7 +239,24 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       driveFileName += '.enc';
     }
     
-    await uploadToDrive(token, driveFileName, subBuffer, false as any);
+    let localSubPath: string | undefined;
+    if (window.api?.video?.saveLocal) {
+      try {
+        const subLocalFilename = `${baseName}.vtt`;
+        localSubPath = await window.api.video.saveLocal(subLocalFilename, enc.encode(subtitleText).buffer as ArrayBuffer);
+      } catch (err) {
+        console.warn('Falha ao salvar legenda localmente:', err);
+      }
+    }
+
+    const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false as any);
+    
+    subtitleTracksList.unshift({
+      id: 'main_sub',
+      label: 'Legenda Principal',
+      drive_id: subDriveId,
+      local_path: localSubPath
+    });
   }
 
   // Embedded extra subtitles

@@ -3,41 +3,56 @@ import { promptGemini } from './client';
 export const sanitizeExpectedAnswer = (text: string): string => {
   if (!text) return '';
   return text
-    .replace(/^(O|A)\s+aluno(a)?\s+deve\s+(explicar|responder|descrever|mencionar|citar|demonstrar|afirmar|dizer)\s+que\s+/i, '')
-    .replace(/^(Espera-se\s+que\s+o(a)?\s+aluno(a)?\s+(responda|explique|descreva|demonstre)\s+que\s+)/i, '')
-    .replace(/^(O\s+gabarito\s+esperado\s+é\s+que\s+)/i, '')
-    .replace(/^(Deve\s+ser\s+explicado\s+que\s+)/i, '')
+    .replace(/^(O|A|O\(a\)|Os|As)?\s*(aluno|aluna|estudante)(s|\(a\))?\s+(deve|precisa)\s+(explicar|responder|descrever|mencionar|citar|demonstrar|afirmar|dizer)\s+(que|como)\s+/i, '')
+    .replace(/^(Espera-se\s+que\s+(o|a|o\(a\)|os|as)?\s*(aluno|aluna|estudante)(s|\(a\))?\s+(responda|explique|descreva|demonstre|mencione|cite|afirme)\s+(que|como)\s+)/i, '')
+    .replace(/^(O\s+gabarito\s+esperado\s+é\s+(que\s+)?)/i, '')
+    .replace(/^(Deve\s+ser\s+explicado\s+(que|como)\s+)/i, '')
+    .replace(/^(The\s+student\s+should\s+(explain|answer|describe|mention|demonstrate|state|say|cite)\s+(that|how)\s+)/i, '')
+    .replace(/^(It\s+is\s+expected\s+that\s+(the\s+)?student\s+(responds|explains|describes|demonstrates|mentions|states)\s+(that|how)\s+)/i, '')
+    .replace(/^(The\s+expected\s+(answer|response|key)\s+is\s+(that\s+)?)/i, '')
+    .replace(/^(It\s+should\s+be\s+explained\s+(that|how)\s+)/i, '')
+    .replace(/^(Gabarito|Resposta|Answer|Expected\s+Answer):\s*/i, '')
     .replace(/^[a-z]/, (c) => c.toUpperCase());
 };
 
-// Para criar questões automaticamente via JSON
+// Creates a study question automatically via JSON
 export async function promptGeminiForQuestion(prompt: string, imageBase64?: string): Promise<{
   enunciado: string;
   opcoes: string[];
-  correta: number; // indice da correta (0 a N)
+  correta: number; // 0-based index
 }> {
-  const customPrompt = `${prompt}\n\nResponda ESTRITAMENTE em formato JSON com o seguinte schema:
+  const customPrompt = `${prompt}
+
+TASK & INSTRUCTIONS:
+1. Create a high-quality, didactic study question based on the topic/input above.
+2. Provide 4 well-formulated options with exactly one correct option.
+3. LANGUAGE RULE (CRITICAL): Generate the question, options, and text in the same language as the prompt/input. If the input is in Portuguese, write in Portuguese; if in English, write in English. Match the language naturally.
+4. Respond STRICTLY in raw JSON format matching the following schema:
 {
-  "enunciado": "Texto da questão",
-  "opcoes": ["Opção A", "Opção B", "Opção C", "Opção D"],
+  "enunciado": "Question text",
+  "opcoes": ["Option A", "Option B", "Option C", "Option D"],
   "correta": 0
 }
-Onde 'correta' é o índice (começando em 0) da opção verdadeira. NÃO INCLUA MAIS NADA ALÉM DO JSON. Não use blocos de código markdown (\`\`\`json) na resposta.`;
+Where 'correta' is the 0-based index of the correct option. DO NOT include any text outside the JSON. Do not wrap in markdown code blocks (\`\`\`json).`;
 
   const response = await promptGemini(customPrompt, imageBase64);
   const responseText = response.text;
   
   try {
-    // Strip markdown JSON wrapper if the model still returns it
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+    const parsed = JSON.parse(cleanJson);
+    return {
+      enunciado: parsed.enunciado || parsed.question || '',
+      opcoes: parsed.opcoes || parsed.options || [],
+      correta: typeof parsed.correta === 'number' ? parsed.correta : (parsed.correctIndex ?? 0),
+    };
   } catch (err) {
-    console.error('Failed to parse Gemini JSON:', responseText, err);
+    console.error('Failed to parse Gemini JSON for question:', responseText, err);
     throw new Error('A IA não retornou um JSON válido.');
   }
 }
 
-// Para avaliar resposta discursiva de questão aberta
+// Evaluates student open-ended / discursive question response
 export async function promptGeminiForOpenQuestionEvaluation(
   question: string,
   expectedAnswer: string,
@@ -46,39 +61,64 @@ export async function promptGeminiForOpenQuestionEvaluation(
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
 }> {
-  const customPrompt = `Você é um professor especialista avaliando a resposta discursiva de um aluno.
+  const customPrompt = `You are an expert pedagogical professor evaluating a student's open-ended discursive response to a study question.
 
-Enunciado da Questão: "${question}"
-Gabarito de Referência (escrito pelo autor da questão): "${expectedAnswer}"
-Resposta do Aluno: "${userTypedAnswer}"
+Question Prompt: "${question}"
+Reference Model Answer: "${expectedAnswer}"
+Student's Submitted Response: "${userTypedAnswer}"
 
-Diretrizes de Avaliação:
-1. Analise o conteúdo e a essência, não apenas as palavras exatas. Se o aluno capturou o conceito correto com outras palavras, classifique como 'Correto'.
-2. Classifique como 'Parcial' se a ideia principal está correta, mas faltam detalhes importantes, exemplos necessários ou nuances conceituais relevantes.
-3. Classifique como 'Incorreto' se a resposta contraria o gabarito, demonstra equívoco conceitual grave ou está completamente incompleta.
-4. No feedback, seja pedagógico, construtivo e específico: cite o que o aluno acertou, o que errou ou o que poderia complementar. Se houver código correto ou incorreto na resposta do aluno, mencione-o.
-5. Se a questão envolve código, avalie também se a sintaxe e a lógica estão corretas.
+EVALUATION GUIDELINES:
+1. Focus on core conceptual understanding and substantive meaning, not merely exact keyword matching. If the student articulates the correct concept clearly in their own words, classify as 'Correto'.
+2. Classify as 'Parcial' if the primary idea is accurate but lacks essential technical details, critical context, key steps, or conceptual nuances.
+3. Classify as 'Incorreto' if the response contradicts the reference answer, demonstrates fundamental conceptual misconceptions, or is completely off-topic/empty.
+4. Provide constructive, encouraging, and specific pedagogical feedback (2 to 4 sentences): state clearly what was accurate, what was missing or flawed, and how the student can solidify their understanding. If code is involved, evaluate both syntax and algorithmic logic.
+5. LANGUAGE RULE (CRITICAL): Write the entire feedback in the natural language used in the question prompt and student's response. If the student/question is in Portuguese, formulate the feedback in Portuguese. If in English, write in English. Rely on your native multilingual intelligence.
 
-Responda ESTRITAMENTE em formato JSON:
+Respond STRICTLY in raw JSON format with the following schema:
 {
   "verdict": "Correto" | "Parcial" | "Incorreto",
-  "feedback": "Explicação pedagógica detalhada (2 a 4 frases) que justifica a classificação, aponta o que foi correto, o que faltou ou o que estava errado, e sugere como o aluno pode aprimorar seu entendimento."
+  "feedback": "Detailed, constructive pedagogical feedback explaining the verdict and guiding the student."
 }
-NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+Do NOT wrap with markdown code blocks (\`\`\`json). Return raw JSON only.`;
 
   const response = await promptGemini(customPrompt);
   const responseText = response.text;
   
   try {
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+    const parsed = JSON.parse(cleanJson);
+    
+    // Normalize verdict safely (check incorrect first to prevent substring collision with correct)
+    let verdict: 'Correto' | 'Parcial' | 'Incorreto' = 'Incorreto';
+    const rawVerdict = String(parsed.verdict || '').toLowerCase().trim();
+    if (
+      rawVerdict.includes('incorret') ||
+      rawVerdict.includes('incorrect') ||
+      rawVerdict.includes('wrong') ||
+      rawVerdict.includes('errad')
+    ) {
+      verdict = 'Incorreto';
+    } else if (rawVerdict.includes('parcial') || rawVerdict.includes('partial')) {
+      verdict = 'Parcial';
+    } else if (
+      rawVerdict.includes('corret') ||
+      rawVerdict.includes('correct') ||
+      rawVerdict.includes('right')
+    ) {
+      verdict = 'Correto';
+    }
+
+    return {
+      verdict,
+      feedback: parsed.feedback || parsed.feedbackText || parsed.justification || '',
+    };
   } catch (err) {
     console.error('Failed to parse Gemini JSON for open question evaluation:', responseText, err);
     throw new Error('A IA não retornou um JSON válido na avaliação.');
   }
 }
 
-// Para gerar ou preencher uma questão inteira no bloco
+// Generates or autofills a single study question for the block
 export async function promptGeminiToGenerateBlockQuestion(
   topicOrPrompt: string,
   questionType: 'multiple_choice' | 'open',
@@ -90,46 +130,54 @@ export async function promptGeminiToGenerateBlockQuestion(
   respostaEsperada?: string;
   explicacao?: string;
 }> {
-  let customPrompt = `Crie uma questão de estudo no formato ${questionType === 'multiple_choice' ? 'Múltipla Escolha (com 4 alternativas)' : 'Questão Aberta (discursiva com resposta esperada)'}.\n`;
+  let customPrompt = `Create a high-quality study question in ${questionType === 'multiple_choice' ? 'Multiple Choice format (with 4 options)' : 'Open-ended format (with an exemplary model answer)'}.\n`;
   if (contextText && contextText.trim()) {
-    customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 1500)}"\n`;
+    customPrompt += `Notebook Context: "${contextText.trim().slice(0, 1500)}"\n`;
   }
-  customPrompt += `Tema / Instrução do Usuário: "${topicOrPrompt}"\n\n`;
-  customPrompt += `REGRA OBRIGATÓRIA DE ATUALIZAÇÃO E DOCUMENTAÇÃO: Baseie-se ESTRITAMENTE na DOCUMENTAÇÃO OFICIAL MAIS RECENTE e nas VERSÕES ATUAIS da tecnologia ou assunto. É PROIBIDO gerar questões com APIs obsoletas, métodos descontinuados ou sintaxes antigas.\n\n`;
+  customPrompt += `Topic / User Instruction: "${topicOrPrompt}"\n\n`;
+  customPrompt += `MANDATORY MODERN STANDARDS & ACCURACY: Base all content STRICTLY on the MOST RECENT OFFICIAL DOCUMENTATION and current versions. Obsolete methods, deprecated APIs, or legacy syntaxes are strictly prohibited.\n\n`;
+  customPrompt += `LANGUAGE RULE (CRITICAL): Write the question, options, answers, and explanations in the natural language matching the user prompt or context (e.g., if the user writes or context is in Portuguese, output in Portuguese; if in English, output in English).\n\n`;
 
   if (questionType === 'multiple_choice') {
-    customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+    customPrompt += `Respond STRICTLY in raw JSON format with the following schema:
 {
-  "enunciado": "Texto claro e bem elaborado da pergunta",
-  "opcoes": ["Opção A", "Opção B", "Opção C", "Opção D"],
+  "enunciado": "Clear, precise, and well-crafted question text",
+  "opcoes": ["Option A", "Option B", "Option C", "Option D"],
   "correta": 0,
-  "explicacao": "Explicação didática, rica e detalhada (2 a 4 frases) ensinando o conceito teórico por trás da resposta correta e demonstrando o porquê de estar certa. NUNCA gere metatextos rasos como 'Esta questão avalia X'."
+  "explicacao": "In-depth, didactic explanation (2 to 4 sentences) teaching the theoretical concept and justifying why the correct option is right. Never output shallow meta-text like 'This question tests X'."
 }
-Onde 'correta' é o índice (0 a 3) da opção verdadeira.`;
+Where 'correta' is the 0-based index (0 to 3) of the correct option.`;
   } else {
-    customPrompt += `Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+    customPrompt += `Respond STRICTLY in raw JSON format with the following schema:
 {
-  "enunciado": "Texto claro da pergunta discursiva",
-  "respostaEsperada": "Gabarito exemplar e completo (detalhando todos os pontos conceituais e termos técnicos exigidos para uma resposta nota 10)",
-  "explicacao": "Explicação pedagógica aprofundada (2 a 5 frases ou tópicos) ensinando o conceito teórico envolvido, o contexto de aplicação e exemplos práticos/código se houver. NUNCA gere frases rasas ou metatextos."
+  "enunciado": "Clear open-ended question prompt",
+  "respostaEsperada": "Exemplary, comprehensive model answer (written directly as the answer, detailing all technical concepts and key terms required for full marks)",
+  "explicacao": "In-depth pedagogical explanation (2 to 5 sentences or structured points) explaining theoretical foundations, practical applications, and code examples where applicable. Never output shallow meta-text."
 }`;
   }
 
-  customPrompt += `\nNÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+  customPrompt += `\nDo NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
 
   const response = await promptGemini(customPrompt);
   const responseText = response.text;
   
   try {
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+    const parsed = JSON.parse(cleanJson);
+    return {
+      enunciado: parsed.enunciado || parsed.question || '',
+      opcoes: parsed.opcoes || parsed.options,
+      correta: typeof parsed.correta === 'number' ? parsed.correta : parsed.correctIndex,
+      respostaEsperada: sanitizeExpectedAnswer(parsed.respostaEsperada || parsed.expectedAnswer || ''),
+      explicacao: parsed.explicacao || parsed.explanation || '',
+    };
   } catch (err) {
     console.error('Failed to parse Gemini JSON for block question generation:', responseText, err);
     throw new Error('A IA não retornou um JSON válido ao gerar a questão.');
   }
 }
 
-// Para gerar uma bateria de N questões de uma vez
+// Generates a batch of N study questions at once
 export async function promptGeminiToGenerateBatchQuestions(
   topicOrPrompt: string,
   count: number = 3,
@@ -142,31 +190,32 @@ export async function promptGeminiToGenerateBatchQuestions(
   expectedAnswer?: string;
   explanation?: string;
 }>> {
-  let customPrompt = `Crie uma bateria de ${count} questões de estudo baseada na instrução fornecida.\n`;
+  let customPrompt = `Generate a battery of ${count} high-quality study questions based on the provided topic and instructions.\n`;
   if (contextText && contextText.trim()) {
-    customPrompt += `Contexto do Caderno: "${contextText.trim().slice(0, 2000)}"\n`;
+    customPrompt += `Notebook Context: "${contextText.trim().slice(0, 2000)}"\n`;
   }
-  customPrompt += `Tema / Instrução: "${topicOrPrompt}"\n\n`;
-  customPrompt += `REGRA OBRIGATÓRIA DE ATUALIZAÇÃO E DOCUMENTAÇÃO: Baseie-se ESTRITAMENTE na DOCUMENTAÇÃO OFICIAL MAIS RECENTE e nas VERSÕES ATUAIS da tecnologia ou assunto. É ESTRITAMENTE PROIBIDO utilizar APIs obsoletas, práticas descontinuadas ou sintaxes antigas.\n\n`;
-  customPrompt += `Misture questões de Múltipla Escolha (com 4 alternativas) e Questões Abertas (discursivas com gabarito de referência).
+  customPrompt += `Topic / Instruction: "${topicOrPrompt}"\n\n`;
+  customPrompt += `MANDATORY MODERN STANDARDS & ACCURACY: Base all questions STRICTLY on the MOST RECENT OFFICIAL DOCUMENTATION and current versions. Obsolete practices, deprecated libraries, or outdated syntaxes are strictly forbidden.\n\n`;
+  customPrompt += `LANGUAGE RULE (CRITICAL): Generate all content (questions, options, answers, explanations) in the natural language matching the user instruction or notebook context (e.g., if in Portuguese, write in Portuguese; if in English, write in English).\n\n`;
+  customPrompt += `Mix Multiple Choice questions (with 4 options) and Open-ended questions (with detailed reference model answers).
 
-Responda ESTRITAMENTE em formato JSON com uma ARRAY de objetos com o seguinte schema para cada questão:
+Respond STRICTLY in raw JSON format with an ARRAY of objects following this schema for each question:
 [
   {
     "type": "multiple_choice",
-    "question": "Enunciado da pergunta",
-    "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
+    "question": "Question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctIndex": 0,
-    "explanation": "Explicação didática e detalhada (2 a 4 frases) justificando a alternativa correta e ensinando o conceito teórico subjacente. NUNCA gere metatextos rasos como 'Esta questão avalia X'."
+    "explanation": "Didactic, detailed explanation (2 to 4 sentences) teaching the underlying concept and justifying the correct choice. Never generate shallow meta-text."
   },
   {
     "type": "open",
-    "question": "Enunciado da pergunta discursiva",
-    "expectedAnswer": "Gabarito exemplar e detalhado (especificando exatamente tudo o que o aluno deve responder para demonstrar domínio)",
-    "explanation": "Explicação pedagógica aprofundada (2 a 5 frases) ensinando o conceito teórico real e o motivo desse conhecimento ser relevante. NUNCA use frases rasas ou metatextos."
+    "question": "Open-ended question prompt",
+    "expectedAnswer": "Comprehensive reference model answer detailing all key technical points required for mastery",
+    "explanation": "In-depth pedagogical explanation (2 to 5 sentences) teaching the concept and its practical importance. Never use shallow meta-text."
   }
 ]
-NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+Do NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
 
   const response = await promptGemini(customPrompt);
   const responseText = response.text;
@@ -174,14 +223,22 @@ NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
   try {
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
-    return Array.isArray(parsed) ? parsed : [parsed];
+    const rawArray = Array.isArray(parsed) ? parsed : [parsed];
+    return rawArray.map((q: any) => ({
+      type: (q.type || '').toLowerCase().includes('open') ? 'open' : 'multiple_choice',
+      question: q.question || q.enunciado || '',
+      options: q.options || q.opcoes,
+      correctIndex: typeof q.correctIndex === 'number' ? q.correctIndex : (q.correta ?? 0),
+      expectedAnswer: sanitizeExpectedAnswer(q.expectedAnswer || q.respostaEsperada || ''),
+      explanation: q.explanation || q.explicacao || '',
+    }));
   } catch (err) {
     console.error('Failed to parse Gemini JSON for batch question generation:', responseText, err);
     throw new Error('A IA não retornou um JSON válido ao gerar a bateria de questões.');
   }
 }
 
-// Assistente Conversacional Didático de Questões
+// Interactive AI Pedagogical Quiz Assistant
 export async function promptGeminiQuizAssistant(
   chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
   currentQuestions: any[],
@@ -210,109 +267,119 @@ export async function promptGeminiQuizAssistant(
     reason?: string;
   }>;
 }> {
-  let customPrompt = `Você é o "Assistente Didático de Questões da IA" no aplicativo Caderno. Você ajuda estudantes a criar, revisar, balancear e aprimorar baterias de exercícios de estudo.\n\n_instructions_for_ai: "Este é um conjunto de questões de estudo exportadas do aplicativo Caderno. Analise a clareza didática, a qualidade dos distratores/opções e o nível de dificuldade. Se solicitado a GERAR NOVAS QUESTÕES, retorne um JSON com o mesmo formato deste arquivo: um objeto com campo 'questions' contendo um array de objetos. Para questões de múltipla escolha use: { type: 'multiple_choice', question, options: ['A) ...', 'B) ...', ...], correct_option: 'A) ...', explanation }. Para questões abertas use: { type: 'open', question, expected_answer, explanation }. REGRA DE CÓDIGO: se a questão, alternativa ou explicação contiver código (JavaScript, Python, SQL, etc.), use SEMPRE blocos markdown com 3 crases e o nome da linguagem para código multilinha. Nunca inclua a linguagem dentro de crases simples.",\n\n`;
+  let customPrompt = `You are the "AI Study Questions Assistant" in the Caderno app. You help students create, analyze, balance, refine, and upgrade interactive study quiz batteries.\n\n`;
 
   if (blockTitle && blockTitle.trim()) {
-    customPrompt += `Título da Bateria: "${blockTitle.trim()}"\n`;
+    customPrompt += `Quiz Battery Title: "${blockTitle.trim()}"\n`;
   }
   if (blockDescription && blockDescription.trim()) {
-    customPrompt += `Descrição / Orientações Gerais da Bateria (Definidas pelo Usuário): "${blockDescription.trim()}"\n`;
+    customPrompt += `Quiz Battery Description / Guidelines: "${blockDescription.trim()}"\n`;
   }
   if ((blockTitle && blockTitle.trim()) || (blockDescription && blockDescription.trim())) {
     customPrompt += `\n`;
   }
 
   if (contextText && contextText.trim()) {
-    customPrompt += `Contexto do Caderno do Usuário:\n"${contextText.trim().slice(0, 1500)}"\n\n`;
+    customPrompt += `User's Notebook Context:\n"${contextText.trim().slice(0, 1500)}"\n\n`;
   }
 
   if (currentQuestions && currentQuestions.length > 0) {
-    customPrompt += `Questões atualmente cadastradas no bloco da bateria (${currentQuestions.length} questões):\n`;
+    customPrompt += `Currently registered questions in this battery (${currentQuestions.length} questions):\n`;
     currentQuestions.forEach((q, i) => {
-      customPrompt += `Questão ${i + 1} [índice ${i + 1}] (${q.type === 'open' ? 'Aberta' : 'Múltipla Escolha'}): "${q.question}"\n`;
+      customPrompt += `Question ${i + 1} [Index ${i + 1}] (${q.type === 'open' ? 'Open-ended' : 'Multiple Choice'}): "${q.question}"\n`;
       if (q.type === 'multiple_choice' && q.options) {
-        customPrompt += `  Opções: ${q.options.join(' | ')} (Correta: ${q.options[q.correctIndex] || ''})\n`;
+        customPrompt += `  Options: ${q.options.join(' | ')} (Correct: ${q.options[q.correctIndex] || ''})\n`;
       } else if (q.expectedAnswer) {
-        customPrompt += `  Gabarito: "${q.expectedAnswer}"\n`;
+        customPrompt += `  Model Answer: "${q.expectedAnswer}"\n`;
       }
       if (q.explanation) {
-        customPrompt += `  Explicação: "${q.explanation}"\n`;
+        customPrompt += `  Explanation: "${q.explanation}"\n`;
       }
     });
     customPrompt += `\n`;
   } else {
-    customPrompt += `Atualmente o bloco da bateria de exercícios está vazio.\n\n`;
+    customPrompt += `Currently, this exercise battery is empty.\n\n`;
   }
 
   if (chatHistory && chatHistory.length > 0) {
-    customPrompt += `Histórico da conversa recente:\n`;
+    customPrompt += `Recent Conversation History:\n`;
     chatHistory.slice(-10).forEach((msg) => {
-      customPrompt += `${msg.role === 'user' ? 'Usuário' : 'Assistente'}: ${msg.text}\n`;
+      customPrompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
     });
     customPrompt += `\n`;
   }
 
-  customPrompt += `Nova mensagem do Usuário: "${userMessage}"\n\n`;
+  customPrompt += `New User Message: "${userMessage}"\n\n`;
 
-  customPrompt += `REGRAS DE RESPOSTA:
-1. Responda de forma conversacional, motivadora, clara e didática em Português.
-2. Se o usuário pedir para ANALISAR a bateria, dê um diagnóstico pedagógico sobre clareza, dificuldade, distratores e lacunas de conteúdo.
-3. Se o usuário pedir para CRIAR questões, use actionType "create" para cada nova questão sugerida.
-4. Se o usuário pedir para EDITAR uma questão existente (melhorar enunciado, corrigir alternativas, etc.), use actionType "edit" com "targetQuestionIndex" (número 1-based) e "changes" com APENAS os campos que mudam.
-5. Se o usuário pedir para REMOVER/DELETAR uma questão, use actionType "delete" com "targetQuestionIndex" e "reason" explicando por quê.
-6. Você pode misturar vários tipos de ação na mesma resposta.
-7. Se o usuário apenas disser "oi" ou não especificar nada, responda amigavelmente perguntando o que ele precisa.
-8. FORMATAÇÃO DE CÓDIGO: Sempre que a pergunta, alternativa ou explicação envolver código (JavaScript, Python, SQL, HTML, etc.):
-   - Para códigos com instruções ou múltiplas linhas, use SEMPRE blocos de código com 3 crases e a linguagem especificada.
-   - NUNCA escreva a palavra de uma linguagem após uma única crase como \`javascript const fs = ...\`.
-   - Para palavras-chave ou métodos curtos em linha, use crases simples (ex: \`util.promisify\`).
-11. BUSCA E DOCUMENTAÇÃO ATUALIZADA (REGRA ANTI-OBSOLESCÊNCIA): Sempre que for gerar, editar ou avaliar questões sobre tecnologia, linguagens, bibliotecas ou ciência, baseie-se ESTRITAMENTE nas DOCUMENTAÇÕES OFICIAIS ATUALIZADAS e nas VERSÕES MAIS RECENTES (ex: use APIs modernas, ES Modules/promises, métodos vigentes). É ESTRITAMENTE PROIBIDO utilizar sintaxes obsoletas, bibliotecas descontinuadas ou práticas antigas. Garanta que enunciados, alternativas, gabaritos e explicações estejam 100% atualizados com o mercado atual.
-10. RESPOSTA ESPERADA (expectedAnswer): Deve ser escrita DIRETAMENTE como a resposta modelo esperada (ex: "O Node.js é um ambiente de execução..."). NUNCA comece com metatextos ou instruções em terceira pessoa como "O aluno deve explicar que...", "Espera-se que o aluno diga...", etc.
-9. QUALIDADE DA EXPLICAÇÃO E GABARITO (REGRA OBRIGATÓRIA DE APRENDIZADO):
-   - NUNCA gere explicações rasas ou metatextos como "Essa questão valida o conhecimento sobre X". Isso é ESTRITAMENTE PROIBIDO.
-   - A "explanation" DEVE SER DIDÁTICA, COMPLETA E ESTRUTURADA (2 a 5 frases ou tópicos), ensinando o conceito teórico real, justificando o porquê da resposta correta e mostrando código/exemplos quando aplicável.
-   - Para Questões Abertas, a "expectedAnswer" DEVE SER UM GABARITO EXEMPLAR E DETALHADO, especificando exatamente tudo o que o aluno deve responder para obter nota máxima.
+  customPrompt += `CORE INSTRUCTIONS & OPERATIONAL RULES:
+1. LANGUAGE RULE (CRITICAL):
+   - Detect the user's language and respond naturally in the SAME language (e.g., if the user writes in Portuguese or the question content is in Portuguese, respond in Portuguese; if the user writes in English, respond in English).
+   - Use your native multilingual intelligence. Do not output English conversation or explanations if the user is interacting in Portuguese.
+2. PEDAGOGICAL & CONVERSATIONAL TONE:
+   - Respond in an encouraging, engaging, clear, and didactic manner.
+   - If the user sends a greeting or general remark, reply warmly and ask how you can assist with their questions.
+3. ACTION TYPES:
+   - If the user asks to ANALYZE the battery, give a pedagogical diagnosis regarding clarity, difficulty, quality of distractors, and knowledge coverage.
+   - If the user asks to CREATE new questions, use actionType "create" for each proposed question.
+   - If the user asks to EDIT an existing question (improve question text, fix options, strengthen explanation), use actionType "edit" with "targetQuestionIndex" (1-based index) and "changes" containing ONLY the changed fields.
+   - If the user asks to DELETE/REMOVE a question, use actionType "delete" with "targetQuestionIndex" and "reason" explaining why.
+   - You can combine multiple actions in a single response when appropriate.
+4. CODE FORMATTING GUIDELINES:
+   - Whenever a question, option, or explanation contains code (JavaScript, Python, SQL, HTML, etc.):
+     - Always use standard triple-backtick markdown blocks with the language specifier for multiline snippets.
+     - Never place the language name immediately after a single backtick (avoid \`javascript const x = ...\`).
+     - For inline identifiers or short keywords, use single backticks (e.g. \`useState\`).
+5. MODERN STANDARDS & ANTI-OBSOLESCENCE RULE:
+   - Base all technical content strictly on the MOST RECENT OFFICIAL DOCUMENTATION and current versions.
+   - Using deprecated APIs, legacy practices, or discontinued syntaxes is strictly prohibited.
+6. EXPECTED ANSWER & EXPLANATION QUALITY:
+   - expectedAnswer: Must be formulated DIRECTLY as the model answer (e.g., "Node.js is a runtime..."). NEVER start with meta-phrasing like "The student should explain that...", "O aluno deve responder...", etc.
+   - explanation: MUST BE COMPREHENSIVE AND DIDACTIC (2 to 5 sentences or points), explaining why the answer is correct, teaching the concept, and providing code/examples where helpful. NEVER use shallow meta-text like "This question assesses knowledge about X".
+7. STRICT NON-REPETITION & KNOWLEDGE DIVERSIFICATION:
+   - Carefully review ALL currently registered questions listed above before generating or proposing new questions.
+   - It is STRICTLY FORBIDDEN to duplicate, rephrase, or overlap with questions, concepts, code snippets, or scenarios that already exist in the battery.
+   - Every new question MUST explore NEW subtopics, different angles, edge cases, advanced mechanics, or complementary principles to expand the user's coverage and learning depth.
 
-Responda ESTRITAMENTE em formato JSON com o seguinte schema:
+Respond STRICTLY in raw JSON format matching this schema:
 {
-  "message": "Mensagem conversacional de resposta (pode usar markdown)",
+  "message": "Conversational response message to the student (markdown supported)",
   "suggestedActions": [
     {
       "actionType": "create",
       "type": "multiple_choice",
-      "question": "Enunciado da nova questão",
-      "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
+      "question": "Question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 0,
-      "tags": ["topico1", "topico2"],
-      "explanation": "Justificativa"
+      "tags": ["topic1", "topic2"],
+      "explanation": "Didactic explanation"
     },
     {
       "actionType": "create",
       "type": "open",
-      "question": "Enunciado discursivo",
-      "expectedAnswer": "Gabarito esperado",
-      "tags": ["topico1", "topico2"],
-      "explanation": "Justificativa"
+      "question": "Discursive question text",
+      "expectedAnswer": "Reference model answer",
+      "tags": ["topic1", "topic2"],
+      "explanation": "Didactic explanation"
     },
     {
       "actionType": "edit",
       "targetQuestionIndex": 2,
       "changes": {
-        "question": "Enunciado melhorado",
-        "options": ["Nova A", "Nova B", "Nova C", "Nova D"],
+        "question": "Improved question text",
+        "options": ["New A", "New B", "New C", "New D"],
         "correctIndex": 1,
-        "explanation": "Nova justificativa"
+        "explanation": "New explanation"
       }
     },
     {
       "actionType": "delete",
       "targetQuestionIndex": 3,
-      "reason": "Questão ambígua com distratores fracos"
+      "reason": "Ambiguous wording with weak distractors"
     }
   ]
 }
-O campo "suggestedActions" é OPCIONAL. Inclua APENAS quando houver ações concretas a propor.
-NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
+The "suggestedActions" field is OPTIONAL. Include it ONLY when concrete actions are proposed.
+Do NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
 
   const response = await promptGemini(customPrompt);
   const responseText = response.text;
@@ -320,7 +387,6 @@ NÃO use blocos de código markdown (\`\`\`json). Retorne apenas o JSON cru.`;
   try {
     let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    // Extract JSON object using regex if text has leading/trailing prose
     const match = /{[\s\S]*}/.exec(cleanText);
     if (match) {
       cleanText = match[0];

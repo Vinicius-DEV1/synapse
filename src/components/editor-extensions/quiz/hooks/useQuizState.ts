@@ -3,6 +3,7 @@ import type { QuestionItem } from '../types';
 import { createDefaultQuestion } from '../utils/fireworks';
 import { preprocessMarkdownCode } from '../utils/markdownPreprocess';
 import { normalizeQuizQuestions } from '../utils/quizNormalizer';
+import { triggerToast } from '../../../ui/ToastContext';
 
 export function useQuizState(
   rawQuestions: any,
@@ -185,9 +186,15 @@ export function useQuizState(
         }),
       };
 
-      navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
-      setCopiedJson(true);
-      setTimeout(() => setCopiedJson(false), 2000);
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+        setCopiedJson(true);
+        triggerToast('Bateria de questões exportada em JSON com sucesso!', 'success', 2000);
+        setTimeout(() => setCopiedJson(false), 2000);
+      } catch (err: any) {
+        console.error('Falha ao copiar JSON da bateria:', err);
+        triggerToast('Não foi possível copiar o JSON para a área de transferência.', 'error', 3000);
+      }
     },
     [title, localQuestions]
   );
