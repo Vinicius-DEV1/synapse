@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import QuizPlayer from './QuizPlayer';
+import * as fireworksModule from '../utils/fireworks';
 import type { QuestionItem } from '../types';
 
 describe('QuizPlayer Component', () => {
@@ -141,9 +142,58 @@ describe('QuizPlayer Component', () => {
 
     expect(screen.getByText('O que é TypeScript?')).toBeInTheDocument();
     const evalButton = screen.getByText('Avaliar Resposta com IA');
-    expect(evalButton).toBeInTheDocument();
-
     fireEvent.click(evalButton);
     expect(onEvaluateOpenAnswer).toHaveBeenCalledWith(openQuestion, 0);
+  });
+
+  it('does not trigger fireworks when completing battery with low score (e.g. 1 of 5)', () => {
+    const fireworksSpy = vi.spyOn(fireworksModule, 'triggerFireworksAnimation');
+    fireworksSpy.mockClear();
+
+    const fiveQuestions: QuestionItem[] = [
+      { id: 'q1', type: 'multiple_choice', question: 'Q1', options: ['A', 'B'], correctIndex: 0, selectedIndex: 0, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false }, // correto
+      { id: 'q2', type: 'multiple_choice', question: 'Q2', options: ['A', 'B'], correctIndex: 0, selectedIndex: 1, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false }, // errado
+      { id: 'q3', type: 'multiple_choice', question: 'Q3', options: ['A', 'B'], correctIndex: 0, selectedIndex: 1, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false }, // errado
+      { id: 'q4', type: 'multiple_choice', question: 'Q4', options: ['A', 'B'], correctIndex: 0, selectedIndex: 1, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false }, // errado
+      { id: 'q5', type: 'multiple_choice', question: 'Q5', options: ['A', 'B'], correctIndex: 0, selectedIndex: 1, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false }, // errado
+    ];
+
+    render(
+      <QuizPlayer
+        questions={fiveQuestions}
+        onUpdateSingleQuestion={vi.fn()}
+        onEvaluateOpenAnswer={vi.fn()}
+        evaluatingIds={{}}
+        onDiscussInChat={vi.fn()}
+      />
+    );
+
+    // 1 de 5 (20%) não deve disparar fogos
+    expect(fireworksSpy).not.toHaveBeenCalled();
+    fireworksSpy.mockRestore();
+  });
+
+  it('triggers fireworks when completing battery with high score (e.g. 5 of 5)', () => {
+    const fireworksSpy = vi.spyOn(fireworksModule, 'triggerFireworksAnimation');
+    fireworksSpy.mockClear();
+
+    const perfectQuestions: QuestionItem[] = [
+      { id: 'q1', type: 'multiple_choice', question: 'Q1', options: ['A', 'B'], correctIndex: 0, selectedIndex: 0, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false },
+      { id: 'q2', type: 'multiple_choice', question: 'Q2', options: ['A', 'B'], correctIndex: 1, selectedIndex: 1, answered: true, expectedAnswer: '', userTypedAnswer: '', aiFeedback: null, explanation: '', showExplanation: false },
+    ];
+
+    render(
+      <QuizPlayer
+        questions={perfectQuestions}
+        onUpdateSingleQuestion={vi.fn()}
+        onEvaluateOpenAnswer={vi.fn()}
+        evaluatingIds={{}}
+        onDiscussInChat={vi.fn()}
+      />
+    );
+
+    // 2 de 2 (100%) deve disparar fogos
+    expect(fireworksSpy).toHaveBeenCalled();
+    fireworksSpy.mockRestore();
   });
 });
