@@ -117,21 +117,22 @@ export default function QuizEditor({
             </div>
 
             {/* Alternativas (Múltipla Escolha) */}
+            {/* Alternativas (Múltipla Escolha) */}
             {!isOpen && (
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider block">
                   Alternativas (selecione a correta):
                 </label>
                 <div className="space-y-2">
-                  {q.options.map((opt, optIndex) => {
+                  {(q.options || []).map((opt, optIndex) => {
                     const isCorrect = q.correctIndex === optIndex;
                     const letter = String.fromCharCode(65 + optIndex);
 
                     return (
-                      <div key={optIndex} className="flex items-center gap-2">
+                      <div key={optIndex} className="flex items-start gap-2">
                         <button
                           onClick={() => onUpdateQuestion(q.id, { correctIndex: optIndex })}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold transition-all ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold transition-all shrink-0 mt-1 ${
                             isCorrect
                               ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
                               : 'bg-black/50 text-dark-subtext hover:text-white border border-white/10'
@@ -140,25 +141,25 @@ export default function QuizEditor({
                         >
                           {letter}
                         </button>
-                        <input
-                          type="text"
+                        <textarea
                           value={opt}
                           onChange={(e) => {
-                            const newOptions = [...q.options];
+                            const newOptions = [...(q.options || ['', '', '', ''])];
                             newOptions[optIndex] = e.target.value;
                             onUpdateQuestion(q.id, { options: newOptions });
                           }}
                           placeholder={`Texto da alternativa ${letter}...`}
-                          className={`flex-1 bg-black/30 border rounded-xl px-3 py-2 text-xs text-purple-100 placeholder-white/20 outline-none transition-colors ${
+                          rows={1}
+                          className={`flex-1 bg-black/30 border rounded-xl px-3 py-2 text-xs text-purple-100 placeholder-white/20 outline-none resize-y min-h-[36px] transition-colors leading-relaxed ${
                             isCorrect
                               ? 'border-green-500/40 focus:border-green-500'
                               : 'border-white/10 focus:border-purple-500/50'
                           }`}
                         />
-                        {q.options.length > 2 && (
+                        {(q.options || []).length > 2 && (
                           <button
                             onClick={() => {
-                              const newOptions = q.options.filter((_, i) => i !== optIndex);
+                              const newOptions = (q.options || []).filter((_, i) => i !== optIndex);
                               let newCorrect = q.correctIndex;
                               if (optIndex === q.correctIndex) newCorrect = 0;
                               else if (optIndex < q.correctIndex) newCorrect -= 1;
@@ -167,7 +168,7 @@ export default function QuizEditor({
                                 correctIndex: newCorrect,
                               });
                             }}
-                            className="p-1.5 text-dark-subtext hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors"
+                            className="p-1.5 text-dark-subtext hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors shrink-0 mt-1"
                             title="Remover alternativa"
                           >
                             <Trash2 size={13} />
@@ -178,10 +179,10 @@ export default function QuizEditor({
                   })}
                 </div>
 
-                {q.options.length < 6 && (
+                {(q.options || []).length < 6 && (
                   <button
                     onClick={() => {
-                      onUpdateQuestion(q.id, { options: [...q.options, ''] });
+                      onUpdateQuestion(q.id, { options: [...(q.options || []), ''] });
                     }}
                     className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 pt-1"
                   >
@@ -233,6 +234,33 @@ export default function QuizEditor({
                     </button>
                   </span>
                 ))}
+
+                {/* Input para adicionar tag personalizada */}
+                <input
+                  type="text"
+                  placeholder="+ Tag..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                      e.preventDefault();
+                      const val = e.currentTarget.value.trim().replace(/^#/, '').toLowerCase();
+                      if (val && (!q.tags || !q.tags.includes(val))) {
+                        const newTags = [...(q.tags || []), val];
+                        onUpdateQuestion(q.id, { tags: newTags });
+                      }
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim().replace(/^#/, '').toLowerCase();
+                    if (val && (!q.tags || !q.tags.includes(val))) {
+                      const newTags = [...(q.tags || []), val];
+                      onUpdateQuestion(q.id, { tags: newTags });
+                    }
+                    e.target.value = '';
+                  }}
+                  className="bg-black/30 border border-purple-500/20 focus:border-purple-500/50 rounded-lg px-2 py-0.5 text-[11px] text-purple-100 placeholder-white/20 outline-none w-20 transition-colors"
+                />
+
                 <button
                   onClick={() => {
                     const autoTags = generateAutoTags(q.question, q.options, q.explanation);
