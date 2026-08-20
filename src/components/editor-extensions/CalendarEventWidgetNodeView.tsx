@@ -8,8 +8,36 @@ import { Portal } from '../ui/Portal';
 import { parseEventDate } from '../../utils/dateUtils';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
+let cachedEventsPromise: Promise<CalendarEvent[]> | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 2000;
+
+async function fetchCalendarEventsCached(force = false): Promise<CalendarEvent[]> {
+  const now = Date.now();
+  if (!force && cachedEventsPromise && now - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedEventsPromise;
+  }
+  cacheTimestamp = now;
+  cachedEventsPromise = (async () => {
+    try {
+      if (!window.api?.calendar) return [];
+      const events = await window.api.calendar.getEvents();
+      return Array.isArray(events) ? events : [];
+    } catch (err) {
+      cachedEventsPromise = null;
+      throw err;
+    }
+  })();
+  return cachedEventsPromise;
+}
+
+function invalidateCalendarEventsCache() {
+  cachedEventsPromise = null;
+  cacheTimestamp = 0;
+}
+
 export default function CalendarEventWidgetNodeView(props: any) {
-  const { eventId, title, dateStr,  status } = props.node.attrs;
+  const { eventId, title, dateStr, status } = props.node.attrs;
   const { state, dispatch } = useStore();
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
   const [showPopover, setShowPopover] = useState(false);
@@ -33,7 +61,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
     const fetchEvent = async () => {
       if (!eventId || !window.api?.calendar) return;
       try {
-        const events = await window.api.calendar.getEvents();
+        const events = await fetchCalendarEventsCached();
         const found = events.find((e: CalendarEvent) => e.id === eventId);
         if (found && isMounted) {
           setEventData(found);
@@ -57,13 +85,14 @@ export default function CalendarEventWidgetNodeView(props: any) {
 
     if (eventId && window.api?.calendar) {
       try {
-        const events = await window.api.calendar.getEvents();
+        const events = await fetchCalendarEventsCached();
         const found = events.find((ev: CalendarEvent) => ev.id === eventId);
         if (found) {
           await window.api.calendar.updateEvent(eventId, {
             ...found,
             status: newStatus
           });
+          invalidateCalendarEventsCache();
         }
       } catch (err) {
         console.error('Erro ao atualizar status do evento na agenda:', err);
@@ -83,13 +112,14 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const deleteWidget = async () => {
     if (eventId && window.api?.calendar) {
       try {
-        const events = await window.api.calendar.getEvents();
+        const events = await fetchCalendarEventsCached();
         const found = events.find((ev: CalendarEvent) => ev.id === eventId);
         if (found) {
           const dateStr = found.end_date || found.start_date;
           const isExpired = dateStr && !isNaN(new Date(dateStr).getTime()) && new Date(dateStr).getTime() < Date.now();
           if (!isExpired) {
             await window.api.calendar.deleteEvent(eventId);
+            invalidateCalendarEventsCache();
           }
         }
       } catch (err) {
