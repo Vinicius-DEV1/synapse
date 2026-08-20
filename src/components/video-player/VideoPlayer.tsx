@@ -76,9 +76,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           const track = subtitleTracks[activeSubtitleIndex];
           const { getSubtitleText } = await import('../../services/video-manager');
           const { getCultureKey } = await import('../../store/useStore');
-          let subText = '';
-          if (track.local_path) subText = (await getSubtitleText(undefined, track.local_path, getCultureKey())) || '';
-          if (!subText && track.drive_id) subText = (await getSubtitleText(track.drive_id, undefined, getCultureKey())) || '';
+          const subText = (await getSubtitleText(track.drive_id, track.local_path, getCultureKey())) || '';
           
           if (subText) {
             const parsed = parseVtt(subText);
@@ -90,11 +88,16 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           console.error('Error changing subtitle', e);
         }
       } else if (activeSubtitleIndex === 0) {
-        setCues([]);
+        if (_subtitleContent) {
+          const parsed = parseVtt(_subtitleContent);
+          setCues(parsed);
+        } else {
+          setCues([]);
+        }
       }
     };
     fetchNewSubtitle();
-  }, [activeSubtitleIndex, subtitleTracks]);
+  }, [activeSubtitleIndex, subtitleTracks, _subtitleContent]);
 
   const togglePlay = () => {
     if (videoRef.current) {

@@ -1,6 +1,6 @@
 import { getValidAccessToken } from '../drive';
 import { uploadLocalFileToDrive } from './video-uploader';
-import type { VideoItem } from '../../types';
+import type { VideoItem, TrackItem } from '../../types';
 import type { YouTubeDownloadOptions } from './video-types';
 
 const VIDEO_TABLE = 'videos';
@@ -8,7 +8,7 @@ const VIDEO_TABLE = 'videos';
 // `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara `scanTracks`,
 // implementado em src/api/tauri/multimedia.ts.
 type DesktopVideoApi = NonNullable<typeof window.api.video> & {
-  scanTracks: (localPath: string) => Promise<{ streams?: Array<{ index: number | string; codec_type: string }> }>;
+  scanTracks: (localPath: string) => Promise<{ streams?: Array<{ index: number | string; codec_type: string; tags?: { language?: string; title?: string } }> }>;
 };
 
 /**
@@ -40,6 +40,7 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
     const localPath = await window.api.youtube.download(url, filename, quality, selectedSubs);
     const finalFilename = localPath.split(/[\\/]/).pop() || filename.replace(/\.mp4$/, '.mkv');
 
+    const subtitleTracksList: TrackItem[] = [];
     if (selectedSubs && selectedSubs.length > 0) {
       try {
         const scanResult = await desktopVideoApi.scanTracks(localPath);
@@ -51,7 +52,14 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
           if (vttContent) {
             const subFilename = `${finalFilename}_sub.vtt`;
             const localSubtitlePath = await desktopVideoApi.saveLocal(subFilename, new TextEncoder().encode(vttContent).buffer as ArrayBuffer);
-            await uploadLocalFileToDrive(token, localSubtitlePath, subFilename);
+            const subDriveId = await uploadLocalFileToDrive(token, localSubtitlePath, subFilename);
+            const langLabel = subtitleStreams[0].tags?.language || subtitleStreams[0].tags?.title || 'Português / Legenda';
+            subtitleTracksList.push({
+              id: firstSubIndex,
+              label: langLabel,
+              drive_id: subDriveId,
+              local_path: localSubtitlePath
+            });
           }
         }
       } catch (e) {
@@ -70,6 +78,7 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
       title: finalFilename.replace(/\.[^/.]+$/, ""),
       original_name: finalFilename,
       drive_file_id: driveFileId,
+      subtitles_json: subtitleTracksList.length > 0 ? JSON.stringify(subtitleTracksList) : undefined,
       is_local: true,
       file_path: localPath,
       progress: 0,

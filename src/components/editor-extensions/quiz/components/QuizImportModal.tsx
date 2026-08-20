@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { X, UploadCloud, CheckCircle2, AlertCircle, ArrowLeft, Tag, FileText, ListOrdered } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
+import { triggerToast } from '../../../ui/ToastContext';
 import { sanitizeExpectedAnswer } from '../../../../services/gemini';
 import { markdownComponents, preprocessMarkdownCode } from '../utils/markdownPreprocess';
 import type { QuestionItem } from '../types';
@@ -119,8 +120,17 @@ export default function QuizImportModal({ isOpen, onClose, onImport }: QuizImpor
     e.preventDefault();
     e.stopPropagation();
     if (!importPreview || importPreview.length === 0) return;
-    onImport(importPreview, importMode);
-    onClose();
+    try {
+      onImport(importPreview, importMode);
+      triggerToast(
+        `${importPreview.length} questão(ões) importada(s) com sucesso!`,
+        'success',
+        3000
+      );
+      onClose();
+    } catch (err: any) {
+      triggerToast(err?.message || 'Erro ao importar questões.', 'error', 4000);
+    }
   };
 
   return (

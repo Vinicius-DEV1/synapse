@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { QuestionItem, AttemptItem } from '../types';
 import { promptGeminiForOpenQuestionEvaluation } from '../../../../services/gemini';
+import { triggerToast } from '../../../../components/ui/ToastContext';
 
 export function useQuizEvaluation(
   updateSingleQuestion: (qId: string, partial: Partial<QuestionItem>) => void
@@ -33,8 +34,11 @@ export function useQuizEvaluation(
           showExplanation: true,
           attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error('[QuestionBlock] Falha ao avaliar resposta aberta:', err);
+        const errMsg =
+          err?.message || 'Falha na comunicação com a IA ao avaliar a resposta.';
+        triggerToast(`Erro na avaliação: ${errMsg}`, 'error', 4500);
       } finally {
         setEvaluatingIds((prev) => ({ ...prev, [q.id]: false }));
       }
