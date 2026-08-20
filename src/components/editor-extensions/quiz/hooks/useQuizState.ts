@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { QuestionItem } from '../types';
 import { createDefaultQuestion } from '../utils/fireworks';
 import { preprocessMarkdownCode } from '../utils/markdownPreprocess';
@@ -9,39 +9,88 @@ export function useQuizState(
   title: string | undefined,
   updateAttributes: (attrs: Record<string, any>) => void
 ) {
-  const questions: QuestionItem[] = useMemo(() => {
-    return normalizeQuizQuestions(rawQuestions);
+  // Estado local para renderização ultra-fluida e responsiva sem latência de transações TipTap/Yjs
+  const [localQuestions, setLocalQuestions] = useState<QuestionItem[]>(() =>
+    normalizeQuizQuestions(rawQuestions)
+  );
+
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInternalUpdateRef = useRef(false);
+
+  // Sincroniza caso o valor externo venha de desfazer/refazer ou colaboração remota
+  useEffect(() => {
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
+    const incoming = normalizeQuizQuestions(rawQuestions);
+    setLocalQuestions(incoming);
   }, [rawQuestions]);
+
+  // Função centralizada para sincronizar com o TipTap (debounced para digitação contínua, imediata para cliques)
+  const syncToTipTap = useCallback(
+    (newQuestions: QuestionItem[], immediate: boolean = false) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+
+      const normalized = normalizeQuizQuestions(newQuestions);
+
+      if (immediate) {
+        isInternalUpdateRef.current = true;
+        updateAttributes({ questions: normalized });
+      } else {
+        debounceTimeoutRef.current = setTimeout(() => {
+          isInternalUpdateRef.current = true;
+          updateAttributes({ questions: normalized });
+        }, 300);
+      }
+    },
+    [updateAttributes]
+  );
+
+  // Limpeza de timers ao desmontar
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [copiedJson, setCopiedJson] = useState(false);
 
   const allBatteryTags = useMemo(() => {
     return Array.from(
-      new Set(questions.flatMap((q) => q.tags || []))
+      new Set(localQuestions.flatMap((q) => q.tags || []))
     ).filter(Boolean);
-  }, [questions]);
+  }, [localQuestions]);
 
   const displayedQuestions = useMemo(() => {
     return selectedTagFilter
-      ? questions.filter((q) => q.tags?.includes(selectedTagFilter))
-      : questions;
-  }, [questions, selectedTagFilter]);
+      ? localQuestions.filter((q) => q.tags?.includes(selectedTagFilter))
+      : localQuestions;
+  }, [localQuestions, selectedTagFilter]);
 
   const updateQuestions = useCallback(
-    (newQuestions: QuestionItem[]) => {
-      const normalized = normalizeQuizQuestions(newQuestions);
-      updateAttributes({ questions: normalized });
+    (newQuestions: QuestionItem[], immediate: boolean = true) => {
+      setLocalQuestions(newQuestions);
+      syncToTipTap(newQuestions, immediate);
     },
-    [updateAttributes]
+    [syncToTipTap]
   );
 
   const updateSingleQuestion = useCallback(
-    (qId: string, partial: Partial<QuestionItem>) => {
-      const updated = questions.map((q) => (q.id === qId ? { ...q, ...partial } : q));
-      updateQuestions(updated);
+    (qId: string, partial: Partial<QuestionItem>, immediate: boolean = false) => {
+      setLocalQuestions((prev) => {
+        const updated = prev.map((q) => (q.id === qId ? { ...q, ...partial } : q));
+        syncToTipTap(updated, immediate);
+        return updated;
+      });
     },
-    [questions, updateQuestions]
+    [syncToTipTap]
   );
 
   const handleToggleQuestionType = useCallback(
@@ -66,38 +115,38 @@ export function useQuizState(
         }
       }
 
-      updateSingleQuestion(q.id, updates);
+      updateSingleQuestion(q.id, updates, true);
     },
     [updateSingleQuestion]
   );
 
   const handleAddQuestion = useCallback(() => {
-    const newQ = createDefaultQuestion(questions.length + 1);
-    updateQuestions([...questions, newQ]);
-  }, [questions, updateQuestions]);
+    const newQ = createDefaultQuestion(localQuestions.length + 1);
+    updateQuestions([...localQuestions, newQ], true);
+  }, [localQuestions, updateQuestions]);
 
   const handleMoveQuestion = useCallback(
     (index: number, direction: 'up' | 'down') => {
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= questions.length) return;
+      if (targetIndex < 0 || targetIndex >= localQuestions.length) return;
 
-      const newQuestions = [...questions];
+      const newQuestions = [...localQuestions];
       const [moved] = newQuestions.splice(index, 1);
       newQuestions.splice(targetIndex, 0, moved);
-      updateQuestions(newQuestions);
+      updateQuestions(newQuestions, true);
     },
-    [questions, updateQuestions]
+    [localQuestions, updateQuestions]
   );
 
   const handleRemoveQuestion = useCallback(
     (qId: string) => {
-      if (questions.length <= 1) {
-        updateQuestions([createDefaultQuestion(1)]);
+      if (localQuestions.length <= 1) {
+        updateQuestions([createDefaultQuestion(1)], true);
         return;
       }
-      updateQuestions(questions.filter((q) => q.id !== qId));
+      updateQuestions(localQuestions.filter((q) => q.id !== qId), true);
     },
-    [questions, updateQuestions]
+    [localQuestions, updateQuestions]
   );
 
   const handleCopyQuestionsJson = useCallback(
@@ -107,8 +156,8 @@ export function useQuizState(
 
       const exportData = {
         battery_title: title || 'Bateria de Exercícios',
-        total_questions: questions.length,
-        questions: questions.map((q, idx) => {
+        total_questions: localQuestions.length,
+        questions: localQuestions.map((q, idx) => {
           if (q.type === 'multiple_choice') {
             return {
               index: idx + 1,
@@ -140,11 +189,11 @@ export function useQuizState(
       setCopiedJson(true);
       setTimeout(() => setCopiedJson(false), 2000);
     },
-    [title, questions]
+    [title, localQuestions]
   );
 
   return {
-    questions,
+    questions: localQuestions,
     displayedQuestions,
     selectedTagFilter,
     setSelectedTagFilter,
