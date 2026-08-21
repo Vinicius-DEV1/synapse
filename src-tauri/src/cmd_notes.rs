@@ -206,20 +206,43 @@ pub fn notes_update_page(
             query.push_str(" content = '', encrypted_content = ?");
             params_vec.push(enc.clone().into());
 
-            let hist_id = uuid::Uuid::new_v4().to_string();
-            let _ = conn.execute(
-                "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, '', ?)",
-                params![hist_id, page.id, enc]
-            );
+            // Apenas grava novo histórico se a última versão tiver mais de 60 segundos (evita inflar o SQLite em cada auto-save de 2s)
+            let should_insert_history: bool = conn
+                .query_row(
+                    "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
+                    params![page.id],
+                    |row| row.get::<_, Option<bool>>(0)
+                )
+                .unwrap_or(None)
+                .unwrap_or(true);
+
+            if should_insert_history {
+                let hist_id = uuid::Uuid::new_v4().to_string();
+                let _ = conn.execute(
+                    "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, '', ?)",
+                    params![hist_id, page.id, enc]
+                );
+            }
         } else {
             query.push_str(" content = ?, encrypted_content = NULL");
             params_vec.push(c.clone().into());
 
-            let hist_id = uuid::Uuid::new_v4().to_string();
-            let _ = conn.execute(
-                "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, ?, NULL)",
-                params![hist_id, page.id, c]
-            );
+            let should_insert_history: bool = conn
+                .query_row(
+                    "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
+                    params![page.id],
+                    |row| row.get::<_, Option<bool>>(0)
+                )
+                .unwrap_or(None)
+                .unwrap_or(true);
+
+            if should_insert_history {
+                let hist_id = uuid::Uuid::new_v4().to_string();
+                let _ = conn.execute(
+                    "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, ?, NULL)",
+                    params![hist_id, page.id, c]
+                );
+            }
         }
         has_updates = true;
     }

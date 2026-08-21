@@ -63,7 +63,7 @@ export function useEditorSave({
 
       saveTimeoutRef.current = setTimeout(() => {
         flushSave();
-      }, 2000);
+      }, 2500);
     },
     [ydocRef, flushSave]
   );
