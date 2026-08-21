@@ -12,6 +12,18 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
+const plainTextCache = new Map<string, string>();
+
+function getCachedPlainText(pageId: string, content: string | undefined): string {
+  if (!content) return '';
+  const key = `${pageId}_${content.length}`;
+  const cached = plainTextCache.get(key);
+  if (cached !== undefined) return cached;
+  const stripped = stripHtml(content);
+  plainTextCache.set(key, stripped);
+  return stripped;
+}
+
 export default function GlobalSearchModal() {
   const { state, dispatch } = useStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -69,8 +81,8 @@ export default function GlobalSearchModal() {
 
     state.pages.forEach(p => {
       const titleMatch = p.title.toLowerCase().includes(lowerQuery);
-      // Busca em texto puro (sem tags HTML) para evitar falsos positivos
-      const plainContent = p.content ? stripHtml(p.content) : '';
+      // Busca em texto puro (sem tags HTML) usando cache de texto
+      const plainContent = p.content ? getCachedPlainText(p.id, p.content) : '';
       const contentMatch = plainContent.toLowerCase().includes(lowerQuery);
 
       if (titleMatch) {
