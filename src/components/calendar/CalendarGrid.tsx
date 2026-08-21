@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, getDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -14,7 +14,7 @@ interface CalendarGridProps {
   onDayClick: (date: Date) => void;
 }
 
-const DraggableEvent = ({ event, onClick }: { event: CalendarEvent, onClick: () => void }) => {
+const DraggableEvent = memo(({ event, onClick }: { event: CalendarEvent, onClick: () => void }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: event.id,
     data: event,
@@ -39,7 +39,7 @@ const DraggableEvent = ({ event, onClick }: { event: CalendarEvent, onClick: () 
       {event.type === 'task' ? '✓ ' : ''}{event.title}
     </div>
   );
-};
+});
 
 interface DroppableDayProps {
   date: Date;
@@ -49,7 +49,7 @@ interface DroppableDayProps {
   todayRef?: React.Ref<HTMLDivElement>;
 }
 
-const DroppableDay = ({ date, isCurrentMonth, children, onClick, todayRef }: DroppableDayProps) => {
+const DroppableDay = memo(({ date, isCurrentMonth, children, onClick, todayRef }: DroppableDayProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: format(date, 'yyyy-MM-dd'),
     data: { date },
@@ -85,7 +85,7 @@ const DroppableDay = ({ date, isCurrentMonth, children, onClick, todayRef }: Dro
       </div>
     </div>
   );
-};
+});
 
 export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDayClick }: CalendarGridProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -110,8 +110,21 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
   const endDate = new Date(monthEnd);
   endDate.setDate(endDate.getDate() + (6 - getDay(monthEnd)));
 
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const days = useMemo(() => eachDayOfInterval({ start: startDate, end: endDate }), [startDate.getTime(), endDate.getTime()]);
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const e of events) {
+      const dayStr = getEventDayStr(e.start_date);
+      if (dayStr) {
+        const list = map.get(dayStr);
+        if (list) list.push(e);
+        else map.set(dayStr, [e]);
+      }
+    }
+    return map;
+  }, [events]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -178,9 +191,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
           <div className="flex-1 grid grid-cols-7 auto-rows-fr">
             {days.map((day, i) => {
               const dayStr = format(day, 'yyyy-MM-dd');
-              const dayEvents = events.filter(e => {
-                return getEventDayStr(e.start_date) === dayStr;
-              });
+              const dayEvents = eventsByDay.get(dayStr) || [];
 
               return (
                 <DroppableDay 

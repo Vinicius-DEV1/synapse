@@ -43,14 +43,21 @@ export function useHomeDashboard() {
       if (window.api?.anki) {
         try {
           const decksRes = await window.api.anki.getDecks();
-          if (decksRes.success && decksRes.decks) {
-            let total = 0;
-            for (const deck of decksRes.decks) {
-              const dueRes = await window.api.anki.getDueCards(deck.id);
-              if (dueRes.success && dueRes.cards) {
-                total += dueRes.cards.length;
-              }
-            }
+          if (decksRes.success && decksRes.decks?.length) {
+            const counts = await Promise.all(
+              decksRes.decks.map(async (deck: any) => {
+                try {
+                  const dueRes = await window.api.anki.getDueCards(deck.id);
+                  if (dueRes.success && dueRes.cards) {
+                    return dueRes.cards.length;
+                  }
+                } catch {
+                  return 0;
+                }
+                return 0;
+              })
+            );
+            const total = counts.reduce((acc, count) => acc + count, 0);
             setDueCardsCount(total);
           }
         } catch {
