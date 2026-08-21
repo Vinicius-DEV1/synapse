@@ -40,14 +40,15 @@ export function useHomeDashboard() {
         setTomorrowEvents(tomorrow);
       }
       
-      if (window.api?.anki) {
+      const ankiApi = window.api?.anki;
+      if (ankiApi) {
         try {
-          const decksRes = await window.api.anki.getDecks();
+          const decksRes = await ankiApi.getDecks();
           if (decksRes.success && decksRes.decks?.length) {
             const counts = await Promise.all(
               decksRes.decks.map(async (deck: any) => {
                 try {
-                  const dueRes = await window.api.anki.getDueCards(deck.id);
+                  const dueRes = await ankiApi.getDueCards(deck.id);
                   if (dueRes.success && dueRes.cards) {
                     return dueRes.cards.length;
                   }
