@@ -56,12 +56,13 @@ export default function AnkiView() {
   };
 
   const loadStats = async (decksToLoad: any[]) => {
-    if (!window.api?.anki || !decksToLoad?.length) return;
+    const ankiApi = window.api?.anki;
+    if (!ankiApi || !decksToLoad?.length) return;
     const stats: Record<string, any> = {};
     await Promise.all(
       decksToLoad.map(async (d) => {
         try {
-          const dueRes = await window.api.anki.getDueCards(d.id);
+          const dueRes = await ankiApi.getDueCards(d.id);
           let dueCards: any[] = [];
           if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
           else if (Array.isArray(dueRes)) dueCards = dueRes;
