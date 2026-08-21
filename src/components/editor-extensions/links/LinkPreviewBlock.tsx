@@ -123,6 +123,8 @@ const LinkPreviewComponent = (props: any) => {
     return () => window.removeEventListener('link-widget-delete-request', handleDeleteRequest);
   }, [url]);
 
+  const updateAttributes = props.updateAttributes;
+
   const fetchTitle = useCallback(
     async (forceReload = false) => {
       if (!forceReload && (fetchedTitle || !loading)) return;
@@ -136,7 +138,7 @@ const LinkPreviewComponent = (props: any) => {
         if (metadata.isPlaylist !== undefined) setFetchedIsPlaylist(metadata.isPlaylist);
         if (metadata.uploadDate) setFetchedUploadDate(metadata.uploadDate);
 
-        props.updateAttributes({
+        updateAttributes?.({
           title: metadata.title || null,
           isLoading: false,
           channel: metadata.channel || null,
@@ -150,16 +152,16 @@ const LinkPreviewComponent = (props: any) => {
         try {
           const fallback = new URL(url).hostname;
           setFetchedTitle(fallback);
-          props.updateAttributes({ title: fallback, isLoading: false });
+          updateAttributes?.({ title: fallback, isLoading: false });
         } catch {
-          props.updateAttributes({ title: url, isLoading: false });
+          updateAttributes?.({ title: url, isLoading: false });
         }
         setLoading(false);
       } finally {
         setIsReloading(false);
       }
     },
-    [fetchedTitle, loading, url, props]
+    [fetchedTitle, loading, url, updateAttributes]
   );
 
   useEffect(() => {

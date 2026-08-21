@@ -62,10 +62,10 @@ const CustomBold = Bold.extend({
   },
 });
 
+const sharedLowlight = createLowlight(common);
+
 export function useEditorExtensions(ydoc: Y.Doc | null) {
   return useMemo(() => {
-    const lowlight = createLowlight(common);
-    
     return [
       StarterKit.configure({
         // Desativa UndoRedo local para utilizar o histórico integrado do Yjs/Collaboration
@@ -86,7 +86,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
         }
-      }).configure({ lowlight }),
+      }).configure({ lowlight: sharedLowlight }),
       Placeholder.configure({ placeholder: "Digite '/' para comandos ou comece a escrever..." }),
       Highlight.configure({ multicolor: true }),
       Underline,
