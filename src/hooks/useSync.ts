@@ -112,18 +112,15 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         // Mutex: se já tem um sync rodando, ignora
         if (isSyncing) return;
         isSyncing = true;
-        startSync();
         try {
-          // Apenas push — sem pull e sem sync de PDFs (que é pesado e roda no doFullSync)
+          // Apenas push silencioso em background — sem puxar e sem disparar re-render no App.tsx
           await withTimeout(pushAllToCloud(masterKey), 120_000);
           if (!isClosed) {
-            finishSync(true);
             syncChannel.postMessage('LOCAL_UPDATE');
           }
         } catch (err: any) {
           if (!isClosed) {
-            handleSyncError(err, 'doPushOnlySync'); // #5: centralizado
-            finishSync(false);
+            handleSyncError(err, 'doPushOnlySync');
           }
         } finally {
           isSyncing = false;
@@ -176,11 +173,9 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
         clearTimeout(syncDebounceTimer);
-        console.log('[Sync Gatilho] Evento app-sync-trigger recebido. Iniciando debounce de 5s.');
         syncDebounceTimer = setTimeout(() => {
-          console.log('[Sync Gatilho] Debounce concluído. Iniciando doPushOnlySync().');
           doPushOnlySync();
-        }, 5000);
+        }, 15000);
       };
 
       let cleanupSyncTrigger: (() => void) | undefined;

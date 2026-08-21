@@ -1,16 +1,21 @@
 import * as Y from 'yjs';
 
-// Converte Uint8Array para Base64
+// Converte Uint8Array para Base64 em chunks de alta performance (evita congelamento da thread JS)
 export function uint8ArrayToBase64(buffer: Uint8Array): string {
+  const CHUNK_SIZE = 8192;
+  const len = buffer.length;
+  if (len <= CHUNK_SIZE) {
+    return btoa(String.fromCharCode.apply(null, buffer as unknown as number[]));
+  }
   let binary = '';
-  const len = buffer.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(buffer[i]);
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    const chunk = buffer.subarray(i, i + CHUNK_SIZE);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
   return btoa(binary);
 }
 
-// Converte Base64 para Uint8Array
+// Converte Base64 para Uint8Array em alta performance
 export function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64);
   const len = binary.length;
