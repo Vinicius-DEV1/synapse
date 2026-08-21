@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ChevronRight, ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -14,9 +14,10 @@ interface SidebarItemProps {
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
   isSearchResult?: boolean;
   disableHierarchyDnD?: boolean;
+  childrenMap?: Map<string, Page[]>;
 }
 
-export default function SidebarItem({
+function SidebarItemComponent({
   page,
   depth,
   activePageId,
@@ -24,6 +25,7 @@ export default function SidebarItem({
   onUpdatePage,
   isSearchResult,
   disableHierarchyDnD,
+  childrenMap,
 }: SidebarItemProps) {
   const { state, dispatch } = useStore();
   const [isHovered, setIsHovered] = useState(false);
@@ -47,9 +49,11 @@ export default function SidebarItem({
   };
 
   const isExpanded = state.expandedNodes.includes(page.id);
-  const children = state.pages
-    .filter((p) => p.parent_id === page.id)
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  const children = childrenMap
+    ? (childrenMap.get(page.id) || [])
+    : state.pages
+        .filter((p) => p.parent_id === page.id)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   const hasChildren = children.length > 0;
   const isActive = activePageId === page.id;
 
@@ -158,6 +162,7 @@ export default function SidebarItem({
               onCreatePage={onCreatePage}
               onUpdatePage={onUpdatePage}
               isSearchResult={isSearchResult}
+              childrenMap={childrenMap}
             />
           ))}
         </div>
@@ -173,3 +178,5 @@ export default function SidebarItem({
     </div>
   );
 }
+
+export default memo(SidebarItemComponent);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Pin, Plus, Upload, GripVertical } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from '../../SidebarItem';
@@ -10,7 +10,7 @@ import { usePageActions } from '../../../hooks/usePageActions';
 import { isValidHierarchyMove } from '../../../utils/hierarchy';
 import { triggerToast } from '../../ui/ToastContext';
 
-function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any) {
+function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, childrenMap }: any) {
   const {
     attributes,
     listeners,
@@ -53,6 +53,7 @@ function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage }: any)
           onUpdatePage={onUpdatePage}
           isSearchResult={false}
           disableHierarchyDnD={false}
+          childrenMap={childrenMap}
         />
       </div>
     </div>
@@ -83,13 +84,36 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
 
-  const pinnedPages = state.pages
-    .filter((p: any) => p.is_pinned)
-    .sort((a: any, b: any) => (a.pinned_order || 0) - (b.pinned_order || 0));
+  const { pinnedPages, rootPages, childrenMap } = useMemo(() => {
+    const pinned: any[] = [];
+    const roots: any[] = [];
+    const map = new Map<string, any[]>();
 
-  const rootPages = state.pages
-    .filter((p: any) => p.parent_id === null && !p.is_pinned)
-    .sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    for (const p of state.pages) {
+      if (p.is_pinned) {
+        pinned.push(p);
+      } else if (p.parent_id === null) {
+        roots.push(p);
+      }
+
+      if (p.parent_id) {
+        const list = map.get(p.parent_id);
+        if (list) {
+          list.push(p);
+        } else {
+          map.set(p.parent_id, [p]);
+        }
+      }
+    }
+
+    pinned.sort((a, b) => (a.pinned_order || 0) - (b.pinned_order || 0));
+    roots.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    for (const list of map.values()) {
+      list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    }
+
+    return { pinnedPages: pinned, rootPages: roots, childrenMap: map };
+  }, [state.pages]);
 
   const handleDropPinned = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
@@ -217,6 +241,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                   activeTab={activeTab}
                   onCreatePage={onCreatePage}
                   onUpdatePage={onUpdatePage}
+                  childrenMap={childrenMap}
                 />
               ))}
             </SortableContext>
@@ -252,6 +277,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             onUpdatePage={onUpdatePage}
             isSearchResult={false}
             disableHierarchyDnD={false}
+            childrenMap={childrenMap}
           />
         ))}
         {rootPages.length > visiblePagesCount && (
