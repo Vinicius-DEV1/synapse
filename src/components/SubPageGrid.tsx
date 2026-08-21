@@ -1,5 +1,5 @@
 import { Plus, ChevronDown, GripVertical } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import type { Page } from '../types';
 import { useStore } from '../store/useStore';
 import {
@@ -46,14 +46,30 @@ const customCollisionDetection = (args: any) => {
   return rectIntersection(args);
 };
 
-function SubPageItem({ page, onNavigate, onUpdatePage, isNested = false }: { page: Page; onNavigate: (pageId: string) => void; onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>; isNested?: boolean; }) {
+interface SubPageItemProps {
+  page: Page;
+  onNavigate: (pageId: string) => void;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  isNested?: boolean;
+  childrenMap?: Map<string, Page[]>;
+}
+
+const SubPageItem = memo(function SubPageItem({
+  page,
+  onNavigate,
+  onUpdatePage,
+  isNested = false,
+  childrenMap
+}: SubPageItemProps) {
   const { state } = useStore();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   
-  const childPages = state.pages
-    .filter((p: Page) => p.parent_id === page.id)
-    .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
+  const childPages = childrenMap
+    ? (childrenMap.get(page.id) || [])
+    : state.pages
+        .filter((p: Page) => p.parent_id === page.id)
+        .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const hasChildren = childPages.length > 0;
 
@@ -136,18 +152,40 @@ function SubPageItem({ page, onNavigate, onUpdatePage, isNested = false }: { pag
         <div className="ml-8 pl-3 border-l border-white/10 flex flex-col gap-2 animate-fade-in">
           <SortableContext items={childPages.map(p => p.id)} strategy={verticalListSortingStrategy}>
             {childPages.map(child => (
-              <SubPageItem key={child.id} page={child} onNavigate={onNavigate} onUpdatePage={onUpdatePage} isNested={true} />
+              <SubPageItem
+                key={child.id}
+                page={child}
+                onNavigate={onNavigate}
+                onUpdatePage={onUpdatePage}
+                isNested={true}
+                childrenMap={childrenMap}
+              />
             ))}
           </SortableContext>
         </div>
       )}
     </div>
   );
-}
+});
 
 export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdatePage }: SubPageGridProps) {
   const { state, dispatch } = useStore();
   const [activeDragData, setActiveDragData] = useState<any>(null);
+
+  const childrenMap = useMemo(() => {
+    const map = new Map<string, Page[]>();
+    for (const p of state.pages) {
+      if (p.parent_id) {
+        const list = map.get(p.parent_id);
+        if (list) list.push(p);
+        else map.set(p.parent_id, [p]);
+      }
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }
+    return map;
+  }, [state.pages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -231,7 +269,13 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-start">
           <SortableContext items={pages.map(p => p.id)} strategy={rectSortingStrategy}>
             {pages.map((page) => (
-              <SubPageItem key={page.id} page={page} onNavigate={onNavigate} onUpdatePage={onUpdatePage} />
+              <SubPageItem
+                key={page.id}
+                page={page}
+                onNavigate={onNavigate}
+                onUpdatePage={onUpdatePage}
+                childrenMap={childrenMap}
+              />
             ))}
           </SortableContext>
           <button
