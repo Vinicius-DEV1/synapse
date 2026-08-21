@@ -1,13 +1,32 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
-import { useRef, useEffect } from 'react';
+import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown, FileText, Copy, Trash2 } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { DOMSerializer } from 'prosemirror-model';
+import { getStoreState, getStoreDispatch } from '../../store/useStore';
+import { getEditorBackupMap } from '../editor/hooks/editorBackupStore';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
 const ToggleBlockComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (confirmRef.current && !confirmRef.current.contains(e.target as globalThis.Node)) {
+        setShowConfirm(false);
+      }
+    };
+
+    if (showConfirm) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showConfirm]);
 
   useEffect(() => {
     if (props.node.attrs.title === '' && titleInputRef.current) {
@@ -20,6 +39,98 @@ const ToggleBlockComponent = (props: any) => {
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     props.updateAttributes({ title: e.target.value });
+  };
+
+  const handleConvertToPage = async () => {
+    const { editor, node, getPos } = props;
+    if (typeof getPos !== 'function' || !editor) return;
+
+    const title = node.attrs.title?.trim() || 'Sem Título';
+
+    let bodyHtml = '';
+    try {
+      const serializer = DOMSerializer.fromSchema(editor.schema);
+      const tempDiv = document.createElement('div');
+      const domFragment = serializer.serializeFragment(node.content);
+      tempDiv.appendChild(domFragment);
+      bodyHtml = tempDiv.innerHTML || '<p></p>';
+    } catch (err) {
+      console.error('Erro ao serializar conteúdo do toggle:', err);
+      bodyHtml = '<p></p>';
+    }
+
+    try {
+      const storeState = getStoreState();
+      const dispatch = getStoreDispatch();
+      const activeTab = storeState.tabs.find((t) => t.id === storeState.activeTabId);
+      const parentId = activeTab?.pageId || null;
+
+      let newPage: any = null;
+      if (window.api) {
+        newPage = await window.api.createPage({ parentId, title });
+        if (newPage && newPage.id) {
+          getEditorBackupMap().set(newPage.id, { html: bodyHtml, crdt: '' });
+          await window.api.updatePage({ id: newPage.id, content: bodyHtml, title });
+          dispatch({ type: 'ADD_PAGE', page: { ...newPage, content: bodyHtml, title } });
+          if (parentId) {
+            dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
+          }
+        }
+      }
+
+      if (newPage?.id) {
+        const pos = getPos();
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: pos, to: pos + node.nodeSize })
+          .insertContentAt(pos, {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'pageReference',
+                attrs: { pageId: newPage.id, title },
+              },
+            ],
+          })
+          .run();
+      }
+    } catch (err) {
+      console.error('Erro ao converter toggle em página:', err);
+    }
+  };
+
+  const handleCopy = () => {
+    const { node, editor, getPos } = props;
+    try {
+      const serializer = DOMSerializer.fromSchema(editor.schema);
+      const inner = serializer.serializeNode(node);
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-pm-slice', '0 0 []');
+      wrapper.appendChild(inner);
+      const html = wrapper.outerHTML;
+
+      const doToast = () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      navigator.clipboard
+        .write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([node.textContent || ''], { type: 'text/plain' }),
+          }),
+        ])
+        .then(doToast)
+        .catch(() => {
+          editor.chain().setNodeSelection(getPos()).run();
+          document.execCommand('copy');
+          doToast();
+        });
+    } catch (e) {
+      console.error('Falha ao copiar toggle:', e);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -122,8 +233,70 @@ const ToggleBlockComponent = (props: any) => {
         </button>
       </div>
 
+      {/* Barra de ações discretas no hover */}
+      <div
+        className="absolute top-0 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
+        contentEditable={false}
+      >
+        <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
+          <button
+            onClick={handleConvertToPage}
+            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+            title="Converter em Página"
+          >
+            <FileText size={14} />
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={handleCopy}
+              className={`p-1 rounded-md transition-all ${
+                copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'
+              }`}
+              title="Copiar lista oculta"
+            >
+              <Copy size={14} />
+            </button>
+            {copied && (
+              <div className="absolute bottom-full right-0 mb-1.5 px-2 py-0.5 bg-dark-bg border border-white/10 rounded-md text-[11px] text-white/70 whitespace-nowrap pointer-events-none shadow-lg">
+                Copiado!
+              </div>
+            )}
+          </div>
+
+          <div className="relative" ref={confirmRef}>
+            <button
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="p-1 rounded-md transition-all text-dark-subtext hover:bg-red-500/20 hover:text-red-400"
+              title="Excluir lista oculta"
+            >
+              <Trash2 size={14} />
+            </button>
+            {showConfirm && (
+              <div className="absolute top-full right-0 mt-1 bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px]">
+                <span className="text-xs text-white">Excluir lista oculta?</span>
+                <div className="flex gap-1 justify-end">
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    className="px-2 py-1 text-xs text-dark-subtext hover:text-white rounded hover:bg-white/5"
+                  >
+                    Não
+                  </button>
+                  <button
+                    onClick={() => props.deleteNode()}
+                    className="px-2 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded"
+                  >
+                    Sim
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div 
-        className="flex items-center gap-1 cursor-pointer outline-none font-medium"
+        className="flex items-center gap-1 cursor-pointer outline-none font-medium pr-16"
         contentEditable={false}
       >
         <button 

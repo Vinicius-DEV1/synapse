@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { File, FileText, Image as ImageIcon, Film, X, Folder, ArrowUp, ArrowDown } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import FileViewer from '../files/FileViewer';
@@ -12,7 +12,6 @@ export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode } = props;
   const { fileId, name, fileType, isLink } = node.attrs;
   
-  const { state, dispatch } = useStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
@@ -121,9 +120,9 @@ export default function FileWidgetNodeView(props: any) {
         }`}
         onClick={() => {
           if (fileType === 'folder') {
-            // Não existe ação global "trocar módulo" — o módulo é por aba.
-            dispatch({ type: 'UPDATE_TAB_MODULE', tabId: state.activeTabId, module: 'files' });
-            // Should probably emit an event to navigate to that folder inside the module
+            const storeState = getStoreState();
+            const dispatch = getStoreDispatch();
+            dispatch({ type: 'UPDATE_TAB_MODULE', tabId: storeState.activeTabId, module: 'files' });
             window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
           } else if ((fileType === 'pdf' || fileType === 'epub') && fileItem) {
             window.dispatchEvent(new CustomEvent('open-file-action', { 
