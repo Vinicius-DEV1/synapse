@@ -1,11 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import type { Page } from '../types';
 import { getEditorBackupMap } from '../components/editor/hooks/editorBackupStore';
 
 export function usePageActions() {
   const { state, dispatch } = useStore();
-  const historyTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {
