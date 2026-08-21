@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { Portal } from '../ui/Portal';
 import { parseEventDate } from '../../utils/dateUtils';
@@ -38,7 +38,6 @@ function invalidateCalendarEventsCache() {
 
 export default function CalendarEventWidgetNodeView(props: any) {
   const { eventId, title, dateStr, status } = props.node.attrs;
-  const { state, dispatch } = useStore();
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
   const [showPopover, setShowPopover] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
@@ -101,9 +100,11 @@ export default function CalendarEventWidgetNodeView(props: any) {
   };
 
   const openCalendarModule = () => {
+    const storeState = getStoreState();
+    const dispatch = getStoreDispatch();
     dispatch({
       type: 'UPDATE_TAB_MODULE',
-      tabId: state.activeTabId,
+      tabId: storeState.activeTabId,
       module: 'calendar'
     });
     setShowPopover(false);

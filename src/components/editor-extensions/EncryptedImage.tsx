@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useStore } from '../../store/useStore';
+import { getNotesKey } from '../../store/useStore';
 import { getDecryptedImageUrl, uploadEncryptedImage, getCachedImage } from '../../services/image-drive';
 import ImageFrame from './image/ImageFrame';
 import { alignToClass, normalizeAlign, safePos } from './image/imageUtils';
@@ -34,9 +34,8 @@ const EncryptedImageNodeView = (props: any) => {
     };
   }, []);
 
-  // Obtém a chave mestra do módulo de notas
-  const { state: storeState } = useStore();
-  const masterKey = storeState.moduleKeys['notes'];
+  // Obtém a chave mestra do módulo de notas sem subscrever ao store completo
+  const masterKey = getNotesKey();
 
   // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
   const loadImage = useCallback(async () => {

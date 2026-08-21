@@ -75,12 +75,26 @@ interface StoreContextType {
   dispatch: React.Dispatch<Action>;
 }
 
-const StoreContext = createContext<StoreContextType | null>(null);
+export const StoreContext = createContext<StoreContextType | null>(null);
 
-// Referência global imperativa para acessar state sem hooks (evita re-renders)
+// Referência global imperativa para acessar state e dispatch sem forçar re-render em node views
 let _storeStateRef: AppState = initialState;
+let _storeDispatchRef: React.Dispatch<Action> | null = null;
+
+export function getStoreState(): AppState {
+  return _storeStateRef;
+}
+
+export function getStoreDispatch(): React.Dispatch<Action> {
+  return _storeDispatchRef || (() => {});
+}
+
 export function getCultureKey(): CryptoKey | undefined {
   return _storeStateRef.moduleKeys['culture'];
+}
+
+export function getNotesKey(): CryptoKey | undefined {
+  return _storeStateRef.moduleKeys['notes'];
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -88,14 +102,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   
   useEffect(() => {
     _storeStateRef = state;
-  }, [state]);
+    _storeDispatchRef = dispatch;
+  }, [state, dispatch]);
 
   const lastSavedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const stateToSave = {
-      // `module` migrou para dentro de cada Tab; `activeModule` (campo global)
-      // não existe mais em AppState — persisti-lo sempre gravava `undefined`.
       tabs: state.tabs.map(t => ({ ...t, unsavedContent: null })), // don't persist huge unsaved text
       activeTabId: state.activeTabId,
       sidebarCollapsed: state.sidebarCollapsed,
@@ -106,12 +119,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     
     const stringified = JSON.stringify(stateToSave);
     if (lastSavedRef.current === stringified) {
-      return; // Skip save if state hasn't actually changed (avoids infinite sync loop)
+      return; // Skip save if state hasn't actually changed
     }
-    console.log('[Sync Gatilho] appLayoutState mudou!', {
-      old: lastSavedRef.current,
-      new: stringified
-    });
     lastSavedRef.current = stringified;
     
     localStorage.setItem('appLayoutState', stringified);

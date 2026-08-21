@@ -1,25 +1,33 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { useStore } from '../../store/useStore';
+import { getStoreState } from '../../store/useStore';
 import { useEffect, useState } from 'react';
 import { FileText } from 'lucide-react';
 
 const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
   const { deleteNode } = props;
-  const { state } = useStore();
   const [pageTitle, setPageTitle] = useState(title);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (pageId) {
-      const page = state.pages.find(p => p.id === pageId);
+      const page = getStoreState().pages.find(p => p.id === pageId);
       if (page && page.title) {
         setPageTitle(page.title);
       }
     }
-  }, [pageId, state.pages]);
+
+    const handlePageUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.id === pageId && detail?.title) {
+        setPageTitle(detail.title);
+      }
+    };
+    window.addEventListener('caderno-page-updated', handlePageUpdate);
+    return () => window.removeEventListener('caderno-page-updated', handlePageUpdate);
+  }, [pageId]);
 
   useEffect(() => {
     const handleDeleteRequest = (e: Event) => {
