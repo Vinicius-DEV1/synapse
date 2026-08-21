@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
 import Editor from '../Editor';
@@ -43,20 +43,27 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     if (page?.id) {
       window.api.getPageContent(page.id).then((data: any) => {
         if (mounted) {
-          console.log(`[Caderno:PageView] getPageContent(${page.id}) returned: content.length=${data?.content?.length || 0}, encrypted=${!!data?.encrypted_content}, page.crdt_state=${page.crdt_state ? page.crdt_state.substring(0, 30) + '...' : 'NULL'}`);
           setContentData(data);
           if (!page.is_locked) setIsUnlocked(true);
         }
       }).catch(err => {
         if (mounted) {
           console.error(`[Caderno:PageView] Failed to load content for ${page.id}:`, err);
-          // If you had a setContentError or similar, you'd call it here.
-          // For now, logging and letting the global toast handle the UI notification.
         }
       });
     }
     return () => { mounted = false; };
   }, [page?.id, page?.is_locked]);
+
+  const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[]) => {
+    if (page?.id) {
+      onUpdateContent(page.id, content, crdtState, embeddedSaves);
+    }
+  }, [page?.id, onUpdateContent]);
+
+  const handleCreateLinked = useCallback((title: string) => {
+    return onCreateLinkedPage(title, page?.id || null);
+  }, [page?.id, onCreateLinkedPage]);
 
   if (!page) {
     return <EmptyState onCreatePage={() => onCreatePage(null)} />;
@@ -103,8 +110,8 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
             pageId={page.id}
             initialContent={contentData.content}
             initialCrdtState={page.crdt_state}
-            onSave={(content, crdtState, embeddedSaves) => onUpdateContent(page.id, content, crdtState, embeddedSaves)}
-            onCreateLinkedPage={(title) => onCreateLinkedPage(title, page.id)}
+            onSave={handleSave}
+            onCreateLinkedPage={handleCreateLinked}
           />
         )}
 

@@ -194,19 +194,22 @@ export default function Editor({
     },
   });
 
+  const hasInitializedContentRef = useRef(false);
+
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
 
   useEffect(() => {
-    if (editor && !editor.isDestroyed) {
+    if (editor && !editor.isDestroyed && !hasInitializedContentRef.current) {
       const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
       const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
       if (!hasMeaningfulCrdt && isEmptyEditor && initialContent && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         editor.commands.setContent(initialContent);
+        hasInitializedContentRef.current = true;
       }
     }
-  }, [pageId, initialContent, initialCrdtState, editor]);
+  }, [pageId, editor]);
 
   return (
     <div
