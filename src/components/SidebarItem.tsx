@@ -154,7 +154,7 @@ function SidebarItemComponent({
       {isExpanded && !isSearchResult && hasChildren && (
         <div>
           {children.map((child) => (
-            <SidebarItem
+            <SidebarItemComponent
               key={child.id}
               page={child}
               depth={depth + 1}

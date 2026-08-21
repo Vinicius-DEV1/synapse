@@ -6,7 +6,7 @@ import { getSettings } from '../utils/settings';
 import FloatingToolbar from './FloatingToolbar';
 import TableToolbar from './TableToolbar';
 import { useFocusContext } from '../store/FocusContext';
-import { useStore } from '../store/useStore';
+import { getNotesKey } from '../store/useStore';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
 import { useEditorSave } from './editor/hooks/useEditorSave';
@@ -31,6 +31,39 @@ interface EditorProps {
   onCreateLinkedPage?: (title: string) => Promise<string>;
 }
 
+function EditorBlockHandleHost({
+  editor,
+  wrapperRef,
+}: {
+  editor: any;
+  wrapperRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const blockHandle = useBlockHandle(editor, wrapperRef);
+  if (!blockHandle.anchor) return null;
+
+  return (
+    <BlockHandle
+      x={blockHandle.anchor.x}
+      y={blockHandle.anchor.y}
+      onDragStart={blockHandle.onDragStart}
+      onDragEnd={blockHandle.onDragEnd}
+      onDelete={blockHandle.onDelete}
+      onMoveUp={blockHandle.onMoveUp}
+      onMoveDown={blockHandle.onMoveDown}
+      onAddBelow={blockHandle.onAddBelow}
+      onMenuOpenChange={blockHandle.onMenuOpenChange}
+      onChangeColor={(color, isBackground) => {
+        if (!editor) return;
+        if (isBackground) {
+          editor.chain().focus().toggleHighlight({ color }).run();
+        } else {
+          editor.chain().focus().setColor(color).run();
+        }
+      }}
+    />
+  );
+}
+
 export default function Editor({
   pageId,
   pageTitle,
@@ -42,9 +75,7 @@ export default function Editor({
   const [settings, setSettings] = useState(getSettings());
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const { state } = useStore();
-  const currentPage = state.pages.find((p) => p.id === pageId);
-  const masterKey = state.moduleKeys?.['notes'];
+  const masterKey = getNotesKey();
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
 
   const onSaveRef = useRef(onSave);
@@ -150,6 +181,12 @@ export default function Editor({
       handleUpdate(props);
       updateSlashMenuOnUpdate(props.editor);
     },
+    onCreate: ({ editor: currentEditor }) => {
+      const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+      if (!hasMeaningfulCrdt && initialContent && initialContent.trim() !== '' && initialContent !== '<p></p>') {
+        currentEditor.commands.setContent(initialContent);
+      }
+    },
     onSelectionUpdate: ({ editor }) => {
       if (slashMenu && editor.state.selection.$head.pos <= slashMenu.startPos) {
         setSlashMenu(null);
@@ -161,16 +198,19 @@ export default function Editor({
     editorRef.current = editor;
   }, [editor]);
 
-  // 7. Alça de arrasto — vale para todo bloco de nível superior, inclusive os
-  //    que não têm node view (parágrafo, título, listas).
-  const blockHandle = useBlockHandle(editor, wrapperRef);
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+      const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
+      if (!hasMeaningfulCrdt && isEmptyEditor && initialContent && initialContent.trim() !== '' && initialContent !== '<p></p>') {
+        editor.commands.setContent(initialContent);
+      }
+    }
+  }, [pageId, initialContent, initialCrdtState, editor]);
 
   return (
     <div
       ref={wrapperRef}
-      // `settings.zenMode` nunca existiu em AppSettings (nem `zen-mode-active`
-      // tem CSS definido em lugar nenhum) — sempre `undefined`, então este
-      // ramo nunca aplicou nada. Stub de um "modo zen" que não foi implementado.
       className="editor-wrapper relative"
     >
       {editor && (
@@ -206,36 +246,12 @@ export default function Editor({
         <EditorContent editor={editor} />
       </div>
 
-      {blockHandle.anchor && (
-        <BlockHandle
-          x={blockHandle.anchor.x}
-          y={blockHandle.anchor.y}
-          onDragStart={blockHandle.onDragStart}
-          onDragEnd={blockHandle.onDragEnd}
-          onDelete={blockHandle.onDelete}
-          onMoveUp={blockHandle.onMoveUp}
-          onMoveDown={blockHandle.onMoveDown}
-          onAddBelow={blockHandle.onAddBelow}
-          onMenuOpenChange={blockHandle.onMenuOpenChange}
-          onChangeColor={(color, isBackground) => {
-            if (!editor) return;
-            if (isBackground) {
-              // Cor de fundo: usa o atributo HTMLAttributes do node selecionado
-              // via mark de highlight com a cor escolhida (backgroundColor).
-              // TextStyle/Color não cobrem background nativamente, então usamos
-              // o Highlight multicolor como substituto controlado.
-              editor.chain().focus().toggleHighlight({ color }).run();
-            } else {
-              editor.chain().focus().setColor(color).run();
-            }
-          }}
-        />
-      )}
+      <EditorBlockHandleHost editor={editor} wrapperRef={wrapperRef} />
 
       <EditorModalHost
         editor={editor}
         pageId={pageId}
-        pageTitle={pageTitle || currentPage?.title || ''}
+        pageTitle={pageTitle || ''}
         slashMenu={slashMenu}
         setSlashMenu={setSlashMenu}
         executeSlashCommand={executeSlashCommand}
