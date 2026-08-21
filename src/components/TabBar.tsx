@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback } from 'react';
 import { Plus, X, FileText, Library, Settings } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
@@ -15,7 +16,7 @@ interface TabItemProps {
   tabCount: number;
 }
 
-function TabItem({ tab, index, isActive, page, onSelect, onClose, tabCount }: TabItemProps) {
+const TabItem = memo(function TabItem({ tab, index, isActive, page, onSelect, onClose, tabCount }: TabItemProps) {
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 
@@ -83,31 +84,39 @@ function TabItem({ tab, index, isActive, page, onSelect, onClose, tabCount }: Ta
       )}
     </button>
   );
-}
+});
 
 export default function TabBar() {
   const { state, dispatch } = useStore();
 
-  const handleNewTab = () => {
+  const handleNewTab = useCallback(() => {
     const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
       type: 'ADD_TAB',
       tab: { id: tabId, module: 'notes', pageId: null, unsavedContent: null, scrollY: 0 },
     });
-  };
+  }, [dispatch]);
 
-  const handleCloseTab = (e: React.MouseEvent, tabId: string) => {
+  const handleCloseTab = useCallback((e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
     dispatch({ type: 'CLOSE_TAB', tabId });
-  };
+  }, [dispatch]);
 
-  const handleSelectTab = (tabId: string) => {
+  const handleSelectTab = useCallback((tabId: string) => {
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
-  };
+  }, [dispatch]);
 
-  const handleDropTab = (sourceIndex: number, targetIndex: number) => {
+  const handleDropTab = useCallback((sourceIndex: number, targetIndex: number) => {
     dispatch({ type: 'REORDER_TABS', sourceIndex, targetIndex });
-  };
+  }, [dispatch]);
+
+  const pageMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const p of state.pages) {
+      map.set(p.id, p);
+    }
+    return map;
+  }, [state.pages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -117,7 +126,7 @@ export default function TabBar() {
     })
   );
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
     try {
       const { active, over } = e;
       if (active && over && active.id !== over.id) {
@@ -132,14 +141,14 @@ export default function TabBar() {
     } catch (err) {
       console.error('[TabBar] Erro ao reordenar abas:', err);
     }
-  };
+  }, [handleDropTab]);
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
       {state.tabs.map((tab, index) => {
         const isActive = tab.id === state.activeTabId;
-        const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) : null;
+        const page = tab.pageId ? pageMap.get(tab.pageId) || null : null;
         return (
           <TabItem
             key={tab.id}
