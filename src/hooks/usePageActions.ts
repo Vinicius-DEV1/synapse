@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import type { Page } from '../types';
+import { getEditorBackupMap } from '../components/editor/hooks/editorBackupStore';
 
 export function usePageActions() {
   const { state, dispatch } = useStore();
@@ -84,19 +85,13 @@ export function usePageActions() {
 
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
     if (window.api) {
-      console.log(`[Caderno:IPC] updatePage START id=${id}, content.length=${content?.length}, crdt_state.length=${crdtState?.length || 0}`);
       await window.api.updatePage({ id, content, crdt_state: crdtState } as unknown as Omit<Partial<Page>, 'id'> & { id: string });
-      console.log(`[Caderno:IPC] updatePage DONE id=${id} ✅`);
-      dispatch({ type: 'UPDATE_PAGE', page: { id, content, crdt_state: crdtState } });
-      
-      if (historyTimerRef.current[id]) clearTimeout(historyTimerRef.current[id]);
-      historyTimerRef.current[id] = setTimeout(() => {
-        window.api?.savePageHistory?.(id, content).catch(console.error);
-      }, 5000);
+      getEditorBackupMap().set(id, { html: content, crdt: crdtState || '' });
       
       if (embeddedSaves && embeddedSaves.length > 0) {
         for (const embed of embeddedSaves) {
           await window.api.updatePage({ id: embed.id, content: embed.content });
+          getEditorBackupMap().set(embed.id, { html: embed.content, crdt: '' });
         }
       }
       
@@ -106,7 +101,7 @@ export function usePageActions() {
          window.dispatchEvent(new CustomEvent('app-sync-trigger'));
       }
     }
-  }, [dispatch]);
+  }, []);
 
   const handleExportPage = useCallback(async (id: string) => {
     if (window.api) {
