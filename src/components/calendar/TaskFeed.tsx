@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format } from 'date-fns';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
@@ -14,18 +14,21 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
   const [filter, setFilter] = useState<'all' | 'tasks'>('all');
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date();
 
   // Sort and filter events
-  let filteredEvents = events.filter(e => filter === 'all' ? true : e.type === 'task');
-  filteredEvents.sort((a, b) => parseEventDate(a.start_date).getTime() - parseEventDate(b.start_date).getTime());
+  const { todayEvents, upcomingEvents } = useMemo(() => {
+    const now = new Date();
+    const filtered = events.filter(e => filter === 'all' ? true : e.type === 'task');
+    filtered.sort((a, b) => parseEventDate(a.start_date).getTime() - parseEventDate(b.start_date).getTime());
 
-  const todayEvents = filteredEvents.filter(e => getEventDayStr(e.start_date) === todayStr);
-  
-  const upcomingEvents = filteredEvents.filter(e => {
-    const eDate = parseEventDate(e.start_date);
-    return eDate > now && getEventDayStr(e.start_date) !== todayStr;
-  });
+    const today = filtered.filter(e => getEventDayStr(e.start_date) === todayStr);
+    const upcoming = filtered.filter(e => {
+      const eDate = parseEventDate(e.start_date);
+      return eDate > now && getEventDayStr(e.start_date) !== todayStr;
+    });
+
+    return { todayEvents: today, upcomingEvents: upcoming };
+  }, [events, filter, todayStr]);
 
   const toggleTaskStatus = (e: React.MouseEvent, event: CalendarEvent) => {
     e.stopPropagation();

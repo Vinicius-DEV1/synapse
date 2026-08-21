@@ -56,32 +56,34 @@ export default function AnkiView() {
   };
 
   const loadStats = async (decksToLoad: any[]) => {
-    if (!window.api?.anki) return;
+    if (!window.api?.anki || !decksToLoad?.length) return;
     const stats: Record<string, any> = {};
-    for (const d of decksToLoad) {
-      try {
-        const dueRes = await window.api.anki.getDueCards(d.id);
-        let dueCards = [];
-        if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
-        else if (Array.isArray(dueRes)) dueCards = dueRes;
+    await Promise.all(
+      decksToLoad.map(async (d) => {
+        try {
+          const dueRes = await window.api.anki.getDueCards(d.id);
+          let dueCards: any[] = [];
+          if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
+          else if (Array.isArray(dueRes)) dueCards = dueRes;
 
-        let novos = 0;
-        let aprender = 0;
-        let revisar = 0;
+          let novos = 0;
+          let aprender = 0;
+          let revisar = 0;
 
-        dueCards.forEach((c: any) => {
-          const state = Number(c.state) || 0;
-          if (state === 0) novos++;
-          else if (state === 1 || state === 3) aprender++;
-          else if (state === 2) revisar++;
-        });
+          dueCards.forEach((c: any) => {
+            const state = Number(c.state) || 0;
+            if (state === 0) novos++;
+            else if (state === 1 || state === 3) aprender++;
+            else if (state === 2) revisar++;
+          });
 
-        stats[d.id] = { novos, aprender, revisar };
-      } catch (err) {
-        console.warn('Failed to load stats for deck', d.id, err);
-        stats[d.id] = { novos: 0, aprender: 0, revisar: 0 };
-      }
-    }
+          stats[d.id] = { novos, aprender, revisar };
+        } catch (err) {
+          console.warn('Failed to load stats for deck', d.id, err);
+          stats[d.id] = { novos: 0, aprender: 0, revisar: 0 };
+        }
+      })
+    );
     setDeckStats(stats);
   };
 
