@@ -51,9 +51,9 @@ describe('useEditorSave Hook', () => {
     expect(mockEditor.getHTML).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
 
-    // Avança 2000ms no timer
+    // Avança 2500ms no timer
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2500);
     });
 
     // Agora sim foi avaliado uma única vez

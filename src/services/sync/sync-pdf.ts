@@ -22,7 +22,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
     const books = await window.api.library.getBooks();
     for (const book of books) {
       if (book.file_path && !book.drive_file_id) {
-        console.log(`[Sync] Fazendo upload E2EE de PDF para Google Drive: \${book.title}`);
+        console.log(`[Sync] Fazendo upload E2EE de PDF para Google Drive: ${book.title}`);
         
         try {
           const token = await getValidAccessToken();
@@ -52,16 +52,16 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           
           const encrypted = await encryptFile(buffer, masterKey);
           
-          const driveFileId = await uploadToDrive(token, `Caderno_\${book.id}.enc`, encrypted);
+          const driveFileId = await uploadToDrive(token, `Caderno_${book.id}.enc`, encrypted);
           
           await window.api.library.updateBook({
             id: book.id,
             drive_file_id: driveFileId
           } as any);
           
-          console.log(`[Sync] PDF subiu com sucesso para o Drive com ID: \${driveFileId}`);
+          console.log(`[Sync] PDF subiu com sucesso para o Drive com ID: ${driveFileId}`);
         } catch (err) {
-          console.error(`[Sync] Erro ao subir PDF para o Drive: \${book.title}`, err);
+          console.error(`[Sync] Erro ao subir PDF para o Drive: ${book.title}`, err);
         }
       }
     }
