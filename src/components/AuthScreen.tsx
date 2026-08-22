@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldAlert, Timer } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
 import { getVaultKeyHash } from '../services/vault-crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud, getSecurityLock, recordFailedAttempt, clearFailedAttempts } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
 import { platform } from '../services/platform';
-
-const INTIMIDATING_PHRASES = [
-  "Se você usar toda a energia do sol para tentar quebrar essa criptografia AES-256 GCM, o sol vai apagar antes de você conseguir.",
-  "O universo vai atingir o zero absoluto e congelar antes de você passar dessa tela. Vá tomar um café.",
-  "Força bruta? Sério? Estamos no século 21. A criptografia ri da sua tentativa.",
-  "Sua persistência é admirável, mas sua ignorância criptográfica é deplorável. Não vai rolar.",
-  "Desista logo. Vá fazer algo mais produtivo do que tentar quebrar o inquebrável."
-];
+import { getRandomIntimidatingPhrase } from './auth/AuthSecurityPhrases';
+import { AuthLockoutView } from './auth/AuthLockoutView';
 
 async function buildModuleKeys(rawKeys: Record<string, string> | null | undefined, masterKey: CryptoKey): Promise<Record<string, CryptoKey>> {
   const keys: Record<string, CryptoKey> = {};
@@ -71,7 +65,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         if (remaining > 0) {
           setLockoutTime(remaining);
           if (!intimidatingPhrase) {
-            setIntimidatingPhrase(INTIMIDATING_PHRASES[Math.floor(Math.random() * INTIMIDATING_PHRASES.length)]);
+            setIntimidatingPhrase(getRandomIntimidatingPhrase());
           }
         } else {
           setLockoutTime(0);
@@ -262,25 +256,10 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         className={`bg-dark-card border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl transition-all ${shake ? 'animate-shake' : ''} ${lockoutTime > 0 ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.15)] bg-[#1a0f0f]' : ''}`}
       >
         {lockoutTime > 0 ? (
-          <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.4)]">
-              <Timer size={32} className="text-red-400 animate-pulse" />
-            </div>
-            
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-widest text-red-400">
-              00:{lockoutTime.toString().padStart(2, '0')}
-            </h1>
-            
-            <h2 className="text-lg font-medium text-center text-white/90 mb-4 uppercase tracking-wider">
-              Acesso Bloqueado
-            </h2>
-            
-            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl w-full">
-              <p className="text-center text-red-200/90 text-sm leading-relaxed italic font-medium">
-                "{intimidatingPhrase}"
-              </p>
-            </div>
-          </div>
+          <AuthLockoutView
+            lockoutTime={lockoutTime}
+            intimidatingPhrase={intimidatingPhrase}
+          />
         ) : (
           <>
             <div className="flex justify-center mb-6">
