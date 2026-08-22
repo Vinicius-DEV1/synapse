@@ -45,7 +45,6 @@ export function useEpubLoader(
         let arrayBuffer: ArrayBuffer | null = null;
         let assetUrl: string | null = null;
         
-        try {
         // 1. Cascading local filesystem check (Desktop / Tauri)
         if (platform.canReadLocalFilesystem && window.api?.library) {
           try {

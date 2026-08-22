@@ -10,8 +10,8 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   const masterKey = moduleKeys['library'];
   if (!masterKey) return; 
   
-  // Executa se estiver no Desktop (independente de SO - Windows, Linux, Mac)
-  if (!platform.canReadLocalFilesystem && !window.api?.library) {
+  // Executa apenas se estiver no Desktop (com acesso ao sistema de arquivos local)
+  if (!platform.canReadLocalFilesystem) {
     return;
   }
   
@@ -58,7 +58,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
             uploadPayload = await encryptFile(buffer, masterKey);
           }
           
-          const driveFileId = await uploadToDrive(token, `library_${book.id}.enc`, uploadPayload);
+          const driveFileId = await uploadToDrive(token, `Caderno_${book.id}.enc`, uploadPayload);
           
           await window.api.library.updateBook({
             ...book,

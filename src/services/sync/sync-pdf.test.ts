@@ -3,6 +3,7 @@ import { syncPdfsToCloud } from './sync-pdf';
 import { importHexKey } from '../crypto';
 import * as drive from '../drive';
 import * as storage from '../storage';
+import { platform } from '../platform';
 
 vi.mock('../drive', () => ({
   getValidAccessToken: vi.fn(),
@@ -13,6 +14,15 @@ vi.mock('../storage', () => ({
   encryptFile: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
 }));
 
+vi.mock('../platform', () => ({
+  platform: {
+    canReadLocalFilesystem: true,
+    platform: 'desktop',
+    useNativeTitleBar: true,
+    supportsNativeTabs: true,
+  },
+}));
+
 describe('sync-pdf service', () => {
   const testHexKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   let cryptoKey: CryptoKey;
@@ -20,6 +30,7 @@ describe('sync-pdf service', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     cryptoKey = await importHexKey(testHexKey);
+    platform.canReadLocalFilesystem = true;
 
     (window as any).api = {
       library: {
@@ -28,11 +39,6 @@ describe('sync-pdf service', () => {
         updateBook: vi.fn().mockResolvedValue(undefined),
       },
     };
-
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 Caderno Desktop App',
-      configurable: true,
-    });
   });
 
   afterEach(() => {
@@ -40,10 +46,7 @@ describe('sync-pdf service', () => {
   });
 
   it('skips sync if not running in desktop app', async () => {
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 Chrome Web Browser',
-      configurable: true,
-    });
+    platform.canReadLocalFilesystem = false;
 
     await syncPdfsToCloud({ library: cryptoKey });
     expect(window.api.library.getBooks).not.toHaveBeenCalled();
