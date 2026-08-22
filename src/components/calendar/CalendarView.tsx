@@ -4,6 +4,7 @@ import TaskFeed from './TaskFeed';
 import EventModal from './EventModal';
 import DayModal from './DayModal';
 import type { CalendarEvent } from '../../types';
+import { triggerToast } from '../ui/ToastContext';
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -15,9 +16,10 @@ export default function CalendarView() {
     if (window.api?.calendar) {
       try {
         const data = await window.api.calendar.getEvents();
-        setEvents(data);
-      } catch (err) {
+        setEvents(data || []);
+      } catch (err: any) {
         console.error('Failed to load events:', err);
+        triggerToast(err.message || 'Erro ao carregar eventos do calendário', 'error');
       }
     }
   };
@@ -33,11 +35,12 @@ export default function CalendarView() {
 
   const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
     if (window.api?.calendar) {
-      if (editingEvent) {
-        await window.api.calendar.updateEvent(editingEvent.id, eventData);
-      } else {
-        const recRule = eventData.recurrence_rule;
-        try {
+      try {
+        if (editingEvent) {
+          await window.api.calendar.updateEvent(editingEvent.id, eventData);
+          triggerToast('Evento atualizado com sucesso!', 'success');
+        } else {
+          const recRule = eventData.recurrence_rule;
           if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
             const groupId = `group_${crypto.randomUUID()}`;
             const copies: any[] = [];
@@ -72,17 +75,20 @@ export default function CalendarView() {
             for (const copy of copies) {
               await window.api.calendar.createEvent(copy);
             }
+            triggerToast(`${copies.length} eventos recorrentes criados!`, 'success');
           } else {
             const newEvent = { ...eventData, id: crypto.randomUUID() };
             await window.api.calendar.createEvent(newEvent);
+            triggerToast('Evento adicionado ao calendário!', 'success');
           }
-        } catch (e) {
-          console.error("Erro ao salvar eventos:", e);
         }
+        setIsModalOpen(false);
+        setEditingEvent(null);
+        loadEvents();
+      } catch (e: any) {
+        console.error("Erro ao salvar eventos:", e);
+        triggerToast(e.message || 'Erro ao salvar evento.', 'error');
       }
-      setIsModalOpen(false);
-      setEditingEvent(null);
-      loadEvents();
     }
   };
 
@@ -95,13 +101,16 @@ export default function CalendarView() {
           for (const ge of groupEvents) {
             await window.api.calendar.deleteEvent(ge.id);
           }
+          triggerToast(`${groupEvents.length} eventos da série foram excluídos.`, 'info');
         } else {
           await window.api.calendar.deleteEvent(id);
+          triggerToast('Evento excluído do calendário.', 'info');
         }
-      } catch (e) {
+        loadEvents();
+      } catch (e: any) {
         console.error("Erro ao deletar eventos:", e);
+        triggerToast(e.message || 'Erro ao excluir evento.', 'error');
       }
-      loadEvents();
     }
   };
 

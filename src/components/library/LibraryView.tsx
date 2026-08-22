@@ -13,6 +13,7 @@ import DriveAuthModal from './DriveAuthModal';
 import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
+import { triggerToast } from '../ui/ToastContext';
 
 export default function LibraryView({ tabId }: { tabId?: string }) {
   const { state, dispatch } = useStore();
@@ -68,33 +69,34 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
 
   const handleBulkDelete = async () => {
     if (!window.api?.library || selectedIds.size === 0) return;
-    const count = selectedIds.size;
-    if (!confirm(`Tem certeza que deseja excluir ${count} ${count === 1 ? 'livro selecionado' : 'livros selecionados'}?`)) {
-      return;
-    }
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.size} livros?`)) return;
     try {
+      const count = selectedIds.size;
       for (const id of selectedIds) {
         await window.api.library.deleteBook(id);
       }
       setSelectedIds(new Set());
+      triggerToast(`${count} livro(s) excluído(s).`, 'info');
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Bulk delete failed', err);
-      alert('Falha ao excluir alguns livros.');
+      triggerToast(err.message || 'Falha ao excluir alguns livros.', 'error');
     }
   };
 
   const handleBulkStatusChange = async (status: ReadingStatus) => {
     if (!window.api?.library || selectedIds.size === 0) return;
     try {
+      const count = selectedIds.size;
       for (const id of selectedIds) {
         await window.api.library.updateBook({ id, reading_status: status });
       }
       setSelectedIds(new Set());
+      triggerToast(`Status de ${count} livro(s) atualizado!`, 'success');
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Bulk status update failed', err);
-      alert('Falha ao alterar status dos livros.');
+      triggerToast(err.message || 'Falha ao alterar status dos livros.', 'error');
     }
   };
 
@@ -102,9 +104,11 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
     if (!window.api?.library) return;
     try {
       await window.api.library.updateBook({ id: book.id, reading_status: status });
+      triggerToast(`Status de "${book.title}" atualizado.`, 'success');
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Status update failed', err);
+      triggerToast(err.message || 'Erro ao atualizar status do livro.', 'error');
     }
   };
 

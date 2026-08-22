@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { PenTool, Plus, Trash2, X } from 'lucide-react';
 import type { DiagramMeta } from '../../types';
 import DiagramEditor from './DiagramEditor';
+import { triggerToast } from '../ui/ToastContext';
 
 export default function DiagramsModule() {
   const [diagrams, setDiagrams] = useState<DiagramMeta[]>([]);
@@ -17,9 +18,10 @@ export default function DiagramsModule() {
     if (window.api?.diagrams) {
       try {
         const res = await window.api.diagrams.getAll();
-        setDiagrams(res);
-      } catch (e) {
+        setDiagrams(res || []);
+      } catch (e: any) {
         console.error(e);
+        triggerToast(e.message || 'Erro ao carregar diagramas', 'error');
       }
     }
   };
@@ -35,8 +37,10 @@ export default function DiagramsModule() {
         setNewTitle('');
         await loadDiagrams();
         setActiveDiagram(newDiagram);
-      } catch (e) {
+        triggerToast('Diagrama criado com sucesso!', 'success');
+      } catch (e: any) {
         console.error(e);
+        triggerToast(e.message || 'Erro ao criar diagrama', 'error');
       }
     }
   };
@@ -49,8 +53,10 @@ export default function DiagramsModule() {
           await window.api.diagrams.delete(id);
           if (activeDiagram?.id === id) setActiveDiagram(null);
           loadDiagrams();
-        } catch (e) {
+          triggerToast('Diagrama excluído com sucesso.', 'info');
+        } catch (e: any) {
           console.error(e);
+          triggerToast(e.message || 'Erro ao excluir diagrama', 'error');
         }
       }
     }

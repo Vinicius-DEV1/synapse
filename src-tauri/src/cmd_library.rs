@@ -5,28 +5,47 @@ use tauri::{Manager, State};
 
 #[derive(Serialize, Deserialize)]
 pub struct Book {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub author: Option<String>,
+    #[serde(default)]
     pub file_path: Option<String>,
+    #[serde(default)]
     pub drive_file_id: Option<String>,
+    #[serde(default)]
     pub cover_color: Option<String>,
+    #[serde(default)]
     pub cover_image: Option<String>,
+    #[serde(default)]
     pub total_pages: i32,
+    #[serde(default)]
     pub current_page: i32,
+    #[serde(default)]
     pub reading_status: Option<String>,
+    #[serde(default)]
     pub last_read_page: Option<String>,
+    #[serde(default)]
     pub epub_locations: Option<String>,
+    #[serde(default)]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
+    #[serde(default)]
     pub deleted_at: Option<String>,
+    #[serde(default)]
     pub reading_preferences: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Collection {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub color: Option<String>,
 }
 
@@ -267,16 +286,27 @@ pub fn library_remove_book_from_collection(
 
 #[derive(Serialize, Deserialize)]
 pub struct Highlight {
+    #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
     pub book_id: String,
+    #[serde(default)]
     pub page_number: i32,
+    #[serde(default)]
     pub text_content: Option<String>,
+    #[serde(default)]
     pub color: Option<String>,
+    #[serde(default)]
     pub rects: Option<String>,
+    #[serde(default)]
     pub highlight_type: Option<String>,
+    #[serde(default)]
     pub note: Option<String>,
+    #[serde(default)]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
+    #[serde(default)]
     pub deleted_at: Option<String>,
 }
 
@@ -372,12 +402,19 @@ pub fn library_delete_highlight(id: String, db_state: State<'_, DbState>) -> Res
 
 #[derive(Serialize, Deserialize)]
 pub struct Bookmark {
+    #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
     pub book_id: String,
+    #[serde(default)]
     pub page_number: i32,
+    #[serde(default)]
     pub label: Option<String>,
+    #[serde(default)]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
+    #[serde(default)]
     pub deleted_at: Option<String>,
 }
 
@@ -561,10 +598,15 @@ pub fn library_create_collection(
 
 #[derive(Serialize, Deserialize)]
 pub struct OcrCache {
+    #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
     pub book_id: String,
+    #[serde(default)]
     pub page_number: i32,
+    #[serde(default)]
     pub text_content: Option<String>,
+    #[serde(default)]
     pub word_boxes: Option<String>,
 }
 
@@ -618,12 +660,19 @@ pub fn library_save_ocr_cache(
 
 #[derive(Serialize, Deserialize)]
 pub struct ReadingSession {
+    #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
     pub book_id: String,
+    #[serde(default)]
     pub started_at: Option<String>,
+    #[serde(default)]
     pub ended_at: Option<String>,
+    #[serde(default)]
     pub pages_read: Option<i32>,
+    #[serde(default)]
     pub start_page: Option<i32>,
+    #[serde(default)]
     pub end_page: Option<i32>,
 }
 

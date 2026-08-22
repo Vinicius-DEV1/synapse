@@ -6,6 +6,7 @@ import type { CultureSearchResult } from '../../services/culture-apis';
 import { Portal } from '../ui/Portal';
 import { useCultureMediaSearch } from './hooks/useCultureMediaSearch';
 import { CultureSearchResultsList } from './ui/CultureSearchResultsList';
+import { triggerToast } from '../ui/ToastContext';
 
 interface Props {
   isOpen: boolean;
@@ -75,9 +76,12 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
   };
 
   const handleSave = async () => {
-    if (!formData.title?.trim()) return;
+    if (!formData.title?.trim()) {
+      triggerToast('O título da obra é obrigatório.', 'error');
+      return;
+    }
     if (formData.type === ('todos' as any)) {
-      alert("Por favor, selecione um tipo de mídia específico (Anime, Filme, etc) antes de salvar.");
+      triggerToast("Por favor, selecione um tipo de mídia específico (Anime, Filme, etc) antes de salvar.", "error");
       return;
     }
     
@@ -85,13 +89,16 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     try {
       if (itemToEdit) {
         await CultureService.updateItem(itemToEdit.id, formData);
+        triggerToast('Obra atualizada com sucesso!', 'success');
       } else {
         await CultureService.createItem(formData);
+        triggerToast('Obra adicionada com sucesso!', 'success');
       }
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar:', err);
+      triggerToast(err.message || 'Erro ao salvar obra.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -102,10 +109,12 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     setIsSaving(true);
     try {
       await CultureService.deleteItem(itemToEdit.id);
+      triggerToast('Obra excluída.', 'info');
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      triggerToast(err.message || 'Erro ao excluir obra.', 'error');
     } finally {
       setIsSaving(false);
     }

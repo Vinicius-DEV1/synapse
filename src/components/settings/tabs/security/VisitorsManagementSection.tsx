@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound } from 'lucide-react';
+import { triggerToast } from '../../../ui/ToastContext';
 
 export function VisitorsManagementSection() {
   const [visitors, setVisitors] = useState<Array<{ id: string; modules: string[] }>>([]);
@@ -19,8 +20,9 @@ export function VisitorsManagementSection() {
         const v = await window.api.auth.getVisitors();
         setVisitors(v);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      triggerToast(err.message || 'Erro ao carregar visitantes', 'error');
     }
   };
 
@@ -30,30 +32,36 @@ export function VisitorsManagementSection() {
 
   const handleCreateVisitor = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (!visitorPassword.trim()) {
-      setPwdError('A senha não pode ser vazia');
+    if (!visitorPassword || visitorPassword.length < 4) {
+      setPwdError('A senha deve ter pelo menos 4 caracteres.');
       return;
     }
-    const modules = Object.entries(visitorModules).filter(([_, v]) => v).map(([k]) => k);
-    if (modules.length === 0) {
-      setPwdError('Selecione ao menos um módulo');
+    const selectedMods = Object.keys(visitorModules).filter(k => visitorModules[k]);
+    if (selectedMods.length === 0) {
+      setPwdError('Selecione ao menos um módulo permitido.');
       return;
     }
 
     setVisitorLoading(true);
     setPwdError('');
+
     try {
-      const res = await window.api.auth.createVisitor(visitorPassword, modules);
-      if (res.success) {
-        setVisitorPassword('');
-        setVisitorModules({ library: false, finance: false, notes: false });
-        setShowAddVisitor(false);
-        loadVisitors();
-      } else {
-        setPwdError(res.error || 'Erro ao criar visitante');
+      if (window.api?.auth?.createVisitor) {
+        const res = await window.api.auth.createVisitor(visitorPassword, selectedMods);
+        if (res.success) {
+          setShowAddVisitor(false);
+          setVisitorPassword('');
+          setVisitorModules({ library: false, finance: false, notes: false });
+          triggerToast('Visitante criado com sucesso!', 'success');
+          loadVisitors();
+        } else {
+          setPwdError(res.error || 'Erro ao criar visitante');
+          triggerToast(res.error || 'Erro ao criar visitante', 'error');
+        }
       }
     } catch (err: any) {
       setPwdError(err.message);
+      triggerToast(err.message || 'Erro ao criar visitante', 'error');
     } finally {
       setVisitorLoading(false);
     }
@@ -64,12 +72,13 @@ export function VisitorsManagementSection() {
     try {
       const res = await window.api.auth.deleteVisitor(id);
       if (res.success) {
+        triggerToast('Senha extra excluída com sucesso.', 'info');
         loadVisitors();
       } else {
-        alert(res.error || 'Erro ao deletar visitante');
+        triggerToast(res.error || 'Erro ao deletar visitante', 'error');
       }
     } catch (err: any) {
-      alert(err.message);
+      triggerToast(err.message || 'Erro ao deletar visitante', 'error');
     }
   };
 

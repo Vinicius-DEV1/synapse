@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 interface RenameModalProps {
   item: FileItem | FileFolder;
@@ -42,11 +43,11 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
     setIsSubmitting(true);
     try {
       await onRename(item.id, name.trim(), isFolder);
+      triggerToast(isFolder ? 'Pasta renomeada com sucesso!' : 'Arquivo renomeado com sucesso!', 'success');
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to rename:", err);
-      // Depending on global error handling, we might want to show an alert here
-      alert("Erro ao renomear.");
+      triggerToast(err.message || "Erro ao renomear.", 'error');
     } finally {
       setIsSubmitting(false);
     }

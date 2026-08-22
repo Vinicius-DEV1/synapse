@@ -27,16 +27,27 @@ export const tauriLibraryApi = {
           const cleanFileName = filePath.split(/[/\\]/).pop() || 'Livro';
           const title = cleanFileName.replace(/\.(pdf|epub)$/i, '') || 'Livro';
           const book = {
-            id: bookId, title, author: 'Desconhecido', file_path: localPath, cover_image: '',
-            total_pages: 0, last_read_page: '1', reading_status: 'not_started',
-            created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+            id: bookId,
+            title,
+            author: 'Desconhecido',
+            file_path: localPath,
+            cover_image: '',
+            total_pages: 0,
+            current_page: 0,
+            last_read_page: '1',
+            reading_status: 'not_started',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           };
           await invoke('library_add_book', { book });
           importedBooks.push(book);
         }
         return importedBooks;
       }
-    } catch(e) { console.error("Error importing book(s)", e); }
+    } catch(e) {
+      console.error("Error importing book(s)", e);
+      throw e;
+    }
     return null;
   },
   getBookFile: async (id: string) => {
@@ -114,10 +125,13 @@ export const tauriLibraryApi = {
 
         // Retrieve existing book to prevent wiping metadata
         const books = await invoke<any[]>('library_get_books');
-        const existing = books.find((b: any) => b.id === bookId) || { id: bookId };
+        const existing = books.find((b: any) => b.id === bookId) || { id: bookId, title: 'Livro' };
 
         await invoke('library_update_book', {
           book: {
+            title: 'Livro',
+            total_pages: 0,
+            current_page: 0,
             ...existing,
             file_path: localPath,
             updated_at: new Date().toISOString()
@@ -127,6 +141,7 @@ export const tauriLibraryApi = {
       }
     } catch(e) {
       console.error("Error reattaching book file", e);
+      throw e;
     }
     return null;
   },

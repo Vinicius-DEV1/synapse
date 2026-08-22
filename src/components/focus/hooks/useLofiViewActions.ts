@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LofiItem } from '../../../types';
 import { uploadNewLofi, deleteLofiCompletely, deleteLofiLocal, renameLofi } from '../../../services/lofi-manager';
+import { triggerToast } from '../../ui/ToastContext';
 
 interface UseLofiViewActionsProps {
   lofis: LofiItem[];
@@ -58,9 +59,10 @@ export function useLofiViewActions({
           }
 
           await uploadNewLofi(file, duration, masterKey, (p) => setProgress(p));
-        } catch (err) {
+          triggerToast(`Estação "${file.name}" importada com sucesso!`, 'success');
+        } catch (err: any) {
           console.error("Erro ao importar Lofi", err);
-          alert(`Erro ao importar Lofi: ${file.name}`);
+          triggerToast(err.message || `Erro ao importar Lofi: ${file.name}`, 'error', 5000);
         }
       }
       await loadLofis();

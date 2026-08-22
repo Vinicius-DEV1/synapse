@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { LibraryBook, LibraryCollection } from '../../../types';
 import { getDriveCredentials } from '../../../services/drive';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function useLibraryData(selectedBookId: string | null | undefined) {
   const [books, setBooks] = useState<LibraryBook[]>([]);
@@ -117,21 +118,30 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       if (imported) {
         const list = Array.isArray(imported) ? imported : [imported];
         await loadData();
+        const successMsg = hasDriveAuth
+          ? (list.length > 1
+              ? `${list.length} livros foram importados e sincronizados com a nuvem.`
+              : `O livro "${list[0]?.title || 'Livro'}" foi importado e sincronizado com o Drive.`)
+          : (list.length > 1
+              ? `${list.length} livros foram importados localmente (Google Drive desconectado).`
+              : `O livro "${list[0]?.title || 'Livro'}" foi importado localmente (Google Drive desconectado).`);
+
         setUploadResult({
-          title: "Upload Concluído",
-          message: list.length > 1
-            ? `${list.length} livros foram importados com sucesso para a nuvem.`
-            : `O arquivo "${list[0]?.title || 'Livro'}" foi importado com sucesso para a nuvem.`,
+          title: "Importação Concluída",
+          message: successMsg,
           type: "success"
         });
+        triggerToast(successMsg, hasDriveAuth ? 'success' : 'info');
       }
     } catch (err: any) {
       console.error('Import failed', err);
+      const errMsg = err.message || "Ocorreu um erro ao tentar importar o arquivo.";
       setUploadResult({
-        title: "Erro no Upload",
-        message: err.message || "Ocorreu um erro desconhecido ao tentar enviar o arquivo.",
+        title: "Erro na Importação",
+        message: errMsg,
         type: "error"
       });
+      triggerToast(errMsg, 'error', 5000);
     } finally {
       setLoading(false);
     }

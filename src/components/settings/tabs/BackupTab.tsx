@@ -1,6 +1,7 @@
-import  { useState, useEffect, useRef } from 'react';
-import { FolderOpen, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2,  Ban } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FolderOpen, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2, Ban } from 'lucide-react';
 import { getValidAccessToken } from '../../../services/drive';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function BackupTab() {
   const [destination, setDestination] = useState<string>('');
@@ -29,10 +30,12 @@ export function BackupTab() {
       if (data.progress === 100) {
         setIsBackingUp(false);
         setIsCompleted(true);
+        triggerToast('Backup concluído com sucesso!', 'success');
       }
       // Handle cancel (progress resets to 0 with cancel message)
       if (data.progress === 0 && data.message.includes('cancelado')) {
         setIsBackingUp(false);
+        triggerToast('Backup cancelado pelo usuário.', 'info');
       }
     });
     
@@ -41,18 +44,25 @@ export function BackupTab() {
 
   const handleSelectFolder = async () => {
     if (!window.api?.backup) return;
-    const folder = await window.api.backup.selectFolder();
-    if (folder) {
-      setDestination(folder);
+    try {
+      const folder = await window.api.backup.selectFolder();
+      if (folder) {
+        setDestination(folder);
+      }
+    } catch (e: any) {
+      triggerToast(e.message || 'Erro ao selecionar pasta de destino', 'error');
     }
   };
 
   const handleStartBackup = async () => {
     if (!destination) {
-      alert("Por favor, selecione uma pasta de destino.");
+      triggerToast("Por favor, selecione uma pasta de destino.", 'error');
       return;
     }
-    if (!window.api?.backup) return;
+    if (!window.api?.backup) {
+      triggerToast("Módulo de backup indisponível.", 'error');
+      return;
+    }
 
     setIsBackingUp(true);
     setIsCompleted(false);
@@ -63,22 +73,29 @@ export function BackupTab() {
     if (includeMedia) {
       const token = await getValidAccessToken();
       if (!token) {
-        alert("Não foi possível autenticar com o Google Drive para baixar as mídias.");
+        window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+        triggerToast("Não foi possível autenticar com o Google Drive para baixar as mídias.", 'error', 5000);
         setIsBackingUp(false);
         return;
       }
       driveToken = token;
     }
 
-    const res = await window.api.backup.startBackup({
-      destination,
-      type: backupType,
-      includeMedia,
-      driveToken
-    });
+    try {
+      const res = await window.api.backup.startBackup({
+        destination,
+        type: backupType,
+        includeMedia,
+        driveToken
+      });
 
-    if (!res.success) {
+      if (!res.success) {
+        setIsBackingUp(false);
+        triggerToast((res as any).error || res.message || 'Erro ao iniciar processo de backup.', 'error');
+      }
+    } catch (err: any) {
       setIsBackingUp(false);
+      triggerToast(err.message || 'Falha ao executar o backup.', 'error');
     }
   };
 

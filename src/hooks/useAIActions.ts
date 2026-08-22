@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { triggerToast } from '../components/ui/ToastContext';
 
 declare module '../api/types' {
   interface AnkiApi {
@@ -32,17 +33,20 @@ export function useAIActions(deckId: string) {
             back: action.new_back !== undefined ? action.new_back : card.back,
             tags: action.new_tags !== undefined ? action.new_tags : card.tags
           });
+          triggerToast('Cartão atualizado com sucesso pela IA!', 'success');
         }
       } else if (action.type === 'delete') {
         await window.api.anki.deleteCardsBulk([action.card_id]);
+        triggerToast('Cartão excluído com sucesso pela IA.', 'info');
       } else if (action.type === 'delete_bulk') {
         const ids = (action.cards_to_delete || []).map((c: any) => c.card_id);
         await window.api.anki.deleteCardsBulk(ids);
+        triggerToast(`${ids.length} cartões excluídos com sucesso pela IA.`, 'info');
       }
       setActionStatus(prev => ({ ...prev, [actionKey]: true }));
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Erro ao executar ação');
+      triggerToast(e.message || 'Erro ao executar ação da IA.', 'error');
     }
   };
 

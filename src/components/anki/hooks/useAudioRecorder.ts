@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function useAudioRecorder(onAudioReady: (base64: string) => void) {
   const [isRecording, setIsRecording] = useState(false);
@@ -39,9 +40,9 @@ export function useAudioRecorder(onAudioReady: (base64: string) => void) {
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao acessar microfone", err);
-      alert("Não foi possível acessar o microfone.");
+      triggerToast("Não foi possível acessar o microfone. Verifique as permissões de áudio.", "error");
     }
   }, [onAudioReady]);
 

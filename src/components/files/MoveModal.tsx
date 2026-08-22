@@ -2,24 +2,28 @@ import React, { useState } from 'react';
 import { X, Folder, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 interface MoveModalProps {
   item?: FileItem | FileFolder;
   isFolder?: boolean;
-  items?: Array<{ item: FileItem | FileFolder; isFolder: boolean }>;
+  items?: Array<{ item: FileItem | FileFolder; isFolder: boolean }> | (FileItem | FileFolder)[];
   folders: FileFolder[];
   onClose: () => void;
   onMove: (id: string, targetFolderId: string | null, isFolder: boolean) => Promise<void>;
 }
 
-export default function MoveModal({ item, isFolder, items, folders, onClose, onMove }: MoveModalProps) {
-  const list = items || (item ? [{ item, isFolder: !!isFolder }] : []);
+export default function MoveModal({ item, items, isFolder = false, folders, onClose, onMove }: MoveModalProps) {
+  const list = items
+    ? items.map(i => ('item' in i ? (i as { item: FileItem | FileFolder; isFolder: boolean }) : { item: i, isFolder: 'parent_id' in i }))
+    : (item ? [{ item, isFolder }] : []);
+
   const initialFolderId = list[0]
     ? (list[0].isFolder ? (list[0].item as FileFolder).parent_id || null : (list[0].item as FileItem).folder_id || null)
     : null;
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Filtramos as pastas válidas (uma pasta não pode ser movida para dentro dela mesma)
   const validFolders = folders.filter(f => {
@@ -36,10 +40,11 @@ export default function MoveModal({ item, isFolder, items, folders, onClose, onM
           await onMove(entry.item.id, selectedFolderId, entry.isFolder);
         }
       }
+      triggerToast(list.length > 1 ? `${list.length} itens movidos com sucesso!` : 'Item movido com sucesso!', 'success');
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to move:", err);
-      alert("Erro ao mover.");
+      triggerToast(err.message || "Erro ao mover item(ns).", 'error');
     } finally {
       setIsSubmitting(false);
     }

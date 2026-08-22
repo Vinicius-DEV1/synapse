@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AppSettings } from '../../../utils/settings';
+import { triggerToast } from '../../ui/ToastContext';
 
 interface GeneralTabProps {
   appSettings: AppSettings;
@@ -21,13 +22,18 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
 
   const handleSelectFolder = async () => {
     if (!window.api?.video?.openFolderDialog) {
-      alert("Recurso não disponível nesta versão.");
+      triggerToast("Recurso não disponível nesta versão.", "info");
       return;
     }
-    const newPath = await window.api.video.openFolderDialog();
-    if (newPath) {
-      setVideoPath(newPath);
-      window.api.config?.set('videoStoragePath', newPath);
+    try {
+      const newPath = await window.api.video.openFolderDialog();
+      if (newPath) {
+        setVideoPath(newPath);
+        window.api.config?.set('videoStoragePath', newPath);
+        triggerToast('Pasta de vídeos atualizada!', 'success');
+      }
+    } catch (e: any) {
+      triggerToast(e.message || 'Erro ao alterar pasta de vídeos', 'error');
     }
   };
 

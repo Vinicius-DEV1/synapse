@@ -9,6 +9,7 @@ import { useTasks } from '../../store/TaskContext';
 import { useVideoFolders } from './hooks/useVideoFolders';
 import { VideoViewHeader } from './ui/VideoViewHeader';
 import { VideoViewModals } from './ui/VideoViewModals';
+import { triggerToast } from '../ui/ToastContext';
 
 export default function VideoView({ tabId }: { tabId?: string }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -103,10 +104,13 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       signal: abortController.signal
     }).then(() => {
       completeTask(taskId);
+      triggerToast(`Vídeo "${options.videoFile.name}" importado com sucesso!`, 'success');
       loadVideos();
     }).catch((e: any) => {
       if (e.message !== 'Cancelado pelo usuário') {
-        failTask(taskId, e.message || 'Erro desconhecido');
+        const msg = e.message || 'Erro desconhecido';
+        failTask(taskId, msg);
+        triggerToast(`Falha no upload do vídeo: ${msg}`, 'error', 5000);
       }
     });
   };

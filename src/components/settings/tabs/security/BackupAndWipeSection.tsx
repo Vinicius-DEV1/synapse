@@ -1,4 +1,5 @@
 import { DatabaseBackup, ShieldAlert } from 'lucide-react';
+import { triggerToast } from '../../../ui/ToastContext';
 
 export function BackupAndWipeSection() {
   const handleExportBackup = async () => {
@@ -6,13 +7,13 @@ export function BackupAndWipeSection() {
       if (window.api?.exportBackup) {
         const res = await window.api.exportBackup();
         if (res.success) {
-          alert('Backup salvo com sucesso em: ' + res.path);
+          triggerToast('Backup salvo com sucesso em: ' + res.path, 'success', 6000);
         } else if (!res.canceled) {
-          alert('Erro ao salvar backup: ' + res.error);
+          triggerToast('Erro ao salvar backup: ' + (res.error || 'Falha'), 'error');
         }
       }
     } catch (err: any) {
-      alert('Erro inesperado: ' + err.message);
+      triggerToast('Erro inesperado: ' + err.message, 'error');
     }
   };
 
@@ -23,7 +24,7 @@ export function BackupAndWipeSection() {
         await window.api.auth.wipeLocalData();
       }
     } catch (err: any) {
-      alert('Erro ao limpar dados locais: ' + err.message);
+      triggerToast('Erro ao limpar dados locais: ' + err.message, 'error');
     }
   };
 

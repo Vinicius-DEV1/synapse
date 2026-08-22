@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Transaction } from '../../types';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 interface PaymentModalProps {
   transaction: Transaction;
@@ -18,7 +19,10 @@ export default function PaymentModal({ transaction, onClose, onSave }: PaymentMo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
-    if (!parsedAmount || parsedAmount <= 0) return;
+    if (!parsedAmount || parsedAmount <= 0) {
+      triggerToast('Insira um valor de pagamento válido.', 'error');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -32,9 +36,11 @@ export default function PaymentModal({ transaction, onClose, onSave }: PaymentMo
       }
       
       await onSave(transaction.id, updates);
+      triggerToast('Pagamento registrado com sucesso!', 'success');
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      triggerToast(err.message || 'Erro ao registrar pagamento.', 'error');
     } finally {
       setLoading(false);
     }

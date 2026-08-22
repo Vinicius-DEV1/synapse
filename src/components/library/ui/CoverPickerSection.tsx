@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Palette, ImageIcon,  Upload, FileCode2, Loader2 } from 'lucide-react';
 import { extractPdfCover } from '../../../utils/pdf-cover';
 import { compressBase64Image } from '../../../utils/image';
+import { triggerToast } from '../../ui/ToastContext';
 
 interface CoverPickerSectionProps {
   bookId: string;
@@ -40,15 +41,20 @@ export function CoverPickerSection({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione uma imagem (JPG, PNG).');
+      triggerToast('Por favor, selecione uma imagem válida (JPG, PNG, WebP).', 'error');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      const compressed = await compressBase64Image(base64);
-      setCoverImage(compressed);
+      try {
+        const base64 = event.target?.result as string;
+        const compressed = await compressBase64Image(base64);
+        setCoverImage(compressed);
+        triggerToast('Nova capa carregada!', 'success');
+      } catch (err: any) {
+        triggerToast(err.message || 'Erro ao processar imagem de capa.', 'error');
+      }
     };
     reader.readAsDataURL(file);
     setShowCoverMenu(false);
@@ -85,9 +91,10 @@ export function CoverPickerSection({
       const base64 = await extractPdfCover(uintArray);
       const compressed = await compressBase64Image(base64);
       setCoverImage(compressed);
-    } catch (err) {
+      triggerToast('Capa extraída do PDF com sucesso!', 'success');
+    } catch (err: any) {
       console.error('Falha ao extrair capa', err);
-      alert('Erro ao extrair capa do PDF. O arquivo pode estar corrompido, não baixado, ou não suportado.');
+      triggerToast(err.message || 'Erro ao extrair capa do PDF. O arquivo pode estar corrompido ou indisponível.', 'error');
     } finally {
       setExtractingCover(false);
     }

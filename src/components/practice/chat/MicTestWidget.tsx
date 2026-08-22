@@ -1,5 +1,6 @@
-import  { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Mic, Play, Square } from 'lucide-react';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function MicTestWidget() {
   const [state, setState] = useState<'idle' | 'recording' | 'playing'>('idle');
@@ -26,9 +27,9 @@ export function MicTestWidget() {
       recorder.start();
       mediaRecorderRef.current = recorder;
       setState('recording');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Erro ao acessar microfone para teste.');
+      triggerToast('Erro ao acessar microfone para teste.', 'error');
     }
   };
 

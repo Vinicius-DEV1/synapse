@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../../../store/useStore';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { encryptFile } from '../../../services/storage';
+import { triggerToast } from '../../ui/ToastContext';
 
 // The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
 // the filename plus the raw bytes; the declared ICadernoAPI signature only has one
@@ -16,6 +17,7 @@ export interface UploadTask {
   progress: number;
   errorMsg?: string;
   targetFolderId: string | null;
+  driveSynced?: boolean;
 }
 
 interface UseFolderUploadProps {
@@ -30,11 +32,30 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(-1);
+  const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    let mounted = true;
+    getValidAccessToken()
+      .then(token => {
+        if (mounted) setDriveStatus(token ? 'connected' : 'disconnected');
+      })
+      .catch(() => {
+        if (mounted) setDriveStatus('disconnected');
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleFolderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const filesApi = window.api.files;
-    if (!filesApi) return;
+    if (!filesApi) {
+      triggerToast('Módulo de arquivos indisponível', 'error');
+      return;
+    }
 
     setIsProcessing(true);
     const filesList = Array.from(e.target.files);
@@ -126,19 +147,21 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
         uploadBuffer = await encryptFile(arrayBuffer, masterKey);
         driveFileName = task.file.name + '.enc';
       } else {
-        throw new Error('Chave mestra ausente');
+        throw new Error('Chave mestra ausente para criptografia');
       }
 
       let driveId: string | undefined = undefined;
+      let driveSynced = false;
       try {
         const token = await getValidAccessToken();
         if (token) {
           driveId = await uploadToDrive(token, driveFileName, uploadBuffer, 'root', (p) => {
             updateTask(task.id, { progress: 40 + p * 0.5 });
           });
+          driveSynced = !!driveId;
         }
       } catch (driveErr) {
-        console.warn('Drive upload falhou:', driveErr);
+        console.warn('Drive upload falhou, salvando apenas localmente:', driveErr);
       }
 
       updateTask(task.id, { progress: 95 });
@@ -164,7 +187,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
       };
 
       await filesApi.create(fileRecord);
-      updateTask(task.id, { status: 'completed', progress: 100 });
+      updateTask(task.id, { status: 'completed', progress: 100, driveSynced });
       return true;
     } catch (err: any) {
       console.error('Erro upload:', err);
@@ -176,6 +199,9 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
   const startUploadProcess = async (startIdx: number = 0) => {
     setIsUploading(true);
     let allGood = true;
+    let anyDriveSynced = false;
+    let anyDriveMissed = false;
+
     for (let i = startIdx; i < tasks.length; i++) {
       if (tasks[i].status === 'completed') continue;
 
@@ -184,6 +210,24 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
       if (!success) {
         allGood = false;
       }
+    }
+
+    // Check Drive outcomes across tasks
+    tasks.forEach(t => {
+      if (t.driveSynced) anyDriveSynced = true;
+      else anyDriveMissed = true;
+    });
+
+    if (allGood) {
+      if (anyDriveMissed && !anyDriveSynced) {
+        triggerToast('Pasta importada apenas localmente (Google Drive desconectado).', 'info', 4000);
+      } else if (anyDriveMissed && anyDriveSynced) {
+        triggerToast('Pasta importada, mas alguns arquivos falharam ao sincronizar com o Drive.', 'error', 5000);
+      } else {
+        triggerToast('Pasta importada e sincronizada com o Google Drive com sucesso!', 'success', 4000);
+      }
+    } else {
+      triggerToast('Alguns arquivos da pasta falharam ao serem processados.', 'error', 5000);
     }
 
     setIsUploading(false);
@@ -209,6 +253,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
     tasks,
     isProcessing,
     isUploading,
+    driveStatus,
     currentTaskIndex,
     completedCount,
     errorCount,

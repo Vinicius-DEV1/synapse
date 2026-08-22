@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { X, Loader2, Download, Video, FolderPlus, MonitorPlay } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, CloudOff, Cloud } from 'lucide-react';
 import { useTasks } from '../../store/TaskContext';
 import { downloadYouTubeAndSync } from '../../services/video-manager';
 import { Portal } from '../ui/Portal';
 import { YouTubeSubtitleSelector, type SubtitleOption } from './ui/YouTubeSubtitleSelector';
+import { triggerToast } from '../ui/ToastContext';
+import { getValidAccessToken } from '../../services/drive';
 
 interface YouTubeDownloadModalProps {
   onClose: () => void;
@@ -18,6 +20,22 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    let mounted = true;
+    getValidAccessToken()
+      .then(t => {
+        if (mounted) setDriveStatus(t ? 'connected' : 'disconnected');
+      })
+      .catch(() => {
+        if (mounted) setDriveStatus('disconnected');
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   
   const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
 
@@ -36,7 +54,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
     setError(null);
     try {
       const info = await window.api?.youtube?.fetchInfo(url);
-      if (!info) throw new Error('Não foi possível obter dados.');
+      if (!info) throw new Error('Não foi possível obter dados do vídeo.');
       
       setVideoInfo(info);
       
@@ -70,7 +88,9 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
         setFilename(info.title ? `${info.title}.mp4` : 'video.mp4');
       }
     } catch (err: any) {
-      setError(err.message || 'Falha ao analisar a URL.');
+      const msg = err.message || 'Falha ao analisar a URL do YouTube.';
+      setError(msg);
+      triggerToast(msg, 'error');
     } finally {
       setIsFetching(false);
     }
@@ -87,10 +107,12 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
     setIsDownloading(true);
     setError(null);
     
+    const displayTitle = videoInfo?.title || filename || 'Vídeo';
     const taskId = `youtube_dl_${Date.now()}`;
     const abortController = new AbortController();
     
-    addTask(taskId, `Download YouTube: ${videoInfo?.title || filename}`, abortController);
+    addTask(taskId, `Download YouTube: ${displayTitle}`, abortController);
+    triggerToast(`Download iniciado em segundo plano: ${displayTitle}`, 'info');
     
     onClose();
 
@@ -131,9 +153,12 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
           });
         }
         completeTask(taskId);
+        triggerToast(`Download do YouTube concluído: ${displayTitle}`, 'success');
         onSuccess();
       } catch (err: any) {
-        failTask(taskId, err.message || 'Falha durante o download.');
+        const errMsg = err.message || 'Falha durante o download do YouTube.';
+        failTask(taskId, errMsg);
+        triggerToast(`Erro no download do YouTube: ${errMsg}`, 'error', 6000);
       }
     };
     
@@ -145,10 +170,23 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
         <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
-            <h2 className="text-white font-medium flex items-center gap-2">
-              <MonitorPlay size={18} className="text-red-500" />
-              Baixar do YouTube
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-white font-medium flex items-center gap-2">
+                <MonitorPlay size={18} className="text-red-500" />
+                Baixar do YouTube
+              </h2>
+              {driveStatus === 'connected' ? (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <Cloud size={12} />
+                  Drive
+                </span>
+              ) : driveStatus === 'disconnected' ? (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  <CloudOff size={12} />
+                  Offline
+                </span>
+              ) : null}
+            </div>
             <button onClick={onClose} className="text-dark-subtext hover:text-white transition-colors" disabled={isDownloading}>
               <X size={20} />
             </button>
