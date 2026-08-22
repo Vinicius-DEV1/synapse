@@ -10,6 +10,7 @@ import { useVideoTracks } from './hooks/useVideoTracks';
 import { useVideoVocabulary } from './hooks/useVideoVocabulary';
 import { useVideoControls } from './hooks/useVideoControls';
 import { useVideoKeyboardShortcuts } from './hooks/useVideoKeyboardShortcuts';
+import { useVideoPlaybackEngine } from './hooks/useVideoPlaybackEngine';
 import { formatVideoTime, buildVideoSubtitleContext, calculateVideoClip } from './helpers/videoContextHelper';
 import { VideoControlsOverlay } from './ui/VideoControlsOverlay';
 import { VideoVocabularySidebar } from './ui/VideoVocabularySidebar';
@@ -30,15 +31,8 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  
   const [cues, setCues] = useState<SubtitleCue[]>([]);
   const [activeCueText, setActiveCueText] = useState('');
-  
-  const [isBuffering, setIsBuffering] = useState(true);
   
   const [dictState, setDictState] = useState<{ 
     word: string; 
@@ -47,8 +41,57 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     video_clip?: { path: string; startMs: number; endMs: number };
   } | null>(null);
 
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+  }, [src]);
+
+  // Ref wrappers for video sub-hooks
+  const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, false, videoRef as React.RefObject<HTMLVideoElement>);
+  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, false, false, videoRef, audioRef);
+  const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
+  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(false, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
+
+  const {
+    isPlaying,
+    setIsPlaying,
+    volume,
+    isMuted,
+    isFullscreen,
+    isBuffering,
+    setIsBuffering,
+    errorMsg,
+    setErrorMsg,
+    togglePlay,
+    seekBy,
+    toggleFullscreen,
+    toggleMute,
+    handleVolumeChange,
+    handleSeek,
+    handleTimeUpdate,
+    handleLoadedMetadata,
+  } = useVideoPlaybackEngine({
+    video,
+    videoRef,
+    audioRef,
+    containerRef,
+    activeAudioUrl,
+    duration,
+    setProgress,
+    setDuration,
+    saveProgress,
+    showResumePrompt,
+    setShowResumePrompt,
+    resetControls,
+    onDurationLoaded,
+    onTimeUpdateCallback: (time) => {
+      if (cues.length > 0) {
+        const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
+        setActiveCueText(activeCue ? activeCue.text : '');
+      }
+    },
+  });
 
   useTimeTracker({
     itemId: video.id,
@@ -56,18 +99,6 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     module: 'video',
     isActive: isPlaying,
   });
-
-  useEffect(() => {
-    setCurrentSrc(src);
-  }, [src]);
-
-  // Ref wrapper for video progress and controls,
-  // declaram RefObject<T> sem `| null`, tipagem antiga do React < 19; o objeto de ref
-  // ensuring safe DOM reference across renders.
-  const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
-  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
-  const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
-  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
 
   useEffect(() => {
     const fetchNewSubtitle = async () => {
@@ -99,55 +130,6 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     fetchNewSubtitle();
   }, [activeSubtitleIndex, subtitleTracks, _subtitleContent]);
 
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(() => {});
-        if (audioRef.current && activeAudioUrl) {
-          audioRef.current.currentTime = videoRef.current.currentTime;
-          audioRef.current.play().catch(() => {});
-        }
-        setIsPlaying(true);
-        if (showResumePrompt) setShowResumePrompt(false);
-      } else {
-        videoRef.current.pause();
-        if (audioRef.current) audioRef.current.pause();
-        setIsPlaying(false);
-        saveProgress(videoRef.current.currentTime);
-      }
-    }
-  };
-
-  const seekBy = (seconds: number) => {
-    if (videoRef.current) {
-      const currentTime = videoRef.current.currentTime;
-      const maxDuration = duration || videoRef.current.duration || 0;
-      const newTime = Math.max(0, Math.min(maxDuration, currentTime + seconds));
-      
-      videoRef.current.currentTime = newTime;
-      if (audioRef.current) audioRef.current.currentTime = newTime;
-      setProgress(newTime);
-      resetControls();
-    }
-  };
-
-  const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      try {
-        await containerRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } catch (err) {
-        console.error('Error fullscreen:', err);
-      }
-    } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    }
-  };
-
   useVideoKeyboardShortcuts({
     dictState,
     isFullscreen,
@@ -160,68 +142,11 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     setActiveSubtitleIndex,
   });
 
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      const time = videoRef.current.currentTime;
-      setProgress(time);
-      setIsBuffering(false);
-      if (cues.length > 0) {
-        const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
-        setActiveCueText(activeCue ? activeCue.text : '');
-      }
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      let vidDur = videoRef.current.duration;
-      if (!Number.isFinite(vidDur) || vidDur < (video.duration || 0)) {
-        vidDur = video.duration || vidDur;
-      }
-      setDuration(vidDur);
-      if (onDurationLoaded) onDurationLoaded(vidDur);
-    }
-  };
-
   const handleClose = async () => {
     if (videoRef.current) {
       await saveProgress(videoRef.current.currentTime);
     }
     onClose();
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = Number(e.target.value);
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-      if (audioRef.current) audioRef.current.currentTime = time;
-      setProgress(time);
-    }
-  };
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      if (activeAudioUrl && audioRef.current) {
-        audioRef.current.muted = !isMuted;
-      } else {
-        videoRef.current.muted = !isMuted;
-      }
-      setIsMuted(!isMuted);
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    if (videoRef.current) {
-      if (activeAudioUrl && audioRef.current) {
-        audioRef.current.volume = val;
-      } else {
-        videoRef.current.volume = val;
-      }
-      setVolume(val);
-      if (val === 0) setIsMuted(true);
-      else setIsMuted(false);
-    }
   };
 
   const handleWordClick = (word: string, context: string) => {
