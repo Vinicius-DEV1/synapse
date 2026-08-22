@@ -13,6 +13,9 @@ interface FileViewerProps {
   onClose: () => void;
 }
 
+import { FileViewerHeader } from './viewer/FileViewerHeader';
+import { FileViewerResumeBanner } from './viewer/FileViewerResumeBanner';
+
 function FileViewerContent({ item, onClose }: FileViewerProps) {
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -76,7 +79,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
               }
             }
           } else {
-            console.warn("Nenhum arquivo local ou no Drive disponível");
+            console.warn("No local or Drive file available");
             if (!isCancelled) {
               setLoadError(
                 item.drive_file_id
@@ -87,7 +90,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           }
         })
         .catch(err => {
-          console.error("Erro ao resolver URL do arquivo:", err);
+          console.error("Error resolving file URL:", err);
           if (!isCancelled) {
             setLoadError(err?.message || 'Falha ao carregar o arquivo.');
           }
@@ -144,100 +147,32 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-dark-card/50">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2 bg-brand-500/20 text-brand-400 rounded-lg shrink-0">
-            <FileText size={20} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-white font-medium text-sm truncate">{item.name}</h3>
-            <p className="text-xs text-dark-subtext flex items-center gap-2">
-              <span>{(item.file_size / 1024 / 1024).toFixed(2)} MB</span>
-              {isText && wordCount > 0 && (
-                <>
-                  <span>•</span>
-                  <span>{wordCount} palavras</span>
-                  <span>•</span>
-                  <span>~{estimatedMinutes} min de leitura</span>
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {isText && (
-            <>
-              {/* Modo Escuro Toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title={darkMode ? 'Modo Normal' : 'Modo Alto Contraste / Noturno'}
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
-              {/* Drawer de Marcadores */}
-              <BookmarksDrawer
-                bookmarks={bookmarks}
-                showBookmarksMenu={showBookmarksMenu}
-                setShowBookmarksMenu={setShowBookmarksMenu}
-                newBookmarkLabel={newBookmarkLabel}
-                setNewBookmarkLabel={setNewBookmarkLabel}
-                editingBmId={editingBmId}
-                editingBmText={editingBmText}
-                setEditingBmText={setEditingBmText}
-                onAddBookmark={handleAddBookmark}
-                onStartRenameBookmark={handleStartRenameBookmark}
-                onSaveRenameBookmark={handleSaveRenameBookmark}
-                onRemoveBookmark={handleRemoveBookmark}
-                onJumpToBookmark={handleJumpToBookmark}
-              />
-
-              {/* View Mode Switcher */}
-              {isMd && (
-                <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1 gap-1">
-                  <button
-                    onClick={() => setViewMode('rendered')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors ${
-                      viewMode === 'rendered' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white'
-                    }`}
-                    title="Visualizar Formatado"
-                  >
-                    <Eye size={14} />
-                    <span>Formatado</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('raw')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors ${
-                      viewMode === 'raw' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white'
-                    }`}
-                    title="Visualizar Código Fonte"
-                  >
-                    <Code size={14} />
-                    <span>Texto</span>
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          {objectUrl && (
-            <a 
-              href={objectUrl} 
-              download={item.name}
-              className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2"
-              title="Download"
-            >
-              <Download size={20} />
-            </a>
-          )}
-          <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Fechar">
-            <X size={20} />
-          </button>
-        </div>
-      </div>
+      <FileViewerHeader
+        item={item}
+        isText={isText}
+        isMd={isMd}
+        wordCount={wordCount}
+        estimatedMinutes={estimatedMinutes}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        objectUrl={objectUrl}
+        bookmarks={bookmarks}
+        showBookmarksMenu={showBookmarksMenu}
+        setShowBookmarksMenu={setShowBookmarksMenu}
+        newBookmarkLabel={newBookmarkLabel}
+        setNewBookmarkLabel={setNewBookmarkLabel}
+        editingBmId={editingBmId}
+        editingBmText={editingBmText}
+        setEditingBmText={setEditingBmText}
+        onAddBookmark={handleAddBookmark}
+        onStartRenameBookmark={handleStartRenameBookmark}
+        onSaveRenameBookmark={handleSaveRenameBookmark}
+        onRemoveBookmark={handleRemoveBookmark}
+        onJumpToBookmark={handleJumpToBookmark}
+        onClose={onClose}
+      />
 
       {/* Reading Progress Bar with Visual Markers */}
       {isText && (
@@ -248,7 +183,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             style={{ width: `${progressPercentRef.current}%` }}
           />
 
-          {/* Pins Visuais dos Marcadores */}
+          {/* Bookmark Visual Pins */}
           {scrollContainerRef.current && (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.clientHeight) > 0 && (
             bookmarks.map(bm => {
               const maxScroll = scrollContainerRef.current!.scrollHeight - scrollContainerRef.current!.clientHeight;
@@ -276,41 +211,13 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           </div>
         )}
 
-        {/* Banner/Modal de Confirmação de Retorno de Leitura */}
-        {showResumePrompt && savedProgressData && (
-          <div className="absolute bottom-6 right-6 z-50 bg-dark-card/95 backdrop-blur-md border border-brand-500/40 rounded-xl shadow-2xl p-4 max-w-sm flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2 text-brand-400">
-                <RotateCcw size={18} />
-                <h4 className="text-sm font-semibold text-white">Continuar Leitura?</h4>
-              </div>
-              <button 
-                onClick={() => setShowResumePrompt(false)} 
-                className="text-dark-subtext hover:text-white"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <p className="text-xs text-gray-300">
-              Você parou em <strong className="text-brand-300 font-bold">{savedProgressData.percentage}%</strong> deste documento. Deseja retornar de onde parou?
-            </p>
-            <div className="flex items-center gap-2 justify-end mt-1">
-              <button
-                onClick={() => setShowResumePrompt(false)}
-                className="px-3 py-1.5 text-xs text-dark-subtext hover:bg-white/10 rounded-lg transition-colors"
-              >
-                Começar do Início
-              </button>
-              <button
-                onClick={handleResumeReading}
-                className="px-3 py-1.5 text-xs bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg shadow transition-colors flex items-center gap-1.5"
-              >
-                <BookmarkCheck size={14} />
-                Continuar Leitura
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Reading Resume Confirmation Banner */}
+        <FileViewerResumeBanner
+          show={showResumePrompt}
+          savedProgressData={savedProgressData}
+          onDismiss={() => setShowResumePrompt(false)}
+          onResume={handleResumeReading}
+        />
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 text-dark-subtext">
