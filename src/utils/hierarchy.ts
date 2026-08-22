@@ -1,8 +1,8 @@
 import type { Page } from '../types';
 
 /**
- * Verifica se `candidateChildId` é descendente de `parentId` na árvore de páginas.
- * Evita a criação de ciclos de dependência (ex.: A -> B -> A).
+ * Checks whether `candidateChildId` is a descendant of `parentId` in the page tree.
+ * Prevents cyclic dependency creation (e.g. A -> B -> A).
  */
 export function isPageDescendant(
   pages: Array<Pick<Page, 'id' | 'parent_id'>>,
@@ -42,8 +42,8 @@ export function isPageDescendant(
 }
 
 /**
- * Valida se uma operação de mover página é permitida.
- * Retorna `false` se `sourceId` tentar ser filho de si mesmo ou de um de seus descendentes.
+ * Validates whether a page move operation is permitted.
+ * Returns `false` if `sourceId` attempts to become a child of itself or its descendants.
  */
 export function isValidHierarchyMove(
   pages: Array<Pick<Page, 'id' | 'parent_id'>>,
@@ -64,9 +64,8 @@ export interface HierarchyNode {
 }
 
 /**
- * Retorna a lista de páginas ancestrais ordenadas da raiz até o pai imediato da página `pageId`.
- * Não inclui a própria página `pageId`.
- * Protegido contra referências cíclicas.
+ * Returns ancestor pages ordered from root to immediate parent of `pageId`.
+ * Excludes `pageId` itself. Protected against cyclic references.
  */
 export function getPageAncestors<T extends HierarchyNode>(
   pages: T[],
@@ -97,7 +96,7 @@ export function getPageAncestors<T extends HierarchyNode>(
 }
 
 /**
- * Retorna o caminho completo de páginas (ancestrais + própria página no final).
+ * Returns full page path (ancestors + current page at the end).
  */
 export function getPagePath<T extends HierarchyNode>(
   pages: T[],
@@ -113,7 +112,7 @@ export function getPagePath<T extends HierarchyNode>(
 }
 
 /**
- * Retorna uma representação em texto do caminho hierárquico das páginas ancestrais ou do caminho completo.
+ * Returns breadcrumb string representation of ancestor chain or full path.
  */
 export function getPageBreadcrumbString(
   pages: HierarchyNode[],

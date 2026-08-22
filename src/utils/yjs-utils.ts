@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 
-// Converte Uint8Array para Base64 em chunks de alta performance (evita congelamento da thread JS)
+// Converts Uint8Array to Base64 using high-performance chunking (prevents blocking the JS main thread)
 export function uint8ArrayToBase64(buffer: Uint8Array): string {
   const CHUNK_SIZE = 8192;
   const len = buffer.length;
@@ -15,7 +15,7 @@ export function uint8ArrayToBase64(buffer: Uint8Array): string {
   return btoa(binary);
 }
 
-// Converte Base64 para Uint8Array em alta performance
+// Converts Base64 string to Uint8Array with optimal performance
 export function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64);
   const len = binary.length;
@@ -26,18 +26,18 @@ export function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-// Extrai o estado atual de um Y.Doc como Base64
+// Encodes current Y.Doc state as Base64 string
 export function getYDocStateAsBase64(doc: Y.Doc): string {
   const stateVector = Y.encodeStateAsUpdate(doc);
   return uint8ArrayToBase64(stateVector);
 }
 
-// Aplica um estado em Base64 a um Y.Doc
+// Applies a Base64 update state to a Y.Doc
 export function applyBase64StateToYDoc(doc: Y.Doc, base64State: string) {
   try {
     const update = base64ToUint8Array(base64State);
     Y.applyUpdate(doc, update);
   } catch (err) {
-    console.error("Erro ao aplicar estado CRDT:", err);
+    console.error("Failed to apply CRDT state update:", err);
   }
 }

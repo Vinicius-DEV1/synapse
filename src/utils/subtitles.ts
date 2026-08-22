@@ -1,8 +1,8 @@
 export function srtToVtt(srtContent: string): string {
-  // Substitui vírgulas por pontos nos timestamps (00:00:01,000 -> 00:00:01.000)
+  // Replace commas with periods in timestamps (00:00:01,000 -> 00:00:01.000)
   let vtt = srtContent.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
   
-  // Adiciona o cabeçalho obrigatório do formato WebVTT
+  // Add required WebVTT header
   vtt = 'WEBVTT\n\n' + vtt;
   
   return vtt;
@@ -13,5 +13,5 @@ export async function processSubtitleFile(file: File): Promise<string> {
   if (file.name.toLowerCase().endsWith('.srt')) {
     return srtToVtt(text);
   }
-  return text; // Presume que já é VTT ou formato compatível
+  return text; // Assumes text is already valid VTT or compatible
 }

@@ -8,7 +8,7 @@ export async function getDecryptedFileUrl(
 ): Promise<string | null> {
   let url = '';
 
-  // 1. Tenta obter arquivo local existente
+  // 1. Attempt to fetch existing local file
   if (item.local_path && typeof window !== 'undefined' && window.api?.files) {
     try {
       const localUrl = await window.api.files.getLocal(item.local_path);
@@ -16,11 +16,11 @@ export async function getDecryptedFileUrl(
         url = localUrl;
       }
     } catch (e) {
-      console.warn("[FileFetcher] Erro ao buscar arquivo local:", e);
+      console.warn("[FileFetcher] Error fetching local file:", e);
     }
   }
 
-  // 2. Fallback para download do Google Drive caso arquivo local não exista
+  // 2. Fallback to downloading from Google Drive if local file is unavailable
   if (!url && item.drive_file_id) {
     const token = await getValidAccessToken();
     if (token) {

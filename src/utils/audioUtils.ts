@@ -1,5 +1,5 @@
 /**
- * @deprecated Use `src/utils/audio` diretamente.
- * Mantido para compatibilidade retroativa com importações legadas.
+ * @deprecated Use `src/utils/audio` directly.
+ * Kept for backward compatibility with legacy imports.
  */
 export { encodeWAV } from './audio';
