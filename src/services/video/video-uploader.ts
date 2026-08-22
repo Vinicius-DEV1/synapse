@@ -1,22 +1,8 @@
 import { getValidAccessToken, uploadToDrive, deleteFromDrive } from '../drive';
 import type { VideoItem, TrackItem } from '../../types';
-import type { UploadOptions } from '../../components/video-player/VideoUploadModal';
-import type { UploadStats } from './video-types';
+import type { UploadStats, UploadOptions, DesktopVideoApi } from './video-types';
 
 const VIDEO_TABLE = 'videos';
-
-// `window.api.video` extended helper
-// nativos do desktop (implementados em src/api/tauri/multimedia.ts).
-type DesktopVideoApi = NonNullable<typeof window.api.video> & {
-  cancelConversion: () => Promise<void>;
-  generateWebVersion: (
-    sourcePath: string,
-    destFilename: string,
-    webQuality: string,
-    conversionPreset: string,
-    duration: number
-  ) => Promise<{ web_path: string; web_size: number }>;
-};
 
 // Native layer also exposes Tauri event bus (`video_upload_progress`)
 // via window.api.events listener

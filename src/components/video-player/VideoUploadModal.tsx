@@ -6,23 +6,9 @@ import { Portal } from '../ui/Portal';
 import { TrackSelectionSection } from './ui/TrackSelectionSection';
 import { useVideoUploadScanner } from './hooks/useVideoUploadScanner';
 import { getValidAccessToken } from '../../services/drive';
+import type { UploadOptions } from '../../services/video/video-types';
 
-export interface UploadOptions {
-  videoFile: File;
-  subtitleText: string | null;
-  duration?: number;
-  primaryAudioTrack?: string;
-  extraAudioTracks?: string[];
-  extraSubtitleTracks?: string[];
-  masterKey?: CryptoKey;
-  collectionId?: string;
-  collectionName?: string;
-  webQuality: 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
-  conversionPreset?: string;
-  onProgress?: (percent: number) => void;
-  onPhaseChange?: (phase: string) => void;
-  signal?: AbortSignal;
-}
+export type { UploadOptions };
 
 interface VideoUploadModalProps {
   collectionId?: string;

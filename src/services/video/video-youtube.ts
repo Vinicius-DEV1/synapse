@@ -1,15 +1,9 @@
 import { getValidAccessToken } from '../drive';
 import { uploadLocalFileToDrive } from './video-uploader';
 import type { VideoItem, TrackItem } from '../../types';
-import type { YouTubeDownloadOptions } from './video-types';
+import type { YouTubeDownloadOptions, DesktopVideoApi } from './video-types';
 
 const VIDEO_TABLE = 'videos';
-
-// `window.api.video` extended track scanner helper
-// implementado em src/api/tauri/multimedia.ts.
-type DesktopVideoApi = NonNullable<typeof window.api.video> & {
-  scanTracks: (localPath: string) => Promise<{ streams?: Array<{ index: number | string; codec_type: string; tags?: { language?: string; title?: string } }> }>;
-};
 
 /**
  * Downloads YouTube video via yt-dlp, saves locally and uploads to Drive.
