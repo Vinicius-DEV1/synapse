@@ -1,0 +1,406 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { X, Search, ChevronRight, ChevronDown, Check, LayoutGrid, AlertCircle, FolderInput } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import type { Page } from '../../types';
+import { isValidHierarchyMove } from '../../utils/hierarchy';
+import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
+
+interface MovePageModalProps {
+  isOpen: boolean;
+  pageId: string | null;
+  onClose: () => void;
+  onMovePage: (sourceId: string, targetParentId: string | null) => Promise<void>;
+}
+
+interface TreeNode {
+  page: Page;
+  children: TreeNode[];
+  level: number;
+}
+
+export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: MovePageModalProps) {
+  const { state, dispatch } = useStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null | 'UNSET'>('UNSET');
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const sourcePage = useMemo(() => {
+    return state.pages.find((p) => p.id === pageId) || null;
+  }, [state.pages, pageId]);
+
+  // Inicializa o alvo selecionado com o pai atual da página
+  useEffect(() => {
+    if (isOpen && sourcePage) {
+      setSelectedTargetId(sourcePage.parent_id);
+      setSearchQuery('');
+      // Auto-expande nós pais na árvore
+      const parents = new Set<string>();
+      let currentParentId = sourcePage.parent_id;
+      while (currentParentId) {
+        parents.add(currentParentId);
+        const parent = state.pages.find((p) => p.id === currentParentId);
+        currentParentId = parent?.parent_id || null;
+      }
+      setExpandedNodes(parents);
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen, sourcePage, state.pages]);
+
+  // Função auxiliar para obter breadcrumb completo
+  const getBreadcrumb = (targetId: string | null): string => {
+    if (!targetId) return 'Raiz (Início)';
+    const parts: string[] = [];
+    let current = state.pages.find((p) => p.id === targetId);
+    while (current) {
+      parts.unshift(current.title || 'Sem Título');
+      current = current.parent_id ? state.pages.find((p) => p.id === current!.parent_id) : undefined;
+    }
+    return parts.join(' > ');
+  };
+
+  // Construção da árvore hierárquica completa
+  const pageTree = useMemo(() => {
+    const buildTree = (parentId: string | null, level: number = 0): TreeNode[] => {
+      const children = state.pages
+        .filter((p) => p.parent_id === parentId)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      return children.map((page) => ({
+        page,
+        level,
+        children: buildTree(page.id, level + 1),
+      }));
+    };
+
+    return buildTree(null);
+  }, [state.pages]);
+
+  // Lista filtrada quando há busca ativa
+  const filteredPages = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase().trim();
+
+    return state.pages
+      .filter((p) => {
+        const titleMatch = (p.title || 'Sem Título').toLowerCase().includes(query);
+        const breadcrumbMatch = getBreadcrumb(p.id).toLowerCase().includes(query);
+        return titleMatch || breadcrumbMatch;
+      })
+      .map((p) => ({
+        page: p,
+        breadcrumb: getBreadcrumb(p.id),
+        isValid: sourcePage ? isValidHierarchyMove(state.pages, sourcePage.id, p.id) : true,
+      }));
+  }, [searchQuery, state.pages, sourcePage]);
+
+  if (!isOpen || !sourcePage) return null;
+
+  const currentParentId = sourcePage.parent_id;
+  const effectiveSelectedId = selectedTargetId === 'UNSET' ? currentParentId : selectedTargetId;
+  const isTargetSameAsCurrent = effectiveSelectedId === currentParentId;
+  const isSelectedValid = effectiveSelectedId === null || (sourcePage ? isValidHierarchyMove(state.pages, sourcePage.id, effectiveSelectedId) : true);
+
+  const toggleExpand = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  };
+
+  const handleSelect = (targetId: string | null) => {
+    if (targetId !== null && !isValidHierarchyMove(state.pages, sourcePage.id, targetId)) {
+      return;
+    }
+    setSelectedTargetId(targetId);
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isSelectedValid || isTargetSameAsCurrent || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onMovePage(sourcePage.id, effectiveSelectedId);
+      if (effectiveSelectedId) {
+        dispatch({ type: 'EXPAND_NODE', nodeId: effectiveSelectedId });
+      }
+      const destName = effectiveSelectedId
+        ? state.pages.find((p) => p.id === effectiveSelectedId)?.title || 'Página'
+        : 'Raiz';
+      triggerToast(`Página movida para "${destName}" com sucesso!`, 'success');
+      onClose();
+    } catch (err) {
+      console.error('Erro ao mover página:', err);
+      triggerToast('Erro ao mover a página. Tente novamente.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      if (isSelectedValid && !isTargetSameAsCurrent) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    }
+  };
+
+  // Renderização recursiva de cada nó da árvore
+  const renderTreeNode = (node: TreeNode) => {
+    const { page, children, level } = node;
+    const isExpanded = expandedNodes.has(page.id);
+    const hasChildren = children.length > 0;
+    const isSelected = effectiveSelectedId === page.id;
+    const isCurrentParent = currentParentId === page.id;
+    const isSelfOrDescendant = !isValidHierarchyMove(state.pages, sourcePage.id, page.id);
+
+    return (
+      <div key={page.id} className="flex flex-col select-none">
+        <div
+          onClick={() => !isSelfOrDescendant && handleSelect(page.id)}
+          onDoubleClick={() => !isSelfOrDescendant && !isCurrentParent && handleSubmit()}
+          style={{ paddingLeft: `${Math.max(level * 16 + 8, 8)}px` }}
+          className={`flex items-center justify-between py-2 pr-3 rounded-lg text-sm transition-colors group cursor-pointer ${
+            isSelfOrDescendant
+              ? 'opacity-35 cursor-not-allowed bg-transparent'
+              : isSelected
+              ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
+              : 'text-dark-text hover:bg-white/5 border border-transparent'
+          }`}
+          title={isSelfOrDescendant ? 'Não é possível mover para si mesma ou subpáginas' : undefined}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(page.id, e)}
+                className="p-1 -ml-1 text-dark-subtext hover:text-white rounded transition-colors"
+              >
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+            ) : (
+              <span className="w-5" />
+            )}
+
+            <span className="text-base shrink-0">{page.icon || (hasChildren ? '📁' : '📄')}</span>
+            <span className="truncate font-medium">{page.title || 'Sem Título'}</span>
+
+            {isCurrentParent && (
+              <span className="text-[10px] bg-white/10 text-dark-subtext px-1.5 py-0.5 rounded font-normal shrink-0">
+                Local Atual
+              </span>
+            )}
+            {page.id === sourcePage.id && (
+              <span className="text-[10px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded font-normal shrink-0">
+                Página Alvo
+              </span>
+            )}
+          </div>
+
+          {isSelected && <Check size={16} className="text-brand-400 shrink-0 ml-2" />}
+        </div>
+
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col">{children.map((child) => renderTreeNode(child))}</div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <Portal>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div
+          className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[82vh] animate-scale-in"
+          onKeyDown={handleKeyDown}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0 bg-white/[0.02]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-brand-500/20 text-brand-400">
+                <FolderInput size={18} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-white truncate">
+                  Mover &ldquo;{sourcePage.title || 'Sem Título'}&rdquo;
+                </h2>
+                <p className="text-xs text-dark-subtext truncate">
+                  Local atual: <span className="text-white/70">{getBreadcrumb(sourcePage.parent_id)}</span>
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="p-1.5 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="p-3 border-b border-white/5 shrink-0 bg-white/[0.01]">
+            <div className="relative flex items-center">
+              <Search size={15} className="absolute left-3 text-dark-subtext pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar página de destino pelo nome ou caminho..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 p-1 text-dark-subtext hover:text-white"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* List / Tree View */}
+          <div className="p-3 overflow-y-auto flex-1 custom-scrollbar space-y-1">
+            {/* Opção da Raiz (Aparece se não houver busca ou se busca casar com raiz) */}
+            {(!searchQuery || 'raiz inicio principal'.includes(searchQuery.toLowerCase())) && (
+              <div
+                onClick={() => handleSelect(null)}
+                onDoubleClick={() => currentParentId !== null && handleSubmit()}
+                className={`flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors cursor-pointer ${
+                  effectiveSelectedId === null
+                    ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
+                    : 'text-dark-text hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-1.5 rounded-lg ${
+                      effectiveSelectedId === null
+                        ? 'bg-brand-500/30 text-brand-400'
+                        : 'bg-white/5 text-dark-subtext'
+                    }`}
+                  >
+                    <LayoutGrid size={16} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Raiz</span>
+                    <span className="text-xs text-dark-subtext">(Página Principal de 1º Nível)</span>
+                    {currentParentId === null && (
+                      <span className="text-[10px] bg-white/10 text-dark-subtext px-1.5 py-0.5 rounded font-normal">
+                        Local Atual
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {effectiveSelectedId === null && <Check size={16} className="text-brand-400" />}
+              </div>
+            )}
+
+            {searchQuery ? (
+              /* Resultados da Busca Instantânea */
+              filteredPages.length > 0 ? (
+                <div className="space-y-1 mt-1">
+                  {filteredPages.map(({ page, breadcrumb, isValid }) => {
+                    const isSelected = effectiveSelectedId === page.id;
+                    const isCurrentParent = currentParentId === page.id;
+
+                    return (
+                      <div
+                        key={page.id}
+                        onClick={() => isValid && handleSelect(page.id)}
+                        onDoubleClick={() => isValid && !isCurrentParent && handleSubmit()}
+                        className={`flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors cursor-pointer ${
+                          !isValid
+                            ? 'opacity-35 cursor-not-allowed bg-transparent'
+                            : isSelected
+                            ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
+                            : 'text-dark-text hover:bg-white/5 border border-transparent'
+                        }`}
+                        title={!isValid ? 'Não é possível mover para si mesma ou subpáginas' : undefined}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <span className="text-lg shrink-0">{page.icon || '📄'}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium truncate">{page.title || 'Sem Título'}</span>
+                              {isCurrentParent && (
+                                <span className="text-[10px] bg-white/10 text-dark-subtext px-1.5 py-0.5 rounded font-normal shrink-0">
+                                  Local Atual
+                                </span>
+                              )}
+                              {!isValid && (
+                                <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-normal shrink-0 flex items-center gap-1">
+                                  <AlertCircle size={10} /> Inválido
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-dark-subtext truncate mt-0.5">{breadcrumb}</p>
+                          </div>
+                        </div>
+
+                        {isSelected && <Check size={16} className="text-brand-400 shrink-0 ml-2" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-dark-subtext">
+                  Nenhuma página correspondente a &ldquo;{searchQuery}&rdquo; encontrada.
+                </div>
+              )
+            ) : (
+              /* Árvore Hierárquica Completa */
+              <div className="space-y-0.5 mt-1">{pageTree.map((node) => renderTreeNode(node))}</div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-3 shrink-0">
+            <div className="min-w-0 flex-1">
+              <span className="text-[11px] text-dark-subtext block">Novo Destino:</span>
+              <span className="text-xs font-semibold text-white truncate block">
+                {getBreadcrumb(effectiveSelectedId)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-3.5 py-2 rounded-xl text-xs font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit()}
+                disabled={isSubmitting || isTargetSameAsCurrent || !isSelectedValid}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition-all shadow-lg flex items-center gap-1.5"
+              >
+                <FolderInput size={14} />
+                {isSubmitting ? 'Movendo...' : isTargetSameAsCurrent ? 'Local Atual' : 'Mover Aqui'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+}

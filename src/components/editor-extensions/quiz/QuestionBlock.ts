@@ -85,7 +85,11 @@ export const QuestionBlock = Node.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(QuestionBlockNodeView, {
-      stopEvent: () => true,
+      stopEvent: ({ event }) => {
+        const target = event?.target as HTMLElement;
+        if (target?.closest?.('[data-drag-handle]')) return false;
+        return true;
+      },
     });
   },
 });

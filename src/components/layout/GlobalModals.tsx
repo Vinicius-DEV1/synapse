@@ -1,6 +1,7 @@
 import { useStore } from '../../store/useStore';
 import ConfirmModal from '../ConfirmModal';
 import RenamePageModal from '../RenamePageModal';
+import MovePageModal from '../modals/MovePageModal';
 import SyncErrorModal from '../SyncErrorModal';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
 import FloatingPageModal from '../FloatingPageModal';
@@ -12,6 +13,8 @@ import { SyncStatusToast } from './SyncStatusToast';
 interface GlobalModalsProps {
   renamePageId: string | null;
   setRenamePageId: (id: string | null) => void;
+  movePageId: string | null;
+  setMovePageId: (id: string | null) => void;
   floatingPageId: string | null;
   setFloatingPageId: (id: string | null) => void;
   isDriveAuthModalOpen: boolean;
@@ -27,6 +30,8 @@ interface GlobalModalsProps {
 export function GlobalModals({
   renamePageId,
   setRenamePageId,
+  movePageId,
+  setMovePageId,
   floatingPageId,
   setFloatingPageId,
   isDriveAuthModalOpen,
@@ -59,6 +64,18 @@ export function GlobalModals({
           onClose={() => setRenamePageId(null)}
           currentTitle={state.pages.find((p) => p.id === renamePageId)?.title || ''}
           onRename={(newTitle) => handleUpdatePage(renamePageId, { title: newTitle })}
+        />
+      )}
+
+      {/* Move Page Modal */}
+      {movePageId && (
+        <MovePageModal
+          isOpen={!!movePageId}
+          pageId={movePageId}
+          onClose={() => setMovePageId(null)}
+          onMovePage={async (sourceId, targetParentId) => {
+            await handleUpdatePage(sourceId, { parent_id: targetParentId });
+          }}
         />
       )}
 

@@ -35,10 +35,21 @@ function AppContent() {
   useGarbageCollection(isAuth);
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage, handleExportPage, handleImportPage } = usePageActions();
   const [renamePageId, setRenamePageId] = useState<string | null>(null);
+  const [movePageId, setMovePageId] = useState<string | null>(null);
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
   const [isDriveAuthModalOpen, setIsDriveAuthModalOpen] = useState(false);
   
   const { loadData: loadFocusData } = useFocusContext();
+
+  useEffect(() => {
+    const handleOpenMove = (e: CustomEvent<{ pageId: string }>) => {
+      if (e.detail?.pageId) {
+        setMovePageId(e.detail.pageId);
+      }
+    };
+    window.addEventListener('caderno-open-move-page', handleOpenMove as EventListener);
+    return () => window.removeEventListener('caderno-open-move-page', handleOpenMove as EventListener);
+  }, []);
 
   useEffect(() => {
     const handleAuthError = () => setIsDriveAuthModalOpen(true);
@@ -219,6 +230,7 @@ function AppContent() {
               onExportPage={handleExportPage}
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
               onRename={(id) => setRenamePageId(id)}
+              onMovePage={(id) => setMovePageId(id)}
               onTogglePin={(id) => {
                 const isPinning = !contextPage?.is_pinned;
                 const maxOrder = state.pages
@@ -240,6 +252,8 @@ function AppContent() {
       <GlobalModals
         renamePageId={renamePageId}
         setRenamePageId={setRenamePageId}
+        movePageId={movePageId}
+        setMovePageId={setMovePageId}
         floatingPageId={floatingPageId}
         setFloatingPageId={setFloatingPageId}
         isDriveAuthModalOpen={isDriveAuthModalOpen}

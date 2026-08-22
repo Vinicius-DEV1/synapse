@@ -1,4 +1,4 @@
-import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload } from 'lucide-react';
+import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
@@ -10,11 +10,12 @@ interface ContextMenuProps {
   onExportPage?: (pageId: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string) => void;
+  onMovePage?: (id: string) => void;
   onTogglePin?: (id: string) => void;
   onClose: () => void;
 }
 
-export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onTogglePin, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
   // Adjust position to stay within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200);
   const adjustedY = Math.min(y, window.innerHeight - 150);
@@ -59,6 +60,19 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
         >
           <Download size={14} className="text-dark-subtext" />
           Exportar
+        </button>
+      )}
+
+      {onMovePage && (
+        <button
+          onClick={() => {
+            onMovePage(pageId);
+            onClose();
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
+        >
+          <FolderInput size={14} className="text-dark-subtext" />
+          Mover para...
         </button>
       )}
 

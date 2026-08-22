@@ -54,102 +54,92 @@ export default function BlockHandle({
 
   return (
     <div 
-      className="block-handle fixed z-40 flex flex-col items-center justify-center cursor-pointer text-dark-subtext/40 hover:text-dark-subtext transition-colors group"
-      style={{ left: x, top: y - 10 }}
+      className="block-handle fixed z-40 flex items-center justify-center cursor-pointer text-dark-subtext/40 hover:text-white transition-colors group"
+      style={{ left: x, top: y }}
     >
-      {onMoveUp && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp();
-          }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
-          title="Subir bloco (Mover para cima)"
-        >
-          <ArrowUp size={11} />
-        </button>
-      )}
-
-      {onAddBelow && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddBelow();
-          }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
-          title="Adicionar linha abaixo (+)"
-        >
-          <Plus size={11} />
-        </button>
-      )}
+      {/* Ponte invisível de hit-box para a direita conectando o handle ao texto sem gap morto */}
+      <div className="absolute left-full top-0 w-6 h-full pointer-events-auto -z-10" />
 
       <div 
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-0.5 rounded hover:bg-white/10"
-        title="Opções do bloco (Arraste para mover ou clique para opções)"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={`p-1 rounded-md transition-all flex items-center justify-center cursor-grab active:cursor-grabbing ${
+          isOpen
+            ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30 shadow-md opacity-100'
+            : 'hover:bg-white/10 hover:text-white text-dark-subtext/50 hover:opacity-100'
+        }`}
+        title="Opções do bloco (Clique para abrir opções ou arraste para mover)"
       >
-        <GripVertical size={16} />
+        <GripVertical size={14} />
       </div>
-
-      {onMoveDown && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown();
-          }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-white transition-all text-dark-subtext"
-          title="Descer bloco (Mover para baixo)"
-        >
-          <ArrowDown size={11} />
-        </button>
-      )}
 
       {isOpen && (
         <div 
           ref={menuRef}
-          className="absolute left-full top-0 ml-1 w-48 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in"
+          className="absolute left-full top-0 ml-1 w-52 bg-dark-bg/95 border border-white/10 rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden animate-fade-in z-50 py-1"
         >
           {!showColorSubmenu ? (
-            <div className="py-1">
+            <div className="py-0.5">
               {onMoveUp && (
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMoveUp();
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-dark-text hover:bg-white/10 hover:text-white transition-colors text-left"
                 >
-                  <ArrowUp size={14} />
+                  <ArrowUp size={13} className="text-dark-subtext" />
                   Subir bloco
                 </button>
               )}
 
               {onMoveDown && (
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMoveDown();
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-dark-text hover:bg-white/10 hover:text-white transition-colors text-left"
                 >
-                  <ArrowDown size={14} />
+                  <ArrowDown size={13} className="text-dark-subtext" />
                   Descer bloco
                 </button>
               )}
 
-              {(onMoveUp || onMoveDown) && <div className="h-px bg-white/10 my-1 mx-2" />}
+              {onAddBelow && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddBelow();
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-dark-text hover:bg-white/10 hover:text-white transition-colors text-left"
+                >
+                  <Plus size={13} className="text-dark-subtext" />
+                  Adicionar linha abaixo
+                </button>
+              )}
+
+              {(onMoveUp || onMoveDown || onAddBelow) && <div className="h-px bg-white/10 my-1 mx-2" />}
 
               {onChangeColor && (
                 <>
                   <button
-                    onClick={() => setShowColorSubmenu(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors text-left"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowColorSubmenu(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-dark-text hover:bg-white/10 hover:text-white transition-colors text-left"
                   >
-                    <Palette size={14} />
-                    Cor do bloco
+                    <Palette size={13} className="text-dark-subtext" />
+                    Cor e Realce
                   </button>
 
                   <div className="h-px bg-white/10 my-1 mx-2" />
@@ -157,31 +147,36 @@ export default function BlockHandle({
               )}
 
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onDelete();
                   setIsOpen(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
                 Excluir bloco
               </button>
             </div>
           ) : (
             <div className="p-3 max-h-[300px] overflow-y-auto custom-scrollbar">
               <button 
-                onClick={() => setShowColorSubmenu(false)}
-                className="text-xs text-brand-400 mb-2 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowColorSubmenu(false);
+                }}
+                className="text-xs text-brand-400 mb-2 hover:underline flex items-center gap-1"
               >
                 &larr; Voltar
               </button>
               
               <div className="text-[10px] font-bold text-dark-subtext mb-2 px-1 uppercase tracking-wider">Cor do Texto</div>
-              <div className="grid grid-cols-5 gap-2 mb-4">
+              <div className="grid grid-cols-5 gap-1.5 mb-3">
                 {TEXT_COLORS.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onChangeColor?.(c.value, false);
                       setIsOpen(false);
                       setShowColorSubmenu(false);
@@ -196,11 +191,12 @@ export default function BlockHandle({
               </div>
               
               <div className="text-[10px] font-bold text-dark-subtext mb-2 px-1 uppercase tracking-wider">Cor de Fundo</div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {BG_COLORS.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onChangeColor?.(c.value, true);
                       setIsOpen(false);
                       setShowColorSubmenu(false);
