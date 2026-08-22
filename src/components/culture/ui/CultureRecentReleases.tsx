@@ -1,8 +1,6 @@
 import { Calendar } from 'lucide-react';
-import type { CultureItem, CultureEpisode } from '../../../types';
+import type { CultureItem, EnrichedEpisode } from '../../../types';
 import { formatDayMonth } from '../../../utils/date-utils';
-
-type EnrichedEpisode = CultureEpisode & { item_title: string; item_cover: string };
 
 interface CultureRecentReleasesProps {
   recentReleases: EnrichedEpisode[];
