@@ -1,6 +1,6 @@
 import { getWebDb } from '../db-web';
 import { encryptText, decryptText } from '../crypto';
-import { NetworkResilience } from '../../utils/NetworkResilience';
+import { NetworkResilience } from '../../utils/network-resilience';
 import type { DriveToken } from './drive-types';
 
 export const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {

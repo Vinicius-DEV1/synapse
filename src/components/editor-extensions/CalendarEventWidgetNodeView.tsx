@@ -5,7 +5,7 @@ import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle, Arro
 import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { Portal } from '../ui/Portal';
-import { parseEventDate } from '../../utils/dateUtils';
+import { parseEventDate } from '../../utils/date-utils';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
 let cachedEventsPromise: Promise<CalendarEvent[]> | null = null;

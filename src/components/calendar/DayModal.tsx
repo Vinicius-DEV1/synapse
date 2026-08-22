@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { Portal } from '../ui/Portal';
-import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
+import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
 
 interface DayModalProps {
   date: Date;

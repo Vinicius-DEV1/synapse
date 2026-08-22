@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CalendarEvent } from '../../../types/core';
-import { parseEventDate } from '../../../utils/dateUtils';
+import { parseEventDate } from '../../../utils/date-utils';
 
 export function useHomeDashboard() {
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);

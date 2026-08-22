@@ -1,7 +1,7 @@
 import { getWebDb } from './db-web';
 import type { CadernoDBSchema } from './db-web';
 import type { StoreNames, StoreKey } from 'idb';
-import { PayloadOptimizer } from '../utils/PayloadOptimizer';
+import { PayloadOptimizer } from '../utils/payload-optimizer';
 import { webFinanceApi } from '../api/web/finance';
 import { webAuthApi } from '../api/web/auth';
 import { webLibraryApi } from '../api/web/library';
