@@ -5,6 +5,7 @@ import { updateLofiOrder } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
 import { SortableLofiItem } from './lofi/SortableLofiItem';
 import { useLofiViewActions } from './hooks/useLofiViewActions';
+import { formatDuration } from '../../utils/format';
 
 import {
   DndContext,
@@ -65,17 +66,6 @@ export const LofiView: React.FC = () => {
   );
 
   if (view !== 'lofi') return null;
-
-  const formatDuration = (seconds?: number | null) => {
-    if (!seconds) return '';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
 
 
   const sortedLofis = useMemo(() => {

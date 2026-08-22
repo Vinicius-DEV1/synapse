@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Activity, BookOpen, PlaySquare, Music, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getActivityLogs } from '../../services/stats-manager';
+import { getLocalIsoDate } from '../../utils/date-utils';
+import { formatHumanDuration as formatDuration } from '../../utils/format';
 import type { ActivityLog } from '../../types';
 
 interface FocusStatsViewProps {
@@ -21,11 +23,6 @@ export default function FocusStatsView({ onBack }: FocusStatsViewProps) {
     const data = await getActivityLogs();
     setLogs(data);
     setLoading(false);
-  };
-
-  const getLocalIsoDate = (d: Date = new Date()) => {
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().split('T')[0];
   };
 
   // Calculate Totals
@@ -67,13 +64,6 @@ export default function FocusStatsView({ onBack }: FocusStatsViewProps) {
       "Minutos": Math.round(totalSecs / 60) 
     };
   });
-
-  const formatDuration = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  };
 
   return (
     <div className="w-full h-full flex flex-col bg-dark-bg overflow-y-auto pb-20 p-4 sm:p-6 animate-fade-in absolute inset-0 z-10">

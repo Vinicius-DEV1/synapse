@@ -4,6 +4,7 @@ import { useFocusContext } from '../../store/FocusContext';
 import { resolveLofiUrl } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
+import { formatDuration } from '../../utils/format';
 
 export const GlobalLofiPlayer: React.FC = () => {
   const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
@@ -67,17 +68,6 @@ export const GlobalLofiPlayer: React.FC = () => {
       }
     }
   }, [isPlayingLofi, src]);
-
-  const formatDuration = (seconds?: number | null) => {
-    if (!seconds) return '0:00';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
 
   if (!activeLofi) return null;
 
@@ -166,7 +156,7 @@ export const GlobalLofiPlayer: React.FC = () => {
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-brand-400 text-[10px] uppercase tracking-widest">Lofi Station</p>
                   <span className="text-[10px] text-dark-subtext border-l border-white/10 pl-2">
-                    {formatDuration(currentTime)} / {formatDuration(activeLofi.duration)}
+                    {formatDuration(currentTime, '0:00')} / {formatDuration(activeLofi.duration, '0:00')}
                   </span>
                 </div>
               </div>

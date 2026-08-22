@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Cloud, HardDrive, Download, Trash2, MoreVertical, FolderInput, ArrowLeft, Info, Folder, MonitorPlay } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { VideoItem } from '../../../types';
+import { formatDuration } from '../../../utils/format';
 
 interface VideoCardProps {
   video: VideoItem;
@@ -19,13 +20,6 @@ interface VideoCardProps {
   onShowInfo: (video: VideoItem) => void;
   onGenerateWebVersion?: (video: VideoItem) => void;
 }
-
-const formatDuration = (seconds?: number) => {
-  if (!seconds) return '--:--';
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-};
 
 export const VideoCard = React.memo(({
   video, viewMode, isDeleting, isDownloading, downloadProgress, availableFolders,

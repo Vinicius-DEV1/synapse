@@ -1,28 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, PlayCircle, Loader2, CheckCircle2, Circle} from 'lucide-react';
 import { Portal } from '../ui/Portal';
-
-
-declare module '../../api/types' {
-  interface SyncApi {
-    push?: (type: string) => void;
-  }
-}
-
-interface YouTubePlaylistModalProps {
-  url: string;
-  title: string;
-  onClose: () => void;
-}
-
-const formatDuration = (seconds: number) => {
-  if (!seconds) return '';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-};
+import { formatDuration } from '../../utils/format';
 
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
   const [loading, setLoading] = useState(true);
