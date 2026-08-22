@@ -105,6 +105,26 @@ export function useEpubLoader(
           const token = await getValidAccessToken();
           if (token) {
              const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+             
+             // Cachear localmente no Desktop se possível
+             try {
+               const { appDataDir, join } = await import('@tauri-apps/api/path');
+               const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+               const dataDir = await appDataDir();
+               const libDir = await join(dataDir, 'library');
+               if (!await exists(libDir)) {
+                 await mkdir(libDir, { recursive: true });
+               }
+               const localEncPath = await join(libDir, `${book.id}.epub.enc`);
+               await writeFile(localEncPath, new Uint8Array(encryptedData));
+               const expectedPath = `library/${book.id}.epub.enc`;
+               if (book.file_path !== expectedPath) {
+                 onUpdateBook({ file_path: expectedPath });
+               }
+             } catch (cacheErr) {
+               console.warn("Não foi possível salvar cache local do EPUB:", cacheErr);
+             }
+
              if (masterKey) {
                arrayBuffer = await decryptFile(encryptedData, masterKey);
              } else {
@@ -354,5 +374,5 @@ export function useEpubLoader(
         epubBook.destroy();
       }
     };
-  }, [book.id, scrollMode]);
+  }, [book.id, book.file_path, book.drive_file_id, scrollMode]);
 }

@@ -21,6 +21,9 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
 
   const [highlights, setHighlights] = useState<LibraryHighlight[]>([]);
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
+  const [reloadCounter, setReloadCounter] = useState(0);
+
+  const reload = () => setReloadCounter(c => c + 1);
 
   useEffect(() => {
     let active = true;
@@ -53,18 +56,58 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
                  const moduleName = book.author === 'Arquivo Avulso' ? 'files' : 'library';
                  assetUrl = `${baseUrl}/${moduleName}/${encodeURIComponent(absPath)}`;
              } else {
-                 console.log("Arquivo local não encontrado na checagem. Tentando nuvem...");
+                 console.log("Arquivo local não encontrado na checagem. Tentando nuvem/API...");
              }
           }
         } catch (localErr) {
-          console.log("Erro ao checar arquivo local. Tentando nuvem...", localErr);
+          console.log("Erro ao checar arquivo local. Tentando alternativas...", localErr);
         }
 
-        if (!assetUrl && book.drive_file_id) {
+        // Fallback: tentar getBookFile caso esteja no Web/IndexedDB ou storage
+        if (!assetUrl && !fileData && window.api?.library?.getBookFile) {
+          try {
+            const rawFile = await window.api.library.getBookFile(book.id);
+            if (rawFile) {
+              if (rawFile instanceof ArrayBuffer) {
+                fileData = rawFile;
+              } else if (typeof rawFile === 'string') {
+                const binaryString = atob(rawFile);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                fileData = bytes.buffer;
+              }
+            }
+          } catch (webErr) {
+            console.log("Falha ao obter arquivo via getBookFile:", webErr);
+          }
+        }
+
+        // Fallback: tentar Google Drive
+        if (!assetUrl && !fileData && book.drive_file_id) {
           console.log("Baixando do Google Drive: ", book.drive_file_id);
           const token = await getValidAccessToken();
           if (token) {
              const encryptedData = await downloadFromDrive(token, book.drive_file_id);
+             
+             // Cachear localmente no Desktop se possível
+             try {
+               const { appDataDir, join } = await import('@tauri-apps/api/path');
+               const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+               const dataDir = await appDataDir();
+               const libDir = await join(dataDir, 'library');
+               if (!await exists(libDir)) {
+                 await mkdir(libDir, { recursive: true });
+               }
+               const localEncPath = await join(libDir, `${book.id}.pdf.enc`);
+               await writeFile(localEncPath, new Uint8Array(encryptedData));
+               const expectedPath = `library/${book.id}.pdf.enc`;
+               if (book.file_path !== expectedPath) {
+                 onUpdateBookRef.current({ id: book.id, file_path: expectedPath });
+               }
+             } catch (cacheErr) {
+               console.warn("Não foi possível salvar cache local do PDF:", cacheErr);
+             }
+
              const moduleKeyName = book.author === 'Arquivo Avulso' ? 'files' : 'library';
              const masterKey = state.moduleKeys[moduleKeyName];
              if (masterKey) {
@@ -147,7 +190,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
     
     loadPdf();
     return () => { active = false; };
-  }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys]);
+  }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys, reloadCounter]);
 
   useEffect(() => {
     return () => {
@@ -177,6 +220,6 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   };
 
   return {
-    pdfDoc, totalPages, pdfError, loading, tocItems, highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark
+    pdfDoc, totalPages, pdfError, loading, tocItems, highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark, reload
   };
 }

@@ -76,6 +76,7 @@ export interface LibraryApi {
   createBookmark: (b: { book_id: string; page_number: number; label?: string }) => Promise<LibraryBookmark>;
   updateBookmark: (b: { id: string; label: string }) => Promise<number>;
   deleteBookmark: (id: string) => Promise<boolean>;
+  reattachBookFile?: (bookId: string) => Promise<string | null>;
   getOcrCache: (bookId: string, pageNumber: number) => Promise<OcrCacheEntry | null>;
   saveOcrCache: (data: { book_id: string; page_number: number; text_content: string; word_boxes: string }) => Promise<boolean>;
   startReadingSession: (data: { book_id: string; start_page: number }) => Promise<ReadingSession>;
