@@ -49,18 +49,43 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         .unwrap_or(std::borrow::Cow::Borrowed(file_path))
         .to_string();
 
+    let dir_name = match module_name {
+        "culture" => "videos",
+        "library" => "library",
+        "files" => "files",
+        "focus" => "lofi",
+        _ => module_name,
+    };
+
+    let app_data_dir = crate::get_app_data_dir();
+    let module_dir = app_data_dir.join(dir_name);
+
     let mut abs_path = std::path::PathBuf::from(&decoded_path);
 
     if !abs_path.is_absolute() {
-        let app_data_dir = crate::get_app_data_dir();
-        let dir_name = match module_name {
-            "culture" => "videos",
-            "library" => "library",
-            "files" => "files",
-            "focus" => "lofi",
-            _ => module_name,
+        // Strip duplicate module prefix if present (e.g. "library/xxx" or "videos/xxx")
+        let clean_relative = if decoded_path.starts_with(&format!("{}/", dir_name)) {
+            &decoded_path[dir_name.len() + 1..]
+        } else if decoded_path.starts_with(&format!("{}\\", dir_name)) {
+            &decoded_path[dir_name.len() + 1..]
+        } else if decoded_path.starts_with(&format!("{}/", module_name)) {
+            &decoded_path[module_name.len() + 1..]
+        } else if decoded_path.starts_with(&format!("{}\\", module_name)) {
+            &decoded_path[module_name.len() + 1..]
+        } else {
+            &decoded_path
         };
-        abs_path = app_data_dir.join(dir_name).join(abs_path);
+        abs_path = module_dir.join(clean_relative);
+    }
+
+    // Fallback: If not found, try resolving directly in module_dir by file name
+    if !abs_path.exists() {
+        if let Some(file_name) = std::path::Path::new(&decoded_path).file_name() {
+            let direct_in_module = module_dir.join(file_name);
+            if direct_in_module.exists() {
+                abs_path = direct_in_module;
+            }
+        }
     }
 
     if !abs_path.exists() {
