@@ -122,14 +122,19 @@ export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer
 export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey): Promise<ArrayBuffer> {
   let encryptedBuffer: ArrayBuffer;
 
-  if (remotePath.startsWith('drive://')) {
-    const fileId = remotePath.replace('drive://', '');
-    const token = await getValidAccessToken();
-    if (!token) throw new Error('Google Drive não autenticado');
-    encryptedBuffer = await downloadFromDrive(token, fileId);
-  } else {
-    throw new Error('Formato de caminho remoto legado não suportado (Firebase)');
+  const fileId = remotePath.startsWith('drive://') ? remotePath.replace('drive://', '') : remotePath;
+  if (!fileId || fileId.includes('/') || fileId.includes('\\')) {
+    throw new Error('Caminho remoto inválido ou legado');
   }
-  
-  return await decryptFile(encryptedBuffer, masterKey);
+
+  const token = await getValidAccessToken();
+  if (!token) throw new Error('Google Drive não autenticado');
+  encryptedBuffer = await downloadFromDrive(token, fileId);
+
+  try {
+    return await decryptFile(encryptedBuffer, masterKey);
+  } catch {
+    // If already decrypted or in another format
+    return encryptedBuffer;
+  }
 }
