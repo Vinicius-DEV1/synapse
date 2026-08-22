@@ -35,3 +35,8 @@ export interface CultureEpisode {
   aired_at?: string;
   updated_at?: string;
 }
+
+export type EnrichedEpisode = CultureEpisode & {
+  item_title: string;
+  item_cover: string;
+};
