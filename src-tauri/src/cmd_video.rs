@@ -55,10 +55,15 @@ pub async fn video_download_drive_file(
 
 use serde_json::Value;
 use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
 use tauri::AppHandle;
 use std::sync::atomic::{AtomicBool, Ordering};
+use crate::video_probe::{
+    get_videos_dir, is_file_encrypted, normalize_to_mp4_name, sanitize_filename,
+    video_probe_codec,
+};
+#[cfg(target_os = "windows")]
+use crate::video_probe::CREATE_NO_WINDOW;
 
 pub static VIDEO_CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -66,31 +71,6 @@ pub static VIDEO_CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 pub fn video_cancel_conversion() -> Result<bool, String> {
     VIDEO_CANCEL_FLAG.store(true, Ordering::SeqCst);
     Ok(true)
-}
-
-pub fn is_file_encrypted(path: &std::path::Path) -> bool {
-    if let Ok(mut f) = std::fs::File::open(path) {
-        use std::io::Read;
-        let mut magic = [0u8; 4];
-        if f.read_exact(&mut magic).is_ok() && &magic == crate::crypto_stream::MAGIC_BYTES {
-            return true;
-        }
-    }
-    false
-}
-
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = crate::get_app_data_dir();
-    let videos_dir = app_data_dir.join("videos");
-    if !videos_dir.exists() {
-        fs::create_dir_all(&videos_dir).map_err(|e| e.to_string())?;
-    }
-    Ok(videos_dir)
 }
 
 
@@ -224,11 +204,6 @@ pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, Stri
     Ok(true)
 }
 
-fn normalize_to_mp4_name(filename: &str) -> String {
-    let path = std::path::Path::new(filename);
-    let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-    format!("{}.mp4", stem)
-}
 
 #[tauri::command]
 pub async fn video_import_and_encrypt(
@@ -269,29 +244,6 @@ pub struct ProcessUploadResult {
     pub web_size: Option<u64>,
 }
 
-pub fn video_probe_codec(path: &str, stream_type: &str) -> Result<String, String> {
-    let ffprobe_path = crate::cmd_binaries::get_bin_path("ffprobe");
-    let output = Command::new(&ffprobe_path)
-        .args([
-            "-v",
-            "error",
-            "-select_streams",
-            stream_type,
-            "-show_entries",
-            "stream=codec_name",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            path,
-        ])
-        .output()
-        .map_err(|e| format!("Falha ao executar ffprobe: {}", e))?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
 
 use tauri::Emitter;
 use tokio::io::AsyncBufReadExt;
@@ -1031,10 +983,3 @@ pub async fn video_convert_mp4(
 }
 
 
-fn sanitize_filename(name: &str) -> String {
-    std::path::Path::new(name)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unnamed_file")
-        .to_string()
-}
