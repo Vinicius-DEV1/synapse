@@ -132,9 +132,10 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
         } catch (e) {
           console.warn("Failed to get stream port:", e);
         }
-      }
+      const isWindows = navigator.userAgent.includes('Windows');
+      const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
       const fileName = localPath.split(/[/\\]/).pop();
-      return `encrypted://localhost/culture/${encodeURIComponent(fileName || '')}`;
+      return `${baseUrl}/culture/${encodeURIComponent(fileName || '')}`;
     }
   }
   
