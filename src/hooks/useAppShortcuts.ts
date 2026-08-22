@@ -22,6 +22,7 @@ export function useAppShortcuts(state: AppState, dispatch: React.Dispatch<Action
           const index = num - 1;
           if (index >= 0 && index < currentState.tabs.length) {
             e.preventDefault();
+            window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
             currentDispatch({ type: 'SET_ACTIVE_TAB', tabId: currentState.tabs[index].id });
           }
         }

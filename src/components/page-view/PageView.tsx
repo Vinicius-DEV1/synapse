@@ -11,7 +11,7 @@ import { PageUnlockForm } from './PageUnlockForm';
 
 interface PageViewProps {
   page: Page | null;
-  onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => Promise<void>;
+  onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
   onCreatePage: (parentId: string | null) => Promise<void>;
   onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
@@ -40,9 +40,23 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
   useEffect(() => {
     let mounted = true;
-    if (page?.id) {
+
+    const fetchContent = (isBackground = false) => {
+      if (!page?.id || !window.api?.getPageContent) return;
       window.api.getPageContent(page.id).then((data: any) => {
-        if (mounted) {
+        if (!mounted || !data) return;
+        if (isBackground) {
+          setContentData((prev) => {
+            if (
+              prev &&
+              prev.content === data.content &&
+              prev.encrypted_content === data.encrypted_content
+            ) {
+              return prev;
+            }
+            return data;
+          });
+        } else {
           setContentData(data);
           if (!page.is_locked) setIsUnlocked(true);
         }
@@ -51,13 +65,29 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
           console.error(`[Caderno:PageView] Failed to load content for ${page.id}:`, err);
         }
       });
-    }
-    return () => { mounted = false; };
+    };
+
+    fetchContent(false);
+
+    const handleFocusCheck = () => {
+      if (document.visibilityState === 'visible') {
+        fetchContent(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleFocusCheck);
+    window.addEventListener('focus', handleFocusCheck);
+
+    return () => {
+      mounted = false;
+      document.removeEventListener('visibilitychange', handleFocusCheck);
+      window.removeEventListener('focus', handleFocusCheck);
+    };
   }, [page?.id, page?.is_locked]);
 
-  const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[]) => {
+  const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => {
     if (page?.id) {
-      onUpdateContent(page.id, content, crdtState, embeddedSaves);
+      onUpdateContent(page.id, content, crdtState, embeddedSaves, senderInstanceId);
     }
   }, [page?.id, onUpdateContent]);
 

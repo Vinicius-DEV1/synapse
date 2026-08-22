@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import type { MutableRefObject } from 'react';
 import { getYDocStateAsBase64 } from '../../../utils/yjs-utils';
 import * as Y from 'yjs';
@@ -11,6 +11,7 @@ interface UseEditorSaveProps {
   ydocRef: MutableRefObject<Y.Doc | null>;
   onSaveRef: MutableRefObject<Function>;
   latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
+  instanceId?: string;
 }
 
 export function useEditorSave({
@@ -18,6 +19,7 @@ export function useEditorSave({
   ydocRef,
   onSaveRef,
   latestContentRef,
+  instanceId,
 }: UseEditorSaveProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -40,7 +42,7 @@ export function useEditorSave({
       const currentOnSave = onSaveRef.current;
       const currentPageId = pageId;
 
-      const saveResult = currentOnSave(html, crdtState, []) as any;
+      const saveResult = currentOnSave(html, crdtState, [], instanceId) as any;
       if (saveResult && typeof saveResult.catch === 'function') {
         saveResult.catch((err: any) => {
           console.error(`[Caderno:Save] Falha ao persistir página ${currentPageId}:`, err);
@@ -50,7 +52,7 @@ export function useEditorSave({
     } catch (err) {
       console.error('[Caderno:Save] Erro ao serializar conteúdo para salvamento:', err);
     }
-  }, [pageId, ydocRef, latestContentRef, onSaveRef]);
+  }, [pageId, ydocRef, latestContentRef, onSaveRef, instanceId]);
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: Editor }) => {
@@ -63,7 +65,7 @@ export function useEditorSave({
 
       saveTimeoutRef.current = setTimeout(() => {
         flushSave();
-      }, 2500);
+      }, 1000);
     },
     [ydocRef, flushSave]
   );
@@ -75,6 +77,32 @@ export function useEditorSave({
     }
     flushSave();
   }, [flushSave]);
+
+  // Salva imediatamente quando o usuário troca de aba do navegador, oculta a janela ou quando ocorre troca interna de aba
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        cleanupSave();
+      }
+    };
+    const handleFlush = () => {
+      cleanupSave();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleFlush);
+    window.addEventListener('beforeunload', handleFlush);
+    window.addEventListener('pagehide', handleFlush);
+    window.addEventListener('caderno-flush-editor', handleFlush);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleFlush);
+      window.removeEventListener('beforeunload', handleFlush);
+      window.removeEventListener('pagehide', handleFlush);
+      window.removeEventListener('caderno-flush-editor', handleFlush);
+    };
+  }, [cleanupSave]);
 
   return { handleUpdate, cleanupSave, flushSave };
 }

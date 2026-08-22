@@ -3,15 +3,17 @@ import type { MutableRefObject } from 'react';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 import { getEditorBackupMap } from './editorBackupStore';
+import { onPageSaved } from '../../../services/page-broadcast';
 
 interface UseEditorSyncProps {
   pageId: string | null;
   initialCrdtState?: string | null;
   onSaveRef: MutableRefObject<Function>;
-  latestContentRef: MutableRefObject<{ html: string, crdt: string } | null>;
+  latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
+  instanceId?: string;
 }
 
-export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestContentRef }: UseEditorSyncProps) {
+export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestContentRef, instanceId }: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
   const [ydoc] = React.useState(() => {
@@ -33,6 +35,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   
   const ydocRef = useRef<Y.Doc>(ydoc);
 
+  // 1. Escuta eventos remotos de sincronização (ex: Firebase / sync-pull)
   useEffect(() => {
     const handleRemoteUpdate = (e: CustomEvent) => {
       const { pageId: syncPageId, crdtState } = e.detail;
@@ -47,10 +50,72 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     };
   }, [pageId]);
 
+  // 2. Escuta broadcast de salvamento entre abas do browser e abas internas (BroadcastChannel + Local Event)
+  useEffect(() => {
+    const unsubscribe = onPageSaved((msg) => {
+      // Atualiza o backup em memória com a versão mais recente
+      if (msg.pageId) {
+        getEditorBackupMap().set(msg.pageId, { html: msg.html, crdt: msg.crdtState || '' });
+      }
+
+      // Se a mensagem veio deste mesmo editor, não precisa reaplicar o CRDT nele mesmo
+      if (instanceId && msg.senderInstanceId === instanceId) {
+        return;
+      }
+
+      // Se a página salva for a atualmente aberta neste editor, sincroniza o YDoc imediatamente
+      if (msg.pageId === pageId && ydocRef.current && msg.crdtState && msg.crdtState.length > 8) {
+        applyBase64StateToYDoc(ydocRef.current, msg.crdtState);
+        if (latestContentRef.current) {
+          latestContentRef.current = { html: msg.html, crdt: msg.crdtState };
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [pageId, latestContentRef, instanceId]);
+
+  // 3. Fallback de proteção ao ganhar foco / voltar à visibilidade
+  useEffect(() => {
+    const handleFocusCheck = async () => {
+      if (pageId && ydocRef.current) {
+        // Primeiro verifica o backup em memória (síncrono e instantâneo)
+        const backup = getEditorBackupMap().get(pageId);
+        if (backup?.crdt && backup.crdt.length > 8) {
+          applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+        }
+
+        // Depois consulta o banco como garantia
+        if (document.visibilityState === 'visible' && window.api) {
+          try {
+            const pages = await window.api.getAllPages?.();
+            const currentPage = pages?.find((p: any) => p.id === pageId);
+            if (currentPage?.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
+              applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
+            }
+          } catch (err) {
+            console.warn('[Caderno:Sync] Erro ao verificar estado da página ao focar:', err);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleFocusCheck);
+    window.addEventListener('focus', handleFocusCheck);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleFocusCheck);
+      window.removeEventListener('focus', handleFocusCheck);
+    };
+  }, [pageId]);
+
+  // 4. Salva alterações pendentes ao desmontar
   useEffect(() => {
     return () => {
       if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, []) as any;
+        const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId) as any;
         if (result && typeof result.catch === 'function') {
           result.catch((err: any) => {
             console.error(`[Caderno:Flush] Falha ao persistir alterações no unmount de ${pageId}:`, err);
@@ -58,8 +123,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
         }
       }
     };
-  }, [pageId, latestContentRef, onSaveRef]);
+  }, [pageId, latestContentRef, onSaveRef, instanceId]);
 
   return { ydocRef };
 }
-

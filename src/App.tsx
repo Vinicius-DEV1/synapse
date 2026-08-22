@@ -151,6 +151,11 @@ function AppContent() {
     }
   }, [state.tabs, state.activeTabId, dispatch]);
 
+  // Flush pending editor changes whenever the active tab changes
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
+  }, [state.activeTabId]);
+
   if (authStatus === null) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext" style={{ height: '100dvh' }}>
