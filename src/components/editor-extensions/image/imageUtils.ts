@@ -3,7 +3,7 @@
  *
  * Helpers compartilhados pelos node views de imagem (ResizableImage e
  * EncryptedImage) e pelo Editor. Concentra tudo que depende do ProseMirror
- * para que os componentes React fiquem apenas com a UI.
+ * keeping React components purely focused on UI rendering.
  */
 
 import type { Editor } from '@tiptap/core';
@@ -23,8 +23,8 @@ export function isImageNode(node: PMNode | null | undefined): boolean {
 }
 
 /**
- * `getPos` do Tiptap pode devolver `undefined` quando o node view já foi
- * destruído (durante um drag, um undo colaborativo, etc). Todo consumidor
+ * TipTap's `getPos` can return `undefined` when the node view has already been
+ * destroyed (during a drag operation, collaborative undo, etc.).
  * precisa tratar isso — usar o valor cru causa `deleteRange({from: undefined})`.
  */
 export function safePos(getPos: unknown): number | null {
@@ -33,7 +33,7 @@ export function safePos(getPos: unknown): number | null {
   return typeof pos === 'number' && Number.isFinite(pos) ? pos : null;
 }
 
-/** Atributos de alinhamento normalizados (documentos antigos não têm `align`). */
+/** Normalized alignment attributes (legacy documents omit `align`). */
 export function normalizeAlign(value: unknown): ImageAlign {
   return value === 'left' || value === 'right' ? value : 'center';
 }
@@ -55,9 +55,9 @@ export function getSelectedImage(state: EditorState): { node: PMNode; pos: numbe
 }
 
 /**
- * Reencontra a posição de um node específico no documento atual.
- * Usado quando uma posição capturada antes (ex.: ao abrir o modal de exclusão)
- * pode ter ficado obsoleta por causa de edições/sincronização.
+ * Relocates a specific node position in current document state.
+ * Used when a previously captured position (e.g. before opening modal)
+ * might be stale due to concurrent edits or sync.
  */
 export function findNodePos(doc: PMNode, node: PMNode, hintPos?: number | null): number | null {
   if (typeof hintPos === 'number' && hintPos >= 0 && hintPos < doc.content.size) {
@@ -77,7 +77,7 @@ export function findNodePos(doc: PMNode, node: PMNode, hintPos?: number | null):
 
   if (found !== null) return found;
 
-  // Fallback: mesma identidade lógica (mesmo tipo + mesmos atributos-chave).
+  // Fallback: same logical identity (matching node type + key attributes).
   const key = identityKey(node);
   if (!key) return null;
 
@@ -101,8 +101,8 @@ function identityKey(node: PMNode): string | null {
 }
 
 /**
- * Move o bloco em `pos` uma posição para cima (-1) ou para baixo (+1) dentro
- * do seu container, mantendo a seleção sobre o node movido.
+ * Moves the block at `pos` one step up (-1) or down (+1) inside
+ * its container, preserving selection on the moved node.
  */
 export function moveBlockNode(editor: Editor, pos: number, direction: -1 | 1): boolean {
   const { state, dispatch } = editor.view;
@@ -131,14 +131,14 @@ export function moveBlockNode(editor: Editor, pos: number, direction: -1 | 1): b
   try {
     tr.setSelection(NodeSelection.create(tr.doc, mapped));
   } catch {
-    /* posição não selecionável — segue sem seleção explícita */
+    /* Non-selectable position — continue without explicit selection */
   }
 
   dispatch(tr.scrollIntoView());
   return true;
 }
 
-/** Remove o node de imagem em `pos` (revalidando a posição antes). */
+/** Removes image node at `pos` (re-validating position prior to removal). */
 export function deleteImageAt(editor: Editor, node: PMNode, hintPos: number | null): boolean {
   const { state, dispatch } = editor.view;
   const pos = findNodePos(state.doc, node, hintPos);
@@ -152,10 +152,10 @@ export function deleteImageAt(editor: Editor, node: PMNode, hintPos: number | nu
 }
 
 /**
- * Copia a imagem para a área de transferência.
- * `navigator.clipboard.write` só aceita image/png de forma confiável, então
- * qualquer outro formato (JPEG, WebP…) é reconvertido via canvas — sem isso a
- * cópia falhava silenciosamente na maioria das imagens.
+ * Copies the image to clipboard.
+ * `navigator.clipboard.write` reliably accepts image/png, so
+ * other formats (JPEG, WebP) are converted via canvas to prevent
+ * silent clipboard write failures.
  */
 export async function copyImageToClipboard(src: string): Promise<void> {
   const response = await fetch(src);
@@ -199,7 +199,7 @@ function blobToPng(blob: Blob): Promise<Blob> {
   });
 }
 
-/** Dispara o download de uma imagem sem depender de `<a download>` em blob/data URL. */
+/** Triggers image download without relying on `<a download>` with blob/data URLs. */
 export async function downloadImage(src: string, fileName: string): Promise<void> {
   const response = await fetch(src);
   const blob = await response.blob();

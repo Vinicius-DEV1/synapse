@@ -73,7 +73,7 @@ export default function QuizSequentialPlayer({
     }
   }, [activeIndex, total]);
 
-  // Navega para a questão anterior
+  // Navigate to previous question
   const handlePrev = useCallback(() => {
     if (showSummaryView) {
       setShowSummaryView(false);
@@ -83,7 +83,7 @@ export default function QuizSequentialPlayer({
     }
   }, [showSummaryView, activeIndex, total]);
 
-  // Responde questão de múltipla escolha
+  // Submit answer for multiple-choice question
   const handleSelectOption = useCallback(
     (index: number) => {
       if (!currentQ || currentQ.answered) return;
@@ -109,7 +109,7 @@ export default function QuizSequentialPlayer({
     [currentQ, onUpdateSingleQuestion]
   );
 
-  // Reinicia a questão atual
+  // Reset current question state
   const handleResetCurrent = useCallback(() => {
     if (!currentQ) return;
     onUpdateSingleQuestion(
@@ -125,7 +125,7 @@ export default function QuizSequentialPlayer({
     );
   }, [currentQ, onUpdateSingleQuestion]);
 
-  // Reinicia todas as questões da bateria
+  // Reset all questions in battery
   const handleResetAll = useCallback(() => {
     safeQuestions.forEach((q) => {
       onUpdateSingleQuestion(
@@ -144,7 +144,7 @@ export default function QuizSequentialPlayer({
     setShowSummaryView(false);
   }, [safeQuestions, onUpdateSingleQuestion]);
 
-  // Atalhos de teclado no modo interativo (Setas, Enter, Números 1-4)
+  // Keyboard shortcuts in interactive mode (Arrows, Enter, Keys 1-4)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
@@ -154,7 +154,7 @@ export default function QuizSequentialPlayer({
         activeEl?.getAttribute('contenteditable') === 'true';
 
       if (isTyping && activeEl?.tagName === 'TEXTAREA') {
-        // Se estiver digitando em textarea aberta, não intercepta atalhos
+        // Do not intercept keyboard shortcuts when user is actively typing in a textarea
         return;
       }
 
@@ -206,7 +206,7 @@ export default function QuizSequentialPlayer({
     );
   }
 
-  // TELA DE PRÁTICA SEQUENCIAL (QUESTÃO EM FOCO)
+  // SEQUENTIAL PRACTICE VIEW (FOCUSED QUESTION)
   const isEvaluating = evaluatingIds[currentQ.id] || false;
   const isOpenType = currentQ.type === 'open';
 

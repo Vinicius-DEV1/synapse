@@ -86,7 +86,7 @@ export function normalizeSingleQuestion(raw: any, fallbackIndex: number = 1): Qu
 }
 
 /**
- * Normaliza um payload arbitrário de questões (seja array bruto, string JSON ou URI-encoded).
+ * Normalizes an arbitrary questions payload (raw array, JSON string, or URI-encoded string).
  */
 export function normalizeQuizQuestions(rawQuestions: any): QuestionItem[] {
   let parsed = rawQuestions;

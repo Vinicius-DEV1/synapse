@@ -1,6 +1,6 @@
 /**
  * Width calculation and balancing utilities for groups and columns.
- * Funções puras sem efeitos colaterais.
+ * Pure utility functions without side-effects.
  */
 
 import type { Node as PMNode } from '@tiptap/pm/model';
@@ -17,7 +17,7 @@ export function readWidth(spec: GroupSpec, child: PMNode): number {
 }
 
 /**
- * Retorna as larguras de todos os filhos de um grupo.
+ * Returns widths array of all child cells in a group.
  */
 export function getWidths(spec: GroupSpec, groupNode: PMNode): number[] {
   const widths: number[] = [];

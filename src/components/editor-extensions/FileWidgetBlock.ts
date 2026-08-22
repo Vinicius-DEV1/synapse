@@ -111,14 +111,14 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
         const { state } = editor;
         const { selection } = state;
 
-        // Caso 1: NodeSelection
+        // Case 1: NodeSelection
         if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
           const fileId = selection.node.attrs.fileId;
           window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
           return true;
         }
 
-        // Caso 2: Cursor logo antes do atom inline — Delete deletaria direto
+        // Case 2: Cursor directly before inline atom — prevent unhandled delete
         const { $from } = selection;
         if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
           const fileId = $from.nodeAfter.attrs.fileId;

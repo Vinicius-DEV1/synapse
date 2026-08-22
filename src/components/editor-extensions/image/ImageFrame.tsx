@@ -2,7 +2,7 @@
  * ImageFrame.tsx
  *
  * Coordinator modular dos node views de imagem (ResizableImage e EncryptedImage):
- * alça de arrasto, barra de ações, alças de redimensionamento, legenda e alinhamento.
+ * drag handle, action toolbar, resize handles, caption, and alignment controls.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -35,11 +35,11 @@ interface ImageFrameProps {
   getPos: unknown;
   updateAttributes: (attrs: Record<string, unknown>) => void;
   selected: boolean;
-  /** URL renderizável (src direto, ou blob URL descriptografada). */
+  /** Renderable asset URL (direct src or decrypted blob URL). */
   src: string;
   alt?: string;
   title?: string;
-  /** Nome base sugerido no download (sem extensão). */
+  /** Suggested download basename (without extension). */
   downloadName: string;
   onOpenViewer: () => void;
   onRequestDelete: () => void;
@@ -69,8 +69,8 @@ export default function ImageFrame({
   const width: number | null = node.attrs.width ? Number(node.attrs.width) : null;
   const height: number | null = node.attrs.height ? Number(node.attrs.height) : null;
 
-  // A seleção é o que o drop apaga ao mover: `selectNodeForDrag` só a move
-  // depois de confirmar que a posição é mesmo desta imagem.
+  // Selection determines what drag-and-drop moves: `selectNodeForDrag` verifies
+  // target position matches this node before modifying selection.
   const selectSelf = useCallback(() => {
     const pos = safePos(getPos);
     if (pos === null) return;
@@ -137,7 +137,7 @@ export default function ImageFrame({
     }
   }, [captionDraft, captionValue, updateAttributes]);
 
-  // ── Ações ──────────────────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────────────────
   const handleCreateColumn = useCallback(() => {
     const pos = safePos(getPos);
     if (pos === null) return;

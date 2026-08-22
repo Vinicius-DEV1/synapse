@@ -1,8 +1,8 @@
 /**
- * Extensão GroupAutoCollapse
+ * GroupAutoCollapse Extension
  *
- * Desfaz automaticamente colunas ou grupos vazios após remoção ou arrasto de conteúdo,
- * garantindo a integridade da estrutura sem deixar blocos órfãos ou vazios.
+ * Automatically collapses empty columns or groups following content removal or drag-and-drop,
+ * maintaining structural document integrity without orphaned layout blocks.
  */
 
 import { Extension } from '@tiptap/core';

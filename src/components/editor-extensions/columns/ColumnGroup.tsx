@@ -25,7 +25,7 @@ export const ColumnGroup = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    // A estrutura em dois níveis espelha o que o node view produz, para que o
+    // Two-level DOM structure mirrors node view layout output
     // HTML salvo continue renderizando lado a lado fora do editor.
     return [
       'div',

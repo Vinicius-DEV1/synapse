@@ -6,11 +6,11 @@ import { getDecryptedImageUrl, uploadEncryptedImage, getCachedImage } from '../.
 import ImageFrame from './image/ImageFrame';
 import { alignToClass, normalizeAlign, safePos } from './image/imageUtils';
 
-// ─── Componente de NodeView para imagens encriptadas ───────────────────────────
+// ─── NodeView Component for Encrypted Images ─────────────────────────────────
 
 type LoadingState = 'loading' | 'loaded' | 'error';
 
-/** Largura usada pelos placeholders quando a imagem ainda não tem tamanho definido. */
+/** Default placeholder width for images without pre-existing dimensions. */
 const PLACEHOLDER_WIDTH = 320;
 
 const EncryptedImageNodeView = (props: any) => {
@@ -23,7 +23,7 @@ const EncryptedImageNodeView = (props: any) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const blobUrlRef = useRef<string | null>(null);
-  // Evita que o mesmo tempId seja enviado duas vezes se o efeito reexecutar.
+  // Prevents duplicate tempId uploads if effect re-runs.
   const uploadingRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
 
@@ -34,7 +34,7 @@ const EncryptedImageNodeView = (props: any) => {
     };
   }, []);
 
-  // Obtém a chave mestra do módulo de notas sem subscrever ao store completo
+  // Retrieves notes master key without subscribing to entire store
   const masterKey = getNotesKey();
 
   // Carrega e descriptografa a imagem do Google Drive, ou faz o upload se for um paste novo
@@ -110,7 +110,7 @@ const EncryptedImageNodeView = (props: any) => {
   useEffect(() => {
     loadImage();
 
-    // Limpa blob URL ao desmontar o componente
+    // Clean up blob URL on component unmount
     return () => {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -137,7 +137,7 @@ const EncryptedImageNodeView = (props: any) => {
 
   // ─── Estilos compartilhados dos placeholders ───────────────────────────────
   // Importante: usar largura fixa. `width: 100%` dentro de um wrapper `w-fit`
-  // colapsa para zero e o skeleton some.
+  // collapses to zero height, causing skeleton flicker.
   const placeholderStyle: React.CSSProperties = {
     width: width ? `${width}px` : `${PLACEHOLDER_WIDTH}px`,
     maxWidth: '100%',

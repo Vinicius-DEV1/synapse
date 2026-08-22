@@ -52,8 +52,8 @@ const LinkPreviewComponent = (props: any) => {
 
   const isInsideGroup = !!groupInfo;
 
-  // Selecionar a si mesmo é o que faz o arrasto remover ESTE card, e não outro
-  // — ver `selectNodeForDrag`, que confere a posição antes de mexer na seleção.
+  // Selecting self ensures drag-and-drop targets THIS specific card node
+  // see `selectNodeForDrag` for position validation prior to selection updates.
   const handleSelectSelf = useCallback(() => {
     const pos = currentPos();
     if (pos === null || !props.editor) return;

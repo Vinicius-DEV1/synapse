@@ -1,13 +1,12 @@
 /**
  * BlobImageInterceptor.ts
  * 
- * Plugin ProseMirror que intercepta QUALQUER node 'image' com src="blob:..." 
- * e o converte automaticamente para 'encryptedImage'.
+ * ProseMirror plugin that intercepts ANY 'image' node with src="blob:..." 
+ * and automatically converts it to 'encryptedImage'.
  * 
- * Isso resolve o problema no Linux/WebKitGTK onde o handlePaste do editorProps
- * não é chamado para imagens coladas — o browser insere <img src="blob:...">
- * diretamente. Este plugin captura esse caso (e qualquer outro) e faz a 
- * conversão automática, funcionando em todas as plataformas.
+ * Solves the Linux/WebKitGTK issue where handlePaste in editorProps
+ * is bypassed when pasting images, inserting raw <img src="blob:...">.
+ * This plugin guarantees automatic conversion across all platforms.
  */
 
 import { Extension } from '@tiptap/core';
@@ -16,7 +15,7 @@ import { setCachedImage } from '../../services/image-drive';
 
 const blobInterceptorKey = new PluginKey('blobImageInterceptor');
 
-// Rastreia blobs já em processamento para não duplicar
+// Track blobs currently in-flight to prevent duplicate conversions
 const processingBlobs = new Set<string>();
 
 export const BlobImageInterceptor = Extension.create({
@@ -29,13 +28,13 @@ export const BlobImageInterceptor = Extension.create({
       new Plugin({
         key: blobInterceptorKey,
 
-        // Observa cada transação e procura por nodes 'image' com blob: URLs
+        // Observe transactions and inspect for 'image' nodes containing blob: URLs
         appendTransaction(transactions, _oldState, newState) {
-          // Só processa se houve mudanças no documento
+          // Process only when document content changed
           const docChanged = transactions.some(tr => tr.docChanged);
           if (!docChanged) return null;
 
-          // Procura por nodes image com blob: URLs
+          // Search for image nodes with blob: URLs
           newState.doc.descendants((node, pos) => {
             if (
               node.type.name === 'image' &&
@@ -47,16 +46,16 @@ export const BlobImageInterceptor = Extension.create({
               const blobUrl = node.attrs.src;
               processingBlobs.add(blobUrl);
 
-              console.log(`[BlobInterceptor] Detectado <img src="blob:...">. Iniciando conversão assíncrona...`);
+              console.log(`[BlobInterceptor] Detected <img src="blob:...">. Initiating async conversion...`);
 
-              // Processo assíncrono: busca o blob PRIMEIRO, depois substitui o node
+              // Async flow: fetch blob data FIRST, then replace editor node
               convertBlobToEncryptedImage(editor, blobUrl, pos, node.attrs).finally(() => {
                 processingBlobs.delete(blobUrl);
               });
             }
           });
 
-          // Não altera a transação atual — a substituição será feita assincronamente
+          // Do not mutate current transaction — substitution executes asynchronously
           return null;
         },
       }),
@@ -65,7 +64,7 @@ export const BlobImageInterceptor = Extension.create({
 });
 
 /**
- * Busca os dados do blob, salva no cache, e só então substitui o node no editor.
+ * Fetches blob buffer, saves to local cache, and replaces editor image node.
  */
 async function convertBlobToEncryptedImage(
   editor: any,
@@ -74,31 +73,26 @@ async function convertBlobToEncryptedImage(
   attrs: Record<string, any>
 ) {
   try {
-    // 1. Fetch o blob enquanto ele ainda está vivo na memória
+    // 1. Fetch blob while active in memory
     const res = await fetch(blobUrl);
     const blob = await res.blob();
     const file = new File([blob], 'pasted-image.png', { type: blob.type || 'image/png' });
     const buffer = await file.arrayBuffer();
 
-    // 2. Gera o tempId
+    // 2. Generate temporary identifier
     const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
 
-    // 3. Salva no pendingUploads e no cache ANTES de criar o node
+    // 3. Persist to pendingUploads and local cache BEFORE creating node
     if (!window.__pendingImageUploads) {
       window.__pendingImageUploads = new Map();
     }
     window.__pendingImageUploads.set(tempId, file);
     await setCachedImage(tempId, buffer, file.type);
 
-    console.log(`[BlobInterceptor] Blob salvo no cache. tempId="${tempId}" (${buffer.byteLength} bytes). Substituindo node...`);
+    console.log(`[BlobInterceptor] Blob cached locally. tempId="${tempId}" (${buffer.byteLength} bytes). Replacing node...`);
 
-    // 4. Agora procura TODOS os nodes image com esse blob URL no documento atual
-    // (a posição pode ter mudado). Pode haver mais de um: o usuário pode ter
-    // duplicado/colado de novo o mesmo node 'image' enquanto o upload ainda
-    // estava em voo — um único blobUrl processado (ver `processingBlobs`) não
-    // significa um único node com esse src. Substituir só o primeiro deixava
-    // os demais presos como <img src="blob:...">, que quebra assim que o
-    // browser revoga o blob.
+    // 4. Search for ALL image nodes with this blob URL in current document.
+    // Replace all occurrences to prevent orphaned revoked blob URLs.
     const foundPositions: number[] = [];
     editor.state.doc.descendants((node: any, pos: number) => {
       if (node.type.name === 'image' && node.attrs.src === blobUrl) {
@@ -107,21 +101,20 @@ async function convertBlobToEncryptedImage(
     });
 
     if (foundPositions.length === 0) {
-      console.warn(`[BlobInterceptor] Node image com blob URL não encontrado mais. Pode já ter sido convertido.`);
+      console.warn(`[BlobInterceptor] Node image with blob URL not found. May have already been replaced.`);
       return;
     }
 
-    // 5. Substitui cada node image pelo encryptedImage usando a API do editor
+    // 5. Replace each image node with encryptedImage
     const { tr } = editor.state;
     const encryptedImageType = editor.state.schema.nodes.encryptedImage;
 
     if (!encryptedImageType) {
-      console.error('[BlobInterceptor] Node type "encryptedImage" não encontrado no schema!');
+      console.error('[BlobInterceptor] Node type "encryptedImage" not found in schema!');
       return;
     }
 
-    // De trás para frente: substituir da esquerda para a direita invalidaria as
-    // posições já coletadas à direita (o tamanho do node muda na substituição).
+    // Replace from right to left to avoid invalidating mapped positions
     let replaced = 0;
     for (const pos of foundPositions.slice().reverse()) {
       const mappedPos = tr.mapping.map(pos, -1);

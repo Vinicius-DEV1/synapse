@@ -6,7 +6,7 @@
  *
  * Group specifications defining wrapping, unwrapping, capacity,
  * and width attributes for group layouts.
- * fica a largura. Para acrescentar um tipo novo, basta somar um spec à lista.
+ * column width. To add a new layout type, simply append its spec to the registry.
  */
 
 import { Fragment } from '@tiptap/pm/model';
@@ -15,31 +15,29 @@ import type { Node as PMNode, Schema } from '@tiptap/pm/model';
 export interface GroupSpec {
   /** Nome do node que representa o grupo. */
   groupName: string;
-  /** Nome do node que representa cada coluna/célula. */
+  /** Node type name representing individual column/cell. */
   childName: string;
   maxChildren: number;
-  /** O grupo tem alças de redimensionamento? */
+  /** Indicates whether group renders resize handles. */
   resizable: boolean;
   /** Atributo do filho que guarda a largura proporcional. */
   widthAttr: string;
   defaultWidth: number;
-  /** Rótulo usado nos botões/tooltips. */
+  /** UI label used for buttons/tooltips. */
   labels: { unwrap: string; balance: string; removeChild: string };
 
-  /** Embrulha conteúdo solto num filho válido do grupo (null se incompatível). */
+  /** Wraps linear content into a valid group child node (null if incompatible). */
   wrapAsChild(schema: Schema, content: PMNode[], width: number): PMNode | null;
-  /** Conteúdo de um filho, usado ao desfazer o grupo. */
+  /** Child node content extractor used when unwrapping group. */
   childContent(child: PMNode): PMNode[];
-  /** Este conteúdo pode virar (ou entrar num) grupo deste tipo? */
+  /** Predicate determining if content can be grouped into this type. */
   acceptsContent(nodes: PMNode[]): boolean;
-  /** Um filho ficou sem conteúdo útil? */
+  /** Predicate determining if a child cell is empty. */
   isEmptyChild(child: PMNode): boolean;
   /**
-   * O conteúdo dos filhos é editável no lugar?
-   *
-   * Sendo, um filho vazio pode ser alguém que apagou o texto para redigitar, e o
-   * auto-colapso precisa respeitar a seleção. Não sendo (cards de link), vazio
-   * só pode ser lixo, e some na hora.
+   * Indicates whether child content is editable inline in place.
+   * When editable, empty cells during typing must respect active selection;
+   * when non-editable (e.g. link cards), empty cards are immediately collapsed.
    */
   editableChildren: boolean;
 }
@@ -62,7 +60,7 @@ function toBlocks(schema: Schema, nodes: PMNode[]): PMNode[] | null {
 const GROUP_NAMES = ['columnGroup', 'linkGroup'];
 const CHILD_ONLY_NAMES = ['columnBlock'];
 
-/** Nunca aninhamos um grupo dentro de outro. */
+/** Structural guard: never nest a group inside another group. */
 function isStructuralNode(node: PMNode): boolean {
   return GROUP_NAMES.includes(node.type.name) || CHILD_ONLY_NAMES.includes(node.type.name);
 }
@@ -109,10 +107,9 @@ export const COLUMN_GROUP_SPEC: GroupSpec = {
     if (child.childCount === 0) return true;
 
     /*
-     * `columnBlock` é `block+`, então nunca fica com `childCount === 0`: o
-     * ProseMirror insere um parágrafo vazio para manter o documento válido.
-     * Vazio, aqui, é conter só blocos de texto sem conteúdo — uma imagem, um
-     * card ou um widget não são textblocks, e mantêm a coluna viva.
+     * `columnBlock` is `block+`, so ProseMirror enforces non-empty by inserting
+     * an empty paragraph. A column is treated as empty only when containing empty
+     * text blocks without widgets, cards, or images.
      */
     let empty = true;
     child.forEach((node) => {
@@ -122,7 +119,7 @@ export const COLUMN_GROUP_SPEC: GroupSpec = {
   },
 };
 
-// ─── Cards de link lado a lado ────────────────────────────────────────────────
+// ─── Link Cards Side-by-Side ──────────────────────────────────────────────────
 
 export const LINK_GROUP_SPEC: GroupSpec = {
   groupName: 'linkGroup',
@@ -157,21 +154,17 @@ export const LINK_GROUP_SPEC: GroupSpec = {
 
   isEmptyChild(child) {
     /*
-     * Sendo atom, um `linkPreview` não fica "sem conteúdo" — fica sem URL.
-     *
-     * E isso acontece sozinho: `linkGroup` é `linkPreview{2,4}`, então ao tirar
-     * um card de um grupo de DOIS o ProseMirror preenche o mínimo do schema com
-     * um card em branco, para manter o documento válido. Esse fantasma é o
-     * "movi e duplicou" — e só aparece quando o grupo tinha exatamente dois
-     * cards, que é o que tornava o sintoma intermitente.
+     * As an atom node, `linkPreview` is empty when lacking a valid URL.
+     * When dragging a card out of a 2-item `linkGroup`, schema minimum fills an
+     * empty item which this rule cleans up.
      */
     return !String(child.attrs.url ?? '').trim();
   },
 };
 
 /**
- * Ordem importa: o spec mais específico vem primeiro, para que arrastar um card
- * de link sobre outro card gere um `linkGroup` e não um `columnGroup`.
+ * Order matters: specific specs precede generic ones so dragging a link card
+ * onto another card creates a `linkGroup` rather than a `columnGroup`.
  */
 export const GROUP_SPECS: GroupSpec[] = [LINK_GROUP_SPEC, COLUMN_GROUP_SPEC];
 
@@ -184,7 +177,7 @@ export function getSpecByName(groupName: string): GroupSpec | null {
 }
 
 /**
- * Escolhe que tipo de grupo criar ao soltar `dragged` sobre `target`.
+ * Selects group spec to instantiate when dropping `dragged` over `target`.
  * Ambos precisam ser aceitos pelo mesmo spec.
  */
 export function pickSpecForPair(dragged: PMNode[], target: PMNode): GroupSpec | null {

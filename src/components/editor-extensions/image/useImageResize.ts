@@ -3,14 +3,14 @@
  *
  * Redimensionamento de imagens com preview local.
  *
- * O ponto crítico: a versão anterior chamava `updateAttributes()` a cada
- * `mousemove`, ou seja, uma transação ProseMirror + escrita no Y.Doc + um
- * `editor.getHTML()` completo + `getYDocStateAsBase64()` a ~60fps. Em páginas
- * grandes isso travava o editor e enchia o histórico de undo com centenas de
+ * Key optimization: previous versions dispatched `updateAttributes()` on every
+ * `mousemove`, creating a ProseMirror transaction + Y.Doc write + full
+ * `editor.getHTML()` + `getYDocStateAsBase64()` at 60fps. On large pages
+ * this caused stutter and filled undo history with hundreds of
  * passos.
  *
- * Agora o arrasto só mexe em estado React local (preview) e apenas UM
- * `updateAttributes()` é emitido no `pointerup`.
+ * Dragging now modifies only local React state (preview), dispatching ONE
+ * `updateAttributes()` on `pointerup`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -26,13 +26,13 @@ export interface ImageSize {
 
 interface UseImageResizeOptions {
   imgRef: RefObject<HTMLImageElement | null>;
-  /** Elemento usado para descobrir a largura máxima disponível. */
+  /** Container element used to compute maximum available width. */
   boundsRef: RefObject<HTMLElement | null>;
   width: number | null;
   height: number | null;
-  /** Chamado uma única vez, no fim do arrasto. */
+  /** Called once at end of drag gesture. */
   onCommit: (size: ImageSize) => void;
-  /** Chamado no início do arrasto (para selecionar o node, por exemplo). */
+  /** Called at start of drag gesture (e.g. to select node). */
   onStart?: () => void;
   enabled?: boolean;
 }
@@ -53,7 +53,7 @@ export function useImageResize({
   const rafRef = useRef<number | null>(null);
   const cancelledRef = useRef(false);
 
-  // Garante que nada fique pendurado se o node view for destruído no meio do arrasto.
+  // Ensures event listeners are cleanly removed if node view unmounts during drag.
   useEffect(() => {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -108,7 +108,7 @@ export function useImageResize({
       onStart?.();
 
       const compute = (moveEvent: PointerEvent | KeyboardEvent, clientX: number, clientY: number) => {
-        // Shift = redimensionamento livre (distorce). Padrão = proporcional.
+        // Shift = free resize (non-proportional). Default = aspect-ratio locked.
         const free = moveEvent.shiftKey;
         const dx = clientX - startX;
         const dy = clientY - startY;
@@ -170,7 +170,7 @@ export function useImageResize({
         try {
           target.releasePointerCapture(event.pointerId);
         } catch {
-          /* já liberado */
+          /* already released */
         }
 
         if (rafRef.current !== null) {
@@ -183,7 +183,7 @@ export function useImageResize({
         setPreview(null);
         setIsResizing(false);
 
-        // Clique seco na alça não deve gravar nada (evita transação/salvamento inútil).
+        // Simple click on handle should not persist (avoids redundant transactions/saves).
         if (cancelledRef.current || !result || !moved) return;
         onCommit(result);
       };
@@ -207,12 +207,12 @@ export function useImageResize({
     [enabled, imgRef, getMaxWidth, onStart, onCommit]
   );
 
-  /** Volta ao tamanho natural da imagem (duplo clique numa alça). */
+  /** Resets image to natural dimensions (double click on handle). */
   const resetSize = useCallback(() => {
     onCommit({ width: null, height: null });
   }, [onCommit]);
 
-  /** Ajusta a imagem à largura total do editor. */
+  /** Expands image to full available editor width. */
   const fitToWidth = useCallback(() => {
     const max = getMaxWidth();
     if (!Number.isFinite(max)) return;

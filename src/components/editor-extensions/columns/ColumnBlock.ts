@@ -5,8 +5,7 @@ export const ColumnBlock = Node.create({
 
   group: 'column',
   content: 'block+',
-  // Sem isto, o Backspace no início de uma coluna junta conteúdo através da
-  // fronteira e destrói o layout.
+  // Without this, Backspace at start of column merges content across boundary and breaks layout.
   isolating: true,
 
   addAttributes() {
@@ -22,9 +21,7 @@ export const ColumnBlock = Node.create({
           const width = Number(attributes.width) || 50;
           return {
             'data-width': width,
-            // `--group-flex` alimenta a regra compartilhada em `group-layout`.
-            // Com `width: X%` + `gap` a soma passa de 100% e a última coluna
-            // transborda do editor.
+            // `--group-flex` feeds shared styling rules in `group-layout`.
             style: `--group-flex: ${width};`,
           };
         },
@@ -41,7 +38,7 @@ export const ColumnBlock = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, {
         'data-type': 'columnBlock',
-        // Marcador comum a todos os filhos de grupo (colunas e cards de link).
+        // Common marker for all group children (columns and link cards).
         'data-group-child': '',
         class: 'column-block',
       }),

@@ -1,16 +1,15 @@
 /**
  * useGroupResize.ts
  *
- * Redimensionamento das colunas de um grupo.
+ * Group column resize mechanics and handle positioning.
  *
  * Two core safeguards support this module:
  *
- *  • As alças são posicionadas medindo o vão real entre as colunas no DOM.
- *    Derivar a posição das larguras em % ignora o `gap` e erra o lugar.
+ *  • Handles are positioned by measuring actual DOM gaps between columns.
+ *    Deriving position solely from percentage widths disregards flex gap and offsets alignment.
  *
- *  • Durante o arrasto só o DOM é tocado; a gravação acontece uma vez só, no
- *    `pointerup`. Uma transação por `mousemove` significaria escrita no Y.Doc e
- *    serialização do documento inteiro a ~60fps.
+ *  • Only local DOM is modified during active drag; ProseMirror transaction commits once on
+ *    `pointerup` to avoid 60fps Y.Doc serialization.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
@@ -23,9 +22,7 @@ import { getWidths, setChildWidths } from './groupCommands';
 const MIN_PERCENT = 12;
 
 /**
- * Marcador comum a todos os filhos de grupo. Precisa apontar para o elemento
- * que de fato é o flex-item: para `columnBlock` é o próprio node (sem node
- * view), para `linkPreview` é o wrapper externo criado pelo Tiptap.
+ * Common selector for group child flex items (e.g. `columnBlock` DOM node or `linkPreview` TipTap wrapper).
  */
 export const GROUP_CHILD_SELECTOR = '[data-group-child]';
 
@@ -34,18 +31,18 @@ interface UseGroupResizeOptions {
   node: PMNode;
   view: EditorView;
   getPos: () => number | undefined;
-  /** Elemento raiz do node view. */
+  /** Root DOM element of node view. */
   wrapperRef: RefObject<HTMLElement | null>;
   enabled: boolean;
 }
 
 export interface GroupResizeState {
-  /** Distância, em px a partir da borda esquerda do wrapper, de cada vão. */
+  /** Distance in px from left edge of wrapper for each column gap. */
   handleOffsets: number[];
-  /** Largura do wrapper, medida junto com os vãos. */
+  /** Total wrapper width measured alongside column gaps. */
   wrapperWidth: number;
   isResizing: boolean;
-  /** Larguras mostradas durante o arrasto (null quando parado). */
+  /** Column widths displayed during active resize (null when idle). */
   previewWidths: number[] | null;
   startResize: (event: React.PointerEvent, gutterIndex: number) => void;
   remeasure: () => void;
@@ -117,9 +114,9 @@ export function useGroupResize({
   }, [wrapperRef, getChildElements]);
 
   /*
-   * `node` é um objeto novo a cada transação, então usá-lo como dependência
-   * remediria o grupo a cada tecla digitada em qualquer lugar do documento. O
-   * que muda o layout é o número de colunas e as larguras.
+   * `node` is a fresh object on every transaction; using it as effect dependency
+   * would trigger re-measurements on every keystroke. Effect observes column count
+   * and serialized width signatures instead.
    */
   const widthSignature = getWidths(spec, node).join(',');
 
@@ -128,9 +125,9 @@ export function useGroupResize({
   }, [remeasure, childCount, widthSignature]);
 
   /**
-   * As colunas são montadas pelo ProseMirror DEPOIS deste efeito rodar — medir
-   * só uma vez deixava o grupo recém-criado sem divisores até a próxima
-   * mudança de tamanho. Por isso observamos também a inserção dos filhos.
+   * Columns are mounted by ProseMirror AFTER this effect runs — single-pass
+   * measurement left newly created groups without dividers until next resize.
+   * Child element mutations are observed to handle dynamic mounting.
    */
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -160,10 +157,10 @@ export function useGroupResize({
     };
 
     /*
-     * O MutationObserver só reata o ResizeObserver quando o CONJUNTO de colunas
-     * muda. Observar a subárvore é necessário (o Tiptap injeta um <div> entre o
+     * MutationObserver reattaches ResizeObserver only when column set
+     * changes. Observing subtree is required because TipTap inserts internal containers.
      * wrapper e as colunas reais), mas sem o filtro cada tecla digitada dentro
-     * de uma coluna dispararia remedição e re-render do grupo inteiro.
+     * re-measuring only when column layout geometry genuinely updates.
      */
     const touchesChildren = (records: MutationRecord[]) =>
       records.some((record) =>
@@ -267,13 +264,13 @@ export function useGroupResize({
         try {
           target.releasePointerCapture(event.pointerId);
         } catch {
-          /* já liberado */
+          /* already released */
         }
 
         setIsResizing(false);
         setPreviewWidths(null);
 
-        // O preview escreve `style.flex` direto no DOM. Sem limpar, ele
+        // Preview writes `style.flex` directly to DOM. Without cleanup, it persists.
         // sobrevive ao arrasto e diverge do atributo — largura fantasma quando
         // `setChildWidths` triggers nothing or child has its own node view.
         left.style.flex = '';

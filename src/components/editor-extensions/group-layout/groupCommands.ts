@@ -1,5 +1,5 @@
 /**
- * Comandos e operações de alto nível sobre grupos e colunas lado a lado no EditorView.
+ * High-level commands and operations for multi-column and group layouts in EditorView.
  */
 
 import { Fragment } from '@tiptap/pm/model';
@@ -46,7 +46,7 @@ export {
   pruneGroupsInTransaction,
 };
 
-/** Define as larguras de todas as colunas de um grupo em uma única transação. */
+/** Sets column widths for all children of a group within a single atomic transaction. */
 export function setChildWidths(view: EditorView, groupPos: number, widths: number[]): boolean {
   try {
     const group = resolveGroup(view, groupPos);
@@ -150,7 +150,7 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
   return false;
 }
 
-/** Desfaz o layout em colunas substituindo o grupo por seu conteúdo em fluxo vertical. */
+/** Unwraps column layout, replacing group with its vertical linear content. */
 export function unwrapGroup(view: EditorView, groupPos: number): boolean {
   try {
     const group = resolveGroup(view, groupPos);
@@ -171,7 +171,7 @@ export function unwrapGroup(view: EditorView, groupPos: number): boolean {
   }
 }
 
-/** Remove uma coluna específica do grupo, preservando opcionalmente seu conteúdo. */
+/** Removes a specific column from group, optionally preserving nested content. */
 export function removeChild(
   view: EditorView,
   groupPos: number,
@@ -201,7 +201,7 @@ export function removeChild(
   }
 }
 
-/** Reordena uma coluna dentro do grupo mudando sua posição indexada. */
+/** Reorders a column inside group by changing its index position. */
 export function moveChild(view: EditorView, groupPos: number, from: number, to: number): boolean {
   try {
     const group = resolveGroup(view, groupPos);

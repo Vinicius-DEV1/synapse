@@ -3,10 +3,9 @@
  *
  * Drop diagnostics logger (disabled by default).
  *
- * Um arrasto pode nascer por três caminhos diferentes (alça flutuante, node view
- * com `data-drag-handle`, seleção de texto) e cada um preenche `view.dragging`
- * de um jeito. Quando um deles falha, o sintoma é intermitente e não há como
- * saber qual foi só olhando o resultado.
+ * A drag gesture can originate via three paths (floating handle, node view
+ * with `data-drag-handle`, or text selection) and each populates `view.dragging`
+ * differently. Diagnostics trace the exact origin to debug drag discrepancies.
  *
  * Ligar no console do app:
  *     localStorage.setItem('caderno:debug-drop', '1')   // e recarregar
@@ -38,7 +37,7 @@ function describeSelection(selection: Selection): string {
   return `${kind} [${selection.from}..${selection.to}]`;
 }
 
-/** Quantos nodes de cada tipo o documento tem — para flagrar duplicação. */
+/** Node counts per type in document — used to detect accidental node duplication. */
 function census(doc: PMNode): Record<string, number> {
   const counts: Record<string, number> = {};
   doc.descendants((node) => {
@@ -60,7 +59,7 @@ function diff(before: Record<string, number>, after: Record<string, number>): st
 }
 
 export interface DropDiagnostic {
-  /** Como o arrasto foi aberto, segundo o que há em `view.dragging`. */
+  /** Drag origin type inferred from `view.dragging`. */
   origem: 'dragging.node' | 'seleção do documento' | 'sem dragging (externo)';
   moved: boolean;
   selecaoUsada: Selection;
@@ -69,8 +68,8 @@ export interface DropDiagnostic {
 }
 
 /**
- * Registra o drop e devolve uma função para ser chamada DEPOIS da aplicação,
- * que compara a contagem de nodes. Duplicação aparece como um `+1` onde
+ * Registers drop gesture and returns a post-apply verification hook
+ * comparing node counts across the document.
  * deveria haver `0`.
  */
 export function traceDrop(view: EditorView, info: DropDiagnostic): (aplicado: boolean) => void {

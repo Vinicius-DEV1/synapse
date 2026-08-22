@@ -1,9 +1,9 @@
 /**
  * group-layout
  *
- * Módulo compartilhado dos layouts "lado a lado" do editor.
+ * Shared module for side-by-side multi-column editor layouts.
  * Consumidores: `columns/ColumnGroup`, `LinkGroupBlock`, `LinkPreviewBlock` e o
- * `Editor` (para soltar arquivos direto numa coluna).
+ * `Editor` integration (for dropping files directly into a column cell).
  */
 
 export { default as GroupShell } from './GroupShell';

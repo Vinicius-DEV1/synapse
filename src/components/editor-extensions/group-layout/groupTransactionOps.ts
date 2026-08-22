@@ -1,5 +1,5 @@
 /**
- * Operações transacionais de baixo nível sobre nós ProseMirror em layouts de grupos.
+ * Low-level transactional operations for ProseMirror nodes in group layouts.
  */
 
 import { Fragment } from '@tiptap/pm/model';
@@ -28,7 +28,7 @@ export function safeNodeAt(doc: PMNode, pos: number): PMNode | null {
 }
 
 /**
- * Localiza e resolve a especificação de um grupo na posição indicada.
+ * Locates and resolves group specification at specified position.
  */
 export function resolveGroup(view: EditorView, pos: number | null | undefined): GroupRef | null {
   if (typeof pos !== 'number') return null;
@@ -150,7 +150,7 @@ export function selectGroupChildInTr(tr: Transaction, groupPos: number, index: n
   }
 }
 
-/** Cria um grupo contendo o nó em `targetPos` e o conteúdo fornecido em `dropped`. */
+/** Creates a group wrapping node at `targetPos` and provided `dropped` content. */
 export function createGroupInTr(
   tr: Transaction,
   spec: GroupSpec,
@@ -253,7 +253,7 @@ export function appendToGroupInTr(
   return tr.docChanged;
 }
 
-/** Retorna a posição do grupo pai e o índice do filho a partir da posição absoluta do filho. */
+/** Returns parent group position and child index from absolute child node position. */
 export function findChildIndex(
   doc: PMNode,
   childPos: number
@@ -271,7 +271,7 @@ export function findChildIndex(
 }
 
 /**
- * Remove grupos degenerados (< 2 filhos) ou nós aninhados de forma inválida no documento.
+ * Cleans up degenerate groups (< 2 children) or invalidly nested nodes across document.
  */
 export function pruneGroupsInTransaction(tr: Transaction, _doc?: PMNode, spec?: GroupSpec): boolean {
   let changed = false;

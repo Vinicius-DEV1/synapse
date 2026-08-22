@@ -1,9 +1,9 @@
 /**
- * Extensão DragToGroup
+ * DragToGroup Extension
  *
  * Gerencia o agrupamento de blocos lado a lado via drag and drop.
  * Enables group creation (such as columnGroup or linkGroup) when dropping a block onto
- * zonas laterais de outro bloco, ou integrá-lo a um grupo existente.
+ * side drop zones of another block, or integrate into an existing group.
  */
 
 import { Extension } from '@tiptap/core';
@@ -58,7 +58,7 @@ function dragStateFor(view: EditorView): DragState {
 /** Minimum distance in pixels to recalculate drop zone on dragover. */
 const MIN_MOVE_PX = 3;
 
-/** Proporção da faixa central do bloco destinada à movimentação padrão (não agrupamento). */
+/** Central threshold ratio dedicated to standard reordering (non-grouping). */
 const MOVE_BAND_RATIO = 0.2;
 
 function clearTarget(view: EditorView) {
@@ -79,7 +79,7 @@ function endDrag(view: EditorView) {
 }
 
 /**
- * Retorna e limpa o alvo de agrupamento atual (usado para drops externos de arquivos/imagens).
+ * Returns and clears active grouping target (used for external file/image drops).
  */
 export function consumeGroupDropTarget(
   view: EditorView,
@@ -92,7 +92,7 @@ export function consumeGroupDropTarget(
 }
 
 /**
- * Inicia o protocolo de arrasto para blocos disparados fora do view.dom (ex.: alça flutuante).
+ * Initiates drag protocol for blocks triggered outside view.dom (e.g. floating handle).
  */
 export function startExternalBlockDrag(
   view: EditorView,
@@ -126,7 +126,7 @@ function measureGrip(view: EditorView, pos: number, pointerX?: number): number {
 }
 
 /**
- * Seleciona um nó para arrasto garantindo sincronia entre a posição e a instância do nó.
+ * Selects a node for drag, verifying position matches node instance.
  */
 export function selectNodeForDrag(view: EditorView, pos: number, node: PMNode): boolean {
   const doc = view.state.doc;
@@ -170,7 +170,7 @@ function armExternalDragCleanup(view: EditorView) {
   if (typeof window === 'undefined') return;
 
   const finish = () => {
-    // Macrotask para garantir que o ProseMirror complete o processamento do drop
+    // Macrotask ensuring ProseMirror completes internal drop transaction
     // and delete source node before clearing view.dragging.
     setTimeout(() => {
       endExternalDrag(view);

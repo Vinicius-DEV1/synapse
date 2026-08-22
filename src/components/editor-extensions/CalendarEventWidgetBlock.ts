@@ -96,7 +96,7 @@ export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>(
             const { selection } = state;
 
             if (event.key === 'Backspace' || event.key === 'Delete') {
-              // 1. Se o widget já estiver selecionado (NodeSelection), intercepta e abre a confirmação
+              // 1. If widget is selected (NodeSelection), intercept and open confirmation modal
               if (
                 selection instanceof NodeSelection &&
                 selection.node.type.name === 'calendarEventWidget'
@@ -112,13 +112,13 @@ export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>(
                 }
               }
 
-              // 2. Se for uma seleção normal e o cursor estiver logo antes ou depois do widget
+              // 2. Text selection with cursor adjacent to widget
               if (selection.empty) {
                 const { $anchor } = selection;
                 if (event.key === 'Backspace') {
                   const nodeBefore = $anchor.nodeBefore;
                   if (nodeBefore && nodeBefore.type.name === 'calendarEventWidget') {
-                    // Seleciona o widget em vez de apagá-lo instantaneamente
+                    // Select widget node instead of deleting immediately
                     const tr = state.tr.setSelection(NodeSelection.create(state.doc, $anchor.pos - nodeBefore.nodeSize));
                     view.dispatch(tr);
                     return true;
@@ -126,7 +126,7 @@ export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>(
                 } else if (event.key === 'Delete') {
                   const nodeAfter = $anchor.nodeAfter;
                   if (nodeAfter && nodeAfter.type.name === 'calendarEventWidget') {
-                    // Seleciona o widget em vez de apagá-lo instantaneamente
+                    // Select widget node instead of deleting immediately
                     const tr = state.tr.setSelection(NodeSelection.create(state.doc, $anchor.pos));
                     view.dispatch(tr);
                     return true;

@@ -1,17 +1,17 @@
 /**
  * ImageKeymap.ts
  *
- * Atalhos de teclado para blocos de imagem.
+ * Keyboard shortcuts for image blocks.
  *
  * Antes, Backspace/Delete perto de uma imagem era interceptado no Editor.tsx e
- * abria um modal de confirmação — inclusive quando o cursor só estava ao lado
- * da imagem, o que tornava impossível apagar texto normalmente.
+ * opened confirmation modal even when cursor was adjacent to image,
+ * which prevented normal text deletion.
  *
- * Comportamento novo (padrão de editores como Notion/Google Docs):
+ * Modern editor behavior (Notion / Google Docs standard):
  *   • cursor encostado numa imagem  → a primeira tecla SELECIONA a imagem
- *   • imagem selecionada            → a segunda tecla apaga (desfazível com Ctrl+Z)
+ *   • Selected image → delete/backspace removes node (undoable with Ctrl+Z)
  *   • Alt+↑ / Alt+↓                 → move a imagem um bloco acima/abaixo
- *   • Enter                         → cria um parágrafo depois da imagem
+ *   • Enter → inserts a new paragraph after the image
  */
 
 import { Extension } from '@tiptap/core';
@@ -21,7 +21,7 @@ import { getSelectedImage, isImageNode, moveBlockNode } from './imageUtils';
 export const ImageKeymap = Extension.create({
   name: 'imageKeymap',
 
-  // Precisa rodar antes dos atalhos padrão do StarterKit.
+  // Must execute before standard StarterKit keymaps.
   priority: 1000,
 
   addKeyboardShortcuts() {
@@ -35,7 +35,7 @@ export const ImageKeymap = Extension.create({
       const { state, dispatch } = this.editor.view;
       const { selection } = state;
 
-      // 1) Imagem já selecionada → abre o modal de confirmação de exclusão.
+      // 1) Selected image → opens delete confirmation modal.
       const selected = getSelectedImage(state);
       if (selected) {
         window.dispatchEvent(
@@ -46,7 +46,7 @@ export const ImageKeymap = Extension.create({
         return true;
       }
 
-      // 2) Cursor colado numa imagem → seleciona em vez de apagar às cegas.
+      // 2) Cursor adjacent to image → selects image node instead of deleting blindly.
       if (!selection.empty) return false;
 
       const $from = selection.$from;
