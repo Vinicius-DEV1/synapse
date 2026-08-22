@@ -19,10 +19,9 @@ export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Strips HTML tags and normalizes whitespace for plain text search */
-export function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
-}
+import { cleanHtmlText } from '../../../utils/content-extractor';
+
+export const stripHtml = cleanHtmlText;
 
 const plainTextCache = new Map<string, string>();
 
