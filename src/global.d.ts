@@ -6,16 +6,16 @@ declare global {
     __TAURI_INTERNALS__?: Record<string, unknown>;
     __cadernoModuleKeys?: Record<string, unknown>;
     /**
-     * Arquivos de imagem esperando o upload criptografado terminar, indexados
-     * pelo ID temporário (`uploading_...`). Populado em `useEditorDropPaste` e
-     * `BlobImageInterceptor`; lido em `EncryptedImage` para recuperar o File
-     * original quando o node view remonta antes do upload terminar.
+     * Pending encrypted image files waiting for upload to finish, keyed by
+     * temporary ID (`uploading_...`). Populated in `useEditorDropPaste` and
+     * `BlobImageInterceptor`; read in `EncryptedImage` to recover original File
+     * when node view remounts before upload completes.
      */
     __pendingImageUploads?: Map<string, File>;
     /**
-     * Backup em memória do conteúdo do editor por página, usado por
-     * `useEditorSync` para recuperar um CRDT recém-editado quando o componente
-     * remonta antes do autosave persistir (ex.: troca rápida de aba).
+     * In-memory editor content backup per page, used by `useEditorSync`
+     * to recover recently edited CRDT state when the component remounts
+     * before autosave persists (e.g. quick tab switching).
      */
     __cadernoEditorBackup?: Map<string | null, { html: string; crdt: string }>;
   }
