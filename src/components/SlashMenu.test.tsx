@@ -19,6 +19,27 @@ describe('SlashMenu component', () => {
     expect(screen.getByText('Título 1')).toBeInTheDocument();
     expect(screen.getByText('Lista de tarefas')).toBeInTheDocument();
     expect(screen.getByText('Tabela')).toBeInTheDocument();
+    expect(screen.getByText('Criar Página')).toBeInTheDocument();
+    expect(screen.getByText('Vincular Página')).toBeInTheDocument();
+  });
+
+  it('filters page commands by query and handles click selection', () => {
+    const handleSelect = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <SlashMenu
+        x={100}
+        y={100}
+        query="criar"
+        onSelect={handleSelect}
+        onClose={handleClose}
+      />
+    );
+
+    expect(screen.getByText('Criar Página')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Criar Página'));
+    expect(handleSelect).toHaveBeenCalledWith('page-create');
   });
 
   it('filters commands by query and handles click selection', () => {
