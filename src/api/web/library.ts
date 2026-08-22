@@ -43,7 +43,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
               id: bookId,
               title,
               author: '',
-              file_path: remotePath, // Agora salvamos o caminho do Storage, não o local!
+              file_path: remotePath, // Save remote storage path instead of local filesystem path
               drive_file_id: driveFileId,
               original_name: file.name,
               cover_image: '',

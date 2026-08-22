@@ -129,7 +129,7 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     }
   },
   searchItems: async (query: string) => {
-    // Busca e decripta todos antes de filtrar
+    // Fetch and decrypt all items before applying filter
     const api = webVaultApi(db, generateId);
     const all = await api.getItems();
     const q = query.toLowerCase();
@@ -250,28 +250,15 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     if (!password) return 0;
 
     let score = 0;
-    const len = password.length;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (password.length >= 16) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-    // Length scoring
-    if (len >= 8) score += 1;
-    if (len >= 12) score += 1;
-    if (len >= 16) score += 1;
-
-    // Character diversity
-    const hasLower = /[a-z]/.test(password);
-    const hasUpper = /[A-Z]/.test(password);
-    const hasNumbers = /[0-9]/.test(password);
-    const hasSymbols = /[^a-zA-Z0-9]/.test(password);
-    const diversity = [hasLower, hasUpper, hasNumbers, hasSymbols].filter(Boolean).length;
-
-    if (diversity >= 2) score += 1;
-    if (diversity >= 3) score += 1;
-    if (diversity >= 4) score += 1;
-
-    // Penalize common patterns
+    // Common patterns penalty
     const commonPatterns = [
-      /^123/, /abc/i, /qwerty/i, /password/i, /admin/i,
-      /(.)\1{2,}/, // 3+ repeated chars
       /^[a-z]+$/i, // only letters
       /^[0-9]+$/, // only numbers
     ];
@@ -282,11 +269,10 @@ export const webVaultApi = (db: any, generateId: () => string) => ({
     score = Math.max(0, score - penalties);
 
     // Map to 0-4 scale
-    if (score <= 1) return 0; // Muito Fraca
-    if (score <= 2) return 1; // Fraca
-    if (score <= 3) return 2; // Razoável
-    if (score <= 4) return 3; // Forte
-    return 4; // Muito Forte
+    if (score <= 1) return 0; // Very Weak
+    if (score <= 2) return 1; // Weak
+    if (score <= 3) return 2; // Fair
+    if (score <= 4) return 3; // Strong
+    return 4; // Very Strong
   }
 });
-

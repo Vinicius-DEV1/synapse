@@ -23,22 +23,22 @@ export const webSyncApi = (db: any, originalDelete: any, originalPut: any) => ({
     }
     return { success: true };
   },
-  // #3: Busca apenas rows com IDs específicos (evita carregar tabela inteira na memória)
-  // No IndexedDB, usamos uma transaction com get individual por ID — 
-  // muito mais eficiente que getAll + filter quando há poucos IDs vs muitas rows.
+  // Fetches only rows with specific IDs (avoids loading the entire table into memory).
+  // In IndexedDB, uses a single readonly transaction with individual get operations,
+  // which is significantly more efficient than getAll + filter for selective syncing.
   getRowsByIds: async (tableName: string, ids: string[]) => {
     if (!db.objectStoreNames.contains(tableName as any) || ids.length === 0) return [];
     
     const tx = db.transaction(tableName as any, 'readonly');
     const results: any[] = [];
     
-    // Buscar cada ID individualmente dentro da mesma transaction (rápido no IndexedDB)
+    // Fetch each ID individually within the same transaction (efficient in IndexedDB)
     const promises = ids.map(async (id: string) => {
       try {
         const row = await tx.store.get(id);
         if (row) results.push(row);
       } catch {
-        // ID não encontrado — normal durante sync
+        // ID not found — expected during normal sync flow
       }
     });
     
