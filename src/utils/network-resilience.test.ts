@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { NetworkResilience } from './NetworkResilience';
+import { NetworkResilience } from './network-resilience';
 
 describe('NetworkResilience', () => {
   it('successfully returns data on first attempt without retrying', async () => {

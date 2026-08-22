@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventDate, getEventDayStr, getEventTimeStr } from './dateUtils';
+import { parseEventDate, getEventDayStr, getEventTimeStr } from './date-utils';
 
 describe('dateUtils', () => {
   it('parses YYYY-MM-DD safely into local Date without UTC offset shifts', () => {

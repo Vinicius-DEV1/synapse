@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PayloadOptimizer } from './PayloadOptimizer';
+import { PayloadOptimizer } from './payload-optimizer';
 
 describe('PayloadOptimizer', () => {
   it('handles primitive values correctly', () => {

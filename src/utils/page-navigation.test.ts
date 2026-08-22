@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFlatPageOrder } from './pageNavigation';
+import { getFlatPageOrder } from './page-navigation';
 import type { AppState, Page } from '../types';
 
 describe('pageNavigation - getFlatPageOrder', () => {
