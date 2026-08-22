@@ -79,7 +79,7 @@ export async function findLocalCanonicalPath(
 }
 
 /**
- * Constrói a URL do protocolo customizado seguro (`encrypted://` ou `http://encrypted.localhost`).
+ * Builds the secure custom protocol asset URL (`encrypted://` or `http://encrypted.localhost`).
  */
 export function buildEncryptedAssetUrl(moduleName: string, localFullPath: string): string {
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
@@ -103,11 +103,11 @@ export async function fetchEncryptedStreamBuffer(assetUrl: string): Promise<Arra
 }
 
 /**
- * Executa a resolução completa em cascata:
- * 1. Busca no disco local (Tauri).
- * 2. Tenta stream via protocolo encrypted://.
- * 3. Tenta API nativa getBookFile / getFile (se aplicável).
- * 4. Fallback: Baixa do Google Drive, descriptografa e salva em cache local.
+ * Executes full tiered resolution cascade:
+ * 1. Checks local disk (Tauri).
+ * 2. Attempts stream via encrypted:// custom protocol.
+ * 3. Attempts native API getBookFile / getFile (if available).
+ * 4. Cloud Fallback: Downloads from Google Drive, decrypts, and saves to local cache.
  */
 export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): Promise<ArrayBuffer> {
   const { moduleName, id, savedPath, driveFileId, masterKey, extHint, onUpdateSavedPath } = options;

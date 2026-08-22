@@ -5,7 +5,7 @@ import type { DesktopVideoApi } from './video-types';
 const VIDEO_TABLE = 'videos';
 
 /**
- * Obtém link de streaming a partir do ID do Drive.
+ * Retrieves streaming URL for a given Google Drive file ID.
  */
 export async function getVideoStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {
   const token = await getValidAccessToken();
@@ -33,7 +33,7 @@ export async function getVideoStreamLink(driveFileId: string, masterKey?: Crypto
 }
 
 /**
- * Baixa um vídeo do drive e salva localmente (apenas Desktop)
+ * Downloads a video from Google Drive and caches it locally (Desktop only).
  */
 export async function downloadVideoToLocal(video: VideoItem, onProgress?: (percent: number) => void, forceOriginal?: boolean): Promise<string> {
   if (!window.api?.video) {
@@ -71,7 +71,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
     localPath = await window.api.video.saveLocal(targetFileName, buffer);
   }
   
-  // Atualiza banco de dados marcando como local
+  // Update database record marking video as local
   await window.api.sync.upsertRow(VIDEO_TABLE, {
     ...video,
     is_local: true,
@@ -83,8 +83,8 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
 }
 
 /**
- * Verifica se um vídeo está disponível localmente.
- * If yes, return URL with file:// or streaming port. Otherwise, return Drive URL.
+ * Resolves optimal playback URL for a video item.
+ * If local, returns local streaming port or custom protocol URL. Otherwise returns Drive stream.
  */
 export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
   const { getSettings } = await import('../../utils/settings');
@@ -95,9 +95,9 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
   let isUnsupported = forceWeb || !['mp4', 'webm'].includes(ext);
   
   if (pref === 'force_web') {
-    isUnsupported = true; // Sempre tenta puxar a web version
+    isUnsupported = true; // Force Web-compatible version
   } else if (pref === 'force_original') {
-    isUnsupported = false; // Sempre tenta rodar o original
+    isUnsupported = false; // Always prefer original file
   }
 
   const baseName = video.original_name.replace(/\.[^/.]+$/, "");
@@ -146,7 +146,7 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
       return `/stream-video/${targetDriveId}`;
     }
   } else {
-    // Desktop: Streaming Nativo em Rust do Google Drive (ignorando o Service Worker)
+    // Desktop: Native Rust HTTP streaming from Google Drive (bypasses Service Worker)
     // If unsupported format (MKV), force cloud web_file_id lookup if not present locally
     const targetDriveId = isUnsupported && video.drive_web_file_id 
       ? video.drive_web_file_id 
@@ -165,7 +165,7 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
       }
     }
     if (targetDriveId) {
-      return `/stream-video/${targetDriveId}`; // Fallback para SW
+      return `/stream-video/${targetDriveId}`; // Service Worker fallback
     }
   }
 

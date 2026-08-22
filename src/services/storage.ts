@@ -23,12 +23,12 @@ export async function encryptFile(fileBuffer: ArrayBuffer, masterKey: CryptoKey)
 }
 
 /**
- * Encrypts large files chunk-by-chunk using ENC1 format (used for videos).
- * O formato é:
+ * Encrypts large files chunk-by-chunk using ENC1 format (used for video streaming).
+ * Wire format:
  * [MAGIC: "ENC1"](4) + [ORIGINAL_SIZE](8) + [CHUNK_SIZE](4)
- * Depois, para cada chunk:
+ * Then, for each chunk:
  * [IV](12) + [AES-GCM-Data-With-Auth-Tag](chunk_size + 16)
- * Retorna um Blob para não estourar a memória com arquivos grandes.
+ * Returns a Blob to avoid memory exhaustion on large multimedia files.
  */
 export async function encryptFileChunked(file: File | Blob, masterKey: CryptoKey, onProgress?: (p: number) => void): Promise<Blob> {
   const CHUNK_SIZE = 1024 * 1024; // 1MB
@@ -80,7 +80,7 @@ export async function encryptFileChunked(file: File | Blob, masterKey: CryptoKey
 }
 
 /**
- * Descriptografa um arquivo PDF baixado do Firebase Storage
+ * Decrypts an encrypted file buffer using the Master Key.
  */
 export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<ArrayBuffer> {
   const data = new Uint8Array(encryptedBuffer);
@@ -97,8 +97,8 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
 }
 
 /**
- * Faz o upload de um arquivo PDF criptografado para o Firebase Storage
- * Retorna o caminho remoto gerado.
+ * Encrypts and uploads a PDF file to Google Drive.
+ * Returns the remote resource URI ('drive://<fileId>').
  */
 export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<string> {
   const encrypted = await encryptFile(fileBuffer, masterKey);
@@ -116,8 +116,7 @@ export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer
 }
 
 /**
- * Baixa um PDF criptografado do Firebase Storage, descriptografa e retorna
- * um ArrayBuffer para o leitor de PDF (pdf.js).
+ * Downloads and decrypts an encrypted PDF file from Google Drive for pdf.js.
  */
 export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey): Promise<ArrayBuffer> {
   let encryptedBuffer: ArrayBuffer;

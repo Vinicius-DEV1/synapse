@@ -12,7 +12,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Inicializa o Firebase
+// Initialize Firebase app instance
 const app = initializeApp(firebaseConfig);
 
 import { platform } from "./platform";

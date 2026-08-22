@@ -16,8 +16,7 @@ const ENCRYPTION_ALGORITHM = 'AES-GCM';
 const IV_LENGTH = 12; // Standard AES-GCM IV length
 
 /**
- * Deriva uma Chave Mestra (CryptoKey) a partir da senha do usuário.
- * Utiliza PBKDF2 para dificultar ataques de força bruta.
+ * Derives a Master CryptoKey from user password using PBKDF2 with SHA-256.
  */
 export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
@@ -62,8 +61,8 @@ export async function exportKeyToHex(key: CryptoKey): Promise<string> {
 }
 
 /**
- * Encripta um texto (string) usando a Chave Mestra.
- * Retorna uma string base64 combinando o IV e o texto encriptado.
+ * Encrypts a string using AES-GCM and the provided CryptoKey.
+ * Returns a Base64-encoded string combining IV and ciphertext.
  */
 export async function encryptText(text: string, masterKey: CryptoKey): Promise<string> {
   const encoder = new TextEncoder();
@@ -86,18 +85,18 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
   combinedBuffer.set(iv, 0);
   combinedBuffer.set(new Uint8Array(encryptedBuffer), iv.length);
 
-  // Converte para Base64 para facilitar o armazenamento no Firebase (JSON)
+  // Convert to Base64 for JSON serialization (e.g. Firebase)
   return uint8ArrayToBase64(combinedBuffer);
 }
 
 /**
- * Desencripta um texto em formato base64 usando a Chave Mestra.
- * Retorna a string original.
+ * Decrypts a Base64-encoded string containing IV + ciphertext using the provided CryptoKey.
+ * Returns the decoded original plaintext.
  */
 export async function decryptText(encryptedBase64: string, masterKey: CryptoKey): Promise<string> {
   const combinedBuffer = base64ToUint8Array(encryptedBase64);
 
-  // Extrai o IV (primeiros IV_LENGTH bytes)
+  // Extract IV (first IV_LENGTH bytes)
   const iv = combinedBuffer.slice(0, IV_LENGTH);
   const encryptedData = combinedBuffer.slice(IV_LENGTH);
 
