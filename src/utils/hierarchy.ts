@@ -55,3 +55,96 @@ export function isValidHierarchyMove(
   if (sourceId === targetParentId) return false;
   return !isPageDescendant(pages, sourceId, targetParentId);
 }
+
+export interface HierarchyNode {
+  id: string;
+  title: string;
+  icon?: string;
+  parent_id?: string | null;
+}
+
+/**
+ * Retorna a lista de páginas ancestrais ordenadas da raiz até o pai imediato da página `pageId`.
+ * Não inclui a própria página `pageId`.
+ * Protegido contra referências cíclicas.
+ */
+export function getPageAncestors<T extends HierarchyNode>(
+  pages: T[],
+  pageId: string
+): T[] {
+  if (!pageId) return [];
+  const pageMap = new Map<string, T>();
+  for (const page of pages) {
+    pageMap.set(page.id, page);
+  }
+
+  const ancestors: T[] = [];
+  const visited = new Set<string>();
+  let current = pageMap.get(pageId);
+
+  while (current && current.parent_id) {
+    if (visited.has(current.parent_id)) {
+      break;
+    }
+    visited.add(current.parent_id);
+    const parent = pageMap.get(current.parent_id);
+    if (!parent) break;
+    ancestors.unshift(parent);
+    current = parent;
+  }
+
+  return ancestors;
+}
+
+/**
+ * Retorna o caminho completo de páginas (ancestrais + própria página no final).
+ */
+export function getPagePath<T extends HierarchyNode>(
+  pages: T[],
+  pageId: string
+): T[] {
+  if (!pageId) return [];
+  const ancestors = getPageAncestors(pages, pageId);
+  const current = pages.find(p => p.id === pageId);
+  if (current) {
+    return [...ancestors, current];
+  }
+  return ancestors;
+}
+
+/**
+ * Retorna uma representação em texto do caminho hierárquico das páginas ancestrais ou do caminho completo.
+ */
+export function getPageBreadcrumbString(
+  pages: HierarchyNode[],
+  pageId: string,
+  options?: {
+    includeSelf?: boolean;
+    separator?: string;
+    rootLabel?: string;
+    maxAncestors?: number;
+  }
+): string {
+  const {
+    includeSelf = false,
+    separator = ' › ',
+    rootLabel = 'Início',
+    maxAncestors,
+  } = options || {};
+
+  const items = includeSelf ? getPagePath(pages, pageId) : getPageAncestors(pages, pageId);
+  if (items.length === 0) {
+    return rootLabel;
+  }
+
+  let displayItems = items;
+  if (maxAncestors && items.length > maxAncestors) {
+    displayItems = [
+      items[0],
+      { id: '__ellipsis__', title: '...' },
+      ...items.slice(items.length - (maxAncestors - 1)),
+    ];
+  }
+
+  return displayItems.map(item => item.title || 'Sem título').join(separator);
+}
