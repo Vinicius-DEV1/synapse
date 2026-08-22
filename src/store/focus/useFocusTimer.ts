@@ -4,9 +4,8 @@ import { playAlarmSound } from './focus-sound';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi' | 'stats';
 
-// `setAppIcon` é implementado dentro de `window.api.focus` (ver
-// src/api/web/focus.ts e src/api/tauri/focus.ts), embora o tipo
-// `ICadernoAPI['focus']` (src/api/types.ts) ainda não declare esse campo.
+// `setAppIcon` is implemented in `window.api.focus` (see src/api/web/focus.ts and src/api/tauri/focus.ts)
+// even though `ICadernoAPI['focus']` (src/api/types.ts) may not yet declare it in the main interface.
 type FocusApiWithIcon = NonNullable<NonNullable<typeof window.api>['focus']> & {
   setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>;
 };

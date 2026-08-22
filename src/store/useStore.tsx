@@ -77,7 +77,7 @@ interface StoreContextType {
 
 export const StoreContext = createContext<StoreContextType | null>(null);
 
-// Referência global imperativa para acessar state e dispatch sem forçar re-render em node views
+// Global imperative reference to access state and dispatch without forcing re-renders in ProseMirror node views
 let _storeStateRef: AppState = initialState;
 let _storeDispatchRef: React.Dispatch<Action> | null = null;
 
