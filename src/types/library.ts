@@ -22,9 +22,9 @@ export interface LibraryBook {
   publisher?: string | null;
   language?: string | null;
   epub_locations?: string | null;
-  /** Página atual no leitor epub (índice calculado por epubjs.locations) */
+  /** Current page in epub reader (index calculated via epubjs.locations) */
   current_page?: number | null;
-  /** JSON serializado com preferências de leitura: { fontSize, readingMode, fontFamily, textWidth } */
+  /** Serialized JSON reading preferences: { fontSize, readingMode, fontFamily, textWidth } */
   reading_preferences?: string | null;
 }
 

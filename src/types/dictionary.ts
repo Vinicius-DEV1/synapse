@@ -17,10 +17,8 @@ export interface DeepDive {
 }
 
 /**
- * O rascunho de flashcard que a IA sugere a partir de uma busca no dicionário —
- * não é a mesma coisa que `AnkiCard` (types/anki.ts), que é a linha real do
- * baralho, com id, srs_state etc. Os dois tinham o mesmo nome e colidiam no
- * `export *` de types/index.ts.
+ * Flashcard draft suggested by AI from a dictionary lookup.
+ * Distinct from `AnkiCard` (types/anki.ts), which represents a persisted deck card.
  */
 export interface SuggestedAnkiCard {
   front: string;
