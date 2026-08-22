@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, PlayCircle, Loader2, CheckCircle2, Circle} from 'lucide-react';
+import { X, PlayCircle, Loader2, CheckCircle2, Circle, RefreshCw } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { formatDuration } from '../../utils/format';
 
@@ -9,29 +9,55 @@ interface YouTubePlaylistModalProps {
   onClose: () => void;
 }
 
+// Cache em memória para evitar buscas repetidas de playlists já carregadas
+const playlistCache = new Map<string, any>();
+
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
-  const [loading, setLoading] = useState(true);
-  const [playlist, setPlaylist] = useState<any>(null);
+  const [loading, setLoading] = useState(!playlistCache.has(url));
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [playlist, setPlaylist] = useState<any>(playlistCache.get(url) || null);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadPlaylist();
   }, [url]);
 
-
-
-  const loadPlaylist = async () => {
+  const loadPlaylist = async (force = false) => {
     try {
-      setLoading(true);
+      if (!force && playlistCache.has(url)) {
+        const cached = playlistCache.get(url);
+        setPlaylist(cached);
+        setLoading(false);
+
+        // Atualiza status de assistidos em background sem bloquear
+        if (cached?.entries?.length && window.api?.youtube?.getWatched) {
+          const videoIds = cached.entries.map((e: any) => e.id).filter(Boolean);
+          if (videoIds.length > 0) {
+            const watchedIds = await window.api.youtube.getWatched(videoIds);
+            setWatchedSet(new Set(watchedIds));
+          }
+        }
+        return;
+      }
+
+      if (force) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
       if (window.api && window.api.youtube && window.api.youtube.fetchPlaylistInfo) {
         const data = await window.api.youtube.fetchPlaylistInfo(url);
         if (data && data.entries) {
+          playlistCache.set(url, data);
           setPlaylist(data);
           
-          // Fetch watched status
-          const videoIds = data.entries.map((e: any) => e.id);
-          const watchedIds = await window.api.youtube.getWatched(videoIds);
-          setWatchedSet(new Set(watchedIds));
+          // Buscar status de assistidos
+          const videoIds = data.entries.map((e: any) => e.id).filter(Boolean);
+          if (videoIds.length > 0 && window.api.youtube.getWatched) {
+            const watchedIds = await window.api.youtube.getWatched(videoIds);
+            setWatchedSet(new Set(watchedIds));
+          }
         } else {
           setPlaylist({ entries: [] });
         }
@@ -42,6 +68,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
       console.error('Failed to fetch playlist', e);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -53,7 +80,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
     setWatchedSet(newSet);
     
     if (window.api && window.api.youtube) {
-      await window.api.youtube.setWatched(video.id, isWatched, video.title, video.uploader);
+      await window.api.youtube.setWatched(video.id, isWatched, video.title, video.uploader || video.channel);
       if (window.api.sync && window.api.sync.push) {
         window.api.sync.push('youtube_watched'); // trigger sync for nuvem
       }
@@ -67,13 +94,13 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.01] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center border border-brand-500/20 shadow-inner">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center border border-brand-500/20 shadow-inner shrink-0">
               <PlayCircle size={16} className="text-brand-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" />
             </div>
-            <div>
-              <h2 className="text-base font-medium text-white/90 tracking-wide line-clamp-1">{title}</h2>
-              {playlist?.entries && (
+            <div className="min-w-0">
+              <h2 className="text-base font-medium text-white/90 tracking-wide truncate">{title}</h2>
+              {playlist?.entries && playlist.entries.length > 0 && (
                 <div className="mt-1.5 w-full">
                   <div className="flex justify-between items-center mb-1">
                     <p className="text-[11px] text-white/40 font-medium uppercase tracking-wider">
@@ -83,7 +110,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                       {Math.round((watchedSet.size / playlist.entries.length) * 100)}%
                     </p>
                   </div>
-                  <div className="w-64 bg-white/5 rounded-full h-1 overflow-hidden">
+                  <div className="w-64 max-w-full bg-white/5 rounded-full h-1 overflow-hidden">
                     <div 
                       className="bg-brand-500 h-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(248,113,113,0.5)]" 
                       style={{ width: `${(watchedSet.size / playlist.entries.length) * 100}%` }} 
@@ -93,12 +120,23 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
               )}
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white/90 transition-all duration-200"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => loadPlaylist(true)}
+              disabled={loading || isRefreshing}
+              className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white/90 transition-all duration-200 disabled:opacity-30"
+              title="Atualizar lista de vídeos"
+            >
+              <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-brand-400' : ''} />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white/90 transition-all duration-200"
+              title="Fechar"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -157,10 +195,10 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                           isWatched ? '!text-white/40 line-through' : '!text-white/90 hover:!text-brand-300'
                         }`}
                       >
-                        {video.title}
+                        {video.title || 'Vídeo sem título'}
                       </a>
                       <span className="text-[11px] text-white/40 truncate mt-1 font-medium">
-                        {video.uploader}
+                        {video.uploader || video.channel || ''}
                       </span>
                     </div>
 
