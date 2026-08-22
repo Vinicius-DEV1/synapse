@@ -23,6 +23,8 @@ mod cmd_youtube;
 pub mod crypto;
 pub mod crypto_stream;
 pub mod video_probe;
+pub mod vault_security;
+pub mod library_stats;
 mod db;
 pub mod protocol_encrypted;
 use std::sync::Mutex;
@@ -211,11 +213,11 @@ pub fn run() {
             cmd_library::library_get_book_collections,
             cmd_library::library_set_book_collections,
             cmd_library::library_create_collection,
-            cmd_library::library_get_ocr_cache,
-            cmd_library::library_save_ocr_cache,
-            cmd_library::library_start_reading_session,
-            cmd_library::library_end_reading_session,
-            cmd_library::library_get_reading_stats,
+            library_stats::library_get_ocr_cache,
+            library_stats::library_save_ocr_cache,
+            library_stats::library_start_reading_session,
+            library_stats::library_end_reading_session,
+            library_stats::library_get_reading_stats,
             cmd_files::files_get_all,
             cmd_files::files_get_by_id,
             cmd_files::files_create,
@@ -242,8 +244,8 @@ pub fn run() {
             cmd_vault::vault_search_items,
             cmd_vault::vault_get_password_history,
             cmd_vault::vault_generate_password,
-            cmd_vault::vault_check_breach,
-            cmd_vault::vault_check_strength,
+            vault_security::vault_check_breach,
+            vault_security::vault_check_strength,
             cmd_vault::vault_reorder_groups,
             cmd_practice::practice_get_sessions,
             cmd_practice::practice_create_session,
