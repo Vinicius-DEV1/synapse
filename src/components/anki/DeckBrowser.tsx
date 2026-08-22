@@ -17,7 +17,9 @@ import { CardTableView } from './browser/CardTableView';
 import { CardGridView } from './browser/CardGridView';
 import { CardListView } from './browser/CardListView';
 import { CardPreviewModal } from './browser/CardPreviewModal';
-import { HtmlRenderer } from './components/HtmlRenderer';
+import { DeckBrowserHeader } from './browser/DeckBrowserHeader';
+import { CardHoverTooltip } from './browser/CardHoverTooltip';
+import type { CardHoverState } from './browser/CardHoverTooltip';
 import type { Deck, Card } from './types';
 
 interface DeckBrowserProps {
@@ -219,27 +221,12 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         <div className={`flex-1 flex flex-col relative custom-scrollbar ${previewCard ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           
           {/* Header */}
-          <div className="p-6 border-b border-dark-border flex items-center justify-between bg-dark-bg shrink-0">
-            <div>
-              <h2 className="text-2xl font-bold text-dark-text flex items-center gap-2">
-                <HardDrive className="text-indigo-400" />
-                {deck.name}
-              </h2>
-              <p className="text-sm text-dark-subtext mt-1">{deck.description}</p>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded hover:bg-white/10 transition-colors ${showSettings ? 'bg-white/10 text-indigo-400' : 'text-dark-subtext'}`}
-                title="Configurações do Baralho"
-              >
-                <Settings size={20} />
-              </button>
-              <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white rounded hover:bg-white/10 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-          </div>
+          <DeckBrowserHeader
+            deck={deck}
+            showSettings={showSettings}
+            onToggleSettings={() => setShowSettings(!showSettings)}
+            onClose={onClose}
+          />
 
           {showSettings && (
             <div className="shrink-0 border-b border-white/5">
@@ -312,18 +299,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
         )}
       </div>
 
-      {hoverState && typeof document !== 'undefined' && createPortal(
-        <div 
-          className="fixed z-[9999] bg-dark-card border border-indigo-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)] rounded-xl p-5 max-w-md w-max pointer-events-none animate-fade-in"
-          style={{ left: Math.min(hoverState.x + 15, window.innerWidth - 450), top: Math.min(hoverState.y + 15, window.innerHeight - 200) }}
-        >
-          <div className="text-[10px] text-indigo-400 font-bold mb-2 uppercase tracking-widest">
-            {hoverState.type === 'front' ? 'Frente Completa' : 'Verso Completo'}
-          </div>
-          <HtmlRenderer html={hoverState.content} className="text-sm text-white leading-relaxed whitespace-pre-wrap block" as="div" />
-        </div>,
-        document.body
-      )}
+      <CardHoverTooltip hoverState={hoverState} />
     </div>
     </Portal>
   );
