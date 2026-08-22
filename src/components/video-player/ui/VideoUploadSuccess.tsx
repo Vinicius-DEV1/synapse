@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface VideoUploadSuccessProps {
   uploadResult: {
     video: { original_name: string };

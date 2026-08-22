@@ -1,4 +1,3 @@
-import React from 'react';
 import { GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -6,6 +5,7 @@ import SidebarItem from './SidebarItem';
 
 interface PinnedSidebarItemProps {
   page: any;
+  index?: number;
   activeTab: any;
   onCreatePage: (parentId: string | null) => Promise<void>;
   onUpdatePage: (id: string, updates: Partial<any>) => Promise<void>;

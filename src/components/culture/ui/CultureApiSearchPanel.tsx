@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import type { CultureSearchResult } from '../../../services/culture/culture-apis';
 import { CultureSearchResultsList } from './CultureSearchResultsList';

@@ -1,7 +1,6 @@
 import  { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import { FileQuestion, FolderUp, RefreshCw, Trash2, ArrowLeft } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 
 import HighlightToolbar from './HighlightToolbar';

@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileVideo, FileText, Loader2, CloudOff, Cloud } from 'lucide-react';
 import { processSubtitleFile } from '../../utils/subtitles';
 import { useStore } from '../../store/useStore';
 import { Portal } from '../ui/Portal';
 import { TrackSelectionSection } from './ui/TrackSelectionSection';
 import { VideoUploadSuccess } from './ui/VideoUploadSuccess';
-import { VideoQualitySelector, type WebQualityType } from './ui/VideoQualitySelector';
+import { VideoQualitySelector } from './ui/VideoQualitySelector';
 import { useVideoUploadScanner } from './hooks/useVideoUploadScanner';
 import { getValidAccessToken } from '../../services/drive';
 import type { UploadOptions } from '../../services/video/video-types';

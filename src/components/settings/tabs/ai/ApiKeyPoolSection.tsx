@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sparkles, Trash2, Plus, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
 import type { GeminiKeyEntry } from '../../../../services/gemini';
 

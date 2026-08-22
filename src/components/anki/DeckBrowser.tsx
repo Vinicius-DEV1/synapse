@@ -1,6 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { X, Settings, HardDrive } from 'lucide-react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
@@ -19,7 +17,6 @@ import { CardListView } from './browser/CardListView';
 import { CardPreviewModal } from './browser/CardPreviewModal';
 import { DeckBrowserHeader } from './browser/DeckBrowserHeader';
 import { CardHoverTooltip } from './browser/CardHoverTooltip';
-import type { CardHoverState } from './browser/CardHoverTooltip';
 import type { Deck, Card } from './types';
 
 interface DeckBrowserProps {
@@ -72,7 +69,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     setHoverState(null);
   };
 
-  const filteredCards = React.useMemo(() => {
+  const filteredCards = useMemo(() => {
     return cards.filter(c => {
       const matchesSearch = c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             c.back.toLowerCase().includes(searchQuery.toLowerCase());
@@ -94,7 +91,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
 
   const { selectedIds, toggleSelectAll, toggleSelectGroup, clearSelection } = useCardSelection(filteredCards);
 
-  const allTags = React.useMemo(() => {
+  const allTags = useMemo(() => {
     const tagsSet = new Set<string>();
     cards.forEach(c => {
       if (c.tags) c.tags.forEach((t: string) => tagsSet.add(t));
@@ -102,7 +99,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     return Array.from(tagsSet).sort();
   }, [cards]);
 
-  const groupedCards = React.useMemo(() => {
+  const groupedCards = useMemo(() => {
     const groups = new Map<string, Card[]>();
     for (const c of filteredCards) {
       if (!groups.has(c.note_id)) groups.set(c.note_id, []);

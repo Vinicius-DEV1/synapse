@@ -1,4 +1,3 @@
-import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import type { CalendarEvent } from '../../../types/core';

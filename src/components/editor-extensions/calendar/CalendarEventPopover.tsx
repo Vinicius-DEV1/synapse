@@ -1,4 +1,3 @@
-import React from 'react';
 import { Clock, Bell, ExternalLink, Trash2 } from 'lucide-react';
 import type { CalendarEvent } from '../../../types/core';
 

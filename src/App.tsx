@@ -9,7 +9,7 @@ import ContextMenu from './components/modals/ContextMenu';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
-import AiSidebar from './components/ai-sidebar/AiSidebar';
+import AiSidebar from './components/AiSidebar';
 import { useSync } from './hooks/useSync';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';

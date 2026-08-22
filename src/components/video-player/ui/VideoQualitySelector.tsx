@@ -1,5 +1,3 @@
-import React from 'react';
-
 export type WebQualityType = 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
 
 interface VideoQualitySelectorProps {

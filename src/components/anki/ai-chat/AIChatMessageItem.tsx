@@ -1,4 +1,3 @@
-import React from 'react';
 import type { ChatMessage } from '../../../hooks/useAIActions';
 import {
   ActionCreateCards,
@@ -10,11 +9,11 @@ import {
 interface AIChatMessageItemProps {
   msg: ChatMessage;
   idx: number;
-  actionStatus: Record<string, 'loading' | 'success' | 'error'>;
+  actionStatus: Record<string, boolean>;
   deckCards: any[];
   setActiveReviewAction: (action: { msgIdx: number; actIdx: number } | null) => void;
   setSuggestions: (suggs: any[]) => void;
-  handleExecuteAction: (actionKey: string, fn: () => Promise<void>) => Promise<void>;
+  handleExecuteAction: (action: any, actionKey: string) => Promise<void>;
 }
 
 export function AIChatMessageItem({

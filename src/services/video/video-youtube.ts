@@ -35,7 +35,7 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
     const finalFilename = localPath.split(/[\\/]/).pop() || filename.replace(/\.mp4$/, '.mkv');
 
     const subtitleTracksList: TrackItem[] = [];
-    if (selectedSubs && selectedSubs.length > 0) {
+    if (selectedSubs && selectedSubs.length > 0 && desktopVideoApi.scanTracks && desktopVideoApi.extractSubtitles && desktopVideoApi.saveLocal) {
       try {
         const scanResult = await desktopVideoApi.scanTracks(localPath);
         const streams = scanResult?.streams || [];

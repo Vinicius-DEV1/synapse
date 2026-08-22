@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
@@ -48,7 +48,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
   // If status is encrypted, we are logging in.
   const isSetup = status === 'new' || status === 'unencrypted';
 
-  React.useEffect(() => {
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     let localLock: { failedAttempts: number, lastFailedAt: number } | null = null;
 
@@ -230,7 +230,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           const newLock = await recordFailedAttempt();
           if (newLock.failedAttempts > 0 && newLock.failedAttempts % 3 === 0) {
             setLockoutTime(15);
-            setIntimidatingPhrase(INTIMIDATING_PHRASES[Math.floor(Math.random() * INTIMIDATING_PHRASES.length)]);
+            setIntimidatingPhrase(getRandomIntimidatingPhrase());
             triggerError('Acesso bloqueado por tentativas excessivas');
           } else {
             triggerError(res.error || `Senha incorreta. (${newLock.failedAttempts % 3}/3)`);
