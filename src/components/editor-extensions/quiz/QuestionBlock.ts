@@ -33,6 +33,11 @@ export const QuestionBlock = Node.create({
         parseHTML: (element) => (element.getAttribute('data-mode') === 'practice' ? 'practice' : 'edit'),
         renderHTML: (attributes) => ({ 'data-mode': attributes.mode || 'edit' }),
       },
+      layout: {
+        default: 'list',
+        parseHTML: (element) => (element.getAttribute('data-layout') === 'sequential' ? 'sequential' : 'list'),
+        renderHTML: (attributes) => ({ 'data-layout': attributes.layout || 'list' }),
+      },
       questions: {
         default: [createDefaultQuestion(1)],
         parseHTML: (element) => {
