@@ -9,6 +9,8 @@ import EpubTopBar from './epub/EpubTopBar';
 import EpubSidebars from './epub/EpubSidebars';
 import EpubTypography from './epub/EpubTypography';
 import EpubHighlightMenu from './epub/EpubHighlightMenu';
+import { EpubErrorState } from './epub/EpubErrorState';
+import { useEpubShortcuts } from './epub/hooks/useEpubShortcuts';
 import { useEpubLoader } from './epub/useEpubLoader';
 import { useEpubTheme } from './epub/useEpubTheme';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
@@ -208,51 +210,14 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     });
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
-        if (window.api?.app?.toggleFullScreen) {
-          window.api.app.toggleFullScreen();
-        }
-        return;
-      }
-      if (e.key.toLowerCase() === 'f' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !isFullScreenRef.current });
-        return;
-      }
-
-      if (e.key === 'ArrowRight') turnPage('next');
-      if (e.key === 'ArrowLeft') turnPage('prev');
-      
-      const isInput = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
-      if (isInput) return;
-
-      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        cycleReadingMode();
-      }
-      if (e.key === '+' || e.key === '=') {
-        changeZoom(10);
-      }
-      if (e.key === '-') {
-        changeZoom(-10);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    if (rendition) {
-      rendition.on('keydown', handleKeyDown);
-      rendition.on('keyup', handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      if (rendition) {
-        rendition.off('keydown', handleKeyDown);
-        rendition.off('keyup', handleKeyDown);
-      }
-    };
-  }, [rendition, setReadingMode, setFontSize, dispatch, state.isReadingModeFullScreen]);
+  useEpubShortcuts({
+    rendition,
+    dispatch,
+    isFullScreenRef,
+    turnPage,
+    cycleReadingMode,
+    changeZoom,
+  });
 
   useEffect(() => {
     if (!rendition) return;
@@ -267,31 +232,52 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const currentPageSafe = currentPage || 0;
   const totalPagesSafe = totalPages || 0;
   const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
-  
-  const bottomBarClasses = readingMode === 'dark' ? 'bg-[#1a1a1a] text-gray-500' : 
-    readingMode === 'midnight' ? 'bg-[#0f172a] text-[#475569]' : 
-    readingMode === 'nord' ? 'bg-[#2e3440] text-[#4c566a]' : 
-    readingMode === 'dim' ? 'bg-[#2d2d30] text-[#808080]' : 
-    readingMode === 'high-contrast' ? 'bg-[#000000] text-[#aaaaaa]' : 
-    readingMode === 'sepia' ? 'bg-[#e9dec0] text-[#8c765f]' : 
-    readingMode === 'mint' ? 'bg-[#c8e6c9] text-[#2d6a4f]' : 
-    'bg-white text-gray-400';
 
-  const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const page = Number(e.target.value);
-    if (!epubBook || !rendition || !locationsReady) return;
-    const cfi = epubBook.locations.cfiFromLocation(page);
-    if (cfi) rendition.display(cfi);
-  };
+  const bottomBarClasses =
+    readingMode === 'dark'
+      ? 'bg-[#1a1a1a] text-gray-500'
+      : readingMode === 'midnight'
+      ? 'bg-[#0f172a] text-[#475569]'
+      : readingMode === 'nord'
+      ? 'bg-[#2e3440] text-[#4c566a]'
+      : readingMode === 'dim'
+      ? 'bg-[#2d2d30] text-[#808080]'
+      : readingMode === 'high-contrast'
+      ? 'bg-[#000000] text-[#aaaaaa]'
+      : readingMode === 'sepia'
+      ? 'bg-[#e9dec0] text-[#8c765f]'
+      : readingMode === 'mint'
+      ? 'bg-[#c8e6c9] text-[#2d6a4f]'
+      : 'bg-white text-gray-400';
 
   return (
-    <div className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${readingMode === 'dark' ? 'bg-[#1a1a2e]' : readingMode === 'sepia' ? 'bg-[#f4ecd8]' : readingMode === 'mint' ? 'bg-[#e8f5e9]' : readingMode === 'dim' ? 'bg-[#2d2d30]' : readingMode === 'nord' ? 'bg-[#2e3440]' : readingMode === 'midnight' ? 'bg-[#0f172a]' : readingMode === 'high-contrast' ? 'bg-black' : 'bg-white'}`}>
-      <div className={`
+    <div
+      className={`h-full flex flex-col relative overflow-hidden reading-mode-${readingMode} ${
+        readingMode === 'dark'
+          ? 'bg-[#1a1a2e]'
+          : readingMode === 'sepia'
+          ? 'bg-[#f4ecd8]'
+          : readingMode === 'mint'
+          ? 'bg-[#e8f5e9]'
+          : readingMode === 'dim'
+          ? 'bg-[#2d2d30]'
+          : readingMode === 'nord'
+          ? 'bg-[#2e3440]'
+          : readingMode === 'midnight'
+          ? 'bg-[#0f172a]'
+          : readingMode === 'high-contrast'
+          ? 'bg-black'
+          : 'bg-white'
+      }`}
+    >
+      <div
+        className={`
         transition-all duration-300 z-30
         ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
         ${state.isReadingModeFullScreen ? 'hidden' : ''}
         absolute md:relative top-0 left-0 right-0
-      `}>
+      `}
+      >
         <EpubTopBar onBack={onBack} />
       </div>
       <EpubTypography />
@@ -303,103 +289,23 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
           </div>
         )}
-        
+
         {epubError && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 select-none bg-dark-bg text-dark-text">
-            <div className="max-w-md w-full bg-dark-card border border-red-500/20 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
-              
-              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-5 shadow-inner">
-                <FileQuestion size={32} className="stroke-[1.75]" />
-              </div>
-
-              <h2 className="text-xl font-bold text-white mb-2">Arquivo Não Encontrado</h2>
-              
-              <p className="text-sm text-dark-subtext mb-4 leading-relaxed">
-                Não foi possível carregar o arquivo EPUB do livro <strong className="text-white">"{book.title}"</strong> no disco local nem na nuvem.
-              </p>
-
-              {book.file_path && (
-                <div className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-dark-subtext truncate text-left mb-5" title={book.file_path}>
-                  <span className="text-white/40 select-none mr-1.5">Caminho:</span>
-                  {book.file_path}
-                </div>
-              )}
-
-              {reattachError && (
-                <div className="w-full bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-xs text-red-300 text-left mb-4">
-                  {reattachError}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex flex-col gap-2.5 w-full">
-                <button
-                  onClick={handleReattach}
-                  disabled={isReattaching || isDeleting}
-                  className="w-full py-2.5 px-4 bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-medium rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-50"
-                >
-                  <FolderUp size={16} />
-                  {isReattaching ? 'Selecionando arquivo...' : 'Reanexar Arquivo EPUB'}
-                </button>
-
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={() => { setEpubError(null); setLoading(true); }}
-                    disabled={isReattaching || isDeleting}
-                    className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 active:scale-[0.99] text-dark-text text-sm font-medium rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw size={14} />
-                    Tentar Novamente
-                  </button>
-
-                  <button
-                    onClick={onBack}
-                    disabled={isReattaching || isDeleting}
-                    className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 active:scale-[0.99] text-dark-text text-sm font-medium rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                  >
-                    <ArrowLeft size={14} />
-                    Biblioteca
-                  </button>
-                </div>
-
-                <div className="border-t border-white/5 my-1" />
-
-                {confirmDelete ? (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex flex-col gap-2 animate-in fade-in">
-                    <span className="text-xs text-red-300 text-left">
-                      Deseja realmente excluir este livro e suas anotações da biblioteca?
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleDeleteBook}
-                        disabled={isDeleting}
-                        className="flex-1 py-1.5 px-3 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {isDeleting ? 'Excluindo...' : 'Sim, Excluir'}
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(false)}
-                        disabled={isDeleting}
-                        className="flex-1 py-1.5 px-3 bg-white/10 hover:bg-white/15 text-white text-xs rounded-lg transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    disabled={isReattaching || isDeleting}
-                    className="w-full py-2 px-3 text-xs text-red-400/80 hover:text-red-300 hover:bg-red-500/10 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                    Excluir registro da biblioteca
-                  </button>
-                )}
-              </div>
-
-            </div>
-          </div>
+          <EpubErrorState
+            book={book}
+            reattachError={reattachError}
+            isReattaching={isReattaching}
+            isDeleting={isDeleting}
+            confirmDelete={confirmDelete}
+            onReattach={handleReattach}
+            onReload={() => {
+              setEpubError(null);
+              setLoading(true);
+            }}
+            onBack={onBack}
+            onDeleteBook={handleDeleteBook}
+            setConfirmDelete={setConfirmDelete}
+          />
         )}
 
         <EpubHighlightMenu />
