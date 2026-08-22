@@ -1,15 +1,21 @@
 import { format } from 'date-fns';
 
 /**
- * Converte uma string de data (ISO, 'YYYY-MM-DD', 'YYYY-MM-DDT00:00:00.000Z', etc)
- * para um objeto Date no fuso horário LOCAL do usuário sem risco de recuar para
- * o dia anterior em fusos negativos (ex: UTC-3 Brasil).
+ * Returns current or given date formatted as 'YYYY-MM-DD' in user's local timezone.
+ */
+export function getLocalIsoDate(d: Date = new Date()): string {
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().split('T')[0];
+}
+
+/**
+ * Converts a date string (ISO, 'YYYY-MM-DD', 'YYYY-MM-DDT00:00:00.000Z', etc)
+ * to a Date object in user's local timezone without shifting days in negative UTC offsets.
  */
 export function parseEventDate(dateStr?: string | null): Date {
   if (!dateStr) return new Date();
 
-  // Se for apenas 'YYYY-MM-DD' (10 caracteres) ou terminar em T00:00:00.000Z / T00:00:00Z / T00:00:00
-  // interpretamos o ano, mês e dia no fuso horário LOCAL na hora 00:00:00
+  // If format is 'YYYY-MM-DD' or ends with T00:00:00
   if (
     /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ||
     /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z?$/.test(dateStr)
@@ -18,14 +24,13 @@ export function parseEventDate(dateStr?: string | null): Date {
     return new Date(y, m - 1, d, 0, 0, 0, 0);
   }
 
-  // Para outros formatos com horário preenchido (ex: reuniões, aulas com hora), usamos parse nativo
   const parsed = new Date(dateStr);
   if (isNaN(parsed.getTime())) return new Date();
   return parsed;
 }
 
 /**
- * Retorna a string do dia ('YYYY-MM-DD') no fuso local sem recuar o dia anterior.
+ * Returns the day string ('YYYY-MM-DD') in local timezone safely.
  */
 export function getEventDayStr(dateStr?: string | null): string {
   if (!dateStr) return '';
@@ -41,7 +46,7 @@ export function getEventDayStr(dateStr?: string | null): string {
 }
 
 /**
- * Retorna o horário formatado HH:mm no fuso local de forma segura.
+ * Returns formatted event time 'HH:mm' in local timezone.
  */
 export function getEventTimeStr(dateStr?: string | null): string {
   if (!dateStr) return '';

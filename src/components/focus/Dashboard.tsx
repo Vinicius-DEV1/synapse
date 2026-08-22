@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { getLocalIsoDate } from '../../utils/date-utils';
 import type { Session } from './types';
 
 interface DashboardProps {
@@ -36,11 +37,6 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
   };
 
   // Today's Stats
-  const getLocalIsoDate = (d: Date = new Date()) => {
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().split('T')[0];
-  };
-
   const todayStr = getLocalIsoDate();
   const todaySessions = sessions.filter(s => 
     s.created_at && 

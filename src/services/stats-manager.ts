@@ -1,13 +1,7 @@
 import type { ActivityLog } from '../types';
-
-
+import { getLocalIsoDate } from '../utils/date-utils';
 
 const ACTIVITY_LOGS_TABLE = 'activity_logs';
-
-const getLocalIsoDate = (d: Date = new Date()) => {
-  const offset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - offset).toISOString().split('T')[0];
-};
 
 export async function logActivity(
   moduleName: 'lofi' | 'video' | 'library',

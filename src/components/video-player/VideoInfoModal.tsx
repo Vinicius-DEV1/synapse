@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay, Copy, Check, FileVideo } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types';
 import { Portal } from '../ui/Portal';
-import { formatBytes } from '../../utils/format';
+import { formatBytes, formatHumanDuration } from '../../utils/format';
 
 interface VideoInfoModalProps {
   // `local_subtitle_path` ainda não está declarado em VideoItem (src/types/video.ts),
@@ -27,14 +27,8 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
     }
   }, [video]);
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return '--:--';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    return `${m}m ${s}s`;
-  };
+  const formatDuration = (seconds?: number) =>
+    formatHumanDuration(seconds, { includeSeconds: true, fallback: '--:--' });
 
   const getYoutubeThumb = (url?: string) => {
     if (!url) return null;

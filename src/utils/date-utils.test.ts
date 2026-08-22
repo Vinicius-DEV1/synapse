@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventDate, getEventDayStr, getEventTimeStr } from './date-utils';
+import { parseEventDate, getEventDayStr, getEventTimeStr, getLocalIsoDate } from './date-utils';
 
 describe('dateUtils', () => {
+  it('formats local ISO date correctly', () => {
+    const d = new Date(2026, 7, 22, 12, 0, 0);
+    expect(getLocalIsoDate(d)).toBe('2026-08-22');
+  });
+
   it('parses YYYY-MM-DD safely into local Date without UTC offset shifts', () => {
     const d = parseEventDate('2026-08-19');
     expect(d.getFullYear()).toBe(2026);
