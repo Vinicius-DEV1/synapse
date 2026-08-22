@@ -87,7 +87,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
       }
     } catch (e) {
       console.error(e);
-      // Fallback local criptograficamente seguro
+      // Cryptographically secure local fallback
       const fallbackChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
       const array = new Uint8Array(16);
       crypto.getRandomValues(array);

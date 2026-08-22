@@ -26,9 +26,9 @@ export default function NotificationCenterModal({
   const handleSnooze = async (notif: AppNotification, minutes: number) => {
     if (!window.api?.notifications || !window.api?.calendar) return;
     const newScheduled = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-    // Marcar atual como lida
+    // Mark active notification as read
     await onMarkRead(notif.id);
-    // Criar uma nova notificação agendada ou alerta re-agendado
+    // Create new scheduled notification or re-scheduled alert
     await window.api.notifications.addNotification({
       title: `${notif.title} (Adiado)`,
       message: `${notif.message}`,

@@ -113,7 +113,7 @@ export function VaultSidebar({
         ))}
       </div>
 
-      {/* Menu de Contexto para Grupos */}
+      {/* Context Menu for Groups */}
       {groupContextMenu && (
         <div
           className="fixed z-50 bg-dark-card border border-white/10 rounded-lg shadow-xl py-1 w-40 animate-fade-in"

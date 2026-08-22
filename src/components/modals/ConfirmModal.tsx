@@ -38,7 +38,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
     return Array.from(ids);
   }, [pageId, state.pages]);
 
-  // 2. Buscar eventos da agenda vinculados a qualquer uma das páginas alvos
+  // 2. Find calendar events linked to any of the target pages
   useEffect(() => {
     let isMounted = true;
     const fetchEvents = async () => {
@@ -62,7 +62,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
           if (ev.page_id && targetPageIds.includes(ev.page_id)) {
             isLinked = true;
           } else {
-            // Checar se algum widget inline na página referencia este evento
+            // Check if any inline widget in the page references this event
             for (const pId of targetPageIds) {
               const pageObj = state.pages.find(p => p.id === pId);
               if (pageObj?.content && pageObj.content.includes(`data-event-id="${ev.id}"`)) {

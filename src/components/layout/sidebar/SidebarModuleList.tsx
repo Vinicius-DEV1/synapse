@@ -9,9 +9,9 @@ interface SidebarModuleListProps {
   onModuleSelect?: () => void;
 }
 
-// A UI navega para módulos como 'home', 'trash' e 'settings' como abas,
+// UI navigates to 'home', 'trash', and 'settings' as tabs,
 // embora `Action['UPDATE_TAB_MODULE'].module` (definido em src/types/store.ts)
-// ainda não inclua todos esses valores. Ampliamos o tipo aqui apenas para
+// extending Tab['module'] for navigation.
 // refletir o valor real em runtime.
 type ModuleId = Tab['module'] | 'settings';
 

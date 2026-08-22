@@ -47,7 +47,7 @@ export function useFileReadingProgress(itemId: string, isText: boolean, textCont
     const pct = Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
     progressPercentRef.current = pct;
     
-    // Atualiza a UI da barra de progresso diretamente via DOM para não engasgar o render do React
+    // Update progress bar DOM directly to avoid React render overhead
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${pct}%`;
     }
@@ -55,7 +55,7 @@ export function useFileReadingProgress(itemId: string, isText: boolean, textCont
       progressTextRef.current.textContent = `${pct}% lido`;
     }
 
-    // Throttling: Salva o progresso no localStorage no máximo a cada 500ms
+    // Throttling: Persist progress to localStorage at most once every 500ms
     if (!saveTimeoutRef.current) {
       saveTimeoutRef.current = setTimeout(() => {
         saveReadingProgress(itemId, { scrollTop, percentage: pct, scrollHeight });

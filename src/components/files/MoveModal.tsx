@@ -25,7 +25,7 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filtramos as pastas válidas (uma pasta não pode ser movida para dentro dela mesma)
+  // Filter valid target folders (a folder cannot be moved inside itself)
   const validFolders = folders.filter(f => {
     return !list.some(entry => entry.isFolder && entry.item.id === f.id);
   });

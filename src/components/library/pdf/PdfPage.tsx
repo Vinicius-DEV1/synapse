@@ -97,8 +97,8 @@ export const PdfPage = React.memo(({
               const ty = item.transform[5];
               const [x, y] = viewport.convertToViewportPoint(tx, ty);
               const fontSize = Math.abs(item.transform[3]) * viewport.scale;
-              // Ajuste fino para a altura da linha e topo da bounding box
-              // Multiplicar o fontSize por um fator pode ajudar a centralizar a fonte invisivel
+              // Fine-tuning for line height and top bounding box
+              // Multiply fontSize by scale factor to align invisible text layer
               const adjustedHeight = fontSize * 1.05; 
               return {
                 str: item.str + (item.hasEOL ? ' ' : ''), // Usar espaço em vez de quebra de linha

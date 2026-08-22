@@ -28,7 +28,7 @@ export function VaultBreachBadge({ password }: { password?: string | null }) {
       }
     };
     
-    // Pequeno debounce para não spammar a API enquanto digita
+    // Debounce to prevent rate limiting API during typing
     const timer = setTimeout(check, 1000);
     return () => {
       isMounted = false;

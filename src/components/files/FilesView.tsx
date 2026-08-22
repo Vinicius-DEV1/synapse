@@ -74,7 +74,7 @@ export default function FilesView() {
 
   return (
     <div className="flex h-full bg-dark-bg text-dark-text overflow-hidden relative">
-      {/* Sidebar Pastas */}
+      {/* Folder Sidebar */}
       <FilesFolderSidebar
         folders={folders}
         selectedFolderId={selectedFolderId}

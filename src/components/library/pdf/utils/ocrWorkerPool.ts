@@ -32,7 +32,7 @@ class OcrWorkerPool {
           resolve(result);
         })
         .catch((err) => {
-          // Se o worker falhar, reinicializa o singleton para a próxima requisição
+          // If worker fails, reinitialize singleton on subsequent request
           this.terminate();
           reject(err);
         });

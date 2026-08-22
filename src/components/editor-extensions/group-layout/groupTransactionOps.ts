@@ -20,7 +20,7 @@ export interface GroupRef {
 export type GroupContentSource = { from: number; to: number } | Selection | null | undefined;
 
 /**
- * Retorna o nó em `pos` com validação de limites para evitar exceções caso o doc tenha mudado.
+ * Returns node at `pos` with bounds check to prevent exceptions if document changed.
  */
 export function safeNodeAt(doc: PMNode, pos: number): PMNode | null {
   if (!Number.isInteger(pos) || pos < 0 || pos >= doc.content.size) return null;
@@ -44,7 +44,7 @@ export function getChildren(groupNode: PMNode): PMNode[] {
   return children;
 }
 
-/** Retorna a posição absoluta de cada filho dentro do documento. */
+/** Returns absolute position of each child node inside document. */
 export function getChildPositions(groupPos: number, groupNode: PMNode): number[] {
   const positions: number[] = [];
   let offset = groupPos + 1;

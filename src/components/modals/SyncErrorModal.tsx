@@ -8,12 +8,12 @@ export default function SyncErrorModal() {
   useEffect(() => {
     const handleSyncError = (e: CustomEvent<{ message: string; code?: string }>) => {
       const { message, code } = e.detail;
-      // Trata explicitamente erros de quota excedida ou similares
+      // Explicitly handles quota exceeded or critical storage errors
       const isQuota = code === 'resource-exhausted' || 
                       message.toLowerCase().includes('quota') || 
                       message.toLowerCase().includes('exceeded');
       
-      // Se for um erro genérico (ex: offline), ignoramos aqui.
+      // Ignore non-critical offline/transient errors here.
       // Mostramos o modal apenas para erros críticos de cota.
       if (isQuota) {
         setErrorDetails({ message, isQuota: true });

@@ -28,7 +28,7 @@ export function useDictionaryQuery(
           return;
         }
 
-        // Mocking um banco de dados SQLite Local (Offline)
+        // Offline local dictionary lookup simulation
         setTimeout(() => {
           const cleanWord = text.trim();
           let markdown = `### ${cleanWord}\n\n`;

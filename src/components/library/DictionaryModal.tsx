@@ -283,7 +283,7 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
         );
       })()}
 
-      {/* Sub-modal para Collocation */}
+      {/* Sub-modal for Collocation */}
       {selectedColloc && (
         <div 
           className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
