@@ -132,7 +132,7 @@ export default function CodeBlockComponent(props: any) {
                   const val = event.target.value;
                   updateAttributes({ language: val === 'auto' ? null : val });
                 }}
-                className="bg-white/5 hover:bg-white/10 text-white/80 text-[11px] font-medium border border-white/10 rounded-md px-2 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
+                className="bg-[#0d1117] hover:bg-[#161b22] text-white/90 text-[11px] font-medium border border-white/10 hover:border-white/20 rounded-md px-2 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
               >
                 <option className="bg-[#161b22] text-white" value="auto">
                   Auto
