@@ -25,6 +25,9 @@ pub mod crypto_stream;
 pub mod video_probe;
 pub mod vault_security;
 pub mod library_stats;
+pub mod notes_history;
+pub mod file_links;
+pub mod anki_fsrs;
 mod db;
 pub mod protocol_encrypted;
 use std::sync::Mutex;
@@ -107,12 +110,12 @@ pub fn run() {
             cmd_notes::notes_get_page_content,
             cmd_notes::notes_create_page,
             cmd_notes::notes_update_page,
-            cmd_notes::notes_get_page_history,
+            notes_history::notes_get_page_history,
             cmd_notes::notes_delete_page,
             cmd_notes::notes_get_deleted_pages,
             cmd_notes::notes_restore_page,
-            cmd_notes::image_cache_get,
-            cmd_notes::image_cache_put,
+            notes_history::image_cache_get,
+            notes_history::image_cache_put,
             cmd_finance::finance_get_transactions,
             cmd_finance::finance_add_transaction,
             cmd_finance::finance_update_transaction,
@@ -155,12 +158,12 @@ pub fn run() {
             cmd_anki::anki_save_card,
             cmd_anki::anki_get_all_cards,
             cmd_anki::anki_get_card,
-            cmd_anki::anki_review_card_fsrs,
+            anki_fsrs::anki_review_card_fsrs,
             cmd_anki::anki_delete_card,
             cmd_anki::anki_update_card,
             cmd_anki::anki_update_deck,
             cmd_anki::anki_delete_deck,
-            cmd_anki::anki_reset_deck,
+            anki_fsrs::anki_reset_deck,
             cmd_focus::focus_get_alarms,
             cmd_focus::focus_create_alarm,
             cmd_focus::focus_update_alarm,
@@ -230,10 +233,10 @@ pub fn run() {
             cmd_files::file_folders_create,
             cmd_files::file_folders_update,
             cmd_files::file_folders_delete,
-            cmd_files::file_links_get_by_page,
-            cmd_files::file_links_get_by_file,
-            cmd_files::file_links_create,
-            cmd_files::file_links_delete,
+            file_links::file_links_get_by_page,
+            file_links::file_links_get_by_file,
+            file_links::file_links_create,
+            file_links::file_links_delete,
             cmd_vault::vault_get_groups,
             cmd_vault::vault_upsert_group,
             cmd_vault::vault_delete_group,
