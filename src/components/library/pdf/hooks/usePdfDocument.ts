@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef} from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { getValidAccessToken, downloadFromDrive } from '../../../../services/drive';
-import { decryptFile } from '../../../../services/storage';
 import { useStore } from '../../../../store/useStore';
+import { resolveCanonicalBuffer } from '../../../../services/storage/canonical-resolver';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../../types';
 
 export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partial<LibraryBook>) => void, currentPage: number) {
@@ -31,131 +30,22 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
       try {
         setLoading(true);
         setPdfError(null);
-        let fileData: any;
-        let assetUrl: string | null = null;
-        // 1. Cascading local filesystem check (Desktop / Tauri)
+        
         const isAvulso = book.author === 'Arquivo Avulso';
         const moduleName = isAvulso ? 'files' : 'library';
+        const masterKey = state.moduleKeys[moduleName];
 
-        if (window.api?.library) {
-          try {
-            const { appDataDir, join } = await import('@tauri-apps/api/path');
-            const { exists } = await import('@tauri-apps/plugin-fs');
-            const dataDir = await appDataDir();
-
-            const candidates: string[] = [];
-
-            // 1.1 Canonical candidates based on book ID
-            candidates.push(await join(dataDir, moduleName, `${book.id}.pdf.enc`));
-            candidates.push(await join(dataDir, moduleName, `${book.id}.pdf`));
-
-            // 1.2 Candidates based on saved file_path
-            if (book.file_path && !book.file_path.startsWith('drive:') && !book.file_path.startsWith('http')) {
-              let cleanPath = book.file_path.replace(/^file:\/\//, '');
-              const filename = cleanPath.split(/[/\\]/).pop();
-
-              if (cleanPath.startsWith('/') || cleanPath.match(/^[a-zA-Z]:/)) {
-                candidates.push(cleanPath);
-                if (!cleanPath.endsWith('.enc')) candidates.push(`${cleanPath}.enc`);
-              } else {
-                candidates.push(await join(dataDir, cleanPath));
-                if (!cleanPath.endsWith('.enc')) candidates.push(await join(dataDir, `${cleanPath}.enc`));
-              }
-
-              if (filename) {
-                candidates.push(await join(dataDir, moduleName, filename));
-                if (!filename.endsWith('.enc')) candidates.push(await join(dataDir, moduleName, `${filename}.enc`));
-              }
-            }
-
-            // Find first existing candidate
-            let foundPath: string | null = null;
-            for (const candidate of candidates) {
-              try {
-                if (await exists(candidate)) {
-                  foundPath = candidate;
-                  break;
-                }
-              } catch {}
-            }
-
-            if (foundPath) {
-              const isWindows = navigator.userAgent.includes('Windows');
-              const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
-              assetUrl = `${baseUrl}/${moduleName}/${encodeURIComponent(foundPath)}`;
-            }
-          } catch (localErr) {
-            console.log("[PdfLoader] Erro ao checar arquivo local:", localErr);
-          }
-        }
-
-        // 2. Fallback: tentar getBookFile caso stream não esteja disponível ou Web
-        if (!assetUrl && !fileData && window.api?.library?.getBookFile) {
-          try {
-            const rawFile = (await window.api.library.getBookFile(book.id)) as unknown;
-            if (rawFile) {
-              if (rawFile instanceof ArrayBuffer) {
-                fileData = rawFile;
-              } else if (typeof rawFile === 'string') {
-                const binaryString = atob(rawFile);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-                fileData = bytes.buffer;
-              }
-            }
-          } catch (webErr) {
-            console.log("[PdfLoader] Falha ao obter arquivo via getBookFile:", webErr);
-          }
-        }
-
-        // 3. Fallback: Google Drive Download
-        const targetDriveId = book.drive_file_id || (book.file_path?.startsWith('drive://') ? book.file_path.replace('drive://', '') : null);
-
-        if (!assetUrl && !fileData && targetDriveId) {
-          console.log("[PdfLoader] Baixando PDF do Google Drive:", targetDriveId);
-          const token = await getValidAccessToken();
-          if (token) {
-             const encryptedData = await downloadFromDrive(token, targetDriveId);
-             
-             // Cachear localmente no Desktop se possível
-             try {
-               const { appDataDir, join } = await import('@tauri-apps/api/path');
-               const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-               const dataDir = await appDataDir();
-               const libDir = await join(dataDir, moduleName);
-               if (!await exists(libDir)) {
-                 await mkdir(libDir, { recursive: true });
-               }
-               const localEncPath = await join(libDir, `${book.id}.pdf.enc`);
-               await writeFile(localEncPath, new Uint8Array(encryptedData));
-               const expectedPath = `${moduleName}/${book.id}.pdf.enc`;
-               if (book.file_path !== expectedPath) {
-                 onUpdateBookRef.current({ id: book.id, file_path: expectedPath });
-               }
-             } catch (cacheErr) {
-               console.warn("[PdfLoader] Não foi possível salvar cache local do PDF:", cacheErr);
-             }
-
-             const masterKey = state.moduleKeys[moduleName];
-             if (masterKey) {
-               try {
-                 fileData = await decryptFile(encryptedData, masterKey);
-               } catch {
-                 fileData = encryptedData;
-               }
-             } else {
-               fileData = encryptedData;
-             }
-          } else {
-             throw new Error("Você precisa conectar sua conta do Google Drive para baixar este livro.");
-          }
-        }
-
-        if (!fileData && !assetUrl) {
-          throw new Error("Arquivo PDF não encontrado no disco local nem na nuvem. Verifique se o arquivo foi sincronizado na nuvem.");
-        }
+        const fileData = await resolveCanonicalBuffer({
+          moduleName,
+          id: book.id,
+          savedPath: book.file_path,
+          driveFileId: book.drive_file_id,
+          masterKey,
+          extHint: 'pdf',
+          onUpdateSavedPath: (newPath) => onUpdateBookRef.current({ id: book.id, file_path: newPath })
+        });
         
-        const loadingTask = assetUrl ? pdfjsLib.getDocument({ url: assetUrl }) : pdfjsLib.getDocument({ data: fileData });
+        const loadingTask = pdfjsLib.getDocument({ data: fileData });
         const pdf = await loadingTask.promise;
         
         if (!active) return;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useEpubLoader } from './useEpubLoader';
 import type { LibraryBook } from '../../../types';
 
@@ -93,6 +93,8 @@ describe('useEpubLoader Hook', () => {
     );
 
     expect(setLoading).toHaveBeenCalledWith(true);
-    expect(window.api.library.getBookFile).toHaveBeenCalledWith('book_epub_loader');
+    await waitFor(() => {
+      expect(window.api.library.getBookFile).toHaveBeenCalledWith('book_epub_loader');
+    });
   });
 });
