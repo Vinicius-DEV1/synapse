@@ -106,5 +106,9 @@ export async function findAllQuizBatteries(
     }
   }
 
+  if (currentBatteryTitle) {
+    return allBatteries.filter((b) => b.title !== currentBatteryTitle);
+  }
+
   return allBatteries;
 }
