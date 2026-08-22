@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
-import { X, Download, FileText, File, Moon, Sun, Eye, Code, Bookmark, RotateCcw, BookmarkCheck } from 'lucide-react';
+import { Download, File, Bookmark } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 import { useFileReadingProgress } from './hooks/useFileReadingProgress';
-import { BookmarksDrawer } from './viewer/BookmarksDrawer';
 import { TextPreviewer } from './viewer/TextPreviewer';
+import { FileViewerHeader } from './viewer/FileViewerHeader';
+import { FileViewerResumeBanner } from './viewer/FileViewerResumeBanner';
 
 interface FileViewerProps {
   item: FileItem;
   onClose: () => void;
 }
-
-import { FileViewerHeader } from './viewer/FileViewerHeader';
-import { FileViewerResumeBanner } from './viewer/FileViewerResumeBanner';
 
 function FileViewerContent({ item, onClose }: FileViewerProps) {
   const { state } = useStore();

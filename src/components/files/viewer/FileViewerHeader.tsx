@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Download, FileText, Moon, Sun, Eye, Code } from 'lucide-react';
 import type { FileItem } from '../../../types';
 import { BookmarksDrawer } from './BookmarksDrawer';
+import type { Bookmark as BookmarkType } from '../../../utils/reading-progress';
 
 interface FileViewerHeaderProps {
   item: FileItem;
@@ -14,7 +15,7 @@ interface FileViewerHeaderProps {
   viewMode: 'rendered' | 'raw';
   setViewMode: (val: 'rendered' | 'raw') => void;
   objectUrl: string | null;
-  bookmarks: any[];
+  bookmarks: BookmarkType[];
   showBookmarksMenu: boolean;
   setShowBookmarksMenu: (val: boolean) => void;
   newBookmarkLabel: string;
@@ -22,11 +23,11 @@ interface FileViewerHeaderProps {
   editingBmId: string | null;
   editingBmText: string;
   setEditingBmText: (val: string) => void;
-  onAddBookmark: () => void;
-  onStartRenameBookmark: (id: string, label: string) => void;
-  onSaveRenameBookmark: (id: string) => void;
+  onAddBookmark: (label?: string) => void;
+  onStartRenameBookmark: (bm: BookmarkType, e: React.MouseEvent) => void;
+  onSaveRenameBookmark: (bmId: string, e?: React.FormEvent) => void;
   onRemoveBookmark: (id: string) => void;
-  onJumpToBookmark: (scrollTop: number, label: string) => void;
+  onJumpToBookmark: (scrollTop: number, label?: string) => void;
   onClose: () => void;
 }
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { RotateCcw, X, Edit3, Trash2 } from 'lucide-react';
 import type { Card } from '../types';
 

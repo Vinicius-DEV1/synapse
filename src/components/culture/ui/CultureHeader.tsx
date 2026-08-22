@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target } from 'lucide-react';
 import { SORT_OPTIONS, type SortMode, type FilterType } from '../hooks/useCulture';
 
