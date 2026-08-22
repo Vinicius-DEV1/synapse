@@ -1,76 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Search, Pin, Plus, Upload, GripVertical } from 'lucide-react';
+import { Search, Pin, Plus, Upload } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import SidebarItem from './SidebarItem';
-import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-import { useSortable, SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { usePageActions } from '../../../hooks/usePageActions';
 import { isValidHierarchyMove } from '../../../utils/hierarchy';
 import { triggerToast } from '../../ui/ToastContext';
-
-function PinnedSidebarItem({ page, activeTab, onCreatePage, onUpdatePage, childrenMap }: any) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: `pinned-sort-${page.id}`,
-    data: { type: 'pinned-sort', pageId: page.id, page },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group relative flex items-center transition-all rounded-lg hover:bg-white/[0.02]"
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        className="opacity-0 group-hover:opacity-100 p-1 -mr-1 z-10 text-dark-subtext hover:text-white cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0"
-        title="Arrastar para reordenar fixado"
-      >
-        <GripVertical size={14} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <SidebarItem
-          page={page}
-          depth={0}
-          activePageId={activeTab?.pageId || null}
-          onCreatePage={onCreatePage}
-          onUpdatePage={onUpdatePage}
-          isSearchResult={false}
-          disableHierarchyDnD={false}
-          childrenMap={childrenMap}
-        />
-      </div>
-    </div>
-  );
-}
-
-function RootDroppable({ children }: { children: React.ReactNode }) {
-  const { setNodeRef } = useDroppable({
-    id: 'root',
-    data: { type: 'hierarchy-root' }
-  });
-  return (
-    <div ref={setNodeRef} className="flex-1 overflow-y-auto px-2 py-1 pb-20" id="sidebar-page-tree">
-      {children}
-    </div>
-  );
-}
+import { PinnedSidebarItem } from './PinnedSidebarItem';
+import { RootDroppable } from './RootDroppable';
 
 interface SidebarPageTreeProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
