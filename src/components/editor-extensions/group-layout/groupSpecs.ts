@@ -67,7 +67,7 @@ function isStructuralNode(node: PMNode): boolean {
   return GROUP_NAMES.includes(node.type.name) || CHILD_ONLY_NAMES.includes(node.type.name);
 }
 
-// ─── Colunas genéricas ────────────────────────────────────────────────────────
+// ─── Generic Columns ────────────────────────────────────────────────────────
 
 export const COLUMN_GROUP_SPEC: GroupSpec = {
   groupName: 'columnGroup',
@@ -139,7 +139,7 @@ export const LINK_GROUP_SPEC: GroupSpec = {
   },
 
   wrapAsChild(schema, content, width) {
-    // Aqui o próprio card JÁ é o filho do grupo — não há wrapper intermediário.
+    // Here card itself IS the group child - no intermediate wrapper.
     const childType = schema.nodes.linkPreview;
     if (!childType || content.length !== 1) return null;
     const node = content[0];

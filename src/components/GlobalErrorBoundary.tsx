@@ -27,7 +27,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    // Opcionalmente recarregar a página se o erro persistir:
+    // Optionally reload page if error persists:
     // window.location.reload();
   };
 

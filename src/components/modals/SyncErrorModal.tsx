@@ -14,7 +14,7 @@ export default function SyncErrorModal() {
                       message.toLowerCase().includes('exceeded');
       
       // Ignore non-critical offline/transient errors here.
-      // Mostramos o modal apenas para erros críticos de cota.
+      // Show modal only for critical quota errors.
       if (isQuota) {
         setErrorDetails({ message, isQuota: true });
       } else if (message.toLowerCase().includes('permission-denied')) {

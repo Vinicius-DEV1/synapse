@@ -34,7 +34,7 @@ export default function FileWidgetNodeView(props: any) {
     }
   }, [fileId]);
 
-  // Escuta evento de delete via teclado (Backspace/Delete) para mostrar modal de confirmação
+  // Listen for keyboard delete event (Backspace/Delete) to show confirmation modal
   useEffect(() => {
     const handleDeleteRequest = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -78,8 +78,8 @@ export default function FileWidgetNodeView(props: any) {
         // Remove from DB
         await window.api.files.delete(fileItem.id);
         
-        // Não há opção de "manter no Drive" na UI — o botão "Excluir de Tudo"
-        // sempre remove de lá também quando existe um drive_file_id.
+        // No 'keep in Drive' option in UI - the 'Delete All' button
+        // always removes from Drive as well when drive_file_id exists.
         if (fileItem.drive_file_id) {
           try {
             const token = await getValidAccessToken();

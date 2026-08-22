@@ -101,7 +101,7 @@ export const PdfPage = React.memo(({
               // Multiply fontSize by scale factor to align invisible text layer
               const adjustedHeight = fontSize * 1.05; 
               return {
-                str: item.str + (item.hasEOL ? ' ' : ''), // Usar espaço em vez de quebra de linha
+                str: item.str + (item.hasEOL ? ' ' : ''), // Use space instead of newline
                 left: x,
                 top: y - (fontSize * 0.85),
                 width: (item.width * viewport.scale) + (item.hasEOL ? fontSize * 0.5 : 0),
@@ -202,7 +202,7 @@ export const PdfPage = React.memo(({
     if (!isRendered || !textLayerRef.current || textItems.length === 0) return;
     
     // Escala matematicamente o texto do navegador para caber EXATAMENTE
-    // na largura física do texto desenhado no Canvas (técnica oficial do PDF.js)
+    // on physical text width drawn on Canvas (official PDF.js technique)
     const spans = textLayerRef.current.querySelectorAll('span');
     spans.forEach(span => {
       const targetWidth = parseFloat(span.getAttribute('data-target-width') || '0');
@@ -272,9 +272,9 @@ export const PdfPage = React.memo(({
                     <div 
                       key={`${i}-${j}`}
                       onClick={(e) => {
-                        // Impedir que o clique de seleção de texto interfira
+                        // Prevent text selection click interference
                         e.stopPropagation();
-                        // Enviar também as coordenadas do clique para posicionar o modal
+                        // Send click coordinates to position modal
                         const rect = (e.target as HTMLElement).getBoundingClientRect();
                         onHighlightClick(h, rect);
                       }}

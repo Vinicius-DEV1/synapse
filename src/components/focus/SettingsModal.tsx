@@ -61,9 +61,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
 
   const handleDelete = async (type: 'today' | 'last7days' | 'all') => {
     if (window.api?.focus) {
-      // `deleteSessions` (ICadernoAPI, src/api/types.ts) só declara os filtros
-      // 'specific' | 'all', mas o filtro real aceito pelas implementações
-      // (src/api/web/focus.ts, src/api/tauri/focus.ts) ainda é mais amplo.
+      // ``deleteSessions` (ICadernoAPI, src/api/types.ts) only declares filters
+      // 'specific' | 'all', but the actual filter accepted by implementations
+      // (src/api/web/focus.ts, src/api/tauri/focus.ts) is broader.
       await window.api.focus.deleteSessions({ type } as { type: 'specific'; id: number } | { type: 'all' });
       onRefresh();
       setConfirmDelete(null);

@@ -114,7 +114,7 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
 
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
   const MENU_MAX_HEIGHT = 320;
-  const CURSOR_OFFSET = 24; // A distância do top do cursor definida em Editor.tsx
+  const CURSOR_OFFSET = 24; // Distance from top of cursor defined in Editor.tsx
   
   const willOverflowBottom = y + MENU_MAX_HEIGHT > viewportHeight;
   

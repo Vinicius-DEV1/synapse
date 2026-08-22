@@ -18,7 +18,7 @@ type DesktopVideoApi = NonNullable<typeof window.api.video> & {
   ) => Promise<{ web_path: string; web_size: number }>;
 };
 
-// A camada nativa também expõe um barramento de eventos Tauri (`video_upload_progress`)
+// Native layer also exposes Tauri event bus (`video_upload_progress`)
 // via window.api.events listener
 declare module '../../api/types' {
   interface ICadernoAPI {

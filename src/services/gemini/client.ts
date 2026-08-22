@@ -144,7 +144,7 @@ export async function promptGemini(
           target.disabledUntil = Date.now() + 23 * 60 * 60 * 1000;
           await saveGeminiKeys(allKeys);
         }
-        continue; // Tenta a próxima chave do loop
+        continue; // Try next key in loop
       } else if (error.message === 'SERVER_ERROR') {
         console.warn(`Servidor do Google indisponível (5xx). Tentando próxima chave sem bloquear a atual...`);
         continue;

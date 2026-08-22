@@ -162,7 +162,7 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
                     type="text"
                     value={code}
                     onChange={e => {
-                      // Tenta extrair o código se o usuário colou a URL inteira
+                      // Attempt to extract code if user pasted the full URL
                       const val = e.target.value;
                       if (val.includes('code=')) {
                         try {

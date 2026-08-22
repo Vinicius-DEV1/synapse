@@ -78,7 +78,7 @@ export function useEditorSave({
     flushSave();
   }, [flushSave]);
 
-  // Salva imediatamente quando o usuário troca de aba do navegador, oculta a janela ou quando ocorre troca interna de aba
+  // Save immediately on browser tab switch, window blur, or internal tab change
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {

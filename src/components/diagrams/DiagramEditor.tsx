@@ -57,7 +57,7 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
   const handleMount = useCallback((editor: Editor) => {
     editorRef.current = editor;
     
-    // Configurar o tema escuro como padrão para combinar com o app
+    // Set dark theme as default to match app appearance
     editor.user.updateUserPreferences({ colorScheme: 'dark' });
 
     editor.store.listen(() => {

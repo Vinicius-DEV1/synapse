@@ -59,8 +59,8 @@ export function useGroupResize({
   wrapperRef,
   enabled,
 }: UseGroupResizeOptions): GroupResizeState {
-  // Vãos e largura num state só: são medidos na mesma passada e mudam juntos,
-  // então separá-los custaria dois renders por remedição.
+  // Gaps and width in single state: measured in same pass and change together,
+  // separating them would cause two renders per remeasurement.
   const [metrics, setMetrics] = useState<{ offsets: number[]; width: number }>({
     offsets: [],
     width: 0,
@@ -136,9 +136,9 @@ export function useGroupResize({
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
 
-    // `setTimeout` e não `requestAnimationFrame`: rAF não dispara em aba
-    // oculta/minimizada, e o layout ficaria sem divisores até a primeira
-    // interação. Medir num macrotask depois do commit é suficiente.
+    // `setTimeout` rather than `requestAnimationFrame`: rAF does not fire in hidden/minimized tabs,
+    // which would leave layout without dividers until first interaction.
+    // Measuring in a macrotask after commit is sufficient.
     let timer: ReturnType<typeof setTimeout> | null = null;
     const schedule = () => {
       if (timer !== null) return;
@@ -244,7 +244,7 @@ export function useGroupResize({
         latest[gutterIndex] = nextLeft;
         latest[gutterIndex + 1] = nextRight;
 
-        // Preview direto no DOM — nenhuma transação durante o arrasto.
+        // Direct DOM preview - no transactions during drag.
         left.style.flex = `${nextLeft} 1 0%`;
         right.style.flex = `${nextRight} 1 0%`;
 
@@ -275,7 +275,7 @@ export function useGroupResize({
 
         // O preview escreve `style.flex` direto no DOM. Sem limpar, ele
         // sobrevive ao arrasto e diverge do atributo — largura fantasma quando
-        // `setChildWidths` não dispara nada ou o filho tem node view próprio.
+        // `setChildWidths` triggers nothing or child has its own node view.
         left.style.flex = '';
         right.style.flex = '';
 

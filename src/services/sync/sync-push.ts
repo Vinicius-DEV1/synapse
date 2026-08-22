@@ -150,7 +150,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
 
         if (prepared.length === 0) continue;
 
-        // #1: WriteBatch — envia em chunks de BATCH_SIZE com write atômico
+        // #1: WriteBatch - send in chunks of BATCH_SIZE with atomic write
         for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
           const chunk = prepared.slice(i, i + BATCH_SIZE);
           const batch = writeBatch(db);
@@ -175,7 +175,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             await batch.commit();
             logFirebaseOp('write', chunk.length);
             logFirebaseTraffic(0, chunkBytes);
-            // #6: Só avança o highestSuccessTime APÓS commit bem-sucedido
+            // #6: Advance highestSuccessTime ONLY after successful commit
             for (const item of chunk) {
               pushedCount++;
               if (item.localTime > highestSuccessTime) {
@@ -225,7 +225,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
     }
     if (pushedCount > 0) {
       try {
-        // #7: Incluir deviceId no sinal para que o listener possa ignorar sinais do próprio dispositivo
+        // #7: Include deviceId in signal so listener can ignore self-device signals
         await setDoc(doc(db, 'config', 'sync_signal'), {
           updatedAt: serverTimestamp(),
           source: navigator.userAgent,
@@ -237,7 +237,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
       }
 
       // Manifest: atualizar config/sync_manifest com os timestamps das tabelas que mudaram.
-      // O pull usa isso para pular tabelas sem mudanças, economizando ~34 reads por ciclo.
+      // Pull uses this to skip unchanged tables, saving ~34 reads per cycle.
       // merge: true preserva timestamps de tabelas pushadas por outros dispositivos.
       if (Object.keys(manifestUpdate).length > 0) {
         try {

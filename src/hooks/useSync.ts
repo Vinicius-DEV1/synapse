@@ -48,11 +48,11 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
   useEffect(() => {
     if (isAuth && masterKey) {
       let isClosed = false;
-      let isSyncing = false; // Mutex: impede syncs simultâneos que desperdiçam cota Firebase
-      let lastFullSyncTime = 0; // Cooldown: tempo mínimo entre full syncs
+      let isSyncing = false; // Mutex: prevents concurrent syncs wasting Firebase quota
+      let lastFullSyncTime = 0; // Cooldown: minimum interval between full syncs
       const FULL_SYNC_COOLDOWN_MS = 30_000; // 30 segundos de cooldown entre full syncs
       const syncChannel = new BroadcastChannel('caderno_sync');
-      // #7: ID único do dispositivo para ignorar sinais do próprio push
+      // #7: Unique device ID to ignore self-push signals
       const myDeviceId = getDeviceId();
 
       // #10: Restaurar timestamps de sync do banco local (protege contra limpeza de localStorage)
@@ -65,12 +65,12 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           finishSync(false);
           return;
         }
-        // Mutex: se já tem um sync rodando, ignora esta chamada
+        // Mutex: if sync is already running, skip this call
         if (isSyncing) {
           console.warn('[Sync] doFullSync ignorado: outro sync já está em andamento.');
           return;
         }
-        // Cooldown: evita full syncs muito frequentes (ex: foco rápido + intervalo)
+        // Cooldown: prevents excessively frequent full syncs (e.g., rapid focus + interval)
         const now = Date.now();
         if (now - lastFullSyncTime < FULL_SYNC_COOLDOWN_MS) {
           console.warn('[Sync] doFullSync ignorado: cooldown de 30s ainda ativo.');
@@ -107,9 +107,9 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       const doPushOnlySync = async () => {
         if (isClosed) return;
         if (!navigator.onLine) {
-          return; // Offline: não mostra erro, apenas ignora silenciosamente
+          return; // Offline: do not show error, ignore silently
         }
-        // Mutex: se já tem um sync rodando, ignora
+        // Mutex: if sync is already running, ignore
         if (isSyncing) return;
         isSyncing = true;
         try {
@@ -133,14 +133,14 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       // 2. Cross-Device Real-time Firebase Sync
       // NOTA: onSnapshot dispara imediatamente com o estado atual do doc.
       // Usamos isFirstSnapshot para ignorar esse disparo inicial redundante,
-      // já que o doFullSync() acima já faz o pull completo.
+      // since doFullSync() above already performs full pull.
       let isFirstSnapshot = true;
       const unsubRealTime = listenForCloudSyncSignal((signalDeviceId?: string) => {
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
-          return; // Ignora o disparo automático do onSnapshot na montagem
+          return; // Ignore automatic onSnapshot trigger on mount
         }
-        // #7: Ignorar sinais do próprio dispositivo (evita pull desnecessário após push)
+        // #7: Ignore self-device signals (avoids redundant pull after push)
         if (signalDeviceId && signalDeviceId === myDeviceId) {
           return;
         }
@@ -169,7 +169,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         }
       };
 
-      // 4. Gatilho inteligente sob demanda (quando o usuário edita)
+      // 4. Smart on-demand trigger (when user edits)
       let syncDebounceTimer: ReturnType<typeof setTimeout>;
       const handleSyncTrigger = () => {
         clearTimeout(syncDebounceTimer);
@@ -185,7 +185,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         window.addEventListener('app-sync-trigger', handleSyncTrigger);
       }
 
-      // 5. Gatilho de FOCO: Atualiza quando o usuário volta de outra janela
+      // 5. Focus trigger: update when user returns from another window
       // Protegido pelo mutex e cooldown de 30s para evitar syncs excessivos
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
@@ -196,7 +196,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       };
       document.addEventListener('visibilitychange', handleVisibilityChange);
 
-      // 6. Fallback de Segurança (a cada 10 minutos — reduzido de 5 para economizar cota)
+      // 6. Safety fallback (every 10 minutes - reduced from 5 to save quota)
       const syncInterval = setInterval(() => {
         doFullSync();
       }, 10 * 60 * 1000); 

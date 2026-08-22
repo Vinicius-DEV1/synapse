@@ -28,7 +28,7 @@ export function useAppShortcuts(state: AppState, dispatch: React.Dispatch<Action
         }
       }
 
-      // Atalho Ctrl+Setas desativado a pedido do usuário para não interferir na digitação
+      // Ctrl+Arrow shortcut disabled to avoid typing interference
 
       // Toggle AI Sidebar with Ctrl+Shift+A or Ctrl+J (or Cmd on Mac)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'j' || e.key === 'J' || (e.shiftKey && (e.key === 'a' || e.key === 'A')))) {

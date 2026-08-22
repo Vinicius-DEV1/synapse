@@ -16,7 +16,7 @@ export function ClozeCard({ card, showingAnswer, onAnswerSubmit, evaluating, exa
 
   const renderClozeFront = () => {
     const targetC = (card.ord ?? 0) + 1;
-    // Tenta remover tags HTML em volta do cloze para não quebrar a formatação inline
+    // Attempt to strip HTML tags surrounding cloze to prevent breaking inline formatting
     const cleanFront = card.front.replace(/<\/?p[^>]*>/gi, '');
     const parts = cleanFront.split(/(\{\{c\d+::.*?\}\})/);
     

@@ -37,7 +37,7 @@ export function sortItems(items: CultureItem[], mode: SortMode): CultureItem[] {
     if (mode === 'added') {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
-    // default: objetivos → recente → finalizados por último
+    // default: goals -> recent -> completed last
     const aFinished = a.total_progress > 0 && a.progress >= a.total_progress;
     const bFinished = b.total_progress > 0 && b.progress >= b.total_progress;
     if (aFinished !== bFinished) return aFinished ? 1 : -1;

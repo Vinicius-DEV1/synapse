@@ -249,8 +249,8 @@ export default function DictionaryModal({ text, pageContext, onClose, preloadedD
       </div>
 
       {showAnkiEditor && dictionaryData && (() => {
-        // CardDraft (src/components/anki/types.ts) ainda não declara `tts_text`/`video_clip`,
-        // usados pelo fluxo de geração de áudio do CardEditor (useCardEditorForm.ts).
+        // CardDraft (src/components/anki/types.ts) does not declare `tts_text`/`video_clip` yet,
+        // used by the audio generation workflow in CardEditor (useCardEditorForm.ts).
         const cardDraft: CardDraft & {
           tts_text?: string;
           video_clip?: { path: string; startMs: number; endMs: number };

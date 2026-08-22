@@ -85,7 +85,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "anki_card": {
       "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
       "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)",
-      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
+      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // REQUIRED: Identify the first and last subtitle making up the full sentence and return exact start/end times.' : ''}
     }
   }${isEnglishOnly ? '' : `,
   "portuguese": {
@@ -137,7 +137,7 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
     "anki_card": {
       "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>.'}",
       "back": "Significado preciso em português.",
-      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // OBRIGATÓRIO: Identifique a primeira e a última legenda que compõem a frase completa e retorne o tempo mínimo e máximo exatos.' : ''}
+      ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // REQUIRED: Identify the first and last subtitle making up the full sentence and return exact start/end times.' : ''}
     }
   }
 }

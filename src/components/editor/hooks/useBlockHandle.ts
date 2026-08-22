@@ -110,7 +110,7 @@ export function useBlockHandle(
 
       const editorRect = view.dom.getBoundingClientRect();
       
-      // Permite uma margem generosa de até 60px à esquerda e 30px à direita
+      // Allows a margin of up to 60px on the left and 30px on the right
       const isInsideZone =
         event.clientX >= editorRect.left - 60 &&
         event.clientX <= editorRect.right + 30 &&
@@ -124,7 +124,7 @@ export function useBlockHandle(
 
       clearHideTimer();
 
-      // Projeta a coordenada X para dentro da área editável caso o cursor esteja na margem/gutter
+      // Projects X coordinate into editable area if cursor is in margin/gutter
       const probeX = Math.min(
         Math.max(event.clientX, editorRect.left + 8),
         editorRect.right - 8
@@ -142,7 +142,7 @@ export function useBlockHandle(
         return;
       }
 
-      // Se for um bloco com alça interna própria (não-textblock), suprime a alça flutuante
+      // If block has its own internal handle (non-textblock), suppress floating handle
       if (!block.node.isTextblock && OWN_DRAG_HANDLE_NODES.has(block.node.type.name)) {
         hide();
         return;

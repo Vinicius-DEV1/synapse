@@ -36,7 +36,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     if (isOpen && sourcePage) {
       setSelectedTargetId(sourcePage.parent_id);
       setSearchQuery('');
-      // Auto-expande nós pais na árvore
+      // Auto-expand parent nodes in tree
       const parents = new Set<string>();
       let currentParentId = sourcePage.parent_id;
       while (currentParentId) {
@@ -61,7 +61,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     });
   };
 
-  // Construção da árvore hierárquica completa
+  // Build complete hierarchical tree
   const pageTree = useMemo(() => {
     const buildTree = (parentId: string | null, level: number = 0): TreeNode[] => {
       const children = state.pages
@@ -78,7 +78,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     return buildTree(null);
   }, [state.pages]);
 
-  // Lista filtrada quando há busca ativa
+  // Filtered list during active search
   const filteredPages = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
@@ -154,7 +154,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     }
   };
 
-  // Renderização recursiva de cada nó da árvore
+  // Recursive rendering of each tree node
   const renderTreeNode = (node: TreeNode) => {
     const { page, children, level } = node;
     const isExpanded = expandedNodes.has(page.id);

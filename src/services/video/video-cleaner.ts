@@ -25,7 +25,7 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
       await deleteFromDrive(token, video.drive_web_file_id).catch(e => console.warn("Falha ao apagar vídeo web do Drive", e));
     }
 
-    // Áudios extras
+    // Extra audios
     try {
       const audios = JSON.parse(video.audio_tracks_json || '[]');
       for (const track of audios) {
@@ -50,7 +50,7 @@ export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
     }
   }
 
-  // 3. Excluir do Banco de Dados (soft-delete para sincronizar a exclusão entre dispositivos)
+  // 3. Delete from Database (soft-delete to sync deletion across devices)
   if (window.api?.sync) {
     await window.api.sync.upsertRow('videos', {
       ...video,

@@ -42,7 +42,7 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
       data
     );
 
-    // WebCrypto AES-GCM concatena Ciphertext + AuthTag (últimos 16 bytes)
+    // WebCrypto AES-GCM concatenates Ciphertext + AuthTag (last 16 bytes)
     const encryptedBytes = new Uint8Array(encryptedBuffer);
     const authTagBytes = encryptedBytes.slice(-16);
     const cipherTextBytes = encryptedBytes.slice(0, -16);

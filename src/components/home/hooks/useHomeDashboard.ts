@@ -62,7 +62,7 @@ export function useHomeDashboard() {
             setDueCardsCount(total);
           }
         } catch {
-          // Anki não disponível
+          // Anki not available
         }
       }
     } catch (e) {

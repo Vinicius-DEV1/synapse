@@ -2,10 +2,10 @@ import { Suspense, lazy, memo } from 'react';
 import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
-// A UI ainda navega para o módulo 'settings' como uma aba, embora o tipo
-// `Tab['module']` (definido em src/types/store.ts) ainda não inclua esse
+// UI navigates to 'settings' module as a tab, although type
+// `Tab['module']` (defined in src/types/store.ts) does not include it yet
 // valor. Ampliamos o tipo aqui apenas para refletir o valor real em runtime
-// (mesma convenção usada em src/components/layout/sidebar/Sidebar.tsx).
+// (same convention used in src/components/layout/sidebar/Sidebar.tsx).
 type ModuleId = Tab['module'] | 'settings';
 
 const HomeView = lazy(() => import('./home/HomeView'));

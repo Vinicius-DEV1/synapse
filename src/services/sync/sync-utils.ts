@@ -96,7 +96,7 @@ export async function hardResetCloud(): Promise<void> {
     }
   }
   
-  // Limpar os docs fixos de config que podem não estar no getDocs (edge case de cache)
+  // Clean fixed config docs that may not be in getDocs (cache edge case)
   try {
     const configBatch = writeBatch(db);
     configBatch.delete(doc(db, 'config', 'auth_validator'));
@@ -108,5 +108,5 @@ export async function hardResetCloud(): Promise<void> {
   } catch (err) {}
 }
 
-// Export removido do global window por segurança (B14)
+// Export removed from window global for security (B14)
 // se precisar debugar, exporte localmente apenas no ambiente de dev.

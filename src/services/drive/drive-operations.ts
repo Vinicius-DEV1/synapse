@@ -68,7 +68,7 @@ export async function uploadToDrive(
   const metaData = await metaRes.json();
   const fileId = metaData.id;
 
-  // Passo 2: Fazer o upload do conteúdo (ArrayBuffer) usando uploadType=media via XMLHttpRequest para ter progresso
+  // Step 2: Upload content (ArrayBuffer) using uploadType=media via XMLHttpRequest for progress
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PATCH', `${DRIVE_UPLOAD_URL.split('?')[0]}/${fileId}?uploadType=media`, true);
@@ -180,7 +180,7 @@ export async function deleteFromDrive(accessToken: string, fileId: string): Prom
     headers: { 'Authorization': `Bearer ${accessToken}` }
   });
 
-  if (!res.ok && res.status !== 404) { // Ignora se já foi apagado (404)
+  if (!res.ok && res.status !== 404) { // Ignore if already deleted (404)
     const errorText = await res.text();
     throw new Error(`Failed to delete file from Drive: ${res.status} - ${errorText}`);
   }

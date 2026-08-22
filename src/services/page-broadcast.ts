@@ -76,7 +76,7 @@ export function broadcastPageSaved(
     }
   }
 
-  // Notifica também os listeners na mesma janela (para sincronização entre abas internas do app)
+  // Also notify listeners in same window (for internal tab sync)
   listeners.forEach((cb) => {
     try {
       cb(msg);
@@ -91,7 +91,7 @@ export function broadcastPageSaved(
  * Retorna uma função para cancelar o registro (use em useEffect cleanup).
  */
 export function onPageSaved(callback: PageSavedCallback): () => void {
-  getChannel(); // garante que o canal está inicializado
+  getChannel(); // ensure channel is initialized
   listeners.add(callback);
   return () => {
     listeners.delete(callback);

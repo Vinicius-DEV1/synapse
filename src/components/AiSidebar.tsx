@@ -56,8 +56,8 @@ export default function AiSidebar() {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
     if (contextText) {
       setTimeout(() => {
-        // window.find é uma API legada não padronizada (suportada em Firefox/Safari/Chromium),
-        // ausente das definições de tipos do DOM do TypeScript.
+        // window.find is a legacy non-standard API (supported in Firefox/Safari/Chromium),
+        // absent from TypeScript DOM type definitions.
         const legacyWindow = window as Window & {
           find?: (
             searchString: string,

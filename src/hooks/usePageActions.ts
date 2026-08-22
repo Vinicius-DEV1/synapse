@@ -43,7 +43,7 @@ export function usePageActions() {
   const handleDeletePage = useCallback(async (id: string) => {
     if (window.api) {
       try {
-        // 1. Coletar o ID da página alvo e todos os seus descendentes recursivamente
+        // 1. Collect target page ID and all descendants recursively
         const toDeleteIds = new Set<string>();
         const collect = (parentId: string) => {
           toDeleteIds.add(parentId);
@@ -51,7 +51,7 @@ export function usePageActions() {
         };
         collect(id);
 
-        // 2. Excluir da agenda todos os eventos associados à página e suas subpáginas
+        // 2. Delete calendar events associated with page and subpages
         if (window.api.calendar) {
           try {
             const events = await window.api.calendar.getEvents();
@@ -77,12 +77,12 @@ export function usePageActions() {
           }
         }
 
-        // 3. Deletar as páginas no backend
+        // 3. Delete pages in backend
         for (const pageId of toDeleteIds) {
           await window.api.deletePage(pageId);
         }
 
-        // 4. Disparar ação no store
+        // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
         dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
         triggerToast('Página movida para a lixeira.', 'info');
@@ -140,7 +140,7 @@ export function usePageActions() {
           return;
         }
 
-        // Remover campos que não devem ser exportados (id, parent_id, datas locais)
+        // Remove non-exportable fields (id, parent_id, local timestamps)
         const exportData = {
           title: page.title,
           content: page.content,
@@ -189,10 +189,10 @@ export function usePageActions() {
           return;
         }
 
-        // Criar a página nova no banco (com o parentId se tiver)
+        // Create new page in database (with parentId if present)
         const newPage = await window.api.createPage({ parentId });
         
-        // Atualizar a página criada com os dados importados
+        // Update created page with imported data
         const updates: Partial<Page> = {
           title: data.title || 'Página Importada',
           content: data.content || '',

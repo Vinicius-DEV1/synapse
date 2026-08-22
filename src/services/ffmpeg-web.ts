@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 
 // NOTE (Web Performance): ffmpeg.wasm runs on a single worker and loads full buffers 
-// virtual na memória RAM (MEMFS).
+// virtual RAM memory (MEMFS).
 // Very large files (>500MB) can cause OOM errors in browser tabs.
 // Heavy transcoding is delegated to Desktop (Tauri + native binaries).
 

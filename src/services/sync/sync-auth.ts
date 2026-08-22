@@ -135,7 +135,7 @@ export async function clearFailedAttempts(): Promise<void> {
   }
 }
 
-// --- FIM DA SESSÃO DE SEGURANÇA ---
+// --- END OF SECURITY SESSION ---
 
 export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
   const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });

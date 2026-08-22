@@ -32,7 +32,7 @@ export default function BlockHandle({
   const [showColorSubmenu, setShowColorSubmenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Mantém a alça visível e ancorada enquanto o menu de opções estiver aberto
+  // Keep handle visible and anchored while options menu is open
   useEffect(() => {
     onMenuOpenChange?.(isOpen);
   }, [isOpen, onMenuOpenChange]);
