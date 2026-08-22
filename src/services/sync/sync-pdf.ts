@@ -1,10 +1,7 @@
 import { encryptFile } from '../storage';
 import { getValidAccessToken, uploadToDrive } from '../drive';
+import { platform } from '../platform';
 
-// `library.getBookFile` is declared as returning `Promise<string>` in ICadernoAPI,
-// but the real implementations (src/api/tauri/library.ts and src/api/web/library.ts)
-// can also resolve with an ArrayBuffer/Uint8Array or null. Type the call site to
-// match what actually comes back at runtime.
 type BookFileData = string | ArrayBuffer | Uint8Array | null;
 
 export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
@@ -13,21 +10,21 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   const masterKey = moduleKeys['library'];
   if (!masterKey) return; 
   
-  const isDesktopApp = navigator.userAgent.toLowerCase().includes('desktop');
-  if (!isDesktopApp) {
+  // Executa se estiver no Desktop (independente de SO - Windows, Linux, Mac)
+  if (!platform.canReadLocalFilesystem && !window.api?.library) {
     return;
   }
   
   try {
     const books = await window.api.library.getBooks();
     for (const book of books) {
-      if (book.file_path && !book.drive_file_id) {
-        console.log(`[Sync] Fazendo upload E2EE de PDF para Google Drive: ${book.title}`);
+      if (!book.drive_file_id) {
+        console.log(`[Sync] Fazendo upload E2EE de livro para Google Drive: ${book.title}`);
         
         try {
           const token = await getValidAccessToken();
           if (!token) {
-            console.warn('[Sync] Sem token do Google Drive, pulando PDF:', book.title);
+            console.warn('[Sync] Sem token do Google Drive, pulando livro:', book.title);
             continue;
           }
 
@@ -49,23 +46,33 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
             const tempArray = new Uint8Array(fileData);
             buffer = tempArray.buffer;
           }
+
+          const view = new Uint8Array(buffer);
+          // Verificar se já está no formato ENC1 ou já criptografado
+          const isEnc1 = view.length > 4 && view[0] === 0x45 && view[1] === 0x4E && view[2] === 0x43 && view[3] === 0x31;
           
-          const encrypted = await encryptFile(buffer, masterKey);
+          let uploadPayload: ArrayBuffer;
+          if (isEnc1) {
+            uploadPayload = buffer;
+          } else {
+            uploadPayload = await encryptFile(buffer, masterKey);
+          }
           
-          const driveFileId = await uploadToDrive(token, `Caderno_${book.id}.enc`, encrypted);
+          const driveFileId = await uploadToDrive(token, `library_${book.id}.enc`, uploadPayload);
           
           await window.api.library.updateBook({
-            id: book.id,
-            drive_file_id: driveFileId
+            ...book,
+            drive_file_id: driveFileId,
+            updated_at: new Date().toISOString()
           } as any);
           
-          console.log(`[Sync] PDF subiu com sucesso para o Drive com ID: ${driveFileId}`);
+          console.log(`[Sync] Livro sincronizado com sucesso no Google Drive: ${book.title} (ID: ${driveFileId})`);
         } catch (err) {
-          console.error(`[Sync] Erro ao subir PDF para o Drive: ${book.title}`, err);
+          console.error(`[Sync] Erro ao sincronizar livro para o Drive: ${book.title}`, err);
         }
       }
     }
   } catch (err) {
-    console.error("[Sync] Erro na sincronização de PDFs", err);
+    console.error("[Sync] Erro na sincronização de livros para a nuvem", err);
   }
 }

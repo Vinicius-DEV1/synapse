@@ -37,12 +37,14 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
             
             const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
             
+            const driveFileId = remotePath.replace('drive://', '');
             const title = file.name.replace(/\.(pdf|epub)$/i, '');
             const book = {
               id: bookId,
               title,
               author: '',
               file_path: remotePath, // Agora salvamos o caminho do Storage, não o local!
+              drive_file_id: driveFileId,
               original_name: file.name,
               cover_image: '',
               total_pages: 0,
@@ -99,9 +101,11 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         try {
           const arrayBuffer = await file.arrayBuffer();
           const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
+          const driveFileId = remotePath.replace('drive://', '');
           const existing = await db.get('library_books', bookId);
           if (existing) {
             existing.file_path = remotePath;
+            existing.drive_file_id = driveFileId;
             existing.original_name = file.name;
             existing.updated_at = new Date().toISOString();
             await db.put('library_books', existing);
@@ -124,11 +128,19 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
   },
   getBookFile: async (id: string) => {
     const book = await db.get('library_books', id);
-    if (!book || !book.file_path) return null;
+    if (!book) return null;
     const _masterKey = getMasterKey();
     if (!_masterKey) throw new Error("Chave Mestra não encontrada");
+    
+    // Determine remote path
+    const remotePath = book.file_path?.startsWith('drive://') 
+      ? book.file_path 
+      : (book.drive_file_id ? `drive://${book.drive_file_id}` : null);
+
+    if (!remotePath) return null;
+
     try {
-      const arrayBuffer = await getDecryptedPdf(book.file_path, _masterKey);
+      const arrayBuffer = await getDecryptedPdf(remotePath, _masterKey);
       return arrayBuffer;
     } catch (e) {
       console.error("Falha ao baixar do drive/storage", e);
