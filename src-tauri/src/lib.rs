@@ -22,6 +22,7 @@ mod cmd_video;
 mod cmd_youtube;
 pub mod crypto;
 pub mod crypto_stream;
+pub mod video_probe;
 mod db;
 pub mod protocol_encrypted;
 use std::sync::Mutex;
