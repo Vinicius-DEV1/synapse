@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, RotateCcw, BookmarkCheck } from 'lucide-react';
 
 interface FileViewerResumeBannerProps {

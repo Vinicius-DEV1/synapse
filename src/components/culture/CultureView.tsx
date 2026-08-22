@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, Calendar, LayoutGrid, AlignJustify, Rows3, ChevronUp, ChevronDown, ArrowUpDown, Target } from 'lucide-react';
+import { Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
 import CultureViewModal from './CultureViewModal';
 import CultureGoalModal from './CultureGoalModal';
-import { useCulture, TYPE_LABELS, sortItems, SORT_OPTIONS, type SortMode, type FilterType } from './hooks/useCulture';
+import { useCulture, TYPE_LABELS, sortItems } from './hooks/useCulture';
 
 import { CultureHeader } from './ui/CultureHeader';
 import { CultureRecentReleases } from './ui/CultureRecentReleases';

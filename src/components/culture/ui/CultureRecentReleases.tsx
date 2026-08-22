@@ -1,9 +1,10 @@
-import React from 'react';
 import { Calendar } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../../types';
 
+type EnrichedEpisode = CultureEpisode & { item_title: string; item_cover: string };
+
 interface CultureRecentReleasesProps {
-  recentReleases: CultureEpisode[];
+  recentReleases: EnrichedEpisode[];
   items: CultureItem[];
   onSelectItem: (item: CultureItem) => void;
 }

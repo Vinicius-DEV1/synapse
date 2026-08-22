@@ -1,5 +1,4 @@
 import  { useEffect } from 'react';
-import { RotateCcw, X, Edit3, Trash2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
