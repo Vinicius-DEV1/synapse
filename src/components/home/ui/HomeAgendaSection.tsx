@@ -1,6 +1,6 @@
 import { Calendar, Sunrise, BookOpen } from 'lucide-react';
 import type { CalendarEvent } from '../../../types/core';
-import { parseEventDate } from '../../../utils/dateUtils';
+import { parseEventDate } from '../../../utils/date-utils';
 
 interface HomeAgendaSectionProps {
   todayEvents: CalendarEvent[];

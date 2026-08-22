@@ -1,5 +1,5 @@
 import { getSettings } from '../../utils/settings';
-import { NetworkResilience } from '../../utils/NetworkResilience';
+import { NetworkResilience } from '../../utils/network-resilience';
 import { getGeminiKeys, saveGeminiKeys } from './keys';
 import type { GeminiModel } from './types';
 

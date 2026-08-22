@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
+import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
 
 interface CalendarGridProps {
   events: CalendarEvent[];

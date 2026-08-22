@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format } from 'date-fns';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
-import { parseEventDate, getEventDayStr } from '../../utils/dateUtils';
+import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
 
 interface TaskFeedProps {
   events: CalendarEvent[];

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { CalendarEvent } from '../../../types';
 import { format } from 'date-fns';
-import { parseEventDate } from '../../../utils/dateUtils';
+import { parseEventDate } from '../../../utils/date-utils';
 
 export const CALENDAR_EVENT_COLORS = ['#4F46E5', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899', '#64748B'];
 
