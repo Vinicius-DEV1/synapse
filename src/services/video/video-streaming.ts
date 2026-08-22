@@ -22,9 +22,9 @@ export async function getVideoStreamLink(driveFileId: string, masterKey?: Crypto
     return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
   }
 
-  // Na Web, como TUDO é criptografado, e não temos Service Worker pra fazer chunking on-the-fly de AES-GCM,
-  // baixamos o arquivo inteiro em memória, descriptografamos e criamos um Blob.
-  // IMPORTANTE: Isso vai usar RAM proporcional ao tamanho do vídeo!
+  // On Web, since data is encrypted and on-the-fly AES-GCM chunking is unavailable,
+  // fetch entire file into memory, decrypt, and create a Blob.
+  // IMPORTANT: Uses RAM proportional to video size!
   const buffer = await downloadFromDrive(token, driveFileId);
   try {
     const { decryptFile } = await import('../storage');
@@ -90,7 +90,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
 
 /**
  * Verifica se um vídeo está disponível localmente.
- * Se sim, retorna a URL com protocolo file:// ou streaming port. Se não, retorna link do Drive.
+ * If yes, return URL with file:// or streaming port. Otherwise, return Drive URL.
  */
 export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
   const { getSettings } = await import('../../utils/settings');
@@ -110,8 +110,8 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
 
   if (window.api?.video && video.is_local) {
     const desktopVideoApi = window.api.video as DesktopVideoApi;
-    // Quando sincroniza de outro SO, o file_path salvo pode ser do Windows e não existir no Linux.
-    // Vamos sempre verificar a existência real do arquivo usando o filename.
+    // When syncing from another OS, file_path may be Windows-formatted and not exist on Linux.
+    // Always verify actual file existence using filename.
     const fileNameFallback = video.file_path ? video.file_path.split(/[/\\]/).pop() : undefined;
     const searchName = isUnsupported ? `${baseName}_web.mp4` : video.original_name;
 
@@ -143,7 +143,7 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
   const isWebEnv = !window.api?.video;
   
   if (isWebEnv) {
-    // No Web, se for formato não suportado (ex: MKV), forçamos o uso da versão Web.
+    // On Web, if format is unsupported (e.g. MKV), force Web version.
     const targetDriveId = isUnsupported && video.drive_web_file_id 
       ? video.drive_web_file_id 
       : (video.drive_web_file_id || video.drive_file_id);
@@ -153,7 +153,7 @@ export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, 
     }
   } else {
     // Desktop: Streaming Nativo em Rust do Google Drive (ignorando o Service Worker)
-    // Se for formato não suportado (MKV), forçamos a busca pelo web_file_id na nuvem se ele não estivesse local
+    // If unsupported format (MKV), force cloud web_file_id lookup if not present locally
     const targetDriveId = isUnsupported && video.drive_web_file_id 
       ? video.drive_web_file_id 
       : (video.drive_file_id || video.drive_web_file_id);

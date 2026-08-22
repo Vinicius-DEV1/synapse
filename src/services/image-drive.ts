@@ -79,7 +79,7 @@ export async function setCachedImage(
     try {
       await window.api?.imageCache?.put(id, data, mimeType);
       
-      // Verificação imediata: ler de volta para confirmar persistência
+      // Immediate verification: read back to confirm persistence
       const verifyResult = await window.api?.imageCache?.get(id);
       console.log(`[ImageDrive:setCachedImage] Verificação pós-save:`, verifyResult ? `OK (data.length=${verifyResult.data?.length})` : 'FALHOU - retornou null!');
     } catch (e) {
@@ -93,7 +93,7 @@ export async function setCachedImage(
 }
 
 // ---------------------------------------------------------------------------
-// Funções públicas
+// Public functions
 // ---------------------------------------------------------------------------
 
 /**
@@ -108,11 +108,11 @@ export async function uploadEncryptedImage(
 ): Promise<string> {
   console.log(`[ImageDrive:uploadEncryptedImage] Iniciando upload. file.name="${file.name}", file.size=${file.size}, file.type="${file.type}"`);
   
-  // 1. Lê o arquivo como ArrayBuffer
+  // 1. Read file as ArrayBuffer
   const originalBuffer = await file.arrayBuffer();
   console.log(`[ImageDrive:uploadEncryptedImage] ArrayBuffer lido: ${originalBuffer.byteLength} bytes`);
 
-  // 2. Tenta obter um token de acesso válido
+  // 2. Try to get valid access token
   const token = await getValidAccessToken().catch((e) => {
     console.error(`[ImageDrive:uploadEncryptedImage] Erro ao obter token:`, e);
     return null;
@@ -120,7 +120,7 @@ export async function uploadEncryptedImage(
   console.log(`[ImageDrive:uploadEncryptedImage] Token obtido: ${token ? 'SIM (length=' + token.length + ')' : 'NÃO (null)'}`);
 
   if (!token) {
-    // Dispara o evento para alertar o usuário (abre o modal de auth)
+    // Dispatch event to notify user (opens auth modal)
     window.dispatchEvent(new CustomEvent('drive-auth-expired'));
     
     // Modo offline/local: salva apenas no cache com ID permanente
@@ -130,18 +130,18 @@ export async function uploadEncryptedImage(
     return localId;
   }
 
-  // 3. Criptografa o conteúdo com AES-GCM
+  // 3. Encrypt content with AES-GCM
   const encryptedBuffer = await encryptFile(originalBuffer, masterKey);
   console.log(`[ImageDrive:uploadEncryptedImage] Criptografado: ${encryptedBuffer.byteLength} bytes`);
 
-  // 4. Gera um nome de arquivo único para o Drive
+  // 4. Generate unique filename for Drive
   const uniqueName = `IMG_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.enc`;
 
   // 5. Faz upload para a pasta FOTOS (usePhotosFolder = true)
   const driveFileId = await uploadToDrive(token, uniqueName, encryptedBuffer, 'photos');
   console.log(`[ImageDrive:uploadEncryptedImage] Upload concluído. driveFileId="${driveFileId}"`);
 
-  // 6. Salva a imagem ORIGINAL no cache local para acesso rápido
+  // 6. Save ORIGINAL image to local cache for fast access
   await setCachedImage(driveFileId, originalBuffer, file.type);
   console.log(`[ImageDrive:uploadEncryptedImage] Cache local salvo com driveFileId="${driveFileId}"`);
 
@@ -169,12 +169,12 @@ export async function getDecryptedImageUrl(
     return url;
   }
 
-  // 2. Imagens com ID local_ existem APENAS no cache — se não estão lá, perderam-se
+  // 2. Images with local_ ID exist ONLY in cache - if absent, they are lost
   if (driveFileId.startsWith('local_')) {
     throw new Error('Imagem local não encontrada no cache. Pode ter sido perdida ao reinstalar o app.');
   }
 
-  // 3. Não está no cache — precisa baixar do Drive
+  // 3. Not in cache - download from Drive
   const token = await getValidAccessToken().catch(() => null);
   if (!token) {
     throw new Error(
@@ -185,7 +185,7 @@ export async function getDecryptedImageUrl(
   // 4. Baixa o arquivo criptografado do Drive
   const encryptedBuffer = await downloadFromDrive(token, driveFileId);
 
-  // 5. Descriptografa o conteúdo
+  // 5. Decrypt content
   const decryptedBuffer = await decryptFile(encryptedBuffer, masterKey);
 
   // 6. Salva no cache local (B20: detecta mimeType real para evitar inflar JPEGs como PNG)

@@ -5,7 +5,7 @@ export interface PlatformCapabilities {
   supportsNativeTabs: boolean;
 }
 
-// O único lugar de toda a aplicação onde injetamos a variável de ambiente do Tauri
+// The single location in the application where Tauri environment variable is injected
 const isDesktop = typeof window !== 'undefined' && (!!window.__TAURI_INTERNALS__ || !!(window as any).__TAURI_IPC__);
 
 export const platform: PlatformCapabilities = {

@@ -35,7 +35,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   
   const ydocRef = useRef<Y.Doc>(ydoc);
 
-  // 1. Escuta eventos remotos de sincronização (ex: Firebase / sync-pull)
+  // 1. Listen for remote sync events (e.g. Firebase / sync-pull)
   useEffect(() => {
     const handleRemoteUpdate = (e: CustomEvent) => {
       const { pageId: syncPageId, crdtState } = e.detail;
@@ -53,17 +53,17 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   // 2. Escuta broadcast de salvamento entre abas do browser e abas internas (BroadcastChannel + Local Event)
   useEffect(() => {
     const unsubscribe = onPageSaved((msg) => {
-      // Atualiza o backup em memória com a versão mais recente
+      // Update in-memory backup with latest version
       if (msg.pageId) {
         getEditorBackupMap().set(msg.pageId, { html: msg.html, crdt: msg.crdtState || '' });
       }
 
-      // Se a mensagem veio deste mesmo editor, não precisa reaplicar o CRDT nele mesmo
+      // If message originated from this editor, no need to re-apply CRDT to self
       if (instanceId && msg.senderInstanceId === instanceId) {
         return;
       }
 
-      // Se a página salva for a atualmente aberta neste editor, sincroniza o YDoc imediatamente
+      // If saved page is currently open in this editor, sync YDoc immediately
       if (msg.pageId === pageId && ydocRef.current && msg.crdtState && msg.crdtState.length > 8) {
         applyBase64StateToYDoc(ydocRef.current, msg.crdtState);
         if (latestContentRef.current) {
@@ -77,7 +77,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     };
   }, [pageId, latestContentRef, instanceId]);
 
-  // 3. Fallback de proteção ao ganhar foco / voltar à visibilidade
+  // 3. Protection fallback when gaining focus / returning to visibility
   useEffect(() => {
     const handleFocusCheck = async () => {
       if (pageId && ydocRef.current) {

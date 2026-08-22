@@ -33,7 +33,7 @@ export async function findLocalCanonicalPath(
 
     const candidates: string[] = [];
 
-    // 1. Candidatos canônicos baseados no ID
+    // 1. Canonical candidates based on ID
     if (extHint) {
       candidates.push(await join(dataDir, moduleName, `${id}.${extHint}.enc`));
       candidates.push(await join(dataDir, moduleName, `${id}.${extHint}`));
@@ -114,7 +114,7 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
 
   let arrayBuffer: ArrayBuffer | null = null;
 
-  // 1. Tenta localização local
+  // 1. Attempt local resolution
   const localFound = await findLocalCanonicalPath(moduleName, id, savedPath, extHint);
   if (localFound) {
     const assetUrl = buildEncryptedAssetUrl(moduleName, localFound);
@@ -152,7 +152,7 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
 
     const encryptedData = await downloadFromDrive(token, targetDriveId);
 
-    // Cache local canônico no Desktop
+    // Desktop canonical local cache
     if (platform.canReadLocalFilesystem) {
       try {
         const { appDataDir, join } = await import('@tauri-apps/api/path');

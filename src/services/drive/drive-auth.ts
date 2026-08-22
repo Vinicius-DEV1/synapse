@@ -14,7 +14,7 @@ export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.ap
 export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || 'REDACTED_DRIVE_CLIENT_SECRET';
 
 // Extended drive auth helper for OAuth token storage
-// mas tauriDriveApi (src/api/tauri/drive.ts) também implementa getCredentials/saveCredentials
+// tauriDriveApi (src/api/tauri/drive.ts) also implements getCredentials/saveCredentials
 // (fallback compatibility for locally stored credentials).
 type DriveApiWithCredentials = {
   openExternalUrl: (url: string) => Promise<void>;
@@ -156,7 +156,7 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
     return { token: null };
   }
   
-  // Web fallback (lê do config no IndexedDB)
+  // Web fallback (reads from IndexedDB config)
   const db = await getWebDb();
   const config = await db.get('config', 'drive_credentials');
   if (config) {

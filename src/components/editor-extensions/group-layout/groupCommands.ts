@@ -125,7 +125,7 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
 
   const range = { from: pos, to: pos + node.nodeSize };
 
-  // 1ª Prioridade: Irmão de CIMA (anterior)
+  // 1st Priority: Top sibling (previous)
   const before = state.doc.resolve(pos).nodeBefore;
   if (before) {
     if (spec.acceptsContent([before])) {
@@ -136,7 +136,7 @@ export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number)
     }
   }
 
-  // 2ª Prioridade (fallback): Irmão de BAIXO (posterior)
+  // 2nd Priority (fallback): Bottom sibling (next)
   const after = state.doc.resolve(range.to).nodeAfter;
   if (after) {
     if (spec.acceptsContent([after])) {

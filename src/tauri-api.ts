@@ -34,7 +34,7 @@ export const createTauriApi = async () => {
     // --- AUTH ---
     auth: tauriAuthApi,
 
-    // Configurações e Chaves usando a tabela config do DB
+    // Settings and Keys using DB config table
     config: { 
       get: async (key: string) => {
         try {

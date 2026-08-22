@@ -31,7 +31,7 @@ export async function runImageGarbageCollector(): Promise<void> {
     const allFiles = await listFiles(accessToken, photosFolderId);
     console.log(`[GC] ${allFiles.length} arquivos totais na pasta FOTOS no Google Drive.`);
 
-    // 3. Filtrar e deletar arquivos órfãos velhos
+    // 3. Filter and delete old orphan files
     const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     let deletedCount = 0;
@@ -45,7 +45,7 @@ export async function runImageGarbageCollector(): Promise<void> {
           console.log(`[GC] Deletando imagem órfã: ${file.name} (ID: ${file.id}) - ${(age/86400000).toFixed(1)} dias de idade.`);
           try {
             await deleteFromDrive(accessToken, file.id);
-            // Também tenta limpar do SQLite/IndexedDB para economizar cache local
+            // Also attempt to clean from SQLite/IndexedDB to save local cache
             await removeFromLocalCache(file.id);
             deletedCount++;
           } catch (e) {
@@ -128,9 +128,9 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
  */
 async function removeFromLocalCache(fileId: string): Promise<void> {
   if (isDesktopApp()) {
-     // Faltaria adicionar o método delete no IPC do imageCache se estivéssemos preocupados 
-     // com o cache SQLite (atualmente não temos o método 'delete' no IPC, mas podemos apenas ignorar 
-     // pois a nuvem é o que importa para espaço principal).
+     // Missing delete method in imageCache IPC if SQLite cache cleanup was needed 
+     // (currently no 'delete' method in IPC, safe to ignore as 
+     // cloud storage is the primary target for capacity).
   } else {
      const db = await getWebDb();
      if (db) {

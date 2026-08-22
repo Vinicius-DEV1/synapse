@@ -57,14 +57,14 @@ const EncryptedImageNodeView = (props: any) => {
     }
 
     try {
-      // Se for um upload recém-colado
+      // If this is a newly pasted upload
       if (driveFileId.startsWith('uploading_')) {
         if (uploadingRef.current === driveFileId) return;
         uploadingRef.current = driveFileId;
 
         let file = window.__pendingImageUploads?.get(driveFileId);
 
-        // Se a página foi recarregada e perdemos o file da memória,
+        // If page was reloaded and file in memory was lost,
         // tentamos recuperar do cache local!
         if (!file) {
           const cached = await getCachedImage(driveFileId);
@@ -82,14 +82,14 @@ const EncryptedImageNodeView = (props: any) => {
         uploadingRef.current = null;
 
         if (!mountedRef.current) return;
-        // O updateAttributes fará com que o TipTap/React renderize novamente com o novo ID
+        // updateAttributes will trigger TipTap/React re-render with new ID
         updateAttributes({ driveFileId: realDriveId });
-        return; // A próxima renderização fará o download da URL limpa ou usará cache
+        return; // Next render will fetch clean URL or use cache
       }
 
       const url = await getDecryptedImageUrl(driveFileId, masterKey);
 
-      // O node view pode ter sido destruído durante o download.
+      // Node view may have been unmounted during download.
       if (!mountedRef.current) {
         URL.revokeObjectURL(url);
         return;
@@ -233,7 +233,7 @@ const EncryptedImageNodeView = (props: any) => {
   );
 };
 
-// ─── Definição do Node TipTap ────────────────────────────────────────────────
+// ─── TipTap Node Definition ────────────────────────────────────────────────
 
 export const EncryptedImage = Node.create({
   name: 'encryptedImage',

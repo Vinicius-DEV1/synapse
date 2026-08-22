@@ -105,7 +105,7 @@ export const createWebApiMock = async () => {
       const existing = await db.get('pages', page.id);
       if (!existing) return 0;
 
-      // Verifica se há mudanças reais antes de atualizar updated_at
+      // Check for actual changes before updating updated_at
       const fieldsToCheck = ['title', 'icon', 'content', 'encrypted_content', 'crdt_state', 'parent_id', 'is_pinned', 'pinned_order'];
       let hasChanges = false;
 

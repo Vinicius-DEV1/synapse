@@ -31,7 +31,7 @@ export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoK
     }
   }
 
-  const blob = new Blob([finalBuffer], { type: 'audio/mpeg' }); // Usando tipo genérico de áudio
+  const blob = new Blob([finalBuffer], { type: 'audio/mpeg' }); // Using generic audio type
   return URL.createObjectURL(blob);
 }
 

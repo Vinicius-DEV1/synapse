@@ -171,7 +171,7 @@ function armExternalDragCleanup(view: EditorView) {
 
   const finish = () => {
     // Macrotask para garantir que o ProseMirror complete o processamento do drop
-    // e delete o nó de origem antes de limpar view.dragging.
+    // and delete source node before clearing view.dragging.
     setTimeout(() => {
       endExternalDrag(view);
     }, 0);

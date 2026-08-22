@@ -57,7 +57,7 @@ export function useEventForm(
         }
       }
 
-      // Se for de 00:00 até 23:59, consideramos "Dia Inteiro"
+      // If from 00:00 to 23:59, treat as 'All Day'
       if (event.start_date && event.end_date) {
         const start = parseEventDate(event.start_date);
         const end = parseEventDate(event.end_date);

@@ -2,7 +2,7 @@ import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 
 // NOTE (B18): Schema uses 'value: any' for CRDT flexibility and dynamic payloads.
-// Isso reduz o type-safety estrito do TypeScript, mas evita problemas de serialização.
+// Reduces strict TypeScript type-safety but avoids serialization issues.
 export interface CadernoDBSchema extends DBSchema {
   pages: { key: string; value: any; indexes: { 'parent_id': string } };
   page_history: { key: string; value: any; indexes: { 'page_id': string } };

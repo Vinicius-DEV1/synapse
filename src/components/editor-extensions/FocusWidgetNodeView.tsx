@@ -43,8 +43,8 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
       
       // Fallback: se o currentSession mudar para nulo subitamente (por algum reload bizarro)
       if (!currentSession && status === 'running') {
-        // Apenas oculta o popover, mas não sabemos se foi cancelado ou completo se não pegamos o evento.
-        // O evento acima é mais preciso.
+        // Only hides popover, but completion/cancellation is unknown without event.
+        // The event above is more accurate.
       }
       return () => window.removeEventListener('caderno-focus-ended', handleFocusEnded);
     }

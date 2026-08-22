@@ -60,7 +60,7 @@ interface EditorModalHostProps {
   // Mesma assinatura de `useFocusContext().handleStartTimer` — a interface
   // antiga (`time, tag?, desc?`) nunca bateu com o real
   // `(tag, description, targetTime, explicitId?)`, e com `isOpen`/`onClose`/
-  // `initialTime`/`initialDesc` como props fantasma o botão de fechar do
+  // `initialTime`/`initialDesc` as ghost props for the close button
   // SetupModal (que espera `onCancel`) nunca foi ligado a nada.
   handleStartTimer: (
     tag: string,
@@ -73,7 +73,7 @@ interface EditorModalHostProps {
     React.SetStateAction<{ isOpen: boolean; initialTimeStr?: string } | null>
   >;
   // Mesma assinatura de `useFocusContext().handleSaveAlarm` — o AlarmSetupModal
-  // real recebe um único objeto `Alarm`, não 5 parâmetros posicionais.
+  // real implementation receives a single `Alarm` object, not 5 positional params.
   handleSaveAlarm: (alarm: Alarm) => Promise<void>;
   fileUploadModal: { isOpen: boolean; isLink: boolean } | null;
   setFileUploadModal: React.Dispatch<

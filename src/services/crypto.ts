@@ -6,7 +6,7 @@ import { hexToArrayBuffer, arrayBufferToHex, uint8ArrayToBase64, base64ToUint8Ar
  */
 
 // Cryptographic parameters for key derivation and encryption
-// NOTA: O salt na Web ('caderno-e2ee-salt-v1') é diferente do salt no Rust ('caderno-keychain-salt').
+// NOTE: Web salt ('caderno-e2ee-salt-v1') differs from Rust salt ('caderno-keychain-salt').
 // Maintained for backward compatibility between Web and Rust cryptographic domains
 // (Cloud payloads vs local SQLite databases).
 const SALT = new TextEncoder().encode("caderno-e2ee-salt-v1");
@@ -69,7 +69,7 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
 
-  // O Vetor de Inicialização (IV) DEVE ser único para cada encriptação
+  // Initialization Vector (IV) MUST be unique per encryption
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
   const encryptedBuffer = await crypto.subtle.encrypt(
@@ -81,7 +81,7 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
     data
   );
 
-  // Combina o IV e os dados encriptados em um único buffer para armazenar
+  // Combine IV and encrypted data into a single buffer for storage
   const combinedBuffer = new Uint8Array(iv.length + encryptedBuffer.byteLength);
   combinedBuffer.set(iv, 0);
   combinedBuffer.set(new Uint8Array(encryptedBuffer), iv.length);

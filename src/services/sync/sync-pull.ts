@@ -52,7 +52,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
     
     for (const table of tables) {
       try {
-        // Manifest optimization: pular tabelas sem mudanças desde lastPull.
+        // Manifest optimization: skip tables without changes since lastPull.
         // If table is in manifest and timestamp <= lastPull, skip.
         // If table is not in manifest, query normally (safe fallback
         // for legacy clients or other devices).
@@ -65,7 +65,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             const tableLastUpdate = parseDateSafe(tableTimestamp);
             if (tableLastUpdate <= lastPull) {
               console.log(`[Pull SKIP] Tabela ${table} ignorada (Sem mudanças no Manifest: ${tableLastUpdate} <= ${lastPull}).`);
-              continue; // Nenhuma mudança nesta tabela desde o último pull
+              continue; // No changes in this table since last pull
             }
           }
         }
@@ -80,7 +80,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         let lastDocSnap: any = null;
         const CHUNK_SIZE = 100;
         
-        // #3: Lazy-load do mapa local — será preenchido sob demanda
+        // #3: Lazy-load local map - populated on demand
         let localMap: Map<string, any> | null = null;
 
         while (hasMore) {
@@ -108,7 +108,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           
           lastDocSnap = querySnapshot.docs[querySnapshot.docs.length - 1];
 
-          // #3: Buscar apenas os IDs que vieram da nuvem (se o método existir)
+          // #3: Fetch only IDs received from cloud (if method exists)
           if (!localMap) {
             if (window.api.sync.getRowsByIds) {
               const cloudIds = querySnapshot.docs
@@ -121,7 +121,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 localMap = new Map();
               }
             } else {
-              // Fallback: se getRowsByIds não existe, carrega tabela inteira (compatibilidade)
+              // Fallback: if getRowsByIds is not available, load entire table (compatibility)
               const localRows = await window.api.sync.getTable(table);
               localMap = new Map(localRows.map((r: any) => [r.id, r]));
             }
@@ -138,7 +138,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             }
           }
 
-          // Filtrar docs válidos para processar
+          // Filter valid documents to process
           const docsToProcess = querySnapshot.docs.filter(docSnap => {
             const cloudData = docSnap.data() as CloudData;
             if (!cloudData.encryptedData) return false;
@@ -155,7 +155,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             return cloudTime !== localTime;
           });
 
-          // #2: Decriptar em batches paralelos para não bloquear a thread
+          // #2: Decrypt in parallel batches to prevent blocking thread
           for (let i = 0; i < docsToProcess.length; i += DECRYPT_BATCH_SIZE) {
             const batch = docsToProcess.slice(i, i + DECRYPT_BATCH_SIZE);
             
@@ -228,7 +228,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   console.error(`Erro ao deletar documento antigo do Firebase: ${result.docSnap.id}`, delErr);
                 }
                 skippedDocsCount++;
-                continue; // Não salva localmente
+                continue; // Do not save locally
               }
 
               const { docSnap, cloudData, parsed } = result;
@@ -259,7 +259,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               // CRDT merge para pages (Yjs)
               if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
                 try {
-                  // #4: Import Yjs uma única vez (lazy, fora do loop)
+                  // #4: Import Yjs once (lazy, outside loop)
                   if (!Y) {
                     Y = await import('yjs');
                     yjsUtils = await import('../../utils/yjs-utils');
@@ -300,7 +300,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               }
 
               try {
-                // Proteção contra race condition: verificar se houve edição local durante o sync
+                // Race condition protection: check for local edits during sync
                 const freshRow = freshMap.get(docSnap.id);
                 if (freshRow) {
                   const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);

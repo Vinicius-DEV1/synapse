@@ -146,7 +146,7 @@ export function selectGroupChildInTr(tr: Transaction, groupPos: number, index: n
         : TextSelection.near(tr.doc.resolve(childPos + 1))
     );
   } catch {
-    // Falha silenciosa aceitável na redefinição de seleção opcional pós-drop
+    // Acceptable silent failure on optional post-drop selection reset
   }
 }
 

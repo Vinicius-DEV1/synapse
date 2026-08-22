@@ -5,7 +5,7 @@ import { HtmlRenderer } from '../components/HtmlRenderer';
 export function TypingCard({ card, showingAnswer, onAnswerSubmit, evaluating, exactMatch, aiFeedback }: StudyCardProps) {
   const [typedAnswer, setTypedAnswer] = useState('');
 
-  // Limpa o input sempre que o cartão mudar
+  // Clear input whenever the card changes
   useEffect(() => {
     setTypedAnswer('');
   }, [card.id]);

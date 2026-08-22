@@ -29,7 +29,7 @@ async function buildModuleKeys(rawKeys: Record<string, string> | null | undefine
   return keys;
 }
 
-// A interface AuthApi (src/api/types.ts) não declara forceUpdateKeychain, mas tanto
+// The AuthApi interface (src/api/types.ts) does not declare forceUpdateKeychain, but both
 // tauriAuthApi (src/api/tauri/auth.ts) quanto webAuthApi (src/api/web/auth.ts) o implementam.
 type AuthApiWithKeychain = typeof window.api.auth & {
   forceUpdateKeychain?: (password: string, keys: Record<string, string>) => Promise<{ success: boolean; error?: string }>;
@@ -221,8 +221,8 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
 
           const moduleKeys = await buildModuleKeys(rawKeys, masterKey);
 
-          // BUGFIX: Se a chave do cofre existir no rawKeys (nuvem), usamos ela para não quebrar compatibilidade
-          // com vaults mais antigos que usavam a senha original em vez da nova (caso o usuário tenha trocado).
+          // BUGFIX: If vault key exists in rawKeys (cloud), use it for backward compatibility
+          // with older vaults that used original password instead of new one (if changed).
           const vaultKeyHash = await getVaultKeyHash(password);
           (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
 

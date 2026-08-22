@@ -16,7 +16,7 @@ function isEventExpired(ev: CalendarEvent): boolean {
   if (!dateStr) return false;
   const evTime = new Date(dateStr).getTime();
   if (isNaN(evTime)) return false;
-  // Expirado: prazo já executado no passado (< agora)
+  // Expired: deadline passed in the past (< now)
   return evTime < Date.now();
 }
 
@@ -25,7 +25,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
   const [activeEvents, setActiveEvents] = useState<CalendarEvent[]>([]);
   const [_isLoadingEvents, setIsLoadingEvents] = useState(true);
 
-  // 1. Coletar o ID da página e todas as subpáginas/descendentes recursivamente
+  // 1. Collect page ID and all subpages/descendants recursively
   const targetPageIds = useMemo(() => {
     const ids = new Set<string>();
     const collect = (parentId: string) => {
@@ -52,13 +52,13 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
 
         const found: CalendarEvent[] = [];
         for (const ev of events) {
-          // Ignorar eventos expirados (cujo prazo já foi executado no passado)
+          // Ignore expired events (deadline passed in the past)
           if (isEventExpired(ev)) {
             continue;
           }
 
           let isLinked = false;
-          // Checar vínculo direto via ev.page_id
+          // Check direct relation via ev.page_id
           if (ev.page_id && targetPageIds.includes(ev.page_id)) {
             isLinked = true;
           } else {

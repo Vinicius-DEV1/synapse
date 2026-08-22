@@ -90,14 +90,14 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
         const { state } = editor;
         const { selection } = state;
 
-        // Caso 1: Nó já está selecionado via NodeSelection
+        // Case 1: Node is already selected via NodeSelection
         if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
           const fileId = selection.node.attrs.fileId;
           window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
           return true;
         }
 
-        // Caso 2: Cursor (TextSelection) logo após o atom inline — Backspace deletaria direto
+        // Case 2: Cursor (TextSelection) right after inline atom - Backspace would delete directly
         const { $from } = selection;
         if (selection.empty && $from.nodeBefore?.type.name === nodeName) {
           const fileId = $from.nodeBefore.attrs.fileId;

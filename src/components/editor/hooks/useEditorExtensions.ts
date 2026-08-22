@@ -68,13 +68,13 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
   return useMemo(() => {
     return [
       StarterKit.configure({
-        // Desativa UndoRedo local para utilizar o histórico integrado do Yjs/Collaboration
+        // Disable local UndoRedo to use integrated Yjs/Collaboration history
         undoRedo: false,
         codeBlock: false,
         blockquote: false,
-        bulletList: false,  // Substituído por CustomBulletList (apenas atalho '-')
-        bold: false,        // Substituído por CustomBold (atalho Ctrl+B)
-        horizontalRule: false, // Substituído por CustomDivider
+        bulletList: false,  // Replaced by CustomBulletList (shortcut '-' only)
+        bold: false,        // Replaced by CustomBold (Ctrl+B shortcut)
+        horizontalRule: false, // Replaced by CustomDivider
         // Dropcursor customizado de alta visibilidade no tema escuro
         dropcursor: { color: '#f59e0b', width: 3, class: 'caderno-dropcursor' },
       }),
