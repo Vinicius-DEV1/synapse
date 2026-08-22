@@ -1,8 +1,3 @@
-declare module "../../api/types" {
-  interface ICadernoAPI {
-    log?: (msg: string) => void;
-  }
-}
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';

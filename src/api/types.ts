@@ -278,6 +278,25 @@ export interface ICadernoAPI {
     delete: (id: string) => Promise<boolean>;
   };
 
+  drive?: {
+    openExternalUrl: (url: string) => Promise<void>;
+  };
+
+  events?: {
+    listen: (channel: string, callback: (event: { payload: any }) => void) => Promise<() => void>;
+    emit?: (channel: string, payload?: any) => Promise<void>;
+  };
+
+  lofi?: {
+    saveLocal: (name: string, data: ArrayBuffer) => Promise<string>;
+    getLocalPath: (name: string) => Promise<string | null>;
+    deleteLocal: (name: string) => Promise<void>;
+  };
+
+  os?: {
+    openInBrowser: (url: string) => void;
+  };
+
   youtube?: any;
   trash?: any;
 }

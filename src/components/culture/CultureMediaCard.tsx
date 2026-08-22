@@ -9,14 +9,6 @@ import { CultureCardCompact } from './cards/CultureCardCompact';
 import { CultureCardGrid } from './cards/CultureCardGrid';
 import type { ViewMode } from './hooks/useCulture';
 
-declare module '../../api/types' {
-  interface ICadernoAPI {
-    drive?: {
-      openExternalUrl: (url: string) => Promise<void>;
-    };
-  }
-}
-
 interface Props {
   item: CultureItem;
   viewMode: ViewMode;
