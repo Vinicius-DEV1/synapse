@@ -92,7 +92,7 @@ export default function FilesView() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         <FilesHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
