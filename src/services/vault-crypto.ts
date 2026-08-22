@@ -4,28 +4,14 @@
  * Formato de saída: iv_hex:auth_tag_hex:encrypted_hex
  */
 
+import { hexToArrayBuffer, arrayBufferToHex } from '../utils/binary';
+
 // Gera o hash SHA-256 usado como chave pelo Rust (cmd_vault.rs / hash_auth_password)
 export async function getVaultKeyHash(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + 'caderno-auth-hash');
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Converte string hex para ArrayBuffer
-function hexToArrayBuffer(hex: string): ArrayBuffer {
-  const bytes = new Uint8Array(Math.ceil(hex.length / 2));
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-  }
-  return bytes.buffer;
-}
-
-// Converte ArrayBuffer para string hex
-function arrayBufferToHex(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return arrayBufferToHex(hashBuffer);
 }
 
 export async function encryptVaultField(text: string, keyHex: string): Promise<string> {

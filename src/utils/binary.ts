@@ -31,3 +31,23 @@ export function base64ToUint8Array(base64: string): Uint8Array {
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return base64ToUint8Array(base64).buffer as ArrayBuffer;
 }
+
+export function hexToUint8Array(hex: string): Uint8Array {
+  const bytes = new Uint8Array(Math.ceil(hex.length / 2));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+export function hexToArrayBuffer(hex: string): ArrayBuffer {
+  return hexToUint8Array(hex).buffer as ArrayBuffer;
+}
+
+export function uint8ArrayToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function arrayBufferToHex(buffer: ArrayBuffer): string {
+  return uint8ArrayToHex(new Uint8Array(buffer));
+}

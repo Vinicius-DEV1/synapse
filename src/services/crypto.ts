@@ -1,3 +1,5 @@
+import { hexToUint8Array, arrayBufferToHex, uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
+
 /**
  * Módulo de Criptografia de Ponta a Ponta (E2EE)
  * Utiliza Web Crypto API padrão para garantir máxima segurança.
@@ -43,12 +45,8 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   );
 }
 
-
 export async function importHexKey(hexString: string): Promise<CryptoKey> {
-  const bytes = new Uint8Array(Math.ceil(hexString.length / 2));
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hexString.substring(i * 2, i * 2 + 2), 16);
-  }
+  const bytes = hexToUint8Array(hexString);
   return crypto.subtle.importKey(
     'raw',
     bytes,
@@ -60,13 +58,8 @@ export async function importHexKey(hexString: string): Promise<CryptoKey> {
 
 export async function exportKeyToHex(key: CryptoKey): Promise<string> {
   const exported = await crypto.subtle.exportKey('raw', key);
-  const buffer = new Uint8Array(exported);
-  return Array.from(buffer)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  return arrayBufferToHex(exported);
 }
-
-import { uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
 
 /**
  * Encripta um texto (string) usando a Chave Mestra.

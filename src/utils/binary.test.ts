@@ -4,6 +4,10 @@ import {
   arrayBufferToBase64,
   base64ToUint8Array,
   base64ToArrayBuffer,
+  hexToUint8Array,
+  hexToArrayBuffer,
+  uint8ArrayToHex,
+  arrayBufferToHex,
 } from './binary';
 
 describe('binary utils', () => {
@@ -41,5 +45,19 @@ describe('binary utils', () => {
     const reconstructed = base64ToUint8Array(base64);
     expect(reconstructed.length).toBe(20000);
     expect(reconstructed[100]).toBe(100 % 256);
+  });
+
+  it('converts Uint8Array and ArrayBuffer to hex and back', () => {
+    const originalBytes = new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0x01, 0x0a]);
+    const hex = 'deadbeef010a';
+
+    expect(uint8ArrayToHex(originalBytes)).toBe(hex);
+    expect(arrayBufferToHex(originalBytes.buffer)).toBe(hex);
+
+    const parsedBytes = hexToUint8Array(hex);
+    expect(Array.from(parsedBytes)).toEqual(Array.from(originalBytes));
+
+    const parsedBuffer = hexToArrayBuffer(hex);
+    expect(Array.from(new Uint8Array(parsedBuffer))).toEqual(Array.from(originalBytes));
   });
 });
