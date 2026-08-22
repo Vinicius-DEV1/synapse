@@ -1,5 +1,5 @@
 /**
- * Gerenciamento do indicador visual da zona de drop lateral para agrupamento de blocos.
+ * Manages visual drop indicator for block grouping zones.
  */
 
 let indicator: HTMLDivElement | null = null;
@@ -32,7 +32,7 @@ export function showIndicator(rect: DOMRect, side: 'left' | 'right'): void {
 }
 
 /**
- * Oculta e remove o indicador visual de agrupamento da tela.
+ * Hides and removes grouping indicator from DOM.
  */
 export function hideIndicator(): void {
   if (typeof document === 'undefined') return;

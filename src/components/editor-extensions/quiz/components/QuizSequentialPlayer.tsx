@@ -43,7 +43,7 @@ export default function QuizSequentialPlayer({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummaryView, setShowSummaryView] = useState(false);
 
-  // Garante que o índice esteja dentro dos limites válidos
+  // Ensures index remains within valid question bounds
   const activeIndex = Math.min(Math.max(0, currentIndex), Math.max(0, total - 1));
   const currentQ = safeQuestions[activeIndex];
 
@@ -57,14 +57,14 @@ export default function QuizSequentialPlayer({
   const hitPercentage = answeredCount > 0 ? Math.round((correctCount / total) * 100) : 0;
   const allAnswered = total > 0 && answeredCount === total;
 
-  // Dispara celebração quando todas as questões forem respondidas com bom aproveitamento
+  // Triggers celebration when all questions are answered with high score
   useEffect(() => {
     if (allAnswered && hitPercentage >= 70) {
       triggerFireworksAnimation();
     }
   }, [allAnswered, hitPercentage]);
 
-  // Navega para a próxima questão
+  // Navigates to next question
   const handleNext = useCallback(() => {
     if (activeIndex < total - 1) {
       setCurrentIndex((prev) => prev + 1);

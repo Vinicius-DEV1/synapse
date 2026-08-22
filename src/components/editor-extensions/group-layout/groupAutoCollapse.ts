@@ -29,7 +29,7 @@ interface EmptyChildTarget {
   indices: number[];
 }
 
-/** Identifica filhos vazios cuja seleção não esteja ativamente dentro do grupo. */
+/** Identifies empty child nodes whose selection is not actively within group. */
 function findCollapsibleChildren(state: EditorState): EmptyChildTarget[] {
   const targets: EmptyChildTarget[] = [];
 
@@ -92,7 +92,7 @@ export const GroupAutoCollapse = Extension.create({
           try {
             if (!transactions.some((tr) => tr.docChanged)) return null;
 
-            // Ignora transações originadas remotamente via Yjs para respeitar a seleção do autor
+            // Ignore remote Yjs transactions to respect remote author selection
             if (transactions.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
               return null;
             }

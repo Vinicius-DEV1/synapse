@@ -1,7 +1,7 @@
 /**
  * dropDiagnostics.ts
  *
- * Diagnóstico do drop, desligado por padrão.
+ * Drop diagnostics logger (disabled by default).
  *
  * Um arrasto pode nascer por três caminhos diferentes (alça flutuante, node view
  * com `data-drag-handle`, seleção de texto) e cada um preenche `view.dragging`

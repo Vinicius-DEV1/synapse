@@ -2,7 +2,7 @@ import type { QuestionItem, QuizChatMessage, AttemptItem } from '../types';
 import { createDefaultQuestion } from './fireworks';
 
 /**
- * Normaliza de forma ultra defensiva e resiliente um item de questão individual,
+ * Defensively normalizes an individual question item,
  * prevenindo qualquer valor undefined, null ou tipos inesperados.
  */
 export function normalizeSingleQuestion(raw: any, fallbackIndex: number = 1): QuestionItem {
@@ -111,7 +111,7 @@ export function normalizeQuizQuestions(rawQuestions: any): QuestionItem[] {
 }
 
 /**
- * Normaliza histórico de chat da IA para evitar problemas de desserialização.
+ * Normalizes AI chat history to prevent deserialization issues.
  */
 export function normalizeChatHistory(rawHistory: any): QuizChatMessage[] {
   let parsed = rawHistory;

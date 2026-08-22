@@ -112,9 +112,9 @@ export function appendToGroup(
 }
 
 /**
- * Agrupa nós irmãos adjacentes (usado pelos botões de ação 'agrupar com o vizinho').
- * Prioridade: agrupar com o elemento de CIMA (anterior), que é o fluxo natural
- * de digitação/criação, e fallback para o elemento de BAIXO (posterior).
+ * Groups adjacent sibling nodes (used by 'group with neighbor' actions).
+ * Priority: group with preceding sibling (natural reading/typing flow),
+ * falling back to following sibling if preceding is unavailable.
  */
 export function groupWithSibling(view: EditorView, spec: GroupSpec, pos: number): boolean {
   const { state } = view;

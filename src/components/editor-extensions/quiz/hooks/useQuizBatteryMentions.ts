@@ -17,7 +17,7 @@ export function useQuizBatteryMentions(
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [isLoadingBatteries, setIsLoadingBatteries] = useState(false);
 
-  // Carrega todas as baterias de exercícios existentes no app
+  // Loads all existing exercise quiz batteries in the app
   useEffect(() => {
     let isMounted = true;
     const loadBatteries = async () => {
@@ -41,7 +41,7 @@ export function useQuizBatteryMentions(
     };
   }, [state.pages, currentBatteryTitle]);
 
-  // Filtra as baterias disponíveis com base no texto digitado após o @
+  // Filters available batteries based on query text typed after @
   const filteredBatteries = useMemo(() => {
     const q = mentionQuery.toLowerCase().trim();
     return availableBatteries.filter((b) => {
@@ -55,7 +55,7 @@ export function useQuizBatteryMentions(
     }).slice(0, 8);
   }, [availableBatteries, attachedBatteries, mentionQuery]);
 
-  // Anexa uma bateria de exercícios como referência
+  // Attaches an exercise battery as reference
   const handleAttachBattery = useCallback((battery: ReferencedBattery) => {
     if (!attachedBatteries.some((b) => b.id === battery.id)) {
       setAttachedBatteries((prev) => [...prev, battery]);

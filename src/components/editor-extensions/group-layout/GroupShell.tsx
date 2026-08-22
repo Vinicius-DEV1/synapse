@@ -17,7 +17,7 @@ interface GroupShellProps {
 }
 
 /**
- * Componente NodeView estrutural compartilhado para layouts em grupo (colunas, cards).
+ * Structural NodeView component for layout grouping (columns, card groups).
  * Fornece divisores de redimensionamento interativos, barra de ferramentas de controle e balanceamento.
  */
 export default function GroupShell({

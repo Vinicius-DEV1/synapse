@@ -10,7 +10,7 @@ export function useQuizState(
   title: string | undefined,
   updateAttributes: (attrs: Record<string, any>) => void
 ) {
-  // Estado local para renderização ultra-fluida e responsiva sem latência de transações TipTap/Yjs
+  // Local state for responsive rendering without TipTap/Yjs transaction latency
   const [localQuestions, setLocalQuestions] = useState<QuestionItem[]>(() =>
     normalizeQuizQuestions(rawQuestions)
   );
@@ -18,7 +18,7 @@ export function useQuizState(
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInternalUpdateRef = useRef(false);
 
-  // Sincroniza caso o valor externo venha de desfazer/refazer ou colaboração remota
+  // Syncs if external value changes from undo/redo or remote collaboration
   useEffect(() => {
     if (isInternalUpdateRef.current) {
       isInternalUpdateRef.current = false;
@@ -28,7 +28,7 @@ export function useQuizState(
     setLocalQuestions(incoming);
   }, [rawQuestions]);
 
-  // Função centralizada para sincronizar com o TipTap (debounced para digitação contínua, imediata para cliques)
+  // Centralized TipTap synchronization (debounced for continuous typing, immediate for clicks)
   const syncToTipTap = useCallback(
     (newQuestions: QuestionItem[], immediate: boolean = false) => {
       if (debounceTimeoutRef.current) {
