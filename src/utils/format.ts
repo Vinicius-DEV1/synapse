@@ -2,8 +2,8 @@
  * Utilitários de formatação de dados e tamanhos de arquivos.
  */
 
-export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+export function formatBytes(bytes?: number | null): string {
+  if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));

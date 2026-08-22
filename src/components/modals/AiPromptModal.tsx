@@ -56,7 +56,7 @@ export default function AiPromptModal({ x, y, chatId, messages, contextText, con
       const finalPrompt = (isFirst && contextText) ? `Contexto:\n"${contextText}"\n\nInstrução:\n${prompt}` : prompt;
       const imageToPass = isFirst ? contextImage : undefined;
 
-      const { getSettings } = await import('../utils/settings');
+      const { getSettings } = await import('../../utils/settings');
       const settings = getSettings();
       const responseObj = await promptGemini(finalPrompt, imageToPass, messages, settings.geminiModelChat || settings.geminiModel);
       const response = responseObj.text;

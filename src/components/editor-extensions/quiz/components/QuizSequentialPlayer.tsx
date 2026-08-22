@@ -9,8 +9,6 @@ import {
   XCircle,
   HelpCircle,
   Sparkles,
-  Trophy,
-  List,
   Loader2,
   Check,
   X,

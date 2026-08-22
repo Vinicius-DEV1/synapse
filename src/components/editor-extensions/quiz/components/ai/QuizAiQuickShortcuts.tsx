@@ -1,4 +1,3 @@
-import React from 'react';
 import { PlusCircle, FileText, Edit3, Tag } from 'lucide-react';
 
 interface QuizAiQuickShortcutsProps {

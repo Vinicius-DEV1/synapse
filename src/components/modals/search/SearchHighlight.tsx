@@ -1,4 +1,3 @@
-import React from 'react';
 import { escapeRegex } from './search-utils';
 
 export function HighlightedText({
