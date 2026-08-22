@@ -1,15 +1,15 @@
 /**
  * image-drive.ts
  *
- * Serviço responsável por upload de imagens criptografadas no Google Drive
- * e cache local (IndexedDB na web, IPC no Tauri).
+ * Service responsible for encrypted image uploads to Google Drive
+ * and local caching (IndexedDB on Web, IPC on Tauri).
  */
 
 import { encryptFile, decryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 import { getWebDb } from './db-web';
 
-// Utilitário para B20: Detectar o mimeType real pelos magic bytes da imagem
+// Utility: Detect true MIME type from image magic bytes
 function detectMimeType(buffer: ArrayBuffer): string {
   const arr = new Uint8Array(buffer).subarray(0, 4);
   const header = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');

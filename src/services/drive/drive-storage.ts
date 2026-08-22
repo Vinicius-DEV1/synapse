@@ -4,7 +4,7 @@ import { listFiles } from './drive-operations';
 import type { DriveFile, DriveStorageUsage } from './drive-types';
 
 /**
- * Calcula o uso de armazenamento no Google Drive para os diferentes módulos do app.
+ * Computes Google Drive storage usage across application modules.
  */
 export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> {
   const token = await getValidAccessToken();

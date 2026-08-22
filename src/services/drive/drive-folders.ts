@@ -16,7 +16,7 @@ export async function getOrCreateAppFolder(accessToken: string): Promise<string>
     }
   }
 
-  // Se não existir, cria a pasta
+  // Create folder if not found
   const createRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {

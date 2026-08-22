@@ -5,14 +5,14 @@ import type { YouTubeDownloadOptions } from './video-types';
 
 const VIDEO_TABLE = 'videos';
 
-// `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara `scanTracks`,
+// `window.api.video` extended track scanner helper
 // implementado em src/api/tauri/multimedia.ts.
 type DesktopVideoApi = NonNullable<typeof window.api.video> & {
   scanTracks: (localPath: string) => Promise<{ streams?: Array<{ index: number | string; codec_type: string; tags?: { language?: string; title?: string } }> }>;
 };
 
 /**
- * Baixa um vídeo do YouTube via yt-dlp, salva localmente e faz upload para o Drive.
+ * Downloads YouTube video via yt-dlp, saves locally and uploads to Drive.
  */
 export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): Promise<VideoItem> {
   const { url, quality, filename, youtubeInfo, collectionId, collectionName, selectedSubs, onProgress } = options;

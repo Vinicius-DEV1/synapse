@@ -1,12 +1,12 @@
 /**
- * Criptografia do Cofre para a Web.
- * Garante paridade exata com o formato gerado pelo `cmd_vault.rs` no Desktop.
+ * Vault cryptography module for Web runtime.
+ * Guarantees exact binary parity with cmd_vault.rs in Desktop (Tauri).
  * Formato de saída: iv_hex:auth_tag_hex:encrypted_hex
  */
 
 import { hexToArrayBuffer, arrayBufferToHex } from '../utils/binary';
 
-// Gera o hash SHA-256 usado como chave pelo Rust (cmd_vault.rs / hash_auth_password)
+// Computes SHA-256 hash used as key by Rust (cmd_vault.rs / hash_auth_password)
 export async function getVaultKeyHash(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + 'caderno-auth-hash');

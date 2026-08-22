@@ -1,5 +1,5 @@
 /**
- * Facade para o módulo de gerenciamento de vídeo.
- * Re-exporta todos os serviços especializados de ./video para preservar compatibilidade de imports.
+ * Facade for video management module.
+ * Re-exports specialized video services to preserve import compatibility.
  */
 export * from './video';

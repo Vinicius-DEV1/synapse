@@ -2,13 +2,13 @@ import { getValidAccessToken, deleteFromDrive } from '../drive';
 import type { VideoItem } from '../../types';
 
 /**
- * Exclui o vídeo permanentemente:
- * 1. Remove arquivo local (se existir)
- * 2. Remove todos os arquivos vinculados no Google Drive
- * 3. Remove do banco de dados local (e sincroniza a exclusão via soft-delete)
+ * Permanently deletes video item:
+ * 1. Removes local file if present
+ * 2. Removes all linked files in Google Drive
+ * 3. Removes from local database (and syncs deletion via soft-delete)
  */
 export async function deleteVideoAndSync(video: VideoItem): Promise<void> {
-  // 1. Excluir localmente (se for local)
+  // 1. Delete locally (if local)
   if (video.is_local && window.api?.video) {
     await window.api.video.deleteLocal(video.original_name).catch(e => console.warn("Failed to delete local", e));
   }

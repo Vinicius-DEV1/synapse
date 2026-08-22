@@ -13,7 +13,7 @@ export interface CultureSearchResult {
 }
 
 /**
- * Busca na API Jikan (MyAnimeList) para animes ou mangás
+ * Queries Jikan API (MyAnimeList) for anime or manga
  */
 export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<CultureSearchResult[]> {
   try {
@@ -43,7 +43,7 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
 }
 
 /**
- * Busca na API do Google Books
+ * Queries Google Books API
  */
 export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise<CultureSearchResult[]> {
   try {
@@ -66,7 +66,7 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
 }
 
 /**
- * Busca na API do TVMaze (Séries de TV)
+ * Queries TVMaze API (TV Series)
  */
 export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
   try {

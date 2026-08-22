@@ -8,8 +8,8 @@ function isDesktopApp(): boolean {
 
 /**
  * Roda o Garbage Collector (Lixeiro) de imagens.
- * Procura arquivos de imagem no Google Drive (pasta FOTOS) que não estão mais
- * referenciados em nenhuma página local e que foram criados há mais de 30 dias.
+ * Identifies orphaned image files in Google Drive (PHOTOS folder)
+ * that are not referenced in local pages and were created over 30 days ago.
  */
 export async function runImageGarbageCollector(): Promise<void> {
   console.log('[GC] Iniciando o Garbage Collector de Imagens...');
@@ -20,7 +20,7 @@ export async function runImageGarbageCollector(): Promise<void> {
       return;
     }
 
-    // 1. Pegar todos os IDs de arquivos sendo usados nas páginas
+    // 1. Collect all image file IDs referenced in pages
     const usedIds = await extractUsedDriveFileIds();
     console.log(`[GC] Encontrados ${usedIds.size} arquivos em uso nas anotações.`);
 

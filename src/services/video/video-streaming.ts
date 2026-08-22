@@ -3,7 +3,7 @@ import type { VideoItem } from '../../types';
 
 const VIDEO_TABLE = 'videos';
 
-// `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara esses métodos
+// `window.api.video` method extended helper
 // nativos do desktop (implementados em src/api/tauri/multimedia.ts).
 type DesktopVideoApi = NonNullable<typeof window.api.video> & {
   onDownloadProgress: (callback: (percent: number) => void) => () => void;
@@ -18,7 +18,7 @@ export async function getVideoStreamLink(driveFileId: string, masterKey?: Crypto
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
   if (!masterKey) {
-    // Se não tivermos chave (ex: modo público?), caímos para o stream direto (só vai funcionar se não estiver criptografado)
+    // If no key is provided, fallback to direct stream (unencrypted)
     return `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&access_token=${token}`;
   }
 

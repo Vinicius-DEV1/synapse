@@ -13,7 +13,7 @@ export interface ResolveCanonicalOptions {
 }
 
 /**
- * Busca o arquivo local em múltiplos caminhos canônicos no AppData da aplicação.
+ * Resolves local file across multiple canonical paths in AppData.
  * Tolera caminhos antigos gravados em outro SO (Windows C:\ vs Linux /home/...).
  */
 export async function findLocalCanonicalPath(
@@ -41,7 +41,7 @@ export async function findLocalCanonicalPath(
     candidates.push(await join(dataDir, moduleName, `${id}.enc`));
     candidates.push(await join(dataDir, moduleName, id));
 
-    // 2. Candidatos baseados no savedPath (se existir)
+    // 2. Candidates derived from savedPath (if present)
     if (savedPath && !savedPath.startsWith('drive:') && !savedPath.startsWith('http')) {
       const cleanPath = savedPath.replace(/^file:\/\//, '');
       const filename = cleanPath.split(/[/\\]/).pop();
@@ -56,14 +56,14 @@ export async function findLocalCanonicalPath(
         if (!cleanPath.endsWith('.enc')) candidates.push(await join(dataDir, `${cleanPath}.enc`));
       }
 
-      // Candidato direto dentro da pasta do módulo
+      // Direct candidate inside module folder
       if (filename) {
         candidates.push(await join(dataDir, moduleName, filename));
         if (!filename.endsWith('.enc')) candidates.push(await join(dataDir, moduleName, `${filename}.enc`));
       }
     }
 
-    // Retorna o primeiro caminho existente
+    // Returns the first existing candidate path
     for (const candidate of candidates) {
       try {
         if (await exists(candidate)) {
@@ -88,7 +88,7 @@ export function buildEncryptedAssetUrl(moduleName: string, localFullPath: string
 }
 
 /**
- * Tenta buscar o buffer através do stream do protocolo customizado.
+ * Attempts to fetch buffer via custom protocol stream.
  */
 export async function fetchEncryptedStreamBuffer(assetUrl: string): Promise<ArrayBuffer | null> {
   try {

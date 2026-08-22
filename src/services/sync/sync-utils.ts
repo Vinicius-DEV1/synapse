@@ -36,7 +36,7 @@ export function setLastSyncTime(type: 'pull' | 'push', time: number) {
 }
 
 export async function restoreLastSyncTimesFromDb(): Promise<void> {
-  // Obsoleto: não salvamos mais no DB para evitar loop infinito
+  // Deprecated: avoid saving to DB to prevent infinite sync triggers
 }
 
 export function parseDateSafe(dateStr: string | undefined | null | number): number {
@@ -53,8 +53,8 @@ export function parseDateSafe(dateStr: string | undefined | null | number): numb
 }
 
 /**
- * #7: Gera e persiste um deviceId único por sessão de navegador.
- * Usado para que o listener de sync_signal ignore sinais do próprio dispositivo.
+ * Generates and persists a unique deviceId per browser session.
+ * Used by sync_signal listener to ignore echo signals from same device.
  */
 export function getDeviceId(): string {
   let deviceId = sessionStorage.getItem('caderno_device_id');
@@ -66,8 +66,8 @@ export function getDeviceId(): string {
 }
 
 /**
- * #8: Hard reset otimizado com writeBatch em vez de deleteDoc sequencial.
- * Deleta até 400 docs por batch (limite Firestore = 500).
+ * Hard reset optimized using writeBatch instead of sequential deleteDoc.
+ * Deletes up to 400 docs per batch (Firestore batch limit is 500).
  */
 const BATCH_DELETE_SIZE = 400;
 
@@ -80,7 +80,7 @@ export async function hardResetCloud(): Promise<void> {
       logFirebaseOp('read', snap.docs.length || 1);
       if (snap.empty) continue;
 
-      // Dividir em chunks para batch delete
+      // Chunk into batches for Firestore batch delete
       const docs = snap.docs;
       for (let i = 0; i < docs.length; i += BATCH_DELETE_SIZE) {
         const chunk = docs.slice(i, i + BATCH_DELETE_SIZE);
