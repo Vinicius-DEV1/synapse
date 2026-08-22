@@ -79,6 +79,10 @@ describe('webLibraryApi Unit Tests', () => {
       const activeBooks = await api.getBooks();
       expect(activeBooks).toHaveLength(0);
     });
+
+    it('defines reattachBookFile method', () => {
+      expect(typeof api.reattachBookFile).toBe('function');
+    });
   });
 
   describe('Collections & Associations', () => {

@@ -57,6 +57,34 @@ export const tauriLibraryApi = {
   addBook: async (b: any) => await invoke('library_add_book', { book: b }),
   updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
   deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
+  reattachBookFile: async (bookId: string) => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Books', extensions: ['pdf', 'epub'] }]
+      });
+      if (selected) {
+        const filePath = Array.isArray(selected) ? selected[0] : selected;
+        if (!filePath) return null;
+        const ext = filePath.split('.').pop() || 'pdf';
+        const localPath = `library/${bookId}.${ext}.enc`;
+        await invoke('library_import_and_encrypt_book', {
+          sourcePath: filePath,
+          destPath: localPath
+        });
+        await invoke('library_update_book', {
+          book: {
+            id: bookId,
+            file_path: localPath
+          }
+        });
+        return localPath;
+      }
+    } catch(e) {
+      console.error("Error reattaching book file", e);
+    }
+    return null;
+  },
   getCollections: async () => await invoke('library_get_collections'),
   addCollection: async (c: any) => await invoke('library_add_collection', { collection: c }),
   updateCollection: async (c: any) => await invoke('library_update_collection', { collection: c }),

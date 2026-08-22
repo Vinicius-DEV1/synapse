@@ -79,6 +79,43 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     }
     return false;
   },
+  reattachBookFile: async (bookId: string) => {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = false;
+      input.accept = 'application/pdf,application/epub+zip,.pdf,.epub';
+      
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return resolve(null);
+        
+        const _masterKey = getMasterKey();
+        if (!_masterKey) {
+          alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+          return reject(new Error("Chave Mestra não encontrada"));
+        }
+        
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
+          const existing = await db.get('library_books', bookId);
+          if (existing) {
+            existing.file_path = remotePath;
+            existing.original_name = file.name;
+            existing.updated_at = new Date().toISOString();
+            await db.put('library_books', existing);
+          }
+          resolve(remotePath);
+        } catch (err) {
+          console.error("Erro ao reanexar arquivo:", err);
+          reject(err);
+        }
+      };
+      
+      input.click();
+    });
+  },
   updateBook: async (book: any) => {
     const existing = await db.get('library_books', book.id);
     if (!existing) return 0;
