@@ -8,6 +8,7 @@ import QuizBatteryHeader from './components/QuizBatteryHeader';
 import QuizTagsFilter from './components/QuizTagsFilter';
 import QuizEditor from './components/QuizEditor';
 import QuizPlayer from './components/QuizPlayer';
+import QuizSequentialPlayer from './components/QuizSequentialPlayer';
 import QuizAIAssistant from './components/QuizAIAssistant';
 import QuizImportModal from './components/QuizImportModal';
 import { QuizDeleteModals } from './components/QuizDeleteModals';
@@ -15,7 +16,7 @@ import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeChatHistory } from './utils/quizNormalizer';
 import { triggerToast } from '../../ui/ToastContext';
-import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery } from './types';
+import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery, QuizLayout } from './types';
 
 export default function QuestionBlockNodeView(props: any) {
   const {
@@ -23,11 +24,13 @@ export default function QuestionBlockNodeView(props: any) {
     description,
     isCollapsed,
     mode: rawMode,
+    layout: rawLayout,
     questions: rawQuestions,
     aiChatHistory: rawChatHistory,
   } = props.node.attrs;
 
   const mode: 'edit' | 'practice' = rawMode === 'practice' ? 'practice' : 'edit';
+  const layout: QuizLayout = rawLayout === 'sequential' ? 'sequential' : 'list';
   const chatHistory: QuizChatMessage[] = normalizeChatHistory(rawChatHistory);
 
   const {
@@ -383,12 +386,14 @@ export default function QuestionBlockNodeView(props: any) {
             title={title}
             description={description}
             mode={mode}
+            layout={layout}
             isCollapsed={isCollapsed}
             copiedJson={copiedJson}
             questionCount={questions.length}
             onUpdateTitle={(val) => props.updateAttributes({ title: val })}
             onUpdateDescription={(val) => props.updateAttributes({ description: val })}
             onSetMode={handleSetMode}
+            onSetLayout={(l) => props.updateAttributes({ layout: l })}
             onOpenAiAssistant={() => setShowAiAssistantModal(true)}
             onOpenImport={() => setShowImportModal(true)}
             onCopyJson={handleCopyQuestionsJson}
@@ -418,6 +423,25 @@ export default function QuestionBlockNodeView(props: any) {
                 onMoveQuestion={handleMoveQuestion}
                 onDeleteQuestion={(id, idx) => setDeletingQuestionInfo({ id, index: idx })}
                 onAddQuestion={handleAddQuestion}
+              />
+            ) : layout === 'sequential' ? (
+              <QuizSequentialPlayer
+                questions={displayedQuestions}
+                onUpdateSingleQuestion={updateSingleQuestion}
+                onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+                evaluatingIds={evaluatingIds}
+                onDiscussInChat={(q, idx) => {
+                  setShowAiAssistantModal(true);
+                  const questionHeader = `Gostaria de discutir a avaliação da Questão ${idx + 1}`;
+                  const alreadyDiscussed = chatHistory.some(
+                    (m) => m.role === 'user' && m.text.includes(questionHeader)
+                  );
+                  if (alreadyDiscussed) return;
+
+                  const prompt = `${questionHeader} ("${q.question}"):\n- Minha Resposta: "${q.userTypedAnswer}"\n- Avaliação da IA: ${q.aiFeedback?.verdict || 'N/A'}\n- Parecer da IA: "${q.aiFeedback?.feedback || ''}"\n- Gabarito de Referência: "${q.expectedAnswer || 'N/A'}"\n\nPode me explicar didaticamente por que recebi esta avaliação e como posso aperfeiçoar meu entendimento ou resposta?`;
+                  handleSendChatMessage(prompt);
+                }}
+                onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
               />
             ) : (
               <QuizPlayer

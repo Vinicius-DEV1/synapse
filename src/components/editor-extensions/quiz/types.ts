@@ -66,3 +66,5 @@ export interface ReferencedBattery {
   questionCount: number;
   questions: QuestionItem[];
 }
+
+export type QuizLayout = 'list' | 'sequential';

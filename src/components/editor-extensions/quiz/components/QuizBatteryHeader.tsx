@@ -10,18 +10,23 @@ import {
   ChevronDown,
   ChevronUp,
   UploadCloud,
+  List,
+  LayoutList,
 } from 'lucide-react';
+import type { QuizLayout } from '../types';
 
 interface QuizBatteryHeaderProps {
   title: string;
   description: string;
   mode: 'edit' | 'practice';
+  layout?: QuizLayout;
   isCollapsed: boolean;
   copiedJson: boolean;
   questionCount?: number;
   onUpdateTitle: (title: string) => void;
   onUpdateDescription: (description: string) => void;
   onSetMode: (mode: 'edit' | 'practice', e: React.MouseEvent) => void;
+  onSetLayout?: (layout: QuizLayout) => void;
   onOpenAiAssistant: () => void;
   onOpenImport: () => void;
   onCopyJson: (e: React.MouseEvent) => void;
@@ -33,12 +38,14 @@ export default function QuizBatteryHeader({
   title,
   description,
   mode,
+  layout = 'list',
   isCollapsed,
   copiedJson,
   questionCount,
   onUpdateTitle,
   onUpdateDescription,
   onSetMode,
+  onSetLayout,
   onOpenAiAssistant,
   onOpenImport,
   onCopyJson,
@@ -102,6 +109,36 @@ export default function QuizBatteryHeader({
             <span>Praticar</span>
           </button>
         </div>
+
+        {/* Alternador de Layout (Lista vs Sequencial/Kahoot) no modo Prática */}
+        {mode === 'practice' && onSetLayout && !isCollapsed && (
+          <div className="flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs">
+            <button
+              onClick={() => onSetLayout('list')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
+                layout === 'list'
+                  ? 'bg-white/15 text-white font-semibold shadow-xs'
+                  : 'text-dark-subtext hover:text-white'
+              }`}
+              title="Modo Lista (Todas as questões visíveis)"
+            >
+              <List size={13} />
+              <span className="hidden sm:inline text-[11px]">Lista</span>
+            </button>
+            <button
+              onClick={() => onSetLayout('sequential')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
+                layout === 'sequential'
+                  ? 'bg-white/15 text-white font-semibold shadow-xs'
+                  : 'text-dark-subtext hover:text-white'
+              }`}
+              title="Modo Sequencial (Uma questão por vez, estilo Kahoot)"
+            >
+              <LayoutList size={13} />
+              <span className="hidden sm:inline text-[11px]">Sequencial</span>
+            </button>
+          </div>
+        )}
 
         {/* Botão Assistente IA */}
         <button
