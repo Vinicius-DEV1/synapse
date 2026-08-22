@@ -5,6 +5,8 @@ import type { PageHistoryEntry } from '../../types';
 import HtmlDiff from 'htmldiff-js';
 import { Portal } from '../ui/Portal';
 
+import { formatDateTimeWithSeconds } from '../../utils/date-utils';
+
 interface PageHistoryModalProps {
   pageId: string;
   onClose: () => void;
@@ -26,18 +28,6 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
         setLoading(false);
       });
   }, [pageId]);
-
-  const formatDate = (isoString: string) => {
-    const d = new Date(isoString);
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).format(d);
-  };
 
   const currentEntry = history[selectedIndex];
   const previousEntry = history[selectedIndex + 1]; // Older entry since sorted DESC
@@ -99,7 +89,7 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
                       {index === 0 ? 'Versão Atual' : `Revisão ${history.length - index}`}
                     </div>
                     <div className={`text-xs ${selectedIndex === index ? 'text-brand-500/70' : 'text-dark-subtext'}`}>
-                      {formatDate(entry.created_at)}
+                      {formatDateTimeWithSeconds(entry.created_at)}
                     </div>
                   </button>
                 ))}

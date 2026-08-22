@@ -53,3 +53,51 @@ export function getEventTimeStr(dateStr?: string | null): string {
   const d = parseEventDate(dateStr);
   return format(d, 'HH:mm');
 }
+
+/**
+ * Formats a date string to 'dd/MM/yyyy HH:mm'
+ */
+export function formatDateTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }).format(d);
+  } catch {
+    return String(dateStr);
+  }
+}
+
+/**
+ * Formats a date string to 'dd MMM yyyy, HH:mm:ss'
+ */
+export function formatDateTimeWithSeconds(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).format(d);
+  } catch {
+    return String(dateStr);
+  }
+}
+
+/**
+ * Formats a date string to 'dd MMM' (e.g. '15 out')
+ */
+export function formatDayMonth(dateStr?: string | null, fallback: string = 'Recente'): string {
+  if (!dateStr) return fallback;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return fallback;
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(d);
+  } catch {
+    return fallback;
+  }
+}

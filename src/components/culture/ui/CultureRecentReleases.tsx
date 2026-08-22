@@ -1,5 +1,6 @@
 import { Calendar } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../../types';
+import { formatDayMonth } from '../../../utils/date-utils';
 
 type EnrichedEpisode = CultureEpisode & { item_title: string; item_cover: string };
 
@@ -15,14 +16,6 @@ export function CultureRecentReleases({
   onSelectItem,
 }: CultureRecentReleasesProps) {
   if (recentReleases.length === 0) return null;
-
-  const formatDate = (iso: string) => {
-    try {
-      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(iso));
-    } catch {
-      return 'Recente';
-    }
-  };
 
   return (
     <div className="mx-6 mt-5 bg-brand-500/10 border border-brand-500/20 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in flex-shrink-0">
@@ -44,7 +37,7 @@ export function CultureRecentReleases({
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-white truncate">{ep.item_title}</div>
               <div className="text-xs text-white/50 truncate">EP {ep.episode_number}: {ep.title}</div>
-              <div className="text-[10px] text-brand-400 mt-1">{ep.aired_at ? formatDate(ep.aired_at) : 'Recente'}</div>
+              <div className="text-[10px] text-brand-400 mt-1">{formatDayMonth(ep.aired_at)}</div>
             </div>
           </div>
         ))}
