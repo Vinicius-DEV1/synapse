@@ -37,6 +37,7 @@ describe('AuthScreen Component', () => {
     vi.clearAllMocks();
     (window as any).api = {
       auth: {
+        login: vi.fn().mockResolvedValue({ success: true, keys: {} }),
         forceUpdateKeychain: vi.fn().mockResolvedValue({ success: true }),
       },
     };
@@ -48,8 +49,8 @@ describe('AuthScreen Component', () => {
       <AuthScreen status="new" onSuccess={onSuccess} />
     );
 
-    expect(getByPlaceholderText(/Digite sua senha mestre/i)).toBeDefined();
-    expect(getByText(/Criar Senha Mestre/i)).toBeDefined();
+    expect(getByPlaceholderText(/Sua senha secreta.../i)).toBeDefined();
+    expect(getByText(/Salvar Senha/i)).toBeDefined();
   });
 
   it('renders unlock form for encrypted vault and submits', async () => {
@@ -58,10 +59,10 @@ describe('AuthScreen Component', () => {
       <AuthScreen status="encrypted" onSuccess={onSuccess} />
     );
 
-    const input = getByPlaceholderText(/Digite sua senha mestre/i);
+    const input = getByPlaceholderText(/Sua senha secreta.../i);
     fireEvent.change(input, { target: { value: 'minha-senha-segura-123' } });
 
-    const submitBtn = getByRole('button', { name: /Desbloquear/i });
+    const submitBtn = getByRole('button', { name: /Acessar/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

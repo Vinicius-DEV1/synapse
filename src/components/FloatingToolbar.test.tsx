@@ -26,6 +26,7 @@ describe('FloatingToolbar Component', () => {
     mockEditor = {
       chain: vi.fn(() => chainObj),
       isActive: vi.fn(() => false),
+      getAttributes: vi.fn(() => ({ href: '' })),
     };
   });
 
