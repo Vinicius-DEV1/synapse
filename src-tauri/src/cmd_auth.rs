@@ -175,7 +175,7 @@ pub async fn auth_login(
         });
     }
 
-    // Escolhe a chave correta para decriptar
+    // Select matching decryption key
     let try_decrypt = |enc: &Option<String>| -> Option<String> {
         if let Some(e) = enc {
             if let Ok(dec) = decrypt_module_key_with_key(e, &modern_key) {
@@ -247,7 +247,7 @@ pub async fn auth_login(
         core: core.clone(),
     };
 
-    // Salva no State
+    // Persist to AppState
     {
         let mut keys_guard = db_state.keys.lock().unwrap();
         *keys_guard = Some(keys_to_return.clone());

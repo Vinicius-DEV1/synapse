@@ -4,7 +4,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 
 // UI navigates to 'settings' module as a tab, although type
 // `Tab['module']` (defined in src/types/store.ts) does not include it yet
-// valor. Ampliamos o tipo aqui apenas para refletir o valor real em runtime
+// value. We widen the type here to reflect the actual runtime value
 // (same convention used in src/components/layout/sidebar/Sidebar.tsx).
 type ModuleId = Tab['module'] | 'settings';
 

@@ -50,7 +50,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     };
   }, [pageId]);
 
-  // 2. Escuta broadcast de salvamento entre abas do browser e abas internas (BroadcastChannel + Local Event)
+  // 2. Listen to page save broadcasts across browser and internal tabs (BroadcastChannel + Local Event)
   useEffect(() => {
     const unsubscribe = onPageSaved((msg) => {
       // Update in-memory backup with latest version
@@ -81,13 +81,13 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   useEffect(() => {
     const handleFocusCheck = async () => {
       if (pageId && ydocRef.current) {
-        // Primeiro verifica o backup em memória (síncrono e instantâneo)
+        // First check in-memory backup cache (synchronous and immediate)
         const backup = getEditorBackupMap().get(pageId);
         if (backup?.crdt && backup.crdt.length > 8) {
           applyBase64StateToYDoc(ydocRef.current, backup.crdt);
         }
 
-        // Depois consulta o banco como garantia
+        // Then query database as reliable fallback
         if (document.visibilityState === 'visible' && window.api) {
           try {
             const pages = await window.api.getAllPages?.();
@@ -111,7 +111,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     };
   }, [pageId]);
 
-  // 4. Salva alterações pendentes ao desmontar
+  // 4. Flush pending changes on unmount
   useEffect(() => {
     return () => {
       if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {

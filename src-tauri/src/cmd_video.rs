@@ -103,7 +103,7 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
         return Ok(path.to_string_lossy().to_string());
     }
 
-    // Fallback: Tenta buscar na pasta release se estivermos rodando em debug
+    // Fallback: Search release folder when executing in debug mode
     if let Some(parent) = videos_dir.parent() {
         if let Some(grandparent) = parent.parent() {
             if let Some(greatgrandparent) = grandparent.parent() {

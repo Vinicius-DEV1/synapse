@@ -3,7 +3,7 @@ import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
 import Editor from '../Editor';
 import SubPageGrid from '../editor/components/SubPageGrid';
-import EmptyState from '../layout/EmptyState';
+import EmptyState from '../EmptyState';
 import PageHistoryModal from '../modals/PageHistoryModal';
 import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';

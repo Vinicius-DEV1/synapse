@@ -92,7 +92,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN encrypted_content TEXT", []);
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
 
-    // Novas colunas (Migrações dinâmicas para esquemas antigos que foram atualizados via web/sync)
+    // Dynamic column migrations for legacy schemas updated via web/sync
     let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE config ADD COLUMN value TEXT", []);
 
@@ -120,7 +120,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN created_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN updated_at DATETIME", []);
 
-    // Novas tabelas extras de migração profunda
+    // Dynamic table migrations for new subsystems
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN paid_amount REAL", []);
     let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN updated_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);

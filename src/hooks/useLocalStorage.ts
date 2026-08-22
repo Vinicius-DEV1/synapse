@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Hook customizado para gerenciar estado sincronizado com o localStorage.
+ * Custom hook synchronizing React state with localStorage.
  * Fornece tipagem segura e lida com parsing JSON silenciosamente.
  */
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {

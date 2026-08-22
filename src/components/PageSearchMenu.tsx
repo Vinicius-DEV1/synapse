@@ -19,7 +19,7 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
   const filteredPages = state.pages.filter(p => {
     const q = localQuery.toLowerCase();
     if (p.title.toLowerCase().includes(q)) return true;
-    // Busca em texto puro para evitar match em tags HTML
+    // Search plain text representation to avoid matching HTML tags
     if (p.content) {
       const plain = p.content.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
       return plain.toLowerCase().includes(q);

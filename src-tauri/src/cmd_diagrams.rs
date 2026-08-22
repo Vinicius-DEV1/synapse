@@ -71,7 +71,7 @@ pub fn diagrams_get_content(
         })
         .map_err(|e| e.to_string())?;
 
-    // Descriptografar on-the-fly (usamos a chave notes por padrão)
+    // On-the-fly decryption (defaults to notes module key)
     if let Some(enc) = &content.encrypted_content {
         let keys_guard = db_state.keys.lock().unwrap();
         if let Some(keys) = keys_guard.as_ref() {

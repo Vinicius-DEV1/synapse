@@ -1,5 +1,5 @@
 /**
- * Redimensiona e comprime uma imagem em Base64 através da Canvas API.
+ * Resizes and compresses Base64 image via HTML5 Canvas API.
  */
 export function compressBase64Image(
   base64: string,

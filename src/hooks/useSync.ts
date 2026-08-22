@@ -12,7 +12,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 /**
- * #5: Verifica se o erro é de quota/permissão do Firebase.
+ * #5: Checks whether error is caused by Firebase quota limits or permission denial.
  * Deduplicado — usado por todos os handlers de erro de sync.
  */
 function isQuotaOrPermissionError(err: any): boolean {
@@ -23,7 +23,7 @@ function isQuotaOrPermissionError(err: any): boolean {
 
 /**
  * #5: Handler centralizado de erros de sync.
- * Emite evento global se for erro de quota/permissão.
+ * Dispatches global window event on quota or permission errors.
  */
 function handleSyncError(err: any, context: string) {
   console.warn(`[Sync] ${context} FALHOU: ${err.message}`, err);
@@ -113,7 +113,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         if (isSyncing) return;
         isSyncing = true;
         try {
-          // Apenas push silencioso em background — sem puxar e sem disparar re-render no App.tsx
+          // Silent background push only — no pull and no unnecessary App re-renders
           await withTimeout(pushAllToCloud(masterKey), 120_000);
           if (!isClosed) {
             syncChannel.postMessage('LOCAL_UPDATE');
@@ -131,8 +131,8 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       doFullSync();
 
       // 2. Cross-Device Real-time Firebase Sync
-      // NOTA: onSnapshot dispara imediatamente com o estado atual do doc.
-      // Usamos isFirstSnapshot para ignorar esse disparo inicial redundante,
+      // NOTE: onSnapshot triggers immediately with initial doc state.
+      // isFirstSnapshot ignores redundant initial invocation,
       // since doFullSync() above already performs full pull.
       let isFirstSnapshot = true;
       const unsubRealTime = listenForCloudSyncSignal((signalDeviceId?: string) => {
@@ -186,7 +186,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       }
 
       // 5. Focus trigger: update when user returns from another window
-      // Protegido pelo mutex e cooldown de 30s para evitar syncs excessivos
+      // Guarded by mutex and 30s cooldown to prevent redundant sync runs
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && !isSyncingOnFocus) {

@@ -95,15 +95,14 @@ pub async fn audio_extract_clip(
     }
 }
 
-// Para o Edge TTS, usaremos uma lib ou chamada externa no futuro.
-// Por enquanto, placeholder pro frontend não quebrar:
+// Edge TTS placeholder implementation for frontend compatibility:
 #[tauri::command]
 pub async fn audio_generate_tts(
     _text: String,
     _lang: Option<String>,
     _app: AppHandle,
 ) -> Result<String, String> {
-    // TODO: Implementar comunicação WebSocket pura com o Edge TTS.
+    // TODO: Implement direct WebSocket communication with Edge TTS.
     Err("Edge TTS via Rust not implemented yet. Wait for v2".to_string())
 }
 

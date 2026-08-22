@@ -12,7 +12,7 @@ interface BlockHandleProps {
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onChangeColor?: (color: string, isBackground: boolean) => void;
-  /** Avisa quem posiciona a alça que ela não pode sumir agora. */
+  /** Notifies positioning handler to keep handle visible while menu is open. */
   onMenuOpenChange?: (open: boolean) => void;
 }
 

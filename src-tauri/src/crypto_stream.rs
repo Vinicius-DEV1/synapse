@@ -20,9 +20,8 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
         return Err("Key must be 32 bytes".into());
     }
 
-    // NOTA: Usamos AES-GCM padrão com IV de 12 bytes aqui.
-    // O `crypto.rs` usa Aes256Gcm16 com IV de 16 bytes por legado do Node.js.
-    // Como streams são criptografados do zero, mantemos 12 bytes (padrão GCM).
+    // NOTE: Standard AES-GCM with 12-byte IV for streaming encryption.
+    // Legacy `crypto.rs` uses Aes256Gcm16 with 16-byte IV for Node.js compatibility.
     let cipher = Aes256Gcm::new(key_bytes.as_slice().into());
 
     let mut input_file =
@@ -51,7 +50,7 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
             return Err("Criptografia cancelada pelo usuário.".into());
         }
         
-        // Lidar com tamanho exato para evitar falhas silenciosas
+        // Ensure exact chunk buffer sizing to prevent truncation
         let mut bytes_read = 0;
         while bytes_read < CHUNK_SIZE as usize {
             let n = input_file.read(&mut buffer[bytes_read..]).map_err(|e| e.to_string())?;

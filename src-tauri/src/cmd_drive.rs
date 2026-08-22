@@ -10,7 +10,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[tauri::command]
 pub fn drive_open_url(url: String) -> Result<(), String> {
-    // Escapa a URL para o CMD para que o '&' não seja interpretado como novo comando
+    // Escape URL for Windows cmd to prevent '&' interpretation as command separator
     let safe_url = url.replace("&", "^&");
     let mut cmd = Command::new("cmd");
     cmd.args(["/C", "start", "", &safe_url]);

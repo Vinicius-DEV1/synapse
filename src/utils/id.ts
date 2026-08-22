@@ -1,5 +1,5 @@
 /**
- * Utilitários unificados de geração de IDs únicos e aleatórios.
+ * Unified utilities for generating unique and random IDs.
  */
 
 export function generateUUID(): string {

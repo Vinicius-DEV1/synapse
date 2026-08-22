@@ -66,7 +66,7 @@ pub fn run() {
 
             let db_path = app_data_dir.join("caderno.sqlite");
 
-            // Inicialização do Banco de Dados limpo e zerado
+            // Clean SQLite database initialization
             let conn = db::init_db(db_path).ok();
 
             app.manage(db::DbState {
