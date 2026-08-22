@@ -53,6 +53,7 @@ export const CultureService = {
   },
 
   async syncOngoingItems(items: CultureItem[]): Promise<void> {
+    const { syncTvMazeEpisodes, syncJikanEpisodes } = await import('./culture/culture-episodes-sync');
     const ONE_DAY = 24 * 60 * 60 * 1000;
     const now = new Date().getTime();
 
@@ -65,39 +66,9 @@ export const CultureService = {
       try {
         console.log(`[CultureSync] Background syncing: ${item.title}`);
         if (item.api_source === 'tvmaze') {
-          const res = await fetch(`https://api.tvmaze.com/shows/${item.api_id}/episodes`);
-          if (!res.ok) continue;
-          const data = await res.json();
-          const epsToSave = data.map((ep: any, index: number) => ({
-            id: `ep_${item.id}_${ep.id}`,
-            episode_number: index + 1,
-            title: `S${String(ep.season).padStart(2, '0')}E${String(ep.number).padStart(2, '0')} - ${ep.name}`,
-            synopsis: (ep.summary || '').replace(/<[^>]+>/g, ''),
-            is_watched: false,
-            aired_at: ep.airstamp ? new Date(ep.airstamp).toISOString() : null
-          }));
-          await this.saveEpisodes(item.id, epsToSave);
-          await window.api.culture.updateItem(item.id, { ...item, last_sync_at: new Date().toISOString() });
-        } 
-        else if (item.api_source === 'jikan') {
-          // Fetch first page only for lightweight sync
-          const res = await fetch(`https://api.jikan.moe/v4/anime/${item.api_id}/episodes`);
-          if (!res.ok) continue;
-          const data = await res.json();
-          const epList = data.data || [];
-          if (epList.length > 0) {
-            const epsToSave = epList.map((ep: any) => ({
-              id: `ep_${item.id}_${ep.mal_id}`,
-              episode_number: ep.mal_id,
-              title: ep.title || `Episódio ${ep.mal_id}`,
-              synopsis: ep.title_japanese ? `JP: ${ep.title_japanese}` : '',
-              is_watched: false,
-              aired_at: ep.aired ? new Date(ep.aired).toISOString() : null
-            }));
-            await this.saveEpisodes(item.id, epsToSave);
-            await window.api.culture.updateItem(item.id, { ...item, last_sync_at: new Date().toISOString() });
-          }
-          await new Promise(r => setTimeout(r, 400)); // Respect Rate limit
+          await syncTvMazeEpisodes(item);
+        } else if (item.api_source === 'jikan') {
+          await syncJikanEpisodes(item);
         }
       } catch (err) {
         console.error(`[CultureSync] Error syncing ${item.title}:`, err);
