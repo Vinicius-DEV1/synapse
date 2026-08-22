@@ -1,7 +1,8 @@
-import  { useState, useEffect } from 'react';
-import {  Save, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, RotateCcw } from 'lucide-react';
 import { getAiPrompt, saveAiPrompt, getWebDb } from '../../../services/db-web';
 import { DEFAULT_CARD_GENERATION_PROMPT, DEFAULT_CHAT_ANALYSIS_PROMPT } from '../../../services/gemini';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function PromptsTab() {
   const [activePromptModule, setActivePromptModule] = useState<'anki_card_suggestions' | 'anki_chat_analysis'>('anki_card_suggestions');
@@ -20,8 +21,9 @@ export function PromptsTab() {
       } else {
         setPromptContent(activePromptModule === 'anki_card_suggestions' ? DEFAULT_CARD_GENERATION_PROMPT : DEFAULT_CHAT_ANALYSIS_PROMPT);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load prompt', e);
+      triggerToast(e.message || 'Erro ao carregar prompt de IA.', 'error');
     }
   };
 
@@ -29,10 +31,10 @@ export function PromptsTab() {
     setIsSavingPrompt(true);
     try {
       await saveAiPrompt(activePromptModule, 'anki', promptContent);
-      alert('Prompt salvo com sucesso! O sistema usará essa instrução a partir de agora.');
-    } catch (e) {
+      triggerToast('Prompt salvo com sucesso! O sistema usará essa instrução a partir de agora.', 'success');
+    } catch (e: any) {
       console.error(e);
-      alert('Erro ao salvar prompt.');
+      triggerToast(e.message || 'Erro ao salvar prompt.', 'error');
     } finally {
       setIsSavingPrompt(false);
     }
@@ -45,10 +47,10 @@ export function PromptsTab() {
       const db = await getWebDb();
       await db.delete('ai_prompts', activePromptModule);
       await loadPrompt();
-      alert('Prompt restaurado para o padrão de fábrica.');
-    } catch (e) {
+      triggerToast('Prompt restaurado para o padrão de fábrica.', 'info');
+    } catch (e: any) {
       console.error(e);
-      alert('Erro ao restaurar prompt.');
+      triggerToast(e.message || 'Erro ao restaurar prompt.', 'error');
     } finally {
       setIsSavingPrompt(false);
     }

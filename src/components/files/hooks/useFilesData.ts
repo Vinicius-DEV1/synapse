@@ -3,6 +3,7 @@ import type { FileFolder, FileItem } from '../../../types';
 import { useStore } from '../../../store/useStore';
 import { getValidAccessToken } from '../../../services/drive';
 import { getDecryptedFileUrl } from '../../../utils/file-fetcher';
+import { triggerToast } from '../../ui/ToastContext';
 
 export function useFilesData() {
   const { state } = useStore();
@@ -15,10 +16,15 @@ export function useFilesData() {
 
   const loadData = useCallback(async () => {
     if (window.api && window.api.files) {
-      const fs = await window.api.files.getAll();
-      const fds = await window.api.files.folders.getAll();
-      setFiles(fs || []);
-      setFolders(fds || []);
+      try {
+        const fs = await window.api.files.getAll();
+        const fds = await window.api.files.folders.getAll();
+        setFiles(fs || []);
+        setFolders(fds || []);
+      } catch (err: any) {
+        console.error('Erro ao carregar arquivos/pastas:', err);
+        triggerToast(err.message || 'Erro ao carregar lista de arquivos', 'error');
+      }
     }
   }, []);
 
@@ -33,13 +39,14 @@ export function useFilesData() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        triggerToast(`Download iniciado: ${item.name}`, 'info');
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        alert("Arquivo não está disponível para download.");
+        triggerToast("Arquivo não está disponível para download local nem na nuvem.", "error");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to download", err);
-      alert("Erro ao tentar baixar o arquivo.");
+      triggerToast(err.message || "Erro ao tentar baixar o arquivo.", "error");
     }
   }, [state.moduleKeys]);
 

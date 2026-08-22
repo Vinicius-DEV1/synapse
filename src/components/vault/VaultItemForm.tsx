@@ -3,6 +3,7 @@ import { Save, RefreshCw, Star } from 'lucide-react';
 import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
+import { triggerToast } from '../ui/ToastContext';
 
 interface VaultItemFormProps {
   item: VaultItem | null;
@@ -37,32 +38,38 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!label.trim()) return alert('O item precisa de um nome (Rótulo).');
+    if (!label.trim()) {
+      triggerToast('O item precisa de um nome (Rótulo).', 'error');
+      return;
+    }
     
-    const itemToSave = {
-      ...item,
-      id: item?.id || crypto.randomUUID(),
-      group_id: selectedGroupId || null,
-      label,
-      username: username || null,
-      email: email || null,
-      password: password || null,
-      url: url || null,
-      notes: notes || null,
-      custom_fields: customFields.length > 0 ? JSON.stringify(customFields) : null,
-      is_favorite: isFavorite ? 1 : 0,
-      password_strength: passwordStrength,
-      created_at: item?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: item?.deleted_at || null,
-      password_changed_at: item?.password_changed_at || null,
-    };
+    try {
+      const itemToSave = {
+        ...item,
+        id: item?.id || crypto.randomUUID(),
+        group_id: selectedGroupId || null,
+        label: label.trim(),
+        username: username || null,
+        email: email || null,
+        password: password || null,
+        url: url || null,
+        notes: notes || null,
+        custom_fields: customFields.length > 0 ? JSON.stringify(customFields) : null,
+        is_favorite: isFavorite ? 1 : 0,
+        password_strength: passwordStrength,
+        created_at: item?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: item?.deleted_at || null,
+        password_changed_at: item?.password_changed_at || null,
+      };
 
-    // `group_id` é nulo quando o item não pertence a nenhum grupo ("Nenhum Grupo"),
-    // embora o tipo `VaultItem.group_id` (src/types/vault.ts) ainda esteja declarado
-    // como não-nulo. O cast reflete o formato real gravado no banco.
-    await window.api.vault?.upsertItem(itemToSave as VaultItem);
-    onSave();
+      await window.api.vault?.upsertItem(itemToSave as VaultItem);
+      triggerToast(item ? 'Item atualizado com sucesso!' : 'Item salvo no cofre!', 'success');
+      onSave();
+    } catch (err: any) {
+      console.error('Erro ao salvar item no cofre:', err);
+      triggerToast(err.message || 'Erro ao salvar item no cofre.', 'error');
+    }
   };
 
   const generatePassword = async () => {

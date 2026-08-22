@@ -24,7 +24,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         const _masterKey = getMasterKey();
         if (!_masterKey) {
           console.warn("[Upload] Chave mestra não encontrada. Upload abortado.");
-          alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+          window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: "Erro: Chave Mestra não encontrada. Faça login novamente.", type: "error" } }));
           window.dispatchEvent(new Event('library-upload-end'));
           return reject(new Error("Chave Mestra não encontrada"));
         }
@@ -94,7 +94,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         
         const _masterKey = getMasterKey();
         if (!_masterKey) {
-          alert("Erro: Chave Mestra não encontrada. Faça login novamente.");
+          window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: "Erro: Chave Mestra não encontrada. Faça login novamente.", type: "error" } }));
           return reject(new Error("Chave Mestra não encontrada"));
         }
         

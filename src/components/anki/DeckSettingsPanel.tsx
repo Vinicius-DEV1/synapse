@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { triggerToast } from '../ui/ToastContext';
 
 interface DeckSettingsPanelProps {
   deck: any;
@@ -21,15 +22,20 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
 
   const loadSettings = async () => {
     setLoading(true);
-    if (window.api?.anki?.getDeckSettings) {
-      const s = await window.api.anki.getDeckSettings(deck.id);
-      if (s) {
-        setNewLimit(s.new_limit || 20);
-        setReviewLimit(s.review_limit || 200);
-        setFsrsWeights(s.fsrs_weights || '');
+    try {
+      if (window.api?.anki?.getDeckSettings) {
+        const s = await window.api.anki.getDeckSettings(deck.id);
+        if (s) {
+          setNewLimit(s.new_limit || 20);
+          setReviewLimit(s.review_limit || 200);
+          setFsrsWeights(s.fsrs_weights || '');
+        }
       }
+    } catch (e: any) {
+      console.error('Erro ao carregar configurações do baralho:', e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSave = () => {
@@ -49,18 +55,18 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
         const res = await window.api.anki.importDeck(payload);
         if (res.success && res.stats) {
           const { stats } = res;
-          alert(`Resumo da Importação:\n\nSub-baralhos:\nCriados: ${stats.decksCreated} | Atualizados: ${stats.decksUpdated} | Iguais (Ignorados): ${stats.decksIgnored}\n\nCartões:\nCriados: ${stats.cardsCreated} | Atualizados: ${stats.cardsUpdated} | Iguais (Ignorados): ${stats.cardsIgnored}`);
+          triggerToast(`Importação concluída: ${stats.decksCreated} decks criados, ${stats.cardsCreated} cartões criados.`, 'success', 5000);
           window.location.reload(); 
         } else if (res.success) {
-          alert('Baralho importado com sucesso!');
+          triggerToast('Baralho importado com sucesso!', 'success');
           window.location.reload(); 
         } else {
-          alert('Erro ao importar: ' + res.error);
+          triggerToast('Erro ao importar: ' + (res.error || 'Falha desconhecida'), 'error');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao ler ou processar arquivo de importação.');
+      triggerToast(err.message || 'Erro ao ler ou processar arquivo de importação.', 'error');
     }
     
     if (fileInputRef.current) {
@@ -83,12 +89,13 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+          triggerToast('Baralho exportado com sucesso!', 'success');
         } else {
-          alert('Erro ao exportar baralho');
+          triggerToast(res.error || 'Erro ao exportar baralho', 'error');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        alert('Erro ao exportar baralho');
+        triggerToast(err.message || 'Erro ao exportar baralho', 'error');
       }
     }
   };

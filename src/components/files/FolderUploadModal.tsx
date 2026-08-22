@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { X, UploadCloud, Folder, Loader2 } from 'lucide-react';
+import { X, UploadCloud, Folder, Loader2, CloudOff, Cloud } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useFolderUpload } from './hooks/useFolderUpload';
 import { FolderUploadTaskList } from './ui/FolderUploadTaskList';
@@ -17,6 +17,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
     tasks,
     isProcessing,
     isUploading,
+    driveStatus,
     completedCount,
     errorCount,
     totalProgress,
@@ -35,7 +36,20 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                 <Folder size={20} className="text-brand-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white tracking-wide">Upload de Pasta</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white tracking-wide">Upload de Pasta</h2>
+                  {driveStatus === 'connected' ? (
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <Cloud size={12} />
+                      Drive
+                    </span>
+                  ) : driveStatus === 'disconnected' ? (
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      <CloudOff size={12} />
+                      Offline
+                    </span>
+                  ) : null}
+                </div>
                 <p className="text-sm text-dark-subtext">Importe diretórios inteiros mantendo a estrutura original</p>
               </div>
             </div>
@@ -48,7 +62,27 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
             </button>
           </div>
           
-          <div className="p-4 flex-1 overflow-hidden flex flex-col">
+          <div className="p-4 flex-1 overflow-hidden flex flex-col gap-3">
+            {driveStatus === 'disconnected' && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CloudOff size={18} className="text-amber-400 shrink-0" />
+                  <p className="text-amber-200/90 text-xs leading-relaxed">
+                    <strong>Google Drive desconectado:</strong> os arquivos da pasta serão importados apenas localmente.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+                  }}
+                  className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-medium rounded-lg shrink-0 transition-colors"
+                >
+                  Conectar
+                </button>
+              </div>
+            )}
+
             {tasks.length === 0 ? (
               <div className="flex-1 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center p-8 bg-dark-bg/30">
                 <input 

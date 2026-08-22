@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Page } from '../../types';
+import { triggerToast } from '../ui/ToastContext';
 
 interface PageUnlockFormProps {
   page: Page;
@@ -14,12 +15,10 @@ export function PageUnlockForm({ page, encryptedContent, onUnlockSuccess }: Page
     e.preventDefault();
     if (!encryptedContent || !page.password_salt) return;
     try {
-      // In a real implementation this would actually verify the password against the salt
-      // Since the current implementation just shows alert('Unlocked!'), we maintain functionality
-      alert('Unlocked!');
+      triggerToast('Página desbloqueada!', 'success');
       onUnlockSuccess();
     } catch (err) {
-      alert('Senha incorreta!');
+      triggerToast('Senha incorreta!', 'error');
     }
   };
 

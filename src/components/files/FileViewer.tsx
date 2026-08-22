@@ -18,6 +18,8 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const isMd = item.name.toLowerCase().endsWith('.md') || item.name.toLowerCase().endsWith('.markdown');
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>(isMd ? 'rendered' : 'raw');
@@ -52,28 +54,54 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   useEffect(() => {
     let url: string | null = null;
+    let isCancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
     
     if (['image', 'pdf', 'text', 'other'].includes(item.file_type)) {
-      getDecryptedFileUrl(item, state.moduleKeys['files']).then(async resolvedUrl => {
-        if (resolvedUrl && typeof resolvedUrl === 'string') {
-          setObjectUrl(resolvedUrl);
-          if (item.file_type === 'text') {
-            try {
-              const res = await fetch(resolvedUrl);
-              const txt = await res.text();
-              setTextContent(txt);
-            } catch (e) {
-              console.error("Failed to fetch text", e);
-              setTextContent("Erro ao carregar texto.");
+      getDecryptedFileUrl(item, state.moduleKeys['files'])
+        .then(async resolvedUrl => {
+          if (isCancelled) return;
+          if (resolvedUrl && typeof resolvedUrl === 'string') {
+            url = resolvedUrl;
+            setObjectUrl(resolvedUrl);
+            if (item.file_type === 'text') {
+              try {
+                const res = await fetch(resolvedUrl);
+                const txt = await res.text();
+                if (!isCancelled) setTextContent(txt);
+              } catch (e) {
+                console.error("Failed to fetch text", e);
+                if (!isCancelled) setTextContent("Erro ao carregar texto.");
+              }
+            }
+          } else {
+            console.warn("Nenhum arquivo local ou no Drive disponível");
+            if (!isCancelled) {
+              setLoadError(
+                item.drive_file_id
+                  ? 'Arquivo não encontrado localmente e não autenticado no Google Drive para download.'
+                  : 'Arquivo não encontrado no armazenamento local.'
+              );
             }
           }
-        } else {
-          console.warn("Nenhum arquivo local ou no Drive disponível");
-        }
-      }).catch(console.error);
+        })
+        .catch(err => {
+          console.error("Erro ao resolver URL do arquivo:", err);
+          if (!isCancelled) {
+            setLoadError(err?.message || 'Falha ao carregar o arquivo.');
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+      setLoadError('Tipo de arquivo não suportado para visualização.');
     }
     
     return () => {
+      isCancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
   }, [item, state.moduleKeys]);
@@ -284,8 +312,37 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           </div>
         )}
 
-        {!objectUrl ? (
-          <div className="text-dark-subtext animate-pulse">Carregando arquivo...</div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center gap-3 text-dark-subtext">
+            <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Carregando arquivo...</span>
+          </div>
+        ) : !objectUrl ? (
+          <div className="flex flex-col items-center justify-center p-8 bg-dark-card border border-white/10 rounded-2xl max-w-md w-full shadow-2xl gap-4 text-center">
+            <div className="p-4 bg-red-500/10 text-red-400 rounded-2xl">
+              <File size={40} />
+            </div>
+            <h3 className="text-lg font-semibold text-white">Não foi possível carregar o arquivo</h3>
+            <p className="text-dark-subtext text-xs leading-relaxed">
+              {loadError || 'O arquivo não foi encontrado localmente e não pôde ser baixado.'}
+            </p>
+            {item.drive_file_id && (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+                }}
+                className="w-full px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-colors"
+              >
+                Conectar ao Google Drive
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white rounded-xl text-sm transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
         ) : isImage ? (
           <img 
             src={objectUrl} 

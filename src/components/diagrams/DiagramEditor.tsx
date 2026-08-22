@@ -4,6 +4,7 @@ import type { TLStore } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import type { DiagramMeta } from '../../types';
+import { triggerToast } from '../ui/ToastContext';
 
 interface DiagramEditorProps {
   diagram: DiagramMeta;
@@ -32,12 +33,14 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
               loadSnapshot(newStore, snapshot);
             } catch (e) {
               console.error("Failed to load snapshot", e);
+              triggerToast('Falha ao restaurar dados salvos do diagrama.', 'error');
             }
           }
           
           setStore(newStore);
-        } catch (e) {
+        } catch (e: any) {
           console.error(e);
+          triggerToast(e.message || 'Erro ao carregar conteúdo do diagrama.', 'error');
         } finally {
           if (!isCancelled) setLoading(false);
         }

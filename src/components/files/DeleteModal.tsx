@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 interface DeleteModalProps {
   item?: FileItem | FileFolder;
@@ -47,10 +48,11 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
           }
         }
       }
+      triggerToast(isBulk ? `${list.length} itens excluídos.` : 'Item excluído.', 'info');
       onDeleted();
-    } catch (e) {
+    } catch (e: any) {
       console.error("Delete failed", e);
-      alert("Falha ao excluir: " + e);
+      triggerToast(e.message || "Falha ao excluir item(ns).", 'error');
     } finally {
       setIsDeleting(false);
     }

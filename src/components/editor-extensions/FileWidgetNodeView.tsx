@@ -7,6 +7,7 @@ import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import FileViewer from '../files/FileViewer';
 import FloatingPdfViewer from './FloatingPdfViewer';
+import { triggerToast } from '../ui/ToastContext';
 
 export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode } = props;
@@ -91,9 +92,10 @@ export default function FileWidgetNodeView(props: any) {
         }
       }
       deleteNode();
-    } catch (e) {
+      triggerToast('Arquivo excluído com sucesso.', 'info');
+    } catch (e: any) {
       console.error("Delete failed", e);
-      alert("Falha ao excluir arquivo do sistema.");
+      triggerToast(e.message || "Falha ao excluir arquivo do sistema.", "error");
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -130,7 +132,7 @@ export default function FileWidgetNodeView(props: any) {
             }));
           } else {
             if (fileItem) setShowViewer(true);
-            else alert("O arquivo ainda está sendo carregado ou não foi encontrado.");
+            else triggerToast("O arquivo ainda está sendo carregado ou não foi encontrado.", "error");
           }
         }}
       >

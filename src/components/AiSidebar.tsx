@@ -7,6 +7,8 @@ import { useAiChatSubmit } from './ai-sidebar/useAiChatSubmit';
 import { AiChatMessageItem } from './ai-sidebar/AiChatMessageItem';
 import { AiChatSessionList } from './ai-sidebar/AiChatSessionList';
 
+import { triggerToast } from './ui/ToastContext';
+
 export default function AiSidebar() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
@@ -92,7 +94,7 @@ export default function AiSidebar() {
     if (!activeSession) return;
     handleNavigate(activeSession.pageId);
     navigator.clipboard.writeText(text);
-    alert('Texto copiado! Pressione Ctrl+V no editor para inserir.');
+    triggerToast('Texto copiado! Pressione Ctrl+V no editor para inserir.', 'success');
   };
 
   return (

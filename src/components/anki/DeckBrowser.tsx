@@ -4,6 +4,7 @@ import { X, Settings, HardDrive } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
+import { triggerToast } from '../ui/ToastContext';
 
 import { useDecks } from './hooks/useDecks';
 import { useDeckCards } from './hooks/useDeckCards';
@@ -160,6 +161,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     if (!window.confirm(`ATENÇÃO! Tem certeza que deseja excluir o baralho "${deck.name}" e TODOS os seus cartões?`)) return;
     if (window.api?.anki) {
       await window.api.anki.deleteDeck(deck.id);
+      triggerToast(`Baralho "${deck.name}" excluído.`, 'info');
       onDeckDeleted();
     }
   };
@@ -169,10 +171,10 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     if (window.api?.anki?.resetDeckProgress) {
       const res = await window.api.anki.resetDeckProgress(deck.id);
       if (res.success) {
-        window.alert('Progresso resetado com sucesso!');
+        triggerToast('Progresso do baralho resetado com sucesso!', 'success');
         loadCards();
       } else {
-        window.alert('Erro ao resetar: ' + res.error);
+        triggerToast('Erro ao resetar: ' + res.error, 'error');
       }
     }
   };

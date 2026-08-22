@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { X, UploadCloud, File, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, UploadCloud, File, AlertCircle, CloudOff, Cloud } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { FileItem } from '../../types';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 // The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
 // the filename plus the raw bytes; the declared ICadernoAPI signature only has one
@@ -28,6 +29,22 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
   const [progress, setProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    let mounted = true;
+    getValidAccessToken()
+      .then(token => {
+        if (mounted) setDriveStatus(token ? 'connected' : 'disconnected');
+      })
+      .catch(() => {
+        if (mounted) setDriveStatus('disconnected');
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -44,12 +61,18 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
     setError(null);
     
     if (!window.api.files) {
-      setError('Módulo de arquivos indisponível');
+      const errMsg = 'Módulo de arquivos indisponível no sistema';
+      setError(errMsg);
+      triggerToast(errMsg, 'error');
       setIsUploading(false);
       return;
     }
 
     let lastCreated: any = null;
+    let anyDriveFailed = false;
+    let anyDriveSuccess = false;
+    let wasDriveDisconnected = false;
+
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -77,7 +100,7 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
           uploadBuffer = await encryptFile(arrayBuffer, masterKey);
           driveFileName = file.name + '.enc';
         } else {
-          throw new Error("Master key is required for uploading securely.");
+          throw new Error("A chave mestra é necessária para criptografar os arquivos.");
         }
 
         // 2. Upload to Drive
@@ -88,9 +111,13 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
             driveId = await uploadToDrive(token, driveFileName, uploadBuffer, 'root', (p) => {
               setProgress(40 + (p * 0.5));
             });
+            anyDriveSuccess = true;
+          } else {
+            wasDriveDisconnected = true;
           }
         } catch (driveErr) {
           console.warn("Drive upload failed, saving locally only:", driveErr);
+          anyDriveFailed = true;
         }
         
         setProgress(95);
@@ -119,6 +146,15 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         lastCreated = await window.api.files.create(fileRecord);
         setProgress(100);
       }
+
+      if (anyDriveFailed) {
+        triggerToast('Arquivo(s) salvo(s) localmente, mas falhou o envio para o Google Drive.', 'error', 5000);
+      } else if (wasDriveDisconnected && !anyDriveSuccess) {
+        triggerToast('Arquivo(s) salvo(s) apenas localmente (Google Drive desconectado).', 'info', 4000);
+      } else if (anyDriveSuccess) {
+        triggerToast('Arquivo(s) enviado(s) e sincronizado(s) com o Google Drive com sucesso!', 'success', 4000);
+      }
+
       if (onUploadComplete) {
         onUploadComplete(lastCreated);
       } else if (onUploaded && lastCreated) {
@@ -126,7 +162,9 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
       }
     } catch (err: any) {
       console.error("Upload error:", err);
-      setError(err.message || 'Erro desconhecido ao enviar arquivo');
+      const msg = err.message || 'Erro desconhecido ao enviar arquivo';
+      setError(msg);
+      triggerToast(msg, 'error', 5000);
     } finally {
       setIsUploading(false);
       setUploadStatusText('');
@@ -138,13 +176,46 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h2 className="text-lg font-semibold text-white">Enviar Arquivo(s)</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-white">Enviar Arquivo(s)</h2>
+            {driveStatus === 'connected' ? (
+              <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <Cloud size={12} />
+                Drive
+              </span>
+            ) : driveStatus === 'disconnected' ? (
+              <span className="flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <CloudOff size={12} />
+                Offline
+              </span>
+            ) : null}
+          </div>
           <button onClick={onClose} disabled={isUploading} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>
         
-        <div className="p-6 flex flex-col gap-6">
+        <div className="p-6 flex flex-col gap-4">
+          {driveStatus === 'disconnected' && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <CloudOff size={18} className="text-amber-400 shrink-0" />
+                <p className="text-amber-200/90 text-xs leading-relaxed">
+                  <strong>Google Drive desconectado:</strong> os arquivos serão salvos apenas localmente neste dispositivo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+                }}
+                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-medium rounded-lg shrink-0 transition-colors"
+              >
+                Conectar
+              </button>
+            </div>
+          )}
+
           {selectedFiles.length === 0 ? (
             <div className="relative border-2 border-dashed border-white/20 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors group">
               <input 

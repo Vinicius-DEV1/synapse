@@ -86,7 +86,10 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
 
 export async function uploadNewLofi(file: File, duration?: number, masterKey?: CryptoKey, onProgress?: (percent: number) => void): Promise<LofiItem> {
   const token = await getValidAccessToken();
-  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
+  if (!token) {
+    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    throw new Error("Não foi possível autenticar com o Google Drive. Conecte sua conta para fazer upload.");
+  }
 
   let isLocal = false;
   let localPath: string | undefined = undefined;

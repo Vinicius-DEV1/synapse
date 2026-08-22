@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '../../../store/useStore';
 import { hardDeleteLofiPermanently } from '../../../services/lofi-manager';
+import { triggerToast } from '../../ui/ToastContext';
 
 export interface TrashItem {
   id: string;
@@ -25,9 +26,10 @@ export function useTrash() {
         const res = await window.api.trash.getAll();
         setItems(res || []);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Erro ao carregar lixeira:", e);
       setItems([]);
+      triggerToast(e.message || 'Erro ao carregar itens da lixeira', 'error');
     } finally {
       setLoading(false);
     }
@@ -43,16 +45,14 @@ export function useTrash() {
       if (window.api?.trash) {
         await window.api.trash.restore(item.id, item.item_type);
         setItems(prev => prev.filter(i => i.id !== item.id));
-        if (item.item_type === 'page') {
+        if (item.item_type === 'page' || item.item_type === 'lofi') {
           window.dispatchEvent(new Event('app-sync-trigger'));
         }
-        if (item.item_type === 'lofi') {
-          window.dispatchEvent(new Event('app-sync-trigger'));
-        }
+        triggerToast(`"${item.title}" restaurado com sucesso!`, 'success');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Falha ao restaurar.");
+      triggerToast(e.message || "Falha ao restaurar item.", 'error');
     } finally {
       setProcessingId(null);
     }
@@ -71,6 +71,7 @@ export function useTrash() {
             await hardDeleteLofiPermanently(lofi);
             setItems(prev => prev.filter(i => i.id !== item.id));
             window.dispatchEvent(new Event('app-sync-trigger'));
+            triggerToast(`"${item.title}" excluído permanentemente.`, 'info');
             return;
           }
         } catch (err) {
@@ -81,12 +82,13 @@ export function useTrash() {
       if (window.api?.trash?.deletePermanently) {
         await window.api.trash.deletePermanently(item.id, item.item_type);
         setItems(prev => prev.filter(i => i.id !== item.id));
+        triggerToast(`"${item.title}" excluído permanentemente.`, 'info');
       } else {
-        alert("Função ainda não implementada no backend");
+        triggerToast("Função de exclusão permanente não disponível.", 'error');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Falha ao excluir.");
+      triggerToast(e.message || "Falha ao excluir item permanentemente.", 'error');
     } finally {
       setProcessingId(null);
     }
@@ -111,10 +113,11 @@ export function useTrash() {
         await window.api.trash.empty();
         setItems([]);
         setShowEmptyConfirm(false);
+        triggerToast("Lixeira esvaziada com sucesso!", 'success');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Falha ao esvaziar lixeira.");
+      triggerToast(e.message || "Falha ao esvaziar lixeira.", 'error');
     } finally {
       setIsEmptying(false);
     }

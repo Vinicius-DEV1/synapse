@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CardDraft } from '../types';
+import { triggerToast } from '../../ui/ToastContext';
 
 interface UseCardEditorFormProps {
   draft: CardDraft;
@@ -134,10 +135,12 @@ export function useCardEditorForm({
         }
 
         if (onSaveSuccess) onSaveSuccess();
+        triggerToast(editingCardId ? 'Cartão atualizado com sucesso!' : 'Cartão criado com sucesso!', 'success');
         onClose();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      triggerToast(err.message || 'Erro ao salvar cartão.', 'error');
     } finally {
       setLoading(false);
     }
@@ -163,6 +166,7 @@ export function useCardEditorForm({
       }
       if (successCount > 0 && onSaveSuccess) {
         onSaveSuccess();
+        triggerToast(`${successCount} cartões gerados pela IA foram salvos!`, 'success');
       }
       if (!editingCardId && successCount > 0) {
         setFront('');
@@ -172,9 +176,9 @@ export function useCardEditorForm({
         if (frontRef.current) frontRef.current.style.height = 'auto';
         if (backRef.current) backRef.current.style.height = 'auto';
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding AI cards:', error);
-      alert('Erro ao salvar cartões da IA');
+      triggerToast(error.message || 'Erro ao salvar cartões da IA', 'error');
     } finally {
       setLoading(false);
     }
