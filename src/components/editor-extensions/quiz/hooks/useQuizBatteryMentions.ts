@@ -45,7 +45,7 @@ export function useQuizBatteryMentions(
   const filteredBatteries = useMemo(() => {
     const q = mentionQuery.toLowerCase().trim();
     return availableBatteries.filter((b) => {
-      // Evita sugerir a bateria que já está anexada
+      // Prevent suggesting the currently attached question battery
       if (attachedBatteries.some((att) => att.id === b.id)) return false;
       if (!q) return true;
       return (
@@ -73,7 +73,7 @@ export function useQuizBatteryMentions(
     setAttachedBatteries((prev) => prev.filter((b) => b.id !== batteryId));
   }, []);
 
-  // Monitora a digitação no input para detectar o caractere @
+  // Monitor input keystrokes to detect '@' mention trigger
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setChatInput(val);
@@ -88,7 +88,7 @@ export function useQuizBatteryMentions(
     }
   }, [setChatInput]);
 
-  // Intercepta teclas de navegação no menu de menções
+  // Intercept navigation keys in mentions dropdown menu
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): boolean => {
     if (!showMentionMenu || filteredBatteries.length === 0) {
       if (e.key === 'Escape' && showMentionMenu) {

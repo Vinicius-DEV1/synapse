@@ -28,7 +28,7 @@ export default function CalendarEventModal({
 }: CalendarEventModalProps) {
   const [title, setTitle] = useState(initialTitle || 'Novo Evento');
   
-  // Data e hora padrão: amanhã 14:00
+  // Default event time: tomorrow 14:00
   const defaultDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -79,7 +79,7 @@ export default function CalendarEventModal({
       if (window.api?.calendar) {
         created = await window.api.calendar.createEvent(newEventData);
       } else {
-        // Fallback para mock caso api offline
+        // Fallback for offline mode
         created = {
           id: crypto.randomUUID(),
           ...newEventData,

@@ -9,7 +9,7 @@ interface YouTubePlaylistModalProps {
   onClose: () => void;
 }
 
-// Cache em memória para evitar buscas repetidas de playlists já carregadas
+// In-memory cache preventing duplicate fetches for loaded playlists
 const playlistCache = new Map<string, any>();
 
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
@@ -29,7 +29,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
         setPlaylist(cached);
         setLoading(false);
 
-        // Atualiza status de assistidos em background sem bloquear
+        // Update watched status asynchronously in background
         if (cached?.entries?.length && window.api?.youtube?.getWatched) {
           const videoIds = cached.entries.map((e: any) => e.id).filter(Boolean);
           if (videoIds.length > 0) {
@@ -52,7 +52,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           playlistCache.set(url, data);
           setPlaylist(data);
           
-          // Buscar status de assistidos
+          // Query watched status
           const videoIds = data.entries.map((e: any) => e.id).filter(Boolean);
           if (videoIds.length > 0 && window.api.youtube.getWatched) {
             const watchedIds = await window.api.youtube.getWatched(videoIds);

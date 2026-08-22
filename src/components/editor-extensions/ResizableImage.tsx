@@ -40,7 +40,7 @@ const ResizableImageNodeView = (props: any) => {
 };
 
 export const ResizableImage = TiptapImage.extend({
-  // Imagens são blocos: isso permite alinhamento, colunas e arrastar como bloco.
+  // Images are block nodes: enables alignment, multi-column layouts, and block-level dragging.
   inline: false,
   group: 'block',
   draggable: true,

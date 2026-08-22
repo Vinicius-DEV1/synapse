@@ -1,6 +1,6 @@
 /**
- * Utilitários para localização e resolução de blocos de nível superior
- * e blocos arrastáveis a partir de coordenadas da tela.
+ * Utilities for resolving and locating top-level and draggable blocks
+ * from viewport screen coordinates.
  */
 
 import type { EditorView } from '@tiptap/pm/view';
@@ -40,12 +40,12 @@ function blockAt(view: EditorView, x: number, y: number, pick: PickBlock): TopLe
         }
       }
     } catch {
-      // Posição inválida ignorada
+      // Invalid position ignored
     }
     return null;
   };
 
-  // 1. Resolução via posAtCoords do ProseMirror
+  // 1. Resolution via ProseMirror posAtCoords
   const coords = view.posAtCoords({ left: x, top: y });
   if (coords) {
     if (typeof coords.inside === 'number' && coords.inside >= 0) {
@@ -58,7 +58,7 @@ function blockAt(view: EditorView, x: number, y: number, pick: PickBlock): TopLe
     }
   }
 
-  // 2. Fallback via DOM elementFromPoint para NodeViews customizados
+  // 2. DOM elementFromPoint fallback for custom NodeViews
   const el = document.elementFromPoint(x, y);
   if (el) {
     const editorDom = view.dom;
@@ -83,12 +83,12 @@ function blockAt(view: EditorView, x: number, y: number, pick: PickBlock): TopLe
   return null;
 }
 
-/** Retorna o bloco de nível superior (profundidade 1) sob a coordenada da tela. */
+/** Returns the top-level block (depth 1) under the given screen coordinate. */
 export function topLevelBlockAt(view: EditorView, x: number, y: number): TopLevelBlock | null {
   return blockAt(view, x, y, pickTopLevel);
 }
 
-/** Retorna o bloco arrastável sob a coordenada, resolvendo blocos internos de colunas se aplicável. */
+/** Returns the draggable block under the screen coordinate, resolving nested column blocks if applicable. */
 export function draggableBlockAt(view: EditorView, x: number, y: number): TopLevelBlock | null {
   return blockAt(view, x, y, pickDraggable);
 }

@@ -11,7 +11,7 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
-  // Auto-complete status se o alarme global não estiver mais ativo ou não existir
+  // Auto-complete status if global alarm is no longer active or exists
   useEffect(() => {
     if (status === 'pending') {
       const activeAlarm = alarms.find((a: any) => a.id === alarmId && a.is_active);

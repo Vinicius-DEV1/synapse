@@ -29,7 +29,7 @@ export default function QuizPlayer({
 
   const prevAnsweredRef = useRef(0);
 
-  // Efeito de celebração com fogos ao concluir todas as questões com alto aproveitamento (>= 80%)
+  // Fireworks celebration effect triggered on high score completion (>= 80%)
   useEffect(() => {
     const isCompleted =
       safeQuestions.length > 0 &&

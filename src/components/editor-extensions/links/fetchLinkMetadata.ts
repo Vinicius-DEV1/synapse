@@ -96,7 +96,7 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
       fetchedTitleStr = await proxyFn();
       if (fetchedTitleStr) break;
     } catch {
-      // continua para o próximo fallback
+      // Continue to next fallback parser
     }
   }
 

@@ -173,7 +173,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
     if (!eventData?.start_date || isCompleted) return false;
     const evTime = new Date(eventData.start_date).getTime();
     if (isNaN(evTime)) return false;
-    // Ao Vivo: desde 15 minutos antes até 60 minutos depois
+    // Live status window: from 15 minutes before until 60 minutes after
     return nowTs >= evTime - 15 * 60 * 1000 && nowTs <= evTime + 60 * 60 * 1000;
   }, [eventData?.start_date, isCompleted, nowTs]);
 

@@ -3,7 +3,7 @@ import type { QuestionItem, ReferencedBattery } from '../types';
 import { normalizeQuizQuestions } from './quizNormalizer';
 
 /**
- * Extrai baterias de exercícios a partir de um conteúdo HTML ou JSON de página.
+ * Extracts quiz batteries from page HTML or JSON content.
  */
 export function extractBatteriesFromContent(
   pageId: string,
@@ -49,7 +49,7 @@ export function extractBatteriesFromContent(
       }
     }
 
-    // Parser DOM para HTML
+    // DOM parser for HTML content
     try {
       const container = document.createElement('div');
       container.innerHTML = content;
@@ -78,8 +78,8 @@ export function extractBatteriesFromContent(
 }
 
 /**
- * Busca todas as baterias de exercícios disponíveis em todas as páginas fornecidas.
- * Carrega o conteúdo assincronamente via API se a página não tiver conteúdo em memória.
+ * Retrieves all available quiz batteries across all supplied pages.
+ * Asynchronously loads page content via API if not loaded in memory.
  */
 export async function findAllQuizBatteries(
   pages: Page[],
@@ -90,7 +90,7 @@ export async function findAllQuizBatteries(
   for (const page of pages) {
     let content = page.content;
 
-    // Se o conteúdo não estiver carregado em memória, busca via API
+    // Fetch via API if page content is not yet resident in memory
     if (!content && window.api?.getPageContent) {
       try {
         const fullData = await window.api.getPageContent(page.id);

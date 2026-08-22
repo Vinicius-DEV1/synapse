@@ -1,5 +1,5 @@
 /**
- * Utilitários para movimentação vertical atômica de blocos e widgets no editor.
+ * Utilities for atomic vertical movement of blocks and widgets in the editor.
  * Permite subir ou descer uma linha/bloco com 100% de estabilidade e feedback de toast.
  */
 
@@ -10,7 +10,7 @@ import { pruneGroupsInTransaction, removeGroupChildInTr } from './group-layout/g
 import { triggerToast } from '../ui/ToastContext';
 
 /**
- * Move o bloco ou widget na posição `pos` para cima (trocando de lugar com o nó anterior).
+ * Moves the block or widget at `pos` upwards (swapping with previous sibling node).
  */
 export function moveBlockUp(view: EditorView, pos: number): boolean {
   try {
@@ -29,7 +29,7 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
     if (groupSpec) {
       const index = $pos.index();
       if (index > 0) {
-        // Troca com o irmão anterior dentro do mesmo grupo
+        // Swap with previous sibling within same group
         const prevChild = parent.child(index - 1);
         const prevChildPos = pos - prevChild.nodeSize;
         tr.delete(pos, pos + node.nodeSize);
@@ -42,7 +42,7 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
         view.focus();
         return true;
       } else {
-        // Se for o primeiro filho de um grupo, move para FORA do grupo (imediatamente antes do grupo no documento)
+        // If first child of a group, move OUTSIDE group (immediately before the group in doc)
         const groupPos = $pos.before($pos.depth);
         const groupNode = doc.nodeAt(groupPos);
         if (groupNode) {
@@ -60,14 +60,14 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
       }
     }
 
-    // 2. Bloco de nível superior (profundidade 0 em doc)
+    // 2. Top-level block (depth 0 in doc)
     const index = $pos.index(0);
     if (index === 0) {
       triggerToast('O bloco já está na primeira posição.', 'info', 2000);
       return false;
     }
 
-    // Calcula a posição do bloco anterior no nível superior
+    // Calculate position of previous top-level block
     let prevPos = 0;
     for (let i = 0; i < index - 1; i++) {
       prevPos += doc.child(i).nodeSize;
@@ -93,7 +93,7 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
 }
 
 /**
- * Move o bloco ou widget na posição `pos` para baixo (trocando de lugar com o próximo nó).
+ * Moves the block or widget at `pos` downwards (swapping with next sibling node).
  */
 export function moveBlockDown(view: EditorView, pos: number): boolean {
   try {
@@ -112,7 +112,7 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
     if (groupSpec) {
       const index = $pos.index();
       if (index < parent.childCount - 1) {
-        // Troca com o próximo irmão dentro do mesmo grupo
+        // Swap with next sibling within same group
         const nextChild = parent.child(index + 1);
         const insertPos = pos + nextChild.nodeSize;
         tr.delete(pos, pos + node.nodeSize);
@@ -125,7 +125,7 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
         view.focus();
         return true;
       } else {
-        // Se for o último filho de um grupo, move para FORA do grupo (imediatamente após o grupo no documento)
+        // If last child of a group, move OUTSIDE group (immediately after the group in doc)
         const groupPos = $pos.before($pos.depth);
         const groupNode = doc.nodeAt(groupPos);
         if (groupNode) {
@@ -144,7 +144,7 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
       }
     }
 
-    // 2. Bloco de nível superior (profundidade 0 em doc)
+    // 2. Top-level block (depth 0 in doc)
     const index = $pos.index(0);
     if (index >= doc.childCount - 1) {
       triggerToast('O bloco já está na última posição.', 'info', 2000);

@@ -81,7 +81,7 @@ export default function ColorBlockquoteComponent(props: any) {
 
   const currentColor = props.node.attrs.color || 'default';
 
-  // O index.css já estliza o blockquote, aqui apenas aplicamos as cores customizadas
+  // index.css provides base blockquote styling; custom colors are applied here
   const customStyle = currentColor !== 'default'
     ? { backgroundColor: `${currentColor}15`, borderLeftColor: currentColor }
     : {};
