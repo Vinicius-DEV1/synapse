@@ -23,9 +23,9 @@ interface EditorModalHostProps {
   slashMenu: SlashMenuState | null;
   setSlashMenu: React.Dispatch<React.SetStateAction<SlashMenuState | null>>;
   executeSlashCommand: (commandId: string, editor: Editor | null) => void;
-  pageSearchMenu: { isOpen: boolean; x: number; y: number; query: string } | null;
+  pageSearchMenu: { isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create' } | null;
   setPageSearchMenu: React.Dispatch<
-    React.SetStateAction<{ isOpen: boolean; x: number; y: number; query: string } | null>
+    React.SetStateAction<{ isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create' } | null>
   >;
   onCreateLinkedPage?: (title: string) => Promise<string>;
   viewerState: {
@@ -160,6 +160,7 @@ export default function EditorModalHost({
       {pageSearchMenu && (
         <PageSearchMenu
           query={pageSearchMenu.query}
+          mode={pageSearchMenu.mode}
           x={pageSearchMenu.x}
           y={pageSearchMenu.y}
           onClose={() => setPageSearchMenu(null)}

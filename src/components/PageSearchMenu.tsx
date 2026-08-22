@@ -5,11 +5,12 @@ interface PageSearchMenuProps {
   x: number;
   y: number;
   query: string;
+  mode?: 'link' | 'create';
   onSelect: (pageId: string | 'new', pageTitle: string) => void;
   onClose: () => void;
 }
 
-export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageSearchMenuProps) {
+export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, onClose }: PageSearchMenuProps) {
   const { state } = useStore();
   const [localQuery, setLocalQuery] = useState(query || '');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -26,10 +27,16 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
     return false;
   });
 
-  const options = [
-    ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
-    ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery}"`, icon: '✨' }] : [])
-  ];
+  const effectiveTitle = localQuery.trim() || 'Sem título';
+  const options = mode === 'create'
+    ? [
+        { id: 'new', title: `Criar página "${effectiveTitle}"`, icon: '✨' },
+        ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' }))
+      ]
+    : [
+        ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
+        ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery.trim()}"`, icon: '✨' }] : [])
+      ];
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -47,7 +54,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (options[selectedIndex]) {
-          onSelect(options[selectedIndex].id, options[selectedIndex].id === 'new' ? localQuery : options[selectedIndex].title);
+          onSelect(options[selectedIndex].id, options[selectedIndex].id === 'new' ? effectiveTitle : options[selectedIndex].title);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -57,7 +64,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [options, selectedIndex, onSelect, onClose]);
+  }, [options, selectedIndex, onSelect, onClose, effectiveTitle]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -93,7 +100,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
       style={positionStyle}
     >
       <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
-        Referenciar Página
+        {mode === 'create' ? 'Criar Nova Página' : 'Vincular Página'}
       </div>
       <div className="p-2 border-b border-white/5 bg-dark-card/30">
         <input
@@ -101,7 +108,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
           autoFocus
           value={localQuery}
           onChange={(e) => setLocalQuery(e.target.value)}
-          placeholder="Buscar página..."
+          placeholder={mode === 'create' ? 'Nome da nova página...' : 'Buscar página existente...'}
           className="w-full bg-transparent text-sm text-dark-text outline-none placeholder-dark-subtext"
         />
       </div>
@@ -116,7 +123,7 @@ export default function PageSearchMenu({ x, y, query, onSelect, onClose }: PageS
             return (
               <button
                 key={opt.id}
-                onClick={() => onSelect(opt.id, opt.id === 'new' ? localQuery : opt.title)}
+                onClick={() => onSelect(opt.id, opt.id === 'new' ? effectiveTitle : opt.title)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}`}
               >

@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar, Film, BookOpen, Columns2, Columns3 } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -12,7 +12,8 @@ const SLASH_COMMANDS = [
   { id: 'bullet', title: 'Lista de marcadores', subtitle: 'Crie uma lista simples com bolinhas.', icon: List, keywords: ['bullet', 'lista', 'pontos'] },
   { id: 'callout', title: 'Destaque', subtitle: 'Faça um texto se destacar.', icon: Info, keywords: ['callout', 'destaque', 'aviso'] },
   { id: 'code', title: 'Código', subtitle: 'Adicione um bloco de código de programação.', icon: Code, keywords: ['code', 'codigo', 'js', 'ts'] },
-  { id: 'page', title: 'Página', subtitle: 'Embutir uma página existente.', icon: FileText, keywords: ['pagina', 'page', 'vinculo'] },
+  { id: 'page-create', title: 'Criar Página', subtitle: 'Criar uma nova página vinculada.', icon: FilePlus, keywords: ['criar pagina', 'nova pagina', 'subpagina', 'criar', 'page create', 'new page', 'nova'] },
+  { id: 'page', title: 'Vincular Página', subtitle: 'Vincular uma página existente.', icon: FileText, keywords: ['vincular pagina', 'pagina', 'page', 'vinculo', 'vincular', 'link pagina'] },
   { id: 'group', title: 'Coleção', subtitle: 'Agrupe páginas em uma coleção expansível.', icon: Folder, keywords: ['colecao', 'grupo', 'pasta'] },
   { id: 'toggle', title: 'Lista Oculta', subtitle: 'Lista que pode ser recolhida.', icon: ListTree, keywords: ['toggle', 'oculta', 'dropdown'] },
   { id: 'blockquoteToggle', title: 'Toggle Destaque', subtitle: 'Toggle com visual de destaque (Callout).', icon: Info, keywords: ['toggle destaque', 'callout toggle'] },

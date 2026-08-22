@@ -10,7 +10,7 @@ export interface SlashMenuState {
 }
 
 interface UseSlashCommandProps {
-  setPageSearchMenu: React.Dispatch<React.SetStateAction<{ isOpen: boolean, x: number, y: number, query: string } | null>>;
+  setPageSearchMenu: React.Dispatch<React.SetStateAction<{ isOpen: boolean, x: number, y: number, query: string, mode?: 'link' | 'create' } | null>>;
   setFocusModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>>;
   setAlarmModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTimeStr?: string } | null>>;
   setFileUploadModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, isLink: boolean } | null>>;
@@ -155,10 +155,34 @@ export function useSlashCommand({
       case 'question': chain.insertContent('<div class="question-block"></div>').run(); break;
       case 'toggle': chain.insertContent('<div class="toggle-block"><p></p></div>').run(); break;
       case 'blockquoteToggle': chain.insertContent('<div class="blockquote-toggle"><p></p></div>').run(); break;
-      case 'page': 
+      case 'page-create':
+      case 'criar-pagina':
+      case 'nova-pagina': {
+        const queryText = slashMenu.query.replace(/^(page-create|criar-pagina|nova-pagina|criar|nova)\s*/i, '').trim();
         chain.run();
-        setPageSearchMenu({ isOpen: true, x: slashMenu.x, y: slashMenu.y, query: slashMenu.query.replace(/^page\s*/i, '') }); 
+        setPageSearchMenu({
+          isOpen: true,
+          x: slashMenu.x,
+          y: slashMenu.y,
+          query: queryText,
+          mode: 'create'
+        });
         break;
+      }
+      case 'page':
+      case 'page-link':
+      case 'vincular-pagina': {
+        const queryText = slashMenu.query.replace(/^(page-link|vincular-pagina|page|vincular|pagina)\s*/i, '').trim();
+        chain.run();
+        setPageSearchMenu({
+          isOpen: true,
+          x: slashMenu.x,
+          y: slashMenu.y,
+          query: queryText,
+          mode: 'link'
+        }); 
+        break;
+      }
       case 'divider': chain.setHorizontalRule().run(); break;
       case 'table': 
         chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();

@@ -142,4 +142,76 @@ describe('useSlashCommand Hook', () => {
     });
     expect(result.current.slashMenu).toBeNull();
   });
+
+  it('executes "page" command and opens page search menu with mode "link"', () => {
+    const { result } = renderHook(() =>
+      useSlashCommand({
+        setPageSearchMenu,
+        setFocusModal,
+        setAlarmModal,
+        setFileUploadModal,
+        setFileSelectModal,
+        setCalendarEventModal,
+        setMediaSelectModal,
+      })
+    );
+
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'page anotações',
+        startPos: 10,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('page', mockEditor);
+    });
+
+    expect(setPageSearchMenu).toHaveBeenCalledWith({
+      isOpen: true,
+      x: 50,
+      y: 150,
+      query: 'anotações',
+      mode: 'link',
+    });
+    expect(result.current.slashMenu).toBeNull();
+  });
+
+  it('executes "page-create" command and opens page search menu with mode "create"', () => {
+    const { result } = renderHook(() =>
+      useSlashCommand({
+        setPageSearchMenu,
+        setFocusModal,
+        setAlarmModal,
+        setFileUploadModal,
+        setFileSelectModal,
+        setCalendarEventModal,
+        setMediaSelectModal,
+      })
+    );
+
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'criar Nova Tarefa',
+        startPos: 10,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('page-create', mockEditor);
+    });
+
+    expect(setPageSearchMenu).toHaveBeenCalledWith({
+      isOpen: true,
+      x: 50,
+      y: 150,
+      query: 'Nova Tarefa',
+      mode: 'create',
+    });
+    expect(result.current.slashMenu).toBeNull();
+  });
 });
