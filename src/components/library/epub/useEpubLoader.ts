@@ -46,47 +46,77 @@ export function useEpubLoader(
         let assetUrl: string | null = null;
         
         try {
-          // Apenas tenta stream local HTTP se a plataforma suportar acesso ao FileSystem local
-          if (platform.canReadLocalFilesystem && window.api?.library && book.file_path && !book.file_path.startsWith('http')) {
-             let absPath = book.file_path;
-             if (!absPath.startsWith('file://') && !absPath.match(/^[a-zA-Z]:/)) {
-                 const { appDataDir, join } = await import('@tauri-apps/api/path');
-                 const dataDir = await appDataDir();
-                 absPath = await join(dataDir, absPath);
-             }
-             if (absPath.startsWith('file://')) {
-                 absPath = absPath.replace('file://', '');
-             }
-             if (absPath.startsWith('/')) {
-                 absPath = absPath.substring(1);
-             }
-             // removed originalAbsPath assignment
-             
-             let encPath = absPath;
-             if (!encPath.endsWith('.enc') && !book.file_path.endsWith('.enc')) {
-                 encPath = encPath + '.enc';
-             }
-             const isWindows = navigator.userAgent.includes('Windows');
-             const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
-             assetUrl = `${baseUrl}/library/${encodeURIComponent(encPath)}`;
+        // 1. Cascading local filesystem check (Desktop / Tauri)
+        if (platform.canReadLocalFilesystem && window.api?.library) {
+          try {
+            const { appDataDir, join } = await import('@tauri-apps/api/path');
+            const { exists } = await import('@tauri-apps/plugin-fs');
+            const dataDir = await appDataDir();
+
+            const candidates: string[] = [];
+
+            // 1.1 Canonical candidates based on book ID
+            candidates.push(await join(dataDir, 'library', `${book.id}.epub.enc`));
+            candidates.push(await join(dataDir, 'library', `${book.id}.epub`));
+
+            // 1.2 Candidates based on saved file_path
+            if (book.file_path && !book.file_path.startsWith('drive:') && !book.file_path.startsWith('http')) {
+              let cleanPath = book.file_path.replace(/^file:\/\//, '');
+              const filename = cleanPath.split(/[/\\]/).pop();
+
+              if (cleanPath.startsWith('/') || cleanPath.match(/^[a-zA-Z]:/)) {
+                // If it was absolute on the current filesystem
+                candidates.push(cleanPath);
+                if (!cleanPath.endsWith('.enc')) candidates.push(`${cleanPath}.enc`);
+              } else {
+                // Relative path
+                candidates.push(await join(dataDir, cleanPath));
+                if (!cleanPath.endsWith('.enc')) candidates.push(await join(dataDir, `${cleanPath}.enc`));
+              }
+
+              // Also check direct filename in library folder
+              if (filename) {
+                candidates.push(await join(dataDir, 'library', filename));
+                if (!filename.endsWith('.enc')) candidates.push(await join(dataDir, 'library', `${filename}.enc`));
+              }
+            }
+
+            // Find first existing file
+            let foundPath: string | null = null;
+            for (const candidate of candidates) {
+              try {
+                if (await exists(candidate)) {
+                  foundPath = candidate;
+                  break;
+                }
+              } catch {}
+            }
+
+            if (foundPath) {
+              const isWindows = navigator.userAgent.includes('Windows');
+              const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+              assetUrl = `${baseUrl}/library/${encodeURIComponent(foundPath)}`;
+            }
+          } catch (localErr) {
+            console.log("[EpubLoader] Erro ao verificar arquivos locais:", localErr);
           }
-        } catch (localErr) {
-          console.log("Erro ao formatar path local (ignorado na Web)", localErr);
         }
 
+        // 2. Fetch via custom stream protocol if assetUrl was found
         if (assetUrl) {
-           try {
-             const res = await fetch(assetUrl);
-             if (res.ok) {
-               arrayBuffer = await res.arrayBuffer();
-             }
-           } catch (fetchErr) {
-             console.log("Falha ao buscar versão criptografada via stream HTTP.", fetchErr);
-           }
+          try {
+            const res = await fetch(assetUrl);
+            if (res.ok) {
+              arrayBuffer = await res.arrayBuffer();
+            }
+          } catch (fetchErr) {
+            console.log("[EpubLoader] Falha ao buscar via protocolo encrypted://, tentando getBookFile...", fetchErr);
+          }
         }
 
-        if (!arrayBuffer && window.api?.library) {
-            console.log("Obtendo arquivo do livro via API nativa/web...");
+        // 3. Fallback: Native / Web API getBookFile
+        if (!arrayBuffer && window.api?.library?.getBookFile) {
+          try {
             const res = await window.api.library.getBookFile(book.id);
             if (res) {
               if ((res as unknown) instanceof ArrayBuffer) {
@@ -98,45 +128,56 @@ export function useEpubLoader(
                 arrayBuffer = bytes.buffer;
               }
             }
+          } catch (apiErr) {
+            console.log("[EpubLoader] Falha ao obter via getBookFile:", apiErr);
+          }
         }
 
-        if (!arrayBuffer && book.drive_file_id) {
-          console.log("Baixando EPUB do Google Drive: ", book.drive_file_id);
+        // 4. Fallback: Google Drive Download
+        const targetDriveId = book.drive_file_id || (book.file_path?.startsWith('drive://') ? book.file_path.replace('drive://', '') : null);
+
+        if (!arrayBuffer && targetDriveId) {
+          console.log("[EpubLoader] Baixando EPUB do Google Drive:", targetDriveId);
           const token = await getValidAccessToken();
           if (token) {
-             const encryptedData = await downloadFromDrive(token, book.drive_file_id);
-             
-             // Cachear localmente no Desktop se possível
-             try {
-               const { appDataDir, join } = await import('@tauri-apps/api/path');
-               const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-               const dataDir = await appDataDir();
-               const libDir = await join(dataDir, 'library');
-               if (!await exists(libDir)) {
-                 await mkdir(libDir, { recursive: true });
-               }
-               const localEncPath = await join(libDir, `${book.id}.epub.enc`);
-               await writeFile(localEncPath, new Uint8Array(encryptedData));
-               const expectedPath = `library/${book.id}.epub.enc`;
-               if (book.file_path !== expectedPath) {
-                 onUpdateBook({ file_path: expectedPath });
-               }
-             } catch (cacheErr) {
-               console.warn("Não foi possível salvar cache local do EPUB:", cacheErr);
-             }
+            const encryptedData = await downloadFromDrive(token, targetDriveId);
+            
+            // Cachear localmente no Desktop se possível
+            try {
+              const { appDataDir, join } = await import('@tauri-apps/api/path');
+              const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+              const dataDir = await appDataDir();
+              const libDir = await join(dataDir, 'library');
+              if (!await exists(libDir)) {
+                await mkdir(libDir, { recursive: true });
+              }
+              const localEncPath = await join(libDir, `${book.id}.epub.enc`);
+              await writeFile(localEncPath, new Uint8Array(encryptedData));
+              const expectedPath = `library/${book.id}.epub.enc`;
+              if (book.file_path !== expectedPath) {
+                onUpdateBook({ file_path: expectedPath });
+              }
+            } catch (cacheErr) {
+              console.warn("[EpubLoader] Não foi possível salvar cache local do EPUB:", cacheErr);
+            }
 
-             if (masterKey) {
-               arrayBuffer = await decryptFile(encryptedData, masterKey);
-             } else {
-               arrayBuffer = encryptedData;
-             }
+            if (masterKey) {
+              try {
+                arrayBuffer = await decryptFile(encryptedData, masterKey);
+              } catch {
+                // If it wasn't AES-GCM encrypted or was already decrypted
+                arrayBuffer = encryptedData;
+              }
+            } else {
+              arrayBuffer = encryptedData;
+            }
           } else {
-             throw new Error("Você precisa conectar sua conta do Google Drive primeiro para baixar este livro.");
+            throw new Error("Você precisa conectar sua conta do Google Drive para baixar este livro.");
           }
         }
 
         if (!arrayBuffer) {
-          throw new Error("Arquivo não encontrado no banco de dados nem na nuvem. Verifique se o arquivo foi sincronizado na nuvem.");
+          throw new Error("Arquivo não encontrado no disco local nem na nuvem. Verifique se o arquivo foi sincronizado na nuvem.");
         }
 
         if (!active) return;
