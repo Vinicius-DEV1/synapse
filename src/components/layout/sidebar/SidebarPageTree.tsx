@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, Pin, Plus, Upload, GripVertical } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import SidebarItem from '../../SidebarItem';
+import SidebarItem from './SidebarItem';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';

@@ -25,7 +25,7 @@ import { QuestionBlock } from '../../editor-extensions/QuestionBlock';
 import { ToggleBlock } from '../../editor-extensions/ToggleBlock';
 import { ColorBlockquote } from '../../editor-extensions/ColorBlockquote';
 import { BlockquoteToggle } from '../../editor-extensions/BlockquoteToggle';
-import { LinkPreviewBlock } from '../../editor-extensions/LinkPreviewBlock';
+import { LinkPreviewBlock } from '../../editor-extensions/links/LinkPreviewBlock';
 import { LinkGroupBlock } from '../../editor-extensions/LinkGroupBlock';
 import { ResizableImage } from '../../editor-extensions/ResizableImage';
 import { EncryptedImage } from '../../editor-extensions/EncryptedImage';
