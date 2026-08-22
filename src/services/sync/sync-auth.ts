@@ -106,7 +106,7 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
   // Persist locally
   localStorage.setItem('caderno_security_lock', JSON.stringify(newLock));
 
-  // Salvar na Nuvem
+  // Persist to Cloud
   if (navigator.onLine) {
     try {
       await Promise.race([
@@ -115,7 +115,7 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
       ]);
       logFirebaseOp('write', 1);
     } catch {
-      // Ignorar erro de escrita
+      // Ignore cloud write errors (offline/transient)
     }
   }
 

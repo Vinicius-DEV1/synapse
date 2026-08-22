@@ -126,7 +126,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               localMap = new Map(localRows.map((r: any) => [r.id, r]));
             }
           } else if (window.api.sync.getRowsByIds) {
-            // Para chunks subsequentes, buscar apenas novos IDs
+            // For subsequent chunks, fetch only newly encountered IDs
             const newIds = querySnapshot.docs
               .filter(d => (d.data() as CloudData).encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys' && !localMap!.has(d.id))
               .map(d => d.id);
@@ -159,7 +159,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           for (let i = 0; i < docsToProcess.length; i += DECRYPT_BATCH_SIZE) {
             const batch = docsToProcess.slice(i, i + DECRYPT_BATCH_SIZE);
             
-            // Busca fresh data em batch para evitar race condition (B10)
+            // Fetch fresh local rows in batch to prevent race conditions (B10)
             const batchIds = batch.map(d => d.id);
             const freshRowsList = await window.api.sync.getRowsByIds(table, batchIds);
             const freshMap = new Map(freshRowsList.map((r: any) => [r.id, r]));
@@ -256,7 +256,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 window.api.log(`[PULL] Doc ${docSnap.id}. localTime=${localTime}, cloudTime=${cloudTime}`);
               }
 
-              // CRDT merge para pages (Yjs)
+              // CRDT merge for pages (Yjs)
               if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
                 try {
                   // #4: Import Yjs once (lazy, outside loop)
@@ -336,7 +336,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   }
                   if (lastErr) throw lastErr;
                 }
-                // Atualizar o mapa local com o valor que acabamos de salvar
+                // Update in-memory local map with freshly persisted record
                 localMap!.set(docSnap.id, rowToUpsert);
                 
                 if (typeof window !== 'undefined' && window.api?.log) {
@@ -379,8 +379,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 }
 
 /**
- * #7: Listener atualizado para passar o deviceId do sinal ao callback.
- * Permite que o chamador ignore sinais do próprio dispositivo.
+ * #7: Realtime listener passing cloud signal deviceId to callback.
+ * Enables the caller to ignore echo signals dispatched from the same device.
  */
 export function listenForCloudSyncSignal(onSignal: (deviceId?: string) => void) {
   const signalRef = doc(db, 'config', 'sync_signal');

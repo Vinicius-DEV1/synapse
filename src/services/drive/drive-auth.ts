@@ -64,7 +64,7 @@ export function getDriveAuthUrl(codeChallenge: string): string {
 }
 
 /**
- * Troca o código de autorização por tokens (Access + Refresh)
+ * Exchanges OAuth authorization code for Access & Refresh tokens via Google OAuth2.
  */
 export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<DriveToken> {
   const params = new URLSearchParams();
@@ -184,7 +184,7 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
 }
 
 /**
- * Salva as credenciais persistidas localmente
+ * Persists Google Drive OAuth credentials locally (encrypted when master key is present).
  */
 export async function saveDriveCredentials(token: DriveToken | null): Promise<void> {
   const dataPayload = { token };
@@ -232,7 +232,7 @@ export async function forceTokenRefresh(): Promise<string | null> {
 }
 
 /**
- * Retorna um access token válido (renova automaticamente se necessário).
+ * Returns a valid Google Drive access token, automatically refreshing expired tokens.
  */
 export async function getValidAccessToken(forceRefresh = false): Promise<string | null> {
   if (forceRefresh) return await forceTokenRefresh();

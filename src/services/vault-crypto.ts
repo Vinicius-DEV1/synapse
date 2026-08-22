@@ -1,7 +1,7 @@
 /**
  * Vault cryptography module for Web runtime.
  * Guarantees exact binary parity with cmd_vault.rs in Desktop (Tauri).
- * Formato de saída: iv_hex:auth_tag_hex:encrypted_hex
+ * Output wire format: iv_hex:auth_tag_hex:encrypted_hex
  */
 
 import { hexToArrayBuffer, arrayBufferToHex } from '../utils/binary';
@@ -29,7 +29,7 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
     
-    // Rust usa IV de 12 bytes
+    // Rust backend uses a 12-byte IV
     const iv = crypto.getRandomValues(new Uint8Array(12));
 
     const encryptedBuffer = await crypto.subtle.encrypt(
@@ -63,7 +63,7 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
   
   const parts = payload.split(':');
   if (parts.length !== 3) {
-    // Pode ser um texto plano antigo que calhou de ter ':' (ex: "https://youtube.com" ou "Nota: importante")
+    // Graceful fallback for legacy plaintext that happens to contain ':' (e.g. "https://..." or "Note: ...")
     return payload;
   }
 
@@ -83,7 +83,7 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     const authTag = new Uint8Array(hexToArrayBuffer(authTagHex));
     const cipherText = new Uint8Array(hexToArrayBuffer(cipherTextHex));
 
-    // WebCrypto espera Ciphertext + AuthTag concatenados
+    // WebCrypto expects concatenated Ciphertext + AuthTag
     const combined = new Uint8Array(cipherText.length + authTag.length);
     combined.set(cipherText, 0);
     combined.set(authTag, cipherText.length);
@@ -102,6 +102,6 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     return decoder.decode(decryptedBuffer);
   } catch (e) {
     console.warn('Failed to decrypt vault field, returning as plaintext', e);
-    return payload; // Fallback para retornar o texto original se falhar
+    return payload; // Fallback returning original text on decryption failure
   }
 }

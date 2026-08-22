@@ -21,8 +21,8 @@ interface PreparedDoc {
 }
 
 /**
- * Prepara (serializa + encripta) uma lista de rows em paralelo.
- * Returns ready keys and logs warnings for skipped keys.
+ * Serializes and encrypts a list of database rows in parallel for Cloud Push.
+ * Returns ready documents and logs warnings for skipped rows exceeding payload thresholds.
  */
 async function prepareRowsForPush(
   rows: any[],
@@ -128,7 +128,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
 
         console.log(`[Push INICIANDO] Tabela ${table}: ${rowsToPush.length} registros serão enviados.`);
 
-        // #2: Encriptar TODOS os docs da tabela em paralelo (Promise.all)
+        // #2: Encrypt ALL table documents in parallel (Promise.all)
         const { prepared, skippedLarge } = await prepareRowsForPush(rowsToPush, key, table);
 
         // Notification for documents skipped due to payload size limits
@@ -177,7 +177,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
                 highestSuccessTime = item.localTime;
               }
             }
-            // Manifest: registrar o timestamp mais alto desta tabela
+            // Manifest: record highest timestamp for this table
             const chunkHighest = Math.max(...chunk.map(c => c.localTime));
             const currentManifest = manifestUpdate[table];
             const currentManifestTime = currentManifest ? parseDateSafe(currentManifest) : 0;
@@ -185,7 +185,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
               manifestUpdate[table] = new Date(chunkHighest).toISOString();
             }
           } catch (err: any) {
-            // Se o batch falhar, registrar erro para cada doc do chunk
+            // If batch fails, record error for each document in chunk
             for (const item of chunk) {
               const msg = `PUSH erro doc ${item.id} (${table}): ${err?.message}`;
               console.warn(msg);
@@ -214,7 +214,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
     if (typeof window !== 'undefined' && window.api?.log) {
       window.api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
-    // #6: Atualiza lastPush apenas com o timestamp mais alto dos docs COM SUCESSO
+    // #6: Update lastPush timestamp strictly from successfully committed docs
     if (highestSuccessTime > getLastSyncTime('push')) {
       setLastSyncTime('push', highestSuccessTime);
     }
@@ -231,9 +231,9 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         console.warn("Falha ao enviar sinal de sync", e);
       }
 
-      // Manifest: atualizar config/sync_manifest com os timestamps das tabelas que mudaram.
-      // Pull uses this to skip unchanged tables, saving ~34 reads per cycle.
-      // merge: true preserva timestamps de tabelas pushadas por outros dispositivos.
+      // Manifest: update config/sync_manifest with timestamps of changed tables.
+      // Pull uses this manifest to skip unchanged tables, saving ~34 reads per cycle.
+      // merge: true preserves timestamps of tables pushed by other devices.
       if (Object.keys(manifestUpdate).length > 0) {
         try {
           await setDoc(doc(db, 'config', 'sync_manifest'), manifestUpdate, { merge: true });

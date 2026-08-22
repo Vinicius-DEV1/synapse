@@ -46,7 +46,7 @@ export async function uploadLocalFileToDrive(token: string, localPath: string, d
 }
 
 /**
- * Faz upload de um novo vídeo para o Google Drive e o registra no DB.
+ * Uploads a new video to Google Drive and registers the video entity in the local/cloud DB.
  */
 export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<{ video: VideoItem; stats: UploadStats }> {
   const startTime = Date.now();
@@ -327,7 +327,7 @@ export async function generateWebVersionTask(
 
   if (signal?.aborted) throw new Error("Cancelado pelo usuário");
 
-  // 1. Converter
+  // 1. Convert video locally via FFmpeg
   if (onPhaseChange) onPhaseChange('Convertendo vídeo no Desktop...');
   
   let unlistenProgress: any = null;

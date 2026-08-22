@@ -58,13 +58,13 @@ export async function runImageGarbageCollector(): Promise<void> {
 }
 
 /**
- * Busca todas as tabelas do banco de dados (Web ou Desktop) que podem conter rich-text
- * e extrai os IDs do Google Drive usados nas tags <encrypted-image> ou media_url.
+ * Scans all database tables (Web or Desktop) that may contain rich-text
+ * and extracts Google Drive file IDs referenced in <encrypted-image> tags or media_url fields.
  */
 async function extractUsedDriveFileIds(): Promise<Set<string>> {
   const usedIds = new Set<string>();
   
-  // Tabelas e colunas que podem conter IDs do Drive
+  // Tables and columns that may contain Drive file IDs
   const tablesToCheck = [
     { name: 'pages', cols: ['content'] },
     { name: 'anki_notes', cols: ['front', 'back', 'extra_note', 'media_url'] },
@@ -102,12 +102,12 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
       for (const col of tableConfig.cols) {
         const val = row[col];
         if (typeof val === 'string' && val) {
-          // Extrai tags html
+          // Extract HTML image tags
           let match;
           while ((match = regex.exec(val)) !== null) {
             usedIds.add(match[1]);
           }
-          // Extrai se for exatamente o media_url ou drive ID
+          // Extract plain media_url if raw Drive file ID
           if (col === 'media_url' && val.length > 20 && !val.includes('<')) {
             usedIds.add(val);
           }
@@ -120,7 +120,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
 }
 
 /**
- * Remove a imagem órfã do cache local (IndexedDB ou SQLite)
+ * Removes an orphaned image record from local cache (IndexedDB or SQLite).
  */
 async function removeFromLocalCache(fileId: string): Promise<void> {
   if (isDesktopApp()) {

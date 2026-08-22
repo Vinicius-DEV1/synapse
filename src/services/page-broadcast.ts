@@ -1,15 +1,13 @@
 /**
  * page-broadcast.ts
  *
- * Sincronização entre abas do browser via BroadcastChannel.
+ * Cross-tab synchronization via standard BroadcastChannel API.
  *
- * Quando uma aba salva uma página no IndexedDB, ela notifica todas as outras
- * abas abertas com o mesmo origin. As abas que têm essa página aberta aplicam
- * o CRDT recebido ao seu YDoc local, evitando que o conteúdo stale sobrescreva
- * edições feitas em outra aba — o bug de perda de dados reportado.
+ * When a browser tab persists a page to IndexedDB, it notifies all other open tabs
+ * sharing the same origin. Tabs with that page open apply the incoming CRDT update
+ * to their local Y.Doc, preventing stale content from overwriting newer edits.
  *
- * A API BroadcastChannel é suportada em todos os browsers modernos e não
- * requer configuração adicional. Mensagens NÃO chegam à aba emissora.
+ * The BroadcastChannel API is supported across all modern browsers and requires zero setup.
  */
 
 export interface PageSavedMessage {
@@ -38,7 +36,7 @@ function getChannel(): BroadcastChannel | null {
           try {
             cb(event.data);
           } catch (err) {
-            console.error('[Caderno:Broadcast] Erro no listener do canal:', err);
+            console.error('[Caderno:Broadcast] Error in channel listener:', err);
           }
         });
       }
@@ -48,9 +46,8 @@ function getChannel(): BroadcastChannel | null {
 }
 
 /**
- * Notifica outras abas abertas que uma página foi salva.
- * Notifica tanto abas remotas (via BroadcastChannel) quanto abas/componentes locais
- * na mesma janela (já que o BroadcastChannel padrão ignora a própria janela emissora).
+ * Notifies other open tabs and local window listeners that a page has been saved.
+ * Dispatches both across tabs (via BroadcastChannel) and locally within the same window.
  */
 export function broadcastPageSaved(
   pageId: string,
@@ -72,7 +69,7 @@ export function broadcastPageSaved(
     try {
       ch.postMessage(msg);
     } catch (err) {
-      console.warn('[Caderno:Broadcast] Falha ao enviar mensagem de broadcast:', err);
+      console.warn('[Caderno:Broadcast] Failed to send broadcast message:', err);
     }
   }
 
@@ -81,14 +78,14 @@ export function broadcastPageSaved(
     try {
       cb(msg);
     } catch (err) {
-      console.error('[Caderno:Broadcast] Erro ao disparar listener local:', err);
+      console.error('[Caderno:Broadcast] Error dispatching local listener:', err);
     }
   });
 }
 
 /**
- * Registra um callback que será chamado sempre que outra aba salvar uma página.
- * Retorna uma função para cancelar o registro (use em useEffect cleanup).
+ * Registers a callback invoked whenever another tab persists a page.
+ * Returns an unregister cleanup function (for useEffect cleanup).
  */
 export function onPageSaved(callback: PageSavedCallback): () => void {
   getChannel(); // ensure channel is initialized

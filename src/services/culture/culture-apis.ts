@@ -89,7 +89,7 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
 }
 
 /**
- * Busca na API do iTunes (Filmes)
+ * Queries the Apple iTunes Search API for movies.
  */
 export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[]> {
   try {
@@ -112,7 +112,7 @@ export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[
 }
 
 /**
- * Orquestrador unificado de busca inteligente por tipo de mídia
+ * Unified orchestrator performing multi-source media searches based on type.
  */
 export async function searchCultureMedia(query: string, type: string): Promise<CultureSearchResult[]> {
   if (!query.trim()) return [];
