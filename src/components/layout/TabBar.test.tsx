@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TabBar from './TabBar';
-import { StoreProvider } from '../store/useStore';
+import { StoreProvider } from '../../store/useStore';
 
 describe('TabBar component', () => {
   beforeEach(() => {

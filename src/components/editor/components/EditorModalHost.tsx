@@ -13,7 +13,7 @@ import MediaActionModal from '../../MediaActionModal';
 import FileActionModal from '../../FileActionModal';
 import ImageDeleteModal from '../../ImageDeleteModal';
 import { deleteImageAt } from '../../editor-extensions/image/imageUtils';
-import type { SlashMenuState } from '../hooks/useSlashCommand';
+import type { SlashMenuState } from '../../../hooks/useSlashCommand';
 import type { Alarm } from '../../focus/types';
 
 interface EditorModalHostProps {

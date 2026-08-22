@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SubPageGrid from './SubPageGrid';
-import { useStore } from '../store/useStore';
-import type { Page } from '../types';
+import { useStore } from '../../../store/useStore';
+import type { Page } from '../../../types';
 
-vi.mock('../store/useStore', () => ({
+vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(),
 }));
 
