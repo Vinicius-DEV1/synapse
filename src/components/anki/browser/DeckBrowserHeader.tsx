@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Settings, HardDrive } from 'lucide-react';
 import type { Deck } from '../types';
 

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { CalendarEvent } from '../../types';
 

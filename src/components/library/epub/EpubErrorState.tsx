@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft, FileQuestion, FolderUp, RefreshCw, Trash2 } from 'lucide-react';
 import type { LibraryBook } from '../../../types';
 

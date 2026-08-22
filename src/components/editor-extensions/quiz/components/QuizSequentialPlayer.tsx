@@ -1,16 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  CheckCircle2,
-  XCircle,
   HelpCircle,
-  Sparkles,
-  Loader2,
-  MessageSquare,
 } from 'lucide-react';
 import { triggerFireworksAnimation } from '../utils/fireworks';
 import { QuizSummaryView } from './sequential/QuizSummaryView';

@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles,     RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { promptGeminiForChatAnalysis } from '../../services/gemini';
 import { useAIActions } from '../../hooks/useAIActions';
 import type { ChatMessage } from '../../hooks/useAIActions';
-import { ActionCreateCards, ActionDeleteCard, ActionDeleteBulk, ActionEditCards } from './ai-chat/ChatActionBlocks';
 import { ChatSetupForm } from './ai-chat/ChatSetupForm';
 import { ChatSuggestionsReview } from './ai-chat/ChatSuggestionsReview';
 import { AIChatMessageItem } from './ai-chat/AIChatMessageItem';

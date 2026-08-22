@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-import { ArrowLeft, FileQuestion, FolderUp, RefreshCw, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import type { ChangeEvent, RefObject } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 import { useStore } from '../../store/useStore';
 
@@ -141,7 +141,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
 
   useEpubLoader(
     book,
-    viewerRef as React.RefObject<HTMLDivElement>,
+    viewerRef as RefObject<HTMLDivElement>,
     onUpdateBook,
     setLoading,
     setEpubError,
@@ -208,6 +208,16 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       setTimeout(() => setModeToast(`Zoom: ${next}%`), 0);
       return next;
     });
+  };
+
+  const handleScrub = (e: ChangeEvent<HTMLInputElement>) => {
+    const page = parseInt(e.target.value, 10);
+    if (!isNaN(page) && epubBook && locationsReady) {
+      const cfi = epubBook.locations.cfiFromLocation(page);
+      if (cfi && rendition) {
+        rendition.display(cfi);
+      }
+    }
   };
 
   useEpubShortcuts({

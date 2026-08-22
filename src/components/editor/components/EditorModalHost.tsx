@@ -1,7 +1,6 @@
-import React from 'react';
 import type { Editor } from '@tiptap/core';
 import SlashMenu from './SlashMenu';
-import PageSearchMenu from './PageSearchMenu';
+import PageSearchMenu from '../../PageSearchMenu';
 import ImageViewerModal from '../../modals/ImageViewerModal';
 import SetupModal from '../../focus/SetupModal';
 import AlarmSetupModal from '../../focus/AlarmSetupModal';
@@ -164,8 +163,8 @@ export default function EditorModalHost({
           x={pageSearchMenu.x}
           y={pageSearchMenu.y}
           onClose={() => setPageSearchMenu(null)}
-          onSelect={async (selectedPageId, title) => {
-            let finalId = selectedPageId;
+          onSelect={async (selectedPageId: string, title: string) => {
+            let finalId: string | null = selectedPageId;
             if (selectedPageId === 'new' && onCreateLinkedPage) {
               finalId = await onCreateLinkedPage(title);
             }

@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { X, Search, ChevronRight, ChevronDown, Check, LayoutGrid, AlertCircle, FolderInput } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { X, Search, Check, LayoutGrid, AlertCircle, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import type { Page } from '../../types';
 import { isValidHierarchyMove, getPageBreadcrumbString } from '../../utils/hierarchy';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';

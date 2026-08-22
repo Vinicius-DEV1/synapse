@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, getDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -8,6 +8,13 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
 import { DraggableEvent } from './DraggableEvent';
 import { DroppableDay } from './DroppableDay';
+
+interface CalendarGridProps {
+  events: CalendarEvent[];
+  onEditEvent: (event: CalendarEvent) => void;
+  onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void> | void;
+  onDayClick: (date: Date) => void;
+}
 
 export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDayClick }: CalendarGridProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
