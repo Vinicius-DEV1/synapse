@@ -3,87 +3,12 @@ import { Search, FileText, CornerDownLeft, ChevronRight, Pin, Clock, Sparkles } 
 import { useStore } from '../../store/useStore';
 import { getPageAncestors, type HierarchyNode } from '../../utils/hierarchy';
 import type { Page } from '../../types';
-
-type SearchScope = 'all' | 'title' | 'content' | 'pinned';
-
-interface SearchResultItem {
-  id: string;
-  title: string;
-  icon: string;
-  content?: string;
-  matchType: 'title' | 'path' | 'content' | 'recent' | 'pinned';
-  ancestors: HierarchyNode[];
-  is_pinned?: number;
-  isRecent?: boolean;
-  score: number;
-}
-
-/** Escapa caracteres especiais de regex para uso seguro em new RegExp() */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Remove tags HTML e normaliza espaços para busca em texto puro */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const plainTextCache = new Map<string, string>();
-
-function getCachedPlainText(pageId: string, content: string | undefined): string {
-  if (!content) return '';
-  const key = `${pageId}_${content.length}`;
-  const cached = plainTextCache.get(key);
-  if (cached !== undefined) return cached;
-  const stripped = stripHtml(content);
-  plainTextCache.set(key, stripped);
-  return stripped;
-}
-
-/** Componente utilitário para destacar termos correspondentes */
-function HighlightedText({
-  text,
-  query,
-  className,
-}: {
-  text: string;
-  query: string;
-  className?: string;
-}) {
-  if (!query || !query.trim()) {
-    return <span className={className}>{text}</span>;
-  }
-
-  const terms = query
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(escapeRegex);
-
-  if (terms.length === 0) {
-    return <span className={className}>{text}</span>;
-  }
-
-  const regex = new RegExp(`(${terms.join('|')})`, 'gi');
-  const parts = text.split(regex);
-
-  return (
-    <span className={className}>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <span
-            key={i}
-            className="text-brand-300 font-semibold bg-brand-500/20 px-0.5 rounded"
-          >
-            {part}
-          </span>
-        ) : (
-          part
-        )
-      )}
-    </span>
-  );
-}
+import {
+  type SearchScope,
+  type SearchResultItem,
+  getCachedPlainText,
+} from './search/search-utils';
+import { HighlightedText } from './search/SearchHighlight';
 
 export default function GlobalSearchModal() {
   const { state, dispatch } = useStore();
