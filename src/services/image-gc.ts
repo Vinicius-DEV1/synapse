@@ -1,8 +1,9 @@
 import { getValidAccessToken, listFiles, deleteFromDrive, getOrCreatePhotosFolder, getOrCreateAppFolder } from './drive';
 import { getWebDb } from './db-web';
+import { platform } from './platform';
+
 function isDesktopApp(): boolean {
-  return navigator.userAgent.toLowerCase().includes('Desktop') || 
-         (typeof window !== 'undefined' && !!window.api);
+  return platform.canReadLocalFilesystem || (typeof window !== 'undefined' && !!window.api);
 }
 
 /**
