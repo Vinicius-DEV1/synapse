@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CultureItem, CultureEpisode } from '../../../types';
 import { CultureService } from '../../../services/culture';
-import { syncTvMazeEpisodes, syncJikanEpisodes } from '../../../services/culture-episodes-sync';
+import { syncTvMazeEpisodes, syncJikanEpisodes } from '../../../services/culture/culture-episodes-sync';
 import { enrichEpisodes, type EnrichedEpisode } from '../episodes/EpisodeRow';
 
 interface UseCultureEpisodesProps {

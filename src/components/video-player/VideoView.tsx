@@ -3,7 +3,7 @@ import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import type { UploadOptions } from './VideoUploadModal';
-import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video-manager';
+import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video';
 import { useStore } from '../../store/useStore';
 import { useTasks } from '../../store/TaskContext';
 import { useVideoFolders } from './hooks/useVideoFolders';

@@ -62,7 +62,7 @@ export function useVideoTracks(
           const streamUrl = convertFileSrc(track.local_path);
           setActiveAudioUrl(streamUrl);
         } else if (track.drive_id) {
-          const { getVideoStreamLink } = await import('../../../services/video-manager');
+          const { getVideoStreamLink } = await import('../../../services/video');
           try {
             const url = await getVideoStreamLink(track.drive_id);
             setActiveAudioUrl(url);
