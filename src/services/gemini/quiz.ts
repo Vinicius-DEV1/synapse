@@ -245,7 +245,13 @@ export async function promptGeminiQuizAssistant(
   userMessage: string,
   contextText?: string,
   blockTitle?: string,
-  blockDescription?: string
+  blockDescription?: string,
+  referencedBatteries?: Array<{
+    title: string;
+    pageTitle?: string;
+    questionCount?: number;
+    questions: any[];
+  }>
 ): Promise<{
   message: string;
   suggestedActions?: Array<{
@@ -301,6 +307,27 @@ export async function promptGeminiQuizAssistant(
     customPrompt += `Currently, this exercise battery is empty.\n\n`;
   }
 
+  if (referencedBatteries && referencedBatteries.length > 0) {
+    customPrompt += `REFERENCED EXERCISE BATTERIES (CROSS-CHECK & MANDATORY NON-REPETITION CONTEXT):\n`;
+    customPrompt += `The user has explicitly referenced the following external exercise batteries from their notebook to provide related subject context:\n`;
+    referencedBatteries.forEach((rb, bIdx) => {
+      customPrompt += `\n--- Referenced Battery ${bIdx + 1}: "${rb.title}" (from page: "${rb.pageTitle || 'Notebook'}") ---\n`;
+      if (rb.questions && rb.questions.length > 0) {
+        rb.questions.forEach((q: any, qIdx: number) => {
+          customPrompt += `  - Ref Q${qIdx + 1} (${q.type === 'open' ? 'Open-ended' : 'Multiple Choice'}): "${q.question}"\n`;
+          if (q.type === 'multiple_choice' && q.options) {
+            customPrompt += `    Options: ${q.options.join(' | ')} (Correct: ${q.options[q.correctIndex] || ''})\n`;
+          } else if (q.expectedAnswer) {
+            customPrompt += `    Model Answer: "${q.expectedAnswer}"\n`;
+          }
+        });
+      } else {
+        customPrompt += `  (No questions registered in this referenced battery)\n`;
+      }
+    });
+    customPrompt += `\n`;
+  }
+
   if (chatHistory && chatHistory.length > 0) {
     customPrompt += `Recent Conversation History:\n`;
     chatHistory.slice(-10).forEach((msg) => {
@@ -336,9 +363,10 @@ export async function promptGeminiQuizAssistant(
    - expectedAnswer: Must be formulated DIRECTLY as the model answer (e.g., "Node.js is a runtime..."). NEVER start with meta-phrasing like "The student should explain that...", "O aluno deve responder...", etc.
    - explanation: MUST BE COMPREHENSIVE AND DIDACTIC (2 to 5 sentences or points), explaining why the answer is correct, teaching the concept, and providing code/examples where helpful. NEVER use shallow meta-text like "This question assesses knowledge about X".
 7. STRICT NON-REPETITION & KNOWLEDGE DIVERSIFICATION:
-   - Carefully review ALL currently registered questions listed above before generating or proposing new questions.
-   - It is STRICTLY FORBIDDEN to duplicate, rephrase, or overlap with questions, concepts, code snippets, or scenarios that already exist in the battery.
-   - Every new question MUST explore NEW subtopics, different angles, edge cases, advanced mechanics, or complementary principles to expand the user's coverage and learning depth.
+   - Carefully review ALL currently registered questions AND all questions in the REFERENCED EXERCISE BATTERIES above before generating or proposing new questions.
+   - It is STRICTLY FORBIDDEN to duplicate, rephrase, or overlap with questions, concepts, code snippets, or scenarios that already exist in either the current battery or any referenced battery.
+   - The user's goal with @ references is to create NEW exercises on the same subject/domain WITHOUT seeing repeated questions.
+   - Every new question MUST explore NEW subtopics, complementary angles, deeper edge cases, advanced mechanics, or alternate principles to expand the user's coverage and learning depth.
 
 Respond STRICTLY in raw JSON format matching this schema:
 {

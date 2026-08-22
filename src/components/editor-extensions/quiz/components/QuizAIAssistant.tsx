@@ -15,10 +15,13 @@ import {
   ListOrdered,
   FileText,
   CheckCircle2,
+  AtSign,
+  Layers,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import { markdownComponents, preprocessMarkdownCode } from '../utils/markdownPreprocess';
-import type { QuestionItem, QuizChatMessage, SuggestedAction } from '../types';
+import { useQuizBatteryMentions } from '../hooks/useQuizBatteryMentions';
+import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery } from '../types';
 
 interface QuizAIAssistantProps {
   isOpen: boolean;
@@ -27,13 +30,14 @@ interface QuizAIAssistantProps {
   chatInput: string;
   setChatInput: (input: string) => void;
   isSendingChat: boolean;
-  onSendMessage: (override?: string) => Promise<void>;
+  onSendMessage: (override?: string, referencedBatteries?: ReferencedBattery[]) => Promise<void>;
   onClearHistory: () => void;
   onAcceptAction: (action: SuggestedAction) => void;
   onRejectAction: (action: SuggestedAction) => void;
   onAcceptAllInMessage?: (msgId: string) => void;
   onRejectAllInMessage?: (msgId: string) => void;
   questions: QuestionItem[];
+  currentBatteryTitle?: string;
 }
 
 export default function QuizAIAssistant({
@@ -50,8 +54,22 @@ export default function QuizAIAssistant({
   onAcceptAllInMessage,
   onRejectAllInMessage,
   questions,
+  currentBatteryTitle,
 }: QuizAIAssistantProps) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    attachedBatteries,
+    showMentionMenu,
+    setShowMentionMenu,
+    mentionQuery,
+    mentionSelectedIndex,
+    filteredBatteries,
+    handleAttachBattery,
+    handleRemoveBattery,
+    handleInputChange,
+    handleKeyDown: handleMentionKeyDown,
+  } = useQuizBatteryMentions(chatInput, setChatInput, currentBatteryTitle);
 
   useEffect(() => {
     if (isOpen && chatScrollRef.current) {
@@ -557,25 +575,122 @@ export default function QuizAIAssistant({
             )}
           </div>
 
-          {/* Chat Input */}
-          <div className="p-4 border-t border-purple-500/20 bg-gradient-to-r from-purple-950/30 via-dark-card to-purple-950/20 flex items-center gap-3">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  onSendMessage();
-                }
-              }}
-              placeholder="Digite seu pedido para a IA (ex: 'Crie mais 2 questões difíceis sobre React Hooks')..."
-              className="flex-1 bg-black/50 border border-purple-500/20 focus:border-purple-500/60 rounded-xl px-4 py-3 text-xs text-purple-100 placeholder-white/25 outline-none transition-all shadow-inner"
-            />
+          {/* Chips de Baterias Referenciadas */}
+          {attachedBatteries.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap px-5 py-2.5 border-t border-purple-500/20 bg-dark-bg/80">
+              <span className="text-[11px] text-purple-300 font-semibold flex items-center gap-1.5">
+                <Layers size={13} className="text-purple-400" />
+                <span>Baterias de Referência ({attachedBatteries.length}):</span>
+              </span>
+              {attachedBatteries.map((b) => (
+                <span
+                  key={b.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-200 text-xs font-medium shadow-sm animate-fade-in"
+                >
+                  <span className="font-semibold">@{b.title}</span>
+                  <span className="text-[10px] opacity-75">({b.questionCount} q.)</span>
+                  <button
+                    onClick={() => handleRemoveBattery(b.id)}
+                    className="hover:text-white hover:bg-white/10 p-0.5 rounded transition-colors ml-0.5"
+                    title="Remover referência"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+              <span className="text-[10px] text-dark-subtext italic ml-auto hidden sm:inline">
+                A IA evitará repetir questões já existentes nessas baterias
+              </span>
+            </div>
+          )}
+
+          {/* Chat Input & Mention Menu */}
+          <div className="p-4 border-t border-purple-500/20 bg-gradient-to-r from-purple-950/30 via-dark-card to-purple-950/20 relative flex items-center gap-3">
+            {/* Popover de Menções com @ */}
+            {showMentionMenu && (
+              <div className="absolute bottom-full left-4 right-4 mb-2 bg-dark-card border border-purple-500/40 rounded-2xl shadow-2xl overflow-hidden z-30 max-h-64 flex flex-col animate-fade-in">
+                <div className="px-3.5 py-2 bg-purple-950/70 border-b border-purple-500/20 text-[11px] font-semibold text-purple-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <AtSign size={13} className="text-purple-400" />
+                    <span>Referenciar Bateria de Exercícios</span>
+                  </span>
+                  <span className="text-[10px] text-dark-subtext">Use ↑ ↓ e Enter para selecionar</span>
+                </div>
+                <div className="overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
+                  {filteredBatteries.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-dark-subtext">
+                      Nenhuma bateria de exercícios encontrada {mentionQuery ? `com "${mentionQuery}"` : 'no app'}.
+                    </div>
+                  ) : (
+                    filteredBatteries.map((b, idx) => {
+                      const isSelected = idx === mentionSelectedIndex;
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => handleAttachBattery(b)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-3 transition-colors ${
+                            isSelected
+                              ? 'bg-purple-600 text-white font-medium shadow-sm'
+                              : 'hover:bg-white/5 text-purple-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="p-1 rounded-lg bg-black/40 border border-white/10 text-purple-300 text-xs shrink-0">
+                              🎯
+                            </span>
+                            <div className="truncate">
+                              <span className="font-semibold block truncate">{b.title}</span>
+                              <span className={`block text-[10px] truncate ${isSelected ? 'text-purple-200' : 'text-dark-subtext'}`}>
+                                Página: {b.pageTitle}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-mono ${
+                            isSelected ? 'bg-purple-700 text-purple-100' : 'bg-white/5 text-purple-300 border border-white/5'
+                          }`}>
+                            {b.questionCount} {b.questionCount === 1 ? 'questão' : 'questões'}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  const intercepted = handleMentionKeyDown(e);
+                  if (intercepted) return;
+
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    onSendMessage(undefined, attachedBatteries);
+                  }
+                }}
+                placeholder="Digite seu pedido para a IA... (dica: digite @ para referenciar outras baterias)"
+                className="w-full bg-black/50 border border-purple-500/20 focus:border-purple-500/60 rounded-xl pl-4 pr-10 py-3 text-xs text-purple-100 placeholder-white/25 outline-none transition-all shadow-inner"
+              />
+              <button
+                type="button"
+                onClick={() => setShowMentionMenu((prev) => !prev)}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors text-xs flex items-center gap-0.5 ${
+                  showMentionMenu ? 'bg-purple-500/30 text-white' : 'text-purple-400/60 hover:text-purple-300'
+                }`}
+                title="Referenciar outra bateria de exercícios (@)"
+              >
+                <AtSign size={14} />
+              </button>
+            </div>
+
             <button
-              onClick={() => onSendMessage()}
+              onClick={() => onSendMessage(undefined, attachedBatteries)}
               disabled={isSendingChat || !chatInput.trim()}
-              className="px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all font-semibold text-xs flex items-center gap-2"
+              className="px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all font-semibold text-xs flex items-center gap-2 shrink-0"
             >
               {isSendingChat ? (
                 <Loader2 size={16} className="animate-spin" />

@@ -57,3 +57,12 @@ export interface QuestionItem {
   answered: boolean;
   attemptsHistory?: AttemptItem[];
 }
+
+export interface ReferencedBattery {
+  id: string;
+  title: string;
+  pageId: string;
+  pageTitle: string;
+  questionCount: number;
+  questions: QuestionItem[];
+}
