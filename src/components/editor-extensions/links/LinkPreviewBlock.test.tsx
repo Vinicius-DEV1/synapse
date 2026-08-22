@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
-import LinkPreviewBlock from './LinkPreviewBlock';
+import { LinkPreviewBlock } from './LinkPreviewBlock';
 
 vi.mock('@tiptap/react', () => ({
   NodeViewWrapper: ({ children, className }: any) => (
@@ -41,13 +41,14 @@ describe('LinkPreviewBlock Component', () => {
 
   it('renders link title, channel and handles notes toggle', () => {
     const Component = (LinkPreviewBlock.config.addNodeView as any)();
-    const { getByText } = render(<Component {...mockProps} />);
+    const { getByText, getByTitle } = render(<Component {...mockProps} />);
 
     expect(getByText('Google Antigravity Repository')).toBeDefined();
     expect(getByText('Google Deepmind')).toBeDefined();
 
     // Toggle notes button
-    const notesBtn = getByText('Anotações');
+    const notesBtn = getByTitle(/Expandir Anotações do Link/i);
+    expect(notesBtn).toBeDefined();
     fireEvent.click(notesBtn);
 
     expect(mockProps.updateAttributes).toHaveBeenCalledWith(

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, act } from '@testing-library/react';
-import PageReference from './PageReference';
+import { PageReference } from './PageReference';
 
 vi.mock('../../store/useStore', () => ({
   getStoreState: vi.fn(() => ({

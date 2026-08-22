@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
-import EncryptedImage from './EncryptedImage';
+import { EncryptedImage } from './EncryptedImage';
 import * as imageDrive from '../../services/image-drive';
 
 vi.mock('../../store/useStore', () => ({

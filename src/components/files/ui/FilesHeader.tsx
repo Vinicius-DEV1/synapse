@@ -18,8 +18,8 @@ export function FilesHeader({
   onOpenFileUpload
 }: FilesHeaderProps) {
   return (
-    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-dark-card/30">
-      <div className="relative w-64">
+    <div className="p-3 md:p-4 border-b border-white/5 flex items-center justify-between gap-3 bg-dark-card/30 min-w-0 flex-wrap sm:flex-nowrap">
+      <div className="relative flex-1 min-w-[160px] max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" size={16} />
         <input 
           type="text" 

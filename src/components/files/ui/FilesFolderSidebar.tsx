@@ -20,7 +20,7 @@ export function FilesFolderSidebar({
   onDeleteFolder
 }: FilesFolderSidebarProps) {
   return (
-    <div className="w-64 border-r border-white/5 bg-dark-card/30 flex flex-col">
+    <div className="w-56 md:w-64 flex-shrink-0 border-r border-white/5 bg-dark-card/30 flex flex-col">
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
         <h2 className="font-semibold text-sm">Pastas</h2>
         <button 

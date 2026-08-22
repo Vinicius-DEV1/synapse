@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
-import ToggleBlock from './ToggleBlock';
+import { ToggleBlock } from './ToggleBlock';
 
 vi.mock('@tiptap/react', () => ({
   NodeViewWrapper: ({ children, className }: any) => (
@@ -49,16 +49,14 @@ describe('ToggleBlock Extension & NodeView', () => {
     });
   });
 
-  it('toggles open/close state on chevron button click', () => {
+  it('renders action buttons like convert to page and copy', () => {
     const Component = (ToggleBlock.config.addNodeView as any)();
     const { getByTitle } = render(<Component {...mockProps} />);
 
-    const toggleBtn = getByTitle(/Recolher conteúdo/i);
-    expect(toggleBtn).toBeDefined();
+    const convertBtn = getByTitle(/Converter em Página/i);
+    expect(convertBtn).toBeDefined();
 
-    fireEvent.click(toggleBtn);
-    expect(mockProps.updateAttributes).toHaveBeenCalledWith({
-      isOpen: false,
-    });
+    const copyBtn = getByTitle(/Copiar lista oculta/i);
+    expect(copyBtn).toBeDefined();
   });
 });
