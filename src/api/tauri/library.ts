@@ -16,7 +16,7 @@ export const tauriLibraryApi = {
         const importedBooks = [];
         for (const filePath of paths) {
           const bookId = crypto.randomUUID();
-          const ext = filePath.split('.').pop() || 'pdf';
+          const ext = (filePath.split('.').pop() || 'pdf').toLowerCase();
           const localPath = `library/${bookId}.${ext}.enc`; // Always save as .enc
           
           await invoke('library_import_and_encrypt_book', {
@@ -24,7 +24,8 @@ export const tauriLibraryApi = {
               destPath: localPath
           });
           
-          const title = filePath.split('\\').pop()?.replace(/\.(pdf|epub)$/i, '') || 'Livro';
+          const cleanFileName = filePath.split(/[/\\]/).pop() || 'Livro';
+          const title = cleanFileName.replace(/\.(pdf|epub)$/i, '') || 'Livro';
           const book = {
             id: bookId, title, author: 'Desconhecido', file_path: localPath, cover_image: '',
             total_pages: 0, last_read_page: '1', reading_status: 'not_started',
@@ -42,13 +43,51 @@ export const tauriLibraryApi = {
     try {
       const books = await invoke<any[]>('library_get_books');
       const book = books.find((b: any) => b.id === id);
-      if (!book || !book.file_path) return null;
+      if (!book) return null;
       
-      const buffer = await readFile(book.file_path, { baseDir: BaseDirectory.AppData });
+      const candidatePaths: string[] = [];
+
+      // 1. Canonical candidates based on book ID
+      candidatePaths.push(`library/${id}.epub.enc`);
+      candidatePaths.push(`library/${id}.pdf.enc`);
+      candidatePaths.push(`library/${id}.epub`);
+      candidatePaths.push(`library/${id}.pdf`);
+
+      // 2. Candidate based on saved file_path
+      if (book.file_path) {
+        let clean = book.file_path.replace(/^file:\/\//, '');
+        if (clean.startsWith('/') || clean.match(/^[a-zA-Z]:/)) {
+          // If absolute, extract filename
+          const filename = clean.split(/[/\\]/).pop();
+          if (filename) {
+            candidatePaths.push(`library/${filename}`);
+            if (!filename.endsWith('.enc')) candidatePaths.push(`library/${filename}.enc`);
+          }
+        } else {
+          // Relative path
+          candidatePaths.push(clean);
+          if (!clean.endsWith('.enc')) candidatePaths.push(`${clean}.enc`);
+        }
+      }
+
+      let buffer: Uint8Array | null = null;
+      for (const p of candidatePaths) {
+        try {
+          const raw = await readFile(p, { baseDir: BaseDirectory.AppData });
+          if (raw && raw.byteLength > 0) {
+            buffer = new Uint8Array(raw);
+            break;
+          }
+        } catch {
+          // try next
+        }
+      }
+
+      if (!buffer) return null;
+
       let binary = '';
-      const bytes = new Uint8Array(buffer);
-      for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
+      for (let i = 0; i < buffer.byteLength; i++) {
+          binary += String.fromCharCode(buffer[i]);
       }
       return window.btoa(binary);
     } catch(e) { console.error("Error getting book file", e); return null; }
@@ -66,16 +105,22 @@ export const tauriLibraryApi = {
       if (selected) {
         const filePath = Array.isArray(selected) ? selected[0] : selected;
         if (!filePath) return null;
-        const ext = filePath.split('.').pop() || 'pdf';
+        const ext = (filePath.split('.').pop() || 'pdf').toLowerCase();
         const localPath = `library/${bookId}.${ext}.enc`;
         await invoke('library_import_and_encrypt_book', {
           sourcePath: filePath,
           destPath: localPath
         });
+
+        // Retrieve existing book to prevent wiping metadata
+        const books = await invoke<any[]>('library_get_books');
+        const existing = books.find((b: any) => b.id === bookId) || { id: bookId };
+
         await invoke('library_update_book', {
           book: {
-            id: bookId,
-            file_path: localPath
+            ...existing,
+            file_path: localPath,
+            updated_at: new Date().toISOString()
           }
         });
         return localPath;
