@@ -1,9 +1,8 @@
-interface CloudData { encryptedData?: string; isCompressed?: boolean; createdAt?: unknown; updatedAt?: unknown; [key: string]: unknown; }
 import { db } from '../firebase';
-import { decryptText } from '../crypto';
 import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
+import { decryptCloudBatch, type CloudData } from './sync-decrypt-batch';
 
 /** Parallel decryption batch size */
 const DECRYPT_BATCH_SIZE = 20;
@@ -164,52 +163,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             const freshRowsList = await window.api.sync.getRowsByIds(table, batchIds);
             const freshMap = new Map(freshRowsList.map((r: any) => [r.id, r]));
 
-            const decryptedResults = await Promise.all(
-              batch.map(async (docSnap) => {
-                const cloudData = docSnap.data() as CloudData;
-                try {
-                  let decryptedJsonOrB64;
-                  let isLegacy = false;
-                  try {
-                    decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, key);
-                  } catch (e) {
-                    if (key !== moduleKeys['core']) {
-                      try {
-                        decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, moduleKeys['core']);
-                        isLegacy = true; // Decrypt success with core key instead of module key
-                      } catch (e2) {
-                        throw e;
-                      }
-                    } else {
-                      throw e;
-                    }
-                  }
-                  
-                  let finalJson = decryptedJsonOrB64;
-                  
-                  if (cloudData.isCompressed) {
-                    try {
-                      const binary_string = atob(decryptedJsonOrB64);
-                      const len = binary_string.length;
-                      const bytes = new Uint8Array(len);
-                      for (let j = 0; j < len; j++) {
-                        bytes[j] = binary_string.charCodeAt(j);
-                      }
-                      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-                      finalJson = await new Response(stream).text();
-                    } catch (decErr) {
-                      console.error(`Erro ao descomprimir doc`, decErr);
-                      throw decErr;
-                    }
-                  }
-                  
-                  const parsed = JSON.parse(finalJson);
-                  return { docSnap, cloudData, parsed, isLegacy, error: null };
-                } catch (err: any) {
-                  return { docSnap, cloudData, parsed: null, isLegacy: false, error: err };
-                }
-              })
-            );
+            const decryptedResults = await decryptCloudBatch(batch, key, moduleKeys);
 
             // Processar os resultados decriptados
             for (const result of decryptedResults) {
