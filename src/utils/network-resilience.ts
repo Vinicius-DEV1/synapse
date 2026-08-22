@@ -20,7 +20,7 @@ export class NetworkResilience {
       } catch (error: any) {
         clearTimeout(timeoutId);
         
-        // Se foi abortado pelo usuário (não por timeout), aborta o backoff
+        // If aborted by user (not by timeout), abort retry backoff immediately
         if (error.name === 'AbortError' && error.message !== 'Timeout') {
           throw error;
         }

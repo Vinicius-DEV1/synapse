@@ -1,7 +1,7 @@
 import type { Page } from '../types';
 
 /**
- * Remove tags HTML e retorna o texto puro com fallback.
+ * Strips HTML tags and returns plain text with fallback.
  */
 export function stripHtml(html?: string): string {
   if (!html) return '(página sem conteúdo em texto)';
@@ -11,7 +11,7 @@ export function stripHtml(html?: string): string {
 }
 
 /**
- * Extrai todas as imagens em base64 (data:image/...) presentes no HTML.
+ * Extracts all Base64 data URLs (data:image/...) embedded in HTML.
  */
 export function extractImagesFromHtml(html?: string): string[] {
   if (!html) return [];
@@ -29,7 +29,7 @@ export function extractImagesFromHtml(html?: string): string[] {
 }
 
 /**
- * Retorna uma página e todos os seus nós descendentes recursivamente.
+ * Traverses and returns a page and all its descendant nodes recursively.
  */
 export function getPageAndDescendants(
   rootPageId: string,

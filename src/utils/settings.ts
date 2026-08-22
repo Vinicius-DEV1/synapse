@@ -76,8 +76,8 @@ export function saveSettings(s: AppSettings) {
 }
 
 /**
- * Puxa as configurações do banco de dados (que vieram da nuvem) e sobrescreve local.
- * Útil para aplicar as preferências logo após um login no modo anônimo.
+ * Fetches settings from database (synced from cloud) and updates local state.
+ * Useful to apply user preferences immediately after logging in.
  */
 export async function syncSettingsFromDb() {
   if (!window.api?.config) return;
@@ -86,7 +86,7 @@ export async function syncSettingsFromDb() {
     const s = await window.api.config.get('appSettings');
     if (s && typeof s === 'object') {
       const current = getSettings();
-      // Mescla com os padrões para evitar crash caso faltem campos
+      // Merge with defaults to prevent crashes if fields are missing
       const merged = { ...current, ...s };
       localStorage.setItem('appSettings', JSON.stringify(merged));
       window.dispatchEvent(new Event('app-settings-changed'));

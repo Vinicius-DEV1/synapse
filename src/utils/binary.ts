@@ -1,6 +1,6 @@
 /**
- * Utilitários unificados de conversão binária (ArrayBuffer, Uint8Array, Base64).
- * Otimizado com chunking para não estourar a call stack em arquivos grandes.
+ * Unified binary conversion utilities (ArrayBuffer, Uint8Array, Base64, Hex).
+ * Optimized with chunking to prevent call stack overflow on large buffers.
  */
 
 const CHUNK_SIZE = 8192;

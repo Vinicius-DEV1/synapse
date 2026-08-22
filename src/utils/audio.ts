@@ -1,5 +1,5 @@
 /**
- * Utilitários para reprodução e processamento de áudio via Web Audio API.
+ * Web Audio playback and WAV encoding utilities.
  */
 
 export function playZenChime(): void {
@@ -15,7 +15,7 @@ export function playZenChime(): void {
     gain.connect(ctx.destination);
 
     osc.type = 'sine';
-    // Acorde suave C5 -> C6
+    // Gentle chord ramp C5 -> C6
     osc.frequency.setValueAtTime(523.25, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1);
 
@@ -26,7 +26,7 @@ export function playZenChime(): void {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 1.5);
   } catch (e) {
-    console.warn('Falha ao tocar som Zen:', e);
+    console.warn('Failed to play Zen chime sound:', e);
   }
 }
 

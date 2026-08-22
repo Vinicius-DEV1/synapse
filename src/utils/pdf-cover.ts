@@ -4,36 +4,36 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 /**
- * Extrai a primeira página de um arquivo PDF e retorna como Base64 JPEG.
- * @param fileData Dados binários do PDF (Uint8Array).
- * @param targetWidth Largura desejada para a imagem gerada (padrão 400px para boa resolução).
- * @returns Promise com o Base64 da imagem gerada.
+ * Extracts the first page of a PDF file and returns it as a Base64 JPEG data URL.
+ * @param fileData Binary data of the PDF (Uint8Array).
+ * @param targetWidth Desired width for the generated image (default 400px).
+ * @returns Promise resolving to the Base64 image data URL.
  */
 export async function extractPdfCover(fileData: Uint8Array, targetWidth = 400): Promise<string> {
   try {
     const loadingTask = pdfjsLib.getDocument({ data: fileData });
     const pdfDoc = await loadingTask.promise;
     
-    // Obter a primeira página
+    // Fetch first page
     const page = await pdfDoc.getPage(1);
     
-    // Calcular a escala baseada na largura desejada
+    // Calculate scale from target width
     const viewportOriginal = page.getViewport({ scale: 1.0 });
     const scale = targetWidth / viewportOriginal.width;
     const viewport = page.getViewport({ scale });
     
-    // Preparar canvas
+    // Setup canvas
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
     if (!context) {
-      throw new Error("Não foi possível criar o contexto do canvas");
+      throw new Error("Unable to create canvas 2D rendering context");
     }
     
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     
-    // Renderizar página no canvas
+    // Render PDF page to canvas
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
@@ -42,7 +42,7 @@ export async function extractPdfCover(fileData: Uint8Array, targetWidth = 400): 
     
     await page.render(renderContext).promise;
     
-    // Retornar como JPEG em base64 (qualidade 0.85)
+    // Return Base64 JPEG (0.85 quality)
     return canvas.toDataURL('image/jpeg', 0.85);
   } catch (error) {
     console.error("Erro ao extrair capa do PDF:", error);

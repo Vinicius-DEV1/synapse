@@ -24,10 +24,10 @@ export default async function getCroppedImg(
     return '';
   }
 
-  // Caminho rápido sem rotação: recorta direto.
-  // O caminho geral abaixo aloca um canvas de (2 × maior lado)², ou seja
-  // 8000×8000 px (~256 MB) para uma foto de 4000 px — o suficiente para
-  // derrubar a aba. Como o editor sempre chama com rotation = 0, evitamos isso.
+  // Fast path without rotation: crop directly.
+  // The generalized rotation path below allocates a canvas of (2 * maxSide)^2,
+  // which would be 8000x8000 px (~256 MB) for a 4000 px photo — enough to crash
+  // browser tabs on lower-spec hardware. We bypass it when rotation is 0.
   if (!rotation) {
     canvas.width = pixelCrop.width;
     canvas.height = pixelCrop.height;
