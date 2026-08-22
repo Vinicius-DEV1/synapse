@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay, Copy, Check, FileVideo } from 'lucide-react';
 import type { VideoItem, TrackItem } from '../../types';
 import { Portal } from '../ui/Portal';
+import { formatBytes } from '../../utils/format';
 
 interface VideoInfoModalProps {
   // `local_subtitle_path` ainda não está declarado em VideoItem (src/types/video.ts),
@@ -25,14 +26,6 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
       }).catch(() => {});
     }
   }, [video]);
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '--:--';
