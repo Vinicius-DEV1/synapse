@@ -11,6 +11,13 @@ export function stripHtml(html?: string): string {
 }
 
 /**
+ * Fast regex-based HTML tag stripping and whitespace normalization.
+ */
+export function cleanHtmlText(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Extracts all Base64 data URLs (data:image/...) embedded in HTML.
  */
 export function extractImagesFromHtml(html?: string): string[] {
