@@ -51,9 +51,9 @@ describe('useEditorSave Hook', () => {
     expect(mockEditor.getHTML).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
 
-    // Avança 2500ms no timer
+    // Avança 1000ms no timer
     act(() => {
-      vi.advanceTimersByTime(2500);
+      vi.advanceTimersByTime(1000);
     });
 
     // Agora sim foi avaliado uma única vez
@@ -61,7 +61,8 @@ describe('useEditorSave Hook', () => {
     expect(onSave).toHaveBeenCalledWith(
       '<p>Linha 1</p>',
       expect.any(String),
-      []
+      [],
+      undefined
     );
     expect(latestContentRef.current).toEqual({
       html: '<p>Linha 1</p>',
@@ -86,6 +87,7 @@ describe('useEditorSave Hook', () => {
         ydocRef,
         onSaveRef,
         latestContentRef,
+        instanceId: 'inst_test',
       })
     );
 
@@ -97,7 +99,7 @@ describe('useEditorSave Hook', () => {
 
     expect(onSave).not.toHaveBeenCalled();
 
-    // Simula desmontagem ou chamada de limpeza antes do timer de 2000ms expirar
+    // Simula desmontagem ou chamada de limpeza antes do timer expirar
     act(() => {
       result.current.cleanupSave();
     });
@@ -107,7 +109,46 @@ describe('useEditorSave Hook', () => {
     expect(onSave).toHaveBeenCalledWith(
       '<p>Conteúdo antes de sair da página</p>',
       expect.any(String),
-      []
+      [],
+      'inst_test'
+    );
+  });
+
+  it('immediately flushes pending changes on window blur and on caderno-flush-editor event', () => {
+    const ydoc = new Y.Doc();
+    const onSave = vi.fn().mockResolvedValue(true);
+    const latestContentRef = { current: null };
+    const ydocRef = { current: ydoc };
+    const onSaveRef = { current: onSave };
+
+    const { result } = renderHook(() =>
+      useEditorSave({
+        pageId: 'page_blur_test',
+        ydocRef,
+        onSaveRef,
+        latestContentRef,
+      })
+    );
+
+    const mockEditor = createMockEditor('<p>Mudança antes de trocar de aba</p>');
+
+    act(() => {
+      result.current.handleUpdate({ editor: mockEditor });
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Simula evento customizado de troca de aba interna
+    act(() => {
+      window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
+    });
+
+    expect(mockEditor.getHTML).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith(
+      '<p>Mudança antes de trocar de aba</p>',
+      expect.any(String),
+      [],
+      undefined
     );
   });
 

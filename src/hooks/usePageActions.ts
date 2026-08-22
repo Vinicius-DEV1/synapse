@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import type { Page } from '../types';
 import { getEditorBackupMap } from '../components/editor/hooks/editorBackupStore';
 import { triggerToast } from '../components/ui/ToastContext';
+import { broadcastPageSaved } from '../services/page-broadcast';
 
 export function usePageActions() {
   const { state, dispatch } = useStore();
@@ -104,11 +105,12 @@ export function usePageActions() {
     }
   }, [dispatch]);
 
-  const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => {
+  const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => {
     if (window.api) {
       try {
         await window.api.updatePage({ id, content, crdt_state: crdtState } as unknown as Omit<Partial<Page>, 'id'> & { id: string });
         getEditorBackupMap().set(id, { html: content, crdt: crdtState || '' });
+        broadcastPageSaved(id, crdtState, content, senderInstanceId);
         
         if (embeddedSaves && embeddedSaves.length > 0) {
           for (const embed of embeddedSaves) {

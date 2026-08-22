@@ -90,6 +90,7 @@ export default function TabBar() {
   const { state, dispatch } = useStore();
 
   const handleNewTab = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
       type: 'ADD_TAB',
@@ -99,10 +100,12 @@ export default function TabBar() {
 
   const handleCloseTab = useCallback((e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
+    window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     dispatch({ type: 'CLOSE_TAB', tabId });
   }, [dispatch]);
 
   const handleSelectTab = useCallback((tabId: string) => {
+    window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   }, [dispatch]);
 

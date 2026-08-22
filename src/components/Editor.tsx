@@ -26,7 +26,8 @@ interface EditorProps {
   onSave: (
     content: string,
     crdtState: string | null,
-    embeddedSaves?: { id: string; content: string }[]
+    embeddedSaves?: { id: string; content: string }[],
+    senderInstanceId?: string
   ) => void;
   onCreateLinkedPage?: (title: string) => Promise<string>;
 }
@@ -74,6 +75,7 @@ export default function Editor({
 }: EditorProps) {
   const [settings, setSettings] = useState(getSettings());
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const instanceId = useRef('ed_inst_' + Math.random().toString(36).substring(2, 9)).current;
 
   const masterKey = getNotesKey();
   const { handleStartTimer, handleSaveAlarm } = useFocusContext();
@@ -97,6 +99,7 @@ export default function Editor({
     initialCrdtState,
     onSaveRef,
     latestContentRef,
+    instanceId,
   });
 
   // 2. Extensions
@@ -108,6 +111,7 @@ export default function Editor({
     ydocRef,
     onSaveRef,
     latestContentRef,
+    instanceId,
   });
 
   useEffect(() => {
