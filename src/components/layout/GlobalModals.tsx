@@ -1,11 +1,11 @@
 import { useStore } from '../../store/useStore';
-import ConfirmModal from '../ConfirmModal';
-import RenamePageModal from '../RenamePageModal';
+import ConfirmModal from '../modals/ConfirmModal';
+import RenamePageModal from '../modals/RenamePageModal';
 import MovePageModal from '../modals/MovePageModal';
-import SyncErrorModal from '../SyncErrorModal';
+import SyncErrorModal from '../modals/SyncErrorModal';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
-import FloatingPageModal from '../FloatingPageModal';
-import GlobalSearchModal from '../GlobalSearchModal';
+import FloatingPageModal from '../modals/FloatingPageModal';
+import GlobalSearchModal from '../modals/GlobalSearchModal';
 import DriveAuthModal from '../library/DriveAuthModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';

@@ -12,7 +12,7 @@ import { webCalendarApi } from '../api/web/calendar';
 import { webVaultApi } from '../api/web/vault';
 import { webPracticeApi } from '../api/web/practice';
 import { webFilesApi } from '../api/web/files';
-import { webAnkiApi } from '../api/web/anki';
+import { webAnkiApi } from '../api/web/anki/index';
 import { webYoutubeApi } from '../api/web/youtube';
 import { webTrashApi } from '../api/web/trash';
 import { webDiagramsApi } from '../api/web/diagrams';

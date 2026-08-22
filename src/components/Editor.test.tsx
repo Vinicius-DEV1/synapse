@@ -35,11 +35,11 @@ vi.mock('@tiptap/react/menus', () => ({
   BubbleMenu: ({ children }: any) => <div data-testid="bubble-menu">{children}</div>,
 }));
 
-vi.mock('./FloatingToolbar', () => ({
+vi.mock('./editor/components/FloatingToolbar', () => ({
   default: () => <div data-testid="floating-toolbar">FloatingToolbar</div>,
 }));
 
-vi.mock('./TableToolbar', () => ({
+vi.mock('./editor/components/TableToolbar', () => ({
   default: () => <div data-testid="table-toolbar">TableToolbar</div>,
 }));
 

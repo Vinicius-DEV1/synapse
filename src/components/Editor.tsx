@@ -3,8 +3,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 
 import { getSettings } from '../utils/settings';
-import FloatingToolbar from './FloatingToolbar';
-import TableToolbar from './TableToolbar';
+import FloatingToolbar from './editor/components/FloatingToolbar';
+import TableToolbar from './editor/components/TableToolbar';
 import { useFocusContext } from '../store/FocusContext';
 import { getNotesKey } from '../store/useStore';
 
@@ -15,7 +15,7 @@ import { useEditorExtensions } from './editor/hooks/useEditorExtensions';
 import { useEditorModals } from './editor/hooks/useEditorModals';
 import { useEditorDropPaste } from './editor/hooks/useEditorDropPaste';
 import { useBlockHandle } from './editor/hooks/useBlockHandle';
-import BlockHandle from './BlockHandle';
+import BlockHandle from './editor/components/BlockHandle';
 import EditorModalHost from './editor/components/EditorModalHost';
 
 interface EditorProps {
