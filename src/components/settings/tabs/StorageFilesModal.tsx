@@ -1,6 +1,7 @@
 import  { useState, useMemo } from 'react';
 import { X, Search, File as FileIcon, Calendar } from 'lucide-react';
 import type { DriveFile } from '../../../services/drive';
+import { formatBytes } from '../../../utils/format';
 
 interface StorageFilesModalProps {
   isOpen: boolean;
@@ -22,14 +23,6 @@ export default function StorageFilesModal({
   files
 }: StorageFilesModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const formatDate = (dateString: string) => {
     try {

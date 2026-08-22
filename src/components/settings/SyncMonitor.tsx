@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop, getSyncEvents } from '../../services/sync/sync-monitor';
 import type { SyncStats, SyncEventLog } from '../../services/sync/sync-monitor';
 import { Database, AlertTriangle, RefreshCw,  ArrowDownToLine, ArrowUpFromLine, Terminal } from 'lucide-react';
+import { formatBytes } from '../../utils/format';
 
 export default function SyncMonitor() {
   const [today, setToday] = useState<SyncStats | null>(null);
@@ -11,14 +12,6 @@ export default function SyncMonitor() {
 
   const DAILY_READ_QUOTA = 50000;
   const DAILY_WRITE_QUOTA = 20000;
-  
-  const formatBytes = (bytes?: number) => {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const loadStats = () => {
     setToday(getTodayStats());

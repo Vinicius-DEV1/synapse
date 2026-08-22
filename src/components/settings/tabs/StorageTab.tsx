@@ -1,6 +1,7 @@
 import  { useEffect, useState } from 'react';
 import { Database, Image as ImageIcon, Video, Book, FileQuestion, HardDrive, RefreshCw, Headphones } from 'lucide-react';
 import { getDriveStorageUsage, type DriveStorageUsage } from '../../../services/drive';
+import { formatBytes } from '../../../utils/format';
 import StorageFilesModal from './StorageFilesModal';
 
 export default function StorageTab() {
@@ -29,14 +30,6 @@ export default function StorageTab() {
   useEffect(() => {
     fetchStorage();
   }, []);
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   if (isLoading) {
     return (
