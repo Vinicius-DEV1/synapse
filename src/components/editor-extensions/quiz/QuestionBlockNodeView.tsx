@@ -15,7 +15,7 @@ import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { useQuizAiChat } from './hooks/useQuizAiChat';
 import { normalizeChatHistory } from './utils/quizNormalizer';
-import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery, QuizLayout } from './types';
+import type { QuizChatMessage, QuizLayout } from './types';
 
 export default function QuestionBlockNodeView(props: any) {
   const {

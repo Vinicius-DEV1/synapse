@@ -1,4 +1,3 @@
-import React from 'react';
 import { Trophy, RotateCcw, List } from 'lucide-react';
 import type { QuestionItem } from '../../types';
 

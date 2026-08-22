@@ -3,8 +3,8 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ChevronRight, ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import type { Page } from '../../../types';
-import EmojiPopover from '../../components/EmojiPopover';
-import RenamePageModal from '../../components/RenamePageModal';
+import EmojiPopover from '../../EmojiPopover';
+import RenamePageModal from '../../modals/RenamePageModal';
 
 interface SidebarItemProps {
   page: Page;
@@ -116,7 +116,7 @@ function SidebarItemComponent({
         )}
 
         {/* Icon */}
-        <EmojiPopover onEmojiSelect={(emoji) => onUpdatePage(page.id, { icon: emoji })}>
+        <EmojiPopover onEmojiSelect={(emoji: string) => onUpdatePage(page.id, { icon: emoji })}>
           <span className="flex-shrink-0 text-sm">{page.icon}</span>
         </EmojiPopover>
 

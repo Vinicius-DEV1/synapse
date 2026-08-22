@@ -1,4 +1,4 @@
-import { hexToUint8Array, arrayBufferToHex, uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
+import { hexToArrayBuffer, arrayBufferToHex, uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
 
 /**
  * Módulo de Criptografia de Ponta a Ponta (E2EE)
@@ -46,10 +46,10 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
 }
 
 export async function importHexKey(hexString: string): Promise<CryptoKey> {
-  const bytes = hexToUint8Array(hexString);
+  const buffer = hexToArrayBuffer(hexString);
   return crypto.subtle.importKey(
     'raw',
-    bytes,
+    buffer,
     'AES-GCM',
     true,
     ['encrypt', 'decrypt']

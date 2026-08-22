@@ -1,4 +1,3 @@
-import React from 'react';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
