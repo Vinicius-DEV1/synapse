@@ -1,7 +1,8 @@
-import  { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { X, Search, File as FileIcon, Calendar } from 'lucide-react';
 import type { DriveFile } from '../../../services/drive';
 import { formatBytes } from '../../../utils/format';
+import { formatDateTime } from '../../../utils/date-utils';
 
 interface StorageFilesModalProps {
   isOpen: boolean;
@@ -23,18 +24,6 @@ export default function StorageFilesModal({
   files
 }: StorageFilesModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }).format(date);
-    } catch (e) {
-      return dateString;
-    }
-  };
 
   const filteredFiles = useMemo(() => {
     if (!searchTerm.trim()) return files;
@@ -110,7 +99,7 @@ export default function StorageFilesModal({
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-dark-subtext">
                         <span className="flex items-center gap-1">
                           <Calendar size={12} />
-                          {formatDate(file.createdTime)}
+                          {formatDateTime(file.createdTime)}
                         </span>
                       </div>
                     </div>
