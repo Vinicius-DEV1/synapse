@@ -6,17 +6,13 @@ import { isValidHierarchyMove, getPageBreadcrumbString } from '../../utils/hiera
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 
+import { MovePageTreeNode, type TreeNode } from './move-page/MovePageTreeNode';
+
 interface MovePageModalProps {
   isOpen: boolean;
   pageId: string | null;
   onClose: () => void;
   onMovePage: (sourceId: string, targetParentId: string | null) => Promise<void>;
-}
-
-interface TreeNode {
-  page: Page;
-  children: TreeNode[];
-  level: number;
 }
 
 export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: MovePageModalProps) {
@@ -152,68 +148,6 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
         handleSubmit();
       }
     }
-  };
-
-  // Recursive rendering of each tree node
-  const renderTreeNode = (node: TreeNode) => {
-    const { page, children, level } = node;
-    const isExpanded = expandedNodes.has(page.id);
-    const hasChildren = children.length > 0;
-    const isSelected = effectiveSelectedId === page.id;
-    const isCurrentParent = currentParentId === page.id;
-    const isSelfOrDescendant = !isValidHierarchyMove(state.pages, sourcePage.id, page.id);
-
-    return (
-      <div key={page.id} className="flex flex-col select-none">
-        <div
-          onClick={() => !isSelfOrDescendant && handleSelect(page.id)}
-          onDoubleClick={() => !isSelfOrDescendant && !isCurrentParent && handleSubmit()}
-          style={{ paddingLeft: `${Math.max(level * 16 + 8, 8)}px` }}
-          className={`flex items-center justify-between py-2 pr-3 rounded-lg text-sm transition-colors group cursor-pointer ${
-            isSelfOrDescendant
-              ? 'opacity-35 cursor-not-allowed bg-transparent'
-              : isSelected
-              ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
-              : 'text-dark-text hover:bg-white/5 border border-transparent'
-          }`}
-          title={isSelfOrDescendant ? 'Não é possível mover para si mesma ou subpáginas' : undefined}
-        >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={(e) => toggleExpand(page.id, e)}
-                className="p-1 -ml-1 text-dark-subtext hover:text-white rounded transition-colors"
-              >
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-            ) : (
-              <span className="w-5" />
-            )}
-
-            <span className="text-base shrink-0">{page.icon || (hasChildren ? '📁' : '📄')}</span>
-            <span className="truncate font-medium">{page.title || 'Sem Título'}</span>
-
-            {isCurrentParent && (
-              <span className="text-[10px] bg-white/10 text-dark-subtext px-1.5 py-0.5 rounded font-normal shrink-0">
-                Local Atual
-              </span>
-            )}
-            {page.id === sourcePage.id && (
-              <span className="text-[10px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded font-normal shrink-0">
-                Página Alvo
-              </span>
-            )}
-          </div>
-
-          {isSelected && <Check size={16} className="text-brand-400 shrink-0 ml-2" />}
-        </div>
-
-        {hasChildren && isExpanded && (
-          <div className="flex flex-col">{children.map((child) => renderTreeNode(child))}</div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -364,7 +298,22 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
               )
             ) : (
               /* Full Hierarchical Tree */
-              <div className="space-y-0.5 mt-1">{pageTree.map((node) => renderTreeNode(node))}</div>
+              <div className="space-y-0.5 mt-1">
+                {pageTree.map((node) => (
+                  <MovePageTreeNode
+                    key={node.page.id}
+                    node={node}
+                    allPages={state.pages}
+                    sourcePageId={sourcePage.id}
+                    effectiveSelectedId={effectiveSelectedId}
+                    currentParentId={currentParentId}
+                    expandedNodes={expandedNodes}
+                    onToggleExpand={toggleExpand}
+                    onSelect={handleSelect}
+                    onSubmit={handleSubmit}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
