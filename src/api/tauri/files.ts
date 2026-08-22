@@ -8,10 +8,40 @@ export const tauriFilesApi = {
   delete: async (id: string) => await invoke('files_delete', { id }),
   move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
   saveLocal: async (filename: string, data: Uint8Array) => await invoke('files_save_local', { filename, data: Array.from(data) }),
-  getLocal: async (id: string) => {
-    const isWindows = navigator.userAgent.includes('Windows');
-    const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
-    return `${baseUrl}/files/${encodeURIComponent(id)}`;
+  getLocal: async (idOrPath: string) => {
+    try {
+      const { appDataDir, join } = await import('@tauri-apps/api/path');
+      const { exists } = await import('@tauri-apps/plugin-fs');
+      const dataDir = await appDataDir();
+
+      const clean = idOrPath.replace(/^file:\/\//, '');
+      const filename = clean.split(/[/\\]/).pop() || idOrPath;
+
+      const candidates = [
+        clean.startsWith('/') || clean.match(/^[a-zA-Z]:/) ? clean : await join(dataDir, 'files', clean),
+        await join(dataDir, 'files', filename),
+        await join(dataDir, 'files', `${filename}.enc`),
+        await join(dataDir, clean),
+      ];
+
+      let foundPath: string | null = null;
+      for (const c of candidates) {
+        try {
+          if (await exists(c)) {
+            foundPath = c;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!foundPath) return null;
+
+      const isWindows = navigator.userAgent.includes('Windows');
+      const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
+      return `${baseUrl}/files/${encodeURIComponent(foundPath)}`;
+    } catch {
+      return null;
+    }
   },
   
   folders: {
