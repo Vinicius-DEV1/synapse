@@ -225,6 +225,19 @@ function AppContent() {
               y={state.contextMenu.y}
               pageId={state.contextMenu.pageId}
               isPinned={!!contextPage?.is_pinned}
+              onOpenInNewTab={(id) => {
+                const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+                dispatch({
+                  type: 'ADD_TAB',
+                  tab: {
+                    id: tabId,
+                    module: 'notes',
+                    pageId: id,
+                    unsavedContent: null,
+                    scrollY: 0,
+                  },
+                });
+              }}
               onCreateSubPage={handleCreatePage}
               onImportSubPage={handleImportPage}
               onExportPage={handleExportPage}

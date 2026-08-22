@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ChevronRight, Clock, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
+import { getPagePath } from '../../utils/hierarchy';
 import EmojiPopover from '../EmojiPopover';
 
 interface PageHeaderProps {
@@ -15,19 +16,40 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
 
   const breadcrumbs = useMemo(() => {
     if (!page) return [];
-    const path: Page[] = [];
-    let current: Page | undefined = page;
-    while (current) {
-      path.unshift(current);
-      current = current.parent_id
-        ? state.pages.find((p: Page) => p.id === current!.parent_id)
-        : undefined;
-    }
-    return path;
+    return getPagePath(state.pages, page.id) as Page[];
   }, [page, state.pages]);
 
   const handleNavigate = (pageId: string) => {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, pageId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch({
+      type: 'SHOW_CONTEXT_MENU',
+      x: e.clientX,
+      y: e.clientY,
+      pageId,
+    });
+  };
+
+  const handleAuxClick = (e: React.MouseEvent, pageId: string) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      dispatch({
+        type: 'ADD_TAB',
+        tab: {
+          id: tabId,
+          module: 'notes',
+          pageId,
+          unsavedContent: null,
+          scrollY: 0,
+        },
+      });
+    }
   };
 
   return (
@@ -39,6 +61,8 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
               {i > 0 && <ChevronRight size={12} className="text-dark-subtext/50" />}
               <button
                 onClick={() => handleNavigate(crumb.id)}
+                onContextMenu={(e) => handleContextMenu(e, crumb.id)}
+                onAuxClick={(e) => handleAuxClick(e, crumb.id)}
                 className={`hover:text-brand-400 transition-colors ${
                   i === breadcrumbs.length - 1 ? 'text-dark-text font-medium' : ''
                 }`}

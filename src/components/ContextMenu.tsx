@@ -1,10 +1,11 @@
-import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput } from 'lucide-react';
+import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput, ExternalLink } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
   y: number;
   pageId: string;
   isPinned?: boolean;
+  onOpenInNewTab?: (pageId: string) => void;
   onCreateSubPage: (parentId: string) => void;
   onImportSubPage?: (parentId: string) => void;
   onExportPage?: (pageId: string) => void;
@@ -15,7 +16,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
   // Adjust position to stay within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200);
   const adjustedY = Math.min(y, window.innerHeight - 150);
@@ -26,6 +27,19 @@ export default function ContextMenu({ x, y, pageId, isPinned, onCreateSubPage, o
       style={{ left: adjustedX, top: adjustedY }}
       onClick={(e) => e.stopPropagation()}
     >
+      {onOpenInNewTab && (
+        <button
+          onClick={() => {
+            onOpenInNewTab(pageId);
+            onClose();
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
+        >
+          <ExternalLink size={14} className="text-dark-subtext" />
+          Abrir em uma nova guia
+        </button>
+      )}
+
       <button
         onClick={() => {
           onCreateSubPage(pageId);

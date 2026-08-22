@@ -61,9 +61,38 @@ const SubPageItem = memo(function SubPageItem({
   isNested = false,
   childrenMap
 }: SubPageItemProps) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch({
+      type: 'SHOW_CONTEXT_MENU',
+      x: e.clientX,
+      y: e.clientY,
+      pageId: page.id,
+    });
+  };
+
+  const handleAuxClick = (e: React.MouseEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      dispatch({
+        type: 'ADD_TAB',
+        tab: {
+          id: tabId,
+          module: 'notes',
+          pageId: page.id,
+          unsavedContent: null,
+          scrollY: 0,
+        },
+      });
+    }
+  };
   
   const childPages = childrenMap
     ? (childrenMap.get(page.id) || [])
@@ -117,7 +146,11 @@ const SubPageItem = memo(function SubPageItem({
         </div>
 
         {/* MAIN CARD */}
-        <div className="flex items-center gap-2 p-1 w-full rounded-xl bg-dark-card/50 hover:bg-white/5 border border-white/5 hover:border-brand-500/30 transition-all text-left flex-1 min-w-0">
+        <div 
+          onContextMenu={handleContextMenu}
+          onAuxClick={handleAuxClick}
+          className="flex items-center gap-2 p-1 w-full rounded-xl bg-dark-card/50 hover:bg-white/5 border border-white/5 hover:border-brand-500/30 transition-all text-left flex-1 min-w-0 cursor-pointer"
+        >
           
           {/* NEST DROPZONE (Icon Area) */}
           <div 
