@@ -87,9 +87,9 @@ export interface LibraryApi {
 export interface SyncApi {
   getTable: (tableName: string) => Promise<any[]>;
   upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
-  /** Busca linhas de uma tabela por lista de IDs. Existe na implementação real. */
+  /** Fetches table rows by ID list. Present in runtime implementations. */
   getRowsByIds: (tableName: string, ids: string[]) => Promise<any[]>;
-  /** Enfileira uma operação de push imediato para um módulo. */
+  /** Enqueues an immediate push sync operation for a module. */
   push?: (type: string) => void;
 }
 
@@ -102,10 +102,10 @@ export interface ICadernoAPI {
     getPathForFile: (file: File) => string;
     showConfirm: (message: string) => Promise<number>;
     openFocusWindow: () => Promise<void>;
-    /** Alterna fullscreen (Tauri). Pode não existir em builds web. */
+    /** Toggles fullscreen mode (Tauri only). Optional on web builds. */
     toggleFullScreen?: () => void;
   };
-  /** Logging via IPC (Tauri). Pode não existir em builds web. */
+  /** IPC logging (Tauri only). Optional on web builds. */
   log?: (msg: string) => void;
   _setMasterKey?: (key: CryptoKey | null) => void;
   onSyncTrigger?: (callback: () => void) => () => void;
@@ -149,7 +149,7 @@ export interface ICadernoAPI {
     scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;
     openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
     openFolderDialog: () => Promise<string | null>;
-    // Métodos extendidos
+    // Extended video methods
     onDownloadProgress?: (callback: (progress: any) => void) => () => void;
     getStreamPort?: () => Promise<number>;
     cancelConversion?: (jobId: string) => Promise<{ success: boolean }>;
@@ -173,7 +173,7 @@ export interface ICadernoAPI {
     updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
     deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
     resetDeckProgress: (deckId: string) => Promise<{ success: boolean; error?: string }>;
-    // Métodos extendidos (existem nas implementações Tauri/Web, faltavam na interface)
+    // Extended Anki methods (present in Tauri/Web implementations)
     migrateToNotes?: () => Promise<{ success: boolean; error?: string }>;
     updateDeckSettings?: (deckId: string, settings: any) => Promise<{ success: boolean; error?: string }>;
     getDeckSettings?: (deckId: string) => Promise<any>;

@@ -18,7 +18,7 @@ export const webAuthApi = (db: any) => ({
     
     const currentHash = await hashLocalPassword(password);
     
-    // Migração para usuários web antigos que não tinham hash local salvo
+    // Legacy web migration for users without previously saved local hash
     if (stored.value === 'setup-done') {
       await db.put('config', { id: 'masterHash', value: currentHash });
       return { success: true };
