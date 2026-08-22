@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { X, Search, ChevronRight, ChevronDown, Check, LayoutGrid, AlertCircle, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
-import { isValidHierarchyMove } from '../../utils/hierarchy';
+import { isValidHierarchyMove, getPageBreadcrumbString } from '../../utils/hierarchy';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 
@@ -54,13 +54,11 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
   // Função auxiliar para obter breadcrumb completo
   const getBreadcrumb = (targetId: string | null): string => {
     if (!targetId) return 'Raiz (Início)';
-    const parts: string[] = [];
-    let current = state.pages.find((p) => p.id === targetId);
-    while (current) {
-      parts.unshift(current.title || 'Sem Título');
-      current = current.parent_id ? state.pages.find((p) => p.id === current!.parent_id) : undefined;
-    }
-    return parts.join(' > ');
+    return getPageBreadcrumbString(state.pages, targetId, {
+      includeSelf: true,
+      separator: ' > ',
+      rootLabel: 'Raiz (Início)',
+    });
   };
 
   // Construção da árvore hierárquica completa
