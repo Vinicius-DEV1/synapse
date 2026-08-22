@@ -228,6 +228,59 @@ describe('Quiz Service & Prompt Unit Tests', () => {
       expect(result.message).toBe('Analisei sua bateria com sucesso.');
     });
 
+    it('includes referenced batteries in prompt and forwards anti-duplication context', async () => {
+      const promptSpy = vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
+        text: JSON.stringify({
+          message: 'Gerei questões complementares inéditas.',
+          suggestedActions: [
+            {
+              actionType: 'create',
+              type: 'multiple_choice',
+              question: 'Qual camada do modelo OSI lida com roteamento?',
+              options: ['Rede', 'Transporte', 'Enlace', 'Física'],
+              correctIndex: 0,
+              explanation: 'A camada de rede (camada 3) é responsável pelo roteamento de pacotes.',
+            },
+          ],
+        }),
+      } as any);
+
+      const referencedBatteries = [
+        {
+          title: 'Bateria de Redes I',
+          pageTitle: 'Redes de Computadores',
+          questionCount: 1,
+          questions: [
+            {
+              id: 'q1',
+              type: 'multiple_choice',
+              question: 'O que é TCP?',
+              options: ['Protocolo', 'Hardware'],
+              correctIndex: 0,
+            } as any,
+          ],
+        },
+      ];
+
+      const result = await promptGeminiQuizAssistant(
+        [],
+        [],
+        'Crie 1 questão nova',
+        undefined,
+        'Bateria de Redes II',
+        undefined,
+        referencedBatteries
+      );
+
+      expect(result.message).toBe('Gerei questões complementares inéditas.');
+      expect(promptSpy).toHaveBeenCalled();
+      const promptArg = promptSpy.mock.calls[0][0];
+      expect(promptArg).toContain('REFERENCED EXERCISE BATTERIES');
+      expect(promptArg).toContain('Bateria de Redes I');
+      expect(promptArg).toContain('O que é TCP?');
+      expect(promptArg).toContain('STRICT NON-REPETITION');
+    });
+
     it('throws descriptive error when API call fails', async () => {
       vi.spyOn(clientModule, 'promptGemini').mockRejectedValueOnce(
         new Error('Network connection failure')

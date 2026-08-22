@@ -15,7 +15,7 @@ import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeChatHistory } from './utils/quizNormalizer';
 import { triggerToast } from '../../ui/ToastContext';
-import type { QuestionItem, QuizChatMessage, SuggestedAction } from './types';
+import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery } from './types';
 
 export default function QuestionBlockNodeView(props: any) {
   const {
@@ -73,7 +73,10 @@ export default function QuestionBlockNodeView(props: any) {
     props.updateAttributes({ mode: newMode });
   };
 
-  const handleSendChatMessage = async (overrideMessage?: string) => {
+  const handleSendChatMessage = async (
+    overrideMessage?: string,
+    referencedBatteries?: ReferencedBattery[]
+  ) => {
     const messageToSend = (overrideMessage || chatInput).trim();
     if (!messageToSend || isSendingChat) return;
 
@@ -96,7 +99,8 @@ export default function QuestionBlockNodeView(props: any) {
         messageToSend,
         undefined,
         title,
-        description
+        description,
+        referencedBatteries
       );
 
       const assistantMsgId = `assistant_${Date.now()}`;
@@ -363,16 +367,25 @@ export default function QuestionBlockNodeView(props: any) {
 
       <div
         ref={blockContainerRef}
-        className="rounded-3xl border border-purple-500/30 bg-[#100d1c] shadow-2xl overflow-hidden"
+        className={`rounded-2xl border border-white/10 bg-dark-card/90 shadow-md hover:border-white/20 transition-all overflow-hidden ${
+          isCollapsed ? 'hover:bg-dark-card' : ''
+        }`}
       >
         {/* Header Principal */}
-        <div className="p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-dark-card to-purple-950/20">
+        <div
+          className={`${
+            isCollapsed
+              ? 'p-3.5 md:p-4 bg-dark-card/40'
+              : 'p-5 md:p-6 border-b border-white/10 bg-white/[0.02]'
+          } transition-all`}
+        >
           <QuizBatteryHeader
             title={title}
             description={description}
             mode={mode}
             isCollapsed={isCollapsed}
             copiedJson={copiedJson}
+            questionCount={questions.length}
             onUpdateTitle={(val) => props.updateAttributes({ title: val })}
             onUpdateDescription={(val) => props.updateAttributes({ description: val })}
             onSetMode={handleSetMode}
@@ -462,6 +475,7 @@ export default function QuestionBlockNodeView(props: any) {
         onAcceptAllInMessage={handleAcceptAllInMessage}
         onRejectAllInMessage={handleRejectAllInMessage}
         questions={questions}
+        currentBatteryTitle={title}
       />
 
       {/* Modal Importar JSON */}

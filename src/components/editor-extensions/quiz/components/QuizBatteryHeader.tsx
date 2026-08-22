@@ -18,6 +18,7 @@ interface QuizBatteryHeaderProps {
   mode: 'edit' | 'practice';
   isCollapsed: boolean;
   copiedJson: boolean;
+  questionCount?: number;
   onUpdateTitle: (title: string) => void;
   onUpdateDescription: (description: string) => void;
   onSetMode: (mode: 'edit' | 'practice', e: React.MouseEvent) => void;
@@ -34,6 +35,7 @@ export default function QuizBatteryHeader({
   mode,
   isCollapsed,
   copiedJson,
+  questionCount,
   onUpdateTitle,
   onUpdateDescription,
   onSetMode,
@@ -44,37 +46,44 @@ export default function QuizBatteryHeader({
   onToggleCollapse,
 }: QuizBatteryHeaderProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
       <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-        <div className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-300 shadow-inner">
-          <HelpCircle size={22} />
+        <div className="p-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 shrink-0">
+          <HelpCircle size={20} />
         </div>
-        <div className="flex-1">
-          <input
-            type="text"
-            value={title || ''}
-            onChange={(e) => onUpdateTitle(e.target.value)}
-            placeholder="Título da Bateria de Exercícios..."
-            className="bg-transparent text-base md:text-lg font-bold text-white placeholder-white/30 outline-none w-full border-b border-transparent focus:border-purple-500/50 transition-colors"
-          />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={title || ''}
+              onChange={(e) => onUpdateTitle(e.target.value)}
+              placeholder="Título da Bateria de Exercícios..."
+              className="bg-transparent text-sm md:text-base font-semibold text-white placeholder-white/30 outline-none w-full border-b border-transparent focus:border-brand-500/40 transition-colors"
+            />
+            {typeof questionCount === 'number' && isCollapsed && (
+              <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[11px] text-dark-subtext font-mono">
+                {questionCount} {questionCount === 1 ? 'questão' : 'questões'}
+              </span>
+            )}
+          </div>
           <input
             type="text"
             value={description || ''}
             onChange={(e) => onUpdateDescription(e.target.value)}
             placeholder="Instruções ou descrição breve..."
-            className="bg-transparent text-xs text-purple-200/70 placeholder-white/20 outline-none w-full mt-0.5 border-b border-transparent focus:border-purple-500/30 transition-colors"
+            className="bg-transparent text-xs text-dark-subtext placeholder-white/20 outline-none w-full mt-0.5 border-b border-transparent focus:border-brand-500/30 transition-colors"
           />
         </div>
       </div>
 
       {/* Alternador de Modo (Editar vs Praticar) + Ações */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
+      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs">
           <button
             onClick={(e) => onSetMode('edit', e)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${
               mode === 'edit'
-                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                ? 'bg-brand-500 text-white font-semibold shadow-sm'
                 : 'text-dark-subtext hover:text-white'
             }`}
           >
@@ -83,9 +92,9 @@ export default function QuizBatteryHeader({
           </button>
           <button
             onClick={(e) => onSetMode('practice', e)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${
               mode === 'practice'
-                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                ? 'bg-brand-500 text-white font-semibold shadow-sm'
                 : 'text-dark-subtext hover:text-white'
             }`}
           >
@@ -97,38 +106,39 @@ export default function QuizBatteryHeader({
         {/* Botão Assistente IA */}
         <button
           onClick={onOpenAiAssistant}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-semibold shadow-sm transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 text-brand-300 rounded-xl text-xs font-semibold shadow-sm transition-all"
           title="Abrir Assistente de Exercícios IA"
         >
-          <Sparkles size={14} className="text-purple-400" />
+          <Sparkles size={14} className="text-brand-400" />
           <span>IA</span>
         </button>
 
         {/* Importar / Exportar / Excluir */}
         <button
           onClick={onOpenImport}
-          className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
+          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
           title="Importar questões via JSON"
         >
           <UploadCloud size={15} />
         </button>
         <button
           onClick={onCopyJson}
-          className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
+          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
           title="Exportar bateria em JSON"
         >
           {copiedJson ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
         </button>
         <button
           onClick={onOpenDeleteModal}
-          className="p-2 rounded-xl bg-black/40 hover:bg-red-500/20 text-dark-subtext hover:text-red-400 border border-white/10 transition-colors"
+          className="p-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-dark-subtext hover:text-red-400 border border-white/10 transition-colors"
           title="Remover toda a bateria"
         >
           <Trash2 size={15} />
         </button>
         <button
           onClick={onToggleCollapse}
-          className="p-2 rounded-xl bg-black/40 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
+          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
+          title={isCollapsed ? 'Expandir bateria de questões' : 'Recolher bateria de questões'}
         >
           {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
         </button>
