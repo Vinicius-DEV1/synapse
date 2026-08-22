@@ -8,6 +8,7 @@
 import { encryptFile, decryptFile } from './storage';
 import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 import { getWebDb } from './db-web';
+import { isDesktopApp } from './platform';
 
 // Utility: Detect true MIME type from image magic bytes
 function detectMimeType(buffer: ArrayBuffer): string {
@@ -28,14 +29,6 @@ interface CachedImage {
   id: string;
   data: ArrayBuffer;
   mimeType: string;
-}
-
-/**
- * Verifica se estamos rodando no Desktop (window.api existe) ou na web.
- * No Desktop usa comandos do Tauri; na web usa IndexedDB diretamente.
- */
-function isDesktopApp(): boolean {
-  return typeof window !== 'undefined' && !!window.api && !!window.api.imageCache;
 }
 
 /**

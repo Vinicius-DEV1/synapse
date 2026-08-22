@@ -14,3 +14,7 @@ export const platform: PlatformCapabilities = {
   useNativeTitleBar: isDesktop,
   supportsNativeTabs: isDesktop
 };
+
+export function isDesktopApp(): boolean {
+  return platform.canReadLocalFilesystem || (typeof window !== 'undefined' && !!window.api);
+}

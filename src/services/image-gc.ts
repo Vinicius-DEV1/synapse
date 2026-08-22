@@ -1,10 +1,6 @@
 import { getValidAccessToken, listFiles, deleteFromDrive, getOrCreatePhotosFolder, getOrCreateAppFolder } from './drive';
 import { getWebDb } from './db-web';
-import { platform } from './platform';
-
-function isDesktopApp(): boolean {
-  return platform.canReadLocalFilesystem || (typeof window !== 'undefined' && !!window.api);
-}
+import { isDesktopApp } from './platform';
 
 /**
  * Roda o Garbage Collector (Lixeiro) de imagens.
