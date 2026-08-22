@@ -3,7 +3,7 @@ import type { VaultGroup, VaultItem } from '../../../types';
 import { triggerToast } from '../../ui/ToastContext';
 
 /**
- * Hook de gerenciamento de estado e operações do Cofre de Senhas.
+ * State management and operations hook for Password Vault.
  */
 export function useVault() {
   const [groups, setGroups] = useState<VaultGroup[]>([]);

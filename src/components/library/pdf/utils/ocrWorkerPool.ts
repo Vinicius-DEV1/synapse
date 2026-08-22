@@ -21,7 +21,7 @@ class OcrWorkerPool {
 
   /**
    * Enfileira o reconhecimento de imagem de forma serializada no worker singleton,
-   * evitando sobrecarga de threads WASM e alocação excessiva de memória RAM.
+   * preventing WASM thread saturation and excessive RAM allocation.
    */
   public async recognize(imageSource: string | HTMLCanvasElement): Promise<Tesseract.RecognizeResult> {
     return new Promise<Tesseract.RecognizeResult>((resolve, reject) => {

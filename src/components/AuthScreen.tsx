@@ -182,7 +182,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
       } else {
         let res = await window.api.auth.login(password);
 
-        // Auto-migration: se a senha funcionou na nuvem, mas falhou localmente, atualiza o hash local!
+        // Auto-migration: if password succeeded on cloud but failed locally, update local hash
         if (!res.success && navigator.onLine && cloudCheck.isValid && !cloudCheck.isNew) {
           console.log("☁️ Senha validada na nuvem! Atualizando hash local desatualizado...");
           const fixRes = await window.api.auth.setup(password);

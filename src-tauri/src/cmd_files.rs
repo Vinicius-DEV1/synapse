@@ -209,7 +209,7 @@ pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, St
     conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
         .map_err(|e| e.to_string())?;
 
-    // Limpeza de anotações caso o arquivo estivesse sendo usado no leitor completo como arquivo avulso (Soft Delete)
+    // Clean up annotations when standalone file is removed (Soft Delete)
     let _ = conn.execute("UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
     let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
 

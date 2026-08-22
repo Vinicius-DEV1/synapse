@@ -7,7 +7,7 @@ import { SidebarPageTree } from './SidebarPageTree';
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
-// valor. Ampliamos o tipo aqui apenas para refletir o valor real em runtime.
+// Widen type definition to match actual runtime value.
 type ModuleId = Tab['module'] | 'settings';
 
 interface SidebarProps {

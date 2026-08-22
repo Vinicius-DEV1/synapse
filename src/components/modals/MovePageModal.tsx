@@ -311,7 +311,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
             )}
 
             {searchQuery ? (
-              /* Resultados da Busca Instantânea */
+              /* Instant Search Results */
               filteredPages.length > 0 ? (
                 <div className="space-y-1 mt-1">
                   {filteredPages.map(({ page, breadcrumb, isValid }) => {
@@ -363,7 +363,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
                 </div>
               )
             ) : (
-              /* Árvore Hierárquica Completa */
+              /* Full Hierarchical Tree */
               <div className="space-y-0.5 mt-1">{pageTree.map((node) => renderTreeNode(node))}</div>
             )}
           </div>

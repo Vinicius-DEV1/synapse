@@ -124,10 +124,10 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   };
 
   if (willOverflowBottom) {
-    // Menu ancora na parte inferior (cresce para cima), ficando acima do cursor
+    // Anchor menu to bottom (expand upward) positioning above cursor
     positionStyle.bottom = viewportHeight - (y - CURSOR_OFFSET);
   } else {
-    // Menu ancora no topo (cresce para baixo)
+    // Anchor menu to top (expand downward)
     positionStyle.top = y;
   }
 

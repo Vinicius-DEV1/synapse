@@ -1,5 +1,5 @@
 /**
- * Chaves de acesso ao LocalStorage e configurações globais
+ * LocalStorage keys and global application constants
  */
 export const STORAGE_KEYS = {
   FINANCE_COLLAPSED_CATEGORIES: 'caderno_finance_collapsed_categories',

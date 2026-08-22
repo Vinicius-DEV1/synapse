@@ -5,7 +5,7 @@ use tauri::AppHandle;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-// Retorna a extensão de executável, se houver
+// Returns executable extension for current platform
 fn get_exe_extension() -> &'static str {
     if cfg!(target_os = "windows") {
         ".exe"
@@ -14,14 +14,14 @@ fn get_exe_extension() -> &'static str {
     }
 }
 
-// Retorna o caminho final absoluto de um binário a partir do nome base
+// Returns absolute path of binary from base executable name
 pub fn get_bin_path(binary_base_name: &str) -> PathBuf {
     let app_data_dir = crate::get_app_data_dir();
     let bin_dir = app_data_dir.join("bin");
     bin_dir.join(format!("{}{}", binary_base_name, get_exe_extension()))
 }
 
-// Funções para pegar as URLs de download dependendo da plataforma
+// Platform-specific download URLs for binary dependencies
 fn get_ytdlp_url() -> &'static str {
     match std::env::consts::OS {
         "windows" => "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
@@ -133,7 +133,7 @@ pub async fn force_download_binaries(app: AppHandle) -> Result<(), String> {
     let app_data_dir = crate::get_app_data_dir();
     let bin_dir = app_data_dir.join("bin");
     
-    // Força a remoção do diretório para garantir que ensure_binaries baixe tudo novamente
+    // Forces directory removal to ensure clean re-download in ensure_binaries
     if bin_dir.exists() {
         let _ = fs::remove_dir_all(&bin_dir);
     }

@@ -201,7 +201,7 @@ export const PdfPage = React.memo(({
   useEffect(() => {
     if (!isRendered || !textLayerRef.current || textItems.length === 0) return;
     
-    // Escala matematicamente o texto do navegador para caber EXATAMENTE
+    // Mathematically scale browser text layer to match rendered PDF dimensions
     // on physical text width drawn on Canvas (official PDF.js technique)
     const spans = textLayerRef.current.querySelectorAll('span');
     spans.forEach(span => {

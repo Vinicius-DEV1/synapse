@@ -131,10 +131,10 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         }
     };
 
-    // Lidar com cabeçalho Range (streaming)
+    // Handle HTTP Range header for media streaming
     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
 
-    // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1 (B24)
+    // Read original file length from ENC1 header (B24)
     let total_size = match crate::crypto_stream::get_encrypted_file_size(&abs_path) {
         Ok(size) => size,
         Err(e) => {
@@ -156,7 +156,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 total_size - 1
             };
 
-            // Lê o range descriptografado
+            // Read decrypted byte range
             match read_chunked_range(&abs_path, &master_key, start, end) {
                 Ok(DecryptedRange { data, .. }) => {
                     let actual_end = start + data.len() as u64 - 1;
@@ -187,7 +187,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         }
     }
 
-    // Se não tiver cabeçalho de Range, lê o arquivo inteiro
+    // Read entire file when Range header is absent
     match read_chunked_range(&abs_path, &master_key, 0, total_size - 1) {
         Ok(DecryptedRange { data, .. }) => {
             let mime_type = get_mime_type(&abs_path);

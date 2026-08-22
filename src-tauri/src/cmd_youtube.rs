@@ -92,7 +92,7 @@ pub async fn youtube_download(
 
     for line in reader.lines() {
         if let Ok(line_str) = line {
-            // Parser simplista para progresso (ex: "[download]  45.0% of ...")
+            // Progress parser (e.g. "[download] 45.0% of ...")
             if line_str.contains("[download]") && line_str.contains("%") {
                 if let Some(pct_str) = line_str.split('%').next() {
                     let parts: Vec<&str> = pct_str.split_whitespace().collect();

@@ -206,7 +206,7 @@ pub fn notes_update_page(
             query.push_str(" content = '', encrypted_content = ?");
             params_vec.push(enc.clone().into());
 
-            // Apenas grava novo histórico se a última versão tiver mais de 60 segundos (evita inflar o SQLite em cada auto-save de 2s)
+            // Record history entry only if > 60s elapsed since last revision (prevents SQLite database bloating on 2s autosave)
             let should_insert_history: bool = conn
                 .query_row(
                     "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
@@ -287,11 +287,11 @@ pub fn notes_update_page(
         has_updates = true;
     }
 
-    // Só atualiza updated_at se houver mudanças reais
+    // Update updated_at timestamp only when actual content changes occur
     if has_updates {
         query.push_str(", updated_at = CURRENT_TIMESTAMP");
     } else {
-        // Se não houver mudanças, não faz nada
+        // No-op if content is unchanged
         return Ok(0);
     }
 

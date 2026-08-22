@@ -5,12 +5,12 @@ import { endExternalDrag, startExternalBlockDrag } from '../../editor-extensions
 import { moveBlockUp, moveBlockDown } from '../../editor-extensions/moveBlockCommands';
 import { triggerToast } from '../../ui/ToastContext';
 
-/** Distância em pixels entre a alça flutuante e a borda esquerda do bloco. */
+/** Pixel distance between floating handle and left block boundary. */
 const BLOCK_HANDLE_GAP = 24;
 
 /**
- * Tipos de nós de nível de bloco que implementam sua própria alça de arrasto interna.
- * Textblocks comuns (parágrafos, títulos, listas) sempre usam a alça flutuante externa.
+ * Block-level node types providing internal drag handles.
+ * Standard textblocks (paragraphs, headings, lists) always use external floating handle.
  */
 const OWN_DRAG_HANDLE_NODES = new Set([
   'linkPreview',
@@ -37,8 +37,8 @@ export interface BlockHandleState {
 }
 
 /**
- * Hook que gerencia o posicionamento e ciclo de vida da alça flutuante de blocos.
- * Permite selecionar, arrastar e gerenciar opções de blocos do editor.
+ * Manages lifecycle and positioning of floating block handle in the editor.
+ * Supports block selection, drag-and-drop, and context operations.
  */
 export function useBlockHandle(
   editor: Editor | null,

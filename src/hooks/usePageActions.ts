@@ -202,7 +202,7 @@ export function usePageActions() {
 
         await window.api.updatePage({ id: newPage.id, ...updates });
         
-        // Atualizar o estado global
+        // Update global store state
         const completePage = { ...newPage, ...updates };
         dispatch({ type: 'ADD_PAGE', page: completePage });
         dispatch({ type: 'NAVIGATE_IN_TAB', pageId: newPage.id });
@@ -211,7 +211,7 @@ export function usePageActions() {
           dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
         }
 
-        // Disparar trigger de sync
+        // Trigger cloud sync dispatch
         if (window.api.onSyncTrigger) {
            // handled by preload
         } else {

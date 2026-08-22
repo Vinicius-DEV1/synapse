@@ -10,7 +10,7 @@ pub fn sync_get_table(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    // Validar nome da tabela para evitar SQL injection (nomes de tabelas não podem ser parametrizados)
+    // Validate table name against whitelist to prevent SQL injection (table identifiers cannot be parameterized)
     if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return Err("Invalid table name".into());
     }
@@ -142,8 +142,8 @@ pub fn sync_upsert_row(
     Ok(true)
 }
 
-/// #3: Busca apenas as rows com IDs específicos de uma tabela.
-/// Muito mais eficiente que sync_get_table quando só precisamos verificar
+/// #3: Queries rows matching specific IDs in a table.
+/// Optimized replacement for full sync_get_table during targeted synchronization.
 /// conflitos contra um subconjunto de docs que vieram da nuvem.
 #[tauri::command]
 pub fn sync_get_rows_by_ids(
@@ -154,7 +154,7 @@ pub fn sync_get_rows_by_ids(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    // Validar nome da tabela para evitar SQL injection
+    // Validate table name to prevent SQL injection
     if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return Err("Invalid table name".into());
     }
@@ -163,7 +163,7 @@ pub fn sync_get_rows_by_ids(
         return Ok(Vec::new());
     }
 
-    // Construir placeholders parametrizados: SELECT * FROM table WHERE id IN (?, ?, ...)
+    // Construct parameterized query: SELECT * FROM table WHERE id IN (?, ?, ...)
     let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
     let query = format!(
         "SELECT * FROM {} WHERE id IN ({})",

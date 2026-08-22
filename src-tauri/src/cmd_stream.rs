@@ -84,7 +84,7 @@ async fn stream_handler(
         if enc_path.exists() {
             abs_path = enc_path;
         } else {
-            // Tenta buscar na pasta release se estivermos rodando em debug
+            // Fallback lookup in release directory during debug builds
             if let Some(parent) = app_data_dir.parent() {
                 if let Some(grandparent) = parent.parent() {
                     let release_dir = grandparent.join("release").join("data").join("videos");
@@ -130,8 +130,7 @@ async fn stream_handler(
         }
     };
 
-    // Lê o tamanho total do arquivo original a partir do cabeçalho ENC1
-    // Usamos spawn_blocking porque read_chunked_range é sincrono
+    // Read total original file size from ENC1 header via spawn_blocking
     let path_clone = abs_path.clone();
     let key_clone = master_key.clone();
 
@@ -192,7 +191,7 @@ async fn stream_handler(
             .into_response();
     }
 
-    // Assegura que end não ultrapasse o tamanho total
+    // Clamp end boundary within total file size
     if end >= total_size {
         end = total_size - 1;
     }
@@ -257,7 +256,7 @@ async fn stream_handler(
 
 #[tauri::command]
 pub fn video_get_stream_port(app: AppHandle) -> Result<u16, String> {
-    // Buscamos o state guardado
+    // Retrieve stored AppState
     let port_state = app.state::<StreamPortState>();
     Ok(port_state.0)
 }

@@ -287,7 +287,7 @@ pub fn vault_upsert_item(item: VaultItem, db_state: State<'_, DbState>) -> Resul
         .map(|s| crate::crypto::encrypt_content(&vault_key, s))
         .transpose()?;
 
-    // Checar se a senha mudou para salvar no historico
+    // Check whether password changed to record history entry
     if let Some(ref new_pass_enc) = enc_pass {
         let old_pass_enc: Result<Option<String>, _> = conn.query_row(
             "SELECT password FROM vault_items WHERE id = ?",
