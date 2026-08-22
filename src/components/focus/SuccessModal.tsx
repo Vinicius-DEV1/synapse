@@ -3,6 +3,7 @@ import { CheckCircle, Music } from 'lucide-react';
 
 import type { Session } from './types';
 import { Portal } from '../ui/Portal';
+import { startProceduralAlarm } from '../../store/focus/focus-sound';
 
 interface SuccessModalProps {
   onSave: (summary: string) => void;
@@ -22,14 +23,20 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
   const [alarmType, setAlarmType] = useState(localStorage.getItem('defaultAlarmType') || 'beep');
   const [overtime, setOvertime] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  const stopAlarmRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setOvertime(prev => prev + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Procedural Audio Generation
+  const stopAlarm = () => {
+    if (stopAlarmRef.current) {
+      stopAlarmRef.current();
+      stopAlarmRef.current = null;
+    }
+  };
+
   const playAlarm = (type: string) => {
     if (localStorage.getItem('soundEnabled') === 'false') return;
 
@@ -37,66 +44,8 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
       audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
-    
-    stopAlarm(); // Stop any existing alarm
-
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.01, ctx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 30);
-    masterGain.connect(ctx.destination);
-
-    if (type === 'beep') {
-      intervalRef.current = window.setInterval(() => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
-      }, 500);
-    } else if (type === 'retro') {
-      intervalRef.current = window.setInterval(() => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(600, ctx.currentTime);
-        osc.frequency.setValueAtTime(800, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
-      }, 250);
-    } else if (type === 'bell') {
-      intervalRef.current = window.setInterval(() => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(432, ctx.currentTime); // Healing frequency
-        
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3);
-        
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start();
-        osc.stop(ctx.currentTime + 3);
-      }, 4000);
-    }
-  };
-
-  const stopAlarm = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    stopAlarm();
+    stopAlarmRef.current = startProceduralAlarm(ctx, type);
   };
 
   useEffect(() => {
