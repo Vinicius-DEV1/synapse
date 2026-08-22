@@ -47,7 +47,7 @@ const mockPages = [
   },
 ];
 
-vi.mock('../store/useStore', () => ({
+vi.mock('../../store/useStore', () => ({
   useStore: () => ({
     state: {
       pages: mockPages,
