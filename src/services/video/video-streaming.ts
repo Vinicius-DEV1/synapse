@@ -1,14 +1,8 @@
 import { getValidAccessToken, downloadFromDrive } from '../drive';
 import type { VideoItem } from '../../types';
+import type { DesktopVideoApi } from './video-types';
 
 const VIDEO_TABLE = 'videos';
-
-// `window.api.video` method extended helper
-// nativos do desktop (implementados em src/api/tauri/multimedia.ts).
-type DesktopVideoApi = NonNullable<typeof window.api.video> & {
-  onDownloadProgress: (callback: (percent: number) => void) => () => void;
-  getStreamPort: () => Promise<number>;
-};
 
 /**
  * Obtém link de streaming a partir do ID do Drive.
