@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { Calendar, Check, ExternalLink, Clock, Trash2, Bell, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
-import { Portal } from '../ui/Portal';
 import { parseEventDate } from '../../utils/date-utils';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
+import { CalendarEventPopover } from './calendar/CalendarEventPopover';
+import { CalendarEventDeleteModal } from './calendar/CalendarEventDeleteModal';
 
 let cachedEventsPromise: Promise<CalendarEvent[]> | null = null;
 let cacheTimestamp = 0;
@@ -262,104 +263,30 @@ export default function CalendarEventWidgetNodeView(props: any) {
       </span>
 
       {showPopover && (
-        <div className="absolute left-0 top-full mt-1.5 z-[100] w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 text-left animate-in fade-in zoom-in-95">
-          <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">
-            <div>
-              <p className="text-xs font-semibold text-white">{eventData?.title || title}</p>
-              <p className="text-[11px] text-dark-subtext flex items-center gap-1 mt-0.5">
-                <Clock size={11} />
-                <span>{formatDateLabel(eventData?.start_date)}</span>
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPopover(false)}
-              className="text-dark-subtext hover:text-white p-1 rounded-md"
-            >
-              ×
-            </button>
-          </div>
-
-          {remindersLabel && (
-            <div className="flex items-center gap-1.5 text-[11px] text-brand-300 bg-brand-500/10 px-2 py-1 rounded-lg mb-2.5">
-              <Bell size={11} />
-              <span>Avisos: {remindersLabel}</span>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-1">
-            <button
-              onClick={openCalendarModule}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors"
-            >
-              <ExternalLink size={12} />
-              <span>Abrir na Agenda</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setShowPopover(false);
-                setShowConfirmDelete(true);
-              }}
-              className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-              title="Remover widget do texto"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        </div>
+        <CalendarEventPopover
+          title={title}
+          eventData={eventData}
+          formatDateLabel={formatDateLabel}
+          remindersLabel={remindersLabel}
+          onOpenCalendar={openCalendarModule}
+          onOpenDeleteConfirm={() => {
+            setShowPopover(false);
+            setShowConfirmDelete(true);
+          }}
+          onClose={() => setShowPopover(false)}
+        />
       )}
 
       {showConfirmDelete && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
-            <div
-              className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-scale-in overflow-hidden text-left"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start gap-4 mb-5">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/10 text-red-400">
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">
-                    Remover Widget de Evento
-                  </h3>
-                  <p className="text-sm text-dark-subtext leading-relaxed">
-                    Tem certeza que deseja remover o widget de evento <strong>"{eventData?.title || title}"</strong> do texto?
-                  </p>
-                  <p className="text-xs text-amber-400/90 leading-relaxed mt-2.5 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg">
-                    {(() => {
-                      const dateStr = eventData?.end_date || eventData?.start_date;
-                      const isExpired = dateStr && !isNaN(new Date(dateStr).getTime()) && new Date(dateStr).getTime() < Date.now();
-                      if (isExpired) {
-                        return 'O evento já expirou (prazo encerrado), por isso ele será mantido na sua agenda.';
-                      }
-                      return 'O evento correspondente também será removido da sua Agenda.';
-                    })()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={() => setShowConfirmDelete(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowConfirmDelete(false);
-                    deleteWidget();
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors shadow-lg shadow-red-500/20"
-                >
-                  Confirmar Exclusão
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
+        <CalendarEventDeleteModal
+          title={title}
+          eventData={eventData}
+          onConfirm={() => {
+            setShowConfirmDelete(false);
+            deleteWidget();
+          }}
+          onCancel={() => setShowConfirmDelete(false)}
+        />
       )}
     </NodeViewWrapper>
   );

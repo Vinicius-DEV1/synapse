@@ -14,13 +14,19 @@ import {
 } from 'lucide-react';
 import { preprocessMarkdownCode, markdownComponents } from '../utils/markdownPreprocess';
 import QuizHistorySection from './QuizHistorySection';
-import type { QuestionItem, AttemptItem } from '../types';
+import { QuizOptionList } from './player/QuizOptionList';
+import { QuizExplanationPanel } from './player/QuizExplanationPanel';
+import type { QuestionItem } from '../types';
 
 interface QuizPlayerCardProps {
   q: QuestionItem;
   qIndex: number;
   isEvaluating: boolean;
-  onUpdateSingleQuestion: (qId: string, partial: Partial<QuestionItem>, immediate?: boolean) => void;
+  onUpdateSingleQuestion: (
+    qId: string,
+    partial: Partial<QuestionItem>,
+    immediate?: boolean
+  ) => void;
   onEvaluateOpenAnswer: (q: QuestionItem, index: number) => void;
   onDiscussInChat: (q: QuestionItem, index: number) => void;
 }
@@ -128,93 +134,11 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
 
       {/* Alternativas (Múltipla Escolha) */}
       {!isOpen && (
-        <div className="space-y-2">
-          {optionsList.map((opt, optIndex) => {
-            const letter = String.fromCharCode(65 + optIndex);
-            const isSelected = q.selectedIndex === optIndex;
-            const isCorrect = q.correctIndex === optIndex;
-
-            let optClass = 'bg-black/30 border-white/10 hover:border-purple-500/40 text-purple-100';
-            if (q.answered) {
-              if (isCorrect) {
-                optClass = 'bg-green-500/20 border-green-500 text-green-200 shadow-md shadow-green-500/10';
-              } else if (isSelected && !isCorrect) {
-                optClass = 'bg-red-500/20 border-red-500 text-red-200 shadow-md shadow-red-500/10';
-              } else {
-                optClass = 'bg-black/20 border-white/5 opacity-50 text-purple-200';
-              }
-            } else if (isSelected) {
-              optClass = 'bg-purple-600/30 border-purple-500 text-white';
-            }
-
-            return (
-              <div
-                key={optIndex}
-                role="button"
-                tabIndex={q.answered ? -1 : 0}
-                aria-disabled={q.answered}
-                onClick={() => {
-                  if (q.answered) return;
-                  const newAttempt: AttemptItem = {
-                    id: `att_${Date.now()}`,
-                    timestamp: Date.now(),
-                    type: 'multiple_choice',
-                    selectedIndex: optIndex,
-                    isCorrect: optIndex === q.correctIndex,
-                  };
-                  onUpdateSingleQuestion(
-                    q.id,
-                    {
-                      selectedIndex: optIndex,
-                      answered: true,
-                      showExplanation: true,
-                      attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
-                    },
-                    true
-                  );
-                }}
-                onKeyDown={(e) => {
-                  if (q.answered) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const newAttempt: AttemptItem = {
-                      id: `att_${Date.now()}`,
-                      timestamp: Date.now(),
-                      type: 'multiple_choice',
-                      selectedIndex: optIndex,
-                      isCorrect: optIndex === q.correctIndex,
-                    };
-                    onUpdateSingleQuestion(
-                      q.id,
-                      {
-                        selectedIndex: optIndex,
-                        answered: true,
-                        showExplanation: true,
-                        attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
-                      },
-                      true
-                    );
-                  }
-                }}
-                className={`w-full p-3 rounded-xl border text-left flex items-start gap-3 transition-colors select-none ${optClass} ${
-                  q.answered ? 'cursor-default' : 'cursor-pointer'
-                }`}
-              >
-                <span className="w-6 h-6 rounded-lg bg-black/40 flex items-center justify-center text-xs font-bold font-mono shrink-0">
-                  {letter}
-                </span>
-                <div className="text-xs flex-1 pt-0.5 leading-relaxed">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents as any}
-                  >
-                    {preprocessMarkdownCode(opt || '')}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <QuizOptionList
+          question={q}
+          optionsList={optionsList}
+          onUpdateSingleQuestion={onUpdateSingleQuestion}
+        />
       )}
 
       {/* Resposta Aberta */}
@@ -339,53 +263,11 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
 
       {/* Painel do Gabarito e Explicação Expandido */}
       {q.showExplanation && (
-        <div className="p-4 bg-purple-950/30 border border-purple-500/20 rounded-xl text-xs text-purple-100 leading-relaxed space-y-3 shadow-inner">
-          {/* Expected Answer for Open-Ended Question */}
-          {isOpen && q.expectedAnswer && (
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
-                📌 Resposta Esperada / Gabarito:
-              </span>
-              <div className="text-xs text-purple-100 opacity-95">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents as any}
-                >
-                  {preprocessMarkdownCode(q.expectedAnswer)}
-                </ReactMarkdown>
-              </div>
-            </div>
-          )}
-
-          {/* Alternativa Correta para Múltipla Escolha */}
-          {!isOpen && typeof q.correctIndex === 'number' && optionsList[q.correctIndex] !== undefined && (
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold text-green-300 flex items-center gap-1.5 uppercase tracking-wider">
-                ✓ Alternativa Correta: {String.fromCharCode(65 + q.correctIndex)}) {optionsList[q.correctIndex] || ''}
-              </span>
-            </div>
-          )}
-
-          {/* Explicação Pedagógica */}
-          {q.explanation && (
-            <div className={`space-y-1 ${isOpen && q.expectedAnswer ? 'pt-2 border-t border-purple-500/20' : ''}`}>
-              <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
-                💡 Explicação do Gabarito:
-              </span>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents as any}
-              >
-                {preprocessMarkdownCode(q.explanation)}
-              </ReactMarkdown>
-            </div>
-          )}
-
-          {/* Caso não haja gabarito nem explicação cadastrados */}
-          {!q.explanation && !(isOpen && q.expectedAnswer) && !(!isOpen && typeof q.correctIndex === 'number') && (
-            <span className="text-dark-subtext italic">Nenhum gabarito ou explicação cadastrado para esta questão.</span>
-          )}
-        </div>
+        <QuizExplanationPanel
+          question={q}
+          isOpen={isOpen}
+          optionsList={optionsList}
+        />
       )}
 
       {/* Histórico - só aparece quando a questão já foi respondida */}
