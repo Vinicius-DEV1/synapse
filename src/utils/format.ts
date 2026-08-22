@@ -10,7 +10,7 @@ export function formatBytes(bytes?: number | null): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export function formatDuration(seconds?: number, fallback: string = ''): string {
+export function formatDuration(seconds?: number | null, fallback: string = ''): string {
   if (seconds === undefined || seconds === null || isNaN(seconds) || seconds <= 0) return fallback;
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -22,7 +22,7 @@ export function formatDuration(seconds?: number, fallback: string = ''): string 
 }
 
 export function formatHumanDuration(
-  seconds?: number,
+  seconds?: number | null,
   options?: { includeSeconds?: boolean; fallback?: string }
 ): string {
   if (seconds === undefined || seconds === null || isNaN(seconds) || seconds <= 0) {

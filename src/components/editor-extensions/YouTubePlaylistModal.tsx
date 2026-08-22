@@ -3,6 +3,12 @@ import { X, PlayCircle, Loader2, CheckCircle2, Circle} from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { formatDuration } from '../../utils/format';
 
+interface YouTubePlaylistModalProps {
+  url: string;
+  title: string;
+  onClose: () => void;
+}
+
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
   const [loading, setLoading] = useState(true);
   const [playlist, setPlaylist] = useState<any>(null);
