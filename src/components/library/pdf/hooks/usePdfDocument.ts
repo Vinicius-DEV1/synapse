@@ -66,7 +66,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
         // Fallback: tentar getBookFile caso esteja no Web/IndexedDB ou storage
         if (!assetUrl && !fileData && window.api?.library?.getBookFile) {
           try {
-            const rawFile = await window.api.library.getBookFile(book.id);
+            const rawFile = (await window.api.library.getBookFile(book.id)) as unknown;
             if (rawFile) {
               if (rawFile instanceof ArrayBuffer) {
                 fileData = rawFile;

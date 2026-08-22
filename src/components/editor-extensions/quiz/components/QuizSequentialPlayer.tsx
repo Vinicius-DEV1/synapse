@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -7,7 +7,6 @@ import {
   RotateCcw,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   HelpCircle,
   Sparkles,
   Trophy,
