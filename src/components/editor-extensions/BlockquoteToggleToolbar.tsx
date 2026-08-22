@@ -1,5 +1,5 @@
 import React from 'react';
-import { Type, Copy, Palette, Trash2 } from 'lucide-react';
+import { Type, FileText, Copy, Palette, Trash2 } from 'lucide-react';
 import ColorPalettePicker from './ColorPalettePicker';
 
 interface BlockquoteToggleToolbarProps {
@@ -10,6 +10,7 @@ interface BlockquoteToggleToolbarProps {
   colorMenuRef: React.RefObject<HTMLDivElement | null>;
   confirmRef: React.RefObject<HTMLDivElement | null>;
   onConvertToCallout: () => void;
+  onConvertToPage?: () => void;
   onCopy: () => void;
   onToggleColors: () => void;
   onSelectColor: (color: string) => void;
@@ -27,6 +28,7 @@ export default function BlockquoteToggleToolbar({
   colorMenuRef,
   confirmRef,
   onConvertToCallout,
+  onConvertToPage,
   onCopy,
   onToggleColors,
   onSelectColor,
@@ -48,6 +50,16 @@ export default function BlockquoteToggleToolbar({
         >
           <Type size={14} />
         </button>
+
+        {onConvertToPage && (
+          <button
+            onClick={onConvertToPage}
+            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+            title="Converter em Página"
+          >
+            <FileText size={14} />
+          </button>
+        )}
 
         <div className="relative">
           <button

@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { promptGeminiQuizAssistant } from '../../../services/gemini';
+import { selectNodeForDrag } from '../group-layout/DragToGroup';
+import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import QuizBatteryHeader from './components/QuizBatteryHeader';
 import QuizTagsFilter from './components/QuizTagsFilter';
 import QuizEditor from './components/QuizEditor';
@@ -289,8 +291,76 @@ export default function QuestionBlockNodeView(props: any) {
 
   const blockContainerRef = useRef<HTMLDivElement>(null);
 
+  const handleDragMouseDown = () => {
+    if (typeof props.getPos === 'function' && props.editor?.view) {
+      const pos = props.getPos();
+      if (typeof pos === 'number') {
+        selectNodeForDrag(props.editor.view, pos, props.node);
+      }
+    }
+  };
+
   return (
-    <NodeViewWrapper className="question-block my-6 w-full block" contentEditable={false}>
+    <NodeViewWrapper className="question-block relative group/quiz my-6 w-full block" contentEditable={false}>
+      {/* Alça e controles verticais no gutter esquerdo — APENAS quando a bateria estiver minimizada/recolhida */}
+      {isCollapsed && (
+        <div
+          contentEditable={false}
+          className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/95 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/quiz:opacity-100"
+        >
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function' && props.editor) {
+                const pos = props.getPos();
+                if (typeof pos === 'number') moveBlockUp(props.editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Subir bateria de exercícios (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function') {
+                const pos = props.getPos();
+                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Adicionar linha abaixo (+)"
+          >
+            <Plus size={11} />
+          </button>
+          <div
+            data-drag-handle
+            onMouseDown={handleDragMouseDown}
+            className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+            title="Arrastar bateria de exercícios"
+          >
+            <GripVertical size={13} />
+          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function' && props.editor) {
+                const pos = props.getPos();
+                if (typeof pos === 'number') moveBlockDown(props.editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Descer bateria de exercícios (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
+        </div>
+      )}
+
       <div
         ref={blockContainerRef}
         className="rounded-3xl border border-purple-500/30 bg-[#100d1c] shadow-2xl overflow-hidden"

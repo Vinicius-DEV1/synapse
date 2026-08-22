@@ -6,7 +6,7 @@ import { moveBlockUp, moveBlockDown } from '../../editor-extensions/moveBlockCom
 import { triggerToast } from '../../ui/ToastContext';
 
 /** Distância em pixels entre a alça flutuante e a borda esquerda do bloco. */
-const BLOCK_HANDLE_GAP = 26;
+const BLOCK_HANDLE_GAP = 24;
 
 /**
  * Tipos de nós de nível de bloco que implementam sua própria alça de arrasto interna.
@@ -22,6 +22,7 @@ const OWN_DRAG_HANDLE_NODES = new Set([
   'blockquoteToggle',
   'toggleBlock',
   'horizontalRule',
+  'questionBlock',
 ]);
 
 export interface BlockHandleState {
@@ -73,6 +74,21 @@ export function useBlockHandle(
 
     let rafId: number | null = null;
     let lastEvent: MouseEvent | null = null;
+    let hideTimer: number | null = null;
+
+    const clearHideTimer = () => {
+      if (hideTimer !== null) {
+        window.clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    };
+
+    const scheduleHide = () => {
+      clearHideTimer();
+      hideTimer = window.setTimeout(() => {
+        hide();
+      }, 250);
+    };
 
     const processMouseMove = () => {
       rafId = null;
@@ -87,15 +103,28 @@ export function useBlockHandle(
         return;
       }
 
-      if (overHandle(event.target)) return;
-
-      const editorRect = view.dom.getBoundingClientRect();
-      if (event.clientY < editorRect.top || event.clientY > editorRect.bottom) {
-        hide();
+      if (overHandle(event.target)) {
+        clearHideTimer();
         return;
       }
 
-      // Projeta a coordenada X para dentro da área editável caso o cursor esteja na margem
+      const editorRect = view.dom.getBoundingClientRect();
+      
+      // Permite uma margem generosa de até 60px à esquerda e 30px à direita
+      const isInsideZone =
+        event.clientX >= editorRect.left - 60 &&
+        event.clientX <= editorRect.right + 30 &&
+        event.clientY >= editorRect.top - 10 &&
+        event.clientY <= editorRect.bottom + 10;
+
+      if (!isInsideZone) {
+        scheduleHide();
+        return;
+      }
+
+      clearHideTimer();
+
+      // Projeta a coordenada X para dentro da área editável caso o cursor esteja na margem/gutter
       const probeX = Math.min(
         Math.max(event.clientX, editorRect.left + 8),
         editorRect.right - 8
@@ -103,13 +132,13 @@ export function useBlockHandle(
 
       const block = draggableBlockAt(view, probeX, event.clientY);
       if (!block) {
-        hide();
+        scheduleHide();
         return;
       }
 
       const rect = block.dom.getBoundingClientRect();
       if (rect.height === 0) {
-        hide();
+        scheduleHide();
         return;
       }
 
@@ -138,10 +167,11 @@ export function useBlockHandle(
       }
       if (draggingRef.current) return;
       if (overHandle(event.relatedTarget)) return;
-      hide();
+      scheduleHide();
     };
 
     const hideUnlessDragging = () => {
+      clearHideTimer();
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
         rafId = null;
@@ -155,6 +185,7 @@ export function useBlockHandle(
     editor.on('update', hideUnlessDragging);
 
     return () => {
+      clearHideTimer();
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }

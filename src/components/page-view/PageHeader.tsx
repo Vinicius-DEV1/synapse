@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
 import EmojiPopover from '../EmojiPopover';
@@ -74,14 +74,28 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
           >
             {page.title === 'Sem Título' ? '' : page.title}
           </h1>
-          <button
-            onClick={onShowHistory}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg flex items-center gap-2 text-sm ml-4 whitespace-nowrap"
-            title="Histórico de Edições"
-          >
-            <Clock size={16} />
-            <span className="hidden sm:inline font-medium">Histórico</span>
-          </button>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-4 shrink-0">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('caderno-open-move-page', { detail: { pageId: page.id } }));
+              }}
+              className="p-2 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg flex items-center gap-1.5 text-sm whitespace-nowrap"
+              title="Mover Página para outro local..."
+            >
+              <FolderInput size={16} />
+              <span className="hidden sm:inline font-medium">Mover</span>
+            </button>
+
+            <button
+              onClick={onShowHistory}
+              className="p-2 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg flex items-center gap-1.5 text-sm whitespace-nowrap"
+              title="Histórico de Edições"
+            >
+              <Clock size={16} />
+              <span className="hidden sm:inline font-medium">Histórico</span>
+            </button>
+          </div>
         </div>
       </div>
 
