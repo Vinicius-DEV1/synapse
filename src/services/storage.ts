@@ -2,8 +2,8 @@
 import { getValidAccessToken, uploadToDrive, downloadFromDrive } from './drive';
 
 /**
- * Criptografa o arquivo PDF inteiro usando a Master Key
- * Retorna um ArrayBuffer com o conteúdo criptografado.
+ * Encrypts entire PDF file buffer using the Master Key
+ * Returns an ArrayBuffer containing encrypted ciphertext.
  */
 export async function encryptFile(fileBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<ArrayBuffer> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -23,7 +23,7 @@ export async function encryptFile(fileBuffer: ArrayBuffer, masterKey: CryptoKey)
 }
 
 /**
- * Criptografa um arquivo grande por chunks no formato ENC1, usado para vídeos.
+ * Encrypts large files chunk-by-chunk using ENC1 format (used for videos).
  * O formato é:
  * [MAGIC: "ENC1"](4) + [ORIGINAL_SIZE](8) + [CHUNK_SIZE](4)
  * Depois, para cada chunk:

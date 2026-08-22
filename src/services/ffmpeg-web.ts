@@ -1,10 +1,10 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 
-// NOTA (Performance Web): O ffmpeg.wasm roda em um único worker e mantém todo o arquivo 
+// NOTE (Web Performance): ffmpeg.wasm runs on a single worker and loads full buffers 
 // virtual na memória RAM (MEMFS).
-// Arquivos muito grandes (>500MB) causarão Out Of Memory (OOM) e travarão a aba do navegador.
-// O app delega o processamento pesado de vídeos para a versão Desktop (Tauri + binários nativos).
+// Very large files (>500MB) can cause OOM errors in browser tabs.
+// Heavy transcoding is delegated to Desktop (Tauri + native binaries).
 
 let ffmpeg: FFmpeg | null = null;
 

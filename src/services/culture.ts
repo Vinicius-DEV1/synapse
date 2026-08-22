@@ -80,7 +80,7 @@ export const CultureService = {
           await window.api.culture.updateItem(item.id, { ...item, last_sync_at: new Date().toISOString() });
         } 
         else if (item.api_source === 'jikan') {
-          // Apenas primeira página para sync leve
+          // Fetch first page only for lightweight sync
           const res = await fetch(`https://api.jikan.moe/v4/anime/${item.api_id}/episodes`);
           if (!res.ok) continue;
           const data = await res.json();

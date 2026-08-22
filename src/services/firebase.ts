@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Puxando as credenciais do arquivo .env (O Vite exige o prefixo VITE_)
+// Firebase credentials loaded from Vite environment variables (VITE_ prefix)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -17,7 +17,7 @@ const app = initializeApp(firebaseConfig);
 
 import { platform } from "./platform";
 
-// Instâncias dos serviços (Exportadas para uso em outros módulos)
+// Firebase service instances exported for application use
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: platform.platform === 'desktop'
 });

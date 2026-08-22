@@ -13,7 +13,7 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
     
     const docRef = doc(db, 'config', 'auth_validator');
     
-    // Timeout de 5 segundos para não travar o login infinitamente
+    // 5-second timeout to avoid blocking login indefinitely
     const docSnap = await Promise.race([
       getDoc(docRef),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
@@ -58,7 +58,7 @@ export async function getSecurityLock(): Promise<SecurityLock> {
   let failedAttempts = 0;
   let lastFailedAt = 0;
 
-  // 1. Tentar ler da nuvem (mais forte)
+  // 1. Attempt reading from cloud
   if (navigator.onLine) {
     try {
       const docRef = doc(db, 'config', 'security_lock');
@@ -76,16 +76,16 @@ export async function getSecurityLock(): Promise<SecurityLock> {
         }
       }
     } catch {
-      // Ignora erro de leitura
+      // Ignore read errors
     }
   }
 
-  // 2. Tentar ler do local (fallback / tauri)
+  // 2. Fallback: Read from local storage
   try {
     const localLockStr = localStorage.getItem('caderno_security_lock');
     if (localLockStr) {
       const localLock = JSON.parse(localLockStr);
-      // Se o local for mais recente ou mais restritivo, usa ele
+      // If local is more recent, use local values
       if (localLock.lastFailedAt > lastFailedAt || localLock.failedAttempts > failedAttempts) {
         failedAttempts = localLock.failedAttempts;
         lastFailedAt = localLock.lastFailedAt;
@@ -103,7 +103,7 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
     lastFailedAt: Date.now()
   };
 
-  // Salvar Localmente
+  // Persist locally
   localStorage.setItem('caderno_security_lock', JSON.stringify(newLock));
 
   // Salvar na Nuvem

@@ -1,14 +1,14 @@
 import { getValidAccessToken, downloadFromDrive } from '../drive';
 
 /**
- * Baixa as legendas (VTT) como texto.
- * Se masterKey for fornecida, tenta descriptografar o conteúdo (legendas são criptografadas no upload).
+ * Fetches subtitles (VTT) as text.
+ * If masterKey is provided, decrypts content (subtitles encrypted during upload).
  */
 export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePath?: string, masterKey?: CryptoKey): Promise<string | null> {
   if (!driveSubtitleId && !localSubtitlePath) return null;
 
   try {
-    // 1. Tenta carregar do arquivo local primeiro (mais rápido e offline)
+    // 1. Attempt loading from local file first (faster and offline-capable)
     if (localSubtitlePath) {
       try {
         if (window.api?.video?.readLocalFile) {
@@ -26,7 +26,7 @@ export async function getSubtitleText(driveSubtitleId?: string, localSubtitlePat
       }
     }
 
-    // 2. Fallback: Baixa do Google Drive (com descriptografia caso necessário)
+    // 2. Fallback: Download from Google Drive (with decryption if needed)
     if (driveSubtitleId) {
       const token = await getValidAccessToken();
       if (!token) return null;

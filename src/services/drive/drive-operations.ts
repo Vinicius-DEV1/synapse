@@ -7,7 +7,7 @@ import type { DriveFile } from './drive-types';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 
 /**
- * Decripta o ID do arquivo caso ele venha criptografado pelo Desktop (Rust)
+ * Decrypts file ID if encrypted by Desktop (Rust)
  */
 export async function decryptDriveFileId(fileId: string): Promise<string> {
   if (fileId && fileId.includes(':') && fileId.split(':').length === 3) {
@@ -22,7 +22,7 @@ export async function decryptDriveFileId(fileId: string): Promise<string> {
            return decrypted;
          }
        } catch (e) {
-         // ignore e tenta a proxima chave
+         // Ignore and try next key
        }
     }
   }
@@ -30,7 +30,7 @@ export async function decryptDriveFileId(fileId: string): Promise<string> {
 }
 
 /**
- * Faz upload do buffer (já criptografado) para o Google Drive
+ * Uploads encrypted buffer to Google Drive
  */
 export async function uploadToDrive(
   accessToken: string, 
@@ -51,7 +51,7 @@ export async function uploadToDrive(
     parents: [folderId]
   };
 
-  // Passo 1: Criar o arquivo vazio (apenas metadados)
+  // Step 1: Create file metadata
   const metaRes = await resilientFetch(DRIVE_API_URL, {
     method: 'POST',
     headers: {

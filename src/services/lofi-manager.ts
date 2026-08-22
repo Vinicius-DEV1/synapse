@@ -17,8 +17,8 @@ export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoK
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  // No Web, o <audio> com URL do Drive + access_token costuma falhar por CORS/Range.
-  // Baixamos o ArrayBuffer e descriptografamos (se necessário).
+  // In Web, <audio> with Drive URL + access_token often fails due to CORS/Range requests.
+  // We download the ArrayBuffer and decrypt in memory (if required).
   const buffer = await downloadFromDrive(token, driveFileId);
   let finalBuffer = buffer;
   
@@ -161,7 +161,7 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
 }
 
 export async function deleteLofiCompletely(lofi: LofiItem): Promise<void> {
-  // Soft-delete: envia o item para a Lixeira definindo deleted_at sem apagar os arquivos
+  // Soft-delete: moves item to trash by setting deleted_at without deleting files
   if (window.api?.sync) {
     await window.api.sync.upsertRow(LOFI_TABLE, {
       ...lofi,

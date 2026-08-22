@@ -48,7 +48,7 @@ export async function promptGemini(
   const settings = getSettings();
   const modelId = customModelId || settings.geminiModel;
 
-  // Se não tem modelo configurado ou é um dos defaults antigos, exigir que o usuário configure
+  // Require configuration if model is unset or points to legacy defaults
   if (!modelId || modelId.includes('1.5-pro') || modelId.includes('2.5-pro') || modelId.includes('2.5-flash')) {
     throw new Error('Por favor, acesse as Configurações > Inteligência Artificial, carregue os modelos e escolha um modelo atual para usar.');
   }
@@ -136,7 +136,7 @@ export async function promptGemini(
     } catch (error: any) {
       if (error.message === 'RATE_LIMIT') {
         console.warn(`Chave Gemini esgotada (429). Desativando por 23h e rotacionando...`);
-        // Atualiza a chave no banco
+        // Update key in database
         const allKeys = await getGeminiKeys();
         const target = allKeys.find(k => k.id === currentKeyEntry.id);
         if (target) {

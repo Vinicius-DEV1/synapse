@@ -5,7 +5,7 @@ import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, star
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 
-/** Tamanho do batch de decriptação paralela */
+/** Parallel decryption batch size */
 const DECRYPT_BATCH_SIZE = 20;
 
 export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
@@ -27,8 +27,8 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   let Y: typeof import('yjs') | null = null;
   let yjsUtils: { base64ToUint8Array: (b64: string) => Uint8Array; getYDocStateAsBase64: (doc: any) => string } | null = null;
 
-  // Manifest: ler UMA VEZ para saber quais tabelas têm mudanças desde lastPull.
-  // Se não existir ou falhar, queryamos todas as tabelas (fallback seguro).
+  // Manifest: read once to determine which tables changed since lastPull.
+  // If missing or failed, query all tables as safe fallback.
   let manifest: Record<string, string> | null = null;
   if (lastPull > 0) {
     try {
@@ -53,12 +53,12 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
     for (const table of tables) {
       try {
         // Manifest optimization: pular tabelas sem mudanças desde lastPull.
-        // Se a tabela ESTÁ no manifest e seu timestamp <= lastPull, skip.
-        // Se a tabela NÃO está no manifest, query normalmente (segurança: pode ter sido
-        // pushada por código antigo sem manifest, ou por outro device).
-        // Se a tabela ESTÁ no manifest e seu timestamp <= lastPull, skip.
-        // Se a tabela NÃO está no manifest, query normalmente (segurança: pode ter sido
-        // pushada por código antigo sem manifest, ou por outro device).
+        // If table is in manifest and timestamp <= lastPull, skip.
+        // If table is not in manifest, query normally (safe fallback
+        // for legacy clients or other devices).
+        // If table is in manifest and timestamp <= lastPull, skip.
+        // If table is not in manifest, query normally (safe fallback
+        // for legacy clients or other devices).
         if (manifest) {
           const tableTimestamp = manifest[table];
           if (tableTimestamp) {

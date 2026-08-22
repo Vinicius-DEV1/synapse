@@ -2,7 +2,7 @@ import { promptGemini } from './client';
 import { logAIApiCall } from './logger';
 import { getAiPrompt } from '../db-web';
 
-// Para avaliar flashcards do Anki
+// Evaluates Anki flashcard answers
 export async function promptGeminiForAnkiEvaluation(
   front: string,
   back: string,
@@ -94,7 +94,7 @@ export async function promptGeminiForCardSuggestions(
       const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       let parsed = JSON.parse(cleanJson);
       
-      // POST-PROCESSAMENTO: Trava de segurança extra para remover tags redundantes
+      // POST-PROCESSING: Extra safety guard to strip redundant tags
       if (Array.isArray(parsed) && contextData) {
         const rootDeckName = (contextData.deck_name || '').toLowerCase();
         const subdecksMap = new Map();
@@ -203,7 +203,7 @@ export async function promptGeminiForChatAnalysis(
       
       const parsed = JSON.parse(cleanedText);
       
-      // POST-PROCESSAMENTO PROGRAMÁTICO (Trava de segurança extra para tags)
+      // PROGRAMMATIC POST-PROCESSING: Extra safety guard for tags
       if (typeof parsed === 'object' && parsed.actions && Array.isArray(parsed.actions) && contextData) {
         const rootDeckName = (contextData.deck_name || '').toLowerCase();
         const subdecksMap = new Map();

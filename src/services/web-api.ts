@@ -18,10 +18,10 @@ import { webTrashApi } from '../api/web/trash';
 import { webDiagramsApi } from '../api/web/diagrams';
 import { webNotificationsApi } from '../api/web/notifications';
 
-// Função auxiliar para gerar IDs
+// Helper function for ID generation
 const generateId = () => crypto.randomUUID();
 
-// Variável para guardar a chave mestra no escopo da API Web
+// Master key reference stored in Web API scope
 let _masterKey: CryptoKey | null = null;
 
 export const createWebApiMock = async () => {
@@ -51,7 +51,7 @@ export const createWebApiMock = async () => {
   }) as typeof db.delete;
 
   return {
-    // FUNÇÃO EXCLUSIVA DA WEB PARA INJETAR A CHAVE MESTRA
+    // WEB-SPECIFIC HELPER TO INJECT MASTER KEY
     _setMasterKey: (key: CryptoKey | null) => { _masterKey = key; },
     onSyncTrigger: (callback: () => void) => {
       syncCallbacks.push(callback);

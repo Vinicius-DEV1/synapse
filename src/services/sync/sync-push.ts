@@ -9,10 +9,10 @@ import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 
-/** Tamanho máximo do batch do Firestore é 500; usamos 400 como margem de segurança */
+/** Max Firestore batch size is 500; 400 is used as safety threshold */
 const BATCH_SIZE = 400;
 
-/** Limite de tamanho de payload individual (Firestore doc limit ~1MB) */
+/** Individual document payload limit (Firestore doc limit ~1MB) */
 const MAX_PAYLOAD_BYTES = 900_000;
 
 interface PreparedDoc {
@@ -27,7 +27,7 @@ interface PreparedDoc {
 
 /**
  * Prepara (serializa + encripta) uma lista de rows em paralelo.
- * Retorna as que estão prontas e emite warnings para as que foram puladas.
+ * Returns ready keys and logs warnings for skipped keys.
  */
 async function prepareRowsForPush(
   rows: any[],
@@ -99,7 +99,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
-  let highestSuccessTime = lastPush; // #6: só avança o timestamp com docs que tiveram SUCESSO
+  let highestSuccessTime = lastPush; // Only advances timestamp for successful documents
   let pushedCount = 0;
   const errors: string[] = [];
   // Manifest: rastreia o timestamp mais alto de cada tabela que teve push bem-sucedido
@@ -136,13 +136,13 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         // #2: Encriptar TODOS os docs da tabela em paralelo (Promise.all)
         const { prepared, skippedLarge } = await prepareRowsForPush(rowsToPush, key, table);
 
-        // #9: Notificação visível para docs pulados por tamanho
+        // Notification for documents skipped due to payload size limits
         for (const msg of skippedLarge) {
           console.warn(msg);
           if (typeof window !== 'undefined' && window.api?.log) {
             window.api.log(msg);
           }
-          // Dispatch evento para UI mostrar toast/banner ao usuário
+          // Dispatch event for UI toast notification
           window.dispatchEvent(new CustomEvent('caderno-sync-warning', { 
             detail: { message: msg } 
           }));

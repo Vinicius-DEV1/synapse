@@ -1,19 +1,19 @@
 import { hexToArrayBuffer, arrayBufferToHex, uint8ArrayToBase64, base64ToUint8Array } from '../utils/binary';
 
 /**
- * Módulo de Criptografia de Ponta a Ponta (E2EE)
- * Utiliza Web Crypto API padrão para garantir máxima segurança.
+ * End-to-End Encryption (E2EE) Module
+ * Utilizes standard Web Crypto API for cryptographic operations.
  */
 
-// Parâmetros fixos para a derivação da chave e encriptação
+// Cryptographic parameters for key derivation and encryption
 // NOTA: O salt na Web ('caderno-e2ee-salt-v1') é diferente do salt no Rust ('caderno-keychain-salt').
-// Isso é mantido assim por razões de retrocompatibilidade, já que a Web e o Rust
-// criptografam dados em domínios isolados (Nuvem vs SQLite local).
+// Maintained for backward compatibility between Web and Rust cryptographic domains
+// (Cloud payloads vs local SQLite databases).
 const SALT = new TextEncoder().encode("caderno-e2ee-salt-v1");
 const ITERATIONS = 600000;
 const HASH_ALGORITHM = 'SHA-256';
 const ENCRYPTION_ALGORITHM = 'AES-GCM';
-const IV_LENGTH = 12; // Recomendado para AES-GCM
+const IV_LENGTH = 12; // Standard AES-GCM IV length
 
 /**
  * Deriva uma Chave Mestra (CryptoKey) a partir da senha do usuário.

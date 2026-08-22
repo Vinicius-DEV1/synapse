@@ -10,7 +10,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   const masterKey = moduleKeys['library'];
   if (!masterKey) return; 
   
-  // Executa apenas se estiver no Desktop (com acesso ao sistema de arquivos local)
+  // Runs only in Desktop environment (with local filesystem access)
   if (!platform.canReadLocalFilesystem) {
     return;
   }
@@ -48,7 +48,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           }
 
           const view = new Uint8Array(buffer);
-          // Verificar se já está no formato ENC1 ou já criptografado
+          // Check if already in ENC1 format or already encrypted
           const isEnc1 = view.length > 4 && view[0] === 0x45 && view[1] === 0x4E && view[2] === 0x43 && view[3] === 0x31;
           
           let uploadPayload: ArrayBuffer;

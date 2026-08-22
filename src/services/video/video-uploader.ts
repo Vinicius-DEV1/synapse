@@ -5,7 +5,7 @@ import type { UploadStats } from './video-types';
 
 const VIDEO_TABLE = 'videos';
 
-// `window.api.video` (ICadernoAPI, src/api/types.ts) ainda não declara esses métodos
+// `window.api.video` extended helper
 // nativos do desktop (implementados em src/api/tauri/multimedia.ts).
 type DesktopVideoApi = NonNullable<typeof window.api.video> & {
   cancelConversion: () => Promise<void>;
@@ -19,7 +19,7 @@ type DesktopVideoApi = NonNullable<typeof window.api.video> & {
 };
 
 // A camada nativa também expõe um barramento de eventos Tauri (`video_upload_progress`)
-// via `window.api.events`, ainda não declarado em `ICadernoAPI`.
+// via window.api.events listener
 declare module '../../api/types' {
   interface ICadernoAPI {
     events?: {

@@ -140,7 +140,7 @@ function checkBurnRate(type: FirebaseOpType, count: number) {
   if (type === 'read') burnAccumulator.reads += count;
   if (type === 'write') burnAccumulator.writes += count;
 
-  // Aumento do limite para 2000 writes e 5000 reads para permitir sync de offline longo
+  // Increased threshold to 2000 writes and 5000 reads for long offline sync resilience
   if (burnAccumulator.writes > 2000 || burnAccumulator.reads > 5000) {
     console.error(`🚨 FIREBASE BURN RATE DETECTED! ${burnAccumulator.writes} writes, ${burnAccumulator.reads} reads in 1 min!`);
     if (typeof window !== 'undefined') {

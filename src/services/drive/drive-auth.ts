@@ -13,9 +13,9 @@ export const resilientFetch = async (input: RequestInfo | URL, init?: RequestIni
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
 export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || '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';
 
-// A interface ICadernoAPI (src/api/types.ts) declara `drive` apenas com openExternalUrl,
+// Extended drive auth helper for OAuth token storage
 // mas tauriDriveApi (src/api/tauri/drive.ts) também implementa getCredentials/saveCredentials
-// (usado como fallback de compatibilidade para credenciais salvas em arquivo local).
+// (fallback compatibility for locally stored credentials).
 type DriveApiWithCredentials = {
   openExternalUrl: (url: string) => Promise<void>;
   getCredentials?: () => Promise<{ token: DriveToken | null } | null>;
@@ -55,7 +55,7 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 /**
- * Gera a URL de login do Google (OAuth2 com PKCE)
+ * Generates Google OAuth2 login URL with PKCE
  */
 export function getDriveAuthUrl(codeChallenge: string): string {
   const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
