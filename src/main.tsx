@@ -24,8 +24,8 @@ async function init() {
         get(target, prop) {
           const val = target[prop];
           if (typeof val === 'function') {
-            // Funções internas (_setMasterKey, _setSyncRunning) e listeners (onSyncTrigger, onLock)
-            // NÃO devem ser envolvidas em async — precisam retornar o valor original sincronamente.
+            // Internal functions (_setMasterKey, _setSyncRunning) and listeners (onSyncTrigger, onLock)
+            // must NOT be wrapped in async — they need to return their original value synchronously.
             if (typeof prop === 'string' && (prop.startsWith('_') || prop.startsWith('on'))) {
               return val;
             }
@@ -36,21 +36,21 @@ async function init() {
                   if (syncTimeout) clearTimeout(syncTimeout);
                   syncTimeout = setTimeout(() => {
                     window.dispatchEvent(new Event('app-sync-trigger'));
-                  }, 500); // Debounce de 500ms
+                  }, 500); // 500ms debounce
                 }
                 return result;
               } catch (error: any) {
-                console.error(`[API Proxy Error] Falha ao executar '${String(prop)}':`, error);
+                console.error(`[API Proxy Error] Failed executing '${String(prop)}':`, error);
                 
-                // Dispara o evento global para o ToastProvider capturar
+                // Dispatch global event for ToastProvider to capture
                 const errorEvent = new CustomEvent('app-api-error', { 
                   detail: { 
-                    message: `Erro na operação '${String(prop)}': ${error?.message || 'Falha desconhecida'}`
+                    message: `Error in operation '${String(prop)}': ${error?.message || 'Unknown error'}`
                   } 
                 });
                 window.dispatchEvent(errorEvent);
                 
-                // Repassa o erro para o chamador original lidar (ex: parar estado de loading)
+                // Re-throw error for original caller to handle (e.g. stop loading state)
                 throw error;
               }
             };
@@ -70,7 +70,7 @@ async function init() {
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
-      // Força a atualização do Service Worker em cada reload (importante para dev)
+      // Force Service Worker update on each reload (important for dev)
       reg.update();
       console.log('Service Worker registered successfully');
     } catch (err) {

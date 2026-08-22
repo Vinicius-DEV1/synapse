@@ -117,8 +117,8 @@ function AppContent() {
     }
   }, [syncStatus, dispatch]);
 
-  // Expõe as moduleKeys no window para o handlePaste do TipTap acessar
-  // (handlers do ProseMirror não têm acesso ao contexto React)
+  // Expose moduleKeys on window for TipTap handlePaste access
+  // (ProseMirror handlers cannot access React context)
   useEffect(() => {
     window.__cadernoModuleKeys = state.moduleKeys;
   }, [state.moduleKeys]);
