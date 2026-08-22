@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, CloudOff, Cloud } from 'lucide-react';
 import { useTasks } from '../../store/TaskContext';
-import { downloadYouTubeAndSync } from '../../services/video-manager';
+import { downloadYouTubeAndSync } from '../../services/video';
 import { Portal } from '../ui/Portal';
 import { YouTubeSubtitleSelector, type SubtitleOption } from './ui/YouTubeSubtitleSelector';
 import { triggerToast } from '../ui/ToastContext';

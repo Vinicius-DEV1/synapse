@@ -74,7 +74,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
       if (activeSubtitleIndex > 0 && subtitleTracks[activeSubtitleIndex]) {
         try {
           const track = subtitleTracks[activeSubtitleIndex];
-          const { getSubtitleText } = await import('../../services/video-manager');
+          const { getSubtitleText } = await import('../../services/video');
           const { getCultureKey } = await import('../../store/useStore');
           const subText = (await getSubtitleText(track.drive_id, track.local_path, getCultureKey())) || '';
           

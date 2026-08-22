@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { searchCultureMedia, type CultureSearchResult } from '../../../services/culture-apis';
+import { searchCultureMedia, type CultureSearchResult } from '../../../services/culture/culture-apis';
 
 export function useCultureMediaSearch(type: string, initialQuery = '', isEdit = false) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);

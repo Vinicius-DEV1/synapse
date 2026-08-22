@@ -1,4 +1,4 @@
-import type { CultureSearchResult } from '../../../services/culture-apis';
+import type { CultureSearchResult } from '../../../services/culture/culture-apis';
 
 interface CultureSearchResultsListProps {
   searchResults: CultureSearchResult[];

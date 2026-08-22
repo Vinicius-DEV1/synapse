@@ -12,7 +12,7 @@ vi.mock('../../../services/culture', () => ({
   },
 }));
 
-vi.mock('../../../services/culture-episodes-sync', () => ({
+vi.mock('../../../services/culture/culture-episodes-sync', () => ({
   syncTvMazeEpisodes: vi.fn(),
   syncJikanEpisodes: vi.fn(),
 }));

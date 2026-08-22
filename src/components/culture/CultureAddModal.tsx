@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Search, Loader2, Save, Trash2 } from 'lucide-react';
 import type { CultureItem, CultureType } from '../../types';
 import { CultureService } from '../../services/culture';
-import type { CultureSearchResult } from '../../services/culture-apis';
+import type { CultureSearchResult } from '../../services/culture/culture-apis';
 import { Portal } from '../ui/Portal';
 import { useCultureMediaSearch } from './hooks/useCultureMediaSearch';
 import { CultureSearchResultsList } from './ui/CultureSearchResultsList';

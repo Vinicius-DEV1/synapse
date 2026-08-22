@@ -15,7 +15,7 @@ vi.mock('../../store/TaskContext', () => ({
   })),
 }));
 
-vi.mock('../../services/video-manager', () => ({
+vi.mock('../../services/video', () => ({
   downloadYouTubeAndSync: vi.fn(),
 }));
 

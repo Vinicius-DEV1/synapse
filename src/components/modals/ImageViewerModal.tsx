@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
-import getCroppedImg from '../../utils/cropImage';
+import getCroppedImg from '../../utils/crop-image';
 import { X, Save, ZoomIn, ZoomOut, Scissors } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 
