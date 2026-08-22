@@ -4,8 +4,8 @@
  * Descreve os tipos de "grupo lado a lado" do editor: colunas (`columnGroup`) e
  * cards de link (`linkGroup`).
  *
- * Tudo que o resto do módulo precisa saber sobre um grupo está aqui — como
- * embrulhar conteúdo num filho, como desembrulhar, quantos filhos cabem e onde
+ * Group specifications defining wrapping, unwrapping, capacity,
+ * and width attributes for group layouts.
  * fica a largura. Para acrescentar um tipo novo, basta somar um spec à lista.
  */
 

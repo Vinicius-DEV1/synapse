@@ -55,13 +55,13 @@ export function getChildPositions(groupPos: number, groupNode: PMNode): number[]
   return positions;
 }
 
-/** Retorna o conteúdo achatado de todos os filhos do grupo. */
+/** Returns flattened content of all group child nodes. */
 export function flattenGroup(spec: GroupSpec, groupNode: PMNode): PMNode[] {
   return getChildren(groupNode).flatMap((child) => spec.childContent(child));
 }
 
 /**
- * Reescreve a faixa de um grupo com os filhos restantes, desfazendo o grupo se restar <= 1 filho.
+ * Rewrites group range with remaining children, dissolving group if <= 1 child remains.
  */
 export function writeGroupRemainderInTr(
   tr: Transaction,
@@ -96,7 +96,7 @@ export function nodeRangeOf(source: GroupContentSource): { from: number; to: num
 }
 
 /**
- * Remove um filho de um grupo reescrevendo o grupo para manter o schema íntegro.
+ * Removes child from group and rewrites container to maintain schema integrity.
  */
 export function removeGroupChildInTr(tr: Transaction, childPos: number): boolean {
   const found = findChildIndex(tr.doc, childPos);

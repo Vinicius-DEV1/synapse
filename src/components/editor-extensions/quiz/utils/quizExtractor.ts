@@ -14,7 +14,7 @@ export function extractBatteriesFromContent(
 
   const batteries: ReferencedBattery[] = [];
 
-  // Caso 1: Conteúdo em JSON (TipTap Node Structure)
+  // Case 1: JSON TipTap Node Structure
   if (typeof content === 'object') {
     const traverse = (node: any, indexRef: { count: number }) => {
       if (node?.type === 'questionBlock' && node.attrs) {
@@ -37,7 +37,7 @@ export function extractBatteriesFromContent(
     return batteries;
   }
 
-  // Caso 2: Se for string, verificar se é JSON TipTap serializado ou HTML
+  // Case 2: String payload (serialized TipTap JSON or HTML)
   if (typeof content === 'string') {
     const trimmed = content.trim();
     if (trimmed.startsWith('{') && trimmed.includes('"type":"questionBlock"')) {
@@ -45,7 +45,7 @@ export function extractBatteriesFromContent(
         const parsed = JSON.parse(trimmed);
         return extractBatteriesFromContent(pageId, pageTitle, parsed);
       } catch {
-        // Fallback para parser DOM abaixo
+        // Fallback to DOM parser below
       }
     }
 

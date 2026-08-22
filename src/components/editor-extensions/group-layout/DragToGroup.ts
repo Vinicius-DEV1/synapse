@@ -2,7 +2,7 @@
  * Extensão DragToGroup
  *
  * Gerencia o agrupamento de blocos lado a lado via drag and drop.
- * Permite criar grupos (como columnGroup ou linkGroup) ao soltar um bloco nas
+ * Enables group creation (such as columnGroup or linkGroup) when dropping a block onto
  * zonas laterais de outro bloco, ou integrá-lo a um grupo existente.
  */
 
@@ -33,7 +33,7 @@ type DraggingView = EditorView & { dragging: DraggingState | null };
 const draggable = (view: EditorView) => view as DraggingView;
 
 /**
- * Retorna a seleção representativa do nó em arraste (node selection ou seleção ativa).
+ * Returns representative selection of dragged node (node selection or active selection).
  */
 function draggedSelection(view: EditorView): Selection {
   return draggable(view).dragging?.node ?? view.state.selection;
@@ -55,7 +55,7 @@ function dragStateFor(view: EditorView): DragState {
   return state;
 }
 
-/** Distância mínima em pixels para recalcular a zona de drop no dragover. */
+/** Minimum distance in pixels to recalculate drop zone on dragover. */
 const MIN_MOVE_PX = 3;
 
 /** Proporção da faixa central do bloco destinada à movimentação padrão (não agrupamento). */

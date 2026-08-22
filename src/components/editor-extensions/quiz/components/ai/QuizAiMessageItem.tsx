@@ -49,7 +49,7 @@ export function QuizAiMessageItem({
         {/* Sugestões de Ação da IA */}
         {actions.length > 0 && (
           <div className="mt-3 pt-3 border-t border-purple-500/20 space-y-3">
-            {/* Header das Ações com Botões em Lote */}
+            {/* Action Header with Batch Controls */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">

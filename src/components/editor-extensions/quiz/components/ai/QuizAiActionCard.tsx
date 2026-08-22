@@ -137,7 +137,7 @@ export function QuizAiActionCard({
         </div>
       </div>
 
-      {/* CONTEÚDO: CRIAR NOVA QUESTÃO */}
+      {/* CONTENT: CREATE NEW QUESTION */}
       {isCreate && (
         <div className="space-y-3 pt-1">
           {/* Enunciado */}
@@ -295,7 +295,7 @@ export function QuizAiActionCard({
         </div>
       )}
 
-      {/* CONTEÚDO: EXCLUIR QUESTÃO */}
+      {/* CONTENT: DELETE QUESTION */}
       {isDelete && (
         <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl space-y-1.5 text-xs">
           <span className="text-[10px] font-bold text-red-300 uppercase block">

@@ -229,14 +229,14 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
             onKeyDown={(e) => {
               e.stopPropagation();
 
-              // Alt+G ou Ctrl+G para alternar (abrir/fechar) o Gabarito
+              // Alt+G or Ctrl+G toggles answer explanation/key
               if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
                 e.preventDefault();
                 onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true);
                 return;
               }
 
-              // Enter submete a resposta para avaliação (Shift+Enter insere quebra de linha)
+              // Enter submits response for evaluation (Shift+Enter inserts newline)
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 if (
@@ -340,7 +340,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
       {/* Painel do Gabarito e Explicação Expandido */}
       {q.showExplanation && (
         <div className="p-4 bg-purple-950/30 border border-purple-500/20 rounded-xl text-xs text-purple-100 leading-relaxed space-y-3 shadow-inner">
-          {/* Resposta Esperada para Questão Aberta */}
+          {/* Expected Answer for Open-Ended Question */}
           {isOpen && q.expectedAnswer && (
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
