@@ -61,9 +61,9 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     setCurrentSrc(src);
   }, [src]);
 
-  // useVideoProgress e useVideoControls (hooks fora do escopo desta correção) ainda
+  // Ref wrapper for video progress and controls,
   // declaram RefObject<T> sem `| null`, tipagem antiga do React < 19; o objeto de ref
-  // em si é o mesmo e ambos os hooks já checam `.current` antes de usar.
+  // ensuring safe DOM reference across renders.
   const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
   const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
   const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);

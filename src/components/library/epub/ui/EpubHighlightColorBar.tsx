@@ -79,7 +79,7 @@ export function EpubHighlightColorBar({
             </button>
           )}
 
-          {/* Nota (só para novos grifos) */}
+          {/* Note (only for new highlights) */}
           {!selection.existingHighlightId && (
             <button
               onClick={onOpenNote}

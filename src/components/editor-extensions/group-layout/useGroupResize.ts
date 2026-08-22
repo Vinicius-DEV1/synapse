@@ -3,7 +3,7 @@
  *
  * Redimensionamento das colunas de um grupo.
  *
- * Dois cuidados sustentam o resto do arquivo:
+ * Two core safeguards support this module:
  *
  *  • As alças são posicionadas medindo o vão real entre as colunas no DOM.
  *    Derivar a posição das larguras em % ignora o `gap` e erra o lugar.

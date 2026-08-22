@@ -396,7 +396,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           )}
         </div>
 
-        {/* Barra de Busca Flutuante */}
+        {/* Floating Search Bar */}
         {showSearch && (
           <div className="absolute top-20 right-4 w-80 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
              <PdfSearchBar 

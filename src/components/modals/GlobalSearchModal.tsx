@@ -20,7 +20,7 @@ export default function GlobalSearchModal() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Mapa de ancestrais (breadcrumbs) para cada página
+  // Ancestor breadcrumbs map per page
   const pageAncestorsMap = useMemo(() => {
     const map = new Map<string, HierarchyNode[]>();
     for (const p of state.pages) {
@@ -90,7 +90,7 @@ export default function GlobalSearchModal() {
           }));
       }
 
-      // Páginas recentes ordenadas por updated_at
+      // Recent pages sorted by updated_at
       const sortedByDate = [...state.pages].sort((a, b) => {
         const dateA = new Date(a.updated_at || 0).getTime();
         const dateB = new Date(b.updated_at || 0).getTime();

@@ -31,7 +31,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     return state.pages.find((p) => p.id === pageId) || null;
   }, [state.pages, pageId]);
 
-  // Inicializa o alvo selecionado com o pai atual da página
+  // Initialize selected target with current page parent
   useEffect(() => {
     if (isOpen && sourcePage) {
       setSelectedTargetId(sourcePage.parent_id);
@@ -51,7 +51,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     }
   }, [isOpen, sourcePage, state.pages]);
 
-  // Função auxiliar para obter breadcrumb completo
+  // Helper to retrieve full breadcrumb path
   const getBreadcrumb = (targetId: string | null): string => {
     if (!targetId) return 'Raiz (Início)';
     return getPageBreadcrumbString(state.pages, targetId, {

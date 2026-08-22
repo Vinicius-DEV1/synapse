@@ -1,5 +1,5 @@
 /**
- * Utilitários matemáticos e de balanceamento de larguras para grupos e colunas.
+ * Width calculation and balancing utilities for groups and columns.
  * Funções puras sem efeitos colaterais.
  */
 
@@ -9,7 +9,7 @@ import type { GroupSpec } from './groupSpecs';
 export const round1 = (value: number): number => Math.round(value * 10) / 10;
 
 /**
- * Lê a largura atribuída a um filho de grupo, usando o default do spec se ausente.
+ * Reads assigned width of group child, using spec default if omitted.
  */
 export function readWidth(spec: GroupSpec, child: PMNode): number {
   const raw = Number(child.attrs[spec.widthAttr]);

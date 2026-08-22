@@ -51,8 +51,8 @@ export default function LibraryGrid({
 
   const getProgress = (book: LibraryBook): number => {
     if (!book.total_pages || book.total_pages === 0) return 0;
-    // Para PDF, last_read_page é numérico. Para EPUB, é uma string CFI.
-    // Usamos current_page (numérico) como fallback para EPUBs.
+    // For PDF, last_read_page is numeric. For EPUB, it is a CFI string.
+    // Use current_page (numeric) as fallback for EPUBs.
     const page = typeof book.last_read_page === 'number' 
       ? book.last_read_page 
       : (book as any).current_page || 0;

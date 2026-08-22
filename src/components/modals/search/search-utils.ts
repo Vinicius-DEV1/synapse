@@ -14,12 +14,12 @@ export interface SearchResultItem {
   score: number;
 }
 
-/** Escapa caracteres especiais de regex para uso seguro em new RegExp() */
+/** Escapes special regex characters for safe use in new RegExp() */
 export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Remove tags HTML e normaliza espaços para busca em texto puro */
+/** Strips HTML tags and normalizes whitespace for plain text search */
 export function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 }

@@ -75,7 +75,7 @@ export function useNotificationScheduler() {
         const eventTime = new Date(event.start_date).getTime();
         if (isNaN(eventTime)) continue;
 
-        // Se reminders for string JSON ou array
+        // Handle reminders as JSON string or array
         let remArray: number[] = [];
         if (Array.isArray(event.reminders)) {
           remArray = event.reminders;
@@ -100,7 +100,7 @@ export function useNotificationScheduler() {
           if (typeof rem !== 'number' || notifiedArray.includes(rem)) continue;
 
           const reminderTime = eventTime - rem * 60 * 1000;
-          // Se o momento de lembrete já chegou e o evento ainda não aconteceu (ou faz menos de 24h)
+          // If reminder trigger time has arrived and event is pending or within 24h
           if (now >= reminderTime && now <= eventTime + 24 * 60 * 60 * 1000) {
             const offsetLabel = formatOffsetLabel(rem);
             const formattedDate = formatTimeStr(event.start_date);

@@ -5,8 +5,8 @@ import { Portal } from '../ui/Portal';
 import { formatBytes, formatHumanDuration } from '../../utils/format';
 
 interface VideoInfoModalProps {
-  // `local_subtitle_path` ainda não está declarado em VideoItem (src/types/video.ts),
-  // mas já é usado como campo opcional para legendas avulsas baixadas do YouTube.
+  // `local_subtitle_path` extended optional field on VideoItem,
+  // used for standalone subtitles downloaded from YouTube.
   video: VideoItem & { local_subtitle_path?: string };
   onClose: () => void;
 }

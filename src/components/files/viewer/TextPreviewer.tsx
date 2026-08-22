@@ -49,7 +49,7 @@ const mdRenderers = {
           </div>
         );
       } catch {
-        // Fallback se a linguagem não for suportada pelo highlight.js
+        // Fallback if language syntax is unsupported by highlight.js
       }
     }
 

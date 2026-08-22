@@ -106,7 +106,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     };
   }, [item, state.moduleKeys]);
 
-  // Navegação suave por teclado (Setas cima/baixo, PageUp/PageDown)
+  // Smooth keyboard navigation (Arrow keys, PageUp/PageDown)
   useEffect(() => {
     if (!isText || !textContent) return;
 
@@ -239,7 +239,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         </div>
       </div>
 
-      {/* Barra de Progresso de Leitura com Marcadores Visuais */}
+      {/* Reading Progress Bar with Visual Markers */}
       {isText && (
         <div className="w-full bg-white/5 h-1.5 relative z-20">
           <div 

@@ -32,10 +32,10 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
         } else {
           const fileItem = entry.item as FileItem;
 
-          // Remove do BD (e exclui localmente pelo rust backend)
+          // Remove from database and delete local file via backend
           await window.api.files.delete(fileItem.id);
           
-          // Exclui do Drive se solicitado
+          // Delete from Google Drive if requested
           if (!keepInDrive && fileItem.drive_file_id) {
             try {
               const token = await getValidAccessToken();

@@ -5,8 +5,8 @@ import type { Tab } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
 
-// A UI ainda navega para o módulo 'settings' como uma aba, embora o tipo
-// `Tab['module']` (definido em src/types/store.ts) ainda não inclua esse
+// UI navigates to 'settings' module as a tab,
+// extending Tab['module'] support.
 // valor. Ampliamos o tipo aqui apenas para refletir o valor real em runtime.
 type ModuleId = Tab['module'] | 'settings';
 
