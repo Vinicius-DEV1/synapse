@@ -3,16 +3,6 @@ import { X, Cloud, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { getDriveAuthUrl, exchangeCodeForToken, saveDriveCredentials, getDriveCredentials, generateCodeVerifier, generateCodeChallenge } from '../../services/drive';
 import { Portal } from '../ui/Portal';
 
-// Native layer (Tauri) exposes window.api.drive to open external URLs,
-// used as helper for OAuth redirect flow.
-declare module '../../api/types' {
-  interface ICadernoAPI {
-    drive?: {
-      openExternalUrl: (url: string) => Promise<void>;
-    };
-  }
-}
-
 interface DriveAuthModalProps {
   onClose: () => void;
   onSuccess: () => void;

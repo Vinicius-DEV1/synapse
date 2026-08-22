@@ -4,16 +4,6 @@ import type { UploadStats, UploadOptions, DesktopVideoApi } from './video-types'
 
 const VIDEO_TABLE = 'videos';
 
-// Native layer also exposes Tauri event bus (`video_upload_progress`)
-// via window.api.events listener
-declare module '../../api/types' {
-  interface ICadernoAPI {
-    events?: {
-      listen: (channel: string, callback: (event: { payload: any }) => void) => Promise<() => void>;
-    };
-  }
-}
-
 /**
  * Helper to upload a local file to Drive via fetch or Rust bridge
  */

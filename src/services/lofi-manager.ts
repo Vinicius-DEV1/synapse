@@ -1,16 +1,6 @@
 import { getValidAccessToken, uploadToDrive, downloadFromDrive, deleteFromDrive } from './drive';
 import type { LofiItem } from '../types';
 
-declare module '../api/types' {
-  interface ICadernoAPI {
-    lofi?: {
-      saveLocal: (name: string, data: ArrayBuffer) => Promise<string>;
-      getLocalPath: (name: string) => Promise<string | null>;
-      deleteLocal: (name: string) => Promise<void>;
-    };
-  }
-}
-
 const LOFI_TABLE = 'lofis';
 
 export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {

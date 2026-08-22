@@ -5,14 +5,6 @@ import { CultureService } from '../../services/culture';
 import { Portal } from '../ui/Portal';
 import { CultureMetaGrid } from './ui/CultureMetaGrid';
 
-declare module '../../api/types' {
-  interface ICadernoAPI {
-    drive?: {
-      openExternalUrl: (url: string) => Promise<void>;
-    };
-  }
-}
-
 interface Props {
   item: CultureItem;
   isOpen: boolean;

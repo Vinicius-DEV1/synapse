@@ -12,14 +12,6 @@ import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
 import { triggerToast } from '../../ui/ToastContext';
 
-declare module '../../../api/types' {
-  interface ICadernoAPI {
-    os?: {
-      openInBrowser: (url: string) => void;
-    };
-  }
-}
-
 const LinkPreviewComponent = (props: any) => {
   const {
     url,
