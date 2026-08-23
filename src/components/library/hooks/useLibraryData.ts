@@ -162,7 +162,14 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
     try {
       const book = books.find(b => b.id === id);
       if (book) {
-        await window.api.library.updateBook({ ...book, ...updates } as any);
+        const merged = { ...book, ...updates };
+        const payload = {
+          ...merged,
+          total_pages: typeof merged.total_pages === 'number' ? merged.total_pages : (parseInt(String(merged.total_pages || 0), 10) || 0),
+          current_page: typeof merged.current_page === 'number' ? merged.current_page : (parseInt(String(merged.current_page || 0), 10) || 0),
+          last_read_page: merged.last_read_page != null ? String(merged.last_read_page) : undefined,
+        };
+        await window.api.library.updateBook(payload as any);
         await loadData();
       } else if (virtualBook && virtualBook.id === id) {
         const updatedAvulso = { ...virtualBook, ...updates };
