@@ -67,6 +67,24 @@ pub fn library_save_ocr_cache(
 
 // --- READING SESSIONS ---
 
+fn deserialize_number_from_string<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrString {
+        Int(i32),
+        String(String),
+    }
+
+    match Option::<IntOrString>::deserialize(deserializer)? {
+        Some(IntOrString::Int(i)) => Ok(Some(i)),
+        Some(IntOrString::String(s)) => Ok(s.parse::<i32>().ok()),
+        None => Ok(None),
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ReadingSession {
     #[serde(default)]
@@ -77,11 +95,11 @@ pub struct ReadingSession {
     pub started_at: Option<String>,
     #[serde(default)]
     pub ended_at: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     pub pages_read: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     pub start_page: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
     pub end_page: Option<i32>,
 }
 
@@ -121,7 +139,7 @@ pub fn library_end_reading_session(
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE library_reading_sessions SET ended_at = ?, pages_read = ?, end_page = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE library_reading_sessions SET ended_at = ?, pages_read = ?, end_page = ? WHERE id = ?",
         params![now, session.pages_read.unwrap_or(0), session.end_page.unwrap_or(1), session.id]
     ).map_err(|e| e.to_string())?;
 

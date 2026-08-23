@@ -205,6 +205,29 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     // Handle HTTP Range header for media streaming
     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
 
+    // Check if file is ENC1 encrypted or raw unencrypted file
+    let is_enc1 = match std::fs::File::open(&abs_path) {
+        Ok(mut f) => {
+            use std::io::Read;
+            let mut buf = [0u8; 4];
+            f.read_exact(&mut buf).is_ok() && &buf == b"ENC1"
+        }
+        Err(_) => false,
+    };
+
+    if !is_enc1 {
+        if let Ok(raw_data) = std::fs::read(&abs_path) {
+            let mime_type = get_mime_type(&abs_path);
+            return Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, mime_type)
+                .header(header::CONTENT_LENGTH, raw_data.len().to_string())
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(raw_data)
+                .unwrap();
+        }
+    }
+
     // Read original file length from ENC1 header (B24)
     let total_size = match crate::crypto_stream::get_encrypted_file_size(&abs_path) {
         Ok(size) => size,

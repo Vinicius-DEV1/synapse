@@ -95,9 +95,13 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
         setHighlights(loadedHighlights);
         setBookmarks(loadedBookmarks);
 
+        const startPageNum = typeof book.last_read_page === 'number' 
+          ? book.last_read_page 
+          : (parseInt(String(book.last_read_page || 1), 10) || 1);
+
         const session = await window.api.library.startReadingSession({
           book_id: book.id,
-          start_page: book.last_read_page || 1
+          start_page: startPageNum
         });
         sessionIdRef.current = session.id;
 
