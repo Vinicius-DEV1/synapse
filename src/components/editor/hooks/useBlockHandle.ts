@@ -34,6 +34,7 @@ export interface BlockHandleState {
   onMoveDown: () => void;
   onAddBelow: () => void;
   onMenuOpenChange: (open: boolean) => void;
+  onChangeColor: (color: string, isBackground: boolean) => void;
 }
 
 /**
@@ -268,5 +269,62 @@ export function useBlockHandle(
     forceHide();
   }, [editor, forceHide]);
 
-  return { anchor, onDragStart, onDragEnd, onDelete, onMoveUp, onMoveDown, onAddBelow, onMenuOpenChange };
+  const onChangeColor = useCallback(
+    (color: string, isBackground: boolean) => {
+      const pos = posRef.current;
+      if (!editor || pos === null) return;
+      const { state, view } = editor;
+      const { doc, schema } = state;
+      const node = doc.nodeAt(pos);
+      if (!node) return;
+
+      if (node.isTextblock) {
+        const from = pos + 1;
+        const to = pos + node.nodeSize - 1;
+
+        if (from === to) {
+          editor.chain().focus().setTextSelection(from).run();
+          if (isBackground) {
+            if (color !== 'transparent' && color !== 'default' && schema.marks.highlight) {
+              editor.chain().setHighlight({ color }).run();
+            } else {
+              editor.chain().unsetHighlight().run();
+            }
+          } else {
+            if (color !== 'inherit' && color !== 'default') {
+              editor.chain().setColor(color).run();
+            } else {
+              editor.chain().unsetColor().run();
+            }
+          }
+        } else {
+          const tr = state.tr;
+          if (isBackground) {
+            if (schema.marks.highlight) {
+              tr.removeMark(from, to, schema.marks.highlight);
+              if (color !== 'transparent' && color !== 'default') {
+                tr.addMark(from, to, schema.marks.highlight.create({ color }));
+              }
+            }
+          } else {
+            if (schema.marks.textStyle) {
+              tr.removeMark(from, to, schema.marks.textStyle);
+              if (color !== 'inherit' && color !== 'default') {
+                tr.addMark(from, to, schema.marks.textStyle.create({ color }));
+              }
+            }
+          }
+          view.dispatch(tr);
+        }
+      } else if (node.attrs && ('color' in node.attrs || 'bgColor' in node.attrs)) {
+        const attrName = isBackground && 'bgColor' in node.attrs ? 'bgColor' : 'color';
+        editor.commands.updateAttributes(node.type.name, { [attrName]: color });
+      }
+
+      forceHide();
+    },
+    [editor, forceHide]
+  );
+
+  return { anchor, onDragStart, onDragEnd, onDelete, onMoveUp, onMoveDown, onAddBelow, onMenuOpenChange, onChangeColor };
 }

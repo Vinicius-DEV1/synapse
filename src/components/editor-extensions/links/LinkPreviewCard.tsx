@@ -17,10 +17,12 @@ import {
   ArrowDown,
   Check,
   Link2,
+  Palette,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import { formatDuration, formatDate, isYouTubeUrl, getVideoId } from './youtubeUtils';
 import LinkNotesDrawer from './LinkNotesDrawer';
+import ColorPalettePicker from '../ColorPalettePicker';
 
 interface LinkPreviewCardProps {
   url: string;
@@ -32,6 +34,7 @@ interface LinkPreviewCardProps {
   notes: string;
   showNotes: boolean;
   watched?: boolean;
+  color?: string;
   loading: boolean;
   isReloading: boolean;
   selected: boolean;
@@ -40,6 +43,7 @@ interface LinkPreviewCardProps {
   onToggleNotes: (e: React.MouseEvent) => void;
   onToggleWatched?: (e: React.MouseEvent) => void;
   onConvertToText?: (e: React.MouseEvent) => void;
+  onChangeColor?: (color: string) => void;
   onChangeNotes: (notes: string) => void;
   onReload: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
@@ -61,6 +65,7 @@ export default function LinkPreviewCard({
   notes,
   showNotes,
   watched,
+  color,
   loading,
   isReloading,
   selected,
@@ -69,6 +74,7 @@ export default function LinkPreviewCard({
   onToggleNotes,
   onToggleWatched,
   onConvertToText,
+  onChangeColor,
   onChangeNotes,
   onReload,
   onDelete,
@@ -81,7 +87,23 @@ export default function LinkPreviewCard({
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
+  const colorPickerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setShowColorPicker(false);
+      }
+    };
+    if (showColorPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColorPicker]);
 
   const isYouTube = isYouTubeUrl(url);
 
@@ -106,6 +128,17 @@ export default function LinkPreviewCard({
       />
     );
   };
+
+  const isCustomColor = Boolean(color && color !== 'default');
+  const customCardStyle: React.CSSProperties = isCustomColor
+    ? {
+        backgroundColor: `${color}14`,
+        borderColor: selected ? color : `${color}40`,
+        boxShadow: selected
+          ? `0 0 0 2px ${color}80, 0 0 15px ${color}30`
+          : `0 0 12px ${color}10`,
+      }
+    : {};
 
   return (
     <div className="relative group/link">
@@ -165,10 +198,13 @@ export default function LinkPreviewCard({
 
       <div
         onClick={onOpenConfirm}
+        style={customCardStyle}
         className={`block transition-all rounded-lg p-3 ${
           isInsideGroup ? 'pr-20' : 'pr-24'
         } cursor-pointer ${
-          selected
+          isCustomColor
+            ? ''
+            : selected
             ? 'bg-brand-500/5 border border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10'
             : 'bg-dark-card border border-white/10 hover:bg-white/5 hover:border-white/20'
         }`}
@@ -274,7 +310,46 @@ export default function LinkPreviewCard({
       </div>
 
       {/* Botões de Ação */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
+      <div
+        className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
+          showColorPicker ? 'opacity-100 z-50' : 'opacity-0 group-hover/link:opacity-100'
+        }`}
+      >
+        {onChangeColor && (
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowColorPicker(!showColorPicker);
+              }}
+              className={`p-1.5 rounded transition-all flex items-center justify-center border backdrop-blur-sm ${
+                isCustomColor
+                  ? 'bg-brand-500/20 text-brand-300 border-brand-500/40 shadow-sm'
+                  : 'bg-dark-card/80 hover:bg-white/10 text-dark-subtext hover:text-white border-white/5'
+              }`}
+              title="Personalizar cor do card"
+            >
+              <Palette size={14} />
+            </button>
+            {showColorPicker && (
+              <div ref={colorPickerRef} onClick={(e) => e.stopPropagation()}>
+                <ColorPalettePicker
+                  currentColor={color || 'default'}
+                  onSelectColor={(c) => {
+                    onChangeColor(c);
+                    setShowColorPicker(false);
+                  }}
+                  onClearColor={() => {
+                    onChangeColor('default');
+                    setShowColorPicker(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {onToggleWatched && (
           <button
             onClick={(e) => {

@@ -82,4 +82,15 @@ describe('useBlockHandle Hook', () => {
 
     expect(result.current.anchor).toBeNull();
   });
+
+  it('safely handles onChangeColor when posRef is null', () => {
+    const { result } = renderHook(() => useBlockHandle(mockEditor, containerRef));
+
+    act(() => {
+      result.current.onChangeColor('#EF4444', false);
+      result.current.onChangeColor('rgba(239,68,68,0.15)', true);
+    });
+
+    expect(mockEditor.view.dispatch).not.toHaveBeenCalled();
+  });
 });

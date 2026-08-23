@@ -52,6 +52,12 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
         parseHTML: element => element.getAttribute('data-is-link') === 'true',
         renderHTML: attributes => ({ 'data-is-link': attributes.isLink ? 'true' : 'false' }),
       },
+      color: {
+        default: 'default',
+        parseHTML: element => element.getAttribute('data-color') || 'default',
+        renderHTML: attributes =>
+          attributes.color && attributes.color !== 'default' ? { 'data-color': attributes.color } : {},
+      },
     }
   },
 

@@ -23,11 +23,13 @@ export const LinkPreviewComponent = (props: any) => {
     notes: rawNotes,
     showNotes: rawShowNotes,
     watched: rawWatched,
+    color: rawColor,
   } = props.node.attrs as LinkPreviewAttrs;
 
   const notes = rawNotes || '';
   const showNotes = !!rawShowNotes;
   const watched = !!rawWatched;
+  const color = rawColor || 'default';
 
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
   const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
@@ -222,6 +224,7 @@ export const LinkPreviewComponent = (props: any) => {
         notes={notes}
         showNotes={showNotes}
         watched={watched}
+        color={color}
         loading={loading}
         isReloading={isReloading}
         selected={
@@ -232,6 +235,7 @@ export const LinkPreviewComponent = (props: any) => {
           )
         }
         isInsideGroup={isInsideGroup}
+        onChangeColor={(newColor: string) => props.updateAttributes({ color: newColor })}
         onOpenConfirm={() => setShowLinkConfirm(true)}
         onToggleNotes={handleToggleNotes}
         onToggleWatched={handleToggleWatched}

@@ -63,6 +63,12 @@ export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>(
         parseHTML: element => element.getAttribute('data-status') || 'pending',
         renderHTML: attributes => ({ 'data-status': attributes.status }),
       },
+      color: {
+        default: 'default',
+        parseHTML: element => element.getAttribute('data-color') || 'default',
+        renderHTML: attributes =>
+          attributes.color && attributes.color !== 'default' ? { 'data-color': attributes.color } : {},
+      },
     };
   },
 
