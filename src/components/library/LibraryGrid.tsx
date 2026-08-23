@@ -67,14 +67,16 @@ export default function LibraryGrid({
         const progress = getProgress(book);
         const status = STATUS_CONFIG[book.reading_status];
         const bookCollections = book.collections || [];
+        const isEpub = (book.file_path || '').toLowerCase().includes('.epub') ||
+                       (book.title || '').toLowerCase().endsWith('.epub') ||
+                       (book.original_name || '').toLowerCase().endsWith('.epub');
+        const isSelected = selectedIds?.has(book.id);
 
         return (
           <div
             key={book.id}
-            className={`group relative flex flex-col bg-dark-card border rounded-xl transition-all duration-300 cursor-pointer shadow-lg ${
-              selectedIds?.has(book.id)
-                ? 'border-brand-500 bg-brand-500/10 shadow-brand-500/20'
-                : 'border-white/5 hover:border-brand-500/30 hover:shadow-brand-500/10'
+            className={`group relative flex flex-col rounded-xl border bg-dark-card transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-400/40 cursor-pointer overflow-hidden ${
+              isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-white/5'
             }`}
             style={{
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
@@ -94,7 +96,7 @@ export default function LibraryGrid({
                 >
                   <input
                     type="checkbox"
-                    checked={selectedIds.has(book.id)}
+                    checked={isSelected}
                     onChange={() => {}}
                     className="w-4 h-4 rounded border-white/30 bg-dark-bg/80 text-brand-500 focus:ring-brand-500 cursor-pointer shadow-md"
                   />
@@ -115,6 +117,19 @@ export default function LibraryGrid({
 
               {/* Book spine shadow (3D effect) */}
               <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
+
+              {/* Format Badge (PDF / EPUB) */}
+              <div className="absolute top-2 right-2 z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
+                <span
+                  className={`px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm ${
+                    isEpub
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  }`}
+                >
+                  {isEpub ? 'EPUB' : 'PDF'}
+                </span>
+              </div>
 
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -292,7 +307,8 @@ export default function LibraryGrid({
           <div className="p-4 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-all group-hover:scale-110 duration-300">
             <Plus size={28} />
           </div>
-          <span className="text-sm font-medium">Importar PDF</span>
+          <span className="text-sm font-medium">Importar Livro</span>
+          <span className="text-[11px] text-dark-subtext/70 -mt-1.5">PDF ou EPUB</span>
         </div>
       </div>
 
@@ -306,7 +322,7 @@ export default function LibraryGrid({
             Sua biblioteca está vazia
           </h3>
           <p className="text-sm text-dark-subtext max-w-xs">
-            Importe seu primeiro PDF para começar a organizar sua leitura.
+            Importe seu primeiro livro (PDF ou EPUB) para começar a organizar sua leitura.
           </p>
         </div>
       )}
