@@ -20,6 +20,7 @@ describe('FloatingToolbar Component', () => {
       unsetLink: vi.fn().mockReturnThis(),
       toggleHighlight: vi.fn().mockReturnThis(),
       unsetHighlight: vi.fn().mockReturnThis(),
+      toggleSpoiler: vi.fn().mockReturnThis(),
       run: vi.fn().mockReturnValue(true),
     };
 
@@ -51,5 +52,16 @@ describe('FloatingToolbar Component', () => {
     fireEvent.click(aiBtn);
 
     expect(onAiClick).toHaveBeenCalled();
+  });
+
+  it('triggers spoiler command when spoiler button is clicked', () => {
+    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+
+    const spoilerBtn = getByTitle(/Fumaça \/ Spoiler/i);
+    fireEvent.click(spoilerBtn);
+
+    expect(mockEditor.chain).toHaveBeenCalled();
+    expect(chainObj.toggleSpoiler).toHaveBeenCalled();
+    expect(chainObj.run).toHaveBeenCalled();
   });
 });

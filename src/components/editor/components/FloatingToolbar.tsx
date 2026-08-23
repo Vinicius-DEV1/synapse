@@ -1,4 +1,4 @@
-import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X, Trash } from 'lucide-react';
+import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X, Trash, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { BG_COLORS } from '../../../utils/colors';
 import type { Editor } from '@tiptap/react';
@@ -50,6 +50,9 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
       case 'code':
         editor.chain().focus().toggleCode().run();
         break;
+      case 'spoiler':
+        editor.chain().focus().toggleSpoiler().run();
+        break;
       case 'link':
         if (value) {
           editor.chain().focus().setLink({ href: value }).run();
@@ -87,6 +90,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
     strike: editor.isActive('strike'),
     underline: editor.isActive('underline'),
     code: editor.isActive('code'),
+    spoiler: editor.isActive('spoiler'),
     highlight: editor.isActive('highlight'),
     link: editor.isActive('link'),
     linkHref: editor.getAttributes('link').href,
@@ -202,6 +206,14 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
               </div>
             )}
           </div>
+
+          <button
+            onClick={() => handleFormat('spoiler')}
+            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.spoiler ? activeClass : inactiveClass}`}
+            title="Ocultar com Fumaça / Spoiler (Ctrl+Shift+S)"
+          >
+            <EyeOff size={15} />
+          </button>
 
           {onAiClick && (
             <button
