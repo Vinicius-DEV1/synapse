@@ -43,7 +43,7 @@ describe('LibraryHeader component', () => {
 
     expect(screen.getByRole('heading', { name: 'Biblioteca' })).toBeInTheDocument();
     expect(screen.getByText('12 livros')).toBeInTheDocument();
-    expect(screen.getByText('Importar PDF')).toBeInTheDocument();
+    expect(screen.getByText('Importar PDF / EPUB')).toBeInTheDocument();
   });
 
   it('updates search query on typing', () => {

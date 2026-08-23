@@ -101,7 +101,7 @@ export function LibraryHeader({
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
             >
               <Plus size={16} />
-              <span>Importar PDF</span>
+              <span>Importar PDF / EPUB</span>
             </button>
           </div>
         </div>
