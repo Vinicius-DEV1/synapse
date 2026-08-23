@@ -92,7 +92,7 @@ export function EpubHighlightNoteEditor({
       <div className="flex justify-end gap-1.5">
         <button
           onClick={onCloseNote}
-          className="px-3 py-1.5 text-xs opacity-70 hover:opacity-100 rounded-lg hover:bg-black/10 transition-colors"
+          className="px-3 py-1.5 text-xs opacity-70 hover:opacity-100 rounded-lg hover:bg-current/10 transition-colors"
         >
           Cancelar
         </button>

@@ -83,19 +83,67 @@ export default function EpubHighlightMenu() {
     );
   }
 
-  const modeClass = readingMode === 'dark'
-    ? 'bg-[#1a1a1a] border-gray-700 text-white'
-    : readingMode === 'sepia'
-    ? 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636]'
-    : 'bg-white border-gray-200 text-gray-900';
+  const isDark = ['dark', 'midnight', 'nord', 'dim', 'high-contrast'].includes(readingMode);
 
-  const dividerClass = readingMode === 'dark' ? 'bg-gray-700' : readingMode === 'sepia' ? 'bg-[#d4c6a0]' : 'bg-gray-200';
-  const noteAreaClass = readingMode === 'dark' ? 'border-gray-700' : readingMode === 'sepia' ? 'border-[#d4c6a0]' : 'border-gray-100';
-  const textareaClass = readingMode === 'dark'
-    ? 'bg-[#2a2a2a] border-gray-600 text-white'
+  const modeClass = (() => {
+    switch (readingMode) {
+      case 'midnight':
+        return 'bg-[#0f172a] border-[#334155] text-[#f1f5f9] shadow-2xl shadow-black/70';
+      case 'nord':
+        return 'bg-[#2e3440] border-[#4c566a] text-[#eceff4] shadow-2xl shadow-black/50';
+      case 'dim':
+        return 'bg-[#2d2d30] border-[#454545] text-[#e0e0e0] shadow-2xl shadow-black/50';
+      case 'dark':
+        return 'bg-[#1a1a1a] border-gray-700 text-white shadow-2xl shadow-black/70';
+      case 'high-contrast':
+        return 'bg-black border-white/40 text-white shadow-2xl shadow-white/10';
+      case 'sepia':
+        return 'bg-[#f4ecd8] border-[#d4c6a0] text-[#5b4636] shadow-xl';
+      case 'mint':
+        return 'bg-[#e8f5e9] border-[#c8e6c9] text-[#2d6a4f] shadow-xl';
+      case 'light':
+      default:
+        return 'bg-white border-gray-200 text-gray-900 shadow-xl';
+    }
+  })();
+
+  const dividerClass = isDark
+    ? 'bg-white/15'
     : readingMode === 'sepia'
-    ? 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636]'
-    : 'bg-gray-50 border-gray-200 text-gray-900';
+    ? 'bg-[#d4c6a0]'
+    : readingMode === 'mint'
+    ? 'bg-[#c8e6c9]'
+    : 'bg-gray-200';
+
+  const noteAreaClass = isDark
+    ? 'border-white/10'
+    : readingMode === 'sepia'
+    ? 'border-[#d4c6a0]'
+    : readingMode === 'mint'
+    ? 'border-[#c8e6c9]'
+    : 'border-gray-100';
+
+  const textareaClass = (() => {
+    switch (readingMode) {
+      case 'midnight':
+        return 'bg-[#1e293b] border-[#334155] text-white placeholder-slate-400';
+      case 'nord':
+        return 'bg-[#3b4252] border-[#4c566a] text-white placeholder-slate-300';
+      case 'dim':
+        return 'bg-[#383838] border-[#4c4c4c] text-white placeholder-gray-400';
+      case 'dark':
+        return 'bg-[#2a2a2a] border-gray-600 text-white placeholder-gray-400';
+      case 'high-contrast':
+        return 'bg-black border-white text-white placeholder-gray-400';
+      case 'sepia':
+        return 'bg-[#e9dec0] border-[#d4c6a0] text-[#5b4636] placeholder-[#8c765f]';
+      case 'mint':
+        return 'bg-[#d8edd9] border-[#b7dfb9] text-[#2d6a4f] placeholder-[#52796f]';
+      case 'light':
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400';
+    }
+  })();
 
   const handleOpenDictionary = () => {
     let preloadedData = null;
@@ -123,7 +171,7 @@ export default function EpubHighlightMenu() {
     <>
       {/* Texto Selecionado (Preview) */}
       {selection!.text && (
-        <div className={`mb-3 border-l-2 pl-2 pr-1 py-0.5 text-xs italic opacity-80 truncate ${readingMode === 'dark' ? 'border-brand-400' : 'border-brand-500'}`}>
+        <div className={`mb-3 border-l-2 pl-2 pr-1 py-0.5 text-xs italic opacity-85 truncate ${isDark ? 'border-brand-400 text-slate-200' : 'border-brand-500 text-slate-700'}`}>
           "{selection!.text}"
         </div>
       )}
@@ -174,8 +222,8 @@ export default function EpubHighlightMenu() {
               dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
               setSelection(null);
             }}
-            className={`flex-1 px-2 py-1.5 bg-brand-500/10 rounded-lg text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${
-              readingMode === 'dark' ? 'text-brand-400' : 'text-brand-600'
+            className={`flex-1 px-2 py-1.5 bg-brand-500/15 rounded-lg text-[11px] font-bold hover:bg-brand-500 hover:text-white transition-colors flex items-center justify-center gap-1 ${
+              isDark ? 'text-brand-300' : 'text-brand-600'
             }`}
           >
             <Sparkles size={11} />

@@ -62,7 +62,7 @@ export function EpubHighlightColorBar({
           {/* Copiar */}
           <button
             onClick={onCopyText}
-            className="text-2xl opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+            className="text-2xl opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-current/10 transition-colors"
             title="Copiar texto"
           >
             📋
@@ -72,7 +72,7 @@ export function EpubHighlightColorBar({
           {(!selection.existingHighlightId || selection.text) && (
             <button
               onClick={onOpenDictionary}
-              className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+              className="opacity-70 hover:opacity-100 p-1.5 rounded-lg hover:bg-current/10 transition-colors"
               title="Dicionário / Traduzir"
             >
               <BookType size={22} />
@@ -83,7 +83,7 @@ export function EpubHighlightColorBar({
           {!selection.existingHighlightId && (
             <button
               onClick={onOpenNote}
-              className="text-sm font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-black/10 transition-colors flex items-center gap-1.5"
+              className="text-sm font-medium opacity-70 hover:opacity-100 px-2 py-1 rounded-lg hover:bg-current/10 transition-colors flex items-center gap-1.5"
             >
               <span className="text-2xl">📝</span> Nota
             </button>
@@ -101,7 +101,7 @@ export function EpubHighlightColorBar({
                 </button>
                 <button
                   onClick={onCancelDelete}
-                  className="text-dark-subtext px-1.5 py-1.5 hover:bg-black/10 rounded-md transition-colors"
+                  className="text-dark-subtext px-1.5 py-1.5 hover:bg-current/10 rounded-md transition-colors"
                 >
                   <X size={16} />
                 </button>
