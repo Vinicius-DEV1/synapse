@@ -149,8 +149,9 @@ export function useEpubTheme(
           'text-decoration': 'underline !important'
         },
         // Code Blocks & Inline Code
-        [`body.${themeName} pre, body.${themeName} code, body.${themeName} kbd, body.${themeName} samp`]: {
+        [`body.${themeName} pre, body.${themeName} code, body.${themeName} kbd, body.${themeName} samp, body.${themeName} .courprogramlisting, body.${themeName} .pre, body.${themeName} .pre-ex, body.${themeName} .pre1, body.${themeName} .pre_w, body.${themeName} p.pre`]: {
           'background-color': `${colors.codeBg} !important`,
+          'background': `${colors.codeBg} !important`,
           'color': `${colors.codeText} !important`,
           'border': `1px solid ${colors.codeBorder} !important`,
           'border-radius': '4px !important',
@@ -172,15 +173,71 @@ export function useEpubTheme(
           'opacity': '0.92 !important',
           'background-color': 'transparent !important'
         },
-        // Tables
-        [`body.${themeName} table`]: {
-          'border-collapse': 'collapse !important',
-          'border-color': `${colors.border} !important`,
-          'color': `${colors.text} !important`
+        // Tables & Table Banners (Topic / Recipe / Tip)
+        [`body.${themeName} table, body.${themeName} table.arr-recipe, body.${themeName} table.arr-tip, body.${themeName} tbody, body.${themeName} tr`]: {
+          'background-color': 'transparent !important',
+          'background': 'transparent !important',
+          'border-color': `${colors.border} !important`
         },
-        [`body.${themeName} th, body.${themeName} td`]: {
+        [`body.${themeName} table.arr-recipe td.arr-recipe-name, body.${themeName} table.arr-tip td.arr-tip-name`]: {
+          'color': `${colors.heading} !important`,
+          'background-color': 'transparent !important',
+          'background': 'transparent !important'
+        },
+        [`body.${themeName} table.arr-recipe td.arr-recipe-number, body.${themeName} table.arr-tip td.arr-tip-number`]: {
+          'color': '#ffffff !important'
+        },
+        [`body.${themeName} table.arr-recipe td.arr-recipe-number .topic-label`]: {
+          'color': '#ffffff !important'
+        },
+        [`body.${themeName} thead`]: {
+          'background-color': `${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'} !important`,
+          'background': `${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'} !important`,
+          'border-color': `${colors.border} !important`
+        },
+        [`body.${themeName} tbody tr:nth-child(even)`]: {
+          'background-color': `${isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'} !important`
+        },
+        [`body.${themeName} th`]: {
+          'border': `1px solid ${colors.border} !important`,
+          'color': `${colors.heading} !important`,
+          'background-color': 'transparent !important'
+        },
+        [`body.${themeName} td`]: {
           'border': `1px solid ${colors.border} !important`,
           'color': `${colors.text} !important`,
+          'background-color': 'transparent !important'
+        },
+        // Epigraphs & Opening Quotes
+        [`body.${themeName} .epigraph, body.${themeName} div.epigraph`]: {
+          'background-color': `${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'} !important`,
+          'background': `${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'} !important`,
+          'border': `1px solid ${colors.border} !important`,
+          'color': `${colors.text} !important`,
+          'border-radius': '8px !important'
+        },
+        [`body.${themeName} .epigraph p, body.${themeName} .epigraph span, body.${themeName} .epigraph .episignname`]: {
+          'color': `${colors.text} !important`,
+          'background-color': 'transparent !important'
+        },
+        // Callout boxes, Notes, Tips, Warnings, Sidebars
+        [`body.${themeName} .note, body.${themeName} .note1, body.${themeName} .tip, body.${themeName} .warning, body.${themeName} .sidebar, body.${themeName} .sidebar1, body.${themeName} .boxg, body.${themeName} .authorq, body.${themeName} div.note, body.${themeName} div.sidebar, body.${themeName} div.tip, body.${themeName} div.warning, body.${themeName} div[class*="note"], body.${themeName} div[class*="sidebar"], body.${themeName} div[class*="tip"], body.${themeName} div[class*="warning"], body.${themeName} div[class*="box"]`]: {
+          'background-color': `${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'} !important`,
+          'background': `${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'} !important`,
+          'border': `1px solid ${colors.border} !important`,
+          'box-shadow': 'none !important',
+          'color': `${colors.text} !important`,
+          'border-radius': '6px !important'
+        },
+        [`body.${themeName} .note .title, body.${themeName} .note h3, body.${themeName} .tip .title, body.${themeName} .tip h3, body.${themeName} .warning .title, body.${themeName} .warning h3, body.${themeName} .boxg .title, body.${themeName} .sidebar1 .title, body.${themeName} div.authorq .the-author-asks`]: {
+          'color': `${colors.heading} !important`,
+          'text-shadow': 'none !important',
+          'background-color': 'transparent !important'
+        },
+        // Captions
+        [`body.${themeName} .FigCapt, body.${themeName} .TabCapt, body.${themeName} .caption, body.${themeName} .fig-caption, body.${themeName} .fig-title, body.${themeName} figcaption`]: {
+          'color': `${colors.text} !important`,
+          'opacity': '0.85 !important',
           'background-color': 'transparent !important'
         },
         // Horizontal Rules
@@ -193,6 +250,7 @@ export function useEpubTheme(
         [`body.${themeName} img, body.${themeName} svg:not([class*="epubjs"])`]: {
           'max-width': '100% !important',
           'height': 'auto !important',
+          'background-color': 'transparent !important',
           'filter': isDark ? 'brightness(0.92)' : 'none'
         }
       };
