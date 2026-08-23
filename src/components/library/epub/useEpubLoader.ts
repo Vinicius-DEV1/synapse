@@ -52,8 +52,8 @@ export function useEpubLoader(
 
         if (!active) return;
 
-        // Use arrayBuffer with replacements option
-        const newEpubBook = ePub(arrayBuffer, { replacements: 'base64' });
+        // Use arrayBuffer directly for fast book initialization without blocking replacements
+        const newEpubBook = ePub(arrayBuffer);
         setEpubBook(newEpubBook);
 
         const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
@@ -187,15 +187,15 @@ export function useEpubLoader(
           }
         };
 
-        // Register spine hook: converts images in chapter XML before serialization to HTML
+        await newEpubBook.ready;
+        if (!active) return;
+        
+        // Register spine hook after ready: converts images in chapter XML before serialization to HTML
         if ((newEpubBook as any).spine?.hooks?.content?.register) {
           (newEpubBook as any).spine.hooks.content.register(async (doc: Document, section: any) => {
             await convertImagesToDataUrls(doc, section?.url || section?.href);
           });
         }
-
-        await newEpubBook.ready;
-        if (!active) return;
         
         if (book.reading_status === 'not_started') {
           onUpdateBook({ reading_status: 'reading' });
@@ -224,6 +224,9 @@ export function useEpubLoader(
               await newRendition.display(book.last_read_page as string);
            } else {
               await newRendition.display();
+           }
+           if (active) {
+             setLoading(false);
            }
 
            window.api.library.getHighlights(book.id).then((hls: LibraryHighlight[]) => {
