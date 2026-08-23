@@ -9,6 +9,7 @@ export interface LinkPreviewAttrs {
   isLoading: boolean;
   isPlaylist: boolean;
   showNotes: boolean;
+  watched?: boolean;
 }
 
 export interface LinkMetadata {

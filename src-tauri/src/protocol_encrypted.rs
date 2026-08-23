@@ -15,6 +15,113 @@ fn get_mime_type(path: &std::path::Path) -> String {
         .to_string()
 }
 
+fn find_file_candidates(app: &AppHandle, module_name: &str, decoded_path: &str) -> Option<std::path::PathBuf> {
+    let dir_name = match module_name {
+        "culture" => "videos",
+        "library" => "library",
+        "files" => "files",
+        "focus" => "lofi",
+        _ => module_name,
+    };
+
+    let mut base_dirs = Vec::new();
+    // 1. Primary app data directory
+    base_dirs.push(crate::get_app_data_dir());
+
+    // 2. Tauri's app_handle app_data_dir (e.g. ~/.config/com.caderno.app or ~/.local/share/com.caderno.app)
+    if let Ok(tauri_dir) = app.path().app_data_dir() {
+        if !base_dirs.contains(&tauri_dir) {
+            base_dirs.push(tauri_dir);
+        }
+    }
+
+    // 3. Known platform standard paths for caderno / com.caderno.app
+    if let Some(data_dir) = dirs::data_dir() {
+        let p1 = data_dir.join("caderno");
+        let p2 = data_dir.join("com.caderno.app");
+        if !base_dirs.contains(&p1) { base_dirs.push(p1); }
+        if !base_dirs.contains(&p2) { base_dirs.push(p2); }
+    }
+    if let Some(config_dir) = dirs::config_dir() {
+        let p1 = config_dir.join("com.caderno.app");
+        let p2 = config_dir.join("caderno");
+        if !base_dirs.contains(&p1) { base_dirs.push(p1); }
+        if !base_dirs.contains(&p2) { base_dirs.push(p2); }
+    }
+
+    // Check direct absolute path if provided
+    let direct_path = std::path::PathBuf::from(decoded_path);
+    if direct_path.is_absolute() {
+        if direct_path.exists() {
+            return Some(direct_path);
+        }
+        let direct_with_enc = std::path::PathBuf::from(format!("{}.enc", decoded_path));
+        if direct_with_enc.exists() {
+            return Some(direct_with_enc);
+        }
+    }
+
+    let clean_relative = if decoded_path.starts_with(&format!("{}/", dir_name)) {
+        &decoded_path[dir_name.len() + 1..]
+    } else if decoded_path.starts_with(&format!("{}\\", dir_name)) {
+        &decoded_path[dir_name.len() + 1..]
+    } else if decoded_path.starts_with(&format!("{}/", module_name)) {
+        &decoded_path[module_name.len() + 1..]
+    } else if decoded_path.starts_with(&format!("{}\\", module_name)) {
+        &decoded_path[module_name.len() + 1..]
+    } else {
+        decoded_path
+    };
+
+    let filename = std::path::Path::new(clean_relative)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(clean_relative);
+    let id_stem = filename.split('.').next().unwrap_or(filename);
+
+    for base in base_dirs {
+        let module_dir = base.join(dir_name);
+        if !module_dir.exists() {
+            continue;
+        }
+
+        // Test list of candidates
+        let mut candidates = Vec::new();
+        candidates.push(module_dir.join(clean_relative));
+        candidates.push(module_dir.join(format!("{}.enc", clean_relative)));
+        candidates.push(module_dir.join(filename));
+        candidates.push(module_dir.join(format!("{}.enc", filename)));
+        candidates.push(module_dir.join(format!("{}.pdf.enc", id_stem)));
+        candidates.push(module_dir.join(format!("{}.epub.enc", id_stem)));
+        candidates.push(module_dir.join(format!("{}.mp4.enc", id_stem)));
+        candidates.push(module_dir.join(format!("{}.pdf", id_stem)));
+        candidates.push(module_dir.join(format!("{}.epub", id_stem)));
+        candidates.push(module_dir.join(format!("{}.mp4", id_stem)));
+        candidates.push(module_dir.join(format!("{}.enc", id_stem)));
+        candidates.push(module_dir.join(id_stem));
+
+        for candidate in candidates {
+            if candidate.exists() && candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+
+        // Check if any file in module_dir starts with id_stem
+        if !id_stem.is_empty() && id_stem.len() > 8 {
+            if let Ok(entries) = std::fs::read_dir(&module_dir) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with(id_stem) && entry.path().is_file() {
+                        return Some(entry.path());
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
 pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> Response<Vec<u8>> {
     let db_state = app.state::<DbState>();
 
@@ -49,52 +156,16 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         .unwrap_or(std::borrow::Cow::Borrowed(file_path))
         .to_string();
 
-    let dir_name = match module_name {
-        "culture" => "videos",
-        "library" => "library",
-        "files" => "files",
-        "focus" => "lofi",
-        _ => module_name,
-    };
-
-    let app_data_dir = crate::get_app_data_dir();
-    let module_dir = app_data_dir.join(dir_name);
-
-    let mut abs_path = std::path::PathBuf::from(&decoded_path);
-
-    if !abs_path.is_absolute() {
-        // Strip duplicate module prefix if present (e.g. "library/xxx" or "videos/xxx")
-        let clean_relative = if decoded_path.starts_with(&format!("{}/", dir_name)) {
-            &decoded_path[dir_name.len() + 1..]
-        } else if decoded_path.starts_with(&format!("{}\\", dir_name)) {
-            &decoded_path[dir_name.len() + 1..]
-        } else if decoded_path.starts_with(&format!("{}/", module_name)) {
-            &decoded_path[module_name.len() + 1..]
-        } else if decoded_path.starts_with(&format!("{}\\", module_name)) {
-            &decoded_path[module_name.len() + 1..]
-        } else {
-            &decoded_path
-        };
-        abs_path = module_dir.join(clean_relative);
-    }
-
-    // Fallback: If not found, try resolving directly in module_dir by file name
-    if !abs_path.exists() {
-        if let Some(file_name) = std::path::Path::new(&decoded_path).file_name() {
-            let direct_in_module = module_dir.join(file_name);
-            if direct_in_module.exists() {
-                abs_path = direct_in_module;
-            }
+    let abs_path = match find_file_candidates(app, module_name, &decoded_path) {
+        Some(p) => p,
+        None => {
+            return Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(format!("File not found: {:?}", decoded_path).into_bytes())
+                .unwrap();
         }
-    }
-
-    if !abs_path.exists() {
-        return Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(format!("File not found: {:?}", abs_path).into_bytes())
-            .unwrap();
-    }
+    };
 
     // Extrai a chave do estado (B23: evita panic se poisoned)
     let keys_guard = db_state.keys.lock().unwrap_or_else(|e| e.into_inner());

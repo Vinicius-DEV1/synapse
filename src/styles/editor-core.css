@@ -371,6 +371,20 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   line-height: 1.6;
 }
 
+.code-block-wrapper select {
+  color-scheme: dark !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: #161b22 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.code-block-wrapper select option {
+  background-color: #161b22 !important;
+  color: #ffffff !important;
+}
+
 .code-block-wrapper pre code {
   color: inherit;
   padding: 0;

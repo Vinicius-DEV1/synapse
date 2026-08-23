@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { NodeSelection } from '@tiptap/pm/state';
 
 import { getSettings } from '../utils/settings';
 import FloatingToolbar from './editor/components/FloatingToolbar';
@@ -227,8 +228,27 @@ export default function Editor({
           pluginKey="floatingToolbarBubbleMenu"
           shouldShow={({ editor, from, to }) => {
             if (from === to) return false;
+            // A barra flutuante é voltada para formatação de texto inline.
+            // Ocultar se a seleção for um nó (NodeSelection) ou se for um widget/bloco específico.
+            const { selection } = editor.state;
+            if (selection instanceof NodeSelection) return false;
             if (editor.isActive('table')) return false;
-            if (editor.isActive('image') || editor.isActive('encryptedImage') || editor.isActive('resizableImage')) return false;
+            if (
+              editor.isActive('image') ||
+              editor.isActive('encryptedImage') ||
+              editor.isActive('resizableImage') ||
+              editor.isActive('linkPreview') ||
+              editor.isActive('horizontalRule') ||
+              editor.isActive('customDivider') ||
+              editor.isActive('codeBlock') ||
+              editor.isActive('fileWidget') ||
+              editor.isActive('alarmWidget') ||
+              editor.isActive('calendarEventWidget') ||
+              editor.isActive('focusWidget') ||
+              editor.isActive('mediaWidget')
+            ) {
+              return false;
+            }
             return true;
           }}
           className="flex shadow-elevated rounded-xl overflow-hidden border border-white/5 bg-dark-bg/80 backdrop-blur-xl"

@@ -48,6 +48,28 @@ describe('canonical-resolver', () => {
     expect(drive.downloadFromDrive).toHaveBeenCalledWith('test-token', 'drive-file-abc');
   });
 
+  it('resolves buffer via stream on desktop without drive', async () => {
+    platform.canReadLocalFilesystem = true;
+    const testBuf = new ArrayBuffer(50);
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(testBuf)
+    } as any);
+
+    const buffer = await resolveCanonicalBuffer({
+      moduleName: 'library',
+      id: 'local-book-1',
+      savedPath: 'library/local-book-1.pdf.enc',
+      extHint: 'pdf'
+    });
+
+    expect(buffer).toBe(testBuf);
+    expect(global.fetch).toHaveBeenCalled();
+
+    global.fetch = originalFetch;
+  });
+
   it('throws error when no local file and no drive file is present', async () => {
     await expect(
       resolveCanonicalBuffer({
@@ -57,3 +79,4 @@ describe('canonical-resolver', () => {
     ).rejects.toThrow('Arquivo não encontrado no disco local nem na nuvem');
   });
 });
+

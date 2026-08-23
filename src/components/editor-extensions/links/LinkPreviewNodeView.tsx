@@ -22,10 +22,12 @@ export const LinkPreviewComponent = (props: any) => {
     uploadDate,
     notes: rawNotes,
     showNotes: rawShowNotes,
+    watched: rawWatched,
   } = props.node.attrs as LinkPreviewAttrs;
 
   const notes = rawNotes || '';
   const showNotes = !!rawShowNotes;
+  const watched = !!rawWatched;
 
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
   const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
@@ -88,6 +90,36 @@ export const LinkPreviewComponent = (props: any) => {
     e.preventDefault();
     e.stopPropagation();
     props.updateAttributes({ showNotes: !showNotes });
+  };
+
+  const handleToggleWatched = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    props.updateAttributes({ watched: !watched });
+  };
+
+  const handleConvertToText = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pos = currentPos();
+    if (pos === null || !props.editor) return;
+    const urlToInsert = url;
+    const nodeSize = props.node?.nodeSize || 1;
+    props.editor
+      .chain()
+      .focus()
+      .deleteRange({ from: pos, to: pos + nodeSize })
+      .insertContentAt(pos, {
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            marks: [{ type: 'link', attrs: { href: urlToInsert } }],
+            text: urlToInsert,
+          },
+        ],
+      })
+      .run();
   };
 
   const handleChangeNotes = (nextNotes: string) => {
@@ -189,6 +221,7 @@ export const LinkPreviewComponent = (props: any) => {
         uploadDate={fetchedUploadDate}
         notes={notes}
         showNotes={showNotes}
+        watched={watched}
         loading={loading}
         isReloading={isReloading}
         selected={
@@ -201,6 +234,8 @@ export const LinkPreviewComponent = (props: any) => {
         isInsideGroup={isInsideGroup}
         onOpenConfirm={() => setShowLinkConfirm(true)}
         onToggleNotes={handleToggleNotes}
+        onToggleWatched={handleToggleWatched}
+        onConvertToText={handleConvertToText}
         onChangeNotes={handleChangeNotes}
         onReload={handleReload}
         onDelete={handleDelete}

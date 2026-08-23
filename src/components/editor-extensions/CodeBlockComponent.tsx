@@ -1,5 +1,5 @@
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
-import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2 } from 'lucide-react';
+import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
@@ -126,26 +126,30 @@ export default function CodeBlockComponent(props: any) {
 
             <div className="flex items-center gap-1.5">
               <Code2 size={13} className="text-brand-400 opacity-80" />
-              <select
-                value={defaultLanguage || 'auto'}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  updateAttributes({ language: val === 'auto' ? null : val });
-                }}
-                className="bg-[#0d1117] hover:bg-[#161b22] text-white/90 text-[11px] font-medium border border-white/10 hover:border-white/20 rounded-md px-2 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
-              >
-                <option className="bg-[#161b22] text-white" value="auto">
-                  Auto
-                </option>
-                <option className="bg-[#161b22] text-white/40" disabled>
-                  ──────────
-                </option>
-                {languages.map((lang: string) => (
-                  <option className="bg-[#161b22] text-white" key={lang} value={lang}>
-                    {lang}
+              <div className="relative inline-flex items-center">
+                <select
+                  value={defaultLanguage || 'auto'}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    updateAttributes({ language: val === 'auto' ? null : val });
+                  }}
+                  style={{ colorScheme: 'dark' }}
+                  className="appearance-none !bg-[#161b22] hover:!bg-[#1c2128] !text-zinc-200 text-[11px] font-medium border border-white/10 hover:border-white/20 rounded-md pl-2 pr-5 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
+                >
+                  <option className="!bg-[#161b22] !text-white" value="auto">
+                    Auto
                   </option>
-                ))}
-              </select>
+                  <option className="!bg-[#161b22] !text-white/40" disabled>
+                    ──────────
+                  </option>
+                  {languages.map((lang: string) => (
+                    <option className="!bg-[#161b22] !text-white" key={lang} value={lang}>
+                      {lang}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={10} className="absolute right-1.5 pointer-events-none text-zinc-400" />
+              </div>
             </div>
           </div>
 

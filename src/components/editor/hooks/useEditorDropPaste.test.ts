@@ -59,6 +59,7 @@ describe('useEditorDropPaste Hook', () => {
       schema: {
         nodeFromJSON: vi.fn((json) => json),
       },
+      isActive: vi.fn(() => false),
       on: vi.fn(),
       off: vi.fn(),
     };
@@ -93,6 +94,61 @@ describe('useEditorDropPaste Hook', () => {
     expect(handled).toBe(true);
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEditor.chain).toHaveBeenCalled();
+  });
+
+  it('does NOT insert linkPreview when pasting inside a code block', () => {
+    mockEditor.isActive.mockImplementation((name: string) => name === 'codeBlock');
+
+    const { result } = renderHook(() =>
+      useEditorDropPaste({
+        editor: mockEditor,
+        masterKey: null,
+        viewerState: mockViewerState,
+        setViewerState,
+      })
+    );
+
+    const mockEvent = {
+      clipboardData: {
+        getData: vi.fn((format: string) =>
+          format === 'text/plain' ? 'https://github.com' : ''
+        ),
+        items: [],
+      },
+      preventDefault: vi.fn(),
+    } as unknown as ClipboardEvent;
+
+    const handled = result.current.handlePaste(mockEditor.view, mockEvent);
+
+    expect(handled).toBe(false);
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('does NOT insert linkPreview when pasting with Shift key pressed', () => {
+    const { result } = renderHook(() =>
+      useEditorDropPaste({
+        editor: mockEditor,
+        masterKey: null,
+        viewerState: mockViewerState,
+        setViewerState,
+      })
+    );
+
+    const mockEvent = {
+      shiftKey: true,
+      clipboardData: {
+        getData: vi.fn((format: string) =>
+          format === 'text/plain' ? 'https://github.com' : ''
+        ),
+        items: [],
+      },
+      preventDefault: vi.fn(),
+    } as unknown as ClipboardEvent;
+
+    const handled = result.current.handlePaste(mockEditor.view, mockEvent);
+
+    expect(handled).toBe(false);
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
   });
 
   it('handles image pasting with masterKey and creates encryptedImage node', async () => {

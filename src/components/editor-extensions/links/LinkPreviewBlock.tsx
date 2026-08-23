@@ -64,6 +64,7 @@ export const LinkPreviewBlock = Node.create({
       isLoading: booleanAttr('isLoading', true),
       isPlaylist: booleanAttr('isPlaylist', false),
       showNotes: booleanAttr('showNotes', false),
+      watched: booleanAttr('watched', false),
     };
   },
 

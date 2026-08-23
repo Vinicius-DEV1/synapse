@@ -55,4 +55,17 @@ describe('LinkPreviewBlock Component', () => {
       expect.objectContaining({ showNotes: true })
     );
   });
+
+  it('handles watched toggle button click', () => {
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle } = render(<Component {...mockProps} />);
+
+    const watchedBtn = getByTitle(/Marcar como assistido/i);
+    expect(watchedBtn).toBeDefined();
+    fireEvent.click(watchedBtn);
+
+    expect(mockProps.updateAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({ watched: true })
+    );
+  });
 });
