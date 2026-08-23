@@ -99,8 +99,16 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     isFullScreenRef.current = state.isReadingModeFullScreen;
   }, [state.isReadingModeFullScreen]);
 
+  const lastPageTurnTimeRef = useRef<number>(0);
+
   const turnPage = (direction: 'next' | 'prev', r: any = rendition!) => {
     if (!r) return;
+    const now = Date.now();
+    if (now - lastPageTurnTimeRef.current < 200) {
+      return;
+    }
+    lastPageTurnTimeRef.current = now;
+
     if (viewerRef.current) {
       viewerRef.current.style.transition = 'opacity 0.05s ease-out';
       viewerRef.current.style.opacity = '0.3';
