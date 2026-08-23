@@ -78,6 +78,24 @@ export function useEpubLoader(
 
            // Hook: Resolve any relative images from the EPUB archive zip into Blob URLs
            const imageBlobCache = new Map<string, string>();
+
+           const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
+             const stack = baseFile.split('/').filter(Boolean);
+             if (!baseFile.endsWith('/')) {
+               stack.pop(); // remove file to get directory
+             }
+             const parts = relativePath.split('/').filter(Boolean);
+             for (const part of parts) {
+               if (part === '.') continue;
+               if (part === '..') {
+                 stack.pop();
+               } else {
+                 stack.push(part);
+               }
+             }
+             return stack.join('/');
+           };
+
            const resolveImagesInDoc = (doc: Document, sectionIndex?: number) => {
              const archive = (newEpubBook as any).archive;
              const zip = archive?.zip;
@@ -91,13 +109,17 @@ export function useEpubLoader(
                  : img.getAttribute('src');
 
                if (!rawSrc) return;
-               if (
-                 rawSrc.startsWith('blob:') ||
-                 rawSrc.startsWith('data:') ||
-                 rawSrc.startsWith('http://') ||
-                 rawSrc.startsWith('https://')
-               ) {
+               if (rawSrc.startsWith('blob:') || rawSrc.startsWith('data:')) {
                  return;
+               }
+               // Skip external non-localhost urls
+               if (rawSrc.startsWith('http://') || rawSrc.startsWith('https://')) {
+                 try {
+                   const parsed = new URL(rawSrc);
+                   if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1' && !parsed.hostname.endsWith('.localhost')) {
+                     return;
+                   }
+                 } catch {}
                }
 
                if (imageBlobCache.has(rawSrc)) {
@@ -112,33 +134,50 @@ export function useEpubLoader(
                }
 
                try {
-                 const cleanPath = rawSrc.split('?')[0].split('#')[0];
-                 const filename = cleanPath.split('/').pop() || cleanPath;
+                 // Clean path of query parameters or hash
+                 let cleanPath = rawSrc.split('?')[0].split('#')[0];
+                 if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+                   try {
+                     cleanPath = new URL(cleanPath).pathname;
+                   } catch {}
+                 }
 
+                 const filename = cleanPath.split('/').pop() || cleanPath;
                  let zipEntry: any = null;
 
-                 // 1. Resolve relative to section url
+                 // 1. Resolve relative to section url with canonical path normalization
                  if (typeof sectionIndex === 'number') {
                    const section = (newEpubBook as any).spine?.get(sectionIndex);
                    if (section && section.url) {
-                     const sectionDir = section.url.substring(0, section.url.lastIndexOf('/') + 1);
-                     const combined = sectionDir + cleanPath;
-                     const normalized = combined.startsWith('/') ? combined.slice(1) : combined;
-                     zipEntry = zip.file(normalized);
+                     const canonical = normalizeRelativePath(section.url, cleanPath);
+                     zipEntry = zip.file(canonical);
+                     if (!zipEntry && zip.files) {
+                       const lowerCanonical = canonical.toLowerCase();
+                       const allFiles = Object.keys(zip.files);
+                       const matchedFile = allFiles.find(f => f.toLowerCase() === lowerCanonical);
+                       if (matchedFile) zipEntry = zip.file(matchedFile);
+                     }
                    }
                  }
 
-                 // 2. Direct path
+                 // 2. Direct clean path
                  if (!zipEntry) {
                    const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
                    zipEntry = zip.file(normalized);
+                   if (!zipEntry && zip.files) {
+                     const lowerNorm = normalized.toLowerCase();
+                     const allFiles = Object.keys(zip.files);
+                     const matchedFile = allFiles.find(f => f.toLowerCase() === lowerNorm);
+                     if (matchedFile) zipEntry = zip.file(matchedFile);
+                   }
                  }
 
-                 // 3. Fallback: Search all zip entries by path ending or filename
+                 // 3. Robust Filename Search (case-insensitive across entire EPUB archive)
                  if (!zipEntry && zip.files) {
+                   const lowerFilename = filename.toLowerCase();
                    const allFiles = Object.keys(zip.files);
                    const match = allFiles.find(
-                     f => f.endsWith(cleanPath) || f.endsWith('/' + filename) || f === filename
+                     f => f.toLowerCase() === lowerFilename || f.toLowerCase().endsWith('/' + lowerFilename)
                    );
                    if (match) {
                      zipEntry = zip.file(match);
