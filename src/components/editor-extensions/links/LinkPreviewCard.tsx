@@ -15,6 +15,8 @@ import {
   Ungroup,
   ArrowUp,
   ArrowDown,
+  Check,
+  Link2,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import { formatDuration, formatDate, isYouTubeUrl, getVideoId } from './youtubeUtils';
@@ -29,12 +31,15 @@ interface LinkPreviewCardProps {
   uploadDate: string | null;
   notes: string;
   showNotes: boolean;
+  watched?: boolean;
   loading: boolean;
   isReloading: boolean;
   selected: boolean;
   isInsideGroup: boolean;
   onOpenConfirm: () => void;
   onToggleNotes: (e: React.MouseEvent) => void;
+  onToggleWatched?: (e: React.MouseEvent) => void;
+  onConvertToText?: (e: React.MouseEvent) => void;
   onChangeNotes: (notes: string) => void;
   onReload: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
@@ -55,12 +60,15 @@ export default function LinkPreviewCard({
   uploadDate,
   notes,
   showNotes,
+  watched,
   loading,
   isReloading,
   selected,
   isInsideGroup,
   onOpenConfirm,
   onToggleNotes,
+  onToggleWatched,
+  onConvertToText,
   onChangeNotes,
   onReload,
   onDelete,
@@ -166,7 +174,7 @@ export default function LinkPreviewCard({
         }`}
       >
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-hidden mt-0.5">
+          <div className="relative w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-visible mt-0.5">
             {isYouTube ? (
               <button
                 onClick={(e) => {
@@ -174,7 +182,7 @@ export default function LinkPreviewCard({
                   e.stopPropagation();
                   setShowVideo(!showVideo);
                 }}
-                className="w-full h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+                className="w-full h-full flex items-center justify-center hover:bg-white/10 rounded transition-colors"
                 title={showVideo ? 'Fechar vídeo' : 'Assistir vídeo'}
               >
                 <PlaySquare
@@ -184,6 +192,14 @@ export default function LinkPreviewCard({
               </button>
             ) : (
               renderIcon()
+            )}
+            {watched && (
+              <div
+                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-sm ring-1 ring-black/50 pointer-events-none"
+                title="Assistido / Concluído"
+              >
+                <Check size={9} className="stroke-[3.5]" />
+              </div>
             )}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
@@ -260,9 +276,41 @@ export default function LinkPreviewCard({
       {/* Botões de Ação */}
       <div
         className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
-          notes || showNotes ? 'opacity-100' : 'opacity-0 group-hover/link:opacity-100'
+          notes || showNotes || watched ? 'opacity-100' : 'opacity-0 group-hover/link:opacity-100'
         }`}
       >
+        {onToggleWatched && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleWatched(e);
+            }}
+            className={`p-1.5 rounded transition-all flex items-center justify-center border backdrop-blur-sm ${
+              watched
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
+                : 'bg-dark-card/80 hover:bg-emerald-500/15 text-dark-subtext hover:text-emerald-300 border-white/5'
+            }`}
+            title={watched ? 'Marcar como não assistido' : 'Marcar como assistido (check verde)'}
+          >
+            <Check size={14} className={watched ? 'text-emerald-400 stroke-[2.5]' : ''} />
+          </button>
+        )}
+
+        {onConvertToText && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onConvertToText(e);
+            }}
+            className="p-1.5 rounded hover:bg-white/10 text-dark-subtext hover:text-white bg-dark-card/80 backdrop-blur-sm border border-white/5"
+            title="Converter para link de texto simples"
+          >
+            <Link2 size={14} />
+          </button>
+        )}
+
         <button
           onClick={onToggleNotes}
           className={`p-1.5 rounded transition-all flex items-center gap-1 border backdrop-blur-sm ${

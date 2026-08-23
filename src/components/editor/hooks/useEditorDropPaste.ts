@@ -40,6 +40,22 @@ export function useEditorDropPaste({
       try {
         if (!editor) return false;
 
+        // 1. Se estiver dentro de um bloco de código (codeBlock) ou elemento code,
+        // não interceptar a colagem para permitir que o link seja colado como texto puro
+        const isInsideCodeBlock =
+          (typeof editor?.isActive === 'function' &&
+            (editor.isActive('codeBlock') || editor.isActive('code'))) ||
+          view.state.selection.$from?.parent?.type?.name === 'codeBlock' ||
+          !!view.state.selection.$from?.parent?.type?.spec?.code;
+
+        // 2. Se o usuário colou com Shift pressionado (Ctrl+Shift+V / Shift+Paste),
+        // permitir a colagem de texto puro nativo sem criar widget
+        const isShiftPaste = !!(event as any)?.shiftKey;
+
+        if (isInsideCodeBlock || isShiftPaste) {
+          return false;
+        }
+
         const textPasted = event.clipboardData?.getData('text/plain');
         if (textPasted) {
           const urlStr = textPasted.trim();

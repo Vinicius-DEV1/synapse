@@ -1,7 +1,7 @@
 use crate::db::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, State};
+use tauri::State;
 
 #[derive(Serialize, Deserialize)]
 pub struct Book {
@@ -192,7 +192,7 @@ pub fn library_import_and_encrypt_book(
     source_path: String,
     dest_path: String,
     db_state: State<'_, DbState>,
-    app_handle: tauri::AppHandle,
+    _app_handle: tauri::AppHandle,
 ) -> Result<bool, String> {
     let keys_guard = db_state.keys.lock().unwrap();
     let master_key = if let Some(keys) = keys_guard.as_ref() {
@@ -205,10 +205,7 @@ pub fn library_import_and_encrypt_book(
         return Err("Keys not unlocked".into());
     };
 
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_dir = crate::get_app_data_dir();
     let dest_full_path = app_dir.join(&dest_path);
 
     if let Some(parent) = dest_full_path.parent() {
