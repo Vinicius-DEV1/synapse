@@ -154,6 +154,18 @@ export default function Editor({
         spellcheck: settings.spellcheck ? 'true' : 'false',
       },
       handleClick: (view, _pos, event) => {
+        const targetElement = event.target as HTMLElement;
+        const spoiler = targetElement.closest('.caderno-spoiler, [data-type="spoiler"]');
+        if (spoiler) {
+          if (event.altKey) {
+            spoiler.classList.toggle('is-revealed');
+            return true;
+          } else if (!spoiler.classList.contains('is-revealed')) {
+            spoiler.classList.add('is-revealed');
+            return true;
+          }
+        }
+
         if (event.target && (event.target as HTMLElement).tagName === 'MARK') {
           const target = event.target as HTMLElement;
           const targetPos = view.posAtDOM(target, 0);
@@ -163,10 +175,18 @@ export default function Editor({
             return true;
           }
         }
-        const targetElement = event.target as HTMLElement;
         const link = targetElement.closest('a');
         if (link && link.href) {
           window.open(link.href, '_blank');
+          return true;
+        }
+        return false;
+      },
+      handleDoubleClick: (_view, _pos, event) => {
+        const targetElement = event.target as HTMLElement;
+        const spoiler = targetElement.closest('.caderno-spoiler, [data-type="spoiler"]');
+        if (spoiler && spoiler.classList.contains('is-revealed')) {
+          spoiler.classList.remove('is-revealed');
           return true;
         }
         return false;
