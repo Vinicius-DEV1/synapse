@@ -52,9 +52,147 @@ export function useEpubLoader(
 
         if (!active) return;
 
-        // Use arrayBuffer with blobUrl replacements to resolve internal assets
-        const newEpubBook = ePub(arrayBuffer, { replacements: 'blobUrl' });
+        // Use arrayBuffer with replacements option
+        const newEpubBook = ePub(arrayBuffer, { replacements: 'base64' });
         setEpubBook(newEpubBook);
+
+        const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
+          const stack = baseFile.split('/').filter(Boolean);
+          if (!baseFile.endsWith('/')) {
+            stack.pop(); // remove file to get directory
+          }
+          const parts = relativePath.split('/').filter(Boolean);
+          for (const part of parts) {
+            if (part === '.') continue;
+            if (part === '..') {
+              stack.pop();
+            } else {
+              stack.push(part);
+            }
+          }
+          return stack.join('/');
+        };
+
+        const imageBase64Cache = new Map<string, string>();
+
+        const convertImagesToDataUrls = async (doc: Document, sectionUrl?: string) => {
+          const archive = (newEpubBook as any).archive;
+          const zip = archive?.zip;
+          if (!doc || !zip) return;
+
+          const images = doc.querySelectorAll('img, image');
+          for (const img of Array.from(images)) {
+            const isSvgImage = img.tagName.toLowerCase() === 'image';
+            const rawSrc = isSvgImage
+              ? (img.getAttribute('xlink:href') || img.getAttribute('href'))
+              : (img.getAttribute('src') || (img as HTMLImageElement).src);
+
+            if (!rawSrc) continue;
+            if (rawSrc.startsWith('data:')) continue;
+
+            // Skip external non-localhost urls
+            if (rawSrc.startsWith('http://') || rawSrc.startsWith('https://')) {
+              try {
+                const parsed = new URL(rawSrc);
+                if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1' && !parsed.hostname.endsWith('.localhost')) {
+                  continue;
+                }
+              } catch {}
+            }
+
+            if (imageBase64Cache.has(rawSrc)) {
+              const cachedData = imageBase64Cache.get(rawSrc)!;
+              if (isSvgImage) {
+                img.setAttribute('href', cachedData);
+                img.setAttribute('xlink:href', cachedData);
+              } else {
+                img.setAttribute('src', cachedData);
+                (img as HTMLImageElement).src = cachedData;
+              }
+              continue;
+            }
+
+            try {
+              let cleanPath = rawSrc.split('?')[0].split('#')[0];
+              if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+                try {
+                  cleanPath = new URL(cleanPath).pathname;
+                  if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+                } catch {}
+              }
+
+              const filename = cleanPath.split('/').pop() || cleanPath;
+              let zipEntry: any = null;
+
+              // 1. Resolve relative to section url with canonical path normalization
+              if (sectionUrl) {
+                const canonical = normalizeRelativePath(sectionUrl, cleanPath);
+                zipEntry = zip.file(canonical);
+                if (!zipEntry && zip.files) {
+                  const lowerCanonical = canonical.toLowerCase();
+                  const allFiles = Object.keys(zip.files);
+                  const matchedFile = allFiles.find(f => f.toLowerCase() === lowerCanonical);
+                  if (matchedFile) zipEntry = zip.file(matchedFile);
+                }
+              }
+
+              // 2. Direct clean path
+              if (!zipEntry) {
+                const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
+                zipEntry = zip.file(normalized);
+                if (!zipEntry && zip.files) {
+                  const lowerNorm = normalized.toLowerCase();
+                  const allFiles = Object.keys(zip.files);
+                  const matchedFile = allFiles.find(f => f.toLowerCase() === lowerNorm);
+                  if (matchedFile) zipEntry = zip.file(matchedFile);
+                }
+              }
+
+              // 3. Robust Filename Search (case-insensitive across entire EPUB archive)
+              if (!zipEntry && zip.files) {
+                const lowerFilename = filename.toLowerCase();
+                const allFiles = Object.keys(zip.files);
+                const match = allFiles.find(
+                  f => f.toLowerCase() === lowerFilename || f.toLowerCase().endsWith('/' + lowerFilename)
+                );
+                if (match) {
+                  zipEntry = zip.file(match);
+                }
+              }
+
+              if (zipEntry) {
+                const ext = filename.split('.').pop()?.toLowerCase();
+                const mimeType = ext === 'png' ? 'image/png'
+                  : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                  : ext === 'svg' ? 'image/svg+xml'
+                  : ext === 'gif' ? 'image/gif'
+                  : ext === 'webp' ? 'image/webp'
+                  : 'image/png';
+
+                const base64Data = await zipEntry.async('base64');
+                const dataUrl = `data:${mimeType};base64,${base64Data}`;
+                imageBase64Cache.set(rawSrc, dataUrl);
+
+                if (isSvgImage) {
+                  img.setAttribute('href', dataUrl);
+                  img.setAttribute('xlink:href', dataUrl);
+                } else {
+                  img.setAttribute('src', dataUrl);
+                  (img as HTMLImageElement).src = dataUrl;
+                }
+              }
+            } catch (err) {
+              console.warn('[EpubLoader] Erro ao converter imagem para base64:', rawSrc, err);
+            }
+          }
+        };
+
+        // Register spine hook: converts images in chapter XML before serialization to HTML
+        if ((newEpubBook as any).spine?.hooks?.content?.register) {
+          (newEpubBook as any).spine.hooks.content.register(async (doc: Document, section: any) => {
+            await convertImagesToDataUrls(doc, section?.url || section?.href);
+          });
+        }
 
         await newEpubBook.ready;
         if (!active) return;
@@ -76,144 +214,9 @@ export function useEpubLoader(
            
            setRendition(newRendition);
 
-           // Hook: Resolve any relative images from the EPUB archive zip into Blob URLs
-           const imageBlobCache = new Map<string, string>();
-
-           const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
-             const stack = baseFile.split('/').filter(Boolean);
-             if (!baseFile.endsWith('/')) {
-               stack.pop(); // remove file to get directory
-             }
-             const parts = relativePath.split('/').filter(Boolean);
-             for (const part of parts) {
-               if (part === '.') continue;
-               if (part === '..') {
-                 stack.pop();
-               } else {
-                 stack.push(part);
-               }
-             }
-             return stack.join('/');
-           };
-
-           const resolveImagesInDoc = (doc: Document, sectionIndex?: number) => {
-             const archive = (newEpubBook as any).archive;
-             const zip = archive?.zip;
-             if (!doc || !zip) return;
-
-             const images = doc.querySelectorAll('img, image');
-             images.forEach(async (img: Element) => {
-               const isSvgImage = img.tagName.toLowerCase() === 'image';
-               const rawSrc = isSvgImage
-                 ? (img.getAttribute('xlink:href') || img.getAttribute('href'))
-                 : img.getAttribute('src');
-
-               if (!rawSrc) return;
-               if (rawSrc.startsWith('blob:') || rawSrc.startsWith('data:')) {
-                 return;
-               }
-               // Skip external non-localhost urls
-               if (rawSrc.startsWith('http://') || rawSrc.startsWith('https://')) {
-                 try {
-                   const parsed = new URL(rawSrc);
-                   if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1' && !parsed.hostname.endsWith('.localhost')) {
-                     return;
-                   }
-                 } catch {}
-               }
-
-               if (imageBlobCache.has(rawSrc)) {
-                 const cachedUrl = imageBlobCache.get(rawSrc)!;
-                 if (isSvgImage) {
-                   img.setAttribute('href', cachedUrl);
-                   img.setAttribute('xlink:href', cachedUrl);
-                 } else {
-                   img.setAttribute('src', cachedUrl);
-                 }
-                 return;
-               }
-
-               try {
-                 // Clean path of query parameters or hash
-                 let cleanPath = rawSrc.split('?')[0].split('#')[0];
-                 if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-                   try {
-                     cleanPath = new URL(cleanPath).pathname;
-                   } catch {}
-                 }
-
-                 const filename = cleanPath.split('/').pop() || cleanPath;
-                 let zipEntry: any = null;
-
-                 // 1. Resolve relative to section url with canonical path normalization
-                 if (typeof sectionIndex === 'number') {
-                   const section = (newEpubBook as any).spine?.get(sectionIndex);
-                   if (section && section.url) {
-                     const canonical = normalizeRelativePath(section.url, cleanPath);
-                     zipEntry = zip.file(canonical);
-                     if (!zipEntry && zip.files) {
-                       const lowerCanonical = canonical.toLowerCase();
-                       const allFiles = Object.keys(zip.files);
-                       const matchedFile = allFiles.find(f => f.toLowerCase() === lowerCanonical);
-                       if (matchedFile) zipEntry = zip.file(matchedFile);
-                     }
-                   }
-                 }
-
-                 // 2. Direct clean path
-                 if (!zipEntry) {
-                   const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
-                   zipEntry = zip.file(normalized);
-                   if (!zipEntry && zip.files) {
-                     const lowerNorm = normalized.toLowerCase();
-                     const allFiles = Object.keys(zip.files);
-                     const matchedFile = allFiles.find(f => f.toLowerCase() === lowerNorm);
-                     if (matchedFile) zipEntry = zip.file(matchedFile);
-                   }
-                 }
-
-                 // 3. Robust Filename Search (case-insensitive across entire EPUB archive)
-                 if (!zipEntry && zip.files) {
-                   const lowerFilename = filename.toLowerCase();
-                   const allFiles = Object.keys(zip.files);
-                   const match = allFiles.find(
-                     f => f.toLowerCase() === lowerFilename || f.toLowerCase().endsWith('/' + lowerFilename)
-                   );
-                   if (match) {
-                     zipEntry = zip.file(match);
-                   }
-                 }
-
-                 if (zipEntry) {
-                   const ext = filename.split('.').pop()?.toLowerCase();
-                   const mimeType = ext === 'png' ? 'image/png'
-                     : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-                     : ext === 'svg' ? 'image/svg+xml'
-                     : ext === 'gif' ? 'image/gif'
-                     : ext === 'webp' ? 'image/webp'
-                     : 'application/octet-stream';
-
-                   const uint8 = await zipEntry.async('uint8array');
-                   const blob = new Blob([uint8], { type: mimeType });
-                   const blobUrl = URL.createObjectURL(blob);
-                   imageBlobCache.set(rawSrc, blobUrl);
-
-                   if (isSvgImage) {
-                     img.setAttribute('href', blobUrl);
-                     img.setAttribute('xlink:href', blobUrl);
-                   } else {
-                     img.setAttribute('src', blobUrl);
-                   }
-                 }
-               } catch (err) {
-                 console.warn('[EpubLoader] Erro ao resolver imagem interna:', rawSrc, err);
-               }
-             });
-           };
-
            if (newRendition.hooks?.content?.register) {
-             newRendition.hooks.content.register((contents: any) => {
-               resolveImagesInDoc(contents.document, contents.sectionIndex);
+             newRendition.hooks.content.register(async (contents: any) => {
+               await convertImagesToDataUrls(contents.document, contents.section?.url || contents.section?.href);
              });
            }
            
@@ -369,7 +372,7 @@ export function useEpubLoader(
              const doc = view.document;
              if (!doc) return;
              
-             resolveImagesInDoc(doc, view.section?.index);
+             convertImagesToDataUrls(doc, view.section?.url || view.section?.href);
 
              const style = doc.createElement('style');
              style.innerHTML = `
