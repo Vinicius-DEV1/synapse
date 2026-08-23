@@ -274,11 +274,7 @@ export default function LinkPreviewCard({
       </div>
 
       {/* Botões de Ação */}
-      <div
-        className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
-          notes || showNotes || watched ? 'opacity-100' : 'opacity-0 group-hover/link:opacity-100'
-        }`}
-      >
+      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/link:opacity-100 transition-opacity">
         {onToggleWatched && (
           <button
             onClick={(e) => {
