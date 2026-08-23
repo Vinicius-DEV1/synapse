@@ -1,11 +1,14 @@
 import { Clock, Bell, ExternalLink, Trash2 } from 'lucide-react';
 import type { CalendarEvent } from '../../../types/core';
+import { BG_COLORS } from '../../../utils/colors';
 
 interface CalendarEventPopoverProps {
   title: string;
   eventData: CalendarEvent | null;
   formatDateLabel: (isoDate?: string) => string;
   remindersLabel: string | null;
+  color?: string;
+  onChangeColor?: (color: string) => void;
   onOpenCalendar: () => void;
   onOpenDeleteConfirm: () => void;
   onClose: () => void;
@@ -16,6 +19,8 @@ export function CalendarEventPopover({
   eventData,
   formatDateLabel,
   remindersLabel,
+  color,
+  onChangeColor,
   onOpenCalendar,
   onOpenDeleteConfirm,
   onClose,
@@ -42,6 +47,39 @@ export function CalendarEventPopover({
         <div className="flex items-center gap-1.5 text-[11px] text-brand-300 bg-brand-500/10 px-2 py-1 rounded-lg mb-2.5">
           <Bell size={11} />
           <span>Avisos: {remindersLabel}</span>
+        </div>
+      )}
+
+      {onChangeColor && (
+        <div className="mb-2.5">
+          <div className="text-[10px] font-medium text-dark-subtext uppercase tracking-wider mb-1 px-0.5">Cor do Widget</div>
+          <div className="grid grid-cols-5 gap-1">
+            <button
+              onClick={() => onChangeColor('default')}
+              className={`h-5 rounded border text-[10px] flex items-center justify-center transition-all ${
+                !color || color === 'default'
+                  ? 'border-white bg-white/20 text-white'
+                  : 'border-white/10 hover:border-white/30 text-dark-subtext'
+              }`}
+              title="Padrão"
+            >
+              ✕
+            </button>
+            {BG_COLORS.filter((c) => c.value !== 'transparent').map((c) => {
+              const isSelected = color === c.hex || color === c.value;
+              return (
+                <button
+                  key={c.name}
+                  onClick={() => onChangeColor(c.hex)}
+                  className={`h-5 rounded border border-white/15 transition-transform hover:scale-105 ${
+                    isSelected ? 'ring-1 ring-white ring-offset-1 ring-offset-dark-card scale-105' : ''
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                  title={c.name}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -47,6 +47,12 @@ export const MediaWidgetBlock = Node.create<MediaWidgetOptions>({
         parseHTML: element => element.getAttribute('data-title'),
         renderHTML: attributes => ({ 'data-title': attributes.title }),
       },
+      color: {
+        default: 'default',
+        parseHTML: element => element.getAttribute('data-color') || 'default',
+        renderHTML: attributes =>
+          attributes.color && attributes.color !== 'default' ? { 'data-color': attributes.color } : {},
+      },
     }
   },
 

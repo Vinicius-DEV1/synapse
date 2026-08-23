@@ -54,14 +54,7 @@ function EditorBlockHandleHost({
       onMoveDown={blockHandle.onMoveDown}
       onAddBelow={blockHandle.onAddBelow}
       onMenuOpenChange={blockHandle.onMenuOpenChange}
-      onChangeColor={(color, isBackground) => {
-        if (!editor) return;
-        if (isBackground) {
-          editor.chain().focus().toggleHighlight({ color }).run();
-        } else {
-          editor.chain().focus().setColor(color).run();
-        }
-      }}
+      onChangeColor={blockHandle.onChangeColor}
     />
   );
 }

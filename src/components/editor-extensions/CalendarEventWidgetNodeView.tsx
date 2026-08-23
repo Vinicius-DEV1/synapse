@@ -38,7 +38,8 @@ function invalidateCalendarEventsCache() {
 }
 
 export default function CalendarEventWidgetNodeView(props: any) {
-  const { eventId, title, dateStr, status } = props.node.attrs;
+  const { eventId, title, dateStr, status, color: rawColor } = props.node.attrs;
+  const color = rawColor || 'default';
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
   const [showPopover, setShowPopover] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
@@ -193,6 +194,18 @@ export default function CalendarEventWidgetNodeView(props: any) {
     };
   }, []);
 
+  const isCustomColor = Boolean(color && color !== 'default');
+  const customWidgetStyle: React.CSSProperties = isCustomColor && !isCompleted && !isLive
+    ? {
+        backgroundColor: `${color}14`,
+        borderColor: isNodeSelected || showPopover ? color : `${color}40`,
+        color: color,
+        boxShadow: isNodeSelected || showPopover
+          ? `0 0 0 2px ${color}80, 0 0 15px ${color}30`
+          : undefined,
+      }
+    : {};
+
   return (
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
       <span
@@ -207,8 +220,11 @@ export default function CalendarEventWidgetNodeView(props: any) {
           }
         }}
         contentEditable={false}
+        style={customWidgetStyle}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
-          isNodeSelected || showPopover
+          isCustomColor && !isCompleted && !isLive
+            ? ''
+            : isNodeSelected || showPopover
             ? 'ring-2 ring-brand-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] border-brand-400 bg-brand-500/25 scale-[1.03]'
             : isCompleted
             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 line-through opacity-80'
@@ -268,6 +284,8 @@ export default function CalendarEventWidgetNodeView(props: any) {
           eventData={eventData}
           formatDateLabel={formatDateLabel}
           remindersLabel={remindersLabel}
+          color={color}
+          onChangeColor={(newColor: string) => props.updateAttributes?.({ color: newColor })}
           onOpenCalendar={openCalendarModule}
           onOpenDeleteConfirm={() => {
             setShowPopover(false);

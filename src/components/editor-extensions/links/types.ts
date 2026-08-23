@@ -10,6 +10,7 @@ export interface LinkPreviewAttrs {
   isPlaylist: boolean;
   showNotes: boolean;
   watched?: boolean;
+  color?: string;
 }
 
 export interface LinkMetadata {

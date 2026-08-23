@@ -1,12 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { Film, BookOpen, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Film, BookOpen, X, ArrowUp, ArrowDown, Palette } from 'lucide-react';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
+import ColorPalettePicker from './ColorPalettePicker';
 
 export default function MediaWidgetNodeView(props: any) {
-  const { node, deleteNode } = props;
-  const { mediaId, mediaType, title } = node.attrs;
+  const { node, deleteNode, updateAttributes } = props;
+  const { mediaId, mediaType, title, color: rawColor } = node.attrs;
+  const color = rawColor || 'default';
+
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setShowColorPicker(false);
+      }
+    };
+    if (showColorPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColorPicker]);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
   const isNodeSelected = !!(
@@ -48,6 +67,17 @@ export default function MediaWidgetNodeView(props: any) {
     setShowConfirm(true);
   };
 
+  const isCustomColor = Boolean(color && color !== 'default');
+  const customWidgetStyle: React.CSSProperties = isCustomColor
+    ? {
+        backgroundColor: `${color}14`,
+        borderColor: isNodeSelected ? color : `${color}40`,
+        boxShadow: isNodeSelected
+          ? `0 0 0 2px ${color}80, 0 0 12px ${color}30`
+          : undefined,
+      }
+    : {};
+
   return (
     <NodeViewWrapper as="span" className="inline-block relative group align-middle mx-1 my-1">
       <div 
@@ -56,8 +86,13 @@ export default function MediaWidgetNodeView(props: any) {
             props.editor.commands.setNodeSelection(pos);
           }
         }}
-        className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20 ${
-          isNodeSelected ? 'ring-2 ring-brand-400 border-brand-400' : ''
+        style={customWidgetStyle}
+        className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
+          isCustomColor
+            ? ''
+            : isNodeSelected
+            ? 'ring-2 ring-brand-400 border-brand-400'
+            : 'bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20'
         }`}
         onClick={handleOpenAction}
       >
@@ -67,7 +102,34 @@ export default function MediaWidgetNodeView(props: any) {
         <span className="flex-1 break-words leading-tight group-hover:text-white transition-colors">
           {title || (mediaType === 'video' ? 'Vídeo' : 'Livro')}
         </span>
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
+        <div className={`flex items-center gap-0.5 ml-1 transition-opacity ${showColorPicker ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowColorPicker(!showColorPicker);
+              }}
+              className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+              title="Personalizar cor do widget"
+            >
+              <Palette size={12} />
+            </button>
+            {showColorPicker && (
+              <div ref={colorPickerRef} onClick={(e) => e.stopPropagation()} className="absolute top-full right-0 z-50">
+                <ColorPalettePicker
+                  currentColor={color}
+                  onSelectColor={(c) => {
+                    updateAttributes?.({ color: c });
+                    setShowColorPicker(false);
+                  }}
+                  onClearColor={() => {
+                    updateAttributes?.({ color: 'default' });
+                    setShowColorPicker(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
