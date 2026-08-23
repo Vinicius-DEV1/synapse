@@ -52,8 +52,8 @@ export function useEpubLoader(
 
         if (!active) return;
 
-        // Use arrayBuffer directly to avoid ePub.js misidentifying the .enc extension as a directory
-        const newEpubBook = ePub(arrayBuffer);
+        // Use arrayBuffer with blobUrl replacements to resolve internal assets
+        const newEpubBook = ePub(arrayBuffer, { replacements: 'blobUrl' });
         setEpubBook(newEpubBook);
 
         await newEpubBook.ready;
@@ -75,6 +75,106 @@ export function useEpubLoader(
            });
            
            setRendition(newRendition);
+
+           // Hook: Resolve any relative images from the EPUB archive zip into Blob URLs
+           const imageBlobCache = new Map<string, string>();
+           const resolveImagesInDoc = (doc: Document, sectionIndex?: number) => {
+             if (!doc || !newEpubBook.archive) return;
+
+             const images = doc.querySelectorAll('img, image');
+             images.forEach(async (img: Element) => {
+               const isSvgImage = img.tagName.toLowerCase() === 'image';
+               const rawSrc = isSvgImage
+                 ? (img.getAttribute('xlink:href') || img.getAttribute('href'))
+                 : img.getAttribute('src');
+
+               if (!rawSrc) return;
+               if (
+                 rawSrc.startsWith('blob:') ||
+                 rawSrc.startsWith('data:') ||
+                 rawSrc.startsWith('http://') ||
+                 rawSrc.startsWith('https://')
+               ) {
+                 return;
+               }
+
+               if (imageBlobCache.has(rawSrc)) {
+                 const cachedUrl = imageBlobCache.get(rawSrc)!;
+                 if (isSvgImage) {
+                   img.setAttribute('href', cachedUrl);
+                   img.setAttribute('xlink:href', cachedUrl);
+                 } else {
+                   img.setAttribute('src', cachedUrl);
+                 }
+                 return;
+               }
+
+               try {
+                 const cleanPath = rawSrc.split('?')[0].split('#')[0];
+                 const filename = cleanPath.split('/').pop() || cleanPath;
+
+                 let zipEntry: any = null;
+
+                 // 1. Resolve relative to section url
+                 if (typeof sectionIndex === 'number') {
+                   const section = newEpubBook.spine?.get(sectionIndex);
+                   if (section && section.url) {
+                     const sectionDir = section.url.substring(0, section.url.lastIndexOf('/') + 1);
+                     const combined = sectionDir + cleanPath;
+                     const normalized = combined.startsWith('/') ? combined.slice(1) : combined;
+                     zipEntry = newEpubBook.archive.zip.file(normalized);
+                   }
+                 }
+
+                 // 2. Direct path
+                 if (!zipEntry) {
+                   const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
+                   zipEntry = newEpubBook.archive.zip.file(normalized);
+                 }
+
+                 // 3. Fallback: Search all zip entries by path ending or filename
+                 if (!zipEntry) {
+                   const allFiles = Object.keys(newEpubBook.archive.zip.files);
+                   const match = allFiles.find(
+                     f => f.endsWith(cleanPath) || f.endsWith('/' + filename) || f === filename
+                   );
+                   if (match) {
+                     zipEntry = newEpubBook.archive.zip.file(match);
+                   }
+                 }
+
+                 if (zipEntry) {
+                   const ext = filename.split('.').pop()?.toLowerCase();
+                   const mimeType = ext === 'png' ? 'image/png'
+                     : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                     : ext === 'svg' ? 'image/svg+xml'
+                     : ext === 'gif' ? 'image/gif'
+                     : ext === 'webp' ? 'image/webp'
+                     : 'application/octet-stream';
+
+                   const uint8 = await zipEntry.async('uint8array');
+                   const blob = new Blob([uint8], { type: mimeType });
+                   const blobUrl = URL.createObjectURL(blob);
+                   imageBlobCache.set(rawSrc, blobUrl);
+
+                   if (isSvgImage) {
+                     img.setAttribute('href', blobUrl);
+                     img.setAttribute('xlink:href', blobUrl);
+                   } else {
+                     img.setAttribute('src', blobUrl);
+                   }
+                 }
+               } catch (err) {
+                 console.warn('[EpubLoader] Erro ao resolver imagem interna:', rawSrc, err);
+               }
+             });
+           };
+
+           if (newRendition.hooks?.content?.register) {
+             newRendition.hooks.content.register((contents: any) => {
+               resolveImagesInDoc(contents.document, contents.sectionIndex);
+             });
+           }
            
            if (book.last_read_page && typeof book.last_read_page === 'string') {
               await newRendition.display(book.last_read_page as string);
@@ -228,6 +328,8 @@ export function useEpubLoader(
              const doc = view.document;
              if (!doc) return;
              
+             resolveImagesInDoc(doc, view.section?.index);
+
              const style = doc.createElement('style');
              style.innerHTML = `
                ::selection { background: #3b82f640; }
