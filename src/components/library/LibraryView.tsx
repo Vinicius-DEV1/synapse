@@ -134,9 +134,15 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
   };
 
   if (selectedBook) {
-    const isEpub = selectedBook.file_path?.toLowerCase().endsWith('.epub') || 
-                   selectedBook.title?.toLowerCase().endsWith('.epub') ||
-                   selectedBook.original_name?.toLowerCase().endsWith('.epub');
+    const filePathLower = (selectedBook.file_path || '').toLowerCase();
+    const titleLower = (selectedBook.title || '').toLowerCase();
+    const origNameLower = (selectedBook.original_name || '').toLowerCase();
+
+    const isEpub = filePathLower.endsWith('.epub') || 
+                   filePathLower.endsWith('.epub.enc') ||
+                   filePathLower.includes('.epub.') ||
+                   titleLower.endsWith('.epub') ||
+                   origNameLower.endsWith('.epub');
 
     if (isEpub) {
       return (
