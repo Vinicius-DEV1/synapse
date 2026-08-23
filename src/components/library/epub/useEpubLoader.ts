@@ -79,7 +79,9 @@ export function useEpubLoader(
            // Hook: Resolve any relative images from the EPUB archive zip into Blob URLs
            const imageBlobCache = new Map<string, string>();
            const resolveImagesInDoc = (doc: Document, sectionIndex?: number) => {
-             if (!doc || !newEpubBook.archive) return;
+             const archive = (newEpubBook as any).archive;
+             const zip = archive?.zip;
+             if (!doc || !zip) return;
 
              const images = doc.querySelectorAll('img, image');
              images.forEach(async (img: Element) => {
@@ -117,29 +119,29 @@ export function useEpubLoader(
 
                  // 1. Resolve relative to section url
                  if (typeof sectionIndex === 'number') {
-                   const section = newEpubBook.spine?.get(sectionIndex);
+                   const section = (newEpubBook as any).spine?.get(sectionIndex);
                    if (section && section.url) {
                      const sectionDir = section.url.substring(0, section.url.lastIndexOf('/') + 1);
                      const combined = sectionDir + cleanPath;
                      const normalized = combined.startsWith('/') ? combined.slice(1) : combined;
-                     zipEntry = newEpubBook.archive.zip.file(normalized);
+                     zipEntry = zip.file(normalized);
                    }
                  }
 
                  // 2. Direct path
                  if (!zipEntry) {
                    const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
-                   zipEntry = newEpubBook.archive.zip.file(normalized);
+                   zipEntry = zip.file(normalized);
                  }
 
                  // 3. Fallback: Search all zip entries by path ending or filename
-                 if (!zipEntry) {
-                   const allFiles = Object.keys(newEpubBook.archive.zip.files);
+                 if (!zipEntry && zip.files) {
+                   const allFiles = Object.keys(zip.files);
                    const match = allFiles.find(
                      f => f.endsWith(cleanPath) || f.endsWith('/' + filename) || f === filename
                    );
                    if (match) {
-                     zipEntry = newEpubBook.archive.zip.file(match);
+                     zipEntry = zip.file(match);
                    }
                  }
 
