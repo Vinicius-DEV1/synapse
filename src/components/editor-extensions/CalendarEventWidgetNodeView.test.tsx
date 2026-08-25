@@ -81,4 +81,60 @@ describe('CalendarEventWidgetNodeView Component', () => {
       );
     });
   });
+
+  it('renders deleted state in red with (Evento Excluído) when event is not found', async () => {
+    (window as any).api.calendar.getEvents = vi.fn().mockResolvedValue([]);
+
+    render(
+      <CalendarEventWidgetNodeView
+        node={{
+          attrs: {
+            eventId: 'evt_deleted',
+            title: 'Evento Apagado',
+            dateStr: '2026-08-20T10:00:00Z',
+            status: 'pending',
+          },
+        }}
+        updateAttributes={vi.fn()}
+        deleteNode={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Evento Apagado (Evento Excluído)')).toBeInTheDocument();
+    });
+  });
+
+  it('shows deleted notice modal on click and allows removing the widget', async () => {
+    (window as any).api.calendar.getEvents = vi.fn().mockResolvedValue([]);
+    const deleteNodeMock = vi.fn();
+
+    render(
+      <CalendarEventWidgetNodeView
+        node={{
+          attrs: {
+            eventId: 'evt_deleted',
+            title: 'Evento Apagado',
+            dateStr: '2026-08-20T10:00:00Z',
+            status: 'pending',
+          },
+        }}
+        updateAttributes={vi.fn()}
+        deleteNode={deleteNodeMock}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Evento Apagado (Evento Excluído)')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Evento Apagado (Evento Excluído)'));
+
+    expect(screen.getByText('Evento Excluído')).toBeInTheDocument();
+    expect(screen.getByText('Remover Widget')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Remover Widget'));
+    expect(deleteNodeMock).toHaveBeenCalledTimes(1);
+  });
 });
+

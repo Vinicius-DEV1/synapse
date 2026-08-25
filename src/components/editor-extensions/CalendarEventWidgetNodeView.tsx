@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { Calendar, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, Check, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
 import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { parseEventDate } from '../../utils/date-utils';
@@ -41,7 +41,9 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const { eventId, title, dateStr, status, color: rawColor } = props.node.attrs;
   const color = rawColor || 'default';
   const [eventData, setEventData] = useState<CalendarEvent | null>(null);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [showPopover, setShowPopover] = useState(false);
+  const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
@@ -57,29 +59,60 @@ export default function CalendarEventWidgetNodeView(props: any) {
     setIsCompleted(status === 'completed');
   }, [status]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchEvent = async () => {
-      if (!eventId || !window.api?.calendar) return;
-      try {
-        const events = await fetchCalendarEventsCached();
-        const found = events.find((e: CalendarEvent) => e.id === eventId);
-        if (found && isMounted) {
+  const fetchEvent = async (isMounted = true) => {
+    if (!eventId || !window.api?.calendar) {
+      if (isMounted) setIsLoadingEvents(false);
+      return;
+    }
+    if (isMounted) setIsLoadingEvents(true);
+    try {
+      const events = await fetchCalendarEventsCached();
+      const found = events.find((e: CalendarEvent) => e.id === eventId);
+      if (isMounted) {
+        if (found) {
           setEventData(found);
           setIsCompleted(found.status === 'completed');
+        } else {
+          setEventData(null);
         }
-      } catch (err) {
-        console.error('Erro ao buscar evento do widget:', err);
       }
+    } catch (err) {
+      console.error('Erro ao buscar evento do widget:', err);
+      if (isMounted) setEventData(null);
+    } finally {
+      if (isMounted) setIsLoadingEvents(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchEvent(isMounted);
+
+    const handleSync = () => {
+      invalidateCalendarEventsCache();
+      fetchEvent(isMounted);
     };
-    fetchEvent();
+
+    window.addEventListener('app-sync-trigger', handleSync);
+    window.addEventListener('caderno-sync-complete', handleSync);
+    window.addEventListener('caderno-calendar-updated', handleSync);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('app-sync-trigger', handleSync);
+      window.removeEventListener('caderno-sync-complete', handleSync);
+      window.removeEventListener('caderno-calendar-updated', handleSync);
     };
   }, [eventId]);
 
+  const isNotFound = !isLoadingEvents && eventData === null;
+
   const toggleStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isNotFound) {
+      setShowDeletedNotice(true);
+      return;
+    }
     const newStatus = isCompleted ? 'pending' : 'completed';
     setIsCompleted(!isCompleted);
     props.updateAttributes({ status: newStatus });
@@ -172,12 +205,11 @@ export default function CalendarEventWidgetNodeView(props: any) {
   }, []);
 
   const isLive = React.useMemo(() => {
-    if (!eventData?.start_date || isCompleted) return false;
+    if (!eventData?.start_date || isCompleted || isNotFound) return false;
     const evTime = new Date(eventData.start_date).getTime();
     if (isNaN(evTime)) return false;
-    // Live status window: from 15 minutes before until 60 minutes after
     return nowTs >= evTime - 15 * 60 * 1000 && nowTs <= evTime + 60 * 60 * 1000;
-  }, [eventData?.start_date, isCompleted, nowTs]);
+  }, [eventData?.start_date, isCompleted, isNotFound, nowTs]);
 
   const widgetRef = React.useRef<HTMLSpanElement>(null);
 
@@ -194,15 +226,23 @@ export default function CalendarEventWidgetNodeView(props: any) {
     };
   }, []);
 
-  const isCustomColor = Boolean(color && color !== 'default');
-  const customWidgetStyle: React.CSSProperties = isCustomColor && !isCompleted && !isLive
+  const isCustomColor = Boolean(color && color !== 'default') && !isNotFound;
+  const customWidgetStyle: React.CSSProperties = isNotFound
     ? {
-        backgroundColor: `${color}14`,
-        borderColor: isNodeSelected || showPopover ? color : `${color}40`,
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderColor: isNodeSelected || showPopover ? 'rgba(239, 68, 68, 1)' : 'rgba(239, 68, 68, 0.4)',
+        boxShadow: isNodeSelected || showPopover
+          ? '0 0 0 2px rgba(239, 68, 68, 0.5), 0 0 12px rgba(239, 68, 68, 0.2)'
+          : undefined,
+      }
+    : isCustomColor && !isCompleted && !isLive
+    ? {
+        backgroundColor: `${color}18`,
+        borderColor: isNodeSelected || showPopover ? color : `${color}60`,
         color: color,
         boxShadow: isNodeSelected || showPopover
           ? `0 0 0 2px ${color}80, 0 0 15px ${color}30`
-          : undefined,
+          : `0 0 0 1px ${color}20, 0 2px 6px ${color}10`,
       }
     : {};
 
@@ -210,7 +250,13 @@ export default function CalendarEventWidgetNodeView(props: any) {
     <NodeViewWrapper as="span" className="inline-block align-middle mx-1 relative">
       <span
         ref={widgetRef}
-        onClick={() => setShowPopover(!showPopover)}
+        onClick={() => {
+          if (isNotFound) {
+            setShowDeletedNotice(true);
+          } else {
+            setShowPopover(!showPopover);
+          }
+        }}
         onMouseDown={() => {
           if (typeof props.getPos === 'function' && props.editor) {
             const pos = props.getPos();
@@ -221,9 +267,12 @@ export default function CalendarEventWidgetNodeView(props: any) {
         }}
         contentEditable={false}
         style={customWidgetStyle}
+        title={isNotFound ? 'Evento excluído da agenda. Clique para opções.' : undefined}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer select-none text-xs font-medium transition-all ${
-          isCustomColor && !isCompleted && !isLive
-            ? ''
+          isNotFound
+            ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:border-red-500/70 hover:bg-red-500/20'
+            : isCustomColor && !isCompleted && !isLive
+            ? 'bg-dark-card/90 hover:brightness-110'
             : isNodeSelected || showPopover
             ? 'ring-2 ring-brand-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] border-brand-400 bg-brand-500/25 scale-[1.03]'
             : isCompleted
@@ -233,23 +282,33 @@ export default function CalendarEventWidgetNodeView(props: any) {
             : 'bg-brand-500/10 border-brand-500/30 text-brand-300 hover:bg-brand-500/20 hover:border-brand-500/50'
         }`}
       >
-        <button
-          onClick={toggleStatus}
-          className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${
-            isCompleted
-              ? 'bg-emerald-500 border-emerald-500 text-dark-bg'
-              : 'border-white/30 hover:border-brand-400'
-          }`}
-          title={isCompleted ? 'Concluído (clique para reabrir)' : 'Marcar como concluído'}
-        >
-          {isCompleted && <Check size={10} strokeWidth={3} />}
-        </button>
+        {!isNotFound && (
+          <button
+            onClick={toggleStatus}
+            className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${
+              isCompleted
+                ? 'bg-emerald-500 border-emerald-500 text-dark-bg'
+                : 'border-white/30 hover:border-brand-400'
+            }`}
+            title={isCompleted ? 'Concluído (clique para reabrir)' : 'Marcar como concluído'}
+          >
+            {isCompleted && <Check size={10} strokeWidth={3} />}
+          </button>
+        )}
 
-        <Calendar size={13} className="flex-shrink-0" />
-        <span className="truncate max-w-[180px]">{eventData?.title || title}</span>
-        <span className="text-[10px] opacity-75">
-          • {formatDateLabel(eventData?.start_date)}
+        {isNotFound ? (
+          <AlertCircle size={13} className="text-red-400 flex-shrink-0" />
+        ) : (
+          <Calendar size={13} className="flex-shrink-0" />
+        )}
+        <span className="truncate max-w-[180px]">
+          {eventData?.title || title}{isNotFound ? ' (Evento Excluído)' : ''}
         </span>
+        {!isNotFound && (
+          <span className="text-[10px] opacity-75">
+            • {formatDateLabel(eventData?.start_date)}
+          </span>
+        )}
         <span className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
           <button
             onClick={(e) => {
@@ -277,6 +336,41 @@ export default function CalendarEventWidgetNodeView(props: any) {
           </button>
         </span>
       </span>
+
+      {showDeletedNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle size={22} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-white font-semibold text-base leading-tight">Evento Excluído</h3>
+                <p className="text-dark-subtext text-xs mt-0.5">Evento não encontrado na agenda</p>
+              </div>
+            </div>
+            
+            <p className="text-dark-subtext text-sm leading-relaxed">
+              O evento <strong className="text-white">"{title || eventData?.title || 'Evento'}"</strong> foi excluído da agenda. Deseja remover este widget do documento?
+            </p>
+
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setShowDeletedNotice(false)}
+                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+              >
+                Manter
+              </button>
+              <button
+                onClick={() => { setShowDeletedNotice(false); props.deleteNode(); }}
+                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+              >
+                Remover Widget
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPopover && (
         <CalendarEventPopover
@@ -309,3 +403,4 @@ export default function CalendarEventWidgetNodeView(props: any) {
     </NodeViewWrapper>
   );
 }
+
