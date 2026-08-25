@@ -1,14 +1,17 @@
 import { Platform } from 'react-native';
 
 export const AppConfig = {
-  // In development, you can point to your local machine IP (e.g., http://192.168.1.X:5173) or web production URL
-  // Default to localhost for Android emulator / iOS simulator, or live web build
+  // Alterar para true apenas se estiver rodando 'npm run dev' no computador
+  USE_LOCAL_DEV: false,
+
+  // Endereço local de desenvolvimento (Android Emulator: 10.0.2.2 | Celular Físico: IP do seu PC, ex: http://192.168.1.X:5173)
   DEV_SERVER_URL: Platform.OS === 'android' ? 'http://10.0.2.2:5173' : 'http://localhost:5173',
+
+  // URL de produção na nuvem (Firebase Hosting)
   PROD_WEB_URL: 'https://fourth-cirrus-468923-h7.web.app',
   
-  // Choose whether to use dev server in __DEV__ mode
   getWebUrl(): string {
-    if (__DEV__) {
+    if (this.USE_LOCAL_DEV) {
       return this.DEV_SERVER_URL;
     }
     return this.PROD_WEB_URL;
