@@ -81,6 +81,9 @@ export function useTrash() {
 
       if (window.api?.trash?.deletePermanently) {
         await window.api.trash.deletePermanently(item.id, item.item_type);
+        if (item.item_type === 'page' && window.api?.imageCache?.cleanupOrphans) {
+          await window.api.imageCache.cleanupOrphans().catch(() => {});
+        }
         setItems(prev => prev.filter(i => i.id !== item.id));
         triggerToast(`"${item.title}" excluído permanentemente.`, 'info');
       } else {
@@ -111,6 +114,9 @@ export function useTrash() {
 
       if (window.api?.trash?.empty) {
         await window.api.trash.empty();
+        if (window.api?.imageCache?.cleanupOrphans) {
+          await window.api.imageCache.cleanupOrphans().catch(() => {});
+        }
         setItems([]);
         setShowEmptyConfirm(false);
         triggerToast("Lixeira esvaziada com sucesso!", 'success');

@@ -45,22 +45,20 @@ pub fn notes_get_page_history(
     let keys_guard = db_state.keys.lock().unwrap();
     let notes_key = keys_guard.as_ref().and_then(|k| k.notes.clone());
 
-    for row_res in history_iter {
-        if let Ok((id, pid, mut cont, created, enc_opt)) = row_res {
-            if let Some(enc) = enc_opt {
-                if let Some(key) = &notes_key {
-                    if let Ok(decrypted) = crate::crypto::decrypt_content(key, &enc) {
-                        cont = decrypted;
-                    }
+    for (id, pid, mut cont, created, enc_opt) in history_iter.flatten() {
+        if let Some(enc) = enc_opt {
+            if let Some(key) = &notes_key {
+                if let Ok(decrypted) = crate::crypto::decrypt_content(key, &enc) {
+                    cont = decrypted;
                 }
             }
-            history.push(PageHistoryEntry {
-                id,
-                page_id: pid,
-                content: cont,
-                created_at: created,
-            });
         }
+        history.push(PageHistoryEntry {
+            id,
+            page_id: pid,
+            content: cont,
+            created_at: created,
+        });
     }
 
     Ok(history)
@@ -111,4 +109,43 @@ pub fn image_cache_put(
     .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn image_cache_delete(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    conn.execute("DELETE FROM image_cache WHERE id = ?", [&id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn notes_cleanup_orphaned_images(
+    db_state: State<'_, DbState>,
+) -> Result<usize, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let query = "
+        DELETE FROM image_cache 
+        WHERE id NOT IN (
+            SELECT DISTINCT substr(id, 1) FROM image_cache
+            WHERE EXISTS (
+                SELECT 1 FROM pages WHERE content LIKE '%' || image_cache.id || '%'
+            )
+            OR EXISTS (
+                SELECT 1 FROM page_history WHERE content LIKE '%' || image_cache.id || '%'
+            )
+        )
+    ";
+
+    let deleted_count = conn.execute(query, []).map_err(|e| e.to_string())?;
+
+    Ok(deleted_count)
 }

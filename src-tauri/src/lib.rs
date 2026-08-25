@@ -116,6 +116,8 @@ pub fn run() {
             cmd_notes::notes_restore_page,
             notes_history::image_cache_get,
             notes_history::image_cache_put,
+            notes_history::image_cache_delete,
+            notes_history::notes_cleanup_orphaned_images,
             cmd_finance::finance_get_transactions,
             cmd_finance::finance_add_transaction,
             cmd_finance::finance_update_transaction,

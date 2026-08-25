@@ -124,13 +124,17 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
  */
 async function removeFromLocalCache(fileId: string): Promise<void> {
   if (isDesktopApp()) {
-     // Missing delete method in imageCache IPC if SQLite cache cleanup was needed 
-     // (currently no 'delete' method in IPC, safe to ignore as 
-     // cloud storage is the primary target for capacity).
+    if (window.api?.imageCache?.delete) {
+      try {
+        await window.api.imageCache.delete(fileId);
+      } catch (e) {
+        console.warn(`[GC] Falha ao remover imagem ${fileId} do cache SQLite:`, e);
+      }
+    }
   } else {
-     const db = await getWebDb();
-     if (db) {
-       await db.delete('image_cache', fileId);
-     }
+    const db = await getWebDb();
+    if (db) {
+      await db.delete('image_cache', fileId);
+    }
   }
 }
