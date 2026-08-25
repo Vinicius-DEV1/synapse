@@ -54,4 +54,42 @@ describe('useTrash Hook', () => {
     expect(window.api.trash.restore).toHaveBeenCalledWith('item_1', 'page');
     expect(result.current.items).toHaveLength(1);
   });
+
+  it('empties trash and purges orphaned image cache', async () => {
+    (window as any).api.imageCache = {
+      cleanupOrphans: vi.fn().mockResolvedValue(5),
+    };
+
+    const { result } = renderHook(() => useTrash());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleEmptyTrash();
+    });
+
+    expect(window.api.trash.empty).toHaveBeenCalled();
+    expect((window as any).api.imageCache.cleanupOrphans).toHaveBeenCalled();
+    expect(result.current.items).toHaveLength(0);
+  });
+
+  it('permanently deletes page item and triggers imageCache cleanup', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (window as any).api.imageCache = {
+      cleanupOrphans: vi.fn().mockResolvedValue(1),
+    };
+
+    const { result } = renderHook(() => useTrash());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleHardDelete(mockTrashItems[0]);
+    });
+
+    expect(window.api.trash.deletePermanently).toHaveBeenCalledWith('item_1', 'page');
+    expect((window as any).api.imageCache.cleanupOrphans).toHaveBeenCalled();
+    expect(result.current.items).toHaveLength(1);
+  });
 });
+
