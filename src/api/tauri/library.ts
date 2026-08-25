@@ -102,12 +102,7 @@ export const tauriLibraryApi = {
       }
 
       if (!buffer) return null;
-
-      let binary = '';
-      for (let i = 0; i < buffer.byteLength; i++) {
-          binary += String.fromCharCode(buffer[i]);
-      }
-      return window.btoa(binary);
+      return buffer.buffer;
     } catch(e) { console.error("Error getting book file", e); return null; }
   },
   getBooks: async () => await invoke('library_get_books'),

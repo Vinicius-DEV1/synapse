@@ -141,7 +141,7 @@ export function useSlashCommand({
       case 'video': chain.run(); setMediaSelectModal({ isOpen: true, type: 'video' }); break;
       case 'livro': chain.run(); setMediaSelectModal({ isOpen: true, type: 'book' }); break;
       case 'event': {
-        const parts = slashMenu.query.trim().split(' ');
+        const parts = (slashMenu.query || '').trim().split(' ');
         let initialTitle = '';
         
         if (parts[0] && parts[0].toLowerCase() === 'event') parts.shift();
@@ -197,7 +197,7 @@ export function useSlashCommand({
         chain.insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
         break;
       case 'foco': {
-        const parts = slashMenu.query.trim().split(' ');
+        const parts = (slashMenu.query || '').trim().split(' ');
         let initialTime = 30;
         let initialTag = '';
         let initialDesc = '';
@@ -220,7 +220,7 @@ export function useSlashCommand({
         break;
       }
       case 'alarme': {
-        const parts = slashMenu.query.trim().split(' ');
+        const parts = (slashMenu.query || '').trim().split(' ');
         let initialTimeStr = '12:00';
         
         if (parts[0] && parts[0].toLowerCase() === 'alarme') parts.shift();
@@ -246,7 +246,7 @@ export function useSlashCommand({
         break;
       }
       case 'evento': {
-        const parts = slashMenu.query.trim().split(' ');
+        const parts = (slashMenu.query || '').trim().split(' ');
         if (parts[0] && parts[0].toLowerCase() === 'evento') parts.shift();
         const initialTitle = parts.join(' ').trim() || '';
         chain.run();

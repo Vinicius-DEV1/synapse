@@ -71,7 +71,15 @@ function ReadingStatsViewContent({ onClose }: ReadingStatsViewProps) {
 
   const getProgress = (book: LibraryBook): number => {
     if (!book.total_pages || book.total_pages === 0) return 0;
-    return Math.min(100, Math.round((book.last_read_page / book.total_pages) * 100));
+    let page = (book as any).current_page || 0;
+    if (typeof book.last_read_page === 'number') {
+      page = book.last_read_page;
+    } else if (typeof book.last_read_page === 'string' && !(book.last_read_page as any).includes('epubcfi')) {
+      const parsed = parseInt(book.last_read_page, 10);
+      if (!isNaN(parsed)) page = parsed;
+    }
+    if (!page || page <= 0) return 0;
+    return Math.min(100, Math.round((page / book.total_pages) * 100));
   };
 
   return (

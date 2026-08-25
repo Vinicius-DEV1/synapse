@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, ComponentType } from 'react';
+import { Suspense, lazy, memo, type ComponentType } from 'react';
 import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
