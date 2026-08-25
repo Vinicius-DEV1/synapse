@@ -1,6 +1,26 @@
-import { Suspense, lazy, memo } from 'react';
+import { Suspense, lazy, memo, ComponentType } from 'react';
 import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+
+// Helper to auto-retry chunk download or reload if new version was deployed
+function lazyWithRetry<T extends ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error: any) {
+      console.warn('[ViewFactory] Falha ao carregar chunk de módulo, tentando atualizar...', error);
+      const isRefreshed = sessionStorage.getItem('chunk_retry_' + window.location.pathname);
+      if (!isRefreshed) {
+        sessionStorage.setItem('chunk_retry_' + window.location.pathname, 'true');
+        window.location.reload();
+        return new Promise(() => {}); // Never resolves as reload is triggered
+      }
+      throw error;
+    }
+  });
+}
 
 // UI navigates to 'settings' module as a tab, although type
 // `Tab['module']` (defined in src/types/store.ts) does not include it yet
@@ -8,21 +28,21 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // (same convention used in src/components/layout/sidebar/Sidebar.tsx).
 type ModuleId = Tab['module'] | 'settings';
 
-const HomeView = lazy(() => import('./home/HomeView'));
-const PageView = lazy(() => import('./page-view/PageView'));
-const FinanceView = lazy(() => import('./finance/FinanceView'));
-const LibraryView = lazy(() => import('./library/LibraryView'));
-const CultureView = lazy(() => import('./culture/CultureView'));
-const VideoView = lazy(() => import('./video-player/VideoView'));
-const AnkiView = lazy(() => import('./anki/AnkiView'));
-const FocusApp = lazy(() => import('./focus/FocusApp'));
-const CalendarView = lazy(() => import('./calendar/CalendarView'));
-const FilesView = lazy(() => import('./files/FilesView'));
-const VaultView = lazy(() => import('./vault/VaultView'));
-const PracticeView = lazy(() => import('./practice/PracticeView'));
-const TrashView = lazy(() => import('./trash/TrashView'));
-const SettingsModule = lazy(() => import('./settings/SettingsModule'));
-const DiagramsModule = lazy(() => import('./diagrams/DiagramsModule'));
+const HomeView = lazyWithRetry(() => import('./home/HomeView'));
+const PageView = lazyWithRetry(() => import('./page-view/PageView'));
+const FinanceView = lazyWithRetry(() => import('./finance/FinanceView'));
+const LibraryView = lazyWithRetry(() => import('./library/LibraryView'));
+const CultureView = lazyWithRetry(() => import('./culture/CultureView'));
+const VideoView = lazyWithRetry(() => import('./video-player/VideoView'));
+const AnkiView = lazyWithRetry(() => import('./anki/AnkiView'));
+const FocusApp = lazyWithRetry(() => import('./focus/FocusApp'));
+const CalendarView = lazyWithRetry(() => import('./calendar/CalendarView'));
+const FilesView = lazyWithRetry(() => import('./files/FilesView'));
+const VaultView = lazyWithRetry(() => import('./vault/VaultView'));
+const PracticeView = lazyWithRetry(() => import('./practice/PracticeView'));
+const TrashView = lazyWithRetry(() => import('./trash/TrashView'));
+const SettingsModule = lazyWithRetry(() => import('./settings/SettingsModule'));
+const DiagramsModule = lazyWithRetry(() => import('./diagrams/DiagramsModule'));
 
 export interface ViewFactoryProps {
   tab: Tab;

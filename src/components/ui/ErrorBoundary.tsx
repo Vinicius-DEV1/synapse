@@ -28,6 +28,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
+    const isChunkError = this.state.error?.message?.includes('dynamically imported') || 
+                         this.state.error?.message?.includes('Failed to fetch') ||
+                         this.state.error?.message?.includes('Loading chunk') ||
+                         this.state.error?.name === 'ChunkLoadError';
+    if (isChunkError) {
+      window.location.reload();
+      return;
+    }
     this.setState({ hasError: false, error: null });
   };
 

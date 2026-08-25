@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MAIN_MODULES, SPECIAL_MODULES } from './sidebar/modules.config';
 import NotificationBell from '../notifications/NotificationBell';
+import { triggerHaptic } from '../../services/haptics';
 
 interface TabItemProps {
   tab: any;
@@ -90,6 +91,7 @@ export default function TabBar() {
   const { state, dispatch } = useStore();
 
   const handleNewTab = useCallback(() => {
+    triggerHaptic('medium');
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
@@ -100,11 +102,13 @@ export default function TabBar() {
 
   const handleCloseTab = useCallback((e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
+    triggerHaptic('light');
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     dispatch({ type: 'CLOSE_TAB', tabId });
   }, [dispatch]);
 
   const handleSelectTab = useCallback((tabId: string) => {
+    triggerHaptic('selection');
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   }, [dispatch]);
@@ -151,7 +155,10 @@ export default function TabBar() {
       <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto scrollbar-none">
       {/* Mobile Sidebar Toggle Button */}
       <button
-        onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+        onClick={() => {
+          triggerHaptic('light');
+          dispatch({ type: 'TOGGLE_SIDEBAR' });
+        }}
         className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
         title="Abrir menu"
       >

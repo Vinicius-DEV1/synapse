@@ -14,6 +14,7 @@ import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-we
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
+import * as Haptics from 'expo-haptics';
 import { getInjectedJavaScript } from './src/utils/injectedScripts';
 import { AppConfig } from './src/config/appConfig';
 
@@ -79,6 +80,15 @@ function MainWebView() {
         hideSplash();
       } else if (msg.type === 'OPEN_URL' && msg.payload?.url) {
         Linking.openURL(msg.payload.url).catch(() => {});
+      } else if (msg.type === 'HAPTIC') {
+        const style = msg.payload?.style || 'light';
+        if (style === 'selection') Haptics.selectionAsync().catch(() => {});
+        else if (style === 'medium') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        else if (style === 'heavy') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        else if (style === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        else if (style === 'warning') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        else if (style === 'error') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       } else if (msg.type === 'BACK_PRESS_RESULT' || msg.type === 'BACK_PRESS_HANDLED') {
         if (!msg.handled) {
           if (canGoBack && webViewRef.current) {
