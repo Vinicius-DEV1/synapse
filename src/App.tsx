@@ -180,6 +180,80 @@ function AppContent() {
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
   }, [state.activeTabId]);
 
+  // Handle in-app back press from Mobile WebView or Browser
+  useEffect(() => {
+    const handleBack = (): boolean => {
+      // 1. Close floating page modal if open
+      if (floatingPageId) {
+        setFloatingPageId(null);
+        return true;
+      }
+      // 2. Close context menu if open
+      if (state.contextMenu) {
+        dispatch({ type: 'HIDE_CONTEXT_MENU' });
+        return true;
+      }
+      // 3. Close confirm delete modal if open
+      if (state.confirmDelete) {
+        dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
+        return true;
+      }
+      // 4. Close AI sidebar if open
+      if (state.showAiSidebar) {
+        dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
+        return true;
+      }
+      // 5. Close sidebar drawer if open on mobile
+      if (!state.sidebarCollapsed && window.innerWidth < 768) {
+        dispatch({ type: 'TOGGLE_SIDEBAR' });
+        return true;
+      }
+      // 6. Check if any open modal close button exists in DOM
+      const openModalCloseBtn = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="Close"], [role="dialog"] button.close-btn, .modal-close-btn');
+      if (openModalCloseBtn) {
+        openModalCloseBtn.click();
+        return true;
+      }
+      // 7. Check if current page in active tab has a parent page (subpage navigation)
+      const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+      if (currentTab?.pageId) {
+        const currentPage = state.pages.find(p => p.id === currentTab.pageId);
+        if (currentPage?.parent_id) {
+          dispatch({ type: 'NAVIGATE_IN_TAB', pageId: currentPage.parent_id });
+          return true;
+        }
+      }
+      return false;
+    };
+
+    (window as any).__cadernoHandleBack = handleBack;
+
+    const handleNativeMessage = (event: any) => {
+      try {
+        const raw = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (raw?.type === 'HARDWARE_BACK_PRESS') {
+          const handled = handleBack();
+          if ((window as any).ReactNativeWebView?.postMessage) {
+            (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'BACK_PRESS_HANDLED',
+              handled,
+            }));
+          }
+        }
+      } catch {
+        // Ignore non-json messages
+      }
+    };
+
+    window.addEventListener('message', handleNativeMessage);
+    document.addEventListener('message', handleNativeMessage);
+
+    return () => {
+      window.removeEventListener('message', handleNativeMessage);
+      document.removeEventListener('message', handleNativeMessage);
+    };
+  }, [state, dispatch, floatingPageId]);
+
   if (authStatus === null) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext" style={{ height: '100dvh' }}>

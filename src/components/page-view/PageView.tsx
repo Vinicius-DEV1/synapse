@@ -107,7 +107,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     <div className="h-full overflow-y-auto relative bg-dark-bg" id="page-view-scroll">
       <PageCover page={page} onUpdatePage={onUpdatePage} />
 
-      <div className={`max-w-5xl mx-auto px-12 pb-12 animate-fade-in ${page.cover_image ? 'pt-8' : ''}`}>
+      <div className={`max-w-5xl mx-auto px-4 sm:px-8 md:px-12 pb-12 animate-fade-in ${page.cover_image ? 'pt-8' : ''}`}>
         
         <PageHeader 
           page={page} 

@@ -37,23 +37,32 @@ function MainWebView() {
     return () => clearTimeout(timer);
   }, [hideSplash]);
 
-  // Handle Android hardware back button
+  // Handle Android hardware back button with SPA in-app navigation
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
     const onBackPress = () => {
-      if (canGoBack && webViewRef.current) {
-        webViewRef.current.goBack();
+      if (webViewRef.current) {
+        // Send back request to web app in SPA
+        const script = `
+          (function() {
+            var handled = false;
+            if (typeof window.__cadernoHandleBack === 'function') {
+              handled = window.__cadernoHandleBack();
+            }
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'BACK_PRESS_RESULT',
+                handled: !!handled
+              }));
+            }
+          })();
+          true;
+        `;
+        webViewRef.current.injectJavaScript(script);
         return true;
       }
-      const now = Date.now();
-      if (now - lastBackPressRef.current < 2000) {
-        BackHandler.exitApp();
-        return true;
-      }
-      lastBackPressRef.current = now;
-      ToastAndroid.show('Pressione novamente para sair', ToastAndroid.SHORT);
-      return true;
+      return false;
     };
 
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -70,6 +79,20 @@ function MainWebView() {
         hideSplash();
       } else if (msg.type === 'OPEN_URL' && msg.payload?.url) {
         Linking.openURL(msg.payload.url).catch(() => {});
+      } else if (msg.type === 'BACK_PRESS_RESULT' || msg.type === 'BACK_PRESS_HANDLED') {
+        if (!msg.handled) {
+          if (canGoBack && webViewRef.current) {
+            webViewRef.current.goBack();
+          } else {
+            const now = Date.now();
+            if (now - lastBackPressRef.current < 2000) {
+              BackHandler.exitApp();
+            } else {
+              lastBackPressRef.current = now;
+              ToastAndroid.show('Pressione novamente para sair', ToastAndroid.SHORT);
+            }
+          }
+        }
       }
     } catch {
       // Non-JSON message, ignore
