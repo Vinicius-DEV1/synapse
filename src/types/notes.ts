@@ -15,6 +15,7 @@ export interface Page {
   pinned_order?: number;
   cover_image?: string | null;
   description?: string | null;
+  deleted_at?: string | null;
 }
 
 export type PageMeta = Page;

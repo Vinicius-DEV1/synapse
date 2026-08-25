@@ -1,0 +1,37 @@
+/* Native Mobile Feel Tweaks for Caderno WebView */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in editors, inputs and explicit selectable containers */
+input,
+textarea,
+[contenteditable="true"],
+.selectable,
+.ProseMirror,
+.ProseMirror * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Inertial smooth scrolling for touch devices */
+.scrollable,
+main,
+aside,
+[data-scrollable="true"] {
+  -webkit-overflow-scrolling: touch;
+}
