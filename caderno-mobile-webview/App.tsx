@@ -131,8 +131,8 @@ function MainWebView() {
   const targetUri = AppConfig.getWebUrl();
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={false} />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={true} />
 
       {hasError ? (
         <View style={styles.errorContainer}>
