@@ -42,10 +42,8 @@ pub fn file_links_get_by_page(
         .map_err(|e| e.to_string())?;
 
     let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+    for item in iter.flatten() {
+        items.push(item);
     }
     Ok(items)
 }
@@ -77,10 +75,8 @@ pub fn file_links_get_by_file(
         .map_err(|e| e.to_string())?;
 
     let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+    for item in iter.flatten() {
+        items.push(item);
     }
     Ok(items)
 }

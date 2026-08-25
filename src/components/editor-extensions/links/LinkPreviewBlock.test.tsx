@@ -68,4 +68,54 @@ describe('LinkPreviewBlock Component', () => {
       expect.objectContaining({ watched: true })
     );
   });
+
+  it('renders playlist with video count, date range and Ver Playlist button', () => {
+    const playlistProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          url: 'https://youtube.com/playlist?list=PL12345',
+          title: 'Análise de Algoritmos',
+          isLoading: false,
+          channel: 'João Paulo Leite',
+          duration: null,
+          isPlaylist: true,
+          playlistCount: 18,
+          uploadDate: '20210310 - 20231120',
+          notes: '',
+          showNotes: false,
+        },
+      },
+    };
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByText } = render(<Component {...playlistProps} />);
+
+    expect(getByText('Análise de Algoritmos')).toBeDefined();
+    expect(getByText('João Paulo Leite')).toBeDefined();
+    expect(getByText(/18 vídeos/i)).toBeDefined();
+    expect(getByText('10/03/2021 – 20/11/2023')).toBeDefined();
+    expect(getByText('Ver Playlist')).toBeDefined();
+  });
+
+  it('preserves border class and sets borderColor when custom color is selected', () => {
+    const customColorProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          ...mockProps.node.attrs,
+          color: '#8b5cf6',
+        },
+      },
+    };
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { container } = render(<Component {...customColorProps} />);
+
+    const card = container.querySelector('.rounded-lg.border');
+    expect(card).toBeDefined();
+    expect(card?.getAttribute('style')).toContain('border-color');
+    expect(card?.className).toContain('border');
+  });
 });
+

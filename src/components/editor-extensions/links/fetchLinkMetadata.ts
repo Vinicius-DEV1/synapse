@@ -104,6 +104,7 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   let finalChannel: string | null = oEmbedChannel;
   let finalDuration: number | null = null;
   let finalIsPlaylist = url.includes('list=');
+  let finalPlaylistCount: number | null = null;
   let finalUploadDate: string | null = null;
 
   if (isYouTube && window.api?.youtube?.fetchPlaylistInfo && !url.includes('/@')) {
@@ -111,10 +112,47 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
       const ytInfo = await window.api.youtube.fetchPlaylistInfo(url);
       if (ytInfo?.title) {
         finalTitle = ytInfo.title;
-        finalChannel = ytInfo.uploader || ytInfo.uploader_id || finalChannel;
-        finalDuration = ytInfo.duration;
+        finalChannel = ytInfo.uploader || ytInfo.channel || ytInfo.uploader_id || finalChannel;
+        finalDuration = ytInfo.duration || null;
         finalIsPlaylist = ytInfo._type === 'playlist' || url.includes('list=');
-        finalUploadDate = ytInfo.upload_date;
+
+        if (finalIsPlaylist) {
+          finalPlaylistCount = ytInfo.playlist_count ?? (Array.isArray(ytInfo.entries) ? ytInfo.entries.length : null);
+
+          if (Array.isArray(ytInfo.entries) && ytInfo.entries.length > 0) {
+            const entryDates: string[] = ytInfo.entries
+              .map((e: any) => {
+                if (e.upload_date) return String(e.upload_date);
+                if (e.release_date) return String(e.release_date);
+                if (e.published_at) return String(e.published_at);
+                if (e.timestamp) {
+                  const d = new Date(e.timestamp * 1000);
+                  const y = d.getUTCFullYear();
+                  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                  const day = String(d.getUTCDate()).padStart(2, '0');
+                  return `${y}${m}${day}`;
+                }
+                return null;
+              })
+              .filter(Boolean) as string[];
+
+            if (entryDates.length > 0) {
+              const firstDate = entryDates[0];
+              const lastDate = entryDates[entryDates.length - 1];
+              if (firstDate && lastDate && firstDate !== lastDate) {
+                finalUploadDate = `${firstDate} - ${lastDate}`;
+              } else {
+                finalUploadDate = firstDate || ytInfo.upload_date || null;
+              }
+            } else {
+              finalUploadDate = ytInfo.upload_date || ytInfo.modified_date || null;
+            }
+          } else {
+            finalUploadDate = ytInfo.upload_date || ytInfo.modified_date || null;
+          }
+        } else {
+          finalUploadDate = ytInfo.upload_date || null;
+        }
       }
     } catch (ytErr) {
       console.warn('yt-dlp fetch failed, falling back to oEmbed metadata', ytErr);
@@ -134,6 +172,8 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     channel: finalChannel,
     duration: finalDuration,
     isPlaylist: finalIsPlaylist,
+    playlistCount: finalPlaylistCount,
     uploadDate: finalUploadDate,
   };
 }
+

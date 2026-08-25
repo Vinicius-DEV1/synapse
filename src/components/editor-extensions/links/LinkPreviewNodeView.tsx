@@ -19,6 +19,7 @@ export const LinkPreviewComponent = (props: any) => {
     channel,
     duration,
     isPlaylist,
+    playlistCount,
     uploadDate,
     notes: rawNotes,
     showNotes: rawShowNotes,
@@ -35,6 +36,7 @@ export const LinkPreviewComponent = (props: any) => {
   const [fetchedChannel, setFetchedChannel] = useState<string | null>(channel);
   const [fetchedDuration, setFetchedDuration] = useState<number | null>(duration);
   const [fetchedIsPlaylist, setFetchedIsPlaylist] = useState<boolean>(isPlaylist);
+  const [fetchedPlaylistCount, setFetchedPlaylistCount] = useState<number | null>(playlistCount || null);
   const [fetchedUploadDate, setFetchedUploadDate] = useState<string | null>(uploadDate);
   const [loading, setLoading] = useState(isLoading);
   const [isReloading, setIsReloading] = useState(false);
@@ -133,9 +135,10 @@ export const LinkPreviewComponent = (props: any) => {
     setFetchedChannel(channel);
     setFetchedDuration(duration);
     setFetchedIsPlaylist(isPlaylist);
+    setFetchedPlaylistCount(playlistCount || null);
     setFetchedUploadDate(uploadDate);
     setLoading(isLoading);
-  }, [url, title, channel, duration, isPlaylist, uploadDate, isLoading]);
+  }, [url, title, channel, duration, isPlaylist, playlistCount, uploadDate, isLoading]);
 
   useEffect(() => {
     const handleDeleteRequest = (e: Event) => {
@@ -161,6 +164,7 @@ export const LinkPreviewComponent = (props: any) => {
         if (metadata.channel) setFetchedChannel(metadata.channel);
         if (metadata.duration) setFetchedDuration(metadata.duration);
         if (metadata.isPlaylist !== undefined) setFetchedIsPlaylist(metadata.isPlaylist);
+        if (metadata.playlistCount !== undefined) setFetchedPlaylistCount(metadata.playlistCount);
         if (metadata.uploadDate) setFetchedUploadDate(metadata.uploadDate);
 
         updateAttributes?.({
@@ -169,6 +173,7 @@ export const LinkPreviewComponent = (props: any) => {
           channel: metadata.channel || null,
           duration: metadata.duration || null,
           isPlaylist: !!metadata.isPlaylist,
+          playlistCount: metadata.playlistCount || null,
           uploadDate: metadata.uploadDate || null,
         });
         setLoading(false);
@@ -220,6 +225,7 @@ export const LinkPreviewComponent = (props: any) => {
         channel={fetchedChannel}
         duration={fetchedDuration}
         isPlaylist={fetchedIsPlaylist}
+        playlistCount={fetchedPlaylistCount}
         uploadDate={fetchedUploadDate}
         notes={notes}
         showNotes={showNotes}
