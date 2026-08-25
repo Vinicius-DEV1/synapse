@@ -79,4 +79,28 @@ describe('TaskContext (store/TaskContext)', () => {
     expect(abortSpy).toHaveBeenCalled();
     expect(result.current.tasks[0].status).toBe('cancelled');
   });
+
+  it('automatically times out task and marks it as failed after timeoutMs', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useTasks(), { wrapper });
+    const abortCtrl = new AbortController();
+    const abortSpy = vi.spyOn(abortCtrl, 'abort');
+
+    act(() => {
+      result.current.addTask('task-timeout', 'Long stuck task', abortCtrl, 1000);
+    });
+
+    expect(result.current.tasks[0].status).toBe('running');
+
+    act(() => {
+      vi.advanceTimersByTime(1050);
+    });
+
+    expect(result.current.tasks[0].status).toBe('error');
+    expect(result.current.tasks[0].errorMessage).toContain('Tempo limite excedido');
+    expect(abortSpy).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });
+

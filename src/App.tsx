@@ -58,6 +58,30 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('[Caderno:GlobalUnhandledRejection]', event.reason);
+      const reasonStr = String(event.reason?.message || event.reason || '');
+      if (reasonStr.includes('AbortError') || reasonStr.includes('aborted')) {
+        return;
+      }
+      if (reasonStr.includes('Google Drive') || reasonStr.includes('autenticar') || reasonStr.includes('drive-auth')) {
+        window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+      }
+    };
+
+    const handleGlobalError = (event: ErrorEvent) => {
+      console.error('[Caderno:GlobalWindowError]', event.error || event.message);
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleGlobalError);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleGlobalError);
+    };
+  }, []);
+
+  useEffect(() => {
     if (isAuth) {
       loadFocusData();
       

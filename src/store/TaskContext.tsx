@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'error' | 'cancelled';
 
@@ -9,11 +9,12 @@ export interface BackgroundTask {
   status: TaskStatus;
   abortController?: AbortController;
   errorMessage?: string;
+  timeoutMs?: number;
 }
 
 interface TaskContextType {
   tasks: BackgroundTask[];
-  addTask: (id: string, title: string, abortController?: AbortController) => void;
+  addTask: (id: string, title: string, abortController?: AbortController, timeoutMs?: number) => void;
   updateTaskProgress: (id: string, progress: number, phase?: string) => void;
   completeTask: (id: string) => void;
   failTask: (id: string, error: string) => void;
@@ -26,24 +27,33 @@ const TaskContext = createContext<TaskContextType | null>(null);
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<BackgroundTask[]>([]);
   const tasksRef = useRef(tasks);
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Sync ref with state for callbacks
   tasksRef.current = tasks;
 
-  const addTask = useCallback((id: string, title: string, abortController?: AbortController) => {
-    setTasks((prev) => [
-      ...prev,
-      { id, title, progress: 0, status: 'running', abortController },
-    ]);
+  const clearTaskTimeout = (id: string) => {
+    const existing = timeoutsRef.current.get(id);
+    if (existing) {
+      clearTimeout(existing);
+      timeoutsRef.current.delete(id);
+    }
+  };
+
+  const removeTask = useCallback((id: string) => {
+    clearTaskTimeout(id);
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const updateTaskProgress = useCallback((id: string, progress: number, phase?: string) => {
+  const failTask = useCallback((id: string, error: string) => {
+    clearTaskTimeout(id);
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, progress, title: phase || t.title } : t))
+      prev.map((t) => (t.id === id ? { ...t, status: 'error', errorMessage: error } : t))
     );
   }, []);
 
   const completeTask = useCallback((id: string) => {
+    clearTaskTimeout(id);
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'completed', progress: 100 } : t))
     );
@@ -51,15 +61,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       removeTask(id);
     }, 5000);
-  }, []);
-
-  const failTask = useCallback((id: string, error: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: 'error', errorMessage: error } : t))
-    );
-  }, []);
+  }, [removeTask]);
 
   const cancelTask = useCallback((id: string) => {
+    clearTaskTimeout(id);
     const task = tasksRef.current.find(t => t.id === id);
     if (task && task.abortController) {
       task.abortController.abort();
@@ -71,10 +76,39 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       removeTask(id);
     }, 3000);
+  }, [removeTask]);
+
+  const addTask = useCallback((id: string, title: string, abortController?: AbortController, timeoutMs?: number) => {
+    clearTaskTimeout(id);
+    setTasks((prev) => [
+      ...prev,
+      { id, title, progress: 0, status: 'running', abortController, timeoutMs },
+    ]);
+
+    // Safety watchdog: default 15 minutes or custom timeout
+    const effectiveTimeout = timeoutMs || 15 * 60 * 1000;
+    const timer = setTimeout(() => {
+      console.warn(`[Caderno:TaskWatchdog] Task ${id} (${title}) timed out after ${effectiveTimeout}ms`);
+      failTask(id, 'Tempo limite excedido na execução da tarefa.');
+      if (abortController) {
+        try { abortController.abort(); } catch (e) { console.error(e); }
+      }
+    }, effectiveTimeout);
+
+    timeoutsRef.current.set(id, timer);
+  }, [failTask]);
+
+  const updateTaskProgress = useCallback((id: string, progress: number, phase?: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, progress, title: phase || t.title } : t))
+    );
   }, []);
 
-  const removeTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(timer => clearTimeout(timer));
+      timeoutsRef.current.clear();
+    };
   }, []);
 
   return (
@@ -101,3 +135,4 @@ export function useTasks() {
   }
   return context;
 }
+
