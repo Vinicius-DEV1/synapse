@@ -94,6 +94,11 @@ export function usePageActions() {
   }, [dispatch, state.pages]);
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
+    const targetPage = state.pages.find(p => p.id === id);
+    if (!targetPage || targetPage.deleted_at) {
+      console.warn(`[Caderno:SafeUpdate] Ignored update to deleted page ${id}`);
+      return;
+    }
     if (window.api) {
       try {
         await window.api.updatePage({ id, ...updates });
@@ -103,9 +108,14 @@ export function usePageActions() {
         triggerToast(err.message || 'Erro ao atualizar página', 'error');
       }
     }
-  }, [dispatch]);
+  }, [dispatch, state.pages]);
 
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => {
+    const targetPage = state.pages.find(p => p.id === id);
+    if (!targetPage || targetPage.deleted_at) {
+      console.warn(`[Caderno:SafeAutosave] Ignored autosave to deleted page ${id}`);
+      return;
+    }
     if (window.api) {
       try {
         await window.api.updatePage({ id, content, crdt_state: crdtState } as unknown as Omit<Partial<Page>, 'id'> & { id: string });
@@ -114,8 +124,11 @@ export function usePageActions() {
         
         if (embeddedSaves && embeddedSaves.length > 0) {
           for (const embed of embeddedSaves) {
-            await window.api.updatePage({ id: embed.id, content: embed.content });
-            getEditorBackupMap().set(embed.id, { html: embed.content, crdt: '' });
+            const embedPage = state.pages.find(p => p.id === embed.id);
+            if (embedPage && !embedPage.deleted_at) {
+              await window.api.updatePage({ id: embed.id, content: embed.content });
+              getEditorBackupMap().set(embed.id, { html: embed.content, crdt: '' });
+            }
           }
         }
         
@@ -128,7 +141,7 @@ export function usePageActions() {
         console.error('Erro ao salvar conteúdo da página:', err);
       }
     }
-  }, []);
+  }, [state.pages]);
 
   const handleExportPage = useCallback(async (id: string) => {
     if (window.api) {

@@ -74,4 +74,7 @@ export type Action =
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
   | { type: 'SET_NAV_DIRECTION'; direction: 'forward' | 'backward' | null }
   | { type: 'SET_READING_MODE_FULLSCREEN'; isFullScreen: boolean }
+  | { type: 'CLEANUP_DELETED_ENTITY_TABS'; entityType: 'book' | 'video' | 'file' | 'page' | 'diagram'; id: string }
   | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };
+
+

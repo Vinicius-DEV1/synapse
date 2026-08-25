@@ -137,6 +137,22 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, moduleKeys: action.keys };
     case 'SET_READING_MODE_FULLSCREEN':
       return { ...state, isReadingModeFullScreen: action.isFullScreen };
+    case 'CLEANUP_DELETED_ENTITY_TABS': {
+      const { entityType, id } = action;
+      const newTabs = state.tabs.map((t) => {
+        if (entityType === 'book' && t.bookId === id) {
+          return { ...t, bookId: null, bookTitle: undefined };
+        }
+        if (entityType === 'video' && t.moduleState?.videoId === id) {
+          return { ...t, moduleState: { ...(t.moduleState || {}), videoId: null } };
+        }
+        if (entityType === 'page' && t.pageId === id) {
+          return { ...t, pageId: null, unsavedContent: null };
+        }
+        return t;
+      });
+      return { ...state, tabs: newTabs };
+    }
     case 'MERGE_DB_STATE':
       return { ...state, ...action.payload };
     default:

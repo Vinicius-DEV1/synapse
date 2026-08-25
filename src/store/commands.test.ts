@@ -125,6 +125,27 @@ describe('appReducer (store/commands)', () => {
       expect(state.tabs[0].pageId).toBe('target-page');
       expect(state.tabs[0].scrollY).toBe(0);
     });
+
+    it('cleans up deleted book, video and page references across all tabs on CLEANUP_DELETED_ENTITY_TABS', () => {
+      let state = createBaseState();
+      state = appReducer(state, {
+        type: 'ADD_TAB',
+        tab: { id: 'tab-book', module: 'library', pageId: null, bookId: 'book-123', bookTitle: 'Livro Teste', unsavedContent: null, scrollY: 0 }
+      });
+      state = appReducer(state, {
+        type: 'ADD_TAB',
+        tab: { id: 'tab-vid', module: 'video', pageId: null, unsavedContent: null, scrollY: 0, moduleState: { videoId: 'vid-456' } }
+      });
+
+      // Cleanup book
+      state = appReducer(state, { type: 'CLEANUP_DELETED_ENTITY_TABS', entityType: 'book', id: 'book-123' });
+      expect(state.tabs.find(t => t.id === 'tab-book')?.bookId).toBeNull();
+      expect(state.tabs.find(t => t.id === 'tab-book')?.bookTitle).toBeUndefined();
+
+      // Cleanup video
+      state = appReducer(state, { type: 'CLEANUP_DELETED_ENTITY_TABS', entityType: 'video', id: 'vid-456' });
+      expect(state.tabs.find(t => t.id === 'tab-vid')?.moduleState?.videoId).toBeNull();
+    });
   });
 
   describe('UI & Navigation Controls', () => {
