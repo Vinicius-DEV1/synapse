@@ -95,7 +95,7 @@ export function usePageActions() {
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
     const targetPage = state.pages.find(p => p.id === id);
-    if (!targetPage || targetPage.deleted_at) {
+    if (targetPage && targetPage.deleted_at) {
       console.warn(`[Caderno:SafeUpdate] Ignored update to deleted page ${id}`);
       return;
     }
@@ -112,7 +112,7 @@ export function usePageActions() {
 
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => {
     const targetPage = state.pages.find(p => p.id === id);
-    if (!targetPage || targetPage.deleted_at) {
+    if (targetPage && targetPage.deleted_at) {
       console.warn(`[Caderno:SafeAutosave] Ignored autosave to deleted page ${id}`);
       return;
     }
@@ -125,7 +125,7 @@ export function usePageActions() {
         if (embeddedSaves && embeddedSaves.length > 0) {
           for (const embed of embeddedSaves) {
             const embedPage = state.pages.find(p => p.id === embed.id);
-            if (embedPage && !embedPage.deleted_at) {
+            if (!embedPage || !embedPage.deleted_at) {
               await window.api.updatePage({ id: embed.id, content: embed.content });
               getEditorBackupMap().set(embed.id, { html: embed.content, crdt: '' });
             }
