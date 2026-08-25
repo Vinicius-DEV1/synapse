@@ -16,11 +16,24 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.caderno.app",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#0f172a",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O Caderno precisa de acesso à câmera para fotografar e anexar documentos.",
+        "NSPhotoLibraryUsageDescription": "O Caderno precisa de acesso às suas fotos para anexar imagens e arquivos.",
+        "NSMicrophoneUsageDescription": "O Caderno precisa de acesso ao microfone para recursos de áudio."
+      }
     },
     "android": {
       "package": "com.caderno.app",
       "backgroundColor": "#0f172a",
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/android-icon-foreground.png"

@@ -122,6 +122,26 @@ function MainWebView() {
           onMessage={handleMessage}
           onNavigationStateChange={handleNavigationStateChange}
           onError={handleError}
+          onShouldStartLoadWithRequest={(request) => {
+            const url = request.url;
+            // Allow internal app navigation, blob URLs, data URLs, and Google Auth
+            if (
+              url.startsWith('http://localhost') ||
+              url.startsWith('http://10.0.2.2') ||
+              url.startsWith('http://192.168.') ||
+              url.startsWith('https://fourth-cirrus-468923-h7') ||
+              url.startsWith('https://accounts.google.com') ||
+              url.startsWith('https://apis.google.com') ||
+              url.startsWith('blob:') ||
+              url.startsWith('data:') ||
+              url.startsWith('about:blank')
+            ) {
+              return true;
+            }
+            // Open external URLs (e.g. YouTube, external research links) in native device browser
+            Linking.openURL(url).catch(() => {});
+            return false;
+          }}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           bounces={false}
@@ -131,6 +151,9 @@ function MainWebView() {
           mediaPlaybackRequiresUserAction={false}
           mixedContentMode="always"
           originWhitelist={['*']}
+          textZoom={100}
+          cacheEnabled={true}
+          androidLayerType="hardware"
           renderLoading={() => (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#6366f1" />
