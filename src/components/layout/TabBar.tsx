@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react';
-import { Plus, X, FileText, Library, Settings } from 'lucide-react';
+import { Plus, X, FileText, Library, Settings, PanelLeft } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MAIN_MODULES, SPECIAL_MODULES } from './sidebar/modules.config';
@@ -148,7 +148,16 @@ export default function TabBar() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto">
+      <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto scrollbar-none">
+      {/* Mobile Sidebar Toggle Button */}
+      <button
+        onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+        className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
+        title="Abrir menu"
+      >
+        <PanelLeft size={16} />
+      </button>
+
       {state.tabs.map((tab, index) => {
         const isActive = tab.id === state.activeTabId;
         const page = tab.pageId ? pageMap.get(tab.pageId) || null : null;

@@ -299,7 +299,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
         <div className="text-xs font-medium text-dark-subtext mb-2 uppercase tracking-wider">
           Sub-páginas
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
           <SortableContext items={pages.map(p => p.id)} strategy={rectSortingStrategy}>
             {pages.map((page) => (
               <SubPageItem
@@ -313,7 +313,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
           </SortableContext>
           <button
             onClick={onCreatePage}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/10 hover:border-brand-500/50 hover:bg-brand-500/5 transition-all text-dark-subtext hover:text-brand-400 group h-[50px] ml-4"
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/10 hover:border-brand-500/50 hover:bg-brand-500/5 transition-all text-dark-subtext hover:text-brand-400 group h-[50px]"
           >
             <Plus size={18} className="group-hover:scale-110 transition-transform" />
             <span className="text-sm font-medium">Nova Sub-página</span>

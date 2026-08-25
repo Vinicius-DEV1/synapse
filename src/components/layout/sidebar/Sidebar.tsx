@@ -37,35 +37,21 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   if (state.sidebarCollapsed) {
     return (
-      <>
-        {!state.isReadingModeFullScreen && (
-          <div className="md:hidden fixed top-4 left-0 z-[90]">
-            <button
-              onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-              className="p-2 bg-dark-card/80 backdrop-blur-md rounded-r-xl border border-l-0 border-white/10 text-dark-subtext hover:text-white shadow-xl active:scale-95 transition-all"
-              title="Expandir menu"
-            >
-              <PanelLeft size={18} />
-            </button>
-          </div>
-        )}
-
-        <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
-          <button
-            onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-            className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
-            title="Expandir sidebar"
-          >
-            <PanelLeft size={18} />
-          </button>
-          
-          <div className="mt-auto flex flex-col gap-4">
-            <SidebarModuleList 
-              isCollapsedView={true} 
-            />
-          </div>
+      <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
+        <button
+          onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+          className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+          title="Expandir sidebar"
+        >
+          <PanelLeft size={18} />
+        </button>
+        
+        <div className="mt-auto flex flex-col gap-4">
+          <SidebarModuleList 
+            isCollapsedView={true} 
+          />
         </div>
-      </>
+      </div>
     );
   }
 
