@@ -12,14 +12,20 @@ async function init() {
       console.log("Desktop environment detected. Initializing Tauri API Bridge...");
       const { createTauriApi } = await import('./tauri-api');
       mockApi = await createTauriApi() as any;
-    } else if ((window as any).__CADERNO_MOBILE_WEBVIEW__ || (window as any).ReactNativeWebView) {
-      console.log("Mobile WebView environment detected. Initializing Native SQLite Bridge...");
-      const { createMobileWebViewApi } = await import('./api/webview');
-      mockApi = await createMobileWebViewApi() as any;
     } else {
-      console.log("Web mode detected. Initializing Web API Mock with IndexedDB...");
+      console.log("Web / Mobile WebView mode detected. Initializing Unified Web API with IndexedDB...");
       const { createWebApiMock } = await import('./services/web-api');
       mockApi = await createWebApiMock() as any;
+    }
+
+    // Signal Mobile Shell (if running inside WebView) that app is mounted and ready
+    if (typeof window !== 'undefined') {
+      const notifyReady = () => {
+        if ((window as any).ReactNativeWebView && (window as any).ReactNativeWebView.postMessage) {
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_READY' }));
+        }
+      };
+      setTimeout(notifyReady, 50);
     }
     
     let syncTimeout: any = null;

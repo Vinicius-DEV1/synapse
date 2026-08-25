@@ -13,41 +13,29 @@ import {
 import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
-import { BridgeRouter } from './src/bridge/BridgeRouter';
+import * as Linking from 'expo-linking';
 import { getInjectedJavaScript } from './src/utils/injectedScripts';
 import { AppConfig } from './src/config/appConfig';
 
-// Prevent splash screen from auto hiding until WebView is primed
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function MainWebView() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const lastBackPressRef = useRef<number>(0);
 
-  const onAppReady = useCallback(async () => {
-    setIsLoaded(true);
+  const hideSplash = useCallback(async () => {
     await SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  const bridgeRouter = useRef(new BridgeRouter(insets, onAppReady)).current;
-
-  // Keep router insets updated
+  // Fallback: hide splash after 4 seconds
   useEffect(() => {
-    bridgeRouter.updateInsets(insets);
-  }, [insets]);
-
-  // Safety fallback for splash screen: hide after 6s even if web app didn't send APP_READY
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {});
-    }, 6000);
+    const timer = setTimeout(hideSplash, 4000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [hideSplash]);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -76,14 +64,15 @@ function MainWebView() {
     const rawData = event.nativeEvent.data;
     if (!rawData) return;
 
-    const response = await bridgeRouter.handleMessage(rawData);
-
-    // Send response back to WebView JS promise registry
-    if (webViewRef.current) {
-      const responseStr = JSON.stringify(response);
-      webViewRef.current.injectJavaScript(
-        `window.__cadernoBridgeReceive && window.__cadernoBridgeReceive(${responseStr}); true;`
-      );
+    try {
+      const msg = JSON.parse(rawData);
+      if (msg.type === 'APP_READY') {
+        hideSplash();
+      } else if (msg.type === 'OPEN_URL' && msg.payload?.url) {
+        Linking.openURL(msg.payload.url).catch(() => {});
+      }
+    } catch {
+      // Non-JSON message, ignore
     }
   };
 
@@ -96,7 +85,7 @@ function MainWebView() {
     console.warn('[WebView Error]', nativeEvent);
     setHasError(true);
     setErrorMessage(nativeEvent.description || 'Não foi possível carregar a aplicação.');
-    SplashScreen.hideAsync().catch(() => {});
+    hideSplash();
   };
 
   const handleReload = () => {
@@ -109,7 +98,7 @@ function MainWebView() {
   const targetUri = AppConfig.getWebUrl();
 
   return (
-    <View style={[styles.container, { backgroundColor: '#0f172a' }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={false} />
 
       {hasError ? (
@@ -133,12 +122,6 @@ function MainWebView() {
           onMessage={handleMessage}
           onNavigationStateChange={handleNavigationStateChange}
           onError={handleError}
-          onHttpError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            if (nativeEvent.statusCode >= 400) {
-              console.warn('[WebView HTTP Error]', nativeEvent.statusCode);
-            }
-          }}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           bounces={false}
