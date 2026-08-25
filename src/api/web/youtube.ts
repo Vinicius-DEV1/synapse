@@ -87,7 +87,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         throw new Error(itemsData.error?.message || 'Falha ao buscar vídeos da playlist.');
       }
       
-      const entries: { id: string; title: string; uploader: string; duration: number | null }[] = [];
+      const entries: { id: string; title: string; uploader: string; duration: number | null; upload_date?: string | null }[] = [];
       for (const item of itemsData.items || []) {
         if (item.snippet.title === 'Private video' || item.snippet.title === 'Deleted video') continue;
         entries.push({
@@ -95,6 +95,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
           title: item.snippet.title,
           uploader: item.snippet.videoOwnerChannelTitle || '',
           duration: null,
+          upload_date: item.snippet.publishedAt ? item.snippet.publishedAt.split('T')[0].replace(/-/g, '') : null,
         });
       }
 
@@ -117,6 +118,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         _type: 'playlist',
         title: listTitle,
         uploader: listUploader,
+        playlist_count: itemsData.pageInfo?.totalResults || entries.length,
         upload_date: listData.items?.[0]?.snippet?.publishedAt ? listData.items[0].snippet.publishedAt.split('T')[0].replace(/-/g, '') : null,
         entries
       };

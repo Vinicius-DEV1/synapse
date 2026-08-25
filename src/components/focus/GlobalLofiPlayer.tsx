@@ -117,7 +117,7 @@ export const GlobalLofiPlayer: React.FC = () => {
                 .then(url => {
                   if (url !== src) setSrc(url);
                 })
-                .catch(err => {
+                .catch((_err) => {
                   setIsPlayingLofi(false);
                   setSrc(null);
                   triggerToast('Erro ao reproduzir áudio. Verifique sua conexão com o Drive.', 'error', 4000);

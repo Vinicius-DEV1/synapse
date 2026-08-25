@@ -176,14 +176,12 @@ pub fn youtube_get_watched(
 
     let params_iter = rusqlite::params_from_iter(video_ids.iter());
     let iter = stmt
-        .query_map(params_iter, |row| Ok(row.get::<_, String>(0)?))
+        .query_map(params_iter, |row| row.get::<_, String>(0))
         .map_err(|e| e.to_string())?;
 
     let mut watched = Vec::new();
-    for i in iter {
-        if let Ok(id) = i {
-            watched.push(id);
-        }
+    for id in iter.flatten() {
+        watched.push(id);
     }
     Ok(watched)
 }

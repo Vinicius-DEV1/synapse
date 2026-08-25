@@ -84,13 +84,20 @@ export const tauriLibraryApi = {
       let buffer: Uint8Array | null = null;
       for (const p of candidatePaths) {
         try {
+          if (p.startsWith('/') || p.match(/^[a-zA-Z]:/)) {
+            const raw = await readFile(p);
+            if (raw && raw.byteLength > 0) {
+              buffer = new Uint8Array(raw);
+              break;
+            }
+          }
           const raw = await readFile(p, { baseDir: BaseDirectory.AppData });
           if (raw && raw.byteLength > 0) {
             buffer = new Uint8Array(raw);
             break;
           }
         } catch {
-          // try next
+          // try next candidate
         }
       }
 

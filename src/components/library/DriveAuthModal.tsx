@@ -54,6 +54,10 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
       const token = await exchangeCodeForToken(code.trim(), verifier);
       await saveDriveCredentials(token);
       
+      // Trigger immediate full sync & book upload
+      window.dispatchEvent(new CustomEvent('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('caderno-drive-connected'));
+      
       setAlreadyAuthed(true);
       setTimeout(() => {
         onSuccess();

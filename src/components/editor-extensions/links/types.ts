@@ -8,6 +8,7 @@ export interface LinkPreviewAttrs {
   width: number;
   isLoading: boolean;
   isPlaylist: boolean;
+  playlistCount?: number | null;
   showNotes: boolean;
   watched?: boolean;
   color?: string;
@@ -18,5 +19,7 @@ export interface LinkMetadata {
   channel?: string | null;
   duration?: number | null;
   isPlaylist?: boolean;
+  playlistCount?: number | null;
   uploadDate?: string | null;
 }
+

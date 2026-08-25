@@ -225,7 +225,7 @@ pub fn run_backup(
 
     // ── Step 4: Copy local media directories ─────────────────────────────
     if options.include_media {
-        let media_dirs = vec![
+        let media_dirs = [
             ("videos", "🎬 Copiando vídeos"),
             ("files", "📄 Copiando arquivos"),
             ("audio", "🎵 Copiando áudios"),

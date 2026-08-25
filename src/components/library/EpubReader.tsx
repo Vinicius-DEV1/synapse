@@ -14,6 +14,7 @@ import { useEpubShortcuts } from './epub/hooks/useEpubShortcuts';
 import { useEpubLoader } from './epub/useEpubLoader';
 import { useEpubTheme } from './epub/useEpubTheme';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
+import EpubBottomBar from './epub/components/EpubBottomBar';
 
 interface EpubReaderProps {
   book: LibraryBook;
@@ -23,9 +24,18 @@ interface EpubReaderProps {
 
 function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> & { book: LibraryBook }) {
   const {
-    rendition, readingMode, setReadingMode, fontSize, setFontSize,
-    locationsReady, setProgress, setCurrentPage, selection,
-    textWidth, epubBook, fontFamily
+    rendition,
+    readingMode,
+    setReadingMode,
+    fontSize,
+    setFontSize,
+    locationsReady,
+    setProgress,
+    setCurrentPage,
+    selection,
+    textWidth,
+    epubBook,
+    fontFamily,
   } = useEpub();
 
   const { state, dispatch } = useStore();
@@ -35,7 +45,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     itemTitle: book.title,
     module: 'library',
     isActive: true,
-    requireInteraction: true
+    requireInteraction: true,
   });
 
   useEffect(() => {
@@ -49,6 +59,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       return () => clearTimeout(timeout);
     }
   }, [fontSize, readingMode, fontFamily, textWidth, book, onUpdateBook]);
+
   const [loading, setLoading] = useState(true);
   const [epubError, setEpubError] = useState<string | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
@@ -56,7 +67,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reattachError, setReattachError] = useState<string | null>(null);
-  
+
   const viewerRef = useRef<HTMLDivElement>(null);
   const globalLastHighlightClickRef = useRef<number>(0);
   const clearSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,8 +87,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         }
       }
     } catch (err: any) {
-      console.error("Erro ao reanexar EPUB:", err);
-      setReattachError(err.message || "Falha ao vincular novo arquivo");
+      console.error('Erro ao reanexar EPUB:', err);
+      setReattachError(err.message || 'Falha ao vincular novo arquivo');
     } finally {
       setIsReattaching(false);
     }
@@ -89,7 +100,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       await window.api?.library?.deleteBook(book.id);
       onBack();
     } catch (err) {
-      console.error("Erro ao excluir livro:", err);
+      console.error('Erro ao excluir livro:', err);
       setIsDeleting(false);
     }
   };
@@ -124,7 +135,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   };
 
   const handleEpubClick = () => {
-    setShowMobileTools(prev => {
+    setShowMobileTools((prev) => {
       const nextState = !prev;
       if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
       if (nextState) {
@@ -186,18 +197,20 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     };
 
     rendition.on('relocated', onRelocated);
-    return () => { rendition.off('relocated', onRelocated); };
+    return () => {
+      rendition.off('relocated', onRelocated);
+    };
   }, [rendition, locationsReady, epubBook, setProgress, setCurrentPage, onUpdateBook]);
 
-  const modeNames: any = {
-    'light': 'Tema: Claro',
-    'sepia': 'Tema: Sépia',
-    'mint': 'Tema: Menta',
-    'dim': 'Tema: Cinza (Dim)',
-    'nord': 'Tema: Nord',
-    'midnight': 'Tema: Meia-noite',
-    'dark': 'Tema: Escuro',
-    'high-contrast': 'Tema: Alto Contraste'
+  const modeNames: Record<string, string> = {
+    light: 'Tema: Claro',
+    sepia: 'Tema: Sépia',
+    mint: 'Tema: Menta',
+    dim: 'Tema: Cinza (Dim)',
+    nord: 'Tema: Nord',
+    midnight: 'Tema: Meia-noite',
+    dark: 'Tema: Escuro',
+    'high-contrast': 'Tema: Alto Contraste',
   };
 
   const cycleReadingMode = () => {
@@ -250,23 +263,6 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const currentPageSafe = currentPage || 0;
   const totalPagesSafe = totalPages || 0;
   const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);
-
-  const bottomBarClasses =
-    readingMode === 'dark'
-      ? 'bg-[#1a1a1a] text-gray-500'
-      : readingMode === 'midnight'
-      ? 'bg-[#0f172a] text-[#475569]'
-      : readingMode === 'nord'
-      ? 'bg-[#2e3440] text-[#4c566a]'
-      : readingMode === 'dim'
-      ? 'bg-[#2d2d30] text-[#808080]'
-      : readingMode === 'high-contrast'
-      ? 'bg-[#000000] text-[#aaaaaa]'
-      : readingMode === 'sepia'
-      ? 'bg-[#e9dec0] text-[#8c765f]'
-      : readingMode === 'mint'
-      ? 'bg-[#c8e6c9] text-[#2d6a4f]'
-      : 'bg-white text-gray-400';
 
   return (
     <div
@@ -329,62 +325,41 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         <EpubHighlightMenu />
 
         <div className={`relative w-full h-full flex-1 bg-transparent overflow-hidden ${showMobileTools ? 'z-0' : 'z-10'}`}>
-        <button onClick={() => turnPage('prev')} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
-            <ArrowLeft size={24} />
-          </div>
-        </button>
-        
-        <div ref={viewerRef} 
-          className="w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300"
-          style={{ maxWidth: textWidth === 'narrow' ? '700px' : textWidth === 'medium' ? '1000px' : '1400px' }}
-        />
-
-        <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
-          <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
-             <ArrowLeft size={24} className="rotate-180" />
-          </div>
-        </button>
-      </div>
-      </div>
-
-      <div className={`
-          group relative flex-shrink-0 h-8 flex items-center justify-between px-6 text-[11px] font-medium tracking-wider uppercase transition-all duration-300 z-[60]
-          fixed md:relative bottom-0 left-0 right-0
-          ${showMobileTools ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
-          ${bottomBarClasses}
-        `}>
-        <div>
-           {locationsReady ? `Página ${currentPageSafe} de ${totalPagesSafe}` : 'Calculando páginas...'}
-        </div>
-
-        {locationsReady && totalPagesSafe > 1 && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-[80%] max-w-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-300 pb-2">
-            <div className="bg-black/60 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 flex flex-col items-center gap-2">
-              <span className="text-white font-bold text-xs">Página {currentPageSafe}</span>
-              <input 
-                type="range" 
-                min="1" 
-                max={totalPagesSafe} 
-                value={currentPageSafe} 
-                onChange={handleScrub}
-                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-brand-500"
-              />
+          <button onClick={() => turnPage('prev')} className="hidden sm:block absolute left-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+            <div className={`absolute left-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-r from-black/50 to-transparent text-white' : 'bg-gradient-to-r from-black/10 to-transparent text-black'}`}>
+              <ArrowLeft size={24} />
             </div>
-          </div>
-        )}
+          </button>
 
-        <div>
-           {locationsReady ? `${progressPercentage}%` : '...'}
+          <div
+            ref={viewerRef}
+            className="w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300"
+            style={{ maxWidth: textWidth === 'narrow' ? '700px' : textWidth === 'medium' ? '1000px' : '1400px' }}
+          />
+
+          <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
+            <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
+              <ArrowLeft size={24} className="rotate-180" />
+            </div>
+          </button>
         </div>
       </div>
+
+      <EpubBottomBar
+        readingMode={readingMode}
+        showMobileTools={showMobileTools}
+        locationsReady={locationsReady}
+        currentPageSafe={currentPageSafe}
+        totalPagesSafe={totalPagesSafe}
+        progressPercentage={progressPercentage}
+        onScrub={handleScrub}
+      />
 
       {modeToast && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium pointer-events-none transition-all duration-300">
           {modeToast}
         </div>
       )}
-
     </div>
   );
 }
@@ -396,6 +371,3 @@ export default function EpubReader({ book, onBack, onUpdateBook }: EpubReaderPro
     </EpubProvider>
   );
 }
-
-
-
