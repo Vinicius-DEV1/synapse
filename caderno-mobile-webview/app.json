@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Caderno",
+    "slug": "caderno-mobile-webview",
+    "scheme": "caderno",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f172a",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.caderno.app",
+      "backgroundColor": "#0f172a"
+    },
+    "android": {
+      "package": "com.caderno.app",
+      "backgroundColor": "#0f172a",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "navigationBar": {
+        "backgroundColor": "#0f172a",
+        "barStyle": "light-content"
+      }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0f172a"
+        }
+      ]
+    ]
+  }
+}
