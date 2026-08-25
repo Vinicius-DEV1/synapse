@@ -26,9 +26,17 @@ function AppContent() {
   const { state, dispatch } = useStore();
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
   const platform = usePlatform();
-  const settings = getSettings();
+  const [settings, setSettings] = useState(getSettings);
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
+
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      setSettings(getSettings());
+    };
+    window.addEventListener('app-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
+  }, []);
   
   useAppShortcuts(state, dispatch);
   useAppTitle(activeModule, activeTab?.bookTitle);
@@ -278,9 +286,9 @@ function AppContent() {
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Tab Bar - Show if enabled in settings for current platform */}
+        {/* Tab Bar - Show always on mobile or if enabled in settings for current platform */}
         {!state.isReadingModeFullScreen && 
-         (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb) && <TabBar />}
+         (platform.platform === 'mobile-webview' || (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb)) && <TabBar />}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
