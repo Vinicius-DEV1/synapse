@@ -5,6 +5,7 @@ import { resolveLofiUrl } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
 import { formatDuration } from '../../utils/format';
+import { triggerToast } from '../ui/ToastContext';
 
 export const GlobalLofiPlayer: React.FC = () => {
   const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
@@ -44,6 +45,15 @@ export const GlobalLofiPlayer: React.FC = () => {
           console.error("Falha ao resolver URL do lofi", err);
           if (!cancelled) {
             setSrc(null);
+            setIsPlayingLofi(false);
+            const msg = err?.message || '';
+            const isAuthError = msg.includes('Google Drive') || msg.includes('autenticar') || msg.includes('token') || msg.includes('Drive');
+            if (isAuthError) {
+              triggerToast('O Google Drive não está conectado. Conecte sua conta para ouvir faixas na nuvem ou use faixas salvas localmente.', 'error', 5000);
+              window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+            } else {
+              triggerToast(msg || 'Erro ao carregar áudio do Lofi.', 'error', 4000);
+            }
           }
         });
     }
@@ -103,9 +113,15 @@ export const GlobalLofiPlayer: React.FC = () => {
             console.error("Audio playback error", e.currentTarget.error);
             // Tenta recarregar se houver erro (ex: token expirou no meio)
             if (activeLofi && isPlayingLofi) {
-              resolveLofiUrl(activeLofi, masterKey).then(url => {
-                if (url !== src) setSrc(url);
-              });
+              resolveLofiUrl(activeLofi, masterKey)
+                .then(url => {
+                  if (url !== src) setSrc(url);
+                })
+                .catch(err => {
+                  setIsPlayingLofi(false);
+                  setSrc(null);
+                  triggerToast('Erro ao reproduzir áudio. Verifique sua conexão com o Drive.', 'error', 4000);
+                });
             }
           }}
         />

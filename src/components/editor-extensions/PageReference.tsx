@@ -1,24 +1,29 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { getStoreState } from '../../store/useStore';
-import { useEffect, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { getStoreState, StoreContext } from '../../store/useStore';
+import { useEffect, useState, useContext } from 'react';
+import { FileText, AlertCircle } from 'lucide-react';
 
 const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
   const { deleteNode } = props;
-  const [pageTitle, setPageTitle] = useState(title);
+  const store = useContext(StoreContext);
+  const pages = store?.state?.pages ?? getStoreState().pages;
+  const targetPage = pages.find((p: any) => p.id === pageId);
+  const isDeleted = !targetPage;
+
+  const [pageTitle, setPageTitle] = useState(targetPage?.title || title || 'Página');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showDeletedNotice, setShowDeletedNotice] = useState(false);
 
   useEffect(() => {
-    if (pageId) {
-      const page = getStoreState().pages.find(p => p.id === pageId);
-      if (page && page.title) {
-        setPageTitle(page.title);
-      }
+    if (targetPage && targetPage.title) {
+      setPageTitle(targetPage.title);
     }
+  }, [targetPage?.title]);
 
+  useEffect(() => {
     const handlePageUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.id === pageId && detail?.title) {
@@ -40,8 +45,13 @@ const PageReferenceComponent = (props: any) => {
     return () => window.removeEventListener('page-reference-delete-request', handleDeleteRequest);
   }, [pageId]);
 
-  const handleClick = () => {
-    window.dispatchEvent(new CustomEvent('open-floating-page', { detail: { pageId } }));
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDeleted) {
+      setShowDeletedNotice(true);
+    } else {
+      window.dispatchEvent(new CustomEvent('open-floating-page', { detail: { pageId } }));
+    }
   };
 
   return (
@@ -50,18 +60,19 @@ const PageReferenceComponent = (props: any) => {
         onClick={handleClick}
         contentEditable={false}
         data-page-id={pageId}
+        title={isDeleted ? 'Página excluída ou movida para a lixeira. Clique para opções.' : undefined}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
           padding: '2px 10px 2px 7px',
           borderRadius: '8px',
-          border: '1px solid rgba(255,255,255,0.12)',
-          background: 'rgba(255,255,255,0.04)',
+          border: isDeleted ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.12)',
+          background: isDeleted ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',
           cursor: 'pointer',
           fontSize: '0.875em',
           fontWeight: 500,
-          color: 'rgba(255,255,255,0.75)',
+          color: isDeleted ? 'rgba(248,113,113,1)' : 'rgba(255,255,255,0.75)',
           userSelect: 'none',
           transition: 'border-color 0.15s, background 0.15s, color 0.15s',
           verticalAlign: 'middle',
@@ -70,20 +81,71 @@ const PageReferenceComponent = (props: any) => {
         }}
         onMouseEnter={e => {
           const el = e.currentTarget as HTMLElement;
-          el.style.borderColor = 'rgba(139,92,246,0.5)';
-          el.style.background = 'rgba(139,92,246,0.08)';
-          el.style.color = 'rgba(167,139,250,1)';
+          if (isDeleted) {
+            el.style.borderColor = 'rgba(239,68,68,0.8)';
+            el.style.background = 'rgba(239,68,68,0.18)';
+            el.style.color = 'rgba(254,202,202,1)';
+          } else {
+            el.style.borderColor = 'rgba(139,92,246,0.5)';
+            el.style.background = 'rgba(139,92,246,0.08)';
+            el.style.color = 'rgba(167,139,250,1)';
+          }
         }}
         onMouseLeave={e => {
           const el = e.currentTarget as HTMLElement;
-          el.style.borderColor = 'rgba(255,255,255,0.12)';
-          el.style.background = 'rgba(255,255,255,0.04)';
-          el.style.color = 'rgba(255,255,255,0.75)';
+          if (isDeleted) {
+            el.style.borderColor = 'rgba(239,68,68,0.4)';
+            el.style.background = 'rgba(239,68,68,0.08)';
+            el.style.color = 'rgba(248,113,113,1)';
+          } else {
+            el.style.borderColor = 'rgba(255,255,255,0.12)';
+            el.style.background = 'rgba(255,255,255,0.04)';
+            el.style.color = 'rgba(255,255,255,0.75)';
+          }
         }}
       >
-        <FileText size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
-        <span>{pageTitle || 'Página'}</span>
+        {isDeleted ? (
+          <AlertCircle size={13} style={{ color: 'rgba(239,68,68,0.9)', flexShrink: 0 }} />
+        ) : (
+          <FileText size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
+        )}
+        <span>{pageTitle || 'Página'}{isDeleted ? ' (Excluída)' : ''}</span>
       </span>
+
+      {showDeletedNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle size={22} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-white font-semibold text-base leading-tight">Página Excluída</h3>
+                <p className="text-dark-subtext text-xs mt-0.5">Link quebrado ou item na lixeira</p>
+              </div>
+            </div>
+            
+            <p className="text-dark-subtext text-sm leading-relaxed">
+              A página <strong className="text-white">"{pageTitle}"</strong> foi movida para a lixeira ou não existe mais. Deseja remover este widget do documento?
+            </p>
+
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setShowDeletedNotice(false)}
+                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+              >
+                Manter
+              </button>
+              <button
+                onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
+                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+              >
+                Remover Widget
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
