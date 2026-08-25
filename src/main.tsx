@@ -12,6 +12,10 @@ async function init() {
       console.log("Desktop environment detected. Initializing Tauri API Bridge...");
       const { createTauriApi } = await import('./tauri-api');
       mockApi = await createTauriApi() as any;
+    } else if ((window as any).__CADERNO_MOBILE_WEBVIEW__ || (window as any).ReactNativeWebView) {
+      console.log("Mobile WebView environment detected. Initializing Native SQLite Bridge...");
+      const { createMobileWebViewApi } = await import('./api/webview');
+      mockApi = await createMobileWebViewApi() as any;
     } else {
       console.log("Web mode detected. Initializing Web API Mock with IndexedDB...");
       const { createWebApiMock } = await import('./services/web-api');

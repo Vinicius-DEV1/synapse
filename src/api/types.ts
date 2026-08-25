@@ -87,6 +87,7 @@ export interface LibraryApi {
 export interface SyncApi {
   getTable: (tableName: string) => Promise<any[]>;
   upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
+  deleteRow?: (tableName: string, id: string) => Promise<{ success: boolean }>;
   /** Fetches table rows by ID list. Present in runtime implementations. */
   getRowsByIds: (tableName: string, ids: string[]) => Promise<any[]>;
   /** Enqueues an immediate push sync operation for a module. */
@@ -134,7 +135,9 @@ export interface ICadernoAPI {
 
   imageCache?: {
     get: (id: string) => Promise<any>;
-    put: (id: string, data: ArrayBuffer, mimeType: string) => Promise<any>;
+    put: (id: string, data: ArrayBuffer | number[], mimeType: string) => Promise<any>;
+    delete?: (id: string) => Promise<any>;
+    cleanupOrphans?: () => Promise<number>;
   };
 
   video?: {

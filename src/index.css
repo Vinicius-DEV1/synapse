@@ -4,6 +4,7 @@
 @import './styles/editor-core.css';
 @import './styles/editor-layout.css';
 @import './styles/library-pdf.css';
+@import './styles/mobile-webview.css';
 
 @tailwind base;
 @tailwind components;
