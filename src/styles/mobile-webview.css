@@ -6,8 +6,22 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
+/* Eliminate 300ms tap delay & remove grey/blue highlight boxes */
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+.clickable {
+  touch-action: manipulation !important;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body {
@@ -24,14 +38,39 @@ textarea,
 .selectable,
 .ProseMirror,
 .ProseMirror * {
-  -webkit-user-select: text;
-  user-select: text;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default;
 }
 
-/* Inertial smooth scrolling for touch devices */
+/* Inertial smooth scrolling for touch devices & prevent rubber-banding */
+#page-view-scroll,
+.overflow-y-auto,
+.overflow-x-auto,
 .scrollable,
 main,
 aside,
 [data-scrollable="true"] {
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* 120Hz GPU-accelerated drawer & modal transitions */
+.animate-slide-right,
+.animate-slide-in-right,
+.animate-slide-in-left,
+.modal-overlay,
+.modal-content {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Tactile micro-animation on press */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  .btn-active:active {
+    transform: scale(0.97);
+    transition: transform 0.05s ease-out;
+  }
 }
