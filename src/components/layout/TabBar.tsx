@@ -59,11 +59,11 @@ const TabItem = memo(function TabItem({ tab, index, isActive, page, onSelect, on
       {...attributes}
       {...listeners}
       onClick={() => onSelect(tab.id)}
-      className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] transition-all ${
+      className={`group relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-xl min-w-[120px] max-w-[200px] h-[38px] transition-all ${
         isOver ? 'ring-1 ring-brand-500' : ''
       } ${
         isActive
-          ? 'bg-dark-bg text-dark-text border-t-2 border-x border-brand-500 border-x-white/5'
+          ? 'bg-dark-bg text-dark-text border-t-2 border-x border-brand-500 border-x-white/5 shadow-sm'
           : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
       } ${isDragging ? 'opacity-50' : ''}`}
     >
@@ -152,17 +152,17 @@ export default function TabBar() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="h-[42px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-0.5 overflow-x-auto scrollbar-none">
+      <div className="h-[46px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-1 overflow-x-auto scrollbar-none">
       {/* Mobile Sidebar Toggle Button */}
       <button
         onClick={() => {
           triggerHaptic('light');
           dispatch({ type: 'TOGGLE_SIDEBAR' });
         }}
-        className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
+        className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-1"
         title="Abrir menu"
       >
-        <PanelLeft size={16} />
+        <PanelLeft size={18} />
       </button>
 
       {state.tabs.map((tab, index) => {
