@@ -188,6 +188,21 @@ function AppContent() {
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
   }, [state.activeTabId]);
 
+  const pageHistoryRef = useRef<string[]>([]);
+  const lastPageIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+    const currentPageId = currentTab?.pageId || null;
+    if (currentPageId && lastPageIdRef.current && lastPageIdRef.current !== currentPageId) {
+      pageHistoryRef.current.push(lastPageIdRef.current);
+      if (pageHistoryRef.current.length > 30) {
+        pageHistoryRef.current.shift();
+      }
+    }
+    lastPageIdRef.current = currentPageId;
+  }, [state.activeTabId, state.tabs]);
+
   // Handle in-app back press from Mobile WebView or Browser
   useEffect(() => {
     const handleBack = (): boolean => {
@@ -217,19 +232,44 @@ function AppContent() {
         return true;
       }
       // 6. Check if any open modal close button exists in DOM
-      const openModalCloseBtn = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="Close"], [role="dialog"] button.close-btn, .modal-close-btn');
+      const openModalCloseBtn = document.querySelector<HTMLElement>(
+        '[role="dialog"] [aria-label="Close"], [role="dialog"] button.close-btn, .modal-close-btn, [data-testid="modal-close"]'
+      );
       if (openModalCloseBtn) {
         openModalCloseBtn.click();
         return true;
       }
-      // 7. Check if current page in active tab has a parent page (subpage navigation)
+      // 7. If reading a book in library, close the book
       const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+      if (currentTab?.module === 'library' && currentTab.bookId) {
+        dispatch({ type: 'CLOSE_LIBRARY_BOOK', tabId: currentTab.id });
+        return true;
+      }
+      // 8. If in another module and there are multiple tabs, close active tab
+      if (currentTab && currentTab.module !== 'notes' && state.tabs.length > 1) {
+        dispatch({ type: 'CLOSE_TAB', tabId: currentTab.id });
+        return true;
+      }
+      // 9. If current page in active tab has a parent page (subpage navigation)
       if (currentTab?.pageId) {
         const currentPage = state.pages.find(p => p.id === currentTab.pageId);
         if (currentPage?.parent_id) {
           dispatch({ type: 'NAVIGATE_IN_TAB', pageId: currentPage.parent_id });
           return true;
         }
+      }
+      // 10. If there is in-app page history, go back to previous page
+      if (pageHistoryRef.current.length > 0) {
+        const prevPageId = pageHistoryRef.current.pop();
+        if (prevPageId && state.pages.some(p => p.id === prevPageId)) {
+          dispatch({ type: 'NAVIGATE_IN_TAB', pageId: prevPageId });
+          return true;
+        }
+      }
+      // 11. If multiple tabs exist, close active tab
+      if (state.tabs.length > 1) {
+        dispatch({ type: 'CLOSE_TAB', tabId: state.activeTabId });
+        return true;
       }
       return false;
     };
