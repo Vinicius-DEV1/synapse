@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { StoreProvider } from '../store/useStore';
+import { StoreProvider, useStore } from '../store/useStore';
 import { usePageActions } from './usePageActions';
 
 describe('usePageActions hook', () => {
@@ -55,4 +55,29 @@ describe('usePageActions hook', () => {
 
     expect((window as any).api.deletePage).toHaveBeenCalledWith('page-to-delete');
   });
+
+  it('ignores updates and autosaves to deleted pages', async () => {
+    const { result } = renderHook(() => {
+      const store = useStore();
+      const actions = usePageActions();
+      return { store, actions };
+    }, { wrapper });
+
+    const deletedPage = { id: 'del-1', title: 'Deleted', deleted_at: '2026-08-25T10:00:00Z' } as any;
+
+    act(() => {
+      result.current.store.dispatch({ type: 'SET_PAGES', pages: [deletedPage] });
+    });
+
+    (window as any).api.updatePage.mockClear();
+
+    await act(async () => {
+      await result.current.actions.handleUpdateContent('del-1', 'new content', null);
+      await result.current.actions.handleUpdatePage('del-1', { title: 'Ignored title' });
+    });
+
+    expect((window as any).api.updatePage).not.toHaveBeenCalled();
+  });
 });
+
+
