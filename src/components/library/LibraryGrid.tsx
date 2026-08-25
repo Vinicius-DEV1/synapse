@@ -51,11 +51,15 @@ export default function LibraryGrid({
 
   const getProgress = (book: LibraryBook): number => {
     if (!book.total_pages || book.total_pages === 0) return 0;
-    // For PDF, last_read_page is numeric. For EPUB, it is a CFI string.
-    // Use current_page (numeric) as fallback for EPUBs.
-    const page = typeof book.last_read_page === 'number' 
-      ? book.last_read_page 
-      : (book as any).current_page || 0;
+    
+    let page = (book as any).current_page || 0;
+    if (typeof book.last_read_page === 'number') {
+      page = book.last_read_page;
+    } else if (typeof book.last_read_page === 'string' && !(book.last_read_page as any).includes('epubcfi')) {
+      const parsed = parseInt(book.last_read_page, 10);
+      if (!isNaN(parsed)) page = parsed;
+    }
+    
     if (!page || page <= 0) return 0;
     return Math.min(100, Math.round((page / book.total_pages) * 100));
   };
@@ -75,7 +79,7 @@ export default function LibraryGrid({
         return (
           <div
             key={book.id}
-            className={`group relative flex flex-col rounded-xl border bg-dark-card transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-400/40 cursor-pointer overflow-hidden ${
+            className={`group relative flex flex-col rounded-xl border bg-dark-card transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-400/40 cursor-pointer ${
               isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-white/5'
             }`}
             style={{

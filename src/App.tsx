@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
 import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';

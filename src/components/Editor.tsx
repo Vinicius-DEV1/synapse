@@ -201,7 +201,7 @@ export default function Editor({
     },
     onCreate: ({ editor: currentEditor }) => {
       const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
-      if (!hasMeaningfulCrdt && initialContent && initialContent.trim() !== '' && initialContent !== '<p></p>') {
+      if (!hasMeaningfulCrdt && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         currentEditor.commands.setContent(initialContent);
       }
     },
@@ -222,7 +222,7 @@ export default function Editor({
     if (editor && !editor.isDestroyed && !hasInitializedContentRef.current) {
       const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
       const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
-      if (!hasMeaningfulCrdt && isEmptyEditor && initialContent && initialContent.trim() !== '' && initialContent !== '<p></p>') {
+      if (!hasMeaningfulCrdt && isEmptyEditor && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         editor.commands.setContent(initialContent);
         hasInitializedContentRef.current = true;
       }

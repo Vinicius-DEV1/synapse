@@ -68,7 +68,10 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
   }, []);
 
   const loadData = useCallback(async () => {
-    if (!window.api?.library) return;
+    if (!window.api?.library) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const [booksData, collectionsData] = await Promise.all([

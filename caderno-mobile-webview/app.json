@@ -38,19 +38,23 @@
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "navigationBar": {
-        "backgroundColor": "#0f172a",
-        "barStyle": "light-content"
-      }
+      "predictiveBackGestureEnabled": false
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
           "backgroundColor": "#0f172a"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ae4fad0b-08a1-474b-a8f3-1b98dba3dd0e"
+      }
+    }
   }
 }

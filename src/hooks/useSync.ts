@@ -114,7 +114,13 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         isSyncing = true;
         try {
           // Silent background push only — no pull and no unnecessary App re-renders
-          await withTimeout(pushAllToCloud(masterKey), 120_000);
+          await withTimeout(
+            Promise.all([
+              pushAllToCloud(masterKey),
+              syncPdfsToCloud(masterKey),
+            ]),
+            120_000
+          );
           if (!isClosed) {
             syncChannel.postMessage('LOCAL_UPDATE');
           }
