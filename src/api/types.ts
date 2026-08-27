@@ -60,6 +60,8 @@ export interface LibraryApi {
   getBooks: () => Promise<LibraryBook[]>;
   importBook: () => Promise<LibraryBook | null>;
   deleteBook: (id: string) => Promise<boolean>;
+  reattachBookFile: (id: string) => Promise<string | null>;
+  evictBookLocalCache: (id: string) => Promise<boolean>;
   updateBook: (book: { id: string; title?: string; author?: string; current_page?: number; last_read_page?: number | string; total_pages?: number; reading_status?: ReadingStatus; last_read_at?: string }) => Promise<number>;
   getBookFile: (id: string) => Promise<string>;
   getCollections: () => Promise<LibraryCollection[]>;
@@ -76,7 +78,6 @@ export interface LibraryApi {
   createBookmark: (b: { book_id: string; page_number: number; label?: string }) => Promise<LibraryBookmark>;
   updateBookmark: (b: { id: string; label: string }) => Promise<number>;
   deleteBookmark: (id: string) => Promise<boolean>;
-  reattachBookFile?: (bookId: string) => Promise<string | null>;
   getOcrCache: (bookId: string, pageNumber: number) => Promise<OcrCacheEntry | null>;
   saveOcrCache: (data: { book_id: string; page_number: number; text_content: string; word_boxes: string }) => Promise<boolean>;
   startReadingSession: (data: { book_id: string; start_page: number }) => Promise<ReadingSession>;

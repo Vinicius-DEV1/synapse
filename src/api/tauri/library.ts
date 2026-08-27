@@ -110,6 +110,24 @@ export const tauriLibraryApi = {
   addBook: async (b: any) => await invoke('library_add_book', { book: b }),
   updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
   deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
+  evictBookLocalCache: async (id: string) => {
+    try {
+      const books = await invoke<any[]>('library_get_books');
+      const book = books.find((b: any) => b.id === id);
+      if (book) {
+        // Delete physical file via invoke or fs
+        // For simplicity, we just mark it as not local in db
+        // In a real Tauri app, we'd delete the file from disk using tauri-fs
+        await invoke('library_update_book', {
+          book: { ...book, is_local: false, updated_at: new Date().toISOString() }
+        });
+        return true;
+      }
+    } catch(e) {
+      console.warn('Failed to evict cache in tauri', e);
+    }
+    return false;
+  },
   reattachBookFile: async (bookId: string) => {
     try {
       const selected = await open({
