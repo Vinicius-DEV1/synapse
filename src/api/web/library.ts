@@ -1,4 +1,4 @@
-import { uploadEncryptedPdf, getDecryptedPdf, encryptFile } from '../../services/storage';
+import { getDecryptedPdf, encryptFile } from '../../services/storage';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 
 export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: () => CryptoKey | null) => ({
