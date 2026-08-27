@@ -189,15 +189,102 @@ pub fn library_get_reading_stats(db_state: State<'_, DbState>) -> Result<Reading
         "SELECT COALESCE(SUM(pages_read), 0) FROM library_reading_sessions WHERE ended_at IS NOT NULL", [], |row| row.get(0)
     ).unwrap_or(0);
 
+    let mut stmt = conn.prepare(
+        "SELECT started_at, ended_at FROM library_reading_sessions WHERE started_at IS NOT NULL AND ended_at IS NOT NULL"
+    ).map_err(|e| e.to_string())?;
+
+    let session_rows = stmt.query_map([], |row| {
+        let started_str: String = row.get(0)?;
+        let ended_str: String = row.get(1)?;
+        Ok((started_str, ended_str))
+    }).map_err(|e| e.to_string())?;
+
+    let mut total_duration_secs: i64 = 0;
+    let mut unique_days: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+
+    for r in session_rows {
+        if let Ok((start_str, end_str)) = r {
+            if let (Ok(start_dt), Ok(end_dt)) = (
+                chrono::DateTime::parse_from_rfc3339(&start_str),
+                chrono::DateTime::parse_from_rfc3339(&end_str),
+            ) {
+                let duration = (end_dt - start_dt).num_seconds();
+                if duration > 0 {
+                    let capped_duration = duration.min(28800); // Max 8 hours per session
+                    total_duration_secs += capped_duration;
+                }
+                unique_days.insert(start_dt.format("%Y-%m-%d").to_string());
+            } else {
+                if start_str.len() >= 10 {
+                    unique_days.insert(start_str[..10].to_string());
+                }
+            }
+        }
+    }
+
+    let reading_days: Vec<String> = unique_days.into_iter().collect();
+
+    let mut longest_streak = 0;
+    let mut current_streak = 0;
+
+    if !reading_days.is_empty() {
+        let mut dates: Vec<chrono::NaiveDate> = reading_days
+            .iter()
+            .filter_map(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+            .collect();
+        dates.sort();
+        dates.dedup();
+
+        let mut temp_streak = 0;
+        let mut prev_date: Option<chrono::NaiveDate> = None;
+
+        for date in &dates {
+            match prev_date {
+                Some(prev) => {
+                    if *date == prev + chrono::Duration::days(1) {
+                        temp_streak += 1;
+                    } else if *date != prev {
+                        temp_streak = 1;
+                    }
+                }
+                None => {
+                    temp_streak = 1;
+                }
+            }
+            if temp_streak > longest_streak {
+                longest_streak = temp_streak;
+            }
+            prev_date = Some(*date);
+        }
+
+        let today = chrono::Utc::now().date_naive();
+        if let Some(last_date) = dates.last() {
+            if *last_date == today || *last_date == today - chrono::Duration::days(1) {
+                let mut c_streak = 1;
+                for i in (0..dates.len().saturating_sub(1)).rev() {
+                    if dates[i] == dates[i + 1] - chrono::Duration::days(1) {
+                        c_streak += 1;
+                    } else {
+                        break;
+                    }
+                }
+                current_streak = c_streak;
+            }
+        }
+    }
+
+    let total_time_minutes = (total_duration_secs / 60) as i32;
+
     Ok(ReadingStats {
         global_stats: GlobalStats {
             total_books_started: started,
             total_books_finished: finished,
-            total_time_minutes: 0,
+            total_time_minutes,
             total_pages_read: total_pages,
-            current_streak: 0,
-            longest_streak: 0,
-            reading_days: vec![],
+            current_streak,
+            longest_streak,
+            reading_days,
         },
     })
 }
+

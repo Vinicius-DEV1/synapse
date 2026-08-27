@@ -225,3 +225,32 @@ pub fn library_set_book_collections(
 
     Ok(true)
 }
+
+/// Retrieves all book-to-collection mappings in a single batch query.
+#[tauri::command]
+pub fn library_get_all_book_collections(
+    db_state: State<'_, DbState>,
+) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    let mut stmt = conn
+        .prepare("SELECT book_id, collection_id FROM library_book_collections WHERE deleted_at IS NULL")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            let book_id: String = row.get(0)?;
+            let collection_id: String = row.get(1)?;
+            Ok((book_id, collection_id))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for i in iter {
+        if let Ok((b_id, c_id)) = i {
+            map.entry(b_id).or_default().push(c_id);
+        }
+    }
+    Ok(map)
+}

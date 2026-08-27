@@ -219,6 +219,7 @@ pub fn run() {
             cmd_library::library_update_bookmark,
             cmd_library::library_delete_bookmark,
             cmd_library::library_get_book_collections,
+            cmd_library::library_get_all_book_collections,
             cmd_library::library_set_book_collections,
             cmd_library::library_create_collection,
             library_stats::library_get_ocr_cache,
