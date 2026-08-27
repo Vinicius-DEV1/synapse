@@ -69,7 +69,8 @@ export interface LibraryApi {
   updateCollection: (c: { id: string; name?: string; color?: string }) => Promise<number>;
   deleteCollection: (id: string) => Promise<boolean>;
   setBookCollections: (bookId: string, collectionIds: string[]) => Promise<boolean>;
-  getBookCollections: (bookId: string) => Promise<LibraryCollection[]>;
+  getBookCollections: (bookId: string) => Promise<LibraryCollection[] | string[]>;
+  getAllBookCollections?: () => Promise<Record<string, string[]>>;
   getHighlights: (bookId: string) => Promise<LibraryHighlight[]>;
   createHighlight: (h: { book_id: string; page_number: number; text_content?: string; color?: HighlightColor; rects?: string; highlight_type?: HighlightType; note?: string }) => Promise<LibraryHighlight>;
   updateHighlight: (h: { id: string; color?: HighlightColor; note?: string; rects?: string }) => Promise<number>;

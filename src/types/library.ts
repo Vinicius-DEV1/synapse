@@ -11,7 +11,7 @@ export interface LibraryBook {
   original_name: string;
   cover_image: string;
   total_pages: number;
-  last_read_page: number;
+  last_read_page: number | string;
   reading_status: ReadingStatus;
   last_read_at: string | null;
   created_at: string;
@@ -91,4 +91,12 @@ export interface GlobalReadingStats {
   currentStreak: number;
   longestStreak: number;
   readingDays: string[];
+  total_books?: number;
+  total_pages_read?: number;
+  total_time_minutes?: number;
+  current_streak?: number;
+  longest_streak?: number;
+  books_in_progress?: number;
+  books_completed?: number;
+  reading_days?: string[];
 }
