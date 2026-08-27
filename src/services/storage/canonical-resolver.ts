@@ -178,6 +178,17 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
       } catch (cacheErr) {
         console.warn(`[CanonicalResolver] Não foi possível salvar cache local:`, cacheErr);
       }
+    } else if (moduleName === 'library') {
+      try {
+        const { getWebDb } = await import('../db-web');
+        const db = await getWebDb();
+        await db.put('library_book_files', { id, data: encryptedData });
+        if (onUpdateSavedPath) {
+          onUpdateSavedPath(`indexeddb://${id}`);
+        }
+      } catch (cacheErr) {
+        console.warn(`[CanonicalResolver] Não foi possível salvar cache no IndexedDB:`, cacheErr);
+      }
     }
 
     if (masterKey) {
