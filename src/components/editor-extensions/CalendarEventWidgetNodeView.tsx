@@ -8,6 +8,7 @@ import { parseEventDate } from '../../utils/date-utils';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { CalendarEventPopover } from './calendar/CalendarEventPopover';
 import { CalendarEventDeleteModal } from './calendar/CalendarEventDeleteModal';
+import { Portal } from '../ui/Portal';
 
 let cachedEventsPromise: Promise<CalendarEvent[]> | null = null;
 let cacheTimestamp = 0;
@@ -338,38 +339,40 @@ export default function CalendarEventWidgetNodeView(props: any) {
       </span>
 
       {showDeletedNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                <AlertCircle size={22} />
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold text-base leading-tight">Evento Excluído</h3>
+                  <p className="text-dark-subtext text-xs mt-0.5">Evento não encontrado na agenda</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold text-base leading-tight">Evento Excluído</h3>
-                <p className="text-dark-subtext text-xs mt-0.5">Evento não encontrado na agenda</p>
-              </div>
-            </div>
-            
-            <p className="text-dark-subtext text-sm leading-relaxed">
-              O evento <strong className="text-white">"{title || eventData?.title || 'Evento'}"</strong> foi excluído da agenda. Deseja remover este widget do documento?
-            </p>
+              
+              <p className="text-dark-subtext text-sm leading-relaxed">
+                O evento <strong className="text-white">"{title || eventData?.title || 'Evento'}"</strong> foi excluído da agenda. Deseja remover este widget do documento?
+              </p>
 
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setShowDeletedNotice(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
-              >
-                Manter
-              </button>
-              <button
-                onClick={() => { setShowDeletedNotice(false); props.deleteNode(); }}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
-              >
-                Remover Widget
-              </button>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setShowDeletedNotice(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+                >
+                  Manter
+                </button>
+                <button
+                  onClick={() => { setShowDeletedNotice(false); props.deleteNode(); }}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+                >
+                  Remover Widget
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showPopover && (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as Y from 'yjs';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
@@ -16,18 +16,34 @@ interface UseEditorSyncProps {
 export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestContentRef, instanceId }: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
+  // Track if CRDT application failed so Editor can fall back to HTML
+  const [crdtFailed, setCrdtFailed] = useState(false);
+
   const [ydoc] = React.useState(() => {
     const doc = new Y.Doc();
     doc.guid = pageId || 'temp';
     
     if (hasMeaningfulCrdt) {
-      applyBase64StateToYDoc(doc, initialCrdtState!);
+      try {
+        applyBase64StateToYDoc(doc, initialCrdtState!);
+        // Quick sanity check: the doc should have content
+        const xmlFragment = doc.get('default', Y.XmlFragment);
+        if (!xmlFragment) throw new Error('CRDT produced empty XmlFragment');
+      } catch (err) {
+        console.warn('[Caderno:Sync] CRDT inválido ou incompatível, usando fallback HTML:', err);
+        // Return a fresh doc — caller will see crdtFailed=true and load HTML instead
+        return new Y.Doc();
+      }
     }
     
     const backupMap = getEditorBackupMap();
     const backup = backupMap.get(pageId);
     if (backup?.crdt && backup.crdt.length > 8) {
-      applyBase64StateToYDoc(doc, backup.crdt);
+      try {
+        applyBase64StateToYDoc(doc, backup.crdt);
+      } catch (err) {
+        console.warn('[Caderno:Sync] Falha ao aplicar backup CRDT:', err);
+      }
       backupMap.delete(pageId);
     }
     return doc;
@@ -125,5 +141,17 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     };
   }, [pageId, latestContentRef, onSaveRef, instanceId]);
 
-  return { ydocRef };
+  // Signal CRDT failure on first render so Editor can fall back to HTML
+  useEffect(() => {
+    if (hasMeaningfulCrdt) {
+      const xmlFragment = ydocRef.current.get('default', Y.XmlFragment);
+      // If the fragment has no children after applying CRDT, treat as failed
+      if (!xmlFragment || xmlFragment.length === 0) {
+        setCrdtFailed(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { ydocRef, crdtFailed };
 }

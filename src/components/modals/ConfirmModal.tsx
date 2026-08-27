@@ -92,6 +92,18 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
   }, [targetPageIds, state.pages]);
 
   const hasActiveEvents = activeEvents.length > 0;
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsDeleting(false);
+      onCancel();
+    }
+  };
 
   return (
     <Portal>
@@ -186,16 +198,20 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={onCancel}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              disabled={isDeleting}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
-              onClick={onConfirm}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors shadow-lg shadow-red-500/20"
+              onClick={handleConfirm}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors shadow-lg shadow-red-500/20 disabled:opacity-50"
             >
               <span>
-                {hasActiveEvents
+                {isDeleting
+                  ? 'Excluindo...'
+                  : hasActiveEvents
                   ? `Sim, excluir página e ${activeEvents.length} evento(s)`
                   : 'Sim, excluir'}
               </span>

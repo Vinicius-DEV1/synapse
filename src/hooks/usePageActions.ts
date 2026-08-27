@@ -84,11 +84,12 @@ export function usePageActions() {
 
         // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
-        dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
         triggerToast('Página movida para a lixeira.', 'info');
       } catch (err: any) {
         console.error('Erro ao excluir página:', err);
         triggerToast(err.message || 'Erro ao excluir página', 'error');
+      } finally {
+        dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
       }
     }
   }, [dispatch, state.pages]);

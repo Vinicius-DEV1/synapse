@@ -43,6 +43,7 @@ import { ColumnGroup } from '../../editor-extensions/columns/ColumnGroup';
 import { DragToGroup, GroupAutoCollapse } from '../../editor-extensions/group-layout';
 import { ImageKeymap } from '../../editor-extensions/image/ImageKeymap';
 import { Spoiler } from '../../editor-extensions/Spoiler';
+import { ScrapWidgetBlock } from '../../editor-extensions/scraps/ScrapWidgetBlock';
 
 // Only '-' creates bullet list (removes * and + shortcuts)
 const CustomBulletList = BulletList.extend({
@@ -120,6 +121,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       Color,
       ImageKeymap,
       Spoiler,
+      ScrapWidgetBlock,
     ];
   }, [ydoc]);
 }

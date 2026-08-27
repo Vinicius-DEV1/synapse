@@ -30,6 +30,8 @@ export function useEditorSave({
 
     try {
       const editor = editorRef.current;
+      if (editor.isDestroyed) return;
+
       const html = editor.getHTML();
       const crdtState = getYDocStateAsBase64(ydocRef.current);
       latestContentRef.current = { html, crdt: crdtState };

@@ -4,6 +4,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { getStoreState, StoreContext } from '../../store/useStore';
 import { useEffect, useState, useContext } from 'react';
 import { FileText, AlertCircle } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 
 const PageReferenceComponent = (props: any) => {
   const { pageId, title } = props.node.attrs;
@@ -113,63 +114,67 @@ const PageReferenceComponent = (props: any) => {
       </span>
 
       {showDeletedNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                <AlertCircle size={22} />
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold text-base leading-tight">Página Excluída</h3>
+                  <p className="text-dark-subtext text-xs mt-0.5">Link quebrado ou item na lixeira</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold text-base leading-tight">Página Excluída</h3>
-                <p className="text-dark-subtext text-xs mt-0.5">Link quebrado ou item na lixeira</p>
-              </div>
-            </div>
-            
-            <p className="text-dark-subtext text-sm leading-relaxed">
-              A página <strong className="text-white">"{pageTitle}"</strong> foi movida para a lixeira ou não existe mais. Deseja remover este widget do documento?
-            </p>
+              
+              <p className="text-dark-subtext text-sm leading-relaxed">
+                A página <strong className="text-white">"{pageTitle}"</strong> foi movida para a lixeira ou não existe mais. Deseja remover este widget do documento?
+              </p>
 
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setShowDeletedNotice(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
-              >
-                Manter
-              </button>
-              <button
-                onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
-              >
-                Remover Widget
-              </button>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setShowDeletedNotice(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+                >
+                  Manter
+                </button>
+                <button
+                  onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+                >
+                  Remover Widget
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-white/10 rounded-xl p-5 w-[300px] shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-semibold text-base text-center">Remover Referência</h3>
-            <p className="text-dark-subtext text-sm text-center">
-              Deseja remover a referência para "{pageTitle}" desta página?
-            </p>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => { setShowConfirm(false); deleteNode(); }}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
-              >
-                Remover
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-white/10 rounded-xl p-5 w-[300px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <h3 className="text-white font-semibold text-base text-center">Remover Referência</h3>
+              <p className="text-dark-subtext text-sm text-center">
+                Deseja remover a referência para "{pageTitle}" desta página?
+              </p>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => { setShowConfirm(false); deleteNode(); }}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Remover
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );

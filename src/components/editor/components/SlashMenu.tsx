@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Link, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const SLASH_COMMANDS = [
@@ -27,7 +27,7 @@ const SLASH_COMMANDS = [
   { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock, keywords: ['foco', 'timer', 'pomodoro'] },
   { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock, keywords: ['alarme', 'despertador'] },
   { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive, keywords: ['documento', 'arquivo', 'upload'] },
-  { id: 'documento-link', title: 'Vincular Arquivo', subtitle: 'Vincular um arquivo existente do módulo.', icon: Link, keywords: ['vincular', 'link arquivo'] },
+  { id: 'scrap', title: 'Snapshot Web (Scrap)', subtitle: 'Capturar página 100% offline (HTML, CSS e imagens). Ex: /scrap https://site.com', icon: FileArchive, keywords: ['scrap', 'snapshot', 'web', 'capturar', 'pagina', 'offline', 'copia'] },
   { id: 'video', title: 'Vincular Vídeo', subtitle: 'Vincular um vídeo da sua galeria.', icon: Film, keywords: ['video', 'midia'] },
   { id: 'livro', title: 'Vincular Livro', subtitle: 'Vincular um livro da sua biblioteca.', icon: BookOpen, keywords: ['livro', 'epub', 'pdf'] },
   { id: 'evento', title: 'Evento da Agenda', subtitle: 'Criar e vincular um evento na agenda com avisos.', icon: Calendar, keywords: ['evento', 'agenda', 'calendario'] },

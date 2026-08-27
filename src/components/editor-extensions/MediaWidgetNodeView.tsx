@@ -4,6 +4,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { Film, BookOpen, X, ArrowUp, ArrowDown, Palette, AlertCircle } from 'lucide-react';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import ColorPalettePicker from './ColorPalettePicker';
+import { Portal } from '../ui/Portal';
 
 export default function MediaWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
@@ -236,66 +237,70 @@ export default function MediaWidgetNodeView(props: any) {
       </div>
 
       {showDeletedNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                <AlertCircle size={22} />
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold text-base leading-tight">
+                    {mediaType === 'video' ? 'Vídeo Excluído' : 'Livro Excluído'}
+                  </h3>
+                  <p className="text-dark-subtext text-xs mt-0.5">Mídia não encontrada ou na lixeira</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold text-base leading-tight">
-                  {mediaType === 'video' ? 'Vídeo Excluído' : 'Livro Excluído'}
-                </h3>
-                <p className="text-dark-subtext text-xs mt-0.5">Mídia não encontrada ou na lixeira</p>
-              </div>
-            </div>
-            
-            <p className="text-dark-subtext text-sm leading-relaxed">
-              O {mediaType === 'video' ? 'vídeo' : 'livro'} <strong className="text-white">"{title || mediaItem?.title || 'Mídia'}"</strong> foi movido para a lixeira ou excluído do sistema. Deseja remover este widget do documento?
-            </p>
+              
+              <p className="text-dark-subtext text-sm leading-relaxed">
+                O {mediaType === 'video' ? 'vídeo' : 'livro'} <strong className="text-white">"{title || mediaItem?.title || 'Mídia'}"</strong> foi movido para a lixeira ou excluído do sistema. Deseja remover este widget do documento?
+              </p>
 
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setShowDeletedNotice(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
-              >
-                Manter
-              </button>
-              <button
-                onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
-              >
-                Remover Widget
-              </button>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setShowDeletedNotice(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+                >
+                  Manter
+                </button>
+                <button
+                  onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+                >
+                  Remover Widget
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-semibold text-lg text-center">Remover Vínculo</h3>
-            <p className="text-dark-subtext text-sm text-center">
-              Deseja remover este vínculo da anotação? (A mídia original não será excluída)
-            </p>
-            
-            <div className="flex gap-2 mt-2">
-              <button 
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => deleteNode()}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
-              >
-                Remover
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <h3 className="text-white font-semibold text-lg text-center">Remover Vínculo</h3>
+              <p className="text-dark-subtext text-sm text-center">
+                Deseja remover este vínculo da anotação? (A mídia original não será excluída)
+              </p>
+              
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => deleteNode()}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Remover
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );
