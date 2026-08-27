@@ -219,8 +219,10 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         const updated = collections.map(c => c.id === col.id ? { ...c, name: newName.trim() } : c);
         setCollections(updated);
         await loadData();
-      } catch (err) {
+        triggerToast('Coleção renomeada com sucesso!', 'success');
+      } catch (err: any) {
         console.error('Failed to rename collection', err);
+        triggerToast(err?.message || 'Falha ao renomear coleção.', 'error');
       }
     }
   };
