@@ -11,6 +11,7 @@ import EpubTypography from './epub/EpubTypography';
 import EpubHighlightMenu from './epub/EpubHighlightMenu';
 import { EpubErrorState } from './epub/EpubErrorState';
 import BookInfoModal from './BookInfoModal';
+import { triggerToast } from '../ui/ToastContext';
 import { useEpubShortcuts } from './epub/hooks/useEpubShortcuts';
 import { useEpubLoader } from './epub/useEpubLoader';
 import { useEpubTheme } from './epub/useEpubTheme';
@@ -86,11 +87,14 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
           onUpdateBook({ file_path: newPath });
           setEpubError(null);
           setLoading(true);
+          triggerToast('Arquivo EPUB reanexado com sucesso!', 'success');
         }
       }
     } catch (err: any) {
       console.error('Erro ao reanexar EPUB:', err);
-      setReattachError(err.message || 'Falha ao vincular novo arquivo');
+      const msg = err.message || 'Falha ao vincular novo arquivo';
+      setReattachError(msg);
+      triggerToast(msg, 'error');
     } finally {
       setIsReattaching(false);
     }
@@ -100,9 +104,11 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     try {
       setIsDeleting(true);
       await window.api?.library?.deleteBook(book.id);
+      triggerToast('Livro excluído da biblioteca.', 'info');
       onBack();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao excluir livro:', err);
+      triggerToast(err?.message || 'Erro ao excluir livro.', 'error');
       setIsDeleting(false);
     }
   };

@@ -13,6 +13,7 @@ import { PdfPage } from './pdf/PdfPage';
 import { PdfToolbar } from './pdf/PdfToolbar';
 import { PdfErrorState } from './pdf/PdfErrorState';
 import BookInfoModal from './BookInfoModal';
+import { triggerToast } from '../ui/ToastContext';
 import { usePdfKeyboardShortcuts } from './pdf/hooks/usePdfKeyboardShortcuts';
 
 import { usePdfDocument } from './pdf/hooks/usePdfDocument';
@@ -103,11 +104,14 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         if (newPath) {
           onUpdateBook({ file_path: newPath });
           reload();
+          triggerToast('Arquivo PDF reanexado com sucesso!', 'success');
         }
       }
     } catch (err: any) {
       console.error('Erro ao reanexar PDF:', err);
-      setReattachError(err.message || 'Falha ao vincular novo arquivo');
+      const msg = err.message || 'Falha ao vincular novo arquivo';
+      setReattachError(msg);
+      triggerToast(msg, 'error');
     } finally {
       setIsReattaching(false);
     }
@@ -117,9 +121,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     try {
       setIsDeleting(true);
       await window.api?.library?.deleteBook(book.id);
+      triggerToast('Livro excluído da biblioteca.', 'info');
       onBack();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao excluir livro:', err);
+      triggerToast(err?.message || 'Erro ao excluir livro.', 'error');
       setIsDeleting(false);
     }
   };
