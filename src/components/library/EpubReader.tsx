@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CloudDownload } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 import { useStore } from '../../store/useStore';
 
@@ -309,26 +309,44 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
 
       <div className="flex-1 relative overflow-hidden flex items-center justify-center">
         {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/5 backdrop-blur-sm">
-            <div className="w-64 flex flex-col items-center">
-              {loadProgress ? (
-                <>
-                  <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 mb-4 overflow-hidden">
-                    <div 
-                      className="bg-brand-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${loadProgress.percent}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-dark-subtext">
-                    {loadProgress.stage === 'downloading' ? 'Baixando da nuvem...' : 
-                     loadProgress.stage === 'decrypting' ? 'Descriptografando arquivo...' : 
-                     'Renderizando ePUB...'}
-                  </p>
-                  <p className="text-xs text-dark-subtext mt-1">{Math.round(loadProgress.percent)}%</p>
-                </>
-              ) : (
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
-              )}
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-dark-card border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4 flex flex-col items-center text-center">
+              <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 mb-4 animate-pulse">
+                <CloudDownload size={28} />
+              </div>
+              <h3 className="text-base font-semibold text-white mb-1 line-clamp-1">
+                {book.title}
+              </h3>
+              <p className="text-xs text-dark-subtext mb-5">
+                {loadProgress?.stage === 'downloading'
+                  ? 'Baixando arquivo do Google Drive...'
+                  : loadProgress?.stage === 'decrypting'
+                  ? 'Descriptografando com segurança...'
+                  : 'Preparando leitura...'}
+              </p>
+
+              <div className="w-full bg-white/5 rounded-full h-2 mb-2 overflow-hidden border border-white/5">
+                <div
+                  className="bg-gradient-to-r from-brand-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm"
+                  style={{ width: `${loadProgress ? Math.max(5, Math.min(100, loadProgress.percent)) : 15}%` }}
+                />
+              </div>
+
+              <div className="w-full flex justify-between items-center text-[11px] text-dark-subtext mb-5">
+                <span>
+                  {loadProgress?.stage === 'downloading' ? 'Download' : loadProgress?.stage === 'decrypting' ? 'Segurança' : 'Carregando'}
+                </span>
+                <span className="font-mono font-medium text-white">
+                  {loadProgress ? `${Math.round(loadProgress.percent)}%` : '...'}
+                </span>
+              </div>
+
+              <button
+                onClick={onBack}
+                className="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-dark-subtext hover:text-white transition-colors"
+              >
+                Cancelar e Voltar
+              </button>
             </div>
           </div>
         )}
@@ -348,6 +366,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
             onBack={onBack}
             onDeleteBook={handleDeleteBook}
             setConfirmDelete={setConfirmDelete}
+            epubError={epubError}
           />
         )}
 

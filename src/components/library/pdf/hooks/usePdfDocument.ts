@@ -44,7 +44,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
           driveFileId: book.drive_file_id,
           masterKey,
           extHint: 'pdf',
-          onUpdateSavedPath: (newPath) => onUpdateBookRef.current({ id: book.id, file_path: newPath }),
+          onUpdateSavedPath: (newPath) => onUpdateBookRef.current({ id: book.id, file_path: newPath, is_local: true }),
           onProgress: (percent, stage) => setLoadProgress({ percent, stage })
         });
         

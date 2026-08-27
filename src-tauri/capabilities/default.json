@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "dialog:default",
+    "dialog:allow-confirm",
     "shell:default",
     "fs:default"
   ]

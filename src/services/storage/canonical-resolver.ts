@@ -117,33 +117,10 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
 
   // 1. Attempt local resolution
   if (platform.canReadLocalFilesystem) {
-    const candidatesToTry: string[] = [];
-
     const localFound = await findLocalCanonicalPath(moduleName, id, savedPath, extHint);
     if (localFound) {
-      candidatesToTry.push(localFound);
-    }
-
-    if (savedPath && !savedPath.startsWith('drive:') && !savedPath.startsWith('http')) {
-      candidatesToTry.push(savedPath);
-    }
-    if (extHint) {
-      candidatesToTry.push(`${moduleName}/${id}.${extHint}.enc`);
-      candidatesToTry.push(`${id}.${extHint}.enc`);
-    }
-    candidatesToTry.push(`${moduleName}/${id}.enc`);
-    candidatesToTry.push(`${id}.enc`);
-    candidatesToTry.push(id);
-
-    const tried = new Set<string>();
-    for (const candidate of candidatesToTry) {
-      if (tried.has(candidate)) continue;
-      tried.add(candidate);
-      const assetUrl = buildEncryptedAssetUrl(moduleName, candidate);
+      const assetUrl = buildEncryptedAssetUrl(moduleName, localFound);
       arrayBuffer = await fetchEncryptedStreamBuffer(assetUrl);
-      if (arrayBuffer && arrayBuffer.byteLength > 0) {
-        break;
-      }
     }
   }
 

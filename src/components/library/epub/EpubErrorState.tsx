@@ -12,6 +12,7 @@ interface EpubErrorStateProps {
   onBack: () => void;
   onDeleteBook: () => void;
   setConfirmDelete: (val: boolean) => void;
+  epubError?: string;
 }
 
 export function EpubErrorState({
@@ -25,6 +26,7 @@ export function EpubErrorState({
   onBack,
   onDeleteBook,
   setConfirmDelete,
+  epubError,
 }: EpubErrorStateProps) {
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 select-none bg-dark-bg text-dark-text">
@@ -36,8 +38,7 @@ export function EpubErrorState({
         <h2 className="text-xl font-bold text-white mb-2">Arquivo Não Encontrado</h2>
 
         <p className="text-sm text-dark-subtext mb-4 leading-relaxed">
-          Não foi possível carregar o arquivo EPUB do livro{' '}
-          <strong className="text-white">"{book.title}"</strong> no disco local nem na nuvem.
+          {epubError || `Não foi possível carregar o arquivo EPUB do livro "${book.title}" no disco local nem na nuvem.`}
         </p>
 
         {book.file_path && (

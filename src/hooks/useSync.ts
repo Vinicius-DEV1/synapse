@@ -191,6 +191,11 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         window.addEventListener('app-sync-trigger', handleSyncTrigger);
       }
 
+      const handleImmediateSyncTrigger = () => {
+        doPushOnlySync();
+      };
+      window.addEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
+
       // 5. Focus trigger: update when user returns from another window
       // Guarded by mutex and 30s cooldown to prevent redundant sync runs
       let isSyncingOnFocus = false;
@@ -210,7 +215,8 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       return () => {
         isClosed = true;
         clearInterval(syncInterval);
-        clearTimeout(syncDebounceTimer);
+        window.removeEventListener('app-sync-trigger', handleSyncTrigger);
+        window.removeEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (cleanupSyncTrigger) cleanupSyncTrigger();
         else window.removeEventListener('app-sync-trigger', handleSyncTrigger);
