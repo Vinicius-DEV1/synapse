@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import LibraryView from './LibraryView';
 
+vi.mock('pdfjs-dist', () => ({
+  GlobalWorkerOptions: { workerSrc: '' },
+}));
+
+vi.mock('pdfjs-dist/build/pdf.worker.mjs?url', () => ({
+  default: 'mock-pdf-worker-url',
+}));
+
 const mockDispatch = vi.fn();
 const mockLoadData = vi.fn();
 const mockHandleImport = vi.fn();
