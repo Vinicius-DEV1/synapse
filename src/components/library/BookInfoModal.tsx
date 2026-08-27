@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Cloud, HardDrive, BookOpen, Clock, FileText, Info, Tag, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 import { Portal } from '../ui/Portal';
