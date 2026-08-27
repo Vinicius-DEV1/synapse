@@ -11,7 +11,7 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences FROM library_books WHERE deleted_at IS NULL",
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local FROM library_books WHERE deleted_at IS NULL",
         )
         .map_err(|e| e.to_string())?;
 
@@ -34,6 +34,7 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
                 updated_at: row.get(13)?,
                 deleted_at: row.get(14)?,
                 reading_preferences: row.get(15)?,
+                is_local: row.get(16).unwrap_or(Some(true)),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -59,13 +60,16 @@ pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book
         book.id.clone()
     };
 
+    let is_local_val = book.is_local.unwrap_or(true);
+
     conn.execute(
-        "INSERT INTO library_books (id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, reading_preferences) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![id, book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences]
+        "INSERT INTO library_books (id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, reading_preferences, is_local) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![id, book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, is_local_val]
     ).map_err(|e| e.to_string())?;
 
     let mut ret = book;
     ret.id = id;
+    ret.is_local = Some(is_local_val);
     Ok(ret)
 }
 
@@ -75,9 +79,13 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
+    let is_local_val = book.is_local.unwrap_or_else(|| {
+        book.file_path.as_ref().map(|p| !p.trim().is_empty()).unwrap_or(false)
+    });
+
     let count = conn.execute(
-        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, book.id]
+        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        params![book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, is_local_val, book.id]
     ).map_err(|e| e.to_string())?;
 
     Ok(count as i32)

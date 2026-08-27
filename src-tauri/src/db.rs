@@ -23,7 +23,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS video_words (id TEXT PRIMARY KEY, video_id TEXT NOT NULL, word TEXT NOT NULL, context TEXT, timestamp REAL);
          CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, start_date TEXT, end_date TEXT, type TEXT DEFAULT 'event', type_ TEXT DEFAULT 'event', status TEXT DEFAULT 'pending', color TEXT DEFAULT '#3b82f6', deleted_at DATETIME DEFAULT NULL, page_id TEXT, reminders TEXT DEFAULT '[]', notified_reminders TEXT DEFAULT '[]', recurrence_rule TEXT, reminder_minutes INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          
-         CREATE TABLE IF NOT EXISTS library_books (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT DEFAULT 'Desconhecido', file_path TEXT, drive_file_id TEXT, cover_color TEXT, cover_image TEXT, collections TEXT DEFAULT '[]', total_pages INTEGER DEFAULT 0, current_page INTEGER DEFAULT 0, reading_status TEXT DEFAULT 'unread', last_read_page TEXT, epub_locations TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME, reading_preferences TEXT, language TEXT, last_read_at DATETIME, original_name TEXT, published_year INTEGER, publisher TEXT);
+         CREATE TABLE IF NOT EXISTS library_books (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT DEFAULT 'Desconhecido', file_path TEXT, drive_file_id TEXT, cover_color TEXT, cover_image TEXT, collections TEXT DEFAULT '[]', total_pages INTEGER DEFAULT 0, current_page INTEGER DEFAULT 0, reading_status TEXT DEFAULT 'unread', last_read_page TEXT, epub_locations TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME, reading_preferences TEXT, language TEXT, last_read_at DATETIME, original_name TEXT, published_year INTEGER, publisher TEXT, is_local BOOLEAN DEFAULT 1);
          CREATE TABLE IF NOT EXISTS library_collections (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS library_book_collections (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, collection_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          CREATE TABLE IF NOT EXISTS library_highlights (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, text_content TEXT DEFAULT '', color TEXT DEFAULT 'yellow', rects TEXT, highlight_type TEXT, note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
@@ -106,6 +106,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_color TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_image TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN language TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_local BOOLEAN DEFAULT 1", []);
 
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_web_file_id TEXT", []);
