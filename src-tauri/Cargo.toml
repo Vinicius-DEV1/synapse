@@ -33,7 +33,7 @@ sha2 = "0.10.8"
 rand = "0.8.5"
 hex = "0.4.3"
 sha1 = "0.10.6"
-reqwest = { version = "0.13.3", features = ["blocking", "json", "stream"] }
+reqwest = { version = "0.13.3", features = ["blocking", "json", "stream", "gzip", "brotli", "deflate", "cookies"] }
 tokio = { version = "1.52.3", features = ["full"] }
 futures = "0.3.32"
 tauri-plugin-dialog = "2.7.1"
@@ -46,3 +46,5 @@ tokio-util = { version = "0.7", features = ["io"] }
 async-stream = "0.3.6"
 tauri-plugin-shell = "2"
 futures-util = "0.3.33"
+base64 = "0.22"
+regex = "1.10"
