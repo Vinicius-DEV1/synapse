@@ -139,6 +139,8 @@ pub fn run() {
             cmd_library::library_add_book,
             cmd_library::library_update_book,
             cmd_library::library_delete_book,
+            cmd_library::library_get_book_file,
+            cmd_library::library_evict_book_local_cache,
             cmd_library::library_import_and_encrypt_book,
             cmd_library::library_get_collections,
             cmd_library::library_add_collection,

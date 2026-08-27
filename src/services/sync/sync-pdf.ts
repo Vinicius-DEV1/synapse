@@ -1,6 +1,7 @@
 import { encryptFile } from '../storage';
 import { getValidAccessToken, uploadToDrive } from '../drive';
 import { platform } from '../platform';
+import { triggerToast } from '../../components/ui/ToastContext';
 
 type BookFileData = string | ArrayBuffer | Uint8Array | null;
 
@@ -9,7 +10,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   
   const masterKey = moduleKeys['library'];
   if (!masterKey) return; 
-  
+
   // Runs only in Desktop environment (with local filesystem access)
   if (!platform.canReadLocalFilesystem) {
     return;
@@ -32,11 +33,16 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           const token = await getValidAccessToken();
           if (!token) {
             console.warn('[Sync] Sem token do Google Drive, pulando livro:', bookName);
+            triggerToast(`Google Drive não conectado. Conecte sua conta para sincronizar "${bookName}".`, 'info');
             continue;
           }
 
           const fileData = await window.api.library.getBookFile(book.id) as BookFileData;
-          if (!fileData) continue;
+          if (!fileData) {
+            console.error('[Sync] Arquivo local não encontrado para:', bookName);
+            triggerToast(`Não foi possível localizar o arquivo físico do livro "${bookName}".`, 'error');
+            continue;
+          }
           
           window.dispatchEvent(new CustomEvent('library-upload-progress', { 
             detail: { filename: bookName, progress: 0, stage: 'encrypting', current: i + 1, total } 
@@ -87,8 +93,12 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
           } as any);
           
           console.log(`[Sync] Livro sincronizado com sucesso no Google Drive: ${bookName} (ID: ${driveFileId})`);
-        } catch (err) {
+          triggerToast(`Livro "${bookName}" sincronizado com a nuvem!`, 'success');
+          window.dispatchEvent(new Event('caderno-sync-success'));
+          window.dispatchEvent(new Event('caderno-sync-complete'));
+        } catch (err: any) {
           console.error(`[Sync] Erro ao sincronizar livro para o Drive: ${bookName}`, err);
+          triggerToast(`Falha ao sincronizar "${bookName}": ${err?.message || 'Erro de rede'}`, 'error');
         }
       }
     } finally {

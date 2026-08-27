@@ -128,3 +128,107 @@ pub fn library_import_and_encrypt_book(
 
     Ok(true)
 }
+
+/// Reads the encrypted or raw book file directly from the app data storage.
+#[tauri::command]
+pub fn library_get_book_file(
+    id: String,
+    db_state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> Result<Vec<u8>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    let file_path: Option<String> = conn
+        .query_row(
+            "SELECT file_path FROM library_books WHERE id = ?",
+            [&id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let mut candidate_paths = Vec::new();
+    let app_dir = crate::get_app_data_dir();
+
+    // 1. Direct candidates relative to get_app_data_dir
+    candidate_paths.push(app_dir.join(format!("library/{}.epub.enc", id)));
+    candidate_paths.push(app_dir.join(format!("library/{}.pdf.enc", id)));
+    candidate_paths.push(app_dir.join(format!("library/{}.epub", id)));
+    candidate_paths.push(app_dir.join(format!("library/{}.pdf", id)));
+
+    if let Some(ref fp) = file_path {
+        let clean = fp.replace("file://", "");
+        let p = std::path::PathBuf::from(&clean);
+        if p.is_absolute() {
+            candidate_paths.push(p.clone());
+            candidate_paths.push(std::path::PathBuf::from(format!("{}.enc", clean)));
+        } else {
+            candidate_paths.push(app_dir.join(&clean));
+            candidate_paths.push(app_dir.join(format!("{}.enc", clean)));
+        }
+    }
+
+    // 2. Tauri AppData candidates
+    use tauri::Manager;
+    if let Ok(tauri_dir) = app_handle.path().app_data_dir() {
+        candidate_paths.push(tauri_dir.join(format!("library/{}.epub.enc", id)));
+        candidate_paths.push(tauri_dir.join(format!("library/{}.pdf.enc", id)));
+        if let Some(ref fp) = file_path {
+            let clean = fp.replace("file://", "");
+            candidate_paths.push(tauri_dir.join(&clean));
+        }
+    }
+
+    for path in candidate_paths {
+        if path.exists() && path.is_file() {
+            if let Ok(bytes) = std::fs::read(&path) {
+                if !bytes.is_empty() {
+                    return Ok(bytes);
+                }
+            }
+        }
+    }
+
+    Err(format!("Book file for ID {} not found on disk", id))
+}
+
+/// Evicts a book's local cache file from disk.
+#[tauri::command]
+pub fn library_evict_book_local_cache(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    let file_path: Option<String> = conn
+        .query_row(
+            "SELECT file_path FROM library_books WHERE id = ?",
+            [&id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let app_dir = crate::get_app_data_dir();
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.epub.enc", id)));
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.pdf.enc", id)));
+
+    if let Some(ref fp) = file_path {
+        let clean = fp.replace("file://", "");
+        let p = std::path::PathBuf::from(&clean);
+        if p.is_absolute() {
+            let _ = std::fs::remove_file(&p);
+            let _ = std::fs::remove_file(format!("{}.enc", clean));
+        } else {
+            let _ = std::fs::remove_file(app_dir.join(&clean));
+            let _ = std::fs::remove_file(app_dir.join(format!("{}.enc", clean)));
+        }
+    }
+
+    let _ = conn.execute(
+        "UPDATE library_books SET file_path = '', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [&id],
+    );
+
+    Ok(true)
+}
