@@ -76,6 +76,8 @@ pub struct Book {
     pub reading_preferences: Option<String>,
     #[serde(default)]
     pub is_local: Option<bool>,
+    #[serde(default)]
+    pub original_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
