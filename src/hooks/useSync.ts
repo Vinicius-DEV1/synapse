@@ -115,12 +115,12 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         try {
           // Silent background push only — no pull and no unnecessary App re-renders
           await withTimeout(
-            Promise.all([
-              pushAllToCloud(masterKey),
-              syncPdfsToCloud(masterKey),
-            ]),
+            pushAllToCloud(masterKey),
             120_000
           );
+          
+          // PDF sync is separated from the 120s timeout because large files might take longer
+          await syncPdfsToCloud(masterKey);
           if (!isClosed) {
             syncChannel.postMessage('LOCAL_UPDATE');
           }
