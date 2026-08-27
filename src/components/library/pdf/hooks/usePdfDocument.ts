@@ -12,6 +12,7 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [tocItems, setTocItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState<{ percent: number, stage: string } | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   
   const onUpdateBookRef = useRef(onUpdateBook);
@@ -43,9 +44,11 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
           driveFileId: book.drive_file_id,
           masterKey,
           extHint: 'pdf',
-          onUpdateSavedPath: (newPath) => onUpdateBookRef.current({ id: book.id, file_path: newPath })
+          onUpdateSavedPath: (newPath) => onUpdateBookRef.current({ id: book.id, file_path: newPath }),
+          onProgress: (percent, stage) => setLoadProgress({ percent, stage })
         });
         
+        if (active) setLoadProgress({ percent: 100, stage: 'rendering' });
         const loadingTask = pdfjsLib.getDocument({ data: fileData });
         const pdf = await loadingTask.promise;
         
@@ -153,6 +156,6 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   };
 
   return {
-    pdfDoc, totalPages, pdfError, loading, tocItems, highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark, reload
+    pdfDoc, totalPages, pdfError, loading, loadProgress, tocItems, highlights, setHighlights, bookmarks, setBookmarks, toggleBookmark, reload
   };
 }

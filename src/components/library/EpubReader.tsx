@@ -63,6 +63,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   }, [fontSize, readingMode, fontFamily, textWidth, book, onUpdateBook]);
 
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState<{percent: number, stage: string} | null>(null);
   const [epubError, setEpubError] = useState<string | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
   const [isReattaching, setIsReattaching] = useState(false);
@@ -171,6 +172,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     viewerRef as RefObject<HTMLDivElement>,
     onUpdateBook,
     setLoading,
+    setLoadProgress,
     setEpubError,
     turnPage,
     handleEpubClick,
@@ -308,7 +310,26 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       <div className="flex-1 relative overflow-hidden flex items-center justify-center">
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/5 backdrop-blur-sm">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
+            <div className="w-64 flex flex-col items-center">
+              {loadProgress ? (
+                <>
+                  <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 mb-4 overflow-hidden">
+                    <div 
+                      className="bg-brand-500 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${loadProgress.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-dark-subtext">
+                    {loadProgress.stage === 'downloading' ? 'Baixando da nuvem...' : 
+                     loadProgress.stage === 'decrypting' ? 'Descriptografando arquivo...' : 
+                     'Renderizando ePUB...'}
+                  </p>
+                  <p className="text-xs text-dark-subtext mt-1">{Math.round(loadProgress.percent)}%</p>
+                </>
+              ) : (
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
+              )}
+            </div>
           </div>
         )}
 

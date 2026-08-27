@@ -16,6 +16,7 @@ export function useEpubLoader(
   viewerRef: React.RefObject<HTMLDivElement>,
   onUpdateBook: (updates: Partial<LibraryBook>) => void,
   setLoading: (l: boolean) => void,
+  setLoadProgress: (p: { percent: number, stage: string } | null) => void,
   setEpubError: (e: string | null) => void,
   turnPage: (direction: 'next' | 'prev', r: ePub.Rendition) => void,
   handleEpubClick: () => void,
@@ -47,11 +48,11 @@ export function useEpubLoader(
           driveFileId: book.drive_file_id,
           masterKey,
           extHint: 'epub',
-          onUpdateSavedPath: (newPath) => onUpdateBook({ file_path: newPath })
+          onUpdateSavedPath: (newPath) => onUpdateBook({ file_path: newPath }),
+          onProgress: (percent, stage) => setLoadProgress({ percent, stage })
         });
 
-        if (!active) return;
-
+        if (active) setLoadProgress({ percent: 100, stage: 'rendering' });
         // Disable ePub.js default replacements to prevent infinite loading; we handle this lazily
         const newEpubBook = ePub(arrayBuffer, { replacements: 'none' });
         setEpubBook(newEpubBook);

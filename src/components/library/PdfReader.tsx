@@ -86,6 +86,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     totalPages,
     pdfError,
     loading,
+    loadProgress,
     tocItems,
     highlights,
     setHighlights,
@@ -283,9 +284,30 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           style={{ scrollBehavior: 'auto', backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)' }}
         >
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
-              <p className="opacity-60">Processando documento...</p>
+            <div className="flex flex-col items-center justify-center h-full w-full">
+              <div className="w-64 flex flex-col items-center">
+                {loadProgress ? (
+                  <>
+                    <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 mb-4 overflow-hidden">
+                      <div 
+                        className="bg-brand-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${loadProgress.percent}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-dark-subtext">
+                      {loadProgress.stage === 'downloading' ? 'Baixando da nuvem...' : 
+                       loadProgress.stage === 'decrypting' ? 'Descriptografando arquivo...' : 
+                       'Processando documento...'}
+                    </p>
+                    <p className="text-xs text-dark-subtext mt-1">{Math.round(loadProgress.percent)}%</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500 mb-4"></div>
+                    <p className="text-sm text-dark-subtext">Carregando documento...</p>
+                  </>
+                )}
+              </div>
             </div>
           ) : (
             <div className="pdf-container pb-32 pt-8 flex flex-col items-center">
