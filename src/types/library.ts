@@ -22,6 +22,8 @@ export interface LibraryBook {
   publisher?: string | null;
   language?: string | null;
   epub_locations?: string | null;
+  /** Whether the file is cached locally (IndexedDB) or pending download */
+  is_local?: boolean;
   /** Current page in epub reader (index calculated via epubjs.locations) */
   current_page?: number | null;
   /** Serialized JSON reading preferences: { fontSize, readingMode, fontFamily, textWidth } */

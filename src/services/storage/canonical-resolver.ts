@@ -10,6 +10,7 @@ export interface ResolveCanonicalOptions {
   masterKey?: CryptoKey | null;
   extHint?: string; // 'epub', 'pdf', etc.
   onUpdateSavedPath?: (newPath: string) => void;
+  onProgress?: (percent: number, stage: 'downloading' | 'decrypting') => void;
 }
 
 /**
@@ -175,7 +176,9 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
       throw new Error("Você precisa conectar sua conta do Google Drive para baixar este arquivo.");
     }
 
-    const encryptedData = await downloadFromDrive(token, targetDriveId);
+    const encryptedData = await downloadFromDrive(token, targetDriveId, (p) => {
+      if (options.onProgress) options.onProgress(p, 'downloading');
+    });
 
     // Desktop canonical local cache
     if (platform.canReadLocalFilesystem) {
@@ -201,10 +204,21 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
     }
 
     if (masterKey) {
+      if (options.onProgress) options.onProgress(0, 'decrypting');
       try {
-        arrayBuffer = await decryptFile(encryptedData, masterKey);
-      } catch {
-        arrayBuffer = encryptedData;
+        const { decryptFileChunked } = await import('../storage');
+        const blob = new Blob([encryptedData]);
+        const decryptedBlob = await decryptFileChunked(blob, masterKey, (p) => {
+          if (options.onProgress) options.onProgress(p, 'decrypting');
+        });
+        arrayBuffer = await decryptedBlob.arrayBuffer();
+      } catch (err) {
+        console.warn('Chunked decryption failed, trying legacy', err);
+        try {
+          arrayBuffer = await decryptFile(encryptedData, masterKey);
+        } catch {
+          arrayBuffer = encryptedData;
+        }
       }
     } else {
       arrayBuffer = encryptedData;

@@ -1,4 +1,4 @@
-import { getDecryptedPdf, encryptFile } from '../../services/storage';
+import { getDecryptedPdf, encryptFileChunked } from '../../services/storage';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 
 export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: () => CryptoKey | null) => ({
@@ -31,20 +31,38 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         }
         
         try {
-          const importedBooks = [];
-          for (const file of files) {
-            const arrayBuffer = await file.arrayBuffer();
+          const importedBooks: any[] = [];
+          const total = files.length;
+          for (let i = 0; i < total; i++) {
+            const file = files[i];
             const bookId = generateId();
+            const fileName = file.name;
             
-            const encrypted = await encryptFile(arrayBuffer, _masterKey);
-            await db.put('library_book_files', { id: bookId, data: encrypted });
+            window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+              detail: { filename: fileName, progress: 0, stage: 'encrypting', current: i + 1, total } 
+            }));
+            
+            const encryptedBlob = await encryptFileChunked(file, _masterKey, (p) => {
+              window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+                detail: { filename: fileName, progress: p, stage: 'encrypting', current: i + 1, total } 
+              }));
+            });
+            
+            await db.put('library_book_files', { id: bookId, data: encryptedBlob });
             
             let driveFileId: string | null = null;
             let remotePath: string | null = null;
             try {
               const token = await getValidAccessToken();
               if (token) {
-                driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encrypted);
+                window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+                  detail: { filename: fileName, progress: 0, stage: 'uploading', current: i + 1, total } 
+                }));
+                driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encryptedBlob, 'root', (p) => {
+                  window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+                    detail: { filename: fileName, progress: p, stage: 'uploading', current: i + 1, total } 
+                  }));
+                });
                 remotePath = `drive://${driveFileId}`;
               }
             } catch (e) {
@@ -66,7 +84,8 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
               last_read_at: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              deleted_at: null
+              deleted_at: null,
+              is_local: true
             };
             
             await db.put('library_books', book);
@@ -114,16 +133,29 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         }
         
         try {
-          const arrayBuffer = await file.arrayBuffer();
-          const encrypted = await encryptFile(arrayBuffer, _masterKey);
-          await db.put('library_book_files', { id: bookId, data: encrypted });
+          window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+            detail: { filename: file.name, progress: 0, stage: 'encrypting' } 
+          }));
+          const encryptedBlob = await encryptFileChunked(file, _masterKey, (p) => {
+            window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+              detail: { filename: file.name, progress: p, stage: 'encrypting' } 
+            }));
+          });
+          await db.put('library_book_files', { id: bookId, data: encryptedBlob });
           
           let driveFileId: string | null = null;
           let remotePath: string | null = null;
           try {
             const token = await getValidAccessToken();
             if (token) {
-              driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encrypted);
+              window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+                detail: { filename: file.name, progress: 0, stage: 'uploading' } 
+              }));
+              driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encryptedBlob, 'root', (p) => {
+                window.dispatchEvent(new CustomEvent('library-upload-progress', { 
+                  detail: { filename: file.name, progress: p, stage: 'uploading' } 
+                }));
+              });
               remotePath = `drive://${driveFileId}`;
             }
           } catch (e) {
@@ -136,17 +168,31 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
             existing.drive_file_id = driveFileId;
             existing.original_name = file.name;
             existing.updated_at = new Date().toISOString();
+            existing.is_local = true;
             await db.put('library_books', existing);
           }
+          window.dispatchEvent(new Event('library-upload-end'));
           resolve(remotePath);
         } catch (err) {
           console.error("Erro ao reanexar arquivo:", err);
+          window.dispatchEvent(new Event('library-upload-end'));
           reject(err);
         }
       };
       
       input.click();
     });
+  },
+  evictBookLocalCache: async (id: string) => {
+    const existing = await db.get('library_books', id);
+    if (existing) {
+      await db.delete('library_book_files', id).catch(console.warn);
+      existing.is_local = false;
+      existing.updated_at = new Date().toISOString();
+      await db.put('library_books', existing);
+      return true;
+    }
+    return false;
   },
   updateBook: async (book: any) => {
     const existing = await db.get('library_books', book.id);
@@ -164,9 +210,17 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     try {
       const localRecord = await db.get('library_book_files', id);
       if (localRecord && localRecord.data) {
-        const { decryptFile } = await import('../../services/storage');
-        const decrypted = await decryptFile(localRecord.data, _masterKey);
-        return decrypted;
+        const { decryptFileChunked, decryptFile } = await import('../../services/storage');
+        const blob = localRecord.data instanceof Blob ? localRecord.data : new Blob([localRecord.data]);
+        
+        try {
+          const decryptedBlob = await decryptFileChunked(blob, _masterKey);
+          return await decryptedBlob.arrayBuffer();
+        } catch (err) {
+          // Fallback for old unchunked ArrayBuffers
+          const decrypted = await decryptFile(await blob.arrayBuffer(), _masterKey);
+          return decrypted;
+        }
       }
     } catch (e) {
       console.warn("Falha ao ler cache local de PDF", e);

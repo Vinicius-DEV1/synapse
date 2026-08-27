@@ -97,6 +97,73 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
 }
 
 /**
+ * Decrypts a chunked encrypted Blob (ENC1 format) into a standard Blob.
+ */
+export async function decryptFileChunked(encryptedBlob: Blob, masterKey: CryptoKey, onProgress?: (p: number) => void): Promise<Blob> {
+  const HEADER_SIZE = 16;
+  if (encryptedBlob.size < HEADER_SIZE) {
+    throw new Error('Invalid encrypted file: too small');
+  }
+
+  const headerBuffer = await encryptedBlob.slice(0, HEADER_SIZE).arrayBuffer();
+  const headerView = new DataView(headerBuffer);
+  
+  const m1 = headerView.getUint8(0);
+  const m2 = headerView.getUint8(1);
+  const m3 = headerView.getUint8(2);
+  const m4 = headerView.getUint8(3);
+  
+  if (m1 !== 0x45 || m2 !== 0x4E || m3 !== 0x43 || m4 !== 0x31) { // "ENC1"
+    // Fallback: It might be legacy encryptFile (single chunk, ArrayBuffer)
+    const fullBuffer = await encryptedBlob.arrayBuffer();
+    const decryptedBuffer = await decryptFile(fullBuffer, masterKey);
+    return new Blob([decryptedBuffer]);
+  }
+
+  const originalSize = Number(headerView.getBigUint64(4, true));
+  const chunkSize = headerView.getUint32(12, true);
+  
+  const decryptedParts: BlobPart[] = [];
+  let offset = HEADER_SIZE;
+  const totalEncryptedSize = encryptedBlob.size;
+  let processedOriginal = 0;
+
+  while (offset < totalEncryptedSize) {
+    // Each chunk is [IV (12)] + [Encrypted Data (chunkSize + 16)]
+    // However, the last chunk might be smaller than chunkSize
+    // We don't know the exact encrypted chunk size without reading the IV and trying to decrypt the rest,
+    // BUT we know AES-GCM adds 16 bytes of auth tag. So encrypted chunk = original chunk + 16.
+    
+    // Calculate expected original chunk size for this iteration
+    const currentOriginalChunkSize = Math.min(chunkSize, originalSize - processedOriginal);
+    const expectedEncryptedChunkSize = 12 + currentOriginalChunkSize + 16; // IV + Data + AuthTag
+    
+    const chunkBlob = encryptedBlob.slice(offset, offset + expectedEncryptedChunkSize);
+    const chunkBuffer = await chunkBlob.arrayBuffer();
+    
+    const chunkData = new Uint8Array(chunkBuffer);
+    const iv = chunkData.slice(0, 12);
+    const content = chunkData.slice(12);
+    
+    const decryptedContent = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      masterKey,
+      content
+    );
+    
+    decryptedParts.push(decryptedContent);
+    processedOriginal += currentOriginalChunkSize;
+    offset += expectedEncryptedChunkSize;
+    
+    if (onProgress) {
+      onProgress((offset / totalEncryptedSize) * 100);
+    }
+  }
+
+  return new Blob(decryptedParts);
+}
+
+/**
  * Encrypts and uploads a PDF file to Google Drive.
  * Returns the remote resource URI ('drive://<fileId>').
  */
