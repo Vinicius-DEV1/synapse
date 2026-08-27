@@ -16,6 +16,20 @@ export const GlobalLofiPlayer: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  const isRetryingRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const MAX_RETRIES = 3;
+
+  // Revoke previous blob URL to prevent memory leaks
+  const setSrcAndRevoke = (url: string | null) => {
+    if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(blobUrlRef.current);
+    }
+    blobUrlRef.current = url;
+    setSrc(url);
+  };
 
   useTimeTracker({
     itemId: activeLofi?.id || 'none',
@@ -31,20 +45,27 @@ export const GlobalLofiPlayer: React.FC = () => {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-    setSrc(null);
+    setSrcAndRevoke(null);
     setCurrentTime(0);
 
     if (activeLofi) {
+      retryCountRef.current = 0;
+      isRetryingRef.current = false;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+
       resolveLofiUrl(activeLofi, masterKey)
         .then(url => {
           if (!cancelled) {
-            setSrc(url);
+            setSrcAndRevoke(url);
+          } else if (url.startsWith('blob:')) {
+            // Cancelled before use — revoke immediately
+            URL.revokeObjectURL(url);
           }
         })
         .catch(err => {
           console.error("Falha ao resolver URL do lofi", err);
           if (!cancelled) {
-            setSrc(null);
+            setSrcAndRevoke(null);
             setIsPlayingLofi(false);
             const msg = err?.message || '';
             const isAuthError = msg.includes('Google Drive') || msg.includes('autenticar') || msg.includes('token') || msg.includes('Drive');
@@ -60,8 +81,10 @@ export const GlobalLofiPlayer: React.FC = () => {
 
     return () => {
       cancelled = true;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, [activeLofi]);
+
 
   useEffect(() => {
     if (audioRef.current) {
@@ -95,7 +118,7 @@ export const GlobalLofiPlayer: React.FC = () => {
             if (activeLofi) {
               resolveLofiUrl(activeLofi, masterKey)
                 .then(url => {
-                  if (url !== src) setSrc(url);
+                  if (url !== src) setSrcAndRevoke(url);
                   if (audioRef.current) {
                     audioRef.current.currentTime = 0;
                     audioRef.current.play().catch(e => console.warn("Lofi play interrupted after loop", e));
@@ -110,18 +133,42 @@ export const GlobalLofiPlayer: React.FC = () => {
             }
           }}
           onError={(e) => {
-            console.error("Audio playback error", e.currentTarget.error);
-            // Tenta recarregar se houver erro (ex: token expirou no meio)
+            const mediaErr = e.currentTarget.error;
+            console.error("Audio playback error", mediaErr);
+
+            // Guard: skip if already retrying or exceeded max retries
+            if (isRetryingRef.current || retryCountRef.current >= MAX_RETRIES) {
+              if (retryCountRef.current >= MAX_RETRIES) {
+                console.warn(`Lofi: max retries (${MAX_RETRIES}) reached, giving up.`);
+                setIsPlayingLofi(false);
+                setSrcAndRevoke(null);
+                triggerToast('Não foi possível reproduzir o áudio após várias tentativas.', 'error', 4000);
+              }
+              return;
+            }
+
             if (activeLofi && isPlayingLofi) {
-              resolveLofiUrl(activeLofi, masterKey)
-                .then(url => {
-                  if (url !== src) setSrc(url);
-                })
-                .catch((_err) => {
-                  setIsPlayingLofi(false);
-                  setSrc(null);
-                  triggerToast('Erro ao reproduzir áudio. Verifique sua conexão com o Drive.', 'error', 4000);
-                });
+              isRetryingRef.current = true;
+              retryCountRef.current += 1;
+              // Exponential backoff: 1s, 2s, 4s
+              const delay = Math.pow(2, retryCountRef.current - 1) * 1000;
+              console.warn(`Lofi: retry ${retryCountRef.current}/${MAX_RETRIES} in ${delay}ms`);
+
+              retryTimerRef.current = setTimeout(() => {
+                resolveLofiUrl(activeLofi, masterKey)
+                  .then(url => {
+                    isRetryingRef.current = false;
+                    if (url !== src) setSrcAndRevoke(url);
+                  })
+                  .catch((_err) => {
+                    isRetryingRef.current = false;
+                    if (retryCountRef.current >= MAX_RETRIES) {
+                      setIsPlayingLofi(false);
+                      setSrcAndRevoke(null);
+                      triggerToast('Erro ao reproduzir áudio. Verifique sua conexão com o Drive.', 'error', 4000);
+                    }
+                  });
+              }, delay);
             }
           }}
         />

@@ -3,7 +3,33 @@ import type { LofiItem } from '../types';
 
 const LOFI_TABLE = 'lofis';
 
-export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {
+/**
+ * Returns the correct MIME type for an audio file based on its extension.
+ * Defaults to 'audio/mpeg' for unknown types.
+ */
+export function getAudioMimeType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase().replace(/\.enc$/, '') ?? '';
+  // Strip .enc suffix if present (e.g. "song.mp3.enc" -> check "mp3")
+  const cleanExt = filename.replace(/\.enc$/, '').split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    mp3:  'audio/mpeg',
+    mpeg: 'audio/mpeg',
+    ogg:  'audio/ogg',
+    oga:  'audio/ogg',
+    opus: 'audio/ogg; codecs=opus',
+    wav:  'audio/wav',
+    wave: 'audio/wav',
+    flac: 'audio/flac',
+    m4a:  'audio/mp4',
+    m4b:  'audio/mp4',
+    aac:  'audio/aac',
+    webm: 'audio/webm',
+    weba: 'audio/webm',
+  };
+  return map[cleanExt] ?? map[ext] ?? 'audio/mpeg';
+}
+
+export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoKey, originalName?: string): Promise<string> {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
@@ -21,7 +47,9 @@ export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoK
     }
   }
 
-  const blob = new Blob([finalBuffer], { type: 'audio/mpeg' }); // Using generic audio type
+  // Use original filename for MIME inference; driveFileId is not a filename.
+  const mimeType = originalName ? getAudioMimeType(originalName) : 'audio/mpeg';
+  const blob = new Blob([finalBuffer], { type: mimeType });
   return URL.createObjectURL(blob);
 }
 
@@ -58,21 +86,44 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
     try {
       const localPath = await window.api.lofi.getLocalPath(filename_enc);
       if (localPath) {
+        // Build the Tauri custom-protocol URL to fetch the encrypted file.
+        // We cannot use this URL directly as <audio src> because the browser
+        // audio player requires HTTP Range requests which custom protocols
+        // don't support — causing MediaError code 4.
+        // Instead, fetch the bytes, decrypt, and return a blob URL.
         const isWindows = navigator.userAgent.includes('Windows');
         const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
-        return `${baseUrl}/focus/${encodeURIComponent(filename_enc)}`;
+        const encUrl = `${baseUrl}/focus/${encodeURIComponent(filename_enc)}`;
+
+        const response = await fetch(encUrl);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const buffer = await response.arrayBuffer();
+
+        let finalBuffer = buffer;
+        if (masterKey) {
+          try {
+            const { decryptFile } = await import('./storage');
+            finalBuffer = await decryptFile(buffer, masterKey);
+          } catch (e) {
+            console.warn('Lofi might not be encrypted (old upload), using raw bytes.', e);
+          }
+        }
+
+        const blob = new Blob([finalBuffer], { type: getAudioMimeType(lofi.original_name) });
+        return URL.createObjectURL(blob);
       } else {
         console.warn(`Local lofi file missing for ${lofi.original_name}, falling back to Drive.`);
       }
     } catch (e) {
-      console.warn("Failed to check local lofi path", e);
+      console.warn('Failed to load local lofi, falling back to Drive.', e);
     }
   }
   if (lofi.drive_file_id) {
-    return getLofiStreamLink(lofi.drive_file_id, masterKey);
+    return getLofiStreamLink(lofi.drive_file_id, masterKey, lofi.original_name);
   }
-  throw new Error("Lofi não foi encontrado nem localmente nem na nuvem.");
+  throw new Error('Lofi não foi encontrado nem localmente nem na nuvem.');
 }
+
 
 export async function uploadNewLofi(file: File, duration?: number, masterKey?: CryptoKey, onProgress?: (percent: number) => void): Promise<LofiItem> {
   const token = await getValidAccessToken();
