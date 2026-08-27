@@ -1,4 +1,4 @@
-import { X, Cloud, HardDrive, BookOpen, Clock, FileText, Info, Tag, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Cloud, HardDrive, BookOpen, Clock, Info, Tag, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { LibraryBook } from '../../types';
 import { Portal } from '../ui/Portal';
 
@@ -89,10 +89,17 @@ export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
                   <HardDrive size={16} className="text-emerald-400" />
                   Arquivo Local
                 </div>
-                <div className="flex items-center gap-2 text-dark-subtext px-3 py-2 bg-black/20 rounded-lg text-sm">
-                  <FileText size={16} />
-                  <span className="truncate" title={book.original_name || book.title}>{book.original_name || 'Desconhecido'}</span>
-                </div>
+                {book.is_local === false ? (
+                  <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 px-3 py-2 rounded-lg text-sm">
+                    <Cloud size={16} />
+                    <span>Disponível Apenas na Nuvem</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg text-sm">
+                    <CheckCircle2 size={16} />
+                    <span>Disponível no Dispositivo</span>
+                  </div>
+                )}
                 {book.file_path && (
                   <div className="text-xs text-dark-subtext font-mono truncate" title={book.file_path}>
                     Path: {book.file_path}
