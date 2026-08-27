@@ -221,6 +221,23 @@ pub fn library_evict_book_local_cache(
     let app_dir = crate::get_app_data_dir();
     let _ = std::fs::remove_file(app_dir.join(format!("library/{}.epub.enc", id)));
     let _ = std::fs::remove_file(app_dir.join(format!("library/{}.pdf.enc", id)));
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.enc", id)));
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.epub", id)));
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.pdf", id)));
+    let _ = std::fs::remove_file(app_dir.join(format!("library/{}", id)));
+
+    if let Some(std_data) = dirs::data_dir() {
+        let alt1 = std_data.join("caderno");
+        let alt2 = std_data.join("com.caderno.app");
+        for dir in [&alt1, &alt2] {
+            let _ = std::fs::remove_file(dir.join(format!("library/{}.epub.enc", id)));
+            let _ = std::fs::remove_file(dir.join(format!("library/{}.pdf.enc", id)));
+            let _ = std::fs::remove_file(dir.join(format!("library/{}.enc", id)));
+            let _ = std::fs::remove_file(dir.join(format!("library/{}.epub", id)));
+            let _ = std::fs::remove_file(dir.join(format!("library/{}.pdf", id)));
+            let _ = std::fs::remove_file(dir.join(format!("library/{}", id)));
+        }
+    }
 
     if let Some(ref fp) = file_path {
         let clean = fp.replace("file://", "");

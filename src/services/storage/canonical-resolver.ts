@@ -121,6 +121,12 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
     if (localFound) {
       const assetUrl = buildEncryptedAssetUrl(moduleName, localFound);
       arrayBuffer = await fetchEncryptedStreamBuffer(assetUrl);
+      if (arrayBuffer && onUpdateSavedPath) {
+        const canonicalRelPath = extHint ? `${moduleName}/${id}.${extHint}.enc` : `${moduleName}/${id}.enc`;
+        if (savedPath !== canonicalRelPath || !savedPath) {
+          onUpdateSavedPath(canonicalRelPath);
+        }
+      }
     }
   }
 
@@ -136,6 +142,9 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
           arrayBuffer = bytes.buffer;
+        }
+        if (arrayBuffer && onUpdateSavedPath && (!savedPath || savedPath.startsWith('drive:'))) {
+          onUpdateSavedPath(`indexeddb://${id}`);
         }
       }
     } catch (apiErr) {
