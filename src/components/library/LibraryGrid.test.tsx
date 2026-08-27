@@ -13,6 +13,10 @@ vi.mock('lucide-react', () => ({
   Pencil: () => <div data-testid="icon-pencil" />,
   Trash2: () => <div data-testid="icon-trash" />,
   BookMarked: () => <div data-testid="icon-bookmarked" />,
+  Cloud: () => <div data-testid="icon-cloud" />,
+  CloudDownload: () => <div data-testid="icon-cloud-download" />,
+  HardDrive: () => <div data-testid="icon-hard-drive" />,
+  CloudOff: () => <div data-testid="icon-cloud-off" />,
 }));
 
 describe('LibraryGrid Component', () => {
