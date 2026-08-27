@@ -14,6 +14,7 @@ export interface CadernoDBSchema extends DBSchema {
   library_collections: { key: string; value: any };
   library_book_collections: { key: string; value: any; indexes: { 'book_id': string } };
   library_reading_sessions: { key: string; value: any; indexes: { 'book_id': string } };
+  library_book_files: { key: string; value: { id: string; data: ArrayBuffer } };
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
   videos: { key: string; value: any };
@@ -50,11 +51,9 @@ export interface CadernoDBSchema extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
-export async function getWebDb() {
+export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    // NOTE (B17): DB version 18. Because IndexedDB schema rollbacks are not simple,
-    // all schema modifications must be tested thoroughly before bumping.
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 18, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 19, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -93,6 +92,9 @@ export async function getWebDb() {
         if (!db.objectStoreNames.contains('library_reading_sessions')) {
           const store = db.createObjectStore('library_reading_sessions', { keyPath: 'id' });
           store.createIndex('book_id', 'book_id');
+        }
+        if (!db.objectStoreNames.contains('library_book_files')) {
+          db.createObjectStore('library_book_files', { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains('config')) {
           db.createObjectStore('config', { keyPath: 'id' });

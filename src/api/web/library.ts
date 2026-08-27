@@ -1,4 +1,5 @@
-import { uploadEncryptedPdf, getDecryptedPdf } from '../../services/storage';
+import { uploadEncryptedPdf, getDecryptedPdf, encryptFile } from '../../services/storage';
+import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 
 export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: () => CryptoKey | null) => ({
   getBooks: async () => {
@@ -35,15 +36,27 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
             const arrayBuffer = await file.arrayBuffer();
             const bookId = generateId();
             
-            const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
+            const encrypted = await encryptFile(arrayBuffer, _masterKey);
+            await db.put('library_book_files', { id: bookId, data: encrypted });
             
-            const driveFileId = remotePath.replace('drive://', '');
+            let driveFileId: string | null = null;
+            let remotePath: string | null = null;
+            try {
+              const token = await getValidAccessToken();
+              if (token) {
+                driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encrypted);
+                remotePath = `drive://${driveFileId}`;
+              }
+            } catch (e) {
+              console.warn('[Library] Drive upload skipped (offline or no auth)', e);
+            }
+            
             const title = file.name.replace(/\.(pdf|epub)$/i, '');
             const book = {
               id: bookId,
               title,
               author: '',
-              file_path: remotePath, // Save remote storage path instead of local filesystem path
+              file_path: remotePath, // remote storage path (null if offline)
               drive_file_id: driveFileId,
               original_name: file.name,
               cover_image: '',
@@ -132,7 +145,19 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     const _masterKey = getMasterKey();
     if (!_masterKey) throw new Error("Chave Mestra não encontrada");
     
-    // Determine remote path
+    // First check local IndexedDB
+    try {
+      const localRecord = await db.get('library_book_files', id);
+      if (localRecord && localRecord.data) {
+        const { decryptFile } = await import('../../services/storage');
+        const decrypted = await decryptFile(localRecord.data, _masterKey);
+        return decrypted;
+      }
+    } catch (e) {
+      console.warn("Falha ao ler cache local de PDF", e);
+    }
+    
+    // Fallback to remote
     const remotePath = book.file_path?.startsWith('drive://') 
       ? book.file_path 
       : (book.drive_file_id ? `drive://${book.drive_file_id}` : null);
@@ -141,6 +166,16 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
 
     try {
       const arrayBuffer = await getDecryptedPdf(remotePath, _masterKey);
+      
+      // Cache it locally for next time
+      try {
+        const { encryptFile } = await import('../../services/storage');
+        const encrypted = await encryptFile(arrayBuffer, _masterKey);
+        await db.put('library_book_files', { id: book.id, data: encrypted });
+      } catch (cacheErr) {
+        console.warn("Falha ao salvar no cache local", cacheErr);
+      }
+      
       return arrayBuffer;
     } catch (e) {
       console.error("Falha ao baixar do drive/storage", e);
