@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { LibraryBook } from '../../types';
+import type { LibraryBook, LibraryHighlight } from '../../types';
 import { CloudDownload } from 'lucide-react';
 
 import HighlightToolbar from './HighlightToolbar';
@@ -81,6 +81,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [modeToast, setModeToast] = useState<string | null>(null);
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
 
+  const initialPage = typeof book.last_read_page === 'number'
+    ? book.last_read_page
+    : (parseInt(String(book.last_read_page || 1), 10) || 1);
+
   // Hook 1: Document Loading & Sync
   const {
     pdfDoc,
@@ -95,7 +99,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     setBookmarks,
     toggleBookmark,
     reload,
-  } = usePdfDocument(book, onUpdateBook, book.last_read_page || 1);
+  } = usePdfDocument(book, onUpdateBook, initialPage);
 
   const handleReattach = async () => {
     try {
@@ -260,19 +264,20 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             tocItems={tocItems}
             currentPage={currentPage}
             onNavigateToPage={(page: number) => scrollToPage(page, false)}
-            onUpdateHighlight={async (id: string, note: string) => {
+            onUpdateHighlight={async (id: string, updates: Partial<LibraryHighlight>) => {
               try {
                 const existing = highlights.find(h => h.id === id);
                 if (existing) {
+                  const merged = { ...existing, ...updates };
                   await window.api.library.updateHighlight({
                     id,
-                    note,
-                    color: existing.color,
+                    note: merged.note,
+                    color: merged.color,
                   });
-                  setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
+                  setHighlights((prev) => prev.map((h) => (h.id === id ? merged : h)));
                 }
               } catch (err) {
-                console.error('Falha ao atualizar nota do destaque', err);
+                console.error('Falha ao atualizar destaque', err);
               }
             }}
             onDeleteHighlight={handleDeleteHighlight}
