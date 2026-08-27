@@ -23,7 +23,9 @@ export function useEpubLoader(
   globalLastHighlightClickRef: React.MutableRefObject<number>
 ) {
   const { state } = useStore();
-  const masterKey = state.moduleKeys['library'];
+  const isAvulso = book.author === 'Arquivo Avulso';
+  const moduleName = isAvulso ? 'files' : 'library';
+  const masterKey = state.moduleKeys[moduleName];
   
   const {
     scrollMode, setEpubBook, epubBook, setRendition,
@@ -42,13 +44,13 @@ export function useEpubLoader(
       try {
         setLoading(true);
         const arrayBuffer = await resolveCanonicalBuffer({
-          moduleName: 'library',
+          moduleName,
           id: book.id,
           savedPath: book.file_path,
           driveFileId: book.drive_file_id,
           masterKey,
           extHint: 'epub',
-          onUpdateSavedPath: (newPath) => onUpdateBook({ file_path: newPath }),
+          onUpdateSavedPath: (newPath) => onUpdateBook({ file_path: newPath, is_local: true }),
           onProgress: (percent, stage) => setLoadProgress({ percent, stage })
         });
 
@@ -504,5 +506,5 @@ export function useEpubLoader(
         epubBook.destroy();
       }
     };
-  }, [book.id, book.file_path, book.drive_file_id, scrollMode]);
+  }, [book.id, book.file_path, book.drive_file_id, book.author, scrollMode, state.moduleKeys]);
 }

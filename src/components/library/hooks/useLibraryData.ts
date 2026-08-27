@@ -69,16 +69,33 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         window.api.library.getCollections(),
       ]);
 
-      const enriched = await Promise.all(
-        booksData.map(async (book) => {
-          try {
-            const bookCols = await window.api.library.getBookCollections(book.id);
+      const collectionsById = new Map(collectionsData.map(c => [c.id, c]));
+
+      let enriched: LibraryBook[];
+      if (typeof window.api.library.getAllBookCollections === 'function') {
+        try {
+          const batchMap = await window.api.library.getAllBookCollections();
+          enriched = booksData.map(book => {
+            const colIds = batchMap[book.id] || [];
+            const bookCols = colIds.map(id => collectionsById.get(id)).filter(Boolean) as LibraryCollection[];
             return { ...book, collections: bookCols };
-          } catch {
-            return { ...book, collections: [] };
-          }
-        })
-      );
+          });
+        } catch {
+          enriched = booksData.map(book => ({ ...book, collections: [] }));
+        }
+      } else {
+        enriched = await Promise.all(
+          booksData.map(async (book) => {
+            try {
+              const bookCols = await window.api.library.getBookCollections(book.id);
+              const mapped = (bookCols as any[]).map(c => typeof c === 'string' ? collectionsById.get(c) : c).filter(Boolean) as LibraryCollection[];
+              return { ...book, collections: mapped };
+            } catch {
+              return { ...book, collections: [] };
+            }
+          })
+        );
+      }
 
       setBooks(enriched);
       setCollections(collectionsData);
@@ -135,6 +152,10 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       if (imported) {
         const list = Array.isArray(imported) ? imported : [imported];
         await loadData();
+        
+        // Dispara o sync imediatamente (completamente ignorando debounces)
+        window.dispatchEvent(new Event('app-sync-trigger-immediate'));
+
         const successMsg = hasDriveAuth
           ? (list.length > 1
               ? `${list.length} livros foram importados e sincronizados com a nuvem.`

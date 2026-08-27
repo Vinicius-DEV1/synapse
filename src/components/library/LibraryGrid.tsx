@@ -60,11 +60,18 @@ export default function LibraryGrid({
 
   const getProgress = (book: LibraryBook) => {
     if (!book.total_pages || book.total_pages <= 0) return 0;
-    const page = typeof book.last_read_page === 'string' 
-      ? parseInt(book.last_read_page, 10) 
-      : (book.last_read_page || book.current_page || 0);
+    let page = (book as any).current_page || 0;
+    if (typeof book.last_read_page === 'number') {
+      page = book.last_read_page;
+    } else if (typeof book.last_read_page === 'string') {
+      if (!book.last_read_page.includes('epubcfi')) {
+        const parsed = parseInt(book.last_read_page, 10);
+        if (!isNaN(parsed) && parsed > 0) page = parsed;
+      }
+    }
     if (!page || page <= 0) return 0;
-    return Math.min(100, Math.round((page / book.total_pages) * 100));
+    const pct = Math.round((page / book.total_pages) * 100);
+    return isNaN(pct) ? 0 : Math.min(100, Math.max(0, pct));
   };
 
   return (
@@ -93,11 +100,7 @@ export default function LibraryGrid({
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
             onClick={() => {
-              if (!isLocal && isSynced) {
-                if (confirm(`O arquivo "${book.title}" não está salvo no seu dispositivo. Ele será baixado do Google Drive agora. Deseja continuar?`)) {
-                  onSelectBook(book);
-                }
-              } else if (!isLocal && !isSynced) {
+              if (!isLocal && !isSynced) {
                 triggerToast(`O arquivo "${book.title}" não foi encontrado localmente nem na nuvem. Use o menu do livro para reanexar o arquivo.`, 'error');
               } else {
                 onSelectBook(book);

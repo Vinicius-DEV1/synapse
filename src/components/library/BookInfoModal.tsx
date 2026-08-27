@@ -121,7 +121,17 @@ export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-dark-subtext">Página Atual</span>
-                  <span className="text-sm text-white font-medium">{book.last_read_page || 1} / {book.total_pages || '?'}</span>
+                  <span className="text-sm text-white font-medium">
+                    {(() => {
+                      let page = (book as any).current_page || 1;
+                      if (typeof book.last_read_page === 'number') page = book.last_read_page;
+                      else if (typeof book.last_read_page === 'string' && !book.last_read_page.includes('epubcfi')) {
+                        const parsed = parseInt(book.last_read_page, 10);
+                        if (!isNaN(parsed) && parsed > 0) page = parsed;
+                      }
+                      return `${page} / ${book.total_pages || '?'}`;
+                    })()}
+                  </span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-dark-subtext">Última Leitura</span>
@@ -130,7 +140,17 @@ export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-dark-subtext">Progresso</span>
                   <span className="text-sm text-white font-medium">
-                    {book.total_pages ? Math.round(((book.last_read_page || 1) / book.total_pages) * 100) : 0}%
+                    {(() => {
+                      if (!book.total_pages || book.total_pages <= 0) return '0%';
+                      let page = (book as any).current_page || 1;
+                      if (typeof book.last_read_page === 'number') page = book.last_read_page;
+                      else if (typeof book.last_read_page === 'string' && !book.last_read_page.includes('epubcfi')) {
+                        const parsed = parseInt(book.last_read_page, 10);
+                        if (!isNaN(parsed) && parsed > 0) page = parsed;
+                      }
+                      const pct = Math.min(100, Math.max(0, Math.round((page / book.total_pages) * 100)));
+                      return `${isNaN(pct) ? 0 : pct}%`;
+                    })()}
                   </span>
                 </div>
               </div>
