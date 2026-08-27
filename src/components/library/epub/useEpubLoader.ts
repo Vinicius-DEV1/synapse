@@ -292,14 +292,30 @@ export function useEpubLoader(
              });
            }
            
-           if (book.last_read_page && typeof book.last_read_page === 'string') {
-              await newRendition.display(book.last_read_page as string);
-           } else {
-              await newRendition.display();
-           }
-           if (active) {
-             setLoading(false);
-           }
+           const targetPage = book.last_read_page;
+            const isValidCfiOrHref = typeof targetPage === 'string' &&
+              targetPage.trim() !== '' &&
+              targetPage !== '1' &&
+              (targetPage.startsWith('epubcfi(') || targetPage.includes('#') || targetPage.includes('.html') || targetPage.includes('.xhtml') || targetPage.includes('/'));
+
+            try {
+              if (isValidCfiOrHref) {
+                await newRendition.display(targetPage);
+              } else {
+                await newRendition.display();
+              }
+            } catch (dispErr) {
+              console.warn('[EpubLoader] Erro ao abrir página/CFI específico, abrindo início do livro:', dispErr);
+              try {
+                await newRendition.display();
+              } catch (fallbackErr) {
+                console.error('[EpubLoader] Falha fatal no fallback de display:', fallbackErr);
+              }
+            }
+
+            if (active) {
+              setLoading(false);
+            }
 
            window.api.library.getHighlights(book.id).then((hls: LibraryHighlight[]) => {
               setHighlights(hls);

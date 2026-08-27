@@ -35,8 +35,9 @@ export const tauriLibraryApi = {
             cover_image: '',
             total_pages: 0,
             current_page: 0,
-            last_read_page: '1',
+            last_read_page: ext === 'epub' ? '' : '1',
             reading_status: 'not_started',
+            is_local: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };

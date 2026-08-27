@@ -123,9 +123,7 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
       arrayBuffer = await fetchEncryptedStreamBuffer(assetUrl);
       if (arrayBuffer && onUpdateSavedPath) {
         const canonicalRelPath = extHint ? `${moduleName}/${id}.${extHint}.enc` : `${moduleName}/${id}.enc`;
-        if (savedPath !== canonicalRelPath || !savedPath) {
-          onUpdateSavedPath(canonicalRelPath);
-        }
+        onUpdateSavedPath(canonicalRelPath);
       }
     }
   }
