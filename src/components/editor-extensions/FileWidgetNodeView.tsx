@@ -8,6 +8,7 @@ import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import FileViewer from '../files/FileViewer';
 import FloatingPdfViewer from './FloatingPdfViewer';
 import ColorPalettePicker from './ColorPalettePicker';
+import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 
 export default function FileWidgetNodeView(props: any) {
@@ -287,73 +288,77 @@ export default function FileWidgetNodeView(props: any) {
       </div>
 
       {showDeletedNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                <AlertCircle size={22} />
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/30 rounded-xl p-5 w-[340px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold text-base leading-tight">Arquivo Excluído</h3>
+                  <p className="text-dark-subtext text-xs mt-0.5">Anexo não encontrado ou na lixeira</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold text-base leading-tight">Arquivo Excluído</h3>
-                <p className="text-dark-subtext text-xs mt-0.5">Anexo não encontrado ou na lixeira</p>
-              </div>
-            </div>
-            
-            <p className="text-dark-subtext text-sm leading-relaxed">
-              O arquivo <strong className="text-white">"{name || fileItem?.name || 'Arquivo'}"</strong> foi movido para a lixeira ou excluído do sistema. Deseja remover este widget do documento?
-            </p>
+              
+              <p className="text-dark-subtext text-sm leading-relaxed">
+                O arquivo <strong className="text-white">"{name || fileItem?.name || 'Arquivo'}"</strong> foi movido para a lixeira ou excluído do sistema. Deseja remover este widget do documento?
+              </p>
 
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => setShowDeletedNotice(false)}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
-              >
-                Manter
-              </button>
-              <button
-                onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
-              >
-                Remover Widget
-              </button>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setShowDeletedNotice(false)}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 hover:text-white transition-colors text-sm"
+                >
+                  Manter
+                </button>
+                <button
+                  onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
+                >
+                  Remover Widget
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
-          <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-semibold text-lg text-center">Excluir Arquivo</h3>
-            <p className="text-dark-subtext text-sm text-center">
-              Deseja excluir este arquivo permanentemente do Caderno ou apenas desvincular desta pgina?
-            </p>
-            
-            <div className="flex gap-2 mt-2">
-              <button 
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={isDeleting}
-                className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => deleteNode()}
-                disabled={isDeleting}
-                className="flex-1 py-2 bg-dark-bg border border-white/10 hover:bg-white/5 text-white rounded-lg font-medium transition-colors text-sm"
-              >
-                Desvincular
-              </button>
-              <button 
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
-              >
-                {isDeleting ? 'Excluindo...' : 'Excluir de Tudo'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+            <div className="bg-dark-card border border-red-500/20 rounded-xl p-5 w-[320px] shadow-2xl flex flex-col gap-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <h3 className="text-white font-semibold text-lg text-center">Excluir Arquivo</h3>
+              <p className="text-dark-subtext text-sm text-center">
+                Deseja excluir este arquivo permanentemente do Caderno ou apenas desvincular desta página?
+              </p>
+              
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => deleteNode()}
+                  disabled={isDeleting}
+                  className="flex-1 py-2 bg-dark-bg border border-white/10 hover:bg-white/5 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Desvincular
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  {isDeleting ? 'Excluindo...' : 'Excluir de Tudo'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showViewer && fileItem && (

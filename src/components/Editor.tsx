@@ -88,13 +88,16 @@ export default function Editor({
   }, []);
 
   // 1. Sync & Collab
-  const { ydocRef } = useEditorSync({
+  const { ydocRef, crdtFailed } = useEditorSync({
     pageId,
     initialCrdtState,
     onSaveRef,
     latestContentRef,
     instanceId,
   });
+
+  // When CRDT is corrupted, treat the page as having no CRDT so HTML content is used
+  const effectiveCrdtState = crdtFailed ? null : initialCrdtState;
 
   // 2. Extensions
   const extensions = useEditorExtensions(ydocRef.current);
@@ -200,7 +203,7 @@ export default function Editor({
       updateSlashMenuOnUpdate(props.editor);
     },
     onCreate: ({ editor: currentEditor }) => {
-      const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+      const hasMeaningfulCrdt = !!effectiveCrdtState && effectiveCrdtState.length > 8;
       if (!hasMeaningfulCrdt && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         currentEditor.commands.setContent(initialContent);
       }
@@ -220,7 +223,7 @@ export default function Editor({
 
   useEffect(() => {
     if (editor && !editor.isDestroyed && !hasInitializedContentRef.current) {
-      const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
+      const hasMeaningfulCrdt = !!effectiveCrdtState && effectiveCrdtState.length > 8;
       const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
       if (!hasMeaningfulCrdt && isEmptyEditor && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         editor.commands.setContent(initialContent);

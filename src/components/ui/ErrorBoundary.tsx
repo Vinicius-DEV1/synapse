@@ -39,11 +39,38 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null });
   };
 
+  // Detect CRDT/schema-corruption crashes
+  private isCrdtError = () => {
+    const msg = this.state.error?.message || '';
+    return (
+      msg.includes('trim is not a function') ||
+      msg.includes("t.cached") ||
+      msg.includes('fromSchema') ||
+      msg.includes('XmlFragment')
+    );
+  };
+
+  // Clear the CRDT state for the current page and reload
+  private handleClearCrdt = () => {
+    try {
+      // Clear any persisted CRDT from sessionStorage/localStorage
+      Object.keys(sessionStorage).forEach(k => {
+        if (k.startsWith('crdt_') || k.startsWith('yjs_')) sessionStorage.removeItem(k);
+      });
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('crdt_') || k.startsWith('yjs_')) localStorage.removeItem(k);
+      });
+    } catch (_) { /* noop */ }
+    window.location.reload();
+  };
+
   public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
+
+      const isCrdt = this.isCrdtError();
 
       return (
         <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center bg-dark-bg">
@@ -51,21 +78,40 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle size={32} />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Algo deu errado</h2>
-          <p className="text-sm text-dark-subtext max-w-md mb-6">
-            Um erro inesperado ocorreu no módulo {this.props.moduleName ? `"${this.props.moduleName}"` : 'da aplicação'}.
+          <p className="text-sm text-dark-subtext max-w-md mb-2">
+            {isCrdt
+              ? 'O conteúdo desta página pode estar em um formato incompatível com a versão atual.'
+              : `Um erro inesperado ocorreu no módulo ${this.props.moduleName ? `"${this.props.moduleName}"` : 'da aplicação'}.`}
             {this.state.error && (
               <span className="block mt-2 font-mono text-xs opacity-50 bg-black/20 p-2 rounded truncate max-w-[300px] mx-auto">
                 {this.state.error.message}
               </span>
             )}
           </p>
-          <button
-            onClick={this.handleReset}
-            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-brand-500/20"
-          >
-            <RefreshCw size={16} />
-            Tentar novamente
-          </button>
+          {isCrdt && (
+            <p className="text-xs text-dark-subtext/60 max-w-sm mb-5">
+              Clique em <strong className="text-yellow-400">Recuperar Página</strong> para tentar restaurar o conteúdo a partir do HTML salvo.
+              O histórico de colaboração (CRDT) será descartado.
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            {isCrdt && (
+              <button
+                onClick={this.handleClearCrdt}
+                className="flex items-center gap-2 px-5 py-2.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 active:scale-95 text-yellow-300 rounded-xl text-sm font-medium transition-all"
+              >
+                <RefreshCw size={16} />
+                Recuperar Página
+              </button>
+            )}
+            <button
+              onClick={this.handleReset}
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-brand-500/20"
+            >
+              <RefreshCw size={16} />
+              Tentar novamente
+            </button>
+          </div>
         </div>
       );
     }

@@ -1,6 +1,10 @@
 import { useState, useCallback } from 'react';
 import { Editor } from '@tiptap/core';
 import { triggerToast } from '../../ui/ToastContext';
+import { invoke } from '@tauri-apps/api/core';
+import { platform } from '../../../services/platform';
+import { getNotesKey } from '../../../store/useStore';
+import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
 
 export interface SlashMenuState {
   query: string;
@@ -233,6 +237,129 @@ export function useSlashCommand({
         
         chain.run();
         setAlarmModal({ isOpen: true, initialTimeStr });
+        break;
+      }
+      case 'scrap': {
+        const rawQuery = (slashMenu.query || '').trim();
+        let targetUrl = rawQuery.replace(/^(scrap|snapshot|web|capturar)\s*/i, '').trim();
+
+        chain.run();
+
+        const triggerCapture = (urlToScrap: string) => {
+          let cleanUrl = urlToScrap.trim();
+          if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+            if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleanUrl)) {
+              cleanUrl = 'https://' + cleanUrl;
+            } else {
+              triggerToast('URL inválida. Informe um endereço como https://site.com', 'error');
+              return;
+            }
+          }
+
+          const tempId = 'scrap_temp_' + Math.random().toString(36).substring(2, 9);
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'scrapWidget',
+              attrs: {
+                id: tempId,
+                url: cleanUrl,
+                status: 'capturing',
+                created_at: new Date().toISOString(),
+              },
+            })
+            .run();
+
+          // Disparar captura assíncrona
+          (async () => {
+            try {
+              if (platform.platform === 'desktop') {
+                const payload: any = await invoke('scrap_capture_page', { url: cleanUrl });
+                const masterKey = getNotesKey();
+                const saveResult = await encryptAndSaveScrap(payload.id, payload.html_content, payload.local_path, masterKey);
+
+                // Atualizar os atributos do nó no editor
+                editor.commands.command(({ tr, state }) => {
+                  let found = false;
+                  state.doc.descendants((node, pos) => {
+                    if (node.type.name === 'scrapWidget' && (node.attrs.id === tempId || node.attrs.url === cleanUrl)) {
+                      tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        id: payload.id,
+                        url: payload.url,
+                        title: payload.title,
+                        favicon: payload.favicon,
+                        local_path: payload.local_path,
+                        drive_file_id: saveResult.driveFileId,
+                        file_size: payload.file_size,
+                        status: saveResult.isSynced ? 'ready' : 'sync_pending',
+                        created_at: payload.created_at,
+                        error_reason: null,
+                      });
+                      found = true;
+                      return false;
+                    }
+                    return true;
+                  });
+                  return found;
+                });
+
+                triggerToast('Página capturada e salva com sucesso!', 'success');
+              } else {
+                editor.commands.command(({ tr, state }) => {
+                  state.doc.descendants((node, pos) => {
+                    if (node.type.name === 'scrapWidget' && (node.attrs.id === tempId || node.attrs.url === cleanUrl)) {
+                      tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        status: 'error',
+                        error_reason: 'A captura de snapshots está disponível na versão Desktop.',
+                      });
+                      return false;
+                    }
+                    return true;
+                  });
+                  return true;
+                });
+              }
+            } catch (err: any) {
+              console.error('[SlashCommand] Erro ao capturar snapshot:', err);
+              const msg = err?.message || String(err) || 'Falha ao conectar e baixar o conteúdo da página.';
+              editor.commands.command(({ tr, state }) => {
+                state.doc.descendants((node, pos) => {
+                  if (node.type.name === 'scrapWidget' && (node.attrs.id === tempId || node.attrs.url === cleanUrl)) {
+                    tr.setNodeMarkup(pos, undefined, {
+                      ...node.attrs,
+                      status: 'error',
+                      error_reason: msg,
+                    });
+                    return false;
+                  }
+                  return true;
+                });
+                return true;
+              });
+              triggerToast(`Falha no scrap: ${msg}`, 'error');
+            }
+          })();
+        };
+
+        if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(targetUrl))) {
+          triggerCapture(targetUrl);
+        } else {
+          // Abre o ScrapInputModal moderno com campo de digitação/colagem
+          window.dispatchEvent(
+            new CustomEvent('caderno-open-scrap-input', {
+              detail: {
+                initialUrl: targetUrl,
+                onConfirm: (url: string) => {
+                  triggerCapture(url);
+                },
+              },
+            })
+          );
+        }
+
         break;
       }
       case 'documento': {
