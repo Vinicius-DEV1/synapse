@@ -20,6 +20,7 @@ mod cmd_trash;
 mod cmd_vault;
 mod cmd_video;
 mod cmd_youtube;
+mod cmd_scraps;
 pub mod crypto;
 pub mod crypto_stream;
 pub mod video_probe;
@@ -271,7 +272,9 @@ pub fn run() {
             cmd_diagrams::diagrams_delete,
             cmd_backup::backup_select_folder,
             cmd_backup::backup_start,
-            cmd_backup::backup_cancel
+            cmd_backup::backup_cancel,
+            cmd_scraps::scrap_capture_page,
+            cmd_scraps::scrap_delete_local
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
