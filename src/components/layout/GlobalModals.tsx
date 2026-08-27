@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import ConfirmModal from '../modals/ConfirmModal';
 import RenamePageModal from '../modals/RenamePageModal';
@@ -9,6 +10,11 @@ import GlobalSearchModal from '../modals/GlobalSearchModal';
 import DriveAuthModal from '../library/DriveAuthModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';
+import { ScrapActionModal } from '../modals/ScrapActionModal';
+import { ScrapViewerModal } from '../modals/ScrapViewerModal';
+import { ScrapDeleteModal } from '../modals/ScrapDeleteModal';
+import { ScrapInputModal } from '../modals/ScrapInputModal';
+import { UploadProgressModal } from '../library/ui/UploadProgressModal';
 
 interface GlobalModalsProps {
   renamePageId: string | null;
@@ -44,6 +50,45 @@ export function GlobalModals({
   handleCreateLinkedPage,
 }: GlobalModalsProps) {
   const { state, dispatch } = useStore();
+
+  const [scrapActionData, setScrapActionData] = useState<any | null>(null);
+  const [scrapViewerData, setScrapViewerData] = useState<any | null>(null);
+  const [scrapDeleteData, setScrapDeleteData] = useState<any | null>(null);
+  const [scrapInputData, setScrapInputData] = useState<{
+    isOpen: boolean;
+    initialUrl?: string;
+    onConfirm?: (url: string) => void;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleOpenScrapAction = (e: CustomEvent) => {
+      if (e.detail) {
+        setScrapActionData(e.detail);
+      }
+    };
+    const handleRequestScrapDelete = (e: CustomEvent) => {
+      if (e.detail) {
+        setScrapDeleteData(e.detail);
+      }
+    };
+    const handleOpenScrapInput = (e: CustomEvent) => {
+      if (e.detail) {
+        setScrapInputData({
+          isOpen: true,
+          initialUrl: e.detail.initialUrl || '',
+          onConfirm: e.detail.onConfirm,
+        });
+      }
+    };
+    window.addEventListener('caderno-open-scrap-action' as any, handleOpenScrapAction as any);
+    window.addEventListener('caderno-request-scrap-delete' as any, handleRequestScrapDelete as any);
+    window.addEventListener('caderno-open-scrap-input' as any, handleOpenScrapInput as any);
+    return () => {
+      window.removeEventListener('caderno-open-scrap-action' as any, handleOpenScrapAction as any);
+      window.removeEventListener('caderno-request-scrap-delete' as any, handleRequestScrapDelete as any);
+      window.removeEventListener('caderno-open-scrap-input' as any, handleOpenScrapInput as any);
+    };
+  }, []);
 
   return (
     <>
@@ -117,6 +162,49 @@ export function GlobalModals({
 
       {/* Background Tasks Widget */}
       <BackgroundTaskWidget />
+
+      {/* Scrap Modals (Single Global Host) */}
+      <ScrapActionModal
+        isOpen={!!scrapActionData}
+        onClose={() => setScrapActionData(null)}
+        onOpenViewer={() => {
+          setScrapViewerData(scrapActionData);
+          setScrapActionData(null);
+        }}
+        scrapData={scrapActionData}
+      />
+
+      <ScrapViewerModal
+        isOpen={!!scrapViewerData}
+        onClose={() => setScrapViewerData(null)}
+        scrapData={scrapViewerData}
+      />
+
+      <ScrapDeleteModal
+        isOpen={!!scrapDeleteData}
+        onClose={() => setScrapDeleteData(null)}
+        onConfirmDelete={() => {
+          if (scrapDeleteData?.onConfirm) {
+            scrapDeleteData.onConfirm();
+          }
+          setScrapDeleteData(null);
+        }}
+        scrapData={scrapDeleteData}
+      />
+
+      <ScrapInputModal
+        isOpen={!!scrapInputData?.isOpen}
+        initialUrl={scrapInputData?.initialUrl}
+        onClose={() => setScrapInputData(null)}
+        onConfirm={(url) => {
+          if (scrapInputData?.onConfirm) {
+            scrapInputData.onConfirm(url);
+          }
+          setScrapInputData(null);
+        }}
+      />
+
+      <UploadProgressModal />
     </>
   );
 }

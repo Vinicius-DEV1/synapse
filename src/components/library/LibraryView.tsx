@@ -101,14 +101,31 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
   };
 
   const handleStatusChange = async (book: LibraryBook, status: ReadingStatus) => {
-    if (!window.api?.library) return;
     try {
-      await window.api.library.updateBook({ id: book.id, reading_status: status });
-      triggerToast(`Status de "${book.title}" atualizado.`, 'success');
-      await loadData();
+      if (window.api?.library?.updateBook) {
+        await window.api.library.updateBook({
+          id: book.id,
+          reading_status: status
+        });
+        triggerToast(`Status alterado para ${status === 'reading' ? 'lendo' : 'concluído'}`, 'success');
+        await loadData();
+      }
     } catch (err: any) {
-      console.error('Status update failed', err);
-      triggerToast(err.message || 'Erro ao atualizar status do livro.', 'error');
+      triggerToast(err.message, 'error');
+    }
+  };
+
+  const handleEvictLocalCache = async (id: string) => {
+    try {
+      if (window.api?.library?.evictBookLocalCache) {
+        await window.api.library.evictBookLocalCache(id);
+        triggerToast('Arquivo local removido. Disponível apenas na nuvem.', 'success');
+        await loadData();
+      } else {
+        triggerToast('Função não disponível na plataforma', 'info');
+      }
+    } catch (err: any) {
+      triggerToast(err.message, 'error');
     }
   };
 
@@ -249,6 +266,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
             onEditBook={setEditingBook}
             onDeleteBook={handleDelete}
             onStatusChange={handleStatusChange}
+            onEvictBook={handleEvictLocalCache}
           />
         )}
       </div>

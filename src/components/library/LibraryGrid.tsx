@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   FileText, Plus, MoreVertical, BookOpen, CheckCircle2,
-  Circle, Pencil, Trash2, BookMarked
+  Circle, Pencil, Trash2, BookMarked, Cloud, CloudDownload, HardDrive, CloudOff
 } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 
@@ -15,6 +15,7 @@ interface LibraryGridProps {
   onEditBook: (book: LibraryBook) => void;
   onDeleteBook: (id: string) => void;
   onStatusChange: (book: LibraryBook, status: ReadingStatus) => void;
+  onEvictBook?: (id: string) => void;
 }
 
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
@@ -33,6 +34,7 @@ export default function LibraryGrid({
   onEditBook,
   onDeleteBook,
   onStatusChange,
+  onEvictBook,
 }: LibraryGridProps) {
   const [menuBookId, setMenuBookId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -69,12 +71,14 @@ export default function LibraryGrid({
       {/* Book Cards */}
       {books.map((book, index) => {
         const progress = getProgress(book);
-        const status = STATUS_CONFIG[book.reading_status];
-        const bookCollections = book.collections || [];
+        const status = STATUS_CONFIG[book.reading_status || 'not_started'];
         const isEpub = (book.file_path || '').toLowerCase().includes('.epub') ||
                        (book.title || '').toLowerCase().endsWith('.epub') ||
                        (book.original_name || '').toLowerCase().endsWith('.epub');
         const isSelected = selectedIds?.has(book.id);
+        const isLocal = book.is_local !== false;
+        const isSynced = !!book.drive_file_id;
+        const bookCollections = book.collections || [];
 
         return (
           <div
@@ -85,7 +89,15 @@ export default function LibraryGrid({
             style={{
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
-            onClick={() => onSelectBook(book)}
+            onClick={() => {
+              if (!isLocal) {
+                if (confirm(`O arquivo "${book.title}" não está salvo localmente. Ele será baixado da nuvem. Deseja continuar?`)) {
+                  onSelectBook(book);
+                }
+              } else {
+                onSelectBook(book);
+              }
+            }}
           >
             {/* Cover */}
             <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl">
@@ -123,7 +135,7 @@ export default function LibraryGrid({
               <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
 
               {/* Format Badge (PDF / EPUB) */}
-              <div className="absolute top-2 right-2 z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
+              <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
                 <span
                   className={`px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm ${
                     isEpub
@@ -133,6 +145,17 @@ export default function LibraryGrid({
                 >
                   {isEpub ? 'EPUB' : 'PDF'}
                 </span>
+                
+                {/* Cloud Status Badge */}
+                <div className="px-1.5 py-1 rounded-[5px] bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center justify-center">
+                  {!isLocal && isSynced ? (
+                    <CloudDownload size={12} className="text-blue-400" />
+                  ) : isLocal && isSynced ? (
+                    <Cloud size={12} className="text-emerald-400" />
+                  ) : (
+                    <HardDrive size={12} className="text-brand-400" />
+                  )}
+                </div>
               </div>
 
               {/* Hover overlay */}
@@ -215,6 +238,19 @@ export default function LibraryGrid({
                   >
                     <CheckCircle2 size={14} />
                     Marcar como Concluído
+                  </button>
+                )}
+
+                {isLocal && onEvictBook && (
+                  <button
+                    onClick={() => {
+                      onEvictBook(book.id);
+                      setMenuBookId(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
+                  >
+                    <CloudOff size={14} />
+                    Remover Download Local
                   </button>
                 )}
 
