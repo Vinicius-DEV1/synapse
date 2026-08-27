@@ -29,6 +29,7 @@ export const tauriLibraryApi = {
           const book = {
             id: bookId,
             title,
+            original_name: cleanFileName,
             author: 'Desconhecido',
             file_path: localPath,
             cover_image: '',
