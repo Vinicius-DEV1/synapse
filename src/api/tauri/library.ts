@@ -182,6 +182,7 @@ export const tauriLibraryApi = {
   addBookToCollection: async (bookId: string, collectionId: string) => await invoke('library_add_book_to_collection', { bookId, collectionId }),
   removeBookFromCollection: async (bookId: string, collectionId: string) => await invoke('library_remove_book_from_collection', { bookId, collectionId }),
   getBookCollections: async (bookId: string) => await invoke('library_get_book_collections', { bookId }),
+  getAllBookCollections: async (): Promise<Record<string, string[]>> => await invoke('library_get_all_book_collections'),
   setBookCollections: async (bookId: string, collectionIds: string[]) => await invoke('library_set_book_collections', { bookId, collectionIds }),
   createCollection: async (c: any) => await invoke('library_create_collection', { collection: c }),
   getHighlights: async (bookId: string) => await invoke('library_get_highlights', { bookId }),
@@ -196,5 +197,34 @@ export const tauriLibraryApi = {
   saveOcrCache: async (cache: any) => await invoke('library_save_ocr_cache', { cache }),
   startReadingSession: async (data: any) => await invoke('library_start_reading_session', { session: data }),
   endReadingSession: async (data: any) => await invoke('library_end_reading_session', { session: data }),
-  getReadingStats: async () => await invoke('library_get_reading_stats')
+  getReadingStats: async (): Promise<{ bookStats?: any; globalStats: any }> => {
+    try {
+      const res: any = await invoke('library_get_reading_stats');
+      const g = res?.globalStats || res?.global_stats || res || {};
+      return {
+        globalStats: {
+          totalBooksStarted: g.totalBooksStarted ?? g.total_books_started ?? 0,
+          totalBooksFinished: g.totalBooksFinished ?? g.total_books_finished ?? 0,
+          totalTimeMinutes: g.totalTimeMinutes ?? g.total_time_minutes ?? 0,
+          totalPagesRead: g.totalPagesRead ?? g.total_pages_read ?? 0,
+          currentStreak: g.currentStreak ?? g.current_streak ?? 0,
+          longestStreak: g.longestStreak ?? g.longest_streak ?? 0,
+          readingDays: g.readingDays ?? g.reading_days ?? [],
+        }
+      };
+    } catch (e) {
+      console.error('Error fetching reading stats in tauri', e);
+      return {
+        globalStats: {
+          totalBooksStarted: 0,
+          totalBooksFinished: 0,
+          totalTimeMinutes: 0,
+          totalPagesRead: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          readingDays: [],
+        }
+      };
+    }
+  }
 };
