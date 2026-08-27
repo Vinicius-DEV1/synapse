@@ -4,6 +4,7 @@ import {
   Circle, Pencil, Trash2, BookMarked, Cloud, CloudDownload, HardDrive, CloudOff
 } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
+import { triggerToast } from '../ui/ToastContext';
 
 interface LibraryGridProps {
   books: LibraryBook[];
@@ -40,28 +41,28 @@ export default function LibraryGrid({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on click outside
+  // Close menu when clicking outside
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuBookId(null);
+        setConfirmDeleteId(null);
       }
     };
-    if (menuBookId) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+
+    if (menuBookId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [menuBookId]);
 
-  const getProgress = (book: LibraryBook): number => {
-    if (!book.total_pages || book.total_pages === 0) return 0;
-    
-    let page = (book as any).current_page || 0;
-    if (typeof book.last_read_page === 'number') {
-      page = book.last_read_page;
-    } else if (typeof book.last_read_page === 'string' && !(book.last_read_page as any).includes('epubcfi')) {
-      const parsed = parseInt(book.last_read_page, 10);
-      if (!isNaN(parsed)) page = parsed;
-    }
-    
+  const getProgress = (book: LibraryBook) => {
+    if (!book.total_pages || book.total_pages <= 0) return 0;
+    const page = typeof book.last_read_page === 'string' 
+      ? parseInt(book.last_read_page, 10) 
+      : (book.last_read_page || book.current_page || 0);
     if (!page || page <= 0) return 0;
     return Math.min(100, Math.round((page / book.total_pages) * 100));
   };
@@ -76,8 +77,10 @@ export default function LibraryGrid({
                        (book.title || '').toLowerCase().endsWith('.epub') ||
                        (book.original_name || '').toLowerCase().endsWith('.epub');
         const isSelected = selectedIds?.has(book.id);
-        const isLocal = book.is_local !== false;
-        const isSynced = !!book.drive_file_id;
+        const isLocal = book.is_local !== undefined 
+          ? Boolean(book.is_local) 
+          : Boolean(book.file_path && book.file_path.trim() !== '' && !book.file_path.startsWith('drive://'));
+        const isSynced = Boolean(book.drive_file_id && book.drive_file_id.trim() !== '');
         const bookCollections = book.collections || [];
 
         return (
@@ -90,10 +93,12 @@ export default function LibraryGrid({
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
             onClick={() => {
-              if (!isLocal) {
-                if (confirm(`O arquivo "${book.title}" não está salvo localmente. Ele será baixado da nuvem. Deseja continuar?`)) {
+              if (!isLocal && isSynced) {
+                if (confirm(`O arquivo "${book.title}" não está salvo no seu dispositivo. Ele será baixado do Google Drive agora. Deseja continuar?`)) {
                   onSelectBook(book);
                 }
+              } else if (!isLocal && !isSynced) {
+                triggerToast(`O arquivo "${book.title}" não foi encontrado localmente nem na nuvem. Use o menu do livro para reanexar o arquivo.`, 'error');
               } else {
                 onSelectBook(book);
               }
@@ -245,7 +250,7 @@ export default function LibraryGrid({
                   </button>
                 )}
 
-                {isLocal && onEvictBook && (
+                {isLocal && isSynced && onEvictBook && (
                   <button
                     onClick={() => {
                       onEvictBook(book.id);
