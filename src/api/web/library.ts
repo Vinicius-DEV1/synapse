@@ -90,6 +90,8 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
       existing.deleted_at = new Date().toISOString();
       existing.updated_at = new Date().toISOString();
       await db.put('library_books', existing);
+      // HARD DELETE the heavy file from cache to prevent IndexedDB memory leaks
+      await db.delete('library_book_files', id).catch(console.warn);
       return true;
     }
     return false;
@@ -113,8 +115,21 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
         
         try {
           const arrayBuffer = await file.arrayBuffer();
-          const remotePath = await uploadEncryptedPdf(bookId, arrayBuffer, _masterKey);
-          const driveFileId = remotePath.replace('drive://', '');
+          const encrypted = await encryptFile(arrayBuffer, _masterKey);
+          await db.put('library_book_files', { id: bookId, data: encrypted });
+          
+          let driveFileId: string | null = null;
+          let remotePath: string | null = null;
+          try {
+            const token = await getValidAccessToken();
+            if (token) {
+              driveFileId = await uploadToDrive(token, `Caderno_${bookId}.enc`, encrypted);
+              remotePath = `drive://${driveFileId}`;
+            }
+          } catch (e) {
+            console.warn('[Library] Drive upload skipped for reattach (offline or no auth)', e);
+          }
+
           const existing = await db.get('library_books', bookId);
           if (existing) {
             existing.file_path = remotePath;
