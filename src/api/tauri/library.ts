@@ -53,6 +53,17 @@ export const tauriLibraryApi = {
   },
   getBookFile: async (id: string) => {
     try {
+      // 1. First try direct native Rust read (handles all app_data paths consistently)
+      try {
+        const raw = await invoke<number[] | Uint8Array>('library_get_book_file', { id });
+        if (raw && (Array.isArray(raw) ? raw.length > 0 : (raw as Uint8Array).byteLength > 0)) {
+          const uint8 = Array.isArray(raw) ? new Uint8Array(raw) : (raw as Uint8Array);
+          return uint8.buffer;
+        }
+      } catch {
+        // fallback to JS reading
+      }
+
       const books = await invoke<any[]>('library_get_books');
       const book = books.find((b: any) => b.id === id);
       if (!book) return null;
@@ -112,17 +123,15 @@ export const tauriLibraryApi = {
   deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
   evictBookLocalCache: async (id: string) => {
     try {
+      await invoke('library_evict_book_local_cache', { id });
       const books = await invoke<any[]>('library_get_books');
       const book = books.find((b: any) => b.id === id);
       if (book) {
-        // Delete physical file via invoke or fs
-        // For simplicity, we just mark it as not local in db
-        // In a real Tauri app, we'd delete the file from disk using tauri-fs
         await invoke('library_update_book', {
-          book: { ...book, is_local: false, updated_at: new Date().toISOString() }
+          book: { ...book, is_local: false, file_path: '', updated_at: new Date().toISOString() }
         });
-        return true;
       }
+      return true;
     } catch(e) {
       console.warn('Failed to evict cache in tauri', e);
     }
