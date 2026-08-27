@@ -74,6 +74,8 @@ pub struct Book {
     pub deleted_at: Option<String>,
     #[serde(default)]
     pub reading_preferences: Option<String>,
+    #[serde(default)]
+    pub is_local: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
