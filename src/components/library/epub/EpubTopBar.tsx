@@ -1,12 +1,13 @@
-import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles } from 'lucide-react';
+import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles, Info } from 'lucide-react';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 
 interface EpubTopBarProps {
   onBack: () => void;
+  onShowInfo: () => void;
 }
 
-export default function EpubTopBar({ onBack }: EpubTopBarProps) {
+export default function EpubTopBar({ onBack, onShowInfo }: EpubTopBarProps) {
   const { state, dispatch } = useStore();
   const {
     book, readingMode, showToc, setShowToc, showNotebook, setShowNotebook,
@@ -58,6 +59,9 @@ export default function EpubTopBar({ onBack }: EpubTopBarProps) {
       </div>
       
       <div className="flex items-center gap-1">
+        <button onClick={onShowInfo} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5'}`} title="Informações do Livro">
+          <Info size={18} />
+        </button>
         <button onClick={() => setShowToc(!showToc)} className={`p-2 rounded-lg transition-colors ${showToc ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Índice (Sumário)">
           <Menu size={18} />
         </button>

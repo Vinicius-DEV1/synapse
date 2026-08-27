@@ -10,6 +10,7 @@ import EpubSidebars from './epub/EpubSidebars';
 import EpubTypography from './epub/EpubTypography';
 import EpubHighlightMenu from './epub/EpubHighlightMenu';
 import { EpubErrorState } from './epub/EpubErrorState';
+import BookInfoModal from './BookInfoModal';
 import { useEpubShortcuts } from './epub/hooks/useEpubShortcuts';
 import { useEpubLoader } from './epub/useEpubLoader';
 import { useEpubTheme } from './epub/useEpubTheme';
@@ -72,6 +73,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const globalLastHighlightClickRef = useRef<number>(0);
   const clearSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const [showBookInfo, setShowBookInfo] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleReattach = async () => {
@@ -292,7 +294,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         absolute md:relative top-0 left-0 right-0
       `}
       >
-        <EpubTopBar onBack={onBack} />
+        <EpubTopBar onBack={onBack} onShowInfo={() => setShowBookInfo(true)} />
       </div>
       <EpubTypography />
       <EpubSidebars />
@@ -359,6 +361,10 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium pointer-events-none transition-all duration-300">
           {modeToast}
         </div>
+      )}
+
+      {showBookInfo && (
+        <BookInfoModal book={book} onClose={() => setShowBookInfo(false)} />
       )}
     </div>
   );

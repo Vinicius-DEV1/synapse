@@ -12,6 +12,7 @@ import { useStore } from '../../store/useStore';
 import { PdfPage } from './pdf/PdfPage';
 import { PdfToolbar } from './pdf/PdfToolbar';
 import { PdfErrorState } from './pdf/PdfErrorState';
+import BookInfoModal from './BookInfoModal';
 import { usePdfKeyboardShortcuts } from './pdf/hooks/usePdfKeyboardShortcuts';
 
 import { usePdfDocument } from './pdf/hooks/usePdfDocument';
@@ -64,6 +65,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reattachError, setReattachError] = useState<string | null>(null);
+  const [showBookInfo, setShowBookInfo] = useState(false);
 
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -315,7 +317,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
         {/* Floating Search Bar */}
         {showSearch && (
-          <div className="absolute top-20 right-4 w-80 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
+          <div className="absolute top-4 right-16 z-50 w-80 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
             <PdfSearchBar
               pdfDoc={pdfDoc}
               bookId={book.id}
@@ -347,6 +349,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             onCycleReadingMode={cycleReadingMode}
             showAnnotations={showAnnotations}
             onToggleAnnotations={() => setShowAnnotations(!showAnnotations)}
+            onShowInfo={() => setShowBookInfo(true)}
           />
         )}
 
@@ -392,6 +395,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-4 z-50">
             {modeToast}
           </div>
+        )}
+
+        {/* Book Info Modal */}
+        {showBookInfo && (
+          <BookInfoModal book={book} onClose={() => setShowBookInfo(false)} />
         )}
       </div>
     </div>
