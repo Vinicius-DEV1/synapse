@@ -134,8 +134,9 @@ export default function LibraryGrid({
               {/* Book spine shadow (3D effect) */}
               <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
 
-              {/* Format Badge (PDF / EPUB) */}
-              <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
+              {/* Badges Container (Format & Storage Status) */}
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
+                {/* Format Badge (PDF / EPUB) */}
                 <span
                   className={`px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm ${
                     isEpub
@@ -146,14 +147,17 @@ export default function LibraryGrid({
                   {isEpub ? 'EPUB' : 'PDF'}
                 </span>
                 
-                {/* Cloud Status Badge */}
-                <div className="px-1.5 py-1 rounded-[5px] bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center justify-center">
-                  {!isLocal && isSynced ? (
-                    <CloudDownload size={12} className="text-blue-400" />
-                  ) : isLocal && isSynced ? (
-                    <Cloud size={12} className="text-emerald-400" />
+                {/* Storage & Cloud Status Badge */}
+                <div className="px-1.5 py-0.5 rounded-[5px] bg-black/50 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center gap-1">
+                  {isLocal && isSynced ? (
+                    <>
+                      <HardDrive size={11} className="text-emerald-400" />
+                      <Cloud size={11} className="text-emerald-400" />
+                    </>
+                  ) : !isLocal && isSynced ? (
+                    <CloudDownload size={11} className="text-blue-400" />
                   ) : (
-                    <HardDrive size={12} className="text-brand-400" />
+                    <HardDrive size={11} className="text-amber-400" />
                   )}
                 </div>
               </div>
