@@ -55,17 +55,7 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
     }
   }, [selectedBookId, books]);
 
-  // Drive auth check
-  useEffect(() => {
-    const checkDriveAuth = () => {
-      getDriveCredentials().then(creds => {
-        setHasDriveAuth(!!creds.token);
-      });
-    };
-    checkDriveAuth();
-    window.addEventListener('caderno-sync-success', checkDriveAuth);
-    return () => window.removeEventListener('caderno-sync-success', checkDriveAuth);
-  }, []);
+
 
   const loadData = useCallback(async () => {
     if (!window.api?.library) {
@@ -98,6 +88,30 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       setLoading(false);
     }
   }, []);
+
+  // Drive auth check and sync listeners
+  useEffect(() => {
+    const checkDriveAuth = () => {
+      getDriveCredentials().then(creds => {
+        setHasDriveAuth(!!creds.token);
+      });
+    };
+    const onSyncComplete = () => {
+      checkDriveAuth();
+      loadData();
+    };
+    
+    checkDriveAuth();
+    window.addEventListener('caderno-sync-success', checkDriveAuth);
+    window.addEventListener('caderno-drive-connected', onSyncComplete);
+    window.addEventListener('caderno-sync-complete', onSyncComplete);
+    
+    return () => {
+      window.removeEventListener('caderno-sync-success', checkDriveAuth);
+      window.removeEventListener('caderno-drive-connected', onSyncComplete);
+      window.removeEventListener('caderno-sync-complete', onSyncComplete);
+    };
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
