@@ -10,7 +10,10 @@ interface UsePdfRendererProps {
 }
 
 export function usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc }: UsePdfRendererProps) {
-  const [currentPage, setCurrentPage] = useState(book.last_read_page || 1);
+  const initialPage = typeof book.last_read_page === 'number'
+    ? book.last_read_page
+    : (parseInt(String(book.last_read_page || 1), 10) || 1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [zoom, setZoom] = useState(1.0);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -176,9 +179,12 @@ export function usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc
   }, [totalPages, loading, book.id, zoom, getPageHeight, getPageOffset]);
 
   useEffect(() => {
-    if (!loading && pdfDoc && book.last_read_page > 1) {
+    const targetPage = typeof book.last_read_page === 'number'
+      ? book.last_read_page
+      : (parseInt(String(book.last_read_page || 1), 10) || 1);
+    if (!loading && pdfDoc && targetPage > 1) {
       setTimeout(() => {
-        const offset = getPageOffset(book.last_read_page);
+        const offset = getPageOffset(targetPage);
         if (scrollRef.current) {
           scrollRef.current.scrollTop = offset;
         }

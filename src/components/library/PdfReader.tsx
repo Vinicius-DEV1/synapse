@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import type { LibraryBook } from '../../types';
+import { CloudDownload } from 'lucide-react';
 
 import HighlightToolbar from './HighlightToolbar';
 import AnnotationPanel from './AnnotationPanel';
@@ -223,6 +224,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         onBack={onBack}
         onDeleteBook={handleDeleteBook}
         setConfirmDelete={setConfirmDelete}
+        pdfError={pdfError}
       />
     );
   }
@@ -258,9 +260,30 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             tocItems={tocItems}
             currentPage={currentPage}
             onNavigateToPage={(page: number) => scrollToPage(page, false)}
-            onUpdateHighlight={() => {}}
+            onUpdateHighlight={async (id: string, note: string) => {
+              try {
+                const existing = highlights.find(h => h.id === id);
+                if (existing) {
+                  await window.api.library.updateHighlight({
+                    id,
+                    note,
+                    color: existing.color,
+                  });
+                  setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
+                }
+              } catch (err) {
+                console.error('Falha ao atualizar nota do destaque', err);
+              }
+            }}
             onDeleteHighlight={handleDeleteHighlight}
-            onUpdateBookmark={() => {}}
+            onUpdateBookmark={async (id: string, label: string) => {
+              try {
+                await window.api.library.updateBookmark({ id, label });
+                setBookmarks((prev) => prev.map((b) => (b.id === id ? { ...b, label } : b)));
+              } catch (err) {
+                console.error('Falha ao atualizar marcador', err);
+              }
+            }}
             onDeleteBookmark={(id: string) => {
               window.api.library
                 .deleteBookmark(id)
@@ -284,29 +307,44 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           style={{ scrollBehavior: 'auto', backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)' }}
         >
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full w-full">
-              <div className="w-64 flex flex-col items-center">
-                {loadProgress ? (
-                  <>
-                    <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 mb-4 overflow-hidden">
-                      <div 
-                        className="bg-brand-500 h-full rounded-full transition-all duration-300"
-                        style={{ width: `${loadProgress.percent}%` }}
-                      />
-                    </div>
-                    <p className="text-sm text-dark-subtext">
-                      {loadProgress.stage === 'downloading' ? 'Baixando da nuvem...' : 
-                       loadProgress.stage === 'decrypting' ? 'Descriptografando arquivo...' : 
-                       'Processando documento...'}
-                    </p>
-                    <p className="text-xs text-dark-subtext mt-1">{Math.round(loadProgress.percent)}%</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500 mb-4"></div>
-                    <p className="text-sm text-dark-subtext">Carregando documento...</p>
-                  </>
-                )}
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
+              <div className="bg-dark-card border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4 flex flex-col items-center text-center">
+                <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 mb-4 animate-pulse">
+                  <CloudDownload size={28} />
+                </div>
+                <h3 className="text-base font-semibold text-white mb-1 line-clamp-1">
+                  {book.title}
+                </h3>
+                <p className="text-xs text-dark-subtext mb-5">
+                  {loadProgress?.stage === 'downloading'
+                    ? 'Baixando arquivo do Google Drive...'
+                    : loadProgress?.stage === 'decrypting'
+                    ? 'Descriptografando com segurança...'
+                    : 'Processando documento...'}
+                </p>
+
+                <div className="w-full bg-white/5 rounded-full h-2 mb-2 overflow-hidden border border-white/5">
+                  <div
+                    className="bg-gradient-to-r from-brand-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm"
+                    style={{ width: `${loadProgress ? Math.max(5, Math.min(100, loadProgress.percent)) : 15}%` }}
+                  />
+                </div>
+
+                <div className="w-full flex justify-between items-center text-[11px] text-dark-subtext mb-5">
+                  <span>
+                    {loadProgress?.stage === 'downloading' ? 'Download' : loadProgress?.stage === 'decrypting' ? 'Segurança' : 'Carregando'}
+                  </span>
+                  <span className="font-mono font-medium text-white">
+                    {loadProgress ? `${Math.round(loadProgress.percent)}%` : '...'}
+                  </span>
+                </div>
+
+                <button
+                  onClick={onBack}
+                  className="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-dark-subtext hover:text-white transition-colors"
+                >
+                  Cancelar e Voltar
+                </button>
               </div>
             </div>
           ) : (
