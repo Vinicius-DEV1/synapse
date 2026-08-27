@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, ZoomIn, ZoomOut, Search, Bookmark, BookmarkCheck, Sun, Moon, StickyNote } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, Search, Bookmark, BookmarkCheck, Sun, Moon, StickyNote, Info } from 'lucide-react';
 
 interface PdfToolbarProps {
   bookTitle: string;
@@ -24,6 +24,7 @@ interface PdfToolbarProps {
   
   showAnnotations: boolean;
   onToggleAnnotations: () => void;
+  onShowInfo: () => void;
 }
 
 export function PdfToolbar({
@@ -42,7 +43,8 @@ export function PdfToolbar({
   readingMode,
   onCycleReadingMode,
   showAnnotations,
-  onToggleAnnotations
+  onToggleAnnotations,
+  onShowInfo
 }: PdfToolbarProps) {
   const [zoomInputActive, setZoomInputActive] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
@@ -87,7 +89,7 @@ export function PdfToolbar({
       </div>
 
       {/* Floating Vertical Toolbar - Right Side */}
-      <div className={`absolute top-1/2 -translate-y-1/2 right-4 z-50 flex flex-col items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
+      <div className={`absolute top-1/2 -translate-y-1/2 right-3 z-40 flex flex-col max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
 
         {/* Pagination */}
         <div className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-1.5 w-full">
@@ -154,6 +156,14 @@ export function PdfToolbar({
         <div className="w-full h-px bg-white/10" />
 
         {/* Tools */}
+        <button 
+          onClick={onShowInfo}
+          className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
+          title="Informações do Livro"
+        >
+          <Info size={18} />
+        </button>
+
         <button 
           onClick={onToggleSearch}
           className={`p-2 rounded-lg transition-all ${showSearch ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-white hover:bg-white/10'}`}
