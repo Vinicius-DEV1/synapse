@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { useStore } from '../../../../store/useStore';
 import { resolveCanonicalBuffer } from '../../../../services/storage/canonical-resolver';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../../types';
+import { triggerToast } from '../../../ui/ToastContext';
 
 export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partial<LibraryBook>) => void, currentPage: number) {
   const { state } = useStore();
@@ -130,17 +131,24 @@ export function usePdfDocument(book: LibraryBook, onUpdateBook: (updates: Partia
   }, [currentPage]);
 
   const toggleBookmark = async (pageNum: number) => {
-    const existing = bookmarks.find(b => b.page_number === pageNum);
-    if (existing) {
-      await window.api.library.deleteBookmark(existing.id);
-      setBookmarks(prev => prev.filter(b => b.id !== existing.id));
-    } else {
-      const newBookmark = await window.api.library.createBookmark({
-        book_id: book.id,
-        page_number: pageNum,
-        label: `Página ${pageNum}`
-      });
-      setBookmarks(prev => [...prev, newBookmark]);
+    try {
+      const existing = bookmarks.find(b => b.page_number === pageNum);
+      if (existing) {
+        await window.api.library.deleteBookmark(existing.id);
+        setBookmarks(prev => prev.filter(b => b.id !== existing.id));
+        triggerToast(`Marcador da página ${pageNum} removido.`, 'info');
+      } else {
+        const newBookmark = await window.api.library.createBookmark({
+          book_id: book.id,
+          page_number: pageNum,
+          label: `Página ${pageNum}`
+        });
+        setBookmarks(prev => [...prev, newBookmark]);
+        triggerToast(`Página ${pageNum} marcada!`, 'success');
+      }
+    } catch (err: any) {
+      console.error('Failed to toggle bookmark', err);
+      triggerToast(err?.message || 'Falha ao atualizar marcador.', 'error');
     }
   };
 
