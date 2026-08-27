@@ -3,6 +3,7 @@ import { X, Plus, Palette } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import { Portal } from '../ui/Portal';
 import { CoverPickerSection } from './ui/CoverPickerSection';
+import { triggerToast } from '../ui/ToastContext';
 
 interface BookEditModalProps {
   book: LibraryBook;
@@ -91,8 +92,10 @@ export default function BookEditModal({
 
       await window.api.library.setBookCollections(book.id, finalCollections);
       await onSave();
-    } catch (err) {
+      triggerToast('Livro salvo com sucesso!', 'success');
+    } catch (err: any) {
       console.error('Failed to save book', err);
+      triggerToast(err.message || 'Falha ao salvar as alterações do livro.', 'error');
     } finally {
       setLoading(false);
     }
