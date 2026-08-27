@@ -168,9 +168,11 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
     if (!window.api?.library) return;
     try {
       await window.api.library.deleteBook(id);
+      triggerToast('Livro excluído com sucesso.', 'info');
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete failed', err);
+      triggerToast(err.message || 'Falha ao excluir o livro.', 'error');
     }
   };
 
@@ -201,8 +203,9 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         };
         localStorage.setItem(`caderno_avulso_${id}`, JSON.stringify(prefsToSave));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Book update failed', err);
+      triggerToast(err.message || 'Falha ao atualizar o livro.', 'error');
     }
   };
 
