@@ -1,3 +1,4 @@
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 
 export interface UploadResult {
@@ -18,30 +19,26 @@ export function UploadResultModal({ result, onClose }: UploadResultModalProps) {
     <Modal
       isOpen={true}
       onClose={onClose}
-      zIndexClassName="z-50"
-      backdropClassName="bg-black/50 backdrop-blur-sm"
+      zIndexClassName="z-[100]"
+      backdropClassName="bg-black/60 backdrop-blur-sm"
       containerClassName="w-full max-w-sm flex flex-col items-center"
     >
-      <div className="bg-brand-900 border border-brand-700/50 rounded-2xl shadow-2xl p-6 w-full flex flex-col items-center text-center animate-scale-in">
+      <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full flex flex-col items-center text-center animate-scale-in">
         {result.type === 'success' ? (
-          <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center mb-4">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/20">
+            <CheckCircle2 size={32} />
           </div>
         ) : (
-          <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mb-4">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 border border-rose-500/20">
+            <XCircle size={32} />
           </div>
         )}
-        <h3 className="text-xl font-bold text-white mb-2">{result.title}</h3>
-        <p className="text-brand-300 text-sm mb-6">{result.message}</p>
+        <h3 className="text-lg font-semibold text-white mb-2">{result.title}</h3>
+        <p className="text-dark-subtext text-sm mb-6 leading-relaxed">{result.message}</p>
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2.5 px-4 bg-brand-800 hover:bg-brand-700 text-white rounded-xl font-medium transition-colors"
+          className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/15 active:scale-[0.98] text-white rounded-xl font-medium transition-all border border-white/10"
         >
           OK
         </button>
@@ -51,3 +48,4 @@ export function UploadResultModal({ result, onClose }: UploadResultModalProps) {
 }
 
 export default UploadResultModal;
+

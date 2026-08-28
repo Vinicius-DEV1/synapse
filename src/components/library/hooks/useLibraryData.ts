@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { LibraryBook, LibraryCollection } from '../../../types';
 import { getDriveCredentials } from '../../../services/drive';
 import { triggerToast } from '../../ui/ToastContext';
@@ -11,6 +11,14 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
   const [uploadResult, setUploadResult] = useState<{title: string, message: string, type: 'success' | 'error'} | null>(null);
   const [hasDriveAuth, setHasDriveAuth] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const selectedBook = useMemo(() => {
     if (!selectedBookId) return null;
     const found = books.find(b => b.id === selectedBookId);
@@ -21,7 +29,8 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
   // Load single virtual book if opened by ID outside the regular library list
   useEffect(() => {
     if (selectedBookId && !books.find(b => b.id === selectedBookId) && window.api?.files) {
-      window.api.files.getById(selectedBookId).then((file: any) => {
+      window.api.files.getById(selectedBookId).then((file: { id: string; name: string; local_path?: string; drive_file_id?: string; created_at?: string; updated_at?: string }) => {
+        if (!isMounted.current) return;
         if (file) {
           const storedPrefsStr = localStorage.getItem(`caderno_avulso_${file.id}`);
           const storedPrefs = storedPrefsStr ? JSON.parse(storedPrefsStr) : {};
@@ -57,17 +66,27 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
 
 
 
+  const booksRef = useRef(books);
+  useEffect(() => {
+    booksRef.current = books;
+  }, [books]);
+
   const loadData = useCallback(async () => {
     if (!window.api?.library) {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
       return;
     }
     try {
-      setLoading(true);
+      // Only set full loading state on initial fetch when no books are loaded in memory yet
+      if (isMounted.current && booksRef.current.length === 0) {
+        setLoading(true);
+      }
       const [booksData, collectionsData] = await Promise.all([
         window.api.library.getBooks(),
         window.api.library.getCollections(),
       ]);
+
+      if (!isMounted.current) return;
 
       const collectionsById = new Map(collectionsData.map(c => [c.id, c]));
 
@@ -88,7 +107,7 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
           booksData.map(async (book) => {
             try {
               const bookCols = await window.api.library.getBookCollections(book.id);
-              const mapped = (bookCols as any[]).map(c => typeof c === 'string' ? collectionsById.get(c) : c).filter(Boolean) as LibraryCollection[];
+              const mapped = (bookCols as (string | LibraryCollection)[]).map(c => typeof c === 'string' ? collectionsById.get(c) : c).filter(Boolean) as LibraryCollection[];
               return { ...book, collections: mapped };
             } catch {
               return { ...book, collections: [] };
@@ -97,12 +116,14 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         );
       }
 
-      setBooks(enriched);
-      setCollections(collectionsData);
+      if (isMounted.current) {
+        setBooks(enriched);
+        setCollections(collectionsData);
+      }
     } catch (err) {
       console.error('Failed to load library data', err);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, []);
 
@@ -135,7 +156,9 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
   }, [loadData]);
 
   useEffect(() => {
-    const onUploadStart = () => setLoading(true);
+    const onUploadStart = () => {
+      if (booksRef.current.length === 0) setLoading(true);
+    };
     const onUploadEnd = () => setLoading(false);
     window.addEventListener('library-upload-start', onUploadStart);
     window.addEventListener('library-upload-end', onUploadEnd);
@@ -164,24 +187,14 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
               ? `${list.length} livros foram importados localmente (Google Drive desconectado).`
               : `O livro "${list[0]?.title || 'Livro'}" foi importado localmente (Google Drive desconectado).`);
 
-        setUploadResult({
-          title: "Importação Concluída",
-          message: successMsg,
-          type: "success"
-        });
         triggerToast(successMsg, hasDriveAuth ? 'success' : 'info');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Import failed', err);
-      const errMsg = err.message || "Ocorreu um erro ao tentar importar o arquivo.";
-      setUploadResult({
-        title: "Erro na Importação",
-        message: errMsg,
-        type: "error"
-      });
+      const errMsg = err instanceof Error ? err.message : "Ocorreu um erro ao tentar importar o arquivo.";
       triggerToast(errMsg, 'error', 5000);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -191,9 +204,9 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       await window.api.library.deleteBook(id);
       triggerToast('Livro excluído com sucesso.', 'info');
       await loadData();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Delete failed', err);
-      triggerToast(err.message || 'Falha ao excluir o livro.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Falha ao excluir o livro.', 'error');
     }
   };
 
@@ -224,9 +237,9 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         };
         localStorage.setItem(`caderno_avulso_${id}`, JSON.stringify(prefsToSave));
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Book update failed', err);
-      triggerToast(err.message || 'Falha ao atualizar o livro.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Falha ao atualizar o livro.', 'error');
     }
   };
 
@@ -238,12 +251,12 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       try {
         await window.api.library.updateCollection({ id: col.id, name: newName.trim() });
         const updated = collections.map(c => c.id === col.id ? { ...c, name: newName.trim() } : c);
-        setCollections(updated);
+        if (isMounted.current) setCollections(updated);
         await loadData();
         triggerToast('Coleção renomeada com sucesso!', 'success');
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to rename collection', err);
-        triggerToast(err?.message || 'Falha ao renomear coleção.', 'error');
+        triggerToast(err instanceof Error ? err.message : 'Falha ao renomear coleção.', 'error');
       }
     }
   };
