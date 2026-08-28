@@ -204,8 +204,14 @@ export default function Editor({
     },
     onCreate: ({ editor: currentEditor }) => {
       const hasMeaningfulCrdt = !!effectiveCrdtState && effectiveCrdtState.length > 8;
+      console.log(`[Caderno:Editor] onCreate for ${pageId}. hasMeaningfulCrdt: ${hasMeaningfulCrdt}`);
       if (!hasMeaningfulCrdt && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
-        currentEditor.commands.setContent(initialContent);
+        try {
+          console.log(`[Caderno:Editor] onCreate loading HTML fallback (length: ${initialContent.length})`);
+          currentEditor.commands.setContent(initialContent);
+        } catch (err) {
+          console.error('[Caderno:Editor] Error setting HTML content in onCreate:', err);
+        }
       }
     },
     onSelectionUpdate: ({ editor }) => {
@@ -226,8 +232,14 @@ export default function Editor({
       const hasMeaningfulCrdt = !!effectiveCrdtState && effectiveCrdtState.length > 8;
       const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
       if (!hasMeaningfulCrdt && isEmptyEditor && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
-        editor.commands.setContent(initialContent);
-        hasInitializedContentRef.current = true;
+        try {
+          console.log(`[Caderno:Editor] useEffect loading HTML fallback (length: ${initialContent.length})`);
+          editor.commands.setContent(initialContent);
+          hasInitializedContentRef.current = true;
+        } catch (err) {
+          console.error('[Caderno:Editor] Error setting HTML content in useEffect:', err);
+          hasInitializedContentRef.current = true; // avoid infinite loop
+        }
       }
     }
   }, [pageId, editor]);

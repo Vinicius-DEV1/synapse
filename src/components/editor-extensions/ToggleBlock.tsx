@@ -10,7 +10,11 @@ export const ToggleBlock = Node.create({
 
   addAttributes() {
     return {
-      title: { default: '' },
+      title: { 
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-title') || '',
+        renderHTML: (attributes) => ({ 'data-title': attributes.title || '' }),
+      },
       isOpen: { default: true },
     };
   },
@@ -23,6 +27,7 @@ export const ToggleBlock = Node.create({
           if (typeof node === 'string') return {};
           const element = node as HTMLElement;
           return {
+            title: element.getAttribute('data-title') || '',
             isOpen: element.getAttribute('data-is-open') !== 'false',
           };
         },
@@ -35,6 +40,7 @@ export const ToggleBlock = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, {
         class: 'toggle-block',
+        'data-title': HTMLAttributes.title || '',
         'data-is-open': HTMLAttributes.isOpen,
       }),
       0,

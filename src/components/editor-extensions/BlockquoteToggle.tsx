@@ -10,7 +10,11 @@ export const BlockquoteToggle = Node.create({
 
   addAttributes() {
     return {
-      title: { default: '' },
+      title: { 
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-title') || '',
+        renderHTML: (attributes) => ({ 'data-title': attributes.title || '' }),
+      },
       color: {
         default: 'default',
         parseHTML: (element) => element.getAttribute('data-color') || 'default',
@@ -32,6 +36,7 @@ export const BlockquoteToggle = Node.create({
           if (typeof node === 'string') return {};
           const element = node as HTMLElement;
           return {
+            title: element.getAttribute('data-title') || '',
             isOpen: element.getAttribute('data-is-open') !== 'false',
             color: element.getAttribute('data-color') || 'default',
           };
@@ -45,6 +50,7 @@ export const BlockquoteToggle = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, {
         class: 'blockquote-toggle',
+        'data-title': HTMLAttributes.title || '',
         'data-is-open': HTMLAttributes.isOpen,
         'data-color': HTMLAttributes.color || 'default',
       }),
