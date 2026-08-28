@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
+import { Portal } from '../ui/Portal';
 
 interface LibraryGridProps {
   books: LibraryBook[];
@@ -38,8 +39,10 @@ export default function LibraryGrid({
   onEvictBook,
 }: LibraryGridProps) {
   const [menuBookId, setMenuBookId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -60,7 +63,7 @@ export default function LibraryGrid({
 
   const getProgress = (book: LibraryBook) => {
     if (!book.total_pages || book.total_pages <= 0) return 0;
-    let page = (book as any).current_page || 0;
+    let page = (book as LibraryBook & { current_page?: number }).current_page || 0;
     if (typeof book.last_read_page === 'number') {
       page = book.last_read_page;
     } else if (typeof book.last_read_page === 'string') {
@@ -177,6 +180,11 @@ export default function LibraryGrid({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const menuWidth = 190;
+                  const left = Math.max(16, rect.right - menuWidth);
+                  const top = rect.bottom + 4;
+                  setMenuPosition({ top, left });
                   setMenuBookId(menuBookId === book.id ? null : book.id);
                   setConfirmDeleteId(null);
                 }}
@@ -196,110 +204,113 @@ export default function LibraryGrid({
               )}
             </div>
 
-            {/* Dropdown Menu - Movido para fora do cover para não ser cortado */}
-            {menuBookId === book.id && (
-              <div
-                ref={menuRef}
-                className="absolute top-10 right-2 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => {
-                    setMenuBookId(null);
-                    onEditBook(book);
-                  }}
-                  className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+            {/* Dropdown Menu - Portaled to document.body so it floats over sidebars without clipping */}
+            {menuBookId === book.id && menuPosition && (
+              <Portal>
+                <div
+                  ref={menuRef}
+                  style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+                  className="fixed z-[9999] bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Pencil size={14} />
-                  Editar
-                </button>
-
-                <div className="border-t border-white/5 my-1" />
-
-                {book.reading_status !== 'not_started' && (
                   <button
                     onClick={() => {
-                      onStatusChange(book, 'not_started');
                       setMenuBookId(null);
+                      onEditBook(book);
                     }}
                     className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
-                    <Circle size={14} />
-                    Marcar como Não iniciado
+                    <Pencil size={14} />
+                    Editar
                   </button>
-                )}
-                {book.reading_status !== 'reading' && (
-                  <button
-                    onClick={() => {
-                      onStatusChange(book, 'reading');
-                      setMenuBookId(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <BookOpen size={14} />
-                    Marcar como Lendo
-                  </button>
-                )}
-                {book.reading_status !== 'finished' && (
-                  <button
-                    onClick={() => {
-                      onStatusChange(book, 'finished');
-                      setMenuBookId(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
-                  >
-                    <CheckCircle2 size={14} />
-                    Marcar como Concluído
-                  </button>
-                )}
 
-                {isLocal && isSynced && onEvictBook && (
-                  <button
-                    onClick={() => {
-                      onEvictBook(book.id);
-                      setMenuBookId(null);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
-                  >
-                    <CloudOff size={14} />
-                    Remover Download Local
-                  </button>
-                )}
+                  <div className="border-t border-white/5 my-1" />
 
-                <div className="border-t border-white/5 my-1" />
+                  {book.reading_status !== 'not_started' && (
+                    <button
+                      onClick={() => {
+                        onStatusChange(book, 'not_started');
+                        setMenuBookId(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <Circle size={14} />
+                      Marcar como Não iniciado
+                    </button>
+                  )}
+                  {book.reading_status !== 'reading' && (
+                    <button
+                      onClick={() => {
+                        onStatusChange(book, 'reading');
+                        setMenuBookId(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <BookOpen size={14} />
+                      Marcar como Lendo
+                    </button>
+                  )}
+                  {book.reading_status !== 'finished' && (
+                    <button
+                      onClick={() => {
+                        onStatusChange(book, 'finished');
+                        setMenuBookId(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                    >
+                      <CheckCircle2 size={14} />
+                      Marcar como Concluído
+                    </button>
+                  )}
 
-                {confirmDeleteId === book.id ? (
-                  <div className="px-3 py-2 flex flex-col gap-2">
-                    <span className="text-xs text-red-400">Tem certeza?</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          onDeleteBook(book.id);
-                          setMenuBookId(null);
-                          setConfirmDeleteId(null);
-                        }}
-                        className="flex-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                      >
-                        Excluir
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="flex-1 px-2 py-1 text-xs rounded bg-white/5 text-dark-subtext hover:bg-white/10 transition-colors"
-                      >
-                        Cancelar
-                      </button>
+                  {isLocal && isSynced && onEvictBook && (
+                    <button
+                      onClick={() => {
+                        onEvictBook(book.id);
+                        setMenuBookId(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
+                    >
+                      <CloudOff size={14} />
+                      Remover Download Local
+                    </button>
+                  )}
+
+                  <div className="border-t border-white/5 my-1" />
+
+                  {confirmDeleteId === book.id ? (
+                    <div className="px-3 py-2 flex flex-col gap-2">
+                      <span className="text-xs text-red-400">Tem certeza?</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            onDeleteBook(book.id);
+                            setMenuBookId(null);
+                            setConfirmDeleteId(null);
+                          }}
+                          className="flex-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                        >
+                          Excluir
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="flex-1 px-2 py-1 text-xs rounded bg-white/5 text-dark-subtext hover:bg-white/10 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDeleteId(book.id)}
-                    className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                    Excluir
-                  </button>
-                )}
-              </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(book.id)}
+                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      Excluir
+                    </button>
+                  )}
+                </div>
+              </Portal>
             )}
 
             {/* Info */}
