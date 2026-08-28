@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatBytes, formatDuration, formatHumanDuration } from './format';
+import { formatBytes, formatDuration, formatHumanDuration, cleanBookTitle } from './format';
+
 
 describe('formatBytes utility', () => {
   it('formats 0 bytes correctly', () => {
@@ -45,3 +46,16 @@ describe('formatHumanDuration utility', () => {
     expect(formatHumanDuration(65, { includeSeconds: true })).toBe('1m 05s');
   });
 });
+
+describe('cleanBookTitle utility', () => {
+  it('sanitizes raw downloader filenames and extensions', () => {
+    const raw = '_OceanofPDF.com_The_Pragmatic_Programmer__your_journey_to_-_Andrew_Hunt (Copy).pdf';
+    expect(cleanBookTitle(raw)).toBe('The Pragmatic Programmer your journey to - Andrew Hunt');
+  });
+
+  it('handles empty or null inputs', () => {
+    expect(cleanBookTitle(null)).toBe('Livro Sem Título');
+    expect(cleanBookTitle('')).toBe('Livro Sem Título');
+  });
+});
+
