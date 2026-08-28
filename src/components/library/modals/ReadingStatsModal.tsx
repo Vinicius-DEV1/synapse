@@ -128,7 +128,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
     >
       <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl w-full max-h-[85vh] overflow-hidden animate-scale-in flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-brand-500/10">
               <TrendingUp size={20} className="text-brand-400" />
@@ -138,7 +138,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
           >
             <X size={20} />
           </button>

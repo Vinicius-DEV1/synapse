@@ -66,7 +66,7 @@ export default function DictionaryModal({
     >
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-dark-bg/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-dark-bg/50 shrink-0">
           <div className="flex items-center gap-2 text-brand-400">
             <BookType size={18} />
             <span className="font-semibold text-sm text-white">Dicionário</span>
@@ -104,9 +104,9 @@ export default function DictionaryModal({
             <button
               type="button"
               onClick={onClose}
-              className="text-dark-subtext hover:text-white transition-colors"
+              className="p-2 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         </div>
