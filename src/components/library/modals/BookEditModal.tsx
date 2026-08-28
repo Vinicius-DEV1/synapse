@@ -114,14 +114,14 @@ export default function BookEditModal({
       zIndexClassName="z-50"
       containerClassName="w-full max-w-md max-h-[90vh] flex flex-col"
     >
-      <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
+      <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
           <h2 className="text-lg font-semibold text-dark-text">Editar Livro</h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
           >
             <X size={20} />
           </button>
