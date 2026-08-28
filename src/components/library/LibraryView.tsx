@@ -5,11 +5,14 @@ import { LibraryHeader } from './ui/LibraryHeader';
 import { LibraryBulkActionsBar } from './ui/LibraryBulkActionsBar';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import LibraryGrid from './LibraryGrid';
-import BookEditModal from './BookEditModal';
-import ReadingStatsView from './ReadingStatsView';
+import {
+  BookEditModal,
+  DriveAuthModal,
+  ReadingStatsModal,
+  UploadResultModal,
+} from './modals';
 import PdfReader from './PdfReader';
 import EpubReader from './EpubReader';
-import DriveAuthModal from './DriveAuthModal';
 import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
@@ -292,44 +295,19 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         />
       )}
 
-      {showStats && <ReadingStatsView onClose={() => setShowStats(false)} />}
+      {showStats && <ReadingStatsModal onClose={() => setShowStats(false)} />}
 
       {showDriveAuth && (
-        <DriveAuthModal 
+        <DriveAuthModal
           onClose={() => setShowDriveAuth(false)}
           onSuccess={() => setHasDriveAuth(true)}
         />
       )}
 
-      {uploadResult && (
-        <Portal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-brand-900 border border-brand-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center text-center">
-              {uploadResult.type === 'success' ? (
-                <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-white mb-2">{uploadResult.title}</h3>
-              <p className="text-brand-300 text-sm mb-6">{uploadResult.message}</p>
-              <button 
-                onClick={() => setUploadResult(null)}
-                className="w-full py-2.5 px-4 bg-brand-800 hover:bg-brand-700 text-white rounded-xl font-medium transition-colors"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <UploadResultModal
+        result={uploadResult}
+        onClose={() => setUploadResult(null)}
+      />
     </div>
   );
 }
