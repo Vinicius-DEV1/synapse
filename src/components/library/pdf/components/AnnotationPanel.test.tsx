@@ -3,7 +3,7 @@ import { render, fireEvent } from '@testing-library/react';
 import AnnotationPanel from './AnnotationPanel';
 import type { LibraryHighlight, LibraryBookmark } from '../../types';
 
-vi.mock('./ui/AnnotationsTab', () => ({
+vi.mock('../../ui/AnnotationsTab', () => ({
   AnnotationsTab: ({ groupedHighlights }: any) => (
     <div data-testid="annotations-tab">
       Total de páginas com anotações: {groupedHighlights ? groupedHighlights.size : 0}
@@ -11,11 +11,11 @@ vi.mock('./ui/AnnotationsTab', () => ({
   ),
 }));
 
-vi.mock('./ui/BookmarksTab', () => ({
+vi.mock('../../ui/BookmarksTab', () => ({
   BookmarksTab: () => <div data-testid="bookmarks-tab">Marcadores</div>,
 }));
 
-vi.mock('./ui/TocTab', () => ({
+vi.mock('../../ui/TocTab', () => ({
   TocTab: () => <div data-testid="toc-tab">Sumário</div>,
   flattenTocPages: vi.fn(() => []),
 }));

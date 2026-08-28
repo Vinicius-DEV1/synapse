@@ -81,11 +81,11 @@ vi.mock('./LibraryGrid', () => ({
   default: () => <div data-testid="library-grid">Library Grid</div>,
 }));
 
-vi.mock('./PdfReader', () => ({
+vi.mock('./pdf/PdfReader', () => ({
   default: () => <div data-testid="pdf-reader">PDF Reader View</div>,
 }));
 
-vi.mock('./EpubReader', () => ({
+vi.mock('./epub/EpubReader', () => ({
   default: () => <div data-testid="epub-reader">EPUB Reader View</div>,
 }));
 

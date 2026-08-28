@@ -1,22 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
 import { ArrowLeft, CloudDownload } from 'lucide-react';
-import type { LibraryBook } from '../../types';
-import { useStore } from '../../store/useStore';
+import type { LibraryBook } from '../../../types';
+import { useStore } from '../../../store/useStore';
 
-import { EpubProvider, useEpub } from './epub/EpubContext';
-import EpubTopBar from './epub/EpubTopBar';
-import EpubSidebars from './epub/EpubSidebars';
-import EpubTypography from './epub/EpubTypography';
-import EpubHighlightMenu from './epub/EpubHighlightMenu';
-import { EpubErrorState } from './epub/EpubErrorState';
-import BookInfoModal from './BookInfoModal';
-import { triggerToast } from '../ui/ToastContext';
-import { useEpubShortcuts } from './epub/hooks/useEpubShortcuts';
-import { useEpubLoader } from './epub/useEpubLoader';
-import { useEpubTheme } from './epub/useEpubTheme';
-import { useTimeTracker } from '../../hooks/useTimeTracker';
-import EpubBottomBar from './epub/components/EpubBottomBar';
+import { EpubProvider, useEpub } from './EpubContext';
+import EpubTopBar from './EpubTopBar';
+import EpubSidebars from './EpubSidebars';
+import EpubTypography from './EpubTypography';
+import EpubHighlightMenu from './EpubHighlightMenu';
+import { EpubErrorState } from './EpubErrorState';
+import BookInfoModal from '../modals/BookInfoModal';
+import { triggerToast } from '../../ui/ToastContext';
+import { useEpubShortcuts } from './hooks/useEpubShortcuts';
+import { useEpubLoader } from './useEpubLoader';
+import { useEpubTheme } from './useEpubTheme';
+import { useTimeTracker } from '../../../hooks/useTimeTracker';
+import EpubBottomBar from './components/EpubBottomBar';
 
 interface EpubReaderProps {
   book: LibraryBook;

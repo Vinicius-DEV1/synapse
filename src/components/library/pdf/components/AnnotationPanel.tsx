@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { StickyNote, Bookmark, List, X } from 'lucide-react';
-import type { LibraryHighlight, LibraryBookmark } from '../../types';
-import { AnnotationsTab } from './ui/AnnotationsTab';
-import { BookmarksTab } from './ui/BookmarksTab';
-import { TocTab, flattenTocPages } from './ui/TocTab';
-import type { TocItem } from './ui/TocTab';
+import type { LibraryHighlight, LibraryBookmark } from '../../../../types';
+import { AnnotationsTab } from '../../ui/AnnotationsTab';
+import { BookmarksTab } from '../../ui/BookmarksTab';
+import { TocTab, flattenTocPages } from '../../ui/TocTab';
+import type { TocItem } from '../../ui/TocTab';
 
 export interface AnnotationPanelProps {
   bookId: string;

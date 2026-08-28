@@ -7,31 +7,31 @@ vi.mock('epubjs', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../../store/useStore', () => ({
+vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
     state: { isReadingModeFullScreen: false },
     dispatch: vi.fn(),
   })),
 }));
 
-vi.mock('../../utils/settings', () => ({
+vi.mock('../../../utils/settings', () => ({
   getSettings: vi.fn(() => ({})),
   saveSettings: vi.fn(),
 }));
 
-vi.mock('../../hooks/useTimeTracker', () => ({
+vi.mock('../../../hooks/useTimeTracker', () => ({
   useTimeTracker: vi.fn(),
 }));
 
-vi.mock('./epub/useEpubLoader', () => ({
+vi.mock('./useEpubLoader', () => ({
   useEpubLoader: vi.fn(),
 }));
 
-vi.mock('./epub/useEpubTheme', () => ({
+vi.mock('./useEpubTheme', () => ({
   useEpubTheme: vi.fn(),
 }));
 
-vi.mock('./epub/EpubTopBar', () => {
+vi.mock('./EpubTopBar', () => {
   return {
     default: ({ onBack }: any) => (
       <div data-testid="epub-top-bar">
@@ -41,19 +41,19 @@ vi.mock('./epub/EpubTopBar', () => {
   };
 });
 
-vi.mock('./epub/EpubSidebars', () => {
+vi.mock('./EpubSidebars', () => {
   return {
     default: () => <div data-testid="epub-sidebars" />,
   };
 });
 
-vi.mock('./epub/EpubHighlightMenu', () => {
+vi.mock('./EpubHighlightMenu', () => {
   return {
     default: () => <div data-testid="epub-highlight-menu" />,
   };
 });
 
-vi.mock('./epub/EpubTypography', () => {
+vi.mock('./EpubTypography', () => {
   return {
     default: () => <div data-testid="epub-typography" />,
   };

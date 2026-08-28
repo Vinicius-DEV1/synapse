@@ -1,32 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { LibraryBook, LibraryHighlight } from '../../types';
+import type { LibraryBook, LibraryHighlight } from '../../../types';
 import { CloudDownload } from 'lucide-react';
 
-import HighlightToolbar from './HighlightToolbar';
-import AnnotationPanel from './AnnotationPanel';
-import PdfSearchBar from './PdfSearchBar';
-import DictionaryModal from './DictionaryModal';
-import { getSettings, saveSettings } from '../../utils/settings';
-import { useStore } from '../../store/useStore';
-import { PdfPage } from './pdf/PdfPage';
-import { PdfToolbar } from './pdf/PdfToolbar';
-import { PdfErrorState } from './pdf/PdfErrorState';
-import BookInfoModal from './BookInfoModal';
-import { triggerToast } from '../ui/ToastContext';
-import { usePdfKeyboardShortcuts } from './pdf/hooks/usePdfKeyboardShortcuts';
+import HighlightToolbar from './components/HighlightToolbar';
+import AnnotationPanel from './components/AnnotationPanel';
+import PdfSearchBar from './components/PdfSearchBar';
+import DictionaryModal from '../modals/DictionaryModal';
+import { getSettings, saveSettings } from '../../../utils/settings';
+import { useStore } from '../../../store/useStore';
+import { PdfPage } from './PdfPage';
+import { PdfToolbar } from './PdfToolbar';
+import { PdfErrorState } from './PdfErrorState';
+import BookInfoModal from '../modals/BookInfoModal';
+import { triggerToast } from '../../ui/ToastContext';
+import { usePdfKeyboardShortcuts } from './hooks/usePdfKeyboardShortcuts';
 
-import { usePdfDocument } from './pdf/hooks/usePdfDocument';
-import { usePdfRenderer } from './pdf/hooks/usePdfRenderer';
-import { usePdfHighlights } from './pdf/hooks/usePdfHighlights';
-import { useTimeTracker } from '../../hooks/useTimeTracker';
+import { usePdfDocument } from './hooks/usePdfDocument';
+import { usePdfRenderer } from './hooks/usePdfRenderer';
+import { usePdfHighlights } from './hooks/usePdfHighlights';
+import { useTimeTracker } from '../../../hooks/useTimeTracker';
 import {
   MODE_NAMES,
   THEME_CLASSES,
   getPdfCssFilter,
   type ReadingMode,
-} from './pdf/utils/pdfThemes';
+} from './utils/pdfThemes';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
