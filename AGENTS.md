@@ -52,6 +52,11 @@ Caderno is a hybrid Desktop and Web application built with:
 - **Meaningful and Well-Elaborated Tests**: All tests must be carefully designed to validate actual business logic, state changes, UI interactions, and component integrations.
 - **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially testing that a div renders without asserting useful behavior). Tests must provide genuine value and confidence in the application's resilience.
 
+### 3.6. Clean Structure & Long-Term Maintainability
+- **High Structural Organization**: Whenever creating or modifying files, components, or directories, never leave code, assets, or modules disorganized, messy, or loosely scattered.
+- **Modular & Extensible Design**: Structure everything cleanly and thoughtfully for future maintenance. Group related logic, sub-components, dedicated hooks, and utilities into cohesive, well-defined subdirectories.
+- **Single Responsibility**: Keep files focused and avoid creating monolithic, cluttered files or dumping unrelated concerns into existing modules.
+
 ---
 
 ## 4. Task Execution Workflow
