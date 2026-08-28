@@ -115,7 +115,7 @@ export interface ICadernoAPI {
   getAllPages: () => Promise<Page[]>;
   getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null }>;
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
-  updatePage: (page: { id: string; title?: string; icon?: string; content?: string; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; cover_image?: string | null; description?: string | null }) => Promise<number>;
+  updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; cover_image?: string | null; description?: string | null }) => Promise<number>;
   deletePage: (id: string) => Promise<boolean>;
   getDeletedPages: () => Promise<PageMeta[]>;
   restorePage: (id: string) => Promise<boolean>;
