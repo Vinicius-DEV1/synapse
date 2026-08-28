@@ -1,8 +1,9 @@
 export { formatDuration } from '../../../utils/format';
 
-export const formatSingleDate = (raw: string): string => {
-  if (!raw) return '';
-  const trimmed = raw.trim();
+export const formatSingleDate = (raw: string | number | null | undefined): string => {
+  if (raw === null || raw === undefined) return '';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '';
   if (trimmed.includes('/')) return trimmed;
 
   // Format: YYYYMMDD (8 digits)
@@ -32,9 +33,9 @@ export const formatSingleDate = (raw: string): string => {
   return trimmed;
 };
 
-export const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return '';
-  const trimmed = dateStr.trim();
+export const formatDate = (dateStr: string | number | null | undefined): string => {
+  if (dateStr === null || dateStr === undefined) return '';
+  const trimmed = String(dateStr).trim();
   if (!trimmed) return '';
 
   // Check for range like "20210101 - 20230510" or "2021-01-01 - 2023-05-10" or "20210101 – 20230510"

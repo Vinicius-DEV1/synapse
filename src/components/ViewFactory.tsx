@@ -114,7 +114,7 @@ export const ViewFactory = memo(function ViewFactory({
         <span className="animate-pulse">Carregando módulo...</span>
       </div>
     }>
-      <ErrorBoundary moduleName={module}>
+      <ErrorBoundary moduleName={module} pageId={page?.id}>
         {renderModule()}
       </ErrorBoundary>
     </Suspense>

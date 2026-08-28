@@ -57,7 +57,12 @@ export const LinkPreviewBlock = Node.create({
       url: { default: '' },
       title: { default: null },
       channel: { default: null },
-      uploadDate: { default: null },
+      uploadDate: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-upload-date') || element.getAttribute('uploadDate') || null,
+        renderHTML: (attributes: Record<string, any>) =>
+          attributes.uploadDate ? { 'data-upload-date': String(attributes.uploadDate) } : {},
+      },
       notes: { default: '' },
       duration: numberAttr('duration', null),
       width: numberAttr('width', 50),
