@@ -48,6 +48,10 @@ Caderno is a hybrid Desktop and Web application built with:
 - **Technical Documentation**: All project documentation (`docs/`, architecture markdowns, manuals, guides, and specifications) must be written **strictly in English**.
 - **Agent-Friendly Readability**: Explanations and documentation must be structured, direct, and easy for AI agents and developers to digest quickly.
 
+### 3.5. Testing Standards
+- **Meaningful and Well-Elaborated Tests**: All tests must be carefully designed to validate actual business logic, state changes, UI interactions, and component integrations.
+- **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially testing that a div renders without asserting useful behavior). Tests must provide genuine value and confidence in the application's resilience.
+
 ---
 
 ## 4. Task Execution Workflow
