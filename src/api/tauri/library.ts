@@ -1,8 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
+import { cleanBookTitle } from '../../utils/format';
 
 export const tauriLibraryApi = {
+
   importBook: async () => {
     try {
       const selected = await open({
