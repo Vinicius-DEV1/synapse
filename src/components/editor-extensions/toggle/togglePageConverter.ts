@@ -5,7 +5,8 @@ import { getEditorBackupMap } from '../../editor/hooks/editorBackupStore';
 export async function convertToggleNodeToPage(editor: any, node: any, getPos: () => number | undefined) {
   if (typeof getPos !== 'function' || !editor) return;
 
-  const title = node.attrs.title?.trim() || 'Sem Título';
+  const rawTitle = node.attrs?.title;
+  const title = typeof rawTitle === 'string' ? rawTitle.trim() || 'Sem Título' : (rawTitle ? String(rawTitle).trim() : 'Sem Título');
 
   let bodyHtml = '';
   try {
