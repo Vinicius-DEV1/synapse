@@ -1,9 +1,7 @@
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { getDecryptedPdf, encryptFileChunked } from '../../../services/storage';
-import { cleanBookTitle } from '../../../utils/format';
 
 export const createBooksApi = (db: any, generateId: () => string, getMasterKey: () => CryptoKey | null) => ({
-
   getBooks: async () => {
     const all = await db.getAll('library_books');
     return all.filter((b: any) => !b.deleted_at);
@@ -73,7 +71,7 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
               console.warn('[Library] Drive upload skipped (offline or no auth)', e);
             }
             
-            const title = cleanBookTitle(file.name);
+            const title = file.name.replace(/\.(pdf|epub)$/i, '');
             const book = {
               id: bookId,
               title,

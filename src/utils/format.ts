@@ -42,32 +42,3 @@ export function formatHumanDuration(
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
-
-/**
- * Cleans raw filenames into human-readable book titles.
- * Strips file extensions, site prefixes (e.g. _OceanofPDF.com_), (Copy) suffixes, and extra underscores.
- */
-export function cleanBookTitle(rawName?: string | null): string {
-  if (!rawName) return 'Livro Sem Título';
-
-  let cleaned = rawName.trim();
-
-  // Strip file extensions
-  cleaned = cleaned.replace(/\.(pdf|epub)$/i, '');
-
-  // Strip common downloader / library site prefixes
-  cleaned = cleaned
-    .replace(/^\[.*?oceanofpdf.*?\]/i, '')
-    .replace(/^(_?oceanofpdf(\.com)?_?)/i, '')
-    .replace(/^(_?z-lib(\.org)?_?)/i, '')
-    .replace(/^(_?annas-archive_?)/i, '');
-
-  // Strip common copy suffixes like (Copy), _copy, - copy
-  cleaned = cleaned.replace(/[\s_(-]*copy[\s_)]*$/i, '');
-
-  // Replace underscores or multiple spaces with single clean space
-  cleaned = cleaned.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
-
-  return cleaned || 'Livro Sem Título';
-}
-
