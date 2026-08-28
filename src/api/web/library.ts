@@ -106,6 +106,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
   deleteBook: async (id: string) => {
     const existing = await db.get('library_books', id);
     if (existing) {
+      await db.delete('library_book_files', id).catch(console.warn);
       existing.deleted_at = new Date().toISOString();
       existing.updated_at = new Date().toISOString();
       await db.put('library_books', existing);
@@ -186,6 +187,9 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
     if (existing) {
       await db.delete('library_book_files', id).catch(console.warn);
       existing.is_local = false;
+      if (existing.file_path && !existing.file_path.startsWith('drive://')) {
+        existing.file_path = existing.drive_file_id ? `drive://${existing.drive_file_id}` : '';
+      }
       existing.updated_at = new Date().toISOString();
       await db.put('library_books', existing);
       return true;
@@ -469,6 +473,8 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
       }
 
       const totalTimeMinutes = Math.round(totalDurationSecs / 60);
+      const highlights = (await db.getAll('library_highlights') || []).filter((h: any) => !h.deleted_at);
+      const totalHighlights = highlights.length;
 
       return {
         globalStats: {
@@ -476,6 +482,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
           totalBooksFinished,
           totalTimeMinutes,
           totalPagesRead,
+          totalHighlights,
           currentStreak,
           longestStreak,
           readingDays,
@@ -489,6 +496,7 @@ export const webLibraryApi = (db: any, generateId: () => string, getMasterKey: (
           totalBooksFinished: 0,
           totalTimeMinutes: 0,
           totalPagesRead: 0,
+          totalHighlights: 0,
           currentStreak: 0,
           longestStreak: 0,
           readingDays: [],

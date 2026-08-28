@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { X, Cloud, Key, CheckCircle, Loader2 } from 'lucide-react';
 import {
   getDriveAuthUrl,
@@ -44,7 +44,7 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
     setStep(2);
   };
 
-  const handleSubmitCode = async (e: React.FormEvent) => {
+  const handleSubmitCode = async (e: FormEvent) => {
     e.preventDefault();
     if (!code.trim()) return;
 
