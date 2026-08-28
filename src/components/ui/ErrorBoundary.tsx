@@ -6,6 +6,7 @@ interface Props {
   children?: ReactNode;
   fallback?: ReactNode;
   moduleName?: string;
+  pageId?: string | null;
 }
 
 interface State {
@@ -51,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   // Clear the CRDT state for the current page and reload
-  private handleClearCrdt = () => {
+  private handleClearCrdt = async () => {
     try {
       // Clear any persisted CRDT from sessionStorage/localStorage
       Object.keys(sessionStorage).forEach(k => {
@@ -60,6 +61,14 @@ export class ErrorBoundary extends Component<Props, State> {
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith('crdt_') || k.startsWith('yjs_')) localStorage.removeItem(k);
       });
+
+      if (window.__cadernoEditorBackup) {
+        window.__cadernoEditorBackup.clear();
+      }
+
+      if (this.props.pageId && window.api?.updatePage) {
+        await window.api.updatePage({ id: this.props.pageId, crdt_state: null });
+      }
     } catch (_) { /* noop */ }
     window.location.reload();
   };
