@@ -88,12 +88,14 @@ export interface GlobalReadingStats {
   totalBooksFinished: number;
   totalTimeMinutes: number;
   totalPagesRead: number;
+  totalHighlights?: number;
   currentStreak: number;
   longestStreak: number;
   readingDays: string[];
   total_books?: number;
   total_pages_read?: number;
   total_time_minutes?: number;
+  total_highlights?: number;
   current_streak?: number;
   longest_streak?: number;
   books_in_progress?: number;

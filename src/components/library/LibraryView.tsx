@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Portal } from '../ui/Portal';
 import { LibraryHeader } from './ui/LibraryHeader';
 import { LibraryBulkActionsBar } from './ui/LibraryBulkActionsBar';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';

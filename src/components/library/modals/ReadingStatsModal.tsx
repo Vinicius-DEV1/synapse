@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import {
   X,
   BookCheck,
@@ -97,11 +97,11 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
     return currentStreak;
   }, [stats]);
 
-  const formatReadingTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours === 0) return `${minutes}m`;
-    return `${hours}h ${minutes}m`;
+  const formatReadingTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    if (hours === 0) return `${mins}m`;
+    return `${hours}h ${mins}m`;
   };
 
   const getProgress = (book: LibraryBook) => {
@@ -175,7 +175,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
                 <SummaryCard
                   icon={<Clock size={20} />}
                   label="Tempo total"
-                  value={formatReadingTime(stats.totalTimeSpent)}
+                  value={formatReadingTime(stats.totalTimeMinutes || 0)}
                   color="text-purple-400"
                   bgColor="bg-purple-500/10"
                 />
@@ -256,7 +256,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
                   <div>
                     <p className="text-[11px] text-dark-subtext">Total de Destaques</p>
                     <p className="text-lg font-semibold text-dark-text">
-                      {stats.totalHighlights}
+                      {stats.totalHighlights ?? 0}
                     </p>
                   </div>
                 </div>
@@ -291,7 +291,7 @@ function SummaryCard({
   color,
   bgColor,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
   color: string;

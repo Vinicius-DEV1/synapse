@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { BaseDirectory } from '@tauri-apps/api/path';
 
 export const tauriLibraryApi = {
   importBook: async () => {
@@ -56,12 +55,15 @@ export const tauriLibraryApi = {
     try {
       // 1. First try direct native Rust read (handles all app_data paths consistently)
       try {
+        console.log(`[library.ts] Tentando invoke 'library_get_book_file' nativo para ${id}...`);
         const raw = await invoke<number[] | Uint8Array>('library_get_book_file', { id });
         if (raw && (Array.isArray(raw) ? raw.length > 0 : (raw as Uint8Array).byteLength > 0)) {
           const uint8 = Array.isArray(raw) ? new Uint8Array(raw) : (raw as Uint8Array);
+          console.log(`[library.ts] invoke 'library_get_book_file' retornou ${uint8.byteLength} bytes.`);
           return uint8.buffer;
         }
-      } catch {
+      } catch (err) {
+        console.warn(`[library.ts] invoke 'library_get_book_file' falhou:`, err);
         // fallback to JS reading
       }
 
@@ -95,26 +97,39 @@ export const tauriLibraryApi = {
       }
 
       let buffer: Uint8Array | null = null;
+      console.log(`[library.ts] candidatePaths para JS fallback:`, candidatePaths);
       for (const p of candidatePaths) {
         try {
           if (p.startsWith('/') || p.match(/^[a-zA-Z]:/)) {
+            console.log(`[library.ts] Tentando ler absolute path via JS: ${p}`);
             const raw = await readFile(p);
             if (raw && raw.byteLength > 0) {
+              console.log(`[library.ts] LIDO COM SUCESSO absolute path: ${p} (${raw.byteLength} bytes)`);
               buffer = new Uint8Array(raw);
               break;
             }
           }
-          const raw = await readFile(p, { baseDir: BaseDirectory.AppData });
+          const { getBaseAppDir } = await import('./path');
+          const { join } = await import('@tauri-apps/api/path');
+          const dataDir = await getBaseAppDir();
+          const fullPath = await join(dataDir, p);
+          
+          console.log(`[library.ts] Tentando ler via JS appDataDir: ${fullPath}`);
+          const raw = await readFile(fullPath);
           if (raw && raw.byteLength > 0) {
+            console.log(`[library.ts] LIDO COM SUCESSO appDataDir: ${fullPath} (${raw.byteLength} bytes)`);
             buffer = new Uint8Array(raw);
             break;
           }
-        } catch {
-          // try next candidate
+        } catch (err) {
+          console.log(`[library.ts] Falha ao tentar ler ${p}:`, err);
         }
       }
 
-      if (!buffer) return null;
+      if (!buffer) {
+        console.warn(`[library.ts] Nenhum candidato foi lido com sucesso para o livro ${id}.`);
+        return null;
+      }
       return buffer.buffer;
     } catch(e) { console.error("Error getting book file", e); return null; }
   },
@@ -125,18 +140,11 @@ export const tauriLibraryApi = {
   evictBookLocalCache: async (id: string) => {
     try {
       await invoke('library_evict_book_local_cache', { id });
-      const books = await invoke<any[]>('library_get_books');
-      const book = books.find((b: any) => b.id === id);
-      if (book) {
-        await invoke('library_update_book', {
-          book: { ...book, is_local: false, file_path: '', updated_at: new Date().toISOString() }
-        });
-      }
       return true;
-    } catch(e) {
+    } catch (e) {
       console.warn('Failed to evict cache in tauri', e);
+      return false;
     }
-    return false;
   },
   reattachBookFile: async (bookId: string) => {
     try {
@@ -208,6 +216,7 @@ export const tauriLibraryApi = {
           totalBooksFinished: g.totalBooksFinished ?? g.total_books_finished ?? 0,
           totalTimeMinutes: g.totalTimeMinutes ?? g.total_time_minutes ?? 0,
           totalPagesRead: g.totalPagesRead ?? g.total_pages_read ?? 0,
+          totalHighlights: g.totalHighlights ?? g.total_highlights ?? 0,
           currentStreak: g.currentStreak ?? g.current_streak ?? 0,
           longestStreak: g.longestStreak ?? g.longest_streak ?? 0,
           readingDays: g.readingDays ?? g.reading_days ?? [],
@@ -221,6 +230,7 @@ export const tauriLibraryApi = {
           totalBooksFinished: 0,
           totalTimeMinutes: 0,
           totalPagesRead: 0,
+          totalHighlights: 0,
           currentStreak: 0,
           longestStreak: 0,
           readingDays: [],
