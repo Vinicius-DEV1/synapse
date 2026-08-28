@@ -288,7 +288,7 @@ export default function QuestionBlockNodeView(props: any) {
           if (importMode === 'replace') {
             updateQuestions(imported);
           } else {
-            const base = questions.length === 1 && !questions[0].question.trim() ? [] : questions;
+            const base = questions.length === 1 && !String(questions[0]?.question || '').trim() ? [] : questions;
             updateQuestions([...base, ...imported]);
           }
         }}
