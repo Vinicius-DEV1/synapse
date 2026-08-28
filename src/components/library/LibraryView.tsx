@@ -11,8 +11,8 @@ import {
   ReadingStatsModal,
   UploadResultModal,
 } from './modals';
-import PdfReader from './PdfReader';
-import EpubReader from './EpubReader';
+import PdfReader from './pdf/PdfReader';
+import EpubReader from './epub/EpubReader';
 import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';

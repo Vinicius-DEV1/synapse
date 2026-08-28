@@ -79,7 +79,9 @@ describe('sync-pdf service', () => {
     expect(drive.uploadToDrive).toHaveBeenCalledWith(
       'valid-oauth2-token',
       'Caderno_book-1.enc',
-      expect.any(Uint8Array)
+      expect.any(Blob),
+      'root',
+      expect.any(Function)
     );
     expect(window.api.library.updateBook).toHaveBeenCalledWith(
       expect.objectContaining({

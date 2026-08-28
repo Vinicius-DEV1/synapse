@@ -11,7 +11,7 @@ vi.mock('pdfjs-dist/build/pdf.worker.mjs?url', () => ({
   default: 'mock-pdf-worker-url',
 }));
 
-vi.mock('./pdf/hooks/usePdfDocument', () => ({
+vi.mock('./hooks/usePdfDocument', () => ({
   usePdfDocument: vi.fn(() => ({
     pdfDoc: { numPages: 100 },
     totalPages: 100,
@@ -27,24 +27,24 @@ vi.mock('./pdf/hooks/usePdfDocument', () => ({
   })),
 }));
 
-vi.mock('../../store/useStore', () => ({
+vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
     dispatch: vi.fn(),
   })),
 }));
 
-vi.mock('../../utils/settings', () => ({
+vi.mock('../../../utils/settings', () => ({
   getSettings: vi.fn(() => ({
     defaultReadingMode: 'light',
   })),
   saveSettings: vi.fn(),
 }));
 
-vi.mock('../../hooks/useTimeTracker', () => ({
+vi.mock('../../../hooks/useTimeTracker', () => ({
   useTimeTracker: vi.fn(),
 }));
 
-vi.mock('./pdf/PdfToolbar', () => ({
+vi.mock('./PdfToolbar', () => ({
   PdfToolbar: ({ onBack }: any) => (
     <div data-testid="pdf-toolbar">
       <button onClick={onBack}>Voltar</button>
@@ -52,7 +52,7 @@ vi.mock('./pdf/PdfToolbar', () => ({
   ),
 }));
 
-vi.mock('./pdf/PdfPage', () => ({
+vi.mock('./PdfPage', () => ({
   PdfPage: ({ pageNum }: any) => <div data-testid={`pdf-page-${pageNum}`}>Página {pageNum}</div>,
 }));
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { StickyNote, BookType, Trash2 } from 'lucide-react';
-import type { HighlightColor } from '../../types';
+import type { HighlightColor } from '../../../../types';
 
 interface HighlightToolbarProps {
   position: { x: number; y: number };
