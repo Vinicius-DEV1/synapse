@@ -134,7 +134,9 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
               e.stopPropagation();
               if (typeof props.getPos === 'function') {
                 const pos = props.getPos();
-                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+                if (typeof pos === 'number') {
+                  props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+                }
               }
             }}
             className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"

@@ -64,7 +64,9 @@ export function useQuizAiChat({
           const a = (rawAction && typeof rawAction === 'object' ? rawAction : {}) as Record<string, unknown>;
           const rawChanges = (a.changes && typeof a.changes === 'object' ? a.changes : {}) as Record<string, unknown>;
           const changes: Record<string, unknown> = { ...rawChanges };
-          const actionType = (a.actionType === 'edit' || a.actionType === 'delete' ? a.actionType : 'add') as 'add' | 'edit' | 'delete';
+          const rawType = a.actionType;
+          const actionType: 'create' | 'edit' | 'delete' =
+            rawType === 'edit' || rawType === 'delete' ? rawType : 'create';
 
           if (actionType === 'edit') {
             if (a.question && !changes.question) changes.question = a.question;
