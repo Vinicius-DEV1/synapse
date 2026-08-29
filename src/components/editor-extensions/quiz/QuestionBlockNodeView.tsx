@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { ChevronUp, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
@@ -17,7 +17,7 @@ import { useQuizAiChat } from './hooks/useQuizAiChat';
 import { normalizeChatHistory } from './utils/quizNormalizer';
 import type { QuizChatMessage, QuizLayout } from './types';
 
-export default function QuestionBlockNodeView(props: any) {
+export default function QuestionBlockNodeView(props: NodeViewProps) {
   const {
     title,
     description,
@@ -46,6 +46,7 @@ export default function QuestionBlockNodeView(props: any) {
     handleMoveQuestion,
     handleRemoveQuestion,
     handleCopyQuestionsJson,
+    handleCopySchemaPrompt,
   } = useQuizState(rawQuestions, title, props.updateAttributes);
 
   const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestion);
@@ -176,8 +177,8 @@ export default function QuestionBlockNodeView(props: any) {
         <div
           className={`${
             isCollapsed
-              ? 'p-3.5 md:p-4 bg-dark-card/40'
-              : 'p-5 md:p-6 border-b border-white/10 bg-white/[0.02]'
+              ? 'p-3 md:p-3.5 bg-dark-card/40'
+              : 'p-4 md:p-5 border-b border-white/10 bg-white/[0.02]'
           } transition-all`}
         >
           <QuizBatteryHeader
@@ -195,6 +196,7 @@ export default function QuestionBlockNodeView(props: any) {
             onOpenAiAssistant={() => setShowAiAssistantModal(true)}
             onOpenImport={() => setShowImportModal(true)}
             onCopyJson={handleCopyQuestionsJson}
+            onCopySchemaPrompt={handleCopySchemaPrompt}
             onOpenDeleteModal={() => setShowDeleteContainerModal(true)}
             onToggleCollapse={() => props.updateAttributes({ isCollapsed: !isCollapsed })}
           />
@@ -212,7 +214,13 @@ export default function QuestionBlockNodeView(props: any) {
 
         {/* Corpo (Lista de Questões) */}
         {!isCollapsed && (
-          <div className="p-6 space-y-6">
+          <div
+            className={
+              layout === 'sequential' && mode === 'practice'
+                ? 'p-4 md:p-5 space-y-4'
+                : 'p-6 space-y-6'
+            }
+          >
             {mode === 'edit' ? (
               <QuizEditor
                 questions={displayedQuestions}
@@ -280,10 +288,11 @@ export default function QuestionBlockNodeView(props: any) {
         currentBatteryTitle={title}
       />
 
-      {/* Modal Importar JSON */}
+      {/* Modal Importar JSON / MD / PDF */}
       <QuizImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
+        currentBatteryQuestions={questions}
         onImport={(imported, importMode) => {
           if (importMode === 'replace') {
             updateQuestions(imported);

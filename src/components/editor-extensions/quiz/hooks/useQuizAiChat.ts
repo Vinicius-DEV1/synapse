@@ -60,9 +60,13 @@ export function useQuizAiChat({
 
       const assistantMsgId = `assistant_${Date.now()}`;
       const actions: SuggestedAction[] | undefined = response.suggestedActions?.map(
-        (a: any, idx: number) => {
-          const changes = a.changes || {};
-          if (a.actionType === 'edit') {
+        (rawAction: unknown, idx: number) => {
+          const a = (rawAction && typeof rawAction === 'object' ? rawAction : {}) as Record<string, unknown>;
+          const rawChanges = (a.changes && typeof a.changes === 'object' ? a.changes : {}) as Record<string, unknown>;
+          const changes: Record<string, unknown> = { ...rawChanges };
+          const actionType = (a.actionType === 'edit' || a.actionType === 'delete' ? a.actionType : 'add') as 'add' | 'edit' | 'delete';
+
+          if (actionType === 'edit') {
             if (a.question && !changes.question) changes.question = a.question;
             if (a.options && !changes.options) changes.options = a.options;
             if (typeof a.correctIndex === 'number' && changes.correctIndex === undefined)
@@ -73,19 +77,25 @@ export function useQuizAiChat({
             if (a.type && !changes.type) changes.type = a.type;
           }
 
+          const rawOpts = a.options;
+          const options =
+            Array.isArray(rawOpts) && rawOpts.length >= 2
+              ? rawOpts.map((o) => String(o))
+              : ['', '', '', ''];
+
           return {
             id: `action_${Date.now()}_${idx}`,
-            actionType: a.actionType,
+            actionType,
             status: 'pending' as const,
-            type: a.type || 'multiple_choice',
-            question: a.question || '',
-            options: a.options && a.options.length >= 2 ? a.options : ['', '', '', ''],
+            type: (a.type === 'open' ? 'open' : 'multiple_choice') as 'multiple_choice' | 'open',
+            question: String(a.question || ''),
+            options,
             correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
-            expectedAnswer: a.expectedAnswer || '',
-            explanation: a.explanation || '',
-            targetQuestionIndex: a.targetQuestionIndex,
+            expectedAnswer: String(a.expectedAnswer || ''),
+            explanation: String(a.explanation || ''),
+            targetQuestionIndex: typeof a.targetQuestionIndex === 'number' ? a.targetQuestionIndex : undefined,
             changes,
-            reason: a.reason,
+            reason: typeof a.reason === 'string' ? a.reason : undefined,
           };
         }
       );
@@ -106,10 +116,12 @@ export function useQuizAiChat({
       };
 
       updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[QuestionBlock] Falha ao comunicar com assistente de IA:', err);
       const errorMessage =
-        err?.message || 'Falha na comunicação com a API de IA. Verifique sua conexão e chave de API.';
+        err instanceof Error
+          ? err.message
+          : 'Falha na comunicação com a API de IA. Verifique sua conexão e chave de API.';
       triggerToast(`Erro na IA: ${errorMessage}`, 'error', 4500);
 
       const assistantErrorMsg: QuizChatMessage = {

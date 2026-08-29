@@ -4,11 +4,13 @@ import { createDefaultQuestion } from '../utils/fireworks';
 import { preprocessMarkdownCode } from '../utils/markdownPreprocess';
 import { normalizeQuizQuestions } from '../utils/quizNormalizer';
 import { triggerToast } from '../../../ui/ToastContext';
+import { getCadernoQuizJsonSchemaPrompt } from '../../../../services/gemini';
+
 
 export function useQuizState(
-  rawQuestions: any,
+  rawQuestions: unknown,
   title: string | undefined,
-  updateAttributes: (attrs: Record<string, any>) => void
+  updateAttributes: (attrs: Record<string, unknown>) => void
 ) {
   // Local state for responsive rendering without TipTap/Yjs transaction latency
   const [localQuestions, setLocalQuestions] = useState<QuestionItem[]>(() =>
@@ -191,12 +193,37 @@ export function useQuizState(
         setCopiedJson(true);
         triggerToast('Bateria de questões exportada em JSON com sucesso!', 'success', 2000);
         setTimeout(() => setCopiedJson(false), 2000);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Falha ao copiar JSON da bateria:', err);
         triggerToast('Não foi possível copiar o JSON para a área de transferência.', 'error', 3000);
       }
     },
     [title, localQuestions]
+  );
+
+  const handleCopySchemaPrompt = useCallback(
+    async (e?: React.MouseEvent) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      try {
+        const prompt = getCadernoQuizJsonSchemaPrompt(
+          localQuestions.length > 0 ? localQuestions : undefined
+        );
+        await navigator.clipboard.writeText(prompt);
+        triggerToast(
+          'Prompt com estrutura JSON copiado! Cole no ChatGPT, Claude ou DeepSeek.',
+          'success',
+          3500
+        );
+      } catch (err: unknown) {
+        console.error('Falha ao copiar prompt schema:', err);
+        triggerToast('Não foi possível copiar o prompt para a área de transferência.', 'error', 3000);
+      }
+    },
+    [localQuestions]
   );
 
   return {
@@ -213,5 +240,6 @@ export function useQuizState(
     handleMoveQuestion,
     handleRemoveQuestion,
     handleCopyQuestionsJson,
+    handleCopySchemaPrompt,
   };
 }
