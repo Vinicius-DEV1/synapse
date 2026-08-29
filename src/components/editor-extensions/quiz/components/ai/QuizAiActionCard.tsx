@@ -144,7 +144,7 @@ export function QuizAiActionCard({
           <div className="text-xs font-semibold text-purple-100 leading-relaxed bg-black/30 p-3 rounded-xl border border-white/5">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              components={markdownComponents as any}
+              components={markdownComponents}
             >
               {preprocessMarkdownCode(action.question || 'Sem enunciado')}
             </ReactMarkdown>
@@ -181,7 +181,7 @@ export function QuizAiActionCard({
                       <div className="flex-1 pt-0.5 leading-relaxed">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
-                          components={markdownComponents as any}
+                          components={markdownComponents}
                         >
                           {preprocessMarkdownCode(opt)}
                         </ReactMarkdown>
@@ -207,7 +207,7 @@ export function QuizAiActionCard({
               <div className="text-xs text-purple-100 leading-relaxed">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={markdownComponents as any}
+                  components={markdownComponents}
                 >
                   {preprocessMarkdownCode(action.expectedAnswer)}
                 </ReactMarkdown>
@@ -224,7 +224,7 @@ export function QuizAiActionCard({
               <div className="text-xs text-purple-200/90 leading-relaxed">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={markdownComponents as any}
+                  components={markdownComponents}
                 >
                   {preprocessMarkdownCode(action.explanation)}
                 </ReactMarkdown>
@@ -245,7 +245,7 @@ export function QuizAiActionCard({
               <div className="text-amber-300 font-semibold bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={markdownComponents as any}
+                  components={markdownComponents}
                 >
                   {preprocessMarkdownCode(action.changes.question)}
                 </ReactMarkdown>

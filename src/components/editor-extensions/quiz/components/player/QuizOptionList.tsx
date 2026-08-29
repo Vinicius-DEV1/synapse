@@ -85,7 +85,7 @@ export function QuizOptionList({
             <div className="text-xs flex-1 pt-0.5 leading-relaxed">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                components={markdownComponents as any}
+                components={markdownComponents}
               >
                 {preprocessMarkdownCode(opt || '')}
               </ReactMarkdown>

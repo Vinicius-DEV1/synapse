@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -55,58 +55,60 @@ export default function QuizSequentialPlayer({
     }
   }, [allAnswered, hitPercentage]);
 
-  const handleNext = () => {
+  const handleSelectOption = useCallback(
+    (optIndex: number) => {
+      if (!currentQ || currentQ.answered) return;
+      onUpdateSingleQuestion(
+        currentQ.id,
+        {
+          selectedIndex: optIndex,
+          answered: true,
+          showExplanation: true,
+        },
+        true
+      );
+    },
+    [currentQ, onUpdateSingleQuestion]
+  );
+
+  const handleNext = useCallback(() => {
     if (activeIndex < total - 1) {
-      setCurrentIndex(activeIndex + 1);
+      setCurrentIndex((prev) => prev + 1);
     } else {
       setShowSummaryView(true);
     }
-  };
+  }, [activeIndex, total]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (activeIndex > 0) {
-      setCurrentIndex(activeIndex - 1);
+      setCurrentIndex((prev) => prev - 1);
     }
-  };
+  }, [activeIndex]);
 
-  const handleSelectOption = (optIndex: number) => {
-    if (!currentQ || currentQ.answered) return;
-
-    onUpdateSingleQuestion(
-      currentQ.id,
-      {
-        selectedIndex: optIndex,
-        answered: true,
-        showExplanation: true,
-      },
-      true
-    );
-  };
-
-  const handleResetCurrent = () => {
+  const handleResetCurrent = useCallback(() => {
     if (!currentQ) return;
     onUpdateSingleQuestion(
       currentQ.id,
       {
         answered: false,
-        selectedIndex: null as any,
+        selectedIndex: null,
         userTypedAnswer: '',
-        aiFeedback: null as any,
+        aiFeedback: null,
         showExplanation: false,
       },
       true
     );
-  };
+  }, [currentQ, onUpdateSingleQuestion]);
 
-  const handleResetAll = () => {
+  const handleResetAll = useCallback(() => {
     safeQuestions.forEach((q) => {
       onUpdateSingleQuestion(
         q.id,
         {
           answered: false,
-          selectedIndex: null as any,
+          selectedIndex: null,
           userTypedAnswer: '',
-          aiFeedback: null as any,
+          aiFeedback: null,
           showExplanation: false,
         },
         true
@@ -114,7 +116,7 @@ export default function QuizSequentialPlayer({
     });
     setCurrentIndex(0);
     setShowSummaryView(false);
-  };
+  }, [safeQuestions, onUpdateSingleQuestion]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function QuizSequentialPlayer({
   const isOpenType = currentQ.type === 'open';
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-3.5 animate-fade-in">
       {/* Progress bar and Steppers */}
       <QuizSequentialHeader
         safeQuestions={safeQuestions}
@@ -201,13 +203,13 @@ export default function QuizSequentialPlayer({
       />
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between gap-3 pt-2">
+      <div className="flex items-center justify-between gap-2.5 pt-1">
         <button
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs font-medium transition-colors"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={15} />
           <span>Anterior</span>
         </button>
 
@@ -215,24 +217,24 @@ export default function QuizSequentialPlayer({
           {currentQ.answered && (
             <button
               onClick={handleResetCurrent}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs transition-colors"
               title="Tentar responder esta questão novamente"
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={12} />
               <span>Tentar Novamente</span>
             </button>
           )}
 
           <button
             onClick={handleNext}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-md ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-md ${
               currentQ.answered
                 ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-brand-500/20 ring-2 ring-brand-500/30'
                 : 'bg-white/10 hover:bg-white/15 text-white'
             }`}
           >
             <span>{activeIndex === total - 1 ? 'Finalizar Bateria' : 'Próxima Questão'}</span>
-            <ChevronRight size={16} />
+            <ChevronRight size={15} />
           </button>
         </div>
       </div>
