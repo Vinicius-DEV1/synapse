@@ -10,6 +10,7 @@ import {
   promptGeminiToRefineImportedQuestions,
   getCadernoQuizJsonSchemaPrompt,
   splitDocumentIntoChunks,
+  extractGabaritoAndBody,
 } from './quiz';
 import * as clientModule from './client';
 
@@ -431,6 +432,26 @@ describe('Quiz Service & Prompt Unit Tests', () => {
       expect(chunks.length).toBeGreaterThan(1);
       expect(chunks[0]).toContain('Questão 1');
       expect(chunks[1]).toContain('Questão 2');
+    });
+  });
+
+  describe('extractGabaritoAndBody', () => {
+    it('returns original body when no trailing gabarito section exists', () => {
+      const text = '# Questões de Teste\n1. O que é JS?';
+      const result = extractGabaritoAndBody(text);
+      expect(result.body).toBe(text);
+      expect(result.gabaritoText).toBeUndefined();
+    });
+
+    it('extracts trailing gabarito section and separates body', () => {
+      const questions = '### Questão 1\nPergunta 1\n\n### Questão 2\nPergunta 2\n\n### Questão 3\nPergunta 3';
+      const gabarito = '## Gabarito Oficial\n1-A\n2-B\n3-C';
+      const fullDoc = `${questions}\n\n${gabarito}`;
+
+      const result = extractGabaritoAndBody(fullDoc);
+      expect(result.body).toBe(questions);
+      expect(result.gabaritoText).toContain('Gabarito Oficial');
+      expect(result.gabaritoText).toContain('1-A');
     });
   });
 });
