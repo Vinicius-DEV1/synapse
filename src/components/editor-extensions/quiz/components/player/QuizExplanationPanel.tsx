@@ -25,7 +25,7 @@ export function QuizExplanationPanel({
           <div className="text-xs text-purple-100 opacity-95">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              components={markdownComponents as any}
+              components={markdownComponents}
             >
               {preprocessMarkdownCode(q.expectedAnswer)}
             </ReactMarkdown>
@@ -57,7 +57,7 @@ export function QuizExplanationPanel({
           </span>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            components={markdownComponents as any}
+            components={markdownComponents}
           >
             {preprocessMarkdownCode(q.explanation)}
           </ReactMarkdown>

@@ -40,7 +40,7 @@ export function QuizAiMessageItem({
         <div className="leading-relaxed">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            components={markdownComponents as any}
+            components={markdownComponents}
           >
             {preprocessMarkdownCode(msg.text)}
           </ReactMarkdown>

@@ -126,7 +126,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
       <div className="text-xs text-purple-100 font-medium leading-relaxed">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          components={markdownComponents as any}
+          components={markdownComponents}
         >
           {preprocessMarkdownCode(q.question || '')}
         </ReactMarkdown>

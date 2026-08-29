@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
@@ -10,7 +11,7 @@ interface QuizSequentialHeaderProps {
   onSelectIndex: (index: number) => void;
 }
 
-export function QuizSequentialHeader({
+export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   safeQuestions,
   activeIndex,
   total,
@@ -20,18 +21,18 @@ export function QuizSequentialHeader({
   onSelectIndex,
 }: QuizSequentialHeaderProps) {
   return (
-    <div className="p-4 bg-dark-bg/60 border border-white/10 rounded-2xl space-y-3">
-      <div className="flex items-center justify-between text-xs gap-3">
+    <div className="p-3 md:p-3.5 bg-dark-bg/60 border border-white/10 rounded-xl space-y-2">
+      <div className="flex items-center justify-between text-xs gap-2">
         <div className="flex items-center gap-2 font-semibold text-white">
-          <span className="px-2 py-0.5 rounded-lg bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[11px] font-mono font-bold">
+          <span className="px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[10px] font-mono font-bold">
             {activeIndex + 1} / {total}
           </span>
-          <span className="text-dark-subtext font-normal">
-            {isOpenType ? 'Questão Aberta (Discursiva)' : 'Múltipla Escolha'}
+          <span className="text-dark-subtext font-normal text-xs">
+            {isOpenType ? 'Questão Aberta' : 'Múltipla Escolha'}
           </span>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-2.5 text-[11px]">
           <span className="text-dark-subtext">
             Respondidas: <strong className="text-white font-mono">{answeredCount}/{total}</strong>
           </span>
@@ -44,7 +45,7 @@ export function QuizSequentialHeader({
       </div>
 
       {/* Steppers Clicáveis */}
-      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 pt-1">
+      <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 pt-0.5">
         {safeQuestions.map((q, idx) => {
           const isCurrent = idx === activeIndex;
           const isAnswered = q.answered;
@@ -69,8 +70,8 @@ export function QuizSequentialHeader({
             <button
               key={q.id}
               onClick={() => onSelectIndex(idx)}
-              className={`w-7 h-7 rounded-xl border text-xs font-mono font-bold flex items-center justify-center transition-all shrink-0 ${pillClass} ${
-                isCurrent ? 'ring-2 ring-brand-500 scale-110 shadow-md font-bold' : ''
+              className={`w-6 h-6 md:w-6.5 md:h-6.5 rounded-lg border text-[11px] font-mono font-bold flex items-center justify-center transition-all shrink-0 ${pillClass} ${
+                isCurrent ? 'ring-2 ring-brand-500 scale-105 shadow-sm font-bold' : ''
               }`}
               title={`Ir para questão ${idx + 1}`}
             >
@@ -81,4 +82,4 @@ export function QuizSequentialHeader({
       </div>
     </div>
   );
-}
+});
