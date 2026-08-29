@@ -350,6 +350,24 @@ function normalizeRawParsedQuestions(parsed: unknown): ParsedQuizQuestion[] {
 }
 
 /**
+ * Detects and extracts a trailing Answer Key (Gabarito) section from the document,
+ * allowing it to be shared across all chunks so every question gets matched to its correct answer.
+ */
+export function extractGabaritoAndBody(content: string): { body: string; gabaritoText?: string } {
+  const gabaritoRegex = /\n(?=(?:#{1,4}\s*gabarito|#{1,4}\s*respostas|gabarito\s*(?:oficial|comentado|das questões)?:|respostas\s*:))/i;
+  const matchIndex = content.search(gabaritoRegex);
+
+  if (matchIndex !== -1 && matchIndex > content.length * 0.3) {
+    return {
+      body: content.slice(0, matchIndex).trim(),
+      gabaritoText: content.slice(matchIndex).trim(),
+    };
+  }
+
+  return { body: content.trim() };
+}
+
+/**
  * Splits large document content into chunks along logical boundaries (headers, numbered questions, double newlines).
  */
 export function splitDocumentIntoChunks(content: string, maxChunkChars = 20000): string[] {
@@ -383,14 +401,15 @@ export function splitDocumentIntoChunks(content: string, maxChunkChars = 20000):
 
 /**
  * Parses Markdown or PDF document content into structured study questions using Gemini.
- * Automatically splits large documents into chunks to prevent timeouts and output token exhaustion.
+ * Automatically extracts trailing answer keys and splits large documents into chunks.
  */
 export async function promptGeminiToParseDocumentToQuizJSON(
   documentContent: string,
   fileType: 'markdown' | 'pdf',
   onProgress?: (message: string) => void
 ): Promise<ParsedQuizQuestion[]> {
-  const chunks = splitDocumentIntoChunks(documentContent, 20000);
+  const { body, gabaritoText } = extractGabaritoAndBody(documentContent);
+  const chunks = splitDocumentIntoChunks(body, 20000);
   const allQuestions: ParsedQuizQuestion[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
@@ -401,7 +420,7 @@ export async function promptGeminiToParseDocumentToQuizJSON(
       onProgress?.('Analisando documento e estruturando questões com IA...');
     }
 
-    const customPrompt = buildDocumentToQuizPrompt(chunk, fileType);
+    const customPrompt = buildDocumentToQuizPrompt(chunk, fileType, gabaritoText);
     // Use generous 90s timeout for document parsing
     const response = await promptGemini(customPrompt, undefined, [], undefined, undefined, 90000);
     const responseText = response.text;

@@ -274,3 +274,144 @@ The "suggestedActions" field is OPTIONAL. Include it ONLY when concrete actions 
 Do NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
   return customPrompt;
 }
+
+/**
+ * Builds prompt to extract and adapt study questions from raw Markdown or PDF document content.
+ */
+export function buildDocumentToQuizPrompt(
+  documentContent: string,
+  fileType: 'markdown' | 'pdf',
+  gabaritoContext?: string
+): string {
+  const gabaritoSection =
+    gabaritoContext && gabaritoContext.trim()
+      ? `\n\nANSWER KEY / GABARITO FOUND AT END OF DOCUMENT:\n"""\n${gabaritoContext.trim().slice(0, 25000)}\n"""\n`
+      : '';
+
+  return `You are an expert pedagogical AI Assistant. Your task is to extract, clean, structure, and convert all exercise questions and study prompts from the following ${fileType.toUpperCase()} document into a strictly formatted JSON question battery.
+
+DOCUMENT CONTENT:
+"""
+${documentContent.slice(0, 50000)}
+"""${gabaritoSection}
+
+EXTRACTION & ADAPTATION RULES:
+1. Identify all questions in the document (multiple-choice or open/discursive).
+2. For multiple-choice questions:
+   - Extract the question statement clearly without prefixes like "1.", "Questão 1:".
+   - Extract all options (typically 4 or 5 options). Strip leading "A)", "B.", etc., from option texts.
+   - Determine the 0-based index ('correctIndex') of the correct option. If the answer key/gabarito is provided in the document, use it. If not explicitly stated, deduce the most accurate answer.
+3. For open/discursive questions:
+   - Set "type" to "open".
+   - Provide a comprehensive, high-quality model answer in "expectedAnswer" (gabarito).
+4. For all questions:
+   - Provide a didactic "explanation" justifying the correct answer or teaching the concept.
+   - Provide 1 to 3 relevant subject/topic strings in "tags".
+5. LANGUAGE RULE: Preserve the original language of the document (Portuguese, English, Spanish, etc.).
+6. Respond STRICTLY in raw JSON format with an ARRAY of objects following this schema:
+[
+  {
+    "type": "multiple_choice",
+    "question": "Question statement",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctIndex": 0,
+    "tags": ["Topic1", "Topic2"],
+    "explanation": "Didactic explanation of why this answer is correct."
+  },
+  {
+    "type": "open",
+    "question": "Discursive question statement",
+    "expectedAnswer": "Comprehensive model answer with essential concepts.",
+    "tags": ["Topic1"],
+    "explanation": "Pedagogical explanation of key points."
+  }
+]
+Do NOT include markdown formatting (\`\`\`json). Return raw JSON array only.`;
+}
+
+/**
+ * Builds prompt to refine, filter, dedup, or adjust an imported list of questions based on user instructions.
+ */
+export function buildRefineImportedQuestionsPrompt(
+  currentQuestions: unknown[],
+  instruction: string
+): string {
+  return `You are an expert pedagogical AI Assistant. The user wants to refine, adjust, or remove questions from their current imported study battery.
+
+CURRENT QUESTIONS (JSON):
+"""
+${JSON.stringify(currentQuestions, null, 2)}
+"""
+
+USER INSTRUCTION:
+"""
+${instruction}
+"""
+
+TASK:
+1. Apply the user's requested modifications (e.g. remove duplicated questions, delete specific questions, convert formats, improve clarity, or adjust options/gabarito).
+2. Ensure the resulting questions array maintains high academic quality and strict formatting.
+3. Respond STRICTLY in raw JSON format with the updated ARRAY of questions conforming to:
+[
+  {
+    "type": "multiple_choice" | "open",
+    "question": "Question statement",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctIndex": 0,
+    "expectedAnswer": "Model answer for open questions",
+    "tags": ["Topic1", "Topic2"],
+    "explanation": "Didactic explanation"
+  }
+]
+Do NOT use markdown code wrappers (\`\`\`json). Return raw JSON array only.`;
+}
+
+/**
+ * Generates the standardized Caderno Quiz JSON schema and prompt template for use in external AI chatbots.
+ */
+export function getCadernoQuizJsonSchemaPrompt(currentQuestions?: unknown[]): string {
+  let prompt = `Atue como um Professor e Especialista em Criação de Questões Educacionais.
+
+Gere uma bateria de questões de estudo no formato JSON estrito aceito pelo aplicativo Caderno, seguindo exatamente o esquema abaixo:
+
+\`\`\`json
+[
+  {
+    "type": "multiple_choice",
+    "question": "Enunciado claro e objetivo da questão",
+    "options": [
+      "Alternativa A",
+      "Alternativa B",
+      "Alternativa C",
+      "Alternativa D"
+    ],
+    "correct_option": 0,
+    "tags": ["Tópico Principal", "Subtópico"],
+    "explanation": "Explicação pedagógica detalhada justificando a alternativa correta."
+  },
+  {
+    "type": "open",
+    "question": "Enunciado da questão discursiva/aberta",
+    "expected_answer": "Gabarito e critérios essenciais esperados na resposta do estudante.",
+    "tags": ["Tópico Principal"],
+    "explanation": "Comentários pedagógicos sobre os pontos-chave da resposta."
+  }
+]
+\`\`\`
+
+REGRAS OBRIGATÓRIAS:
+1. O campo "correct_option" para múltipla escolha deve ser o índice numérico baseado em 0 (0 para a primeira opção, 1 para a segunda, etc.) ou a letra correspondente ("A", "B", "C", "D").
+2. Sempre forneça 4 alternativas para questões de múltipla escolha.
+3. Retorne APENAS o JSON válido (sem textos introdutórios antes ou depois).`;
+
+  if (currentQuestions && currentQuestions.length > 0) {
+    prompt += `\n\nCONTEXTO / QUESTÕES ATUAIS DO WIDGET:\nUse as questões abaixo como referência temática para complementar, expandir ou gerar novas variações:\n\`\`\`json\n${JSON.stringify(
+      currentQuestions,
+      null,
+      2
+    )}\n\`\`\``;
+  }
+
+  return prompt;
+}
+
