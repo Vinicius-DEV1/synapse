@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
+import type { NodeViewProps } from '@tiptap/react';
 import QuestionBlockNodeView from './QuestionBlockNodeView';
 
 vi.mock('@tiptap/react', () => ({
-  NodeViewWrapper: ({ children, className }: any) => (
+  NodeViewWrapper: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="node-view-wrapper" className={className}>
       {children}
     </div>
@@ -11,7 +12,7 @@ vi.mock('@tiptap/react', () => ({
 }));
 
 describe('QuestionBlockNodeView Component', () => {
-  let mockProps: any;
+  let mockProps: NodeViewProps;
 
   beforeEach(() => {
     vi.clearAllMocks();
