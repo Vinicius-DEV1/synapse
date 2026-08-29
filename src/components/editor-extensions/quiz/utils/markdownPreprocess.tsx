@@ -1,3 +1,4 @@
+import type { Components } from 'react-markdown';
 import { Code, Copy } from 'lucide-react';
 
 export const preprocessMarkdownCode = (text: string): string => {
@@ -29,13 +30,13 @@ export const preprocessMarkdownCode = (text: string): string => {
   });
 };
 
-export const markdownComponents = {
-  p: ({ children }: any) => <span className="inline leading-relaxed">{children}</span>,
-  code: ({ inline, className, children, ...props }: any) => {
+export const markdownComponents: Components = {
+  p: ({ children }) => <span className="inline leading-relaxed">{children}</span>,
+  code: ({ className, children, ...props }) => {
     const match = /language-(\w+)/.exec(className || '');
     const codeString = String(children).replace(/\n$/, '');
 
-    const isInline = inline || (!className && !codeString.includes('\n'));
+    const isInline = !className && !codeString.includes('\n');
 
     if (isInline) {
       return (
