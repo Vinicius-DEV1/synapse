@@ -9,8 +9,6 @@ import {
   promptGeminiToParseDocumentToQuizJSON,
   promptGeminiToRefineImportedQuestions,
   getCadernoQuizJsonSchemaPrompt,
-  splitDocumentIntoChunks,
-  extractGabaritoAndBody,
 } from './quiz';
 import * as clientModule from './client';
 
@@ -416,42 +414,25 @@ describe('Quiz Service & Prompt Unit Tests', () => {
     });
   });
 
-  describe('splitDocumentIntoChunks', () => {
-    it('returns single chunk when document is within size threshold', () => {
-      const shortText = '# PHP Basics\n1. What is PHP?';
-      const chunks = splitDocumentIntoChunks(shortText, 1000);
-      expect(chunks).toEqual([shortText]);
+  describe('promptGeminiToParseDocumentToQuizJSON error handling', () => {
+    it('throws friendly timeout message when timeout occurs', async () => {
+      vi.spyOn(clientModule, 'promptGemini').mockRejectedValueOnce(
+        new Error('Tempo limite de 180s excedido na comunicação com o servidor.')
+      );
+
+      await expect(
+        promptGeminiToParseDocumentToQuizJSON('conteudo longo', 'markdown')
+      ).rejects.toThrow('Tempo limite excedido');
     });
 
-    it('splits large document along question boundaries', () => {
-      const q1 = '### Questão 1\nO que é uma closure em PHP?';
-      const q2 = '### Questão 2\nComo funciona o Composer?';
-      const fullText = `${q1}\n\n${q2}`;
+    it('throws rate limit message when 429 quota error occurs', async () => {
+      vi.spyOn(clientModule, 'promptGemini').mockRejectedValueOnce(
+        new Error('RATE_LIMIT')
+      );
 
-      const chunks = splitDocumentIntoChunks(fullText, 40);
-      expect(chunks.length).toBeGreaterThan(1);
-      expect(chunks[0]).toContain('Questão 1');
-      expect(chunks[1]).toContain('Questão 2');
-    });
-  });
-
-  describe('extractGabaritoAndBody', () => {
-    it('returns original body when no trailing gabarito section exists', () => {
-      const text = '# Questões de Teste\n1. O que é JS?';
-      const result = extractGabaritoAndBody(text);
-      expect(result.body).toBe(text);
-      expect(result.gabaritoText).toBeUndefined();
-    });
-
-    it('extracts trailing gabarito section and separates body', () => {
-      const questions = '### Questão 1\nPergunta 1\n\n### Questão 2\nPergunta 2\n\n### Questão 3\nPergunta 3';
-      const gabarito = '## Gabarito Oficial\n1-A\n2-B\n3-C';
-      const fullDoc = `${questions}\n\n${gabarito}`;
-
-      const result = extractGabaritoAndBody(fullDoc);
-      expect(result.body).toBe(questions);
-      expect(result.gabaritoText).toContain('Gabarito Oficial');
-      expect(result.gabaritoText).toContain('1-A');
+      await expect(
+        promptGeminiToParseDocumentToQuizJSON('conteudo longo', 'markdown')
+      ).rejects.toThrow('Limite de requisições da IA atingido');
     });
   });
 });

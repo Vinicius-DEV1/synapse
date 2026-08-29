@@ -350,102 +350,53 @@ function normalizeRawParsedQuestions(parsed: unknown): ParsedQuizQuestion[] {
 }
 
 /**
- * Detects and extracts a trailing Answer Key (Gabarito) section from the document,
- * allowing it to be shared across all chunks so every question gets matched to its correct answer.
- */
-export function extractGabaritoAndBody(content: string): { body: string; gabaritoText?: string } {
-  const gabaritoRegex = /\n(?=(?:#{1,4}\s*gabarito|#{1,4}\s*respostas|gabarito\s*(?:oficial|comentado|das questões)?:|respostas\s*:))/i;
-  const matchIndex = content.search(gabaritoRegex);
-
-  if (matchIndex !== -1 && matchIndex > content.length * 0.3) {
-    return {
-      body: content.slice(0, matchIndex).trim(),
-      gabaritoText: content.slice(matchIndex).trim(),
-    };
-  }
-
-  return { body: content.trim() };
-}
-
-/**
- * Splits large document content into chunks along logical boundaries (headers, numbered questions, double newlines).
- */
-export function splitDocumentIntoChunks(content: string, maxChunkChars = 20000): string[] {
-  const trimmed = content.trim();
-  if (trimmed.length <= maxChunkChars) {
-    return [trimmed];
-  }
-
-  // Potential split boundaries: Markdown headers (#, ##), Question numbers (1., 2), or double newlines
-  const paragraphs = trimmed.split(/\n(?=(?:#{1,4}\s|\d+[\.\)]\s|\*{1,2}\d+[\.\)]|Q\d+[\.\:]|Questão\s+\d+))/i);
-  const segments = paragraphs.length > 1 ? paragraphs : trimmed.split(/\n\s*\n/);
-
-  const chunks: string[] = [];
-  let currentChunk = '';
-
-  for (const seg of segments) {
-    if (currentChunk.length + seg.length + 1 > maxChunkChars && currentChunk.length > 0) {
-      chunks.push(currentChunk.trim());
-      currentChunk = seg;
-    } else {
-      currentChunk = currentChunk ? `${currentChunk}\n\n${seg}` : seg;
-    }
-  }
-
-  if (currentChunk.trim().length > 0) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks.length > 0 ? chunks : [trimmed];
-}
-
-/**
  * Parses Markdown or PDF document content into structured study questions using Gemini.
- * Automatically extracts trailing answer keys and splits large documents into chunks.
+ * Processes the full document directly in a single request with an extended timeout (180s)
+ * and robust error handling.
  */
 export async function promptGeminiToParseDocumentToQuizJSON(
   documentContent: string,
   fileType: 'markdown' | 'pdf',
   onProgress?: (message: string) => void
 ): Promise<ParsedQuizQuestion[]> {
-  const { body, gabaritoText } = extractGabaritoAndBody(documentContent);
-  const chunks = splitDocumentIntoChunks(body, 20000);
-  const allQuestions: ParsedQuizQuestion[] = [];
+  onProgress?.('Analisando documento completo e estruturando questões com IA...');
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (chunks.length > 1) {
-      onProgress?.(`Analisando lote ${i + 1} de ${chunks.length} com IA...`);
-    } else {
-      onProgress?.('Analisando documento e estruturando questões com IA...');
-    }
+  const customPrompt = buildDocumentToQuizPrompt(documentContent, fileType);
 
-    const customPrompt = buildDocumentToQuizPrompt(chunk, fileType, gabaritoText);
-    // Use generous 90s timeout for document parsing
-    const response = await promptGemini(customPrompt, undefined, [], undefined, undefined, 90000);
-    const responseText = response.text;
-
-    let parsed: unknown;
-    try {
-      const cleanJson = cleanJsonBlock(responseText);
-      parsed = JSON.parse(cleanJson);
-    } catch (err: unknown) {
-      console.error(`Failed to parse Gemini JSON for chunk ${i + 1}/${chunks.length}:`, responseText, err);
-      if (chunks.length === 1 || allQuestions.length === 0) {
-        throw new Error('A IA não conseguiu estruturar as questões do documento em JSON válido.');
+  let responseText = '';
+  try {
+    // Generous 180s (3 minutes) timeout for parsing large documents in a single pass
+    const response = await promptGemini(customPrompt, undefined, [], undefined, undefined, 180000);
+    responseText = response.text;
+  } catch (err: unknown) {
+    console.error('Error during Gemini document parsing request:', err);
+    if (err instanceof Error) {
+      if (err.name === 'AbortError' || err.message.toLowerCase().includes('timeout') || err.message.toLowerCase().includes('tempo limite') || err.message.toLowerCase().includes('aborted')) {
+        throw new Error('Tempo limite excedido ao processar o documento. O arquivo é extenso ou a conexão demorou para responder. Tente novamente.');
       }
-      continue;
+      if (err.message.includes('RATE_LIMIT') || err.message.includes('cota excedida') || err.message.includes('429')) {
+        throw new Error('Limite de requisições da IA atingido. Aguarde alguns instantes ou verifique suas chaves nas Configurações.');
+      }
+      throw err;
     }
-
-    const normalized = normalizeRawParsedQuestions(parsed);
-    allQuestions.push(...normalized);
+    throw new Error('Falha na comunicação com a IA ao analisar o documento.');
   }
 
-  if (allQuestions.length === 0) {
+  let parsed: unknown;
+  try {
+    const cleanJson = cleanJsonBlock(responseText);
+    parsed = JSON.parse(cleanJson);
+  } catch (err: unknown) {
+    console.error('Failed to parse Gemini JSON for document import:', responseText, err);
+    throw new Error('A IA não conseguiu estruturar as questões do documento em um JSON válido. Verifique se o conteúdo possui formato legível.');
+  }
+
+  const normalized = normalizeRawParsedQuestions(parsed);
+  if (normalized.length === 0) {
     throw new Error('Nenhuma questão válida encontrada no retorno da IA.');
   }
 
-  return allQuestions;
+  return normalized;
 }
 
 /**
