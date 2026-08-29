@@ -6,6 +6,10 @@ import {
   promptGeminiToGenerateBlockQuestion,
   promptGeminiToGenerateBatchQuestions,
   promptGeminiQuizAssistant,
+  promptGeminiToParseDocumentToQuizJSON,
+  promptGeminiToRefineImportedQuestions,
+  getCadernoQuizJsonSchemaPrompt,
+  splitDocumentIntoChunks,
 } from './quiz';
 import * as clientModule from './client';
 
@@ -313,4 +317,121 @@ describe('Quiz Service & Prompt Unit Tests', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('promptGeminiToParseDocumentToQuizJSON', () => {
+    it('parses questions correctly from document content', async () => {
+      vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
+        text: JSON.stringify([
+          {
+            type: 'multiple_choice',
+            question: 'O que é polimorfismo?',
+            options: ['A) Capacidade de assumir várias formas', 'B) Herança única', 'C) Encapsulamento', 'D) Tipagem dinâmica'],
+            correctIndex: 0,
+            tags: ['POO', 'Conceitos'],
+            explanation: 'Polimorfismo permite que objetos respondam de formas diferentes à mesma mensagem.',
+          },
+          {
+            type: 'open',
+            question: 'Explique o conceito de coesão.',
+            expectedAnswer: 'Coesão mede o quanto as responsabilidades de um módulo estão relacionadas.',
+            tags: ['Arquitetura'],
+            explanation: 'Alta coesão é um objetivo de bom design.',
+          },
+        ]),
+      } as any);
+
+      const result = await promptGeminiToParseDocumentToQuizJSON(
+        '# Documento de Estudo sobre POO',
+        'markdown'
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].type).toBe('multiple_choice');
+      expect(result[0].question).toBe('O que é polimorfismo?');
+      expect(result[0].options).toEqual([
+        'Capacidade de assumir várias formas',
+        'Herança única',
+        'Encapsulamento',
+        'Tipagem dinâmica',
+      ]);
+      expect(result[0].correctIndex).toBe(0);
+      expect(result[0].tags).toEqual(['POO', 'Conceitos']);
+
+      expect(result[1].type).toBe('open');
+      expect(result[1].expectedAnswer).toBe(
+        'Coesão mede o quanto as responsabilidades de um módulo estão relacionadas.'
+      );
+    });
+
+    it('throws error when no questions are extracted', async () => {
+      vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
+        text: '[]',
+      } as any);
+
+      await expect(
+        promptGeminiToParseDocumentToQuizJSON('texto sem questões', 'pdf')
+      ).rejects.toThrow('Nenhuma questão válida encontrada');
+    });
+  });
+
+  describe('promptGeminiToRefineImportedQuestions', () => {
+    it('refines question list based on user instruction', async () => {
+      vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
+        text: JSON.stringify([
+          {
+            type: 'multiple_choice',
+            question: 'Questão única não duplicada',
+            options: ['A', 'B', 'C', 'D'],
+            correctIndex: 1,
+            explanation: 'Explicacao',
+          },
+        ]),
+      } as any);
+
+      const result = await promptGeminiToRefineImportedQuestions(
+        [{ question: 'Questão repetida 1' }, { question: 'Questão repetida 1' }],
+        'Remover questões duplicadas'
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].question).toBe('Questão única não duplicada');
+    });
+  });
+
+  describe('getCadernoQuizJsonSchemaPrompt', () => {
+    it('generates prompt template containing schema', () => {
+      const prompt = getCadernoQuizJsonSchemaPrompt();
+      expect(prompt).toContain('multiple_choice');
+      expect(prompt).toContain('correct_option');
+      expect(prompt).toContain('expected_answer');
+    });
+
+    it('includes existing widget questions context when provided', () => {
+      const prompt = getCadernoQuizJsonSchemaPrompt([
+        { question: 'Questão Existente 1', options: ['A', 'B'] },
+      ]);
+      expect(prompt).toContain('QUESTÕES ATUAIS DO WIDGET');
+      expect(prompt).toContain('Questão Existente 1');
+    });
+  });
+
+  describe('splitDocumentIntoChunks', () => {
+    it('returns single chunk when document is within size threshold', () => {
+      const shortText = '# PHP Basics\n1. What is PHP?';
+      const chunks = splitDocumentIntoChunks(shortText, 1000);
+      expect(chunks).toEqual([shortText]);
+    });
+
+    it('splits large document along question boundaries', () => {
+      const q1 = '### Questão 1\nO que é uma closure em PHP?';
+      const q2 = '### Questão 2\nComo funciona o Composer?';
+      const fullText = `${q1}\n\n${q2}`;
+
+      const chunks = splitDocumentIntoChunks(fullText, 40);
+      expect(chunks.length).toBeGreaterThan(1);
+      expect(chunks[0]).toContain('Questão 1');
+      expect(chunks[1]).toContain('Questão 2');
+    });
+  });
 });
+

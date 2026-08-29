@@ -173,7 +173,11 @@ export default function QuizImportModal({
           setIsProcessingAi(true);
           setAiStatusMessage('Lendo Markdown e adaptando questões com IA...');
           const text = await selectedFile.text();
-          const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(text, 'markdown');
+          const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
+            text,
+            'markdown',
+            (msg) => setAiStatusMessage(msg)
+          );
           const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
           setImportPreview(mapped);
           return;
@@ -190,7 +194,11 @@ export default function QuizImportModal({
           }
 
           setAiStatusMessage('Analisando exercícios e estruturando questões com IA...');
-          const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(extractedText, 'pdf');
+          const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
+            extractedText,
+            'pdf',
+            (msg) => setAiStatusMessage(msg)
+          );
           const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
           setImportPreview(mapped);
           return;
@@ -211,7 +219,11 @@ export default function QuizImportModal({
       if (!looksLikeJson && (trimmed.includes('#') || trimmed.includes('-') || trimmed.length > 50)) {
         setIsProcessingAi(true);
         setAiStatusMessage('Analisando texto colado com IA...');
-        const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(trimmed, 'markdown');
+        const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
+          trimmed,
+          'markdown',
+          (msg) => setAiStatusMessage(msg)
+        );
         const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
         setImportPreview(mapped);
         return;
