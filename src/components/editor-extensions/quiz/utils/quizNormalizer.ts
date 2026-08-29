@@ -1,4 +1,4 @@
-import type { QuestionItem, QuizChatMessage, AttemptItem } from '../types';
+import type { QuestionItem, QuizChatMessage, AttemptItem, SuggestedAction } from '../types';
 import { createDefaultQuestion } from './fireworks';
 
 /**
@@ -37,6 +37,12 @@ export function normalizeSingleQuestion(raw: unknown, fallbackIndex: number = 1)
         .filter((att: unknown): att is Record<string, unknown> => Boolean(att && typeof att === 'object'))
         .map((att: Record<string, unknown>, idx: number) => {
           const rawFeedback = att.aiFeedback as Record<string, unknown> | null | undefined;
+          const rawVerdict = rawFeedback?.verdict;
+          const verdict: 'Correto' | 'Parcial' | 'Incorreto' =
+            rawVerdict === 'Correto' || rawVerdict === 'Parcial' || rawVerdict === 'Incorreto'
+              ? rawVerdict
+              : 'Incorreto';
+
           return {
             id: typeof att.id === 'string' ? att.id : `att_${Date.now()}_${idx}`,
             timestamp: typeof att.timestamp === 'number' ? att.timestamp : Date.now(),
@@ -45,12 +51,7 @@ export function normalizeSingleQuestion(raw: unknown, fallbackIndex: number = 1)
             aiFeedback:
               rawFeedback && typeof rawFeedback === 'object'
                 ? {
-                    verdict:
-                      rawFeedback.verdict === 'Correto' ||
-                      rawFeedback.verdict === 'Parcial' ||
-                      rawFeedback.verdict === 'Incorreto'
-                        ? rawFeedback.verdict
-                        : 'Incorreto',
+                    verdict,
                     feedback: String(rawFeedback.feedback || ''),
                   }
                 : null,
@@ -61,15 +62,16 @@ export function normalizeSingleQuestion(raw: unknown, fallbackIndex: number = 1)
     : [];
 
   const rawAiFeedback = record.aiFeedback as Record<string, unknown> | null | undefined;
-  const aiFeedback =
+  const rawMainVerdict = rawAiFeedback?.verdict;
+  const mainVerdict: 'Correto' | 'Parcial' | 'Incorreto' =
+    rawMainVerdict === 'Correto' || rawMainVerdict === 'Parcial' || rawMainVerdict === 'Incorreto'
+      ? rawMainVerdict
+      : 'Incorreto';
+
+  const aiFeedback: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string } | null =
     rawAiFeedback && typeof rawAiFeedback === 'object'
       ? {
-          verdict:
-            rawAiFeedback.verdict === 'Correto' ||
-            rawAiFeedback.verdict === 'Parcial' ||
-            rawAiFeedback.verdict === 'Incorreto'
-              ? rawAiFeedback.verdict
-              : 'Incorreto',
+          verdict: mainVerdict,
           feedback: String(rawAiFeedback.feedback || ''),
         }
       : null;
@@ -145,6 +147,6 @@ export function normalizeChatHistory(rawHistory: unknown): QuizChatMessage[] {
       id: typeof m.id === 'string' ? m.id : `msg_${Date.now()}_${idx}`,
       role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
       text: typeof m.text === 'string' ? m.text : '',
-      suggestedActions: Array.isArray(m.suggestedActions) ? (m.suggestedActions as string[]) : undefined,
+      suggestedActions: Array.isArray(m.suggestedActions) ? (m.suggestedActions as SuggestedAction[]) : undefined,
     }));
 }
