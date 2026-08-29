@@ -2,13 +2,20 @@ import type { Page } from '../../../../types';
 import type { QuestionItem, ReferencedBattery } from '../types';
 import { normalizeQuizQuestions } from './quizNormalizer';
 
+interface TipTapNodeLike {
+  type?: string;
+  attrs?: Record<string, unknown>;
+  content?: TipTapNodeLike[];
+  [key: string]: unknown;
+}
+
 /**
  * Extracts quiz batteries from page HTML or JSON content.
  */
 export function extractBatteriesFromContent(
   pageId: string,
   pageTitle: string,
-  content?: string | any
+  content?: string | TipTapNodeLike | Record<string, unknown>
 ): ReferencedBattery[] {
   if (!content) return [];
 
@@ -16,10 +23,12 @@ export function extractBatteriesFromContent(
 
   // Case 1: JSON TipTap Node Structure
   if (typeof content === 'object') {
-    const traverse = (node: any, indexRef: { count: number }) => {
-      if (node?.type === 'questionBlock' && node.attrs) {
+    const traverse = (node: TipTapNodeLike | null | undefined, indexRef: { count: number }) => {
+      if (!node) return;
+      if (node.type === 'questionBlock' && node.attrs) {
         const questions: QuestionItem[] = normalizeQuizQuestions(node.attrs.questions);
-        const title = (node.attrs.title || 'Bateria de Exercícios').trim();
+        const rawTitle = typeof node.attrs.title === 'string' ? node.attrs.title : 'Bateria de Exercícios';
+        const title = rawTitle.trim();
         batteries.push({
           id: `${pageId}_battery_${indexRef.count++}`,
           title: title || 'Bateria de Exercícios',
@@ -29,11 +38,11 @@ export function extractBatteriesFromContent(
           questions,
         });
       }
-      if (Array.isArray(node?.content)) {
-        node.content.forEach((child: any) => traverse(child, indexRef));
+      if (Array.isArray(node.content)) {
+        node.content.forEach((child) => traverse(child, indexRef));
       }
     };
-    traverse(content, { count: 0 });
+    traverse(content as TipTapNodeLike, { count: 0 });
     return batteries;
   }
 
@@ -42,7 +51,7 @@ export function extractBatteriesFromContent(
     const trimmed = content.trim();
     if (trimmed.startsWith('{') && trimmed.includes('"type":"questionBlock"')) {
       try {
-        const parsed = JSON.parse(trimmed);
+        const parsed = JSON.parse(trimmed) as TipTapNodeLike;
         return extractBatteriesFromContent(pageId, pageTitle, parsed);
       } catch {
         // Fallback to DOM parser below
