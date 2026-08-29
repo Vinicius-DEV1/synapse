@@ -6,27 +6,35 @@ export class NetworkResilience {
     requestFn: (signal: AbortSignal) => Promise<T>,
     maxRetries = 3,
     baseDelayMs = 1000,
-    timeoutMs = 15000
+    timeoutMs = 30000
   ): Promise<T> {
     let attempt = 0;
     while (attempt < maxRetries) {
+      let isTimedOut = false;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(new Error('Timeout')), timeoutMs);
+      const timeoutId = setTimeout(() => {
+        isTimedOut = true;
+        controller.abort(new Error('Timeout'));
+      }, timeoutMs);
       
       try {
         const result = await requestFn(controller.signal);
         clearTimeout(timeoutId);
         return result;
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
         
-        // If aborted by user (not by timeout), abort retry backoff immediately
-        if (error.name === 'AbortError' && error.message !== 'Timeout') {
+        const isAbort = error instanceof Error && error.name === 'AbortError';
+        // If aborted by user/caller explicitly (and NOT triggered by our timeout timer), abort retry backoff immediately
+        if (isAbort && !isTimedOut && error.message !== 'Timeout') {
           throw error;
         }
         
         attempt++;
         if (attempt >= maxRetries) {
+          if (isTimedOut) {
+            throw new Error(`Tempo limite de ${Math.round(timeoutMs / 1000)}s excedido na comunicação com o servidor.`);
+          }
           throw error;
         }
         

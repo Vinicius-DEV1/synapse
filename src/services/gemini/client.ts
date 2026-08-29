@@ -36,7 +36,8 @@ export async function promptGemini(
   mediaBase64?: string | string[],
   history: any[] = [],
   customModelId?: string,
-  customSystemInstruction?: string
+  customSystemInstruction?: string,
+  timeoutMs = 45000
 ): Promise<{ text: string; usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = keys.filter(k => k.status === 'active');
@@ -110,7 +111,7 @@ export async function promptGemini(
         },
         4, // 4 retries
         1500, // base 1.5s delay
-        30000 // 30s timeout
+        timeoutMs // configurable timeout
       );
 
       const data = await response.json();

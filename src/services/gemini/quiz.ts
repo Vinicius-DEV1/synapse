@@ -10,9 +10,13 @@ import {
   buildBlockQuestionPrompt,
   buildBatchQuestionsPrompt,
   buildQuizAssistantPrompt,
+  buildDocumentToQuizPrompt,
+  buildRefineImportedQuestionsPrompt,
+  getCadernoQuizJsonSchemaPrompt,
 } from './quiz-prompts';
 
-export { sanitizeExpectedAnswer };
+export { sanitizeExpectedAnswer, getCadernoQuizJsonSchemaPrompt };
+
 
 // Creates a study question automatically via JSON
 export async function promptGeminiForQuestion(
@@ -271,3 +275,185 @@ export async function promptGeminiQuizAssistant(
     };
   }
 }
+
+export interface ParsedQuizQuestion {
+  type: 'multiple_choice' | 'open';
+  question: string;
+  options: string[];
+  correctIndex: number;
+  expectedAnswer: string;
+  explanation: string;
+  tags?: string[];
+}
+
+function normalizeRawParsedQuestions(parsed: unknown): ParsedQuizQuestion[] {
+  let items: unknown[] = [];
+  if (Array.isArray(parsed)) {
+    items = parsed;
+  } else if (typeof parsed === 'object' && parsed !== null) {
+    const obj = parsed as Record<string, unknown>;
+    const nested = obj.questions || obj.questoes || obj.items;
+    if (Array.isArray(nested)) {
+      items = nested;
+    }
+  }
+
+  return (items as Array<Record<string, unknown>>).map((item) => {
+    const rawType = String(item.type || item.tipo || '').toLowerCase();
+    const isOpen =
+      rawType.includes('open') ||
+      rawType.includes('aberta') ||
+      rawType.includes('discursiva') ||
+      rawType.includes('dissertativa');
+
+    let options: string[] = [];
+    const rawOpts = item.options || item.opcoes || item.alternativas || item.alternatives;
+    if (Array.isArray(rawOpts)) {
+      options = rawOpts.map((o) => {
+        const str = typeof o === 'string' ? o : String(o);
+        return str.replace(/^[A-Za-z0-9][).]\s+/, '').trim();
+      });
+    }
+    if (!isOpen && options.length < 2) {
+      options = ['', '', '', ''];
+    }
+
+    let correctIndex = 0;
+    const rawCorrect =
+      item.correctIndex ?? item.correct_option ?? item.correta ?? item.resposta_correta;
+    if (typeof rawCorrect === 'number') {
+      correctIndex = rawCorrect;
+    } else if (typeof rawCorrect === 'string') {
+      const letter = rawCorrect.trim().toUpperCase().charCodeAt(0);
+      if (letter >= 65 && letter <= 90) {
+        correctIndex = letter - 65;
+      }
+    }
+
+    const rawTags = item.tags || item.topicos;
+    const tags = Array.isArray(rawTags)
+      ? rawTags.map((t) => String(t).trim()).filter(Boolean)
+      : [];
+
+    return {
+      type: isOpen ? 'open' : 'multiple_choice',
+      question: String(item.question || item.enunciado || item.pergunta || item.texto || '').trim(),
+      options: options.length >= 2 ? options : ['', '', '', ''],
+      correctIndex,
+      expectedAnswer: sanitizeExpectedAnswer(
+        String(item.expectedAnswer || item.expected_answer || item.respostaEsperada || item.gabarito || '')
+      ),
+      explanation: String(item.explanation || item.explicacao || item.justificativa || item.comentario || '').trim(),
+      tags,
+    };
+  });
+}
+
+/**
+ * Splits large document content into chunks along logical boundaries (headers, numbered questions, double newlines).
+ */
+export function splitDocumentIntoChunks(content: string, maxChunkChars = 20000): string[] {
+  const trimmed = content.trim();
+  if (trimmed.length <= maxChunkChars) {
+    return [trimmed];
+  }
+
+  // Potential split boundaries: Markdown headers (#, ##), Question numbers (1., 2), or double newlines
+  const paragraphs = trimmed.split(/\n(?=(?:#{1,4}\s|\d+[\.\)]\s|\*{1,2}\d+[\.\)]|Q\d+[\.\:]|Questão\s+\d+))/i);
+  const segments = paragraphs.length > 1 ? paragraphs : trimmed.split(/\n\s*\n/);
+
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  for (const seg of segments) {
+    if (currentChunk.length + seg.length + 1 > maxChunkChars && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      currentChunk = seg;
+    } else {
+      currentChunk = currentChunk ? `${currentChunk}\n\n${seg}` : seg;
+    }
+  }
+
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks.length > 0 ? chunks : [trimmed];
+}
+
+/**
+ * Parses Markdown or PDF document content into structured study questions using Gemini.
+ * Automatically splits large documents into chunks to prevent timeouts and output token exhaustion.
+ */
+export async function promptGeminiToParseDocumentToQuizJSON(
+  documentContent: string,
+  fileType: 'markdown' | 'pdf',
+  onProgress?: (message: string) => void
+): Promise<ParsedQuizQuestion[]> {
+  const chunks = splitDocumentIntoChunks(documentContent, 20000);
+  const allQuestions: ParsedQuizQuestion[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (chunks.length > 1) {
+      onProgress?.(`Analisando lote ${i + 1} de ${chunks.length} com IA...`);
+    } else {
+      onProgress?.('Analisando documento e estruturando questões com IA...');
+    }
+
+    const customPrompt = buildDocumentToQuizPrompt(chunk, fileType);
+    // Use generous 90s timeout for document parsing
+    const response = await promptGemini(customPrompt, undefined, [], undefined, undefined, 90000);
+    const responseText = response.text;
+
+    let parsed: unknown;
+    try {
+      const cleanJson = cleanJsonBlock(responseText);
+      parsed = JSON.parse(cleanJson);
+    } catch (err: unknown) {
+      console.error(`Failed to parse Gemini JSON for chunk ${i + 1}/${chunks.length}:`, responseText, err);
+      if (chunks.length === 1 || allQuestions.length === 0) {
+        throw new Error('A IA não conseguiu estruturar as questões do documento em JSON válido.');
+      }
+      continue;
+    }
+
+    const normalized = normalizeRawParsedQuestions(parsed);
+    allQuestions.push(...normalized);
+  }
+
+  if (allQuestions.length === 0) {
+    throw new Error('Nenhuma questão válida encontrada no retorno da IA.');
+  }
+
+  return allQuestions;
+}
+
+/**
+ * Refines, deduplicates, or adjusts an existing list of questions based on a user instruction.
+ */
+export async function promptGeminiToRefineImportedQuestions(
+  currentQuestions: unknown[],
+  instruction: string
+): Promise<ParsedQuizQuestion[]> {
+  const customPrompt = buildRefineImportedQuestionsPrompt(currentQuestions, instruction);
+  const response = await promptGemini(customPrompt);
+  const responseText = response.text;
+
+  let parsed: unknown;
+  try {
+    const cleanJson = cleanJsonBlock(responseText);
+    parsed = JSON.parse(cleanJson);
+  } catch (err: unknown) {
+    console.error('Failed to parse Gemini JSON for questions refinement:', responseText, err);
+    throw new Error('A IA não conseguiu refinar as questões com a instrução fornecida.');
+  }
+
+  const normalized = normalizeRawParsedQuestions(parsed);
+  if (normalized.length === 0) {
+    throw new Error('Nenhuma questão retornada após o refinamento.');
+  }
+
+  return normalized;
+}
+
