@@ -54,7 +54,13 @@ export default function QuizImportModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  const handleDeleteSingleQuestion = useCallback((indexToDelete: number) => {
+    setImportPreview((prev) => {
+      if (!prev) return null;
+      return prev.filter((_, idx) => idx !== indexToDelete);
+    });
+    triggerToast('Questão removida do preview.', 'info', 2000);
+  }, []);
 
   const mapParsedToQuestionItems = (items: Array<Record<string, unknown>>): QuestionItem[] => {
     return items.map((item, idx): QuestionItem => {
@@ -238,14 +244,6 @@ export default function QuizImportModal({
     }
   };
 
-  const handleDeleteSingleQuestion = useCallback((indexToDelete: number) => {
-    setImportPreview((prev) => {
-      if (!prev) return null;
-      return prev.filter((_, idx) => idx !== indexToDelete);
-    });
-    triggerToast('Questão removida do preview.', 'info', 2000);
-  }, []);
-
   const handleRefineQuestions = async (customInstruction?: string) => {
     const instruction = customInstruction || refinePrompt;
     if (!instruction.trim() || !importPreview || importPreview.length === 0) return;
@@ -282,6 +280,8 @@ export default function QuizImportModal({
       triggerToast(msg, 'error', 4000);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <Portal>
