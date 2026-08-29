@@ -280,20 +280,14 @@ Do NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
  */
 export function buildDocumentToQuizPrompt(
   documentContent: string,
-  fileType: 'markdown' | 'pdf',
-  gabaritoContext?: string
+  fileType: 'markdown' | 'pdf'
 ): string {
-  const gabaritoSection =
-    gabaritoContext && gabaritoContext.trim()
-      ? `\n\nANSWER KEY / GABARITO FOUND AT END OF DOCUMENT:\n"""\n${gabaritoContext.trim().slice(0, 25000)}\n"""\n`
-      : '';
-
   return `You are an expert pedagogical AI Assistant. Your task is to extract, clean, structure, and convert all exercise questions and study prompts from the following ${fileType.toUpperCase()} document into a strictly formatted JSON question battery.
 
 DOCUMENT CONTENT:
 """
-${documentContent.slice(0, 50000)}
-"""${gabaritoSection}
+${documentContent.trim()}
+"""
 
 EXTRACTION & ADAPTATION RULES:
 1. Identify all questions in the document (multiple-choice or open/discursive).
