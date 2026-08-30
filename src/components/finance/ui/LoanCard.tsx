@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownLeft, CheckCircle2, RotateCcw, Trash2, CreditCard, AlertTriangle, Clock, Calendar } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, CheckCircle2, RotateCcw, Trash2, CreditCard, AlertTriangle, Clock, Calendar, Edit2 } from 'lucide-react';
 import type { Transaction } from '../../../types';
 import { formatDateSafe } from './TransactionList';
 
@@ -8,6 +8,7 @@ interface LoanCardProps {
   onPay: (loan: Transaction) => void;
   onMarkAsPaid: (id: string) => void;
   onReopen: (id: string) => void;
+  onEdit: (loan: Transaction) => void;
   onDelete: (id: string) => void;
 }
 
@@ -65,6 +66,7 @@ export const LoanCard = React.memo(({
   onPay,
   onMarkAsPaid,
   onReopen,
+  onEdit,
   onDelete
 }: LoanCardProps) => {
   const isLoanMade = loan.type === 'loan_made';
@@ -201,13 +203,22 @@ export const LoanCard = React.memo(({
           )}
         </div>
 
-        <button
-          onClick={() => onDelete(loan.id)}
-          className="p-1.5 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-          title="Excluir"
-        >
-          <Trash2 size={15} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onEdit(loan)}
+            className="p-1.5 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors"
+            title="Editar Empréstimo"
+          >
+            <Edit2 size={15} />
+          </button>
+          <button
+            onClick={() => onDelete(loan.id)}
+            className="p-1.5 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+            title="Excluir"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
     </div>
   );

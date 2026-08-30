@@ -42,6 +42,7 @@ export default function FinanceView() {
   const [showAccountModal, setShowAccountModal] = useState(false);
 
   const [showTxModal, setShowTxModal] = useState(false);
+  const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlistToEdit, setWishlistToEdit] = useState<WishlistItem | null>(null);
   const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
@@ -71,6 +72,16 @@ export default function FinanceView() {
       const isCollapsed = prev[category] !== false;
       return { ...prev, [category]: !isCollapsed };
     });
+  };
+
+  const handleSaveTransaction = async (tx: Partial<Transaction>) => {
+    if (txToEdit) {
+      await updateTransaction(txToEdit.id, tx);
+    } else {
+      await createTransaction(tx);
+    }
+    setTxToEdit(null);
+    setShowTxModal(false);
   };
 
   const handleSaveWishlist = async (item: Partial<WishlistItem>) => {
@@ -134,7 +145,10 @@ export default function FinanceView() {
                 <span>Bancos ({accounts.length})</span>
               </button>
               <button
-                onClick={() => setShowTxModal(true)}
+                onClick={() => {
+                  setTxToEdit(null);
+                  setShowTxModal(true);
+                }}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-md shadow-brand-600/20"
               >
                 <Plus size={15} />
@@ -213,6 +227,10 @@ export default function FinanceView() {
                 transactions={transactions}
                 accounts={accounts}
                 selectedAccountId={selectedAccountId}
+                onEdit={(tx) => {
+                  setTxToEdit(tx);
+                  setShowTxModal(true);
+                }}
                 onDelete={handleDeleteRequested}
                 onPayLoan={setSelectedTxForPayment}
               />
@@ -221,10 +239,17 @@ export default function FinanceView() {
             {activeTab === 'loans' && (
               <LoansTab
                 loans={loansList}
-                onAddLoan={() => setShowTxModal(true)}
+                onAddLoan={() => {
+                  setTxToEdit(null);
+                  setShowTxModal(true);
+                }}
                 onPayLoan={setSelectedTxForPayment}
                 onMarkAsPaid={markLoanAsPaid}
                 onReopenLoan={reopenLoan}
+                onEditLoan={(loan) => {
+                  setTxToEdit(loan);
+                  setShowTxModal(true);
+                }}
                 onDeleteLoan={handleDeleteRequested}
               />
             )}
@@ -248,10 +273,14 @@ export default function FinanceView() {
 
       {showTxModal && (
         <TransactionModal
+          initialData={txToEdit}
           accounts={accounts}
           defaultAccountId={selectedAccountId !== 'all' ? selectedAccountId : undefined}
-          onClose={() => setShowTxModal(false)}
-          onSave={createTransaction}
+          onClose={() => {
+            setShowTxModal(false);
+            setTxToEdit(null);
+          }}
+          onSave={handleSaveTransaction}
         />
       )}
 

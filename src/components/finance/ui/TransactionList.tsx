@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Trash2, ArrowRight } from 'lucide-react';
+import { Trash2, ArrowRight, Edit2 } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
 
 const typeLabels: Record<string, { label: string; color: string }> = {
@@ -39,6 +39,7 @@ interface TransactionListProps {
   transactions: Transaction[];
   accounts?: Account[];
   selectedAccountId?: string | 'all';
+  onEdit?: (tx: Transaction) => void;
   onDelete: (id: string) => void;
   onPayLoan: (tx: Transaction) => void;
 }
@@ -47,6 +48,7 @@ export const TransactionList = React.memo(({
   transactions,
   accounts = [],
   selectedAccountId = 'all',
+  onEdit,
   onDelete,
   onPayLoan
 }: TransactionListProps) => {
@@ -176,9 +178,18 @@ export const TransactionList = React.memo(({
                             Pagar
                           </button>
                         )}
+                        {onEdit && (
+                          <button 
+                            onClick={() => onEdit(tx)}
+                            className="p-1 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded transition-colors"
+                            title="Editar Transação"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => onDelete(tx.id)}
-                          className="p-1 text-dark-subtext hover:text-rose-400 rounded transition-colors"
+                          className="p-1 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
                           title="Excluir"
                         >
                           <Trash2 size={15} />

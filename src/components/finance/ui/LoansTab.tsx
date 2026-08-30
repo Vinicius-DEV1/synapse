@@ -10,6 +10,7 @@ interface LoansTabProps {
   onPayLoan: (loan: Transaction) => void;
   onMarkAsPaid: (id: string) => void;
   onReopenLoan: (id: string) => void;
+  onEditLoan: (loan: Transaction) => void;
   onDeleteLoan: (id: string) => void;
 }
 
@@ -32,6 +33,7 @@ export function LoansTab({
   onPayLoan,
   onMarkAsPaid,
   onReopenLoan,
+  onEditLoan,
   onDeleteLoan
 }: LoansTabProps) {
   const [directionFilter, setDirectionFilter] = useState<'all' | 'loan_made' | 'loan_taken'>('all');
@@ -207,6 +209,7 @@ export function LoansTab({
               onPay={onPayLoan}
               onMarkAsPaid={onMarkAsPaid}
               onReopen={onReopenLoan}
+              onEdit={onEditLoan}
               onDelete={onDeleteLoan}
             />
           ))}

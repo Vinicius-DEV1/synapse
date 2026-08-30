@@ -7,6 +7,7 @@ import { formatDateSafe } from './ui/TransactionList';
 import { CategorySelect } from './ui/CategorySelect';
 
 interface TransactionModalProps {
+  initialData?: Transaction | null;
   onClose: () => void;
   onSave: (tx: Partial<Transaction>) => Promise<void>;
   defaultType?: TransactionType;
@@ -15,28 +16,38 @@ interface TransactionModalProps {
 }
 
 export default function TransactionModal({
+  initialData,
   onClose,
   onSave,
   defaultType = 'expense',
   accounts = [],
   defaultAccountId
 }: TransactionModalProps) {
-  const [type, setType] = useState<TransactionType>(defaultType);
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Geral');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [dueDate, setDueDate] = useState('');
+  const [type, setType] = useState<TransactionType>(initialData?.type || defaultType);
+  const [amount, setAmount] = useState(initialData?.amount ? String(initialData.amount) : '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [category, setCategory] = useState(initialData?.category || 'Geral');
+  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(initialData?.due_date || '');
   const [accountId, setAccountId] = useState<string>(
-    defaultAccountId || (accounts.length > 0 ? accounts[0].id : 'default-wallet')
+    initialData?.account_id || defaultAccountId || (accounts.length > 0 ? accounts[0].id : 'default-wallet')
   );
   const [destinationAccountId, setDestinationAccountId] = useState<string>(
-    accounts.length > 1 ? accounts[1].id : ''
+    initialData?.destination_account_id || (accounts.length > 1 ? accounts[1].id : '')
   );
   const [loading, setLoading] = useState(false);
 
   const isLoan = type === 'loan_made' || type === 'loan_taken';
   const isTransfer = type === 'transfer';
+  const isEditing = Boolean(initialData);
+
+  const modalTitle = isEditing
+    ? isLoan
+      ? 'Editar Empréstimo / Dívida'
+      : isTransfer
+      ? 'Editar Transferência'
+      : 'Editar Transação'
+    : 'Nova Transação';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +85,9 @@ export default function TransactionModal({
         due_date: isLoan && dueDate ? dueDate : null,
         account_id: accountId,
         destination_account_id: isTransfer ? destinationAccountId : null,
-        is_paid: isLoan ? 0 : 1,
-        status: isLoan ? 'in_progress' : 'completed',
+        is_paid: initialData?.is_paid !== undefined ? initialData.is_paid : (isLoan ? 0 : 1),
+        paid_amount: initialData?.paid_amount !== undefined ? initialData.paid_amount : 0,
+        status: initialData?.status || (isLoan ? 'in_progress' : 'completed'),
       });
       onClose();
     } catch (err: unknown) {
@@ -92,7 +104,7 @@ export default function TransactionModal({
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
         <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between p-3.5 border-b border-white/5">
-            <h2 className="text-base font-semibold text-dark-text">Nova Transação</h2>
+            <h2 className="text-base font-semibold text-dark-text">{modalTitle}</h2>
             <button onClick={onClose} className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors">
               <X size={18} />
             </button>
