@@ -2,6 +2,7 @@ import { X, Edit2, Trash2 } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import { DescriptionRenderer } from '../../ui/RichTextRenderer';
 import type { WishlistItem } from '../../../types';
+import { formatDateSafe } from './TransactionList';
 
 interface WishlistDetailsModalProps {
   item: WishlistItem | null;
@@ -59,7 +60,7 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
               <div className="flex flex-col">
                 <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Custo Estimado</span>
                 <span className="text-xl font-semibold text-brand-400">
-                  R$ {item.price?.toFixed(2) ?? '0.00'}
+                  R$ {Number(item.price || 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -80,7 +81,7 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
                 <div className="flex flex-col">
                   <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Data Esperada</span>
                   <span className="text-sm font-medium text-dark-text">
-                    {new Date(item.expected_date).toLocaleDateString('pt-BR')}
+                    {formatDateSafe(item.expected_date)}
                   </span>
                 </div>
               )}

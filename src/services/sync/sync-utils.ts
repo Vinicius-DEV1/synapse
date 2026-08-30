@@ -5,7 +5,7 @@ import { logFirebaseOp } from './sync-monitor';
 export const MODULE_TABLES: Record<string, string[]> = {
   core: ['config', 'ai_prompts'],
   notes: ['pages', 'page_history'],
-  finance: ['transactions', 'wishlist'],
+  finance: ['transactions', 'wishlist', 'finance_accounts'],
   library: [
     'library_books', 
     'library_highlights', 

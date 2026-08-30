@@ -9,6 +9,9 @@ describe('webFinanceApi (IndexedDB)', () => {
     const db = await getWebDb();
     await db.clear('transactions');
     await db.clear('wishlist');
+    try {
+      await db.clear('finance_accounts');
+    } catch {}
     api = webFinanceApi(db, () => 'tx_' + Math.random().toString(36).substring(2, 8));
   });
 
@@ -19,10 +22,12 @@ describe('webFinanceApi (IndexedDB)', () => {
       type: 'expense',
       category: 'Education',
       date: '2026-08-19',
+      account_id: 'default-wallet',
     });
 
     expect(tx.id).toBeDefined();
     expect(tx.amount).toBe(49.9);
+    expect(tx.account_id).toBe('default-wallet');
 
     let list = await api.getTransactions();
     expect(list).toHaveLength(1);
@@ -37,10 +42,33 @@ describe('webFinanceApi (IndexedDB)', () => {
     expect(list).toHaveLength(0);
   });
 
+  it('manages bank accounts properly', async () => {
+    const account = await api.createAccount({
+      name: 'Nubank',
+      color: '#8a05be',
+      initial_balance: 1500,
+    });
+
+    expect(account.id).toBeDefined();
+    expect(account.name).toBe('Nubank');
+
+    let accounts = await api.getAccounts();
+    expect(accounts.some((a: any) => a.name === 'Nubank')).toBe(true);
+
+    await api.updateAccount(account.id, { name: 'Nubank PJ' });
+    accounts = await api.getAccounts();
+    const updated = accounts.find((a: any) => a.id === account.id);
+    expect(updated?.name).toBe('Nubank PJ');
+
+    await api.deleteAccount(account.id);
+    accounts = await api.getAccounts();
+    expect(accounts.some((a: any) => a.id === account.id)).toBe(false);
+  });
+
   it('manages wishlist items properly', async () => {
     const item = await api.createWishlist({
       title: 'Mechanical Keyboard',
-      estimated_price: 350,
+      price: 350,
       priority: 'high',
     });
 

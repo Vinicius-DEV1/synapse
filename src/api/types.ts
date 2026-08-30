@@ -1,5 +1,5 @@
 import type { Page, PageHistoryEntry, PageMeta } from '../types/notes';
-import type { Transaction, WishlistItem } from '../types/finance';
+import type { Transaction, WishlistItem, Account } from '../types/finance';
 import type { CultureItem, CultureEpisode } from '../types/culture';
 import type {
   LibraryBook,
@@ -43,6 +43,10 @@ export interface FinanceApi {
   createWishlist: (item: Partial<WishlistItem>) => Promise<WishlistItem>;
   updateWishlist: (id: string, item: Partial<WishlistItem>) => Promise<{ success: boolean }>;
   deleteWishlist: (id: string) => Promise<boolean>;
+  getAccounts: () => Promise<Account[]>;
+  createAccount: (account: Partial<Account>) => Promise<Account>;
+  updateAccount: (id: string, account: Partial<Account>) => Promise<{ success: boolean }>;
+  deleteAccount: (id: string) => Promise<boolean>;
 }
 
 export interface CultureApi {

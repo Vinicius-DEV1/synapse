@@ -15,13 +15,27 @@ describe('FinanceView component', () => {
             type: 'income',
             category: 'Trabalho',
             date: new Date().toISOString(),
+            account_id: 'acc-1',
             is_paid: true,
           },
         ]),
         getWishlist: vi.fn().mockResolvedValue([]),
+        getAccounts: vi.fn().mockResolvedValue([
+          {
+            id: 'acc-1',
+            name: 'Carteira Principal',
+            color: '#10b981',
+            icon: 'wallet',
+            initial_balance: 0,
+            created_at: '2026-08-01',
+          }
+        ]),
         createTransaction: vi.fn(),
         updateTransaction: vi.fn(),
         deleteTransaction: vi.fn(),
+        createAccount: vi.fn(),
+        updateAccount: vi.fn(),
+        deleteAccount: vi.fn(),
       },
     };
   });
@@ -31,27 +45,35 @@ describe('FinanceView component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Visão Geral')).toBeInTheDocument();
-      expect(screen.getByText('Transações & Empréstimos')).toBeInTheDocument();
-      expect(screen.getByText('Desejos & Futuro')).toBeInTheDocument();
+      expect(screen.getByText(/Transações/i)).toBeInTheDocument();
+      expect(screen.getByText(/Empréstimos & Dívidas/i)).toBeInTheDocument();
+      expect(screen.getByText(/Desejos & Futuro/i)).toBeInTheDocument();
       expect(screen.getByText('Nova Transação')).toBeInTheDocument();
     });
   });
 
-  it('switches tabs to transactions and wishlist', async () => {
+  it('switches tabs to loans, transactions and wishlist', async () => {
     render(<FinanceView />);
 
     await waitFor(() => {
-      expect(screen.getByText('Desejos & Futuro')).toBeInTheDocument();
+      expect(screen.getByText(/Desejos & Futuro/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Desejos & Futuro'));
+    fireEvent.click(screen.getByText(/Desejos & Futuro/i));
     await waitFor(() => {
       expect(screen.getByText('Adicionar Desejo')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Transações & Empréstimos'));
+    fireEvent.click(screen.getByText(/Empréstimos & Dívidas/i));
     await waitFor(() => {
-      expect(screen.getByText('Nova Transação')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'A Receber' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'A Pagar (Dívidas)' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Transações/i));
+    await waitFor(() => {
+      expect(screen.getByText('Salário')).toBeInTheDocument();
     });
   });
 });
+

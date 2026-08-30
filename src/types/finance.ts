@@ -1,4 +1,15 @@
-export type TransactionType = 'income' | 'expense' | 'loan_made' | 'loan_taken';
+export type TransactionType = 'income' | 'expense' | 'loan_made' | 'loan_taken' | 'transfer';
+
+export interface Account {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  initial_balance: number;
+  created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+}
 
 export interface Transaction {
   id: string;
@@ -7,9 +18,13 @@ export interface Transaction {
   description: string;
   category: string;
   date: string;
+  due_date?: string | null;
   status: string;
   is_paid?: number;
   paid_amount?: number;
+  account_id?: string | null;
+  destination_account_id?: string | null;
+  linked_loan_id?: string | null;
   created_at: string;
 }
 
@@ -25,3 +40,4 @@ export interface WishlistItem {
   created_at: string;
   updated_at: string;
 }
+
