@@ -100,21 +100,26 @@ pub fn finance_add_account(
         account.id.clone()
     };
 
+    let name = account.name;
     let color = account.color.unwrap_or_else(|| "#10b981".to_string());
     let icon = account.icon.unwrap_or_else(|| "wallet".to_string());
     let initial_balance = account.initial_balance.unwrap_or(0.0);
 
     conn.execute(
         "INSERT INTO finance_accounts (id, name, color, icon, initial_balance) VALUES (?, ?, ?, ?, ?)",
-        params![id, account.name, color, icon, initial_balance],
+        params![id, name, color, icon, initial_balance],
     ).map_err(|e| e.to_string())?;
 
-    let mut ret = account;
-    ret.id = id;
-    ret.color = Some(color);
-    ret.icon = Some(icon);
-    ret.initial_balance = Some(initial_balance);
-    Ok(ret)
+    Ok(Account {
+        id,
+        name,
+        color: Some(color),
+        icon: Some(icon),
+        initial_balance: Some(initial_balance),
+        created_at: None,
+        updated_at: None,
+        deleted_at: None,
+    })
 }
 
 #[tauri::command]
