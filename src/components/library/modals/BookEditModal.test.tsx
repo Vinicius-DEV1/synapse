@@ -3,12 +3,12 @@ import { render, fireEvent, waitFor } from '@testing-library/react';
 import BookEditModal from './BookEditModal';
 import type { LibraryBook } from '../../types';
 
-vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="book-edit-portal">{children}</div>,
+vi.mock('../../ui/Portal', () => ({
+  Portal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('./ui/CoverPickerSection', () => ({
-  CoverPickerSection: () => <div data-testid="cover-picker-section">Capa</div>,
+vi.mock('../ui/CoverPickerSection', () => ({
+  CoverPickerSection: () => <div data-testid="cover-picker-section">Cover Picker</div>,
 }));
 
 describe('BookEditModal Component', () => {

@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import DictionaryModal from './DictionaryModal';
 
-vi.mock('../ui/Portal', () => ({
+vi.mock('../../ui/Portal', () => ({
   Portal: ({ children }: any) => <div data-testid="dict-portal">{children}</div>,
 }));
 
-vi.mock('../../utils/settings', () => ({
+vi.mock('../../../utils/settings', () => ({
   getSettings: vi.fn(() => ({
     dictionaryMode: 'offline',
     hasOfflineDictionary: true,
   })),
 }));
 
-vi.mock('./dictionary/useDictionaryQuery', () => ({
+vi.mock('../dictionary/useDictionaryQuery', () => ({
   useDictionaryQuery: vi.fn(() => ({
     loading: false,
     result: null,
@@ -31,7 +31,7 @@ vi.mock('./dictionary/useDictionaryQuery', () => ({
   })),
 }));
 
-vi.mock('./dictionary/DictionaryContent', () => ({
+vi.mock('../dictionary/DictionaryContent', () => ({
   DictionaryContent: ({ dictionaryData }: any) => (
     <div data-testid="dictionary-content">
       Palavra: {dictionaryData?.word}

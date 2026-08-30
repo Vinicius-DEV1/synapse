@@ -1,7 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
-import DictionaryModal from '../DictionaryModal';
+import DictionaryModal from '../modals/DictionaryModal';
 import { useEpub } from './EpubContext';
 import { useStore } from '../../../store/useStore';
 import { useEpubHighlightActions } from './hooks/useEpubHighlightActions';

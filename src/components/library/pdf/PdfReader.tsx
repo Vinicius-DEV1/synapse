@@ -75,8 +75,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [dictionaryTarget, setDictionaryTarget] = useState<{
     word: string;
     context?: string;
-    preloadedData?: any;
-    selection?: any;
+    preloadedData?: unknown;
+    selection?: unknown;
   } | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
@@ -113,9 +113,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           triggerToast('Arquivo PDF reanexado com sucesso!', 'success');
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao reanexar PDF:', err);
-      const msg = err.message || 'Falha ao vincular novo arquivo';
+      const msg = err instanceof Error ? err.message : 'Falha ao vincular novo arquivo';
       setReattachError(msg);
       triggerToast(msg, 'error');
     } finally {
@@ -129,9 +129,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       await window.api?.library?.deleteBook(book.id);
       triggerToast('Livro excluído da biblioteca.', 'info');
       onBack();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao excluir livro:', err);
-      triggerToast(err?.message || 'Erro ao excluir livro.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Erro ao excluir livro.', 'error');
       setIsDeleting(false);
     }
   };

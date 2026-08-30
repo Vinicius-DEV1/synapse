@@ -143,7 +143,6 @@ pub fn library_import_and_encrypt_book(
 pub fn library_get_book_file(
     id: String,
     db_state: State<'_, DbState>,
-    app_handle: tauri::AppHandle,
 ) -> Result<Vec<u8>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
@@ -156,43 +155,66 @@ pub fn library_get_book_file(
         )
         .ok();
 
-    let mut candidate_paths = Vec::new();
     let app_dir = crate::get_app_data_dir();
+    let library_dir = app_dir.join("library");
 
-    // 1. Direct candidates relative to get_app_data_dir
-    candidate_paths.push(app_dir.join(format!("library/{}.epub.enc", id)));
-    candidate_paths.push(app_dir.join(format!("library/{}.pdf.enc", id)));
-    candidate_paths.push(app_dir.join(format!("library/{}.epub", id)));
-    candidate_paths.push(app_dir.join(format!("library/{}.pdf", id)));
+    let mut candidate_paths = Vec::new();
+    candidate_paths.push(library_dir.join(format!("{}.epub.enc", id)));
+    candidate_paths.push(library_dir.join(format!("{}.pdf.enc", id)));
+    candidate_paths.push(library_dir.join(format!("{}.enc", id)));
+    candidate_paths.push(library_dir.join(format!("{}.epub", id)));
+    candidate_paths.push(library_dir.join(format!("{}.pdf", id)));
+
+    println!("[books.rs] library_get_book_file for {}: \n- file_path from DB: {:?}", id, file_path);
 
     if let Some(ref fp) = file_path {
         let clean = fp.replace("file://", "");
         let p = std::path::PathBuf::from(&clean);
         if p.is_absolute() {
-            candidate_paths.push(p.clone());
-            candidate_paths.push(std::path::PathBuf::from(format!("{}.enc", clean)));
+            candidate_paths.push(p);
         } else {
             candidate_paths.push(app_dir.join(&clean));
-            candidate_paths.push(app_dir.join(format!("{}.enc", clean)));
+            candidate_paths.push(library_dir.join(&clean));
         }
     }
 
-    // 2. Tauri AppData candidates
-    use tauri::Manager;
-    if let Ok(tauri_dir) = app_handle.path().app_data_dir() {
-        candidate_paths.push(tauri_dir.join(format!("library/{}.epub.enc", id)));
-        candidate_paths.push(tauri_dir.join(format!("library/{}.pdf.enc", id)));
-        if let Some(ref fp) = file_path {
-            let clean = fp.replace("file://", "");
-            candidate_paths.push(tauri_dir.join(&clean));
-        }
-    }
+    println!("[books.rs] candidate_paths: {:#?}", candidate_paths);
 
     for path in candidate_paths {
+        println!("[books.rs] checking candidate: {:?}", path);
         if path.exists() && path.is_file() {
-            if let Ok(bytes) = std::fs::read(&path) {
-                if !bytes.is_empty() {
-                    return Ok(bytes);
+            println!("[books.rs] -> candidate EXISTS!");
+            let is_enc1 = match std::fs::File::open(&path) {
+                Ok(mut f) => {
+                    use std::io::Read;
+                    let mut buf = [0u8; 4];
+                    f.read_exact(&mut buf).is_ok() && &buf == b"ENC1"
+                }
+                Err(_) => false,
+            };
+
+            if is_enc1 {
+                let keys_guard = db_state.keys.lock().unwrap();
+                let master_key = if let Some(keys) = keys_guard.as_ref() {
+                    if let Some(ref k) = keys.library {
+                        k.clone()
+                    } else {
+                        return Err("Library key not found".into());
+                    }
+                } else {
+                    return Err("Keys not unlocked".into());
+                };
+
+                let total_size = crate::crypto_stream::get_encrypted_file_size(&path)?;
+                if total_size > 0 {
+                    let decrypted = crate::crypto_stream::read_chunked_range(&path, &master_key, 0, total_size - 1)?;
+                    return Ok(decrypted.data);
+                }
+            } else {
+                if let Ok(bytes) = std::fs::read(&path) {
+                    if !bytes.is_empty() {
+                        return Ok(bytes);
+                    }
                 }
             }
         }
@@ -219,38 +241,38 @@ pub fn library_evict_book_local_cache(
         .ok();
 
     let app_dir = crate::get_app_data_dir();
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.epub.enc", id)));
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.pdf.enc", id)));
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.enc", id)));
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.epub", id)));
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}.pdf", id)));
-    let _ = std::fs::remove_file(app_dir.join(format!("library/{}", id)));
+    let library_dir = app_dir.join("library");
 
-    if let Some(std_data) = dirs::data_dir() {
-        let alt1 = std_data.join("caderno");
-        let alt2 = std_data.join("com.caderno.app");
-        for dir in [&alt1, &alt2] {
-            let _ = std::fs::remove_file(dir.join(format!("library/{}.epub.enc", id)));
-            let _ = std::fs::remove_file(dir.join(format!("library/{}.pdf.enc", id)));
-            let _ = std::fs::remove_file(dir.join(format!("library/{}.enc", id)));
-            let _ = std::fs::remove_file(dir.join(format!("library/{}.epub", id)));
-            let _ = std::fs::remove_file(dir.join(format!("library/{}.pdf", id)));
-            let _ = std::fs::remove_file(dir.join(format!("library/{}", id)));
-        }
-    }
+    println!("[books.rs] library_evict_book_local_cache for {} \n- app_dir: {:?}\n- library_dir: {:?}", id, app_dir, library_dir);
+
+    // Remove exact files from library directory
+    let _ = std::fs::remove_file(library_dir.join(format!("{}.epub.enc", id)));
+    let _ = std::fs::remove_file(library_dir.join(format!("{}.pdf.enc", id)));
+    let _ = std::fs::remove_file(library_dir.join(format!("{}.enc", id)));
+    let _ = std::fs::remove_file(library_dir.join(format!("{}.epub", id)));
+    let _ = std::fs::remove_file(library_dir.join(format!("{}.pdf", id)));
+    let _ = std::fs::remove_file(library_dir.join(&id));
+
+    println!("[books.rs] Default candidates deletion attempted.");
 
     if let Some(ref fp) = file_path {
+        println!("[books.rs] Evicting file_path from DB: {}", fp);
         let clean = fp.replace("file://", "");
         let p = std::path::PathBuf::from(&clean);
         if p.is_absolute() {
+            println!("[books.rs] Attempting absolute paths: {:?} and {}.enc", p, clean);
             let _ = std::fs::remove_file(&p);
             let _ = std::fs::remove_file(format!("{}.enc", clean));
         } else {
+            println!("[books.rs] Attempting relative paths against app_dir and library_dir");
             let _ = std::fs::remove_file(app_dir.join(&clean));
             let _ = std::fs::remove_file(app_dir.join(format!("{}.enc", clean)));
+            let _ = std::fs::remove_file(library_dir.join(&clean));
+            let _ = std::fs::remove_file(library_dir.join(format!("{}.enc", clean)));
         }
     }
 
+    println!("[books.rs] Updating library_books DB to set file_path = '', is_local = 0");
     let _ = conn.execute(
         "UPDATE library_books SET file_path = '', is_local = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         [&id],
