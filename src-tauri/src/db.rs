@@ -31,8 +31,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS library_ocr_cache (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, page_number INTEGER NOT NULL, text_content TEXT DEFAULT '', word_boxes TEXT DEFAULT '[]');
          CREATE TABLE IF NOT EXISTS library_reading_sessions (id TEXT PRIMARY KEY, book_id TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME DEFAULT NULL, pages_read INTEGER DEFAULT 0, start_page INTEGER DEFAULT 0, end_page INTEGER DEFAULT 0);
          
-         CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, description TEXT NOT NULL, amount REAL NOT NULL, type TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT 'completed', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, is_paid INTEGER DEFAULT 1, is_recurring INTEGER DEFAULT 0, recurrence_period TEXT, recurrence_end_date TEXT, paid_amount REAL);
+         CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, description TEXT NOT NULL, amount REAL NOT NULL, type TEXT NOT NULL, category TEXT NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT 'completed', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, is_paid INTEGER DEFAULT 1, is_recurring INTEGER DEFAULT 0, recurrence_period TEXT, recurrence_end_date TEXT, paid_amount REAL, due_date TEXT, account_id TEXT, destination_account_id TEXT, linked_loan_id TEXT);
          CREATE TABLE IF NOT EXISTS wishlist (id TEXT PRIMARY KEY, title TEXT NOT NULL, price REAL NOT NULL, priority TEXT DEFAULT 'medium', category TEXT DEFAULT 'Geral', expected_date TEXT, estimated_cost REAL NOT NULL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, description TEXT, link TEXT, updated_at DATETIME);
+         CREATE TABLE IF NOT EXISTS finance_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#10b981', icon TEXT DEFAULT 'wallet', initial_balance REAL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          
          CREATE TABLE IF NOT EXISTS pages (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT NOT NULL, content TEXT DEFAULT '', icon TEXT DEFAULT 'file', sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, cover_image TEXT, description TEXT, password_salt TEXT, crdt_state TEXT, encrypted_content TEXT, is_pinned INTEGER DEFAULT 0, pinned_order REAL DEFAULT 0.0, is_locked INTEGER DEFAULT 0);
          CREATE TABLE IF NOT EXISTS image_cache (id TEXT PRIMARY KEY, data BLOB NOT NULL, mimeType TEXT DEFAULT 'image/png');
@@ -123,6 +124,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
 
     // Dynamic table migrations for new subsystems
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN paid_amount REAL", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN due_date TEXT", []);
     let _ = conn.execute("ALTER TABLE wishlist ADD COLUMN updated_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);
 
@@ -245,6 +247,22 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_module TEXT", []);
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN source_id TEXT", []);
     let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN media_url TEXT", []);
+
+    // Migrations for Finance Accounts and Multi-Account Support
+    let _ = conn.execute("CREATE TABLE IF NOT EXISTS finance_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#10b981', icon TEXT DEFAULT 'wallet', initial_balance REAL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL)", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN due_date TEXT", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN account_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN destination_account_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN linked_loan_id TEXT", []);
+
+    let accounts_count: i64 = conn.query_row("SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL", [], |row| row.get(0)).unwrap_or(0);
+    if accounts_count == 0 {
+        let _ = conn.execute(
+            "INSERT INTO finance_accounts (id, name, color, icon, initial_balance) VALUES ('default-wallet', 'Carteira Principal', '#10b981', 'wallet', 0.0)",
+            [],
+        );
+    }
+    let _ = conn.execute("UPDATE transactions SET account_id = 'default-wallet' WHERE account_id IS NULL", []);
 
     Ok(conn)
 }

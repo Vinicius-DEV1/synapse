@@ -22,8 +22,9 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !price) {
-      triggerToast('Preencha o título e o valor estimado do item.', 'error');
+    const parsedPrice = parseFloat(price);
+    if (!title.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
+      triggerToast('Preencha o título e um valor estimado válido maior que zero.', 'error');
       return;
     }
     
@@ -31,16 +32,17 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
     try {
       await onSave({
         title: title.trim(),
-        price: parseFloat(price),
+        price: parsedPrice,
         priority,
-        category,
+        category: category.trim() || 'Geral',
         expected_date: expectedDate || null,
-        description: description || null,
+        description: description.trim() || null,
       });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar item na lista de desejos.';
       console.error(err);
-      triggerToast(err.message || 'Erro ao salvar item na lista de desejos.', 'error');
+      triggerToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -132,12 +134,13 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
                 <label className="block text-xs text-dark-subtext mb-1.5">Prioridade</label>
                 <select
                   value={priority}
-                  onChange={(e) => setPriority(e.target.value as any)}
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none"
+                  onChange={(e) => setPriority(e.target.value as WishlistItem['priority'])}
+                  style={{ colorScheme: 'dark' }}
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
                 >
-                  <option className="bg-dark-bg text-white" value="low">Baixa</option>
-                  <option className="bg-dark-bg text-white" value="medium">Média</option>
-                  <option className="bg-dark-bg text-white" value="high">Alta</option>
+                  <option className="bg-dark-bg text-dark-text" value="low">Baixa</option>
+                  <option className="bg-dark-bg text-dark-text" value="medium">Média</option>
+                  <option className="bg-dark-bg text-dark-text" value="high">Alta</option>
                 </select>
               </div>
             </div>

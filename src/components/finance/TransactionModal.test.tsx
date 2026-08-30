@@ -15,10 +15,12 @@ describe('TransactionModal Component', () => {
       <TransactionModal onClose={onClose} onSave={onSave} />
     );
 
-    const descInput = getByPlaceholderText('Ex: Salário, Supermercado...');
+    const descInput = getByPlaceholderText(/Supermercado/i);
+    const categoryInput = getByPlaceholderText(/Alimentação/i);
     const amountInput = getByPlaceholderText('0.00');
 
     fireEvent.change(descInput, { target: { value: 'Gasolina' } });
+    fireEvent.change(categoryInput, { target: { value: 'Transporte' } });
     fireEvent.change(amountInput, { target: { value: '250.00' } });
 
     const submitBtn = getByRole('button', { name: /^Salvar$/i });
@@ -30,6 +32,7 @@ describe('TransactionModal Component', () => {
           description: 'Gasolina',
           amount: 250,
           type: 'expense',
+          category: 'Transporte',
         })
       );
       expect(onClose).toHaveBeenCalled();

@@ -31,29 +31,113 @@ pub mod file_links;
 pub mod anki_fsrs;
 mod db;
 pub mod protocol_encrypted;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
 
-pub fn get_app_data_dir() -> std::path::PathBuf {
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(parent) = exe_path.parent() {
-            let local_data = parent.join("data");
-            if local_data.exists() {
-                let test_file = local_data.join(".write_test");
-                if std::fs::write(&test_file, b"test").is_ok() {
-                    let _ = std::fs::remove_file(&test_file);
-                    return local_data;
+static APP_DATA_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
+
+/// Copies all files and directories recursively from src to dst.
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
+        } else {
+            let target_file = dst.join(entry.file_name());
+            if !target_file.exists() {
+                let _ = std::fs::copy(entry.path(), target_file);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Automatically migrates data from the legacy data dir (~/.local/share/caderno) to canonical app_data_dir if needed.
+fn migrate_legacy_data_dir(canonical_dir: &std::path::Path) {
+    if let Some(data_dir) = dirs::data_dir() {
+        let legacy_dir = data_dir.join("caderno");
+        if legacy_dir.exists() && legacy_dir != canonical_dir {
+            let canonical_db = canonical_dir.join("caderno.sqlite");
+            let legacy_db = legacy_dir.join("caderno.sqlite");
+
+            if !canonical_db.exists() && legacy_db.exists() {
+                println!("[Migration] Migrando dados legados de {:?} para {:?}", legacy_dir, canonical_dir);
+                let _ = std::fs::create_dir_all(canonical_dir);
+                if let Ok(entries) = std::fs::read_dir(&legacy_dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        let target = canonical_dir.join(entry.file_name());
+                        if !target.exists() {
+                            if path.is_dir() {
+                                let _ = copy_dir_all(&path, &target);
+                            } else {
+                                let _ = std::fs::copy(&path, &target);
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
 
-    if let Some(data_dir) = dirs::data_dir() {
-        let p = data_dir.join("caderno");
-        let _ = std::fs::create_dir_all(&p);
-        return p;
+/// Initializes the Single Source of Truth directory path for the app.
+pub fn init_app_data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
+    let dir = APP_DATA_DIR.get_or_init(|| {
+        // 1. Portable Mode: ./data alongside the binary
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(parent) = exe_path.parent() {
+                let local_data = parent.join("data");
+                if local_data.exists() {
+                    let test_file = local_data.join(".write_test");
+                    if std::fs::write(&test_file, b"test").is_ok() {
+                        let _ = std::fs::remove_file(&test_file);
+                        return local_data;
+                    }
+                }
+            }
+        }
+
+        // 2. Canonical Tauri App Data Dir
+        if let Ok(p) = app.path().app_data_dir() {
+            let _ = std::fs::create_dir_all(&p);
+            return p;
+        }
+
+        // 3. Fallback
+        if let Some(data_dir) = dirs::data_dir() {
+            let p = data_dir.join("com.caderno.app");
+            let _ = std::fs::create_dir_all(&p);
+            return p;
+        }
+
+        std::path::PathBuf::from("data")
+    });
+    dir.clone()
+}
+
+/// Returns the Single Source of Truth canonical data directory.
+pub fn get_app_data_dir() -> std::path::PathBuf {
+    if let Some(dir) = APP_DATA_DIR.get() {
+        return dir.clone();
     }
-
+    // Fallback if accessed before setup initialization
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            let local_data = parent.join("data");
+            if local_data.exists() {
+                return local_data;
+            }
+        }
+    }
+    if let Some(config_dir) = dirs::config_dir() {
+        return config_dir.join("com.caderno.app");
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        return data_dir.join("com.caderno.app");
+    }
     std::path::PathBuf::from("data")
 }
 
@@ -68,7 +152,8 @@ pub fn run() {
             protocol_encrypted::handle_encrypted_protocol(ctx.app_handle(), req)
         })
         .setup(|app| {
-            let app_data_dir = get_app_data_dir();
+            let app_data_dir = init_app_data_dir(app.handle());
+            migrate_legacy_data_dir(&app_data_dir);
             std::fs::create_dir_all(&app_data_dir).unwrap();
 
             let db_path = app_data_dir.join("caderno.sqlite");
@@ -101,6 +186,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            cmd_auth::get_base_dir,
             cmd_auth::auth_status,
             cmd_auth::auth_login,
             cmd_auth::auth_setup,
@@ -127,6 +213,10 @@ pub fn run() {
             cmd_finance::finance_add_wishlist,
             cmd_finance::finance_update_wishlist,
             cmd_finance::finance_delete_wishlist,
+            cmd_finance::finance_get_accounts,
+            cmd_finance::finance_add_account,
+            cmd_finance::finance_update_account,
+            cmd_finance::finance_delete_account,
             cmd_calendar::calendar_get_events,
             cmd_calendar::calendar_add_event,
             cmd_calendar::calendar_update_event,
