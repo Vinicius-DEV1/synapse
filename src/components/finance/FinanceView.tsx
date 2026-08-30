@@ -13,6 +13,7 @@ import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
 import { WishlistDetailsModal } from './ui/WishlistDetailsModal';
 import { AccountManagerModal } from './ui/AccountManagerModal';
+import { DeleteTransactionModal } from './ui/DeleteTransactionModal';
 import { calculateAccountBalance } from './ui/AccountCards';
 
 export default function FinanceView() {
@@ -45,6 +46,20 @@ export default function FinanceView() {
   const [wishlistToEdit, setWishlistToEdit] = useState<WishlistItem | null>(null);
   const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
   const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
+
+  const handleDeleteRequested = (idOrTx: string | Transaction) => {
+    if (typeof idOrTx === 'string') {
+      const found = transactions.find((t) => t.id === idOrTx);
+      if (found) {
+        setTxToDelete(found);
+      } else {
+        deleteTransaction(idOrTx);
+      }
+    } else {
+      setTxToDelete(idOrTx);
+    }
+  };
 
   const [collapsedCategories, setCollapsedCategories] = useLocalStorage<Record<string, boolean>>(
     STORAGE_KEYS.FINANCE_COLLAPSED_CATEGORIES,
@@ -242,7 +257,7 @@ export default function FinanceView() {
                 transactions={transactions}
                 accounts={accounts}
                 selectedAccountId={selectedAccountId}
-                onDelete={deleteTransaction}
+                onDelete={handleDeleteRequested}
                 onPayLoan={setSelectedTxForPayment}
               />
             )}
@@ -254,7 +269,7 @@ export default function FinanceView() {
                 onPayLoan={setSelectedTxForPayment}
                 onMarkAsPaid={markLoanAsPaid}
                 onReopenLoan={reopenLoan}
-                onDeleteLoan={deleteTransaction}
+                onDeleteLoan={handleDeleteRequested}
               />
             )}
 
@@ -312,6 +327,14 @@ export default function FinanceView() {
           onCreateAccount={createAccount}
           onUpdateAccount={updateAccount}
           onDeleteAccount={deleteAccount}
+        />
+      )}
+
+      {txToDelete && (
+        <DeleteTransactionModal
+          transaction={txToDelete}
+          onClose={() => setTxToDelete(null)}
+          onConfirm={deleteTransaction}
         />
       )}
 

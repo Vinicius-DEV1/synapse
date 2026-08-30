@@ -3,9 +3,11 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Account {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
     pub color: Option<String>,
     pub icon: Option<String>,
@@ -15,14 +17,19 @@ pub struct Account {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Transaction {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub amount: f64,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: String,
+    #[serde(default)]
     pub category: String,
+    #[serde(default)]
     pub date: String,
     pub status: Option<String>,
     pub is_paid: Option<i32>,
@@ -36,11 +43,15 @@ pub struct Transaction {
     pub created_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct WishlistItem {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub price: f64,
+    #[serde(default)]
     pub priority: String,
     pub category: Option<String>,
     pub expected_date: Option<String>,
