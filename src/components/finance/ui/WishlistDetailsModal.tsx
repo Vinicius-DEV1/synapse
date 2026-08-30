@@ -77,14 +77,12 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
                   {item.priority === 'high' ? 'Alta' : item.priority === 'medium' ? 'Média' : 'Baixa'}
                 </span>
               </div>
-              {item.expected_date && (
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Data Esperada</span>
-                  <span className="text-sm font-medium text-dark-text">
-                    {formatDateSafe(item.expected_date)}
-                  </span>
-                </div>
-              )}
+              <div className="flex flex-col">
+                <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Data Esperada</span>
+                <span className={`text-sm font-medium ${item.expected_date ? 'text-dark-text' : 'text-dark-subtext italic'}`}>
+                  {item.expected_date ? formatDateSafe(item.expected_date) : 'Não definida'}
+                </span>
+              </div>
             </div>
 
             <div className="border-t border-white/5 pt-4">
