@@ -27,7 +27,7 @@ export const sanitizeExpectedAnswer = (text: string): string => {
 
 export function cleanJsonBlock(text: string): string {
   let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const match = /{[\s\S]*}/.exec(clean);
+  const match = /(?:{[\s\S]*}|\[[\s\S]*\])/.exec(clean);
   if (match) {
     clean = match[0];
   }

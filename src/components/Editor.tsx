@@ -242,7 +242,7 @@ export default function Editor({
         }
       }
     }
-  }, [pageId, editor]);
+  }, [pageId, editor, effectiveCrdtState, initialContent]);
 
   return (
     <div

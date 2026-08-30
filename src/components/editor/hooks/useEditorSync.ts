@@ -130,8 +130,9 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   // 4. Flush pending changes on unmount
   useEffect(() => {
     return () => {
+      const saveFn = onSaveRef.current;
       if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        const result = onSaveRef.current(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId) as any;
+        const result = saveFn(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId) as any;
         if (result && typeof result.catch === 'function') {
           result.catch((err: any) => {
             console.error(`[Caderno:Flush] Falha ao persistir alterações no unmount de ${pageId}:`, err);

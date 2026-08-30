@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildEncryptedAssetUrl, findLocalCanonicalPath, resolveCanonicalBuffer } from './canonical-resolver';
+import { buildEncryptedAssetUrl, resolveCanonicalBuffer } from './canonical-resolver';
 import * as drive from '../drive';
 import * as storage from '../storage';
 import { platform } from '../platform';
@@ -11,6 +11,21 @@ vi.mock('../drive', () => ({
 
 vi.mock('../storage', () => ({
   decryptFile: vi.fn().mockImplementation((buf) => Promise.resolve(buf)),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  appDataDir: vi.fn().mockResolvedValue('/mock-data-dir'),
+  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+}));
+
+vi.mock('../../api/tauri/path', () => ({
+  getBaseAppDir: vi.fn().mockResolvedValue('/mock-data-dir'),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  exists: vi.fn().mockResolvedValue(true),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../platform', () => ({
@@ -45,7 +60,7 @@ describe('canonical-resolver', () => {
     });
 
     expect(buffer).toBeInstanceOf(ArrayBuffer);
-    expect(drive.downloadFromDrive).toHaveBeenCalledWith('test-token', 'drive-file-abc');
+    expect(drive.downloadFromDrive).toHaveBeenCalledWith('test-token', 'drive-file-abc', expect.any(Function));
   });
 
   it('resolves buffer via stream on desktop without drive', async () => {

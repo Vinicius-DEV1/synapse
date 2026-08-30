@@ -28,9 +28,10 @@ export async function findLocalCanonicalPath(
   }
 
   try {
-    const { appDataDir, join } = await import('@tauri-apps/api/path');
+    const { getBaseAppDir } = await import('../../api/tauri/path');
+    const { join } = await import('@tauri-apps/api/path');
     const { exists } = await import('@tauri-apps/plugin-fs');
-    const dataDir = await appDataDir();
+    const dataDir = await getBaseAppDir();
 
     const candidates: string[] = [];
 
@@ -41,6 +42,8 @@ export async function findLocalCanonicalPath(
     }
     candidates.push(await join(dataDir, moduleName, `${id}.enc`));
     candidates.push(await join(dataDir, moduleName, id));
+
+    console.log(`[CanonicalResolver] Candidatos iniciais para ${moduleName}/${id}:`, candidates);
 
     // 2. Candidates derived from savedPath (if present)
     if (savedPath && !savedPath.startsWith('drive:') && !savedPath.startsWith('http')) {
@@ -64,13 +67,21 @@ export async function findLocalCanonicalPath(
       }
     }
 
+    console.log(`[CanonicalResolver] Lista final de candidatos:`, candidates);
+
     // Returns the first existing candidate path
     for (const candidate of candidates) {
       try {
+        console.log(`[CanonicalResolver] Verificando existência de: ${candidate}`);
         if (await exists(candidate)) {
+          console.log(`[CanonicalResolver] => ARQUIVO ENCONTRADO NO DISCO: ${candidate}`);
           return candidate;
+        } else {
+          console.log(`[CanonicalResolver] -> Não encontrado: ${candidate}`);
         }
-      } catch {}
+      } catch (e) {
+        console.log(`[CanonicalResolver] -> Erro ao verificar ${candidate}:`, e);
+      }
     }
   } catch (err) {
     console.warn(`[CanonicalResolver] Erro ao verificar caminhos locais para ${moduleName}/${id}:`, err);
@@ -117,33 +128,49 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
 
   // 1. Attempt local resolution
   if (platform.canReadLocalFilesystem) {
+    console.log(`[CanonicalResolver] Iniciando busca local para ${moduleName}/${id}`);
     const localFound = await findLocalCanonicalPath(moduleName, id, savedPath, extHint);
     if (localFound) {
+      console.log(`[CanonicalResolver] Encontrado caminho local: ${localFound}`);
       const assetUrl = buildEncryptedAssetUrl(moduleName, localFound);
+      console.log(`[CanonicalResolver] Asset URL gerada: ${assetUrl}`);
       arrayBuffer = await fetchEncryptedStreamBuffer(assetUrl);
+      if (arrayBuffer) {
+         console.log(`[CanonicalResolver] Stream carregado via custom protocol com sucesso! (Tamanho: ${arrayBuffer.byteLength} bytes)`);
+      } else {
+         console.log(`[CanonicalResolver] FALHA ao carregar via custom protocol (retornou null).`);
+      }
       if (arrayBuffer && onUpdateSavedPath) {
         const canonicalRelPath = extHint ? `${moduleName}/${id}.${extHint}.enc` : `${moduleName}/${id}.enc`;
         onUpdateSavedPath(canonicalRelPath);
       }
+    } else {
+      console.log(`[CanonicalResolver] Nenhum caminho local válido encontrado para ${moduleName}/${id}`);
     }
   }
 
   // 2. Fallback: getBookFile nativo se for biblioteca
   if (!arrayBuffer && moduleName === 'library' && window.api?.library?.getBookFile) {
+    console.log(`[CanonicalResolver] arrayBuffer vazio, acionando Fallback nativo: getBookFile(${id})`);
     try {
       const res = await window.api.library.getBookFile(id);
       if (res) {
+        console.log(`[CanonicalResolver] Fallback getBookFile retornou dados!`);
         if ((res as unknown) instanceof ArrayBuffer) {
           arrayBuffer = res as any;
+          console.log(`[CanonicalResolver] Fallback getBookFile arrayBuffer (Tamanho: ${arrayBuffer?.byteLength})`);
         } else if (typeof res === 'string') {
           const binaryString = atob(res);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
           arrayBuffer = bytes.buffer;
+          console.log(`[CanonicalResolver] Fallback getBookFile convertido de string (Tamanho: ${arrayBuffer?.byteLength})`);
         }
         if (arrayBuffer && onUpdateSavedPath && (!savedPath || savedPath.startsWith('drive:'))) {
           onUpdateSavedPath(`indexeddb://${id}`);
         }
+      } else {
+        console.log(`[CanonicalResolver] Fallback getBookFile retornou NULL.`);
       }
     } catch (apiErr) {
       console.warn(`[CanonicalResolver] Fallback getBookFile falhou:`, apiErr);
@@ -167,9 +194,10 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
     // Desktop canonical local cache
     if (platform.canReadLocalFilesystem) {
       try {
-        const { appDataDir, join } = await import('@tauri-apps/api/path');
+        const { getBaseAppDir } = await import('../../api/tauri/path');
+        const { join } = await import('@tauri-apps/api/path');
         const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-        const dataDir = await appDataDir();
+        const dataDir = await getBaseAppDir();
         const moduleDir = await join(dataDir, moduleName);
         if (!await exists(moduleDir)) {
           await mkdir(moduleDir, { recursive: true });

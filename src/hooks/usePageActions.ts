@@ -4,6 +4,7 @@ import type { Page } from '../types';
 import { getEditorBackupMap } from '../components/editor/hooks/editorBackupStore';
 import { triggerToast } from '../components/ui/ToastContext';
 import { broadcastPageSaved } from '../services/page-broadcast';
+import { exportPageFile, importPageFile } from '../utils/pageTransferUtils';
 
 export function usePageActions() {
   const { state, dispatch } = useStore();
@@ -17,9 +18,9 @@ export function usePageActions() {
         if (parentId) {
           dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao criar página:', err);
-        triggerToast(err.message || 'Erro ao criar nova página', 'error');
+        triggerToast(err instanceof Error ? err.message : 'Erro ao criar nova página', 'error');
       }
     }
   }, [dispatch]);
@@ -32,9 +33,9 @@ export function usePageActions() {
         page.title = title;
         dispatch({ type: 'ADD_PAGE', page });
         return page.id;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao criar página vinculada:', err);
-        triggerToast(err.message || 'Erro ao criar página vinculada', 'error');
+        triggerToast(err instanceof Error ? err.message : 'Erro ao criar página vinculada', 'error');
       }
     }
     return '';
@@ -85,9 +86,9 @@ export function usePageActions() {
         // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
         triggerToast('Página movida para a lixeira.', 'info');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao excluir página:', err);
-        triggerToast(err.message || 'Erro ao excluir página', 'error');
+        triggerToast(err instanceof Error ? err.message : 'Erro ao excluir página', 'error');
       } finally {
         dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
       }
@@ -104,9 +105,9 @@ export function usePageActions() {
       try {
         await window.api.updatePage({ id, ...updates });
         dispatch({ type: 'UPDATE_PAGE', page: { id, ...updates } });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao atualizar página:', err);
-        triggerToast(err.message || 'Erro ao atualizar página', 'error');
+        triggerToast(err instanceof Error ? err.message : 'Erro ao atualizar página', 'error');
       }
     }
   }, [dispatch, state.pages]);
@@ -138,108 +139,30 @@ export function usePageActions() {
         } else {
            window.dispatchEvent(new CustomEvent('app-sync-trigger'));
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao salvar conteúdo da página:', err);
       }
     }
   }, [state.pages]);
 
   const handleExportPage = useCallback(async (id: string) => {
-    if (window.api) {
-      try {
-        const pages = await window.api.sync.getTable('pages');
-        const page = pages.find((p: any) => p.id === id);
-        if (!page) {
-          triggerToast('Página não encontrada para exportação.', 'error');
-          return;
-        }
-
-        // Remove non-exportable fields (id, parent_id, local timestamps)
-        const exportData = {
-          title: page.title,
-          content: page.content,
-          crdt_state: page.crdt_state,
-          icon: page.icon,
-          is_pinned: page.is_pinned,
-          _type: 'caderno_page_export',
-          _version: 1
-        };
-
-        const jsonString = JSON.stringify(exportData, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const safeTitle = (page.title || 'Nova Pagina').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        a.download = `${safeTitle}.caderno`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        triggerToast('Página exportada com sucesso!', 'success');
-      } catch (err: any) {
-        console.error('Erro ao exportar página:', err);
-        triggerToast(err.message || 'Falha ao exportar página.', 'error');
-      }
-    }
+    await exportPageFile(id);
   }, []);
 
   const handleImportPage = useCallback(async (parentId: string | null) => {
-    if (!window.api) return;
-
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.caderno,.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        if (data._type !== 'caderno_page_export' && !data.crdt_state && !data.content) {
-          triggerToast('Formato de arquivo inválido para importação de página.', 'error');
-          return;
-        }
-
-        // Create new page in database (with parentId if present)
-        const newPage = await window.api.createPage({ parentId });
-        
-        // Update created page with imported data
-        const updates: Partial<Page> = {
-          title: data.title || 'Página Importada',
-          content: data.content || '',
-          crdt_state: data.crdt_state || null,
-          icon: data.icon || '📄',
-        };
-
-        await window.api.updatePage({ id: newPage.id, ...updates });
-        
-        // Update global store state
-        const completePage = { ...newPage, ...updates };
-        dispatch({ type: 'ADD_PAGE', page: completePage });
-        dispatch({ type: 'NAVIGATE_IN_TAB', pageId: newPage.id });
-        
-        if (parentId) {
-          dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
-        }
-
-        // Trigger cloud sync dispatch
-        if (window.api.onSyncTrigger) {
-           // handled by preload
-        } else {
-           window.dispatchEvent(new CustomEvent('app-sync-trigger'));
-        }
-
-        triggerToast(`Página "${updates.title}" importada com sucesso!`, 'success');
-      } catch (err: any) {
-        console.error('Erro ao importar página:', err);
-        triggerToast(err.message || 'Falha ao importar página: Arquivo inválido ou corrompido.', 'error');
+    importPageFile(parentId, (completePage, newPageId) => {
+      dispatch({ type: 'ADD_PAGE', page: completePage });
+      dispatch({ type: 'NAVIGATE_IN_TAB', pageId: newPageId });
+      
+      if (parentId) {
+        dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
       }
-    };
-    input.click();
-  }, [dispatch, state.expandedNodes]);
+
+      if (!window.api?.onSyncTrigger) {
+         window.dispatchEvent(new CustomEvent('app-sync-trigger'));
+      }
+    });
+  }, [dispatch]);
 
   return {
     handleCreatePage,
