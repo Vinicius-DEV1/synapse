@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { LayoutDashboard, ArrowRightLeft, Scale, Gift, Plus, Loader2, Building2 } from 'lucide-react';
 import type { Transaction, WishlistItem } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
 import PaymentModal from './PaymentModal';
 import { useFinance } from './hooks/useFinance';
+import { useFinanceMetrics } from './hooks/useFinanceMetrics';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { STORAGE_KEYS } from '../../utils/constants';
 import { DashboardMetrics } from './ui/DashboardMetrics';
@@ -14,7 +15,6 @@ import { WishlistTab } from './ui/WishlistTab';
 import { WishlistDetailsModal } from './ui/WishlistDetailsModal';
 import { AccountManagerModal } from './ui/AccountManagerModal';
 import { DeleteTransactionModal } from './ui/DeleteTransactionModal';
-import { calculateAccountBalance } from './ui/AccountCards';
 
 export default function FinanceView() {
   const {
@@ -91,55 +91,11 @@ export default function FinanceView() {
   };
 
   // Dashboard calculations with account awareness
-  const { totalIncome, totalExpense, balance, loansList, regularTransactions } = useMemo(() => {
-    let inc = 0;
-    let exp = 0;
-
-    const filtered = selectedAccountId === 'all'
-      ? transactions
-      : transactions.filter(t => (t.account_id || 'default-wallet') === selectedAccountId || t.destination_account_id === selectedAccountId);
-
-    for (const t of filtered) {
-      const amount = Number(t.amount || 0);
-      const accId = t.account_id || 'default-wallet';
-
-      if (t.type === 'income') {
-        if (selectedAccountId === 'all' || accId === selectedAccountId) {
-          inc += amount;
-        }
-      } else if (t.type === 'expense') {
-        if (selectedAccountId === 'all' || accId === selectedAccountId) {
-          exp += amount;
-        }
-      } else if (t.type === 'transfer' && selectedAccountId !== 'all') {
-        if (t.destination_account_id === selectedAccountId) {
-          inc += amount;
-        }
-        if (accId === selectedAccountId) {
-          exp += amount;
-        }
-      }
-    }
-
-    let calculatedBalance = 0;
-    if (selectedAccountId === 'all') {
-      calculatedBalance = accounts.reduce((sum, acc) => sum + calculateAccountBalance(acc, transactions), 0);
-    } else {
-      const targetAcc = accounts.find(a => a.id === selectedAccountId);
-      calculatedBalance = targetAcc ? calculateAccountBalance(targetAcc, transactions) : (inc - exp);
-    }
-
-    const loans = transactions.filter((t) => t.type === 'loan_made' || t.type === 'loan_taken');
-    const regulars = transactions.filter((t) => t.type === 'income' || t.type === 'expense' || t.type === 'transfer');
-
-    return {
-      totalIncome: inc,
-      totalExpense: exp,
-      balance: calculatedBalance,
-      loansList: loans,
-      regularTransactions: regulars
-    };
-  }, [transactions, accounts, selectedAccountId]);
+  const { totalIncome, totalExpense, balance, loansList, regularTransactions } = useFinanceMetrics({
+    transactions,
+    accounts,
+    selectedAccountId,
+  });
 
   if (isLoading) {
     return (
