@@ -25,6 +25,7 @@ pub struct Transaction {
     pub description: String,
     #[serde(default)]
     pub amount: f64,
+    pub expected_amount: Option<f64>,
     #[serde(rename = "type", default)]
     pub type_: String,
     #[serde(default)]
@@ -176,7 +177,7 @@ pub fn finance_get_transactions(db_state: State<'_, DbState>) -> Result<Vec<Tran
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, description, amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id, created_at 
+        "SELECT id, description, amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id, created_at, expected_amount 
          FROM transactions 
          WHERE deleted_at IS NULL 
          ORDER BY date DESC, created_at DESC"
@@ -201,6 +202,7 @@ pub fn finance_get_transactions(db_state: State<'_, DbState>) -> Result<Vec<Tran
                 destination_account_id: row.get(13)?,
                 linked_loan_id: row.get(14)?,
                 created_at: row.get(15)?,
+                expected_amount: row.get(16)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -236,12 +238,13 @@ pub fn finance_add_transaction(
     let created_at = transaction.created_at.clone().unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
     conn.execute(
-        "INSERT INTO transactions (id, description, amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (id, description, amount, expected_amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id, created_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             id,
             transaction.description,
             transaction.amount,
+            transaction.expected_amount,
             transaction.type_,
             transaction.category,
             transaction.date,
@@ -284,11 +287,12 @@ pub fn finance_update_transaction(
 
     let count = conn.execute(
         "UPDATE transactions 
-         SET description = ?, amount = ?, type = ?, category = ?, date = ?, status = ?, is_paid = ?, paid_amount = ?, is_recurring = ?, recurrence_period = ?, due_date = ?, account_id = ?, destination_account_id = ?, linked_loan_id = ?, updated_at = CURRENT_TIMESTAMP 
+         SET description = ?, amount = ?, expected_amount = ?, type = ?, category = ?, date = ?, status = ?, is_paid = ?, paid_amount = ?, is_recurring = ?, recurrence_period = ?, due_date = ?, account_id = ?, destination_account_id = ?, linked_loan_id = ?, updated_at = CURRENT_TIMESTAMP 
          WHERE id = ?",
         params![
             transaction.description,
             transaction.amount,
+            transaction.expected_amount,
             transaction.type_,
             transaction.category,
             transaction.date,

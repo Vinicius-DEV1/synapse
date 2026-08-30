@@ -15,6 +15,7 @@ export interface Transaction {
   id: string;
   type: TransactionType;
   amount: number;
+  expected_amount?: number | null;
   description: string;
   category: string;
   date: string;

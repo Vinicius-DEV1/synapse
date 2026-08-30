@@ -14,9 +14,9 @@ export const LoanSummaryCards = React.memo(({ loans }: LoanSummaryCardsProps) =>
     let completed = 0;
 
     for (const loan of loans) {
-      const isPaid = Boolean(loan.is_paid);
-      const total = Number(loan.amount || 0);
+      const total = Number(loan.expected_amount || loan.amount || 0);
       const paid = Number(loan.paid_amount || 0);
+      const isPaid = Boolean(loan.is_paid) || (total > 0 && paid >= total - 0.001);
       const pending = Math.max(0, total - paid);
 
       if (isPaid) {

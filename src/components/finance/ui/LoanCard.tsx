@@ -70,7 +70,9 @@ export const LoanCard = React.memo(({
   onDelete
 }: LoanCardProps) => {
   const isLoanMade = loan.type === 'loan_made';
-  const total = Number(loan.amount || 0);
+  const principal = Number(loan.amount || 0);
+  const total = Number(loan.expected_amount || loan.amount || 0);
+  const hasInterest = Boolean(loan.expected_amount && loan.expected_amount > 0 && Math.abs(loan.expected_amount - principal) > 0.001);
   const paid = Number(loan.paid_amount || 0);
   const isPaid = Boolean(loan.is_paid) || (total > 0 && paid >= total - 0.001);
   const pending = Math.max(0, total - paid);
@@ -96,16 +98,24 @@ export const LoanCard = React.memo(({
           </div>
           <div>
             <h3 className="font-semibold text-dark-text text-sm sm:text-base">{loan.description}</h3>
-            <div className="flex items-center gap-2 text-xs text-dark-subtext mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-dark-subtext mt-0.5">
               <span>{formatDateSafe(loan.date)}</span>
               <span>•</span>
               <span className="bg-white/5 text-dark-text px-1.5 py-0.5 rounded text-[11px]">
                 {loan.category || 'Geral'}
               </span>
               <span>•</span>
-              <span className={isLoanMade ? 'text-amber-400' : 'text-indigo-400'}>
+              <span className={isLoanMade ? 'text-amber-400 font-medium' : 'text-indigo-400 font-medium'}>
                 {isLoanMade ? 'Emprestei (A Receber)' : 'Peguei Emprestado (Dívida)'}
               </span>
+              {hasInterest && (
+                <>
+                  <span>•</span>
+                  <span className="text-[11px] text-amber-300 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                    Principal: R$ {principal.toFixed(2)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -147,6 +157,7 @@ export const LoanCard = React.memo(({
         <div className="flex justify-between items-center text-xs mb-1.5">
           <span className="text-dark-subtext">
             Pago: <strong className="text-dark-text font-semibold">R$ {paid.toFixed(2)}</strong> de R$ {total.toFixed(2)}
+            {hasInterest && <span className="text-[10px] text-amber-400/80 ml-1 font-medium">(c/ juros)</span>}
           </span>
           <span className="font-semibold">
             {isPaid ? (
