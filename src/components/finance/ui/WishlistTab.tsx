@@ -94,7 +94,7 @@ export function WishlistTab({
                             </span>
                             {item.expected_date && (
                               <span
-                                className="hidden sm:flex items-center gap-1 text-[11px] text-dark-subtext flex-shrink-0"
+                                className="flex items-center gap-1 text-[11px] text-dark-subtext flex-shrink-0 bg-white/5 px-1.5 py-0.5 rounded border border-white/5"
                                 title={`Meta: ${formatDateSafe(item.expected_date)}`}
                               >
                                 <Calendar size={11} className="text-dark-subtext/70" />
