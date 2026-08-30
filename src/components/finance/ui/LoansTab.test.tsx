@@ -37,6 +37,7 @@ describe('LoansTab component', () => {
     const onPayLoan = vi.fn();
     const onMarkAsPaid = vi.fn();
     const onReopenLoan = vi.fn();
+    const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
     render(
@@ -46,6 +47,7 @@ describe('LoansTab component', () => {
         onPayLoan={onPayLoan}
         onMarkAsPaid={onMarkAsPaid}
         onReopenLoan={onReopenLoan}
+        onEditLoan={onEditLoan}
         onDeleteLoan={onDeleteLoan}
       />
     );
@@ -65,6 +67,7 @@ describe('LoansTab component', () => {
     const onPayLoan = vi.fn();
     const onMarkAsPaid = vi.fn();
     const onReopenLoan = vi.fn();
+    const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
     render(
@@ -74,6 +77,7 @@ describe('LoansTab component', () => {
         onPayLoan={onPayLoan}
         onMarkAsPaid={onMarkAsPaid}
         onReopenLoan={onReopenLoan}
+        onEditLoan={onEditLoan}
         onDeleteLoan={onDeleteLoan}
       />
     );
@@ -94,6 +98,7 @@ describe('LoansTab component', () => {
     const onPayLoan = vi.fn();
     const onMarkAsPaid = vi.fn();
     const onReopenLoan = vi.fn();
+    const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
     render(
@@ -103,6 +108,7 @@ describe('LoansTab component', () => {
         onPayLoan={onPayLoan}
         onMarkAsPaid={onMarkAsPaid}
         onReopenLoan={onReopenLoan}
+        onEditLoan={onEditLoan}
         onDeleteLoan={onDeleteLoan}
       />
     );
@@ -121,6 +127,11 @@ describe('LoansTab component', () => {
     const reopenBtn = screen.getByRole('button', { name: /Reabrir Empréstimo/i });
     fireEvent.click(reopenBtn);
     expect(onReopenLoan).toHaveBeenCalledWith('loan-2');
+
+    // Editar empréstimo
+    const editBtns = screen.getAllByTitle('Editar Empréstimo');
+    fireEvent.click(editBtns[0]);
+    expect(onEditLoan).toHaveBeenCalledWith(mockLoans[0]);
   });
 
   it('displays overdue alerts and filters overdue loans', () => {
@@ -147,6 +158,7 @@ describe('LoansTab component', () => {
         onPayLoan={vi.fn()}
         onMarkAsPaid={vi.fn()}
         onReopenLoan={vi.fn()}
+        onEditLoan={vi.fn()}
         onDeleteLoan={vi.fn()}
       />
     );
