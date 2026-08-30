@@ -4,6 +4,7 @@ import type { Transaction, TransactionType, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { formatDateSafe } from './ui/TransactionList';
+import { CategorySelect } from './ui/CategorySelect';
 
 interface TransactionModalProps {
   onClose: () => void;
@@ -190,16 +191,11 @@ export default function TransactionModal({
               </div>
 
               {!isTransfer ? (
-                <div>
-                  <label className="block text-xs text-dark-subtext mb-1">Categoria</label>
-                  <input
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Ex: Geral, Alimentação..."
-                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none"
-                  />
-                </div>
+                <CategorySelect
+                  value={category}
+                  onChange={setCategory}
+                  label="Categoria"
+                />
               ) : (
                 <div>
                   <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">

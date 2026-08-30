@@ -4,6 +4,7 @@ import type { WishlistItem } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { formatDateSafe } from './ui/TransactionList';
+import { CategorySelect } from './ui/CategorySelect';
 
 interface WishlistModalProps {
   initialData?: WishlistItem | null;
@@ -162,16 +163,12 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
                 />
               </div>
 
-              <div>
-                <label className="block text-xs text-dark-subtext mb-1.5">Categoria</label>
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Ex: Geral, Tecnologia, Casa..."
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none"
-                />
-              </div>
+              <CategorySelect
+                value={category}
+                onChange={setCategory}
+                label="Categoria"
+                selectClassName="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
+              />
             </div>
 
             <div>
