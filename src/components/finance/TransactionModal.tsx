@@ -3,6 +3,7 @@ import { X, Calendar, Building2 } from 'lucide-react';
 import type { Transaction, TransactionType, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { formatDateSafe } from './ui/TransactionList';
 
 interface TransactionModalProps {
   onClose: () => void;
@@ -199,9 +200,13 @@ export default function TransactionModal({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs text-dark-subtext mb-1">Data</label>
+                  <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
+                    <span>Data</span>
+                    {date && <span className="text-[11px] text-brand-400 font-medium">{formatDateSafe(date)}</span>}
+                  </label>
                   <input
                     type="date"
+                    lang="pt-BR"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     style={{ colorScheme: 'dark' }}
@@ -227,9 +232,13 @@ export default function TransactionModal({
             {!isTransfer && (
               <div className={isLoan ? "grid grid-cols-2 gap-3" : "flex flex-col"}>
                 <div>
-                  <label className="block text-xs text-dark-subtext mb-1">Data</label>
+                  <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
+                    <span>Data</span>
+                    {date && <span className="text-[11px] text-brand-400 font-medium">{formatDateSafe(date)}</span>}
+                  </label>
                   <input
                     type="date"
+                    lang="pt-BR"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     style={{ colorScheme: 'dark' }}
@@ -240,12 +249,16 @@ export default function TransactionModal({
 
                 {isLoan && (
                   <div>
-                    <label className="block text-xs text-dark-subtext mb-1 flex items-center gap-1">
-                      <Calendar size={11} className="text-amber-400" />
-                      <span>Vencimento (Prazo)</span>
+                    <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} className="text-amber-400" />
+                        <span>Vencimento</span>
+                      </span>
+                      {dueDate && <span className="text-[11px] text-amber-400 font-medium">{formatDateSafe(dueDate)}</span>}
                     </label>
                     <input
                       type="date"
+                      lang="pt-BR"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
                       style={{ colorScheme: 'dark' }}
