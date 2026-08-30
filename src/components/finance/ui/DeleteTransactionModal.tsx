@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Info, RotateCcw } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import type { Transaction } from '../../../types';
 import { formatDateSafe } from './TransactionList';
@@ -25,8 +25,18 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
 
   if (!transaction) return null;
 
-  const isExpense = transaction.type === 'expense' || transaction.type === 'loan_made';
+  const isLoan = transaction.type === 'loan_made' || transaction.type === 'loan_taken';
+  const isLinkedPayment = Boolean(transaction.linked_loan_id);
   const isTransfer = transaction.type === 'transfer';
+  const isExpense = transaction.type === 'expense' || transaction.type === 'loan_made';
+
+  const modalTitle = isLoan
+    ? 'Excluir Empréstimo / Dívida'
+    : isLinkedPayment
+    ? 'Excluir Pagamento de Empréstimo'
+    : isTransfer
+    ? 'Excluir Transferência'
+    : 'Excluir Transação';
 
   return (
     <Portal>
@@ -41,7 +51,7 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
               <div className="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center">
                 <AlertTriangle size={17} />
               </div>
-              <h3 className="text-sm font-semibold text-white">Excluir Transação</h3>
+              <h3 className="text-sm font-semibold text-white">{modalTitle}</h3>
             </div>
             <button
               onClick={onClose}
@@ -53,9 +63,22 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
 
           {/* Body */}
           <div className="py-4 space-y-3">
-            <p className="text-xs text-dark-subtext leading-relaxed">
-              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
-            </p>
+            {isLinkedPayment ? (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed">
+                <RotateCcw size={15} className="flex-shrink-0 mt-0.5 text-amber-400" />
+                <span>
+                  Esta transação é o pagamento de um empréstimo. Ao excluí-la, o valor pago será <strong>estornado</strong> e o saldo pendente do empréstimo será recalculado automaticamente.
+                </span>
+              </div>
+            ) : isLoan ? (
+              <p className="text-xs text-dark-subtext leading-relaxed">
+                Tem certeza que deseja excluir este registro de empréstimo/dívida? O histórico deste empréstimo será removido.
+              </p>
+            ) : (
+              <p className="text-xs text-dark-subtext leading-relaxed">
+                Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+              </p>
+            )}
 
             <div className="bg-dark-bg/80 border border-white/5 rounded-xl p-3 space-y-1.5">
               <div className="flex justify-between items-center text-xs">

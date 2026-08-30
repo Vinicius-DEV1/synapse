@@ -59,4 +59,48 @@ describe('DeleteTransactionModal Component', () => {
     expect(onClose).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  it('renders contextual title and warning for linked loan payment', () => {
+    const linkedTx: Transaction = {
+      id: 'tx_linked',
+      description: 'Recebimento: Empréstimo',
+      amount: 300,
+      type: 'income',
+      category: 'Recebimento de Empréstimo',
+      date: '2026-08-25',
+      linked_loan_id: 'loan_parent_123',
+    };
+
+    render(
+      <DeleteTransactionModal
+        transaction={linkedTx}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Excluir Pagamento de Empréstimo')).toBeInTheDocument();
+    expect(screen.getByText(/estornado/i)).toBeInTheDocument();
+  });
+
+  it('renders contextual title for loan parent item', () => {
+    const loanTx: Transaction = {
+      id: 'loan_1',
+      description: 'Empréstimo Amigo',
+      amount: 1000,
+      type: 'loan_made',
+      category: 'Geral',
+      date: '2026-08-25',
+    };
+
+    render(
+      <DeleteTransactionModal
+        transaction={loanTx}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Excluir Empréstimo / Dívida')).toBeInTheDocument();
+  });
 });
