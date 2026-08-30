@@ -115,10 +115,11 @@ pub fn finance_add_account(
     let color = account.color.unwrap_or_else(|| "#10b981".to_string());
     let icon = account.icon.unwrap_or_else(|| "wallet".to_string());
     let initial_balance = account.initial_balance.unwrap_or(0.0);
+    let created_at = account.created_at.clone().unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
     conn.execute(
-        "INSERT INTO finance_accounts (id, name, color, icon, initial_balance) VALUES (?, ?, ?, ?, ?)",
-        params![id, name, color, icon, initial_balance],
+        "INSERT INTO finance_accounts (id, name, color, icon, initial_balance, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        params![id, name, color, icon, initial_balance, created_at],
     ).map_err(|e| e.to_string())?;
 
     Ok(Account {
@@ -127,7 +128,7 @@ pub fn finance_add_account(
         color: Some(color),
         icon: Some(icon),
         initial_balance: Some(initial_balance),
-        created_at: None,
+        created_at: Some(created_at),
         updated_at: None,
         deleted_at: None,
     })
@@ -232,10 +233,11 @@ pub fn finance_add_transaction(
     let is_paid = transaction.is_paid.unwrap_or(1);
     let paid_amount = transaction.paid_amount.unwrap_or(0.0);
     let account_id = transaction.account_id.clone().unwrap_or_else(|| "default-wallet".to_string());
+    let created_at = transaction.created_at.clone().unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
     conn.execute(
-        "INSERT INTO transactions (id, description, amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (id, description, amount, type, category, date, status, is_paid, paid_amount, is_recurring, recurrence_period, due_date, account_id, destination_account_id, linked_loan_id, created_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             id,
             transaction.description,
@@ -251,7 +253,8 @@ pub fn finance_add_transaction(
             transaction.due_date,
             account_id,
             transaction.destination_account_id,
-            transaction.linked_loan_id
+            transaction.linked_loan_id,
+            created_at
         ]
     ).map_err(|e| e.to_string())?;
 
@@ -261,6 +264,7 @@ pub fn finance_add_transaction(
     ret.is_paid = Some(is_paid);
     ret.paid_amount = Some(paid_amount);
     ret.account_id = Some(account_id);
+    ret.created_at = Some(created_at);
     Ok(ret)
 }
 
@@ -369,14 +373,17 @@ pub fn finance_add_wishlist(
     } else {
         item.id.clone()
     };
+    
+    let created_at = item.created_at.clone().unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
 
     conn.execute(
-        "INSERT INTO wishlist (id, title, price, priority, category, expected_date, description, link) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        params![id, item.title, item.price, item.priority, item.category, item.expected_date, item.description, item.link]
+        "INSERT INTO wishlist (id, title, price, priority, category, expected_date, description, link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![id, item.title, item.price, item.priority, item.category, item.expected_date, item.description, item.link, created_at]
     ).map_err(|e| e.to_string())?;
 
     let mut ret = item;
     ret.id = id;
+    ret.created_at = Some(created_at);
     Ok(ret)
 }
 

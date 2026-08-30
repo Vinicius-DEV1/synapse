@@ -197,15 +197,7 @@ export function useFinance() {
       const isPaid = newPaidAmount >= loan.amount - 0.001 ? 1 : 0;
       const status = isPaid ? 'completed' : 'in_progress';
 
-      // 1. Update loan
-      await window.api.finance.updateTransaction(loan.id, {
-        ...loan,
-        paid_amount: newPaidAmount,
-        is_paid: isPaid,
-        status
-      });
-
-      // 2. Create linked cashflow transaction in target account
+      // 1. Create linked cashflow transaction in target account FIRST
       const isLoanMade = loan.type === 'loan_made';
       await window.api.finance.createTransaction({
         type: isLoanMade ? 'income' : 'expense',
@@ -215,6 +207,14 @@ export function useFinance() {
         category: isLoanMade ? 'Recebimento de Empréstimo' : 'Pagamento de Dívida',
         description: isLoanMade ? `Recebimento: ${loan.description}` : `Pagamento: ${loan.description}`,
         date: new Date().toISOString().split('T')[0],
+      });
+
+      // 2. Update loan status
+      await window.api.finance.updateTransaction(loan.id, {
+        ...loan,
+        paid_amount: newPaidAmount,
+        is_paid: isPaid,
+        status
       });
 
       triggerToast(isLoanMade ? 'Recebimento registrado com sucesso!' : 'Pagamento registrado com sucesso!', 'success');

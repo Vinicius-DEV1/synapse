@@ -73,6 +73,8 @@ export default function TransactionModal({
         due_date: isLoan && dueDate ? dueDate : null,
         account_id: accountId,
         destination_account_id: isTransfer ? destinationAccountId : null,
+        is_paid: isLoan ? 0 : 1,
+        status: isLoan ? 'in_progress' : 'completed',
       });
       onClose();
     } catch (err: unknown) {
