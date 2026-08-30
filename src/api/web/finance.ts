@@ -10,7 +10,11 @@ export const webFinanceApi = (db: any, generateId: () => string): FinanceApi => 
         ...t,
         account_id: t.account_id || 'default-wallet',
       }))
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a: any, b: any) => {
+        const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
   },
   createTransaction: async (tx: Partial<Transaction>): Promise<Transaction> => {
     const now = new Date().toISOString();
