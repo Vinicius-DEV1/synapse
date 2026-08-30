@@ -140,5 +140,76 @@ describe('useFinance Hook', () => {
       })
     );
   });
+
+  it('cascade-deletes linked payment transactions when parent loan is deleted', async () => {
+    const loanWithPayments: Transaction[] = [
+      {
+        id: 'parent_loan',
+        type: 'loan_made',
+        amount: 500,
+        paid_amount: 200,
+        description: 'Empréstimo',
+        category: 'Geral',
+        date: '2026-08-20',
+        status: 'in_progress',
+        is_paid: 0,
+      },
+      {
+        id: 'payment_1',
+        type: 'income',
+        amount: 200,
+        description: 'Recebimento: Empréstimo',
+        category: 'Recebimento de Empréstimo',
+        date: '2026-08-21',
+        linked_loan_id: 'parent_loan',
+      },
+    ];
+
+    (window as any).api.finance.getTransactions = vi.fn().mockResolvedValue(loanWithPayments);
+
+    const { result } = renderHook(() => useFinance());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.deleteTransaction('parent_loan');
+    });
+
+    // Both payment_1 and parent_loan should be deleted
+    expect(window.api.finance.deleteTransaction).toHaveBeenCalledWith('payment_1');
+    expect(window.api.finance.deleteTransaction).toHaveBeenCalledWith('parent_loan');
+  });
+
+  it('recalculates is_paid when parent loan amount is edited', async () => {
+    const loan: Transaction = {
+      id: 'loan_edit',
+      type: 'loan_made',
+      amount: 500,
+      paid_amount: 200,
+      description: 'Empréstimo',
+      category: 'Geral',
+      date: '2026-08-20',
+      status: 'in_progress',
+      is_paid: 0,
+    };
+
+    (window as any).api.finance.getTransactions = vi.fn().mockResolvedValue([loan]);
+
+    const { result } = renderHook(() => useFinance());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Edit amount to 200 (equal to paid_amount) -> should mark as completed
+    await act(async () => {
+      await result.current.updateTransaction('loan_edit', { amount: 200 });
+    });
+
+    expect(window.api.finance.updateTransaction).toHaveBeenCalledWith(
+      'loan_edit',
+      expect.objectContaining({
+        amount: 200,
+        is_paid: 1,
+        status: 'completed',
+      })
+    );
+  });
 });
 

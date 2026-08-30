@@ -318,6 +318,18 @@ export default function FinanceView() {
       {txToDelete && (
         <DeleteTransactionModal
           transaction={txToDelete}
+          linkedPaymentsCount={
+            (txToDelete.type === 'loan_made' || txToDelete.type === 'loan_taken')
+              ? transactions.filter((t) => t.linked_loan_id === txToDelete.id).length
+              : 0
+          }
+          linkedPaymentsTotal={
+            (txToDelete.type === 'loan_made' || txToDelete.type === 'loan_taken')
+              ? transactions
+                  .filter((t) => t.linked_loan_id === txToDelete.id)
+                  .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+              : 0
+          }
           onClose={() => setTxToDelete(null)}
           onConfirm={deleteTransaction}
         />
