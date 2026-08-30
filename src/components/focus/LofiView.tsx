@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Plus, Music, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Music, Trash2, DownloadCloud, Loader2 } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import { updateLofiOrder } from '../../services/lofi-manager';
 import { useStore } from '../../store/useStore';
@@ -26,6 +26,7 @@ export const LofiView: React.FC = () => {
   const { view, setView, lofis, activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, loadLofis } = useFocusContext();
   const { state } = useStore();
   const masterKey = state.moduleKeys['focus'];
+  const fallbackKey = state.moduleKeys['core'];
   const [sortMode, setSortMode] = useState<'manual' | 'date' | 'alpha'>('manual');
 
   const {
@@ -34,10 +35,14 @@ export const LofiView: React.FC = () => {
     uploadStatusText,
     deletingId,
     setDeletingId,
+    downloadingId,
+    isBulkDownloading,
     selectedIds,
     setSelectedIds,
     handleImport,
     handleToggleSelect,
+    handleDownloadToLocal,
+    handleBulkDownloadToLocal,
     handleBulkDeleteCompletely,
     handleBulkDeleteLocal,
     handleDeleteCompletely,
@@ -51,7 +56,8 @@ export const LofiView: React.FC = () => {
     isPlayingLofi,
     setIsPlayingLofi,
     loadLofis,
-    masterKey
+    masterKey,
+    fallbackKey
   });
 
   const sensors = useSensors(
@@ -65,8 +71,11 @@ export const LofiView: React.FC = () => {
     })
   );
 
-  if (view !== 'lofi') return null;
+  const hasCloudOnlySelected = useMemo(() => {
+    return lofis.some(l => selectedIds.has(l.id) && !l.is_local && l.drive_file_id);
+  }, [lofis, selectedIds]);
 
+  if (view !== 'lofi') return null;
 
   const sortedLofis = useMemo(() => {
     const list = [...lofis];
@@ -181,6 +190,8 @@ export const LofiView: React.FC = () => {
                     onDeleteLocal={handleDeleteLocal}
                     deletingId={deletingId}
                     setDeletingId={setDeletingId}
+                    downloadingId={downloadingId}
+                    onDownloadToLocal={handleDownloadToLocal}
                     onRename={handleRename}
                     formatDuration={formatDuration}
                     isManualSort={sortMode === 'manual'}
@@ -207,6 +218,20 @@ export const LofiView: React.FC = () => {
             Desmarcar
           </button>
           <div className="h-4 w-px bg-white/15" />
+          {hasCloudOnlySelected && window.api?.lofi && (
+            <button
+              onClick={handleBulkDownloadToLocal}
+              disabled={isBulkDownloading}
+              className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              {isBulkDownloading ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <DownloadCloud size={13} />
+              )}
+              Baixar para offline
+            </button>
+          )}
           <button
             onClick={handleBulkDeleteLocal}
             className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"

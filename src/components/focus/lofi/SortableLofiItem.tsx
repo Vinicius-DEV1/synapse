@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { Music, Trash2, Cloud, UploadCloud, Clock, GripVertical, Edit2, Check, X } from 'lucide-react';
+import { 
+  Music, 
+  Trash2, 
+  Cloud, 
+  UploadCloud, 
+  Clock, 
+  GripVertical, 
+  Edit2, 
+  Check, 
+  X, 
+  DownloadCloud, 
+  Loader2 
+} from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { LofiItem } from '../../../types';
@@ -12,6 +24,8 @@ export interface SortableLofiItemProps {
   onDeleteLocal: (lofi: LofiItem, e: React.MouseEvent) => void;
   deletingId: string | null;
   setDeletingId: (id: string | null) => void;
+  downloadingId?: string | null;
+  onDownloadToLocal?: (lofi: LofiItem, e: React.MouseEvent) => void;
   onRename: (lofi: LofiItem, newTitle: string) => void;
   formatDuration: (seconds?: number | null) => string;
   isManualSort: boolean;
@@ -27,6 +41,8 @@ export function SortableLofiItem({
   onDeleteLocal,
   deletingId,
   setDeletingId,
+  downloadingId,
+  onDownloadToLocal,
   onRename,
   formatDuration,
   isManualSort,
@@ -168,10 +184,27 @@ export function SortableLofiItem({
         </div>
       </div>
       
-      <div className="shrink-0 flex items-center relative">
+      <div className="shrink-0 flex items-center gap-1 relative">
+        {!lofi.is_local && lofi.drive_file_id && window.api?.lofi && onDownloadToLocal && (
+          <button
+            type="button"
+            onClick={(e) => onDownloadToLocal(lofi, e)}
+            disabled={downloadingId === lofi.id}
+            className="p-2 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors disabled:opacity-50"
+            title="Baixar para uso offline"
+          >
+            {downloadingId === lofi.id ? (
+              <Loader2 size={16} className="animate-spin text-brand-400" />
+            ) : (
+              <DownloadCloud size={16} />
+            )}
+          </button>
+        )}
+
         <button 
           onClick={(e) => { e.stopPropagation(); setDeletingId(deletingId === lofi.id ? null : lofi.id); }}
           className="p-2 text-dark-subtext/50 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors"
+          title="Opções de exclusão"
         >
           <Trash2 size={16} />
         </button>

@@ -52,7 +52,7 @@ describe('GlobalLofiPlayer Component', () => {
     render(<GlobalLofiPlayer />);
 
     await waitFor(() => {
-      expect(lofiManager.resolveLofiUrl).toHaveBeenCalledWith(localLofi, 'dummy-key');
+      expect(lofiManager.resolveLofiUrl).toHaveBeenCalledWith(localLofi, 'dummy-key', undefined);
       expect(toastContext.triggerToast).not.toHaveBeenCalled();
     });
   });

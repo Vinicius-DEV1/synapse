@@ -29,61 +29,151 @@ export function getAudioMimeType(filename: string): string {
   return map[cleanExt] ?? map[ext] ?? 'audio/mpeg';
 }
 
-export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoKey, originalName?: string): Promise<string> {
-  const token = await getValidAccessToken();
-  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
-  
-  // Download ArrayBuffer from Drive and decrypt in memory using decryptFileChunked
-  // to support both modern ENC1 chunked format and legacy single-chunk encryption.
-  const buffer = await downloadFromDrive(token, driveFileId);
-  const mimeType = originalName ? getAudioMimeType(originalName) : 'audio/mpeg';
-  let finalBlob: Blob;
-  
-  if (masterKey) {
+/**
+ * Checks if a buffer starts with standard audio format magic bytes (MP3, OGG, WAV, FLAC, M4A, WebM).
+ */
+export function isAudioBuffer(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+  const bytes = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 12));
+
+  // 'ID3' (MP3 ID3v2 tag)
+  if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) return true;
+  // MP3 Sync Word (MPEG audio frame header: 11 bits set: 0xFF followed by 0xEx or 0xFx)
+  if (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0) return true;
+  // 'OggS' (Ogg Vorbis / Opus)
+  if (bytes[0] === 0x4F && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53) return true;
+  // 'RIFF' (WAV)
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return true;
+  // 'fLaC' (FLAC)
+  if (bytes[0] === 0x66 && bytes[1] === 0x4C && bytes[2] === 0x61 && bytes[3] === 0x43) return true;
+  // EBML header (WebM audio)
+  if (bytes[0] === 0x1A && bytes[1] === 0x45 && bytes[2] === 0xDF && bytes[3] === 0xA3) return true;
+  // MP4 / M4A ('ftyp' at offset 4)
+  if (bytes.length >= 8 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) return true;
+
+  return false;
+}
+
+/**
+ * Checks if a buffer starts with ENC1 encrypted header.
+ */
+export function isEnc1Buffer(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+  const bytes = new Uint8Array(buffer, 0, 4);
+  return bytes[0] === 0x45 && bytes[1] === 0x4E && bytes[2] === 0x43 && bytes[3] === 0x31; // 'ENC1'
+}
+
+/**
+ * Decrypts a buffer fetched from Google Drive into plaintext audio bytes.
+ * Handles:
+ * 1. Plain unencrypted audio buffers.
+ * 2. ENC1 chunked encrypted buffers (with primary & fallback key trial).
+ * 3. Legacy single-chunk WebCrypto AES-GCM encrypted buffers.
+ */
+export async function decryptLofiBufferToPlainAudio(
+  buffer: ArrayBuffer,
+  masterKey?: CryptoKey,
+  fallbackKey?: CryptoKey
+): Promise<ArrayBuffer> {
+  if (isAudioBuffer(buffer)) {
+    return buffer;
+  }
+
+  if (masterKey || fallbackKey) {
+    const primaryKey = masterKey || fallbackKey!;
+    const altKey = masterKey && fallbackKey ? fallbackKey : undefined;
+
     try {
       const { decryptFileChunked } = await import('./storage');
       const rawBlob = new Blob([buffer]);
-      const decryptedBlob = await decryptFileChunked(rawBlob, masterKey);
-      finalBlob = new Blob([decryptedBlob], { type: mimeType });
-    } catch (e) {
-      console.error("Falha ao descriptografar áudio do Lofi:", e);
-      throw new Error("Não foi possível descriptografar a faixa de áudio.");
+      const decryptedBlob = await decryptFileChunked(rawBlob, primaryKey);
+      return await decryptedBlob.arrayBuffer();
+    } catch (primaryErr) {
+      if (altKey) {
+        try {
+          const { decryptFileChunked } = await import('./storage');
+          const rawBlob = new Blob([buffer]);
+          const decryptedBlob = await decryptFileChunked(rawBlob, altKey);
+          return await decryptedBlob.arrayBuffer();
+        } catch (altErr) {
+          console.warn("Decryption with fallback key failed", altErr);
+        }
+      }
+
+      if (!isEnc1Buffer(buffer)) {
+        try {
+          const { decryptFile } = await import('./storage');
+          return await decryptFile(buffer, primaryKey);
+        } catch {
+          console.warn("Decryption failed on non-ENC1 buffer, falling back to raw bytes", primaryErr);
+          return buffer;
+        }
+      }
+
+      console.error("Falha ao descriptografar áudio do Lofi (arquivo ENC1):", primaryErr);
+      throw new Error("Não foi possível descriptografar a faixa de áudio (chave inválida).");
     }
-  } else {
-    finalBlob = new Blob([buffer], { type: mimeType });
   }
 
-  return URL.createObjectURL(finalBlob);
+  return buffer;
 }
 
-export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent: number) => void): Promise<string> {
-  if (!window.api?.lofi) {
+export async function getLofiStreamLink(
+  driveFileId: string, 
+  masterKey?: CryptoKey, 
+  originalName?: string,
+  fallbackKey?: CryptoKey
+): Promise<string> {
+  const token = await getValidAccessToken();
+  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
+  
+  const buffer = await downloadFromDrive(token, driveFileId);
+  const mimeType = originalName ? getAudioMimeType(originalName) : 'audio/mpeg';
+
+  const audioBytes = await decryptLofiBufferToPlainAudio(buffer, masterKey, fallbackKey);
+  const blob = new Blob([audioBytes], { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
+export async function downloadLofiToLocal(
+  lofi: LofiItem, 
+  onProgress?: (percent: number) => void,
+  masterKey?: CryptoKey,
+  fallbackKey?: CryptoKey
+): Promise<string> {
+  if (!window.api?.lofi?.saveLocal) {
     throw new Error("Download local só está disponível no ambiente Desktop.");
   }
   if (!lofi.drive_file_id) throw new Error("Lofi não está no Drive.");
   
   const token = await getValidAccessToken();
-  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
-
-  let localPath = "";
-  if (window.api.video?.downloadFromDrive) {
-    localPath = await window.api.video.downloadFromDrive(lofi.drive_file_id, token, lofi.original_name);
-  } else {
-    const buffer = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
-    localPath = await window.api.lofi.saveLocal(lofi.original_name, buffer);
+  if (!token) {
+    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    throw new Error("Não foi possível autenticar com o Google Drive. Conecte sua conta para fazer o download.");
   }
+
+  const rawBufferFromDrive = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
+  const plainAudioBuffer = await decryptLofiBufferToPlainAudio(rawBufferFromDrive, masterKey, fallbackKey);
+
+  const localPath = await window.api.lofi.saveLocal(lofi.original_name, plainAudioBuffer);
   
-  await window.api.sync.upsertRow(LOFI_TABLE, {
-    ...lofi,
-    is_local: true,
-    file_path: localPath,
-    updated_at: new Date().toISOString()
-  });
+  if (window.api?.sync) {
+    await window.api.sync.upsertRow(LOFI_TABLE, {
+      ...lofi,
+      is_local: true,
+      file_path: localPath,
+      updated_at: new Date().toISOString()
+    });
+  }
 
   return localPath;
 }
 
-export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Promise<string> {
+export async function resolveLofiUrl(
+  lofi: LofiItem, 
+  masterKey?: CryptoKey,
+  fallbackKey?: CryptoKey
+): Promise<string> {
   if (window.api?.lofi && lofi.is_local) {
     const filename_enc = `${lofi.original_name}.enc`;
     try {
@@ -113,7 +203,7 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
     }
   }
   if (lofi.drive_file_id) {
-    return getLofiStreamLink(lofi.drive_file_id, masterKey, lofi.original_name);
+    return getLofiStreamLink(lofi.drive_file_id, masterKey, lofi.original_name, fallbackKey);
   }
   throw new Error('Lofi não foi encontrado nem localmente nem na nuvem.');
 }

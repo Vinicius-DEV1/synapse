@@ -11,6 +11,7 @@ export const GlobalLofiPlayer: React.FC = () => {
   const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
   const { state } = useStore();
   const masterKey = state.moduleKeys['focus'];
+  const fallbackKey = state.moduleKeys['core'];
   const [isExpanded, setIsExpanded] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -53,7 +54,7 @@ export const GlobalLofiPlayer: React.FC = () => {
       isRetryingRef.current = false;
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
 
-      resolveLofiUrl(activeLofi, masterKey)
+      resolveLofiUrl(activeLofi, masterKey, fallbackKey)
         .then(url => {
           if (!cancelled) {
             setSrcAndRevoke(url);
@@ -127,7 +128,7 @@ export const GlobalLofiPlayer: React.FC = () => {
               audioRef.current.play().catch(e => {
                 console.warn("Lofi replay failed, re-resolving URL...", e);
                 if (activeLofi) {
-                  resolveLofiUrl(activeLofi, masterKey)
+                  resolveLofiUrl(activeLofi, masterKey, fallbackKey)
                     .then(url => {
                       if (url !== src) setSrcAndRevoke(url);
                       if (audioRef.current) {
@@ -184,7 +185,7 @@ export const GlobalLofiPlayer: React.FC = () => {
               console.warn(`Lofi: retry ${retryCountRef.current}/${MAX_RETRIES} in ${delay}ms`);
 
               retryTimerRef.current = setTimeout(() => {
-                resolveLofiUrl(activeLofi, masterKey)
+                resolveLofiUrl(activeLofi, masterKey, fallbackKey)
                   .then(url => {
                     isRetryingRef.current = false;
                     if (url !== src) setSrcAndRevoke(url);
