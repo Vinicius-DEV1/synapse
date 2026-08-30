@@ -7,7 +7,7 @@ import SyncErrorModal from '../modals/SyncErrorModal';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
 import FloatingPageModal from '../modals/FloatingPageModal';
 import GlobalSearchModal from '../modals/GlobalSearchModal';
-import DriveAuthModal from '../library/DriveAuthModal';
+import DriveAuthModal from '../library/modals/DriveAuthModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';
 import { ScrapActionModal } from '../modals/ScrapActionModal';

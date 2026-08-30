@@ -54,4 +54,28 @@ describe('webTrashApi (IndexedDB)', () => {
     const check = await db.get('pages', 'perm-delete-page');
     expect(check).toBeUndefined();
   });
+
+  it('aggregates soft-deleted wishlist items and restores them', async () => {
+    await db.put('wishlist', {
+      id: 'wish-trash-1',
+      title: 'iPad Pro',
+      price: 6000,
+      priority: 'high',
+      deleted_at: '2026-08-20T10:00:00.000Z',
+    });
+
+    let trash = await api.getAll();
+    const wishItem = trash.find((t: any) => t.id === 'wish-trash-1');
+    expect(wishItem).toBeDefined();
+    expect(wishItem.title).toBe('iPad Pro');
+    expect(wishItem.item_type).toBe('wishlist');
+
+    await api.restore('wish-trash-1', 'wishlist');
+    trash = await api.getAll();
+    expect(trash.find((t: any) => t.id === 'wish-trash-1')).toBeUndefined();
+
+    const restored = await db.get('wishlist', 'wish-trash-1');
+    expect(restored.deleted_at).toBeNull();
+  });
 });
+

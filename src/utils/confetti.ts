@@ -12,7 +12,7 @@ export function randomInRange(min: number, max: number): number {
  */
 export function safeConfetti(options: confetti.Options): void {
   try {
-    const confettiFunc = typeof confetti === 'function' ? confetti : (confetti as any)?.default;
+    const confettiFunc = typeof confetti === 'function' ? confetti : (confetti as { default?: typeof confetti })?.default;
     if (typeof confettiFunc === 'function') {
       confettiFunc(options);
     }
@@ -32,7 +32,7 @@ export function triggerCelebrationConfetti(options?: { durationMs?: number; zInd
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex };
 
-    const interval: any = setInterval(() => {
+    const interval: ReturnType<typeof setInterval> = setInterval(() => {
       const timeLeft = animationEnd - Date.now();
       if (timeLeft <= 0) {
         clearInterval(interval);

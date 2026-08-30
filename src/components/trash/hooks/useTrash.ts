@@ -135,7 +135,7 @@ export function useTrash() {
       if (filter === 'notes') return i.item_type === 'page';
       if (filter === 'flashcards') return i.item_type === 'anki_deck' || i.item_type === 'anki_card';
       if (filter === 'files') return i.item_type === 'file';
-      if (filter === 'finance') return i.item_type === 'finance';
+      if (filter === 'finance') return i.item_type === 'finance' || i.item_type === 'wishlist';
       if (filter === 'vault') return i.item_type === 'vault';
       if (filter === 'lofi') return i.item_type === 'lofi';
       return true;

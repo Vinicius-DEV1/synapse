@@ -20,6 +20,8 @@ import { useGarbageCollection } from './hooks/useGarbageCollection';
 import { usePlatform } from './hooks/usePlatform';
 import { TaskProvider } from './store/TaskContext';
 import { GlobalModals } from './components/layout/GlobalModals';
+import { useAppEvents } from './hooks/useAppEvents';
+import { useAppBackPress } from './hooks/useAppBackPress';
 
 
 function AppContent() {
@@ -49,45 +51,7 @@ function AppContent() {
   
   const { loadData: loadFocusData } = useFocusContext();
 
-  useEffect(() => {
-    const handleOpenMove = (e: CustomEvent<{ pageId: string }>) => {
-      if (e.detail?.pageId) {
-        setMovePageId(e.detail.pageId);
-      }
-    };
-    window.addEventListener('caderno-open-move-page', handleOpenMove as EventListener);
-    return () => window.removeEventListener('caderno-open-move-page', handleOpenMove as EventListener);
-  }, []);
-
-  useEffect(() => {
-    const handleAuthError = () => setIsDriveAuthModalOpen(true);
-    window.addEventListener('drive-auth-expired', handleAuthError);
-    return () => window.removeEventListener('drive-auth-expired', handleAuthError);
-  }, []);
-
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('[Caderno:GlobalUnhandledRejection]', event.reason);
-      const reasonStr = String(event.reason?.message || event.reason || '');
-      if (reasonStr.includes('AbortError') || reasonStr.includes('aborted')) {
-        return;
-      }
-      if (reasonStr.includes('Google Drive') || reasonStr.includes('autenticar') || reasonStr.includes('drive-auth')) {
-        window.dispatchEvent(new CustomEvent('drive-auth-expired'));
-      }
-    };
-
-    const handleGlobalError = (event: ErrorEvent) => {
-      console.error('[Caderno:GlobalWindowError]', event.error || event.message);
-    };
-
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.addEventListener('error', handleGlobalError);
-    return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.removeEventListener('error', handleGlobalError);
-    };
-  }, []);
+  useAppEvents(setMovePageId, setIsDriveAuthModalOpen, setFloatingPageId);
 
   useEffect(() => {
     if (isAuth) {
@@ -164,16 +128,7 @@ function AppContent() {
     return () => window.removeEventListener('click', handler);
   }, [state.contextMenu, dispatch]);
 
-  // Open Floating Page
-  useEffect(() => {
-    const handler = (e: any) => {
-      if (e.detail?.pageId) {
-        setFloatingPageId(e.detail.pageId);
-      }
-    };
-    window.addEventListener('open-floating-page', handler);
-    return () => window.removeEventListener('open-floating-page', handler);
-  }, []);
+  // Open Floating Page handled by useAppEvents
 
   // Failsafe: If activeTabId is completely detached from the available tabs (e.g. from a broken localStorage state),
   // self-correct to the first available tab so actions like NAVIGATE_IN_TAB don't silently fail.
@@ -203,104 +158,7 @@ function AppContent() {
     lastPageIdRef.current = currentPageId;
   }, [state.activeTabId, state.tabs]);
 
-  // Handle in-app back press from Mobile WebView or Browser
-  useEffect(() => {
-    const handleBack = (): boolean => {
-      // 1. Close floating page modal if open
-      if (floatingPageId) {
-        setFloatingPageId(null);
-        return true;
-      }
-      // 2. Close context menu if open
-      if (state.contextMenu) {
-        dispatch({ type: 'HIDE_CONTEXT_MENU' });
-        return true;
-      }
-      // 3. Close confirm delete modal if open
-      if (state.confirmDelete) {
-        dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
-        return true;
-      }
-      // 4. Close AI sidebar if open
-      if (state.showAiSidebar) {
-        dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
-        return true;
-      }
-      // 5. Close sidebar drawer if open on mobile
-      if (!state.sidebarCollapsed && window.innerWidth < 768) {
-        dispatch({ type: 'TOGGLE_SIDEBAR' });
-        return true;
-      }
-      // 6. Check if any open modal close button exists in DOM
-      const openModalCloseBtn = document.querySelector<HTMLElement>(
-        '[role="dialog"] [aria-label="Close"], [role="dialog"] button.close-btn, .modal-close-btn, [data-testid="modal-close"]'
-      );
-      if (openModalCloseBtn) {
-        openModalCloseBtn.click();
-        return true;
-      }
-      // 7. If reading a book in library, close the book
-      const currentTab = state.tabs.find(t => t.id === state.activeTabId);
-      if (currentTab?.module === 'library' && currentTab.bookId) {
-        dispatch({ type: 'CLOSE_LIBRARY_BOOK', tabId: currentTab.id });
-        return true;
-      }
-      // 8. If in another module and there are multiple tabs, close active tab
-      if (currentTab && currentTab.module !== 'notes' && state.tabs.length > 1) {
-        dispatch({ type: 'CLOSE_TAB', tabId: currentTab.id });
-        return true;
-      }
-      // 9. If current page in active tab has a parent page (subpage navigation)
-      if (currentTab?.pageId) {
-        const currentPage = state.pages.find(p => p.id === currentTab.pageId);
-        if (currentPage?.parent_id) {
-          dispatch({ type: 'NAVIGATE_IN_TAB', pageId: currentPage.parent_id });
-          return true;
-        }
-      }
-      // 10. If there is in-app page history, go back to previous page
-      if (pageHistoryRef.current.length > 0) {
-        const prevPageId = pageHistoryRef.current.pop();
-        if (prevPageId && state.pages.some(p => p.id === prevPageId)) {
-          dispatch({ type: 'NAVIGATE_IN_TAB', pageId: prevPageId });
-          return true;
-        }
-      }
-      // 11. If multiple tabs exist, close active tab
-      if (state.tabs.length > 1) {
-        dispatch({ type: 'CLOSE_TAB', tabId: state.activeTabId });
-        return true;
-      }
-      return false;
-    };
-
-    (window as any).__cadernoHandleBack = handleBack;
-
-    const handleNativeMessage = (event: any) => {
-      try {
-        const raw = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (raw?.type === 'HARDWARE_BACK_PRESS') {
-          const handled = handleBack();
-          if ((window as any).ReactNativeWebView?.postMessage) {
-            (window as any).ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'BACK_PRESS_HANDLED',
-              handled,
-            }));
-          }
-        }
-      } catch {
-        // Ignore non-json messages
-      }
-    };
-
-    window.addEventListener('message', handleNativeMessage);
-    document.addEventListener('message', handleNativeMessage);
-
-    return () => {
-      window.removeEventListener('message', handleNativeMessage);
-      document.removeEventListener('message', handleNativeMessage);
-    };
-  }, [state, dispatch, floatingPageId]);
+  useAppBackPress(state, dispatch, floatingPageId, setFloatingPageId, pageHistoryRef);
 
   if (authStatus === null) {
     return (

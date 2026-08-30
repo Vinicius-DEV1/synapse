@@ -2,7 +2,7 @@ export class PayloadOptimizer {
   /**
    * Recursively removes null and undefined properties to minimize payload size.
    */
-  static optimize(obj: any): any {
+  static optimize<T = unknown>(obj: T): unknown {
     if (obj === undefined) return undefined;
     if (obj === null) return null;
     if (typeof obj !== 'object') return obj;
@@ -16,7 +16,7 @@ export class PayloadOptimizer {
       return obj.map(item => this.optimize(item)).filter(item => item !== undefined);
     }
     
-    const result: any = {};
+    const result: Record<string, unknown> = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         const val = this.optimize(obj[key]);

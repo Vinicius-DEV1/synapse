@@ -9,6 +9,7 @@ export const webTrashApi = (db: any) => ({
       files: { type: 'file', titleKey: 'name' },
       vault_groups: { type: 'vault', titleKey: 'name' },
       transactions: { type: 'finance', titleKey: 'description' },
+      wishlist: { type: 'wishlist', titleKey: 'title' },
       culture_items: { type: 'culture', titleKey: 'title' }
     };
     
@@ -39,6 +40,7 @@ export const webTrashApi = (db: any) => ({
       'file': 'files',
       'vault': 'vault_groups',
       'finance': 'transactions',
+      'wishlist': 'wishlist',
       'culture': 'culture_items'
     };
     const table = tableMap[itemType];
@@ -54,7 +56,7 @@ export const webTrashApi = (db: any) => ({
     return false;
   },
   empty: async () => {
-    const tables = ['pages', 'anki_decks', 'anki_cards', 'files', 'vault_groups', 'transactions', 'culture_items', 'file_folders'];
+    const tables = ['pages', 'anki_decks', 'anki_cards', 'files', 'vault_groups', 'transactions', 'wishlist', 'culture_items', 'file_folders'];
     for (const table of tables) {
       try {
         const all = await db.getAll(table) || [];
@@ -76,6 +78,7 @@ export const webTrashApi = (db: any) => ({
       'file': 'files',
       'vault': 'vault_groups',
       'finance': 'transactions',
+      'wishlist': 'wishlist',
       'culture': 'culture_items'
     };
     const table = tableMap[itemType];
@@ -85,3 +88,4 @@ export const webTrashApi = (db: any) => ({
     return true;
   }
 });
+

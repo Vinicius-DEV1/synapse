@@ -25,6 +25,8 @@ pub fn trash_get_all(db_state: tauri::State<crate::db::DbState>) -> Result<Vec<T
         SELECT id, name as title, deleted_at, 'vault' as item_type FROM vault_groups WHERE deleted_at IS NOT NULL
         UNION ALL
         SELECT id, description as title, deleted_at, 'finance' as item_type FROM transactions WHERE deleted_at IS NOT NULL
+        UNION ALL
+        SELECT id, title as title, deleted_at, 'wishlist' as item_type FROM wishlist WHERE deleted_at IS NOT NULL
         ORDER BY deleted_at DESC
     ";
 
@@ -67,6 +69,7 @@ pub fn trash_restore(
         "file" => "files",
         "vault" => "vault_groups",
         "finance" => "transactions",
+        "wishlist" => "wishlist",
         _ => return Err("Tipo não suportado".into()),
     };
 
@@ -92,7 +95,7 @@ pub fn trash_delete_permanently(
     db_state: tauri::State<crate::db::DbState>,
 ) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let table = match item_type.as_str() {
         "page" => "pages",
@@ -101,7 +104,8 @@ pub fn trash_delete_permanently(
         "file" => "files",
         "vault" => "vault_groups",
         "finance" => "transactions",
-        _ => return Err("Tipo nǜo suportado".into()),
+        "wishlist" => "wishlist",
+        _ => return Err("Tipo não suportado".into()),
     };
 
     let query = format!("DELETE FROM {} WHERE id = ?", table);
@@ -121,7 +125,7 @@ pub fn trash_delete_permanently(
 #[tauri::command]
 pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco nǜo inicializado")?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let tables = vec![
         "pages",
@@ -130,6 +134,7 @@ pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, S
         "files",
         "vault_groups",
         "transactions",
+        "wishlist",
         "file_folders",
     ];
 

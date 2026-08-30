@@ -7,39 +7,43 @@ import { platform } from './services/platform';
 
 async function init() {
   if (!window.api) {
-    let mockApi;
+    let mockApi: Record<string, unknown>;
     if (platform.platform === 'desktop') {
       console.log("Desktop environment detected. Initializing Tauri API Bridge...");
       const { createTauriApi } = await import('./tauri-api');
-      mockApi = await createTauriApi() as any;
+      mockApi = await createTauriApi() as unknown as Record<string, unknown>;
     } else {
       console.log("Web / Mobile WebView mode detected. Initializing Unified Web API with IndexedDB...");
       const { createWebApiMock } = await import('./services/web-api');
-      mockApi = await createWebApiMock() as any;
+      mockApi = await createWebApiMock() as unknown as Record<string, unknown>;
     }
 
     // Signal Mobile Shell (if running inside WebView) that app is mounted and ready
     if (typeof window !== 'undefined') {
       const notifyReady = () => {
-        if ((window as any).ReactNativeWebView && (window as any).ReactNativeWebView.postMessage) {
-          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_READY' }));
+        const globalWindow = window as typeof window & { ReactNativeWebView?: { postMessage: (msg: string) => void } };
+        if (globalWindow.ReactNativeWebView && globalWindow.ReactNativeWebView.postMessage) {
+          globalWindow.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_READY' }));
         }
       };
       setTimeout(notifyReady, 50);
     }
     
-    let syncTimeout: any = null;
-    const createApiProxy = (obj: any): any => {
+    let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+    const createApiProxy = <T extends Record<string, unknown>>(obj: T): T => {
       return new Proxy(obj, {
         get(target, prop) {
+          if (typeof prop !== 'string') {
+            return Reflect.get(target, prop);
+          }
           const val = target[prop];
           if (typeof val === 'function') {
             // Internal functions (_setMasterKey, _setSyncRunning) and listeners (onSyncTrigger, onLock)
             // must NOT be wrapped in async — they need to return their original value synchronously.
-            if (typeof prop === 'string' && (prop.startsWith('_') || prop.startsWith('on'))) {
+            if (prop.startsWith('_') || prop.startsWith('on')) {
               return val;
             }
-            return async (...args: any[]) => {
+            return async (...args: unknown[]) => {
               try {
                 const result = await val(...args);
                 if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set') || prop.startsWith('upsert'))) {
@@ -49,13 +53,15 @@ async function init() {
                   }, 500); // 500ms debounce
                 }
                 return result;
-              } catch (error: any) {
+              } catch (error: unknown) {
                 console.error(`[API Proxy Error] Failed executing '${String(prop)}':`, error);
+                
+                const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
                 
                 // Dispatch global event for ToastProvider to capture
                 const errorEvent = new CustomEvent('app-api-error', { 
                   detail: { 
-                    message: `Error in operation '${String(prop)}': ${error?.message || 'Unknown error'}`
+                    message: `Error in operation '${String(prop)}': ${errorMessage}`
                   } 
                 });
                 window.dispatchEvent(errorEvent);
@@ -66,14 +72,14 @@ async function init() {
             };
           }
           if (typeof val === 'object' && val !== null) {
-            return createApiProxy(val);
+            return createApiProxy(val as Record<string, unknown>);
           }
           return val;
         }
-      });
+      }) as T;
     };
     
-    window.api = createApiProxy(mockApi);
+    window.api = createApiProxy(mockApi) as typeof window.api;
   }
 
   // Register Service Worker for Web Video Streaming (only on HTTP/HTTPS, not tauri://)

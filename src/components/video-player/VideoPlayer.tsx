@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
-import DictionaryModal from '../library/DictionaryModal';
+import DictionaryModal from '../library/modals/DictionaryModal';
 import type { VideoItem } from '../../types';
 
 import { useVideoProgress } from './hooks/useVideoProgress';
@@ -296,7 +296,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           videoClip={dictState.video_clip}
           onClose={() => setDictState(null)}
           sourceType="video"
-          onSaveHighlight={async (color, note) => {
+          onSaveHighlight={async (color: string, note?: string) => {
             if (window.api?.sync) {
               const newWord = {
                 id: crypto.randomUUID(),
