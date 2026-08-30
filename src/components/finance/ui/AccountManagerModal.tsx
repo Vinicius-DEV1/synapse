@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Archive, Check, Wallet, Building2, CreditCard } from 'lucide-react';
+import { X, Plus, Edit2, Archive, Check, Building2 } from 'lucide-react';
 import type { Account } from '../../../types';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Settings, Wallet, Layers } from 'lucide-react';
 import type { Account, Transaction } from '../../../types';
 
