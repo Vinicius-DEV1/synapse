@@ -279,20 +279,21 @@ export function usePushToTalk({
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     
-    if (micButtonRef.current && isMobile) {
-      micButtonRef.current.addEventListener('touchstart', handleTouchStart);
-      micButtonRef.current.addEventListener('touchend', handleTouchEnd);
-      micButtonRef.current.addEventListener('touchcancel', handleTouchEnd);
+    const btn = micButtonRef.current;
+    if (btn && isMobile) {
+      btn.addEventListener('touchstart', handleTouchStart);
+      btn.addEventListener('touchend', handleTouchEnd);
+      btn.addEventListener('touchcancel', handleTouchEnd);
     }
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       
-      if (micButtonRef.current && isMobile) {
-        micButtonRef.current.removeEventListener('touchstart', handleTouchStart);
-        micButtonRef.current.removeEventListener('touchend', handleTouchEnd);
-        micButtonRef.current.removeEventListener('touchcancel', handleTouchEnd);
+      if (btn && isMobile) {
+        btn.removeEventListener('touchstart', handleTouchStart);
+        btn.removeEventListener('touchend', handleTouchEnd);
+        btn.removeEventListener('touchcancel', handleTouchEnd);
       }
     };
   }, [isConnected, isInCall, isMobile, wsRef, saveMessage, setLiveTranscript]);

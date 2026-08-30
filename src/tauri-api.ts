@@ -1,4 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
+import { tauriConfigApi } from './api/tauri/config';
+import { tauriNotesApi } from './api/tauri/notes';
 import { tauriAuthApi } from './api/tauri/auth';
 import { tauriFinanceApi } from './api/tauri/finance';
 import { tauriLibraryApi } from './api/tauri/library';
@@ -35,51 +36,11 @@ export const createTauriApi = async () => {
     auth: tauriAuthApi,
 
     // Settings and Keys using DB config table
-    config: { 
-      get: async (key: string) => {
-        try {
-          const rows = await invoke<any[]>('sync_get_table', { tableName: 'config' });
-          const row = rows.find(r => r.id === key);
-          if (row && row.data) {
-            return JSON.parse(row.data);
-          }
-        } catch (e) {
-          console.error("Config get error:", e);
-        }
-        return null;
-      }, 
-      set: async (key: string, value: any) => {
-        try {
-          await invoke('sync_upsert_row', { 
-            tableName: 'config', 
-            row: { id: key, data: JSON.stringify(value), updated_at: new Date().toISOString() } 
-          });
-          return { success: true };
-        } catch (e) {
-          console.error("Config set error:", e);
-          return { success: false };
-        }
-      } 
-    },
-    // --- PAGES ---
-    getAllPages: async () => await invoke('notes_get_all_pages'),
-    getPageContent: async (id: string) => await invoke('notes_get_page_content', { id }),
-    createPage: async (page: any) => await invoke('notes_create_page', { page }),
-    updatePage: async (page: any) => await invoke('notes_update_page', { page }),
-    deletePage: async (id: string) => await invoke('notes_delete_page', { id }),
-    getDeletedPages: async () => await invoke('notes_get_deleted_pages'),
-    restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
-    reorderPages: async () => true, // TODO
-    getPageHistory: async (pageId: string) => await invoke('notes_get_page_history', { pageId }),
+    config: tauriConfigApi,
     
-    // --- IMAGE CACHE ---
-    imageCache: {
-      get: async (id: string) => await invoke('image_cache_get', { id }),
-      put: async (id: string, data: ArrayBuffer, mimeType: string) => 
-        await invoke('image_cache_put', { id, data: Array.from(new Uint8Array(data)), mimeType }),
-      delete: async (id: string) => await invoke('image_cache_delete', { id }),
-      cleanupOrphans: async () => await invoke('notes_cleanup_orphaned_images'),
-    },
+    // --- PAGES & IMAGE CACHE ---
+    ...tauriNotesApi,
+    
     // --- FINANCE ---
     finance: tauriFinanceApi,
     

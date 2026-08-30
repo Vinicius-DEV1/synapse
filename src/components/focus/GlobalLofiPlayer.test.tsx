@@ -87,4 +87,50 @@ describe('GlobalLofiPlayer Component', () => {
       );
     });
   });
+
+  it('immediately halts playback and alerts on MediaError code 4 (SRC_NOT_SUPPORTED) without infinite retry loops', async () => {
+    const lofi = {
+      id: 'lofi_bad_1',
+      title: 'Corrupt Lofi Track',
+      original_name: 'broken.mp3',
+      is_local: false,
+      drive_file_id: 'drive_broken_123',
+    };
+    mockContext.activeLofi = lofi;
+    mockContext.isPlayingLofi = true;
+
+    vi.spyOn(lofiManager, 'resolveLofiUrl').mockResolvedValue('blob:http://localhost/dummy-blob-error');
+
+    const { container } = render(<GlobalLofiPlayer />);
+
+    await waitFor(() => {
+      expect(lofiManager.resolveLofiUrl).toHaveBeenCalledTimes(1);
+    });
+
+    const audioElement = container.querySelector('audio');
+    expect(audioElement).toBeDefined();
+
+    if (audioElement) {
+      act(() => {
+        // Dispatch MediaError code 4 event
+        Object.defineProperty(audioElement, 'error', {
+          value: { code: 4, message: 'Format not supported' },
+          configurable: true,
+        });
+        audioElement.dispatchEvent(new Event('error'));
+      });
+
+      await waitFor(() => {
+        expect(mockContext.setIsPlayingLofi).toHaveBeenCalledWith(false);
+        expect(toastContext.triggerToast).toHaveBeenCalledWith(
+          expect.stringContaining('formato incompatível ou falha na descriptografia'),
+          'error',
+          4000
+        );
+      });
+
+      // Confirm resolveLofiUrl was NOT called again in an infinite loop
+      expect(lofiManager.resolveLofiUrl).toHaveBeenCalledTimes(1);
+    }
+  });
 });

@@ -5,6 +5,7 @@ import {
   Layers,
   Folder,
   DollarSign,
+  Gift,
   Lock,
   PlayCircle,
   Loader2,
@@ -36,6 +37,7 @@ export function TrashTable({
       case 'anki_card': return <Layers className="text-purple-400" />;
       case 'file': return <Folder className="text-yellow-400" />;
       case 'finance': return <DollarSign className="text-emerald-400" />;
+      case 'wishlist': return <Gift className="text-pink-400" />;
       case 'vault': return <Lock className="text-orange-400" />;
       case 'video': return <PlayCircle className="text-rose-400" />;
       case 'lofi': return <Music className="text-purple-400" />;
@@ -50,6 +52,7 @@ export function TrashTable({
       case 'anki_card': return 'Flashcard';
       case 'file': return 'Arquivo';
       case 'finance': return 'Transação';
+      case 'wishlist': return 'Desejo';
       case 'vault': return 'Cofre';
       case 'video': return 'Vídeo';
       case 'lofi': return 'Lofi';

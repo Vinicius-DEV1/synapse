@@ -13,6 +13,11 @@ pub struct AuthStatus {
 }
 
 #[tauri::command]
+pub fn get_base_dir() -> Result<String, String> {
+    Ok(crate::get_app_data_dir().to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub fn auth_status(db_state: State<'_, DbState>) -> Result<AuthStatus, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = match &*guard {

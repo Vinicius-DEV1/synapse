@@ -33,24 +33,27 @@ export async function getLofiStreamLink(driveFileId: string, masterKey?: CryptoK
   const token = await getValidAccessToken();
   if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
   
-  // In Web, <audio> with Drive URL + access_token often fails due to CORS/Range requests.
-  // We download the ArrayBuffer and decrypt in memory (if required).
+  // Download ArrayBuffer from Drive and decrypt in memory using decryptFileChunked
+  // to support both modern ENC1 chunked format and legacy single-chunk encryption.
   const buffer = await downloadFromDrive(token, driveFileId);
-  let finalBuffer = buffer;
+  const mimeType = originalName ? getAudioMimeType(originalName) : 'audio/mpeg';
+  let finalBlob: Blob;
   
   if (masterKey) {
     try {
-      const { decryptFile } = await import('./storage');
-      finalBuffer = await decryptFile(buffer, masterKey);
+      const { decryptFileChunked } = await import('./storage');
+      const rawBlob = new Blob([buffer]);
+      const decryptedBlob = await decryptFileChunked(rawBlob, masterKey);
+      finalBlob = new Blob([decryptedBlob], { type: mimeType });
     } catch (e) {
-      console.warn("Lofi might not be encrypted (uploaded from Web), using raw bytes.", e);
+      console.error("Falha ao descriptografar áudio do Lofi:", e);
+      throw new Error("Não foi possível descriptografar a faixa de áudio.");
     }
+  } else {
+    finalBlob = new Blob([buffer], { type: mimeType });
   }
 
-  // Use original filename for MIME inference; driveFileId is not a filename.
-  const mimeType = originalName ? getAudioMimeType(originalName) : 'audio/mpeg';
-  const blob = new Blob([finalBuffer], { type: mimeType });
-  return URL.createObjectURL(blob);
+  return URL.createObjectURL(finalBlob);
 }
 
 export async function downloadLofiToLocal(lofi: LofiItem, onProgress?: (percent: number) => void): Promise<string> {
@@ -90,7 +93,8 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
         // We cannot use this URL directly as <audio src> because the browser
         // audio player requires HTTP Range requests which custom protocols
         // don't support — causing MediaError code 4.
-        // Instead, fetch the bytes, decrypt, and return a blob URL.
+        // Instead, fetch the bytes and return a blob URL.
+        // The Tauri encrypted protocol already decrypts the content on the fly.
         const isWindows = navigator.userAgent.includes('Windows');
         const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
         const encUrl = `${baseUrl}/focus/${encodeURIComponent(filename_enc)}`;
@@ -99,17 +103,7 @@ export async function resolveLofiUrl(lofi: LofiItem, masterKey?: CryptoKey): Pro
         if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
         const buffer = await response.arrayBuffer();
 
-        let finalBuffer = buffer;
-        if (masterKey) {
-          try {
-            const { decryptFile } = await import('./storage');
-            finalBuffer = await decryptFile(buffer, masterKey);
-          } catch (e) {
-            console.warn('Lofi might not be encrypted (old upload), using raw bytes.', e);
-          }
-        }
-
-        const blob = new Blob([finalBuffer], { type: getAudioMimeType(lofi.original_name) });
+        const blob = new Blob([buffer], { type: getAudioMimeType(lofi.original_name) });
         return URL.createObjectURL(blob);
       } else {
         console.warn(`Local lofi file missing for ${lofi.original_name}, falling back to Drive.`);

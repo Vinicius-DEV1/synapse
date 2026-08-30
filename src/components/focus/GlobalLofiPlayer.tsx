@@ -102,6 +102,15 @@ export const GlobalLofiPlayer: React.FC = () => {
     }
   }, [isPlayingLofi, src]);
 
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
+
   if (!activeLofi) return null;
 
   return (
@@ -113,28 +122,48 @@ export const GlobalLofiPlayer: React.FC = () => {
           loop={false}
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
           onEnded={() => {
-            // Se for loop, em vez de depender do HTML5 native loop (que falha se o token expirar),
-            // tentamos dar play novamente ou re-resolver a URL.
-            if (activeLofi) {
-              resolveLofiUrl(activeLofi, masterKey)
-                .then(url => {
-                  if (url !== src) setSrcAndRevoke(url);
-                  if (audioRef.current) {
-                    audioRef.current.currentTime = 0;
-                    audioRef.current.play().catch(e => console.warn("Lofi play interrupted after loop", e));
-                  }
-                })
-                .catch(() => {
-                  if (audioRef.current) {
-                    audioRef.current.currentTime = 0;
-                    audioRef.current.play().catch(e => console.warn("Lofi play interrupted after loop fallback", e));
-                  }
-                });
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(e => {
+                console.warn("Lofi replay failed, re-resolving URL...", e);
+                if (activeLofi) {
+                  resolveLofiUrl(activeLofi, masterKey)
+                    .then(url => {
+                      if (url !== src) setSrcAndRevoke(url);
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = 0;
+                        audioRef.current.play().catch(err => console.warn("Lofi play interrupted after loop", err));
+                      }
+                    })
+                    .catch(err => console.warn("Failed to re-resolve lofi on end", err));
+                }
+              });
             }
           }}
           onError={(e) => {
             const mediaErr = e.currentTarget.error;
             console.error("Audio playback error", mediaErr);
+
+            const errCode = mediaErr?.code;
+            // Code 4 = MEDIA_ERR_SRC_NOT_SUPPORTED, Code 3 = MEDIA_ERR_DECODE
+            // These errors are unrecoverable by simply reloading the exact same bytes.
+            const isUnrecoverable = errCode === 4 || errCode === 3 || (
+              typeof MediaError !== 'undefined' && 
+              (errCode === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED || errCode === MediaError.MEDIA_ERR_DECODE)
+            );
+
+            if (isUnrecoverable) {
+              console.warn("Lofi: Audio format not supported or decryption failed. Halting playback.");
+              if (retryTimerRef.current) {
+                clearTimeout(retryTimerRef.current);
+                retryTimerRef.current = null;
+              }
+              isRetryingRef.current = false;
+              setIsPlayingLofi(false);
+              setSrcAndRevoke(null);
+              triggerToast('Não foi possível reproduzir este áudio (formato incompatível ou falha na descriptografia).', 'error', 4000);
+              return;
+            }
 
             // Guard: skip if already retrying or exceeded max retries
             if (isRetryingRef.current || retryCountRef.current >= MAX_RETRIES) {
