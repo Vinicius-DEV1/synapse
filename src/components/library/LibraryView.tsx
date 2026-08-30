@@ -80,9 +80,9 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
       setSelectedIds(new Set());
       triggerToast(`${count} livro(s) excluído(s).`, 'info');
       await loadData();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Bulk delete failed', err);
-      triggerToast(err.message || 'Falha ao excluir alguns livros.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Falha ao excluir alguns livros.', 'error');
     }
   };
 
@@ -96,9 +96,9 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
       setSelectedIds(new Set());
       triggerToast(`Status de ${count} livro(s) atualizado!`, 'success');
       await loadData();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Bulk status update failed', err);
-      triggerToast(err.message || 'Falha ao alterar status dos livros.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Falha ao alterar status dos livros.', 'error');
     }
   };
 
@@ -112,8 +112,8 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         triggerToast(`Status alterado para ${status === 'reading' ? 'lendo' : 'concluído'}`, 'success');
         await loadData();
       }
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
+    } catch (err) {
+      triggerToast(err instanceof Error ? err.message : String(err), 'error');
     }
   };
 
@@ -126,8 +126,8 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
       } else {
         triggerToast('Função não disponível na plataforma', 'info');
       }
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
+    } catch (err) {
+      triggerToast(err instanceof Error ? err.message : String(err), 'error');
     }
   };
 

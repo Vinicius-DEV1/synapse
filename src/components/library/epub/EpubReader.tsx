@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
 import { ArrowLeft, CloudDownload } from 'lucide-react';
-import type { LibraryBook } from '../../../types';
+import type { LibraryBook, ReadingMode } from '../../../types';
 import { useStore } from '../../../store/useStore';
 
 import { EpubProvider, useEpub } from './EpubContext';
@@ -91,9 +91,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
           triggerToast('Arquivo EPUB reanexado com sucesso!', 'success');
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao reanexar EPUB:', err);
-      const msg = err.message || 'Falha ao vincular novo arquivo';
+      const msg = err instanceof Error ? err.message : 'Falha ao vincular novo arquivo';
       setReattachError(msg);
       triggerToast(msg, 'error');
     } finally {
@@ -107,9 +107,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       await window.api?.library?.deleteBook(book.id);
       triggerToast('Livro excluído da biblioteca.', 'info');
       onBack();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao excluir livro:', err);
-      triggerToast(err?.message || 'Erro ao excluir livro.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Erro ao excluir livro.', 'error');
       setIsDeleting(false);
     }
   };
@@ -121,8 +121,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
 
   const lastPageTurnTimeRef = useRef<number>(0);
 
-  const turnPage = (direction: 'next' | 'prev', r: any = rendition!) => {
-    if (!r) return;
+  const turnPage = (direction: 'next' | 'prev', r: unknown = rendition!) => {
+    const renditionObj = r as { next: () => void, prev: () => void };
+    if (!renditionObj) return;
     const now = Date.now();
     if (now - lastPageTurnTimeRef.current < 200) {
       return;
@@ -134,8 +135,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       viewerRef.current.style.opacity = '0.3';
     }
     setTimeout(() => {
-      if (direction === 'next') r.next();
-      else r.prev();
+      if (direction === 'next') renditionObj.next();
+      else renditionObj.prev();
       if (viewerRef.current) {
         viewerRef.current.style.transition = 'opacity 0.15s ease-in';
         viewerRef.current.style.opacity = '1';
@@ -184,7 +185,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!selection && rendition) {
       try {
-        ((rendition.getContents() as unknown) as any[]).forEach((content: any) => {
+        ((rendition.getContents() as unknown) as Array<{ window?: { getSelection: () => { removeAllRanges: () => void } } }>).forEach((content) => {
           content.window?.getSelection()?.removeAllRanges();
         });
       } catch (e) {}
@@ -194,14 +195,14 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!rendition) return;
 
-    const onRelocated = (location: any) => {
-      const updates: Partial<LibraryBook> = { last_read_page: location.start.cfi as any };
+    const onRelocated = (location: { start: { cfi: string } }) => {
+      const updates: Partial<LibraryBook> = { last_read_page: location.start.cfi };
       if (locationsReady && epubBook) {
         const percentage = epubBook.locations.percentageFromCfi(location.start.cfi);
         setProgress(percentage);
         const current = epubBook.locations.locationFromCfi(location.start.cfi);
         setCurrentPage(current as unknown as number);
-        (updates as any).current_page = current;
+        updates.current_page = current as unknown as number;
       }
       onUpdateBook(updates);
     };
@@ -224,12 +225,12 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   };
 
   const cycleReadingMode = () => {
-    setReadingMode((prev: string) => {
-      const modes = ['light', 'sepia', 'mint', 'dim', 'nord', 'midnight', 'dark', 'high-contrast'];
+    setReadingMode((prev: ReadingMode) => {
+      const modes: ReadingMode[] = ['light', 'sepia', 'mint', 'dim', 'nord', 'midnight', 'dark', 'high-contrast'];
       const nextIndex = (modes.indexOf(prev) + 1) % modes.length;
       const nextMode = modes[nextIndex];
       setTimeout(() => setModeToast(modeNames[nextMode]), 0);
-      return nextMode as any;
+      return nextMode;
     });
   };
 
@@ -263,7 +264,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!rendition) return;
     const timer = setTimeout(() => {
-      rendition.resize('100%' as any, '100%' as any);
+      (rendition as unknown as { resize: (w: string, h: string) => void }).resize('100%', '100%');
     }, 350);
     return () => clearTimeout(timer);
   }, [textWidth, state.isReadingModeFullScreen, showMobileTools, rendition]);

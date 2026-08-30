@@ -4,6 +4,7 @@ import { useStore } from '../../../store/useStore';
 import { resolveCanonicalBuffer } from '../../../services/storage/canonical-resolver';
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
+import { createAssetEmbedder } from './utils/epubAssetManager';
 
 declare global {
   interface Window {
@@ -59,213 +60,16 @@ export function useEpubLoader(
         const newEpubBook = ePub(arrayBuffer, { replacements: 'none' });
         setEpubBook(newEpubBook);
 
-        const normalizeRelativePath = (baseFile: string, relativePath: string): string => {
-          const stack = baseFile.split('/').filter(Boolean);
-          if (!baseFile.endsWith('/')) {
-            stack.pop(); // remove file to get directory
-          }
-          const parts = relativePath.split('/').filter(Boolean);
-          for (const part of parts) {
-            if (part === '.') continue;
-            if (part === '..') {
-              stack.pop();
-            } else {
-              stack.push(part);
-            }
-          }
-          return stack.join('/');
-        };
-
-        const assetBase64Cache = new Map<string, string>();
-
-        const getZipEntry = (cleanPath: string, basePath?: string) => {
-          const archive = (newEpubBook as any).archive;
-          const zip = archive?.zip;
-          if (!zip) return null;
-
-          let zipEntry: any = null;
-          const filename = cleanPath.split('/').pop() || cleanPath;
-
-          if (basePath) {
-            const canonical = normalizeRelativePath(basePath, cleanPath);
-            zipEntry = zip.file(canonical);
-            if (!zipEntry && zip.files) {
-              const lowerCanonical = canonical.toLowerCase();
-              const matchedFile = Object.keys(zip.files).find(f => f.toLowerCase() === lowerCanonical);
-              if (matchedFile) zipEntry = zip.file(matchedFile);
-            }
-          }
-
-          if (!zipEntry) {
-            const normalized = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
-            zipEntry = zip.file(normalized);
-            if (!zipEntry && zip.files) {
-              const lowerNorm = normalized.toLowerCase();
-              const matchedFile = Object.keys(zip.files).find(f => f.toLowerCase() === lowerNorm);
-              if (matchedFile) zipEntry = zip.file(matchedFile);
-            }
-          }
-
-          if (!zipEntry && zip.files) {
-            const lowerFilename = filename.toLowerCase();
-            const match = Object.keys(zip.files).find(
-              f => f.toLowerCase() === lowerFilename || f.toLowerCase().endsWith('/' + lowerFilename)
-            );
-            if (match) zipEntry = zip.file(match);
-          }
-
-          return zipEntry;
-        };
-
-        const getMimeType = (filename: string) => {
-          const ext = filename.split('.').pop()?.toLowerCase();
-          switch (ext) {
-            case 'png': return 'image/png';
-            case 'jpg': case 'jpeg': return 'image/jpeg';
-            case 'svg': return 'image/svg+xml';
-            case 'gif': return 'image/gif';
-            case 'webp': return 'image/webp';
-            case 'ttf': return 'font/ttf';
-            case 'otf': return 'font/otf';
-            case 'woff': return 'font/woff';
-            case 'woff2': return 'font/woff2';
-            case 'css': return 'text/css';
-            default: return 'application/octet-stream';
-          }
-        };
-
-        const processCssText = async (cssText: string, cssBasePath: string): Promise<string> => {
-          const cssUrlRegex = /url\(['"]?([^'"()]+)['"]?\)/g;
-          const matches = Array.from(cssText.matchAll(cssUrlRegex));
-          
-          for (const match of matches) {
-            const url = match[1];
-            if (url.startsWith('data:') || url.startsWith('http')) continue;
-            
-            const cleanPath = url.split('?')[0].split('#')[0];
-            const zipEntry = getZipEntry(cleanPath, cssBasePath);
-            if (zipEntry) {
-              try {
-                const base64Data = await zipEntry.async('base64');
-                const mime = getMimeType(cleanPath);
-                const dataUrl = `data:${mime};base64,${base64Data}`;
-                cssText = cssText.replace(match[0], `url("${dataUrl}")`);
-              } catch (e) {
-                console.warn('[EpubLoader] Failed to embed CSS asset:', url, e);
-              }
-            }
-          }
-          return cssText;
-        };
-
-        const embedAssetsAsDataUrls = async (doc: Document, sectionUrl?: string) => {
-          if (!doc) return;
-
-          // 1. Process inline <style> blocks
-          const styleTags = doc.querySelectorAll('style');
-          for (const style of Array.from(styleTags)) {
-            if (style.textContent) {
-              style.textContent = await processCssText(style.textContent, sectionUrl || '');
-            }
-          }
-
-          // 2. Process <link rel="stylesheet">
-          const links = doc.querySelectorAll('link[rel="stylesheet"]');
-          for (const link of Array.from(links)) {
-            const href = link.getAttribute('href');
-            if (!href || href.startsWith('http') || href.startsWith('data:')) continue;
-
-            const cleanPath = href.split('?')[0].split('#')[0];
-            const zipEntry = getZipEntry(cleanPath, sectionUrl);
-            if (zipEntry) {
-              try {
-                let cssText = await zipEntry.async('text');
-                const cssCanonicalBase = normalizeRelativePath(sectionUrl || '', cleanPath);
-                cssText = await processCssText(cssText, cssCanonicalBase);
-                
-                const styleEl = doc.createElement('style');
-                styleEl.textContent = cssText;
-                if (link.id) styleEl.id = link.id;
-                if (link.className) styleEl.className = link.className;
-                
-                link.parentNode?.replaceChild(styleEl, link);
-              } catch (e) {
-                console.warn('[EpubLoader] Failed to embed stylesheet:', href, e);
-              }
-            }
-          }
-
-          // 3. Process <img> and <image>
-          const images = doc.querySelectorAll('img, image');
-          for (const img of Array.from(images)) {
-            const isSvgImage = img.tagName.toLowerCase() === 'image';
-            const rawSrc = isSvgImage
-              ? (img.getAttribute('xlink:href') || img.getAttribute('href'))
-              : (img.getAttribute('src') || (img as HTMLImageElement).src);
-
-            if (!rawSrc || rawSrc.startsWith('data:')) continue;
-            const originalPath = (img as HTMLImageElement).dataset?.src || img.getAttribute('src') || rawSrc;
-
-            if (originalPath.startsWith('http://') || originalPath.startsWith('https://')) {
-              try {
-                const parsed = new URL(originalPath);
-                if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1' && !parsed.hostname.endsWith('.localhost')) continue;
-              } catch {}
-            }
-
-            if (assetBase64Cache.has(originalPath)) {
-              const cachedData = assetBase64Cache.get(originalPath)!;
-              if (isSvgImage) {
-                img.setAttribute('href', cachedData);
-                img.setAttribute('xlink:href', cachedData);
-              } else {
-                const newImg = doc.createElement('img');
-                Array.from(img.attributes).forEach(attr => newImg.setAttribute(attr.name, attr.value));
-                newImg.src = cachedData;
-                img.parentNode?.replaceChild(newImg, img);
-              }
-              continue;
-            }
-
-            try {
-              let cleanPath = originalPath.split('?')[0].split('#')[0];
-              if (cleanPath.startsWith('http')) {
-                try {
-                  cleanPath = new URL(cleanPath).pathname;
-                  if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
-                } catch {}
-              }
-
-              const zipEntry = getZipEntry(cleanPath, sectionUrl);
-              if (zipEntry) {
-                const base64Data = await zipEntry.async('base64');
-                const mime = getMimeType(cleanPath);
-                const dataUrl = `data:${mime};base64,${base64Data}`;
-                assetBase64Cache.set(originalPath, dataUrl);
-
-                if (isSvgImage) {
-                  img.setAttribute('href', dataUrl);
-                  img.setAttribute('xlink:href', dataUrl);
-                } else {
-                  const newImg = doc.createElement('img');
-                  Array.from(img.attributes).forEach(attr => newImg.setAttribute(attr.name, attr.value));
-                  newImg.src = dataUrl;
-                  img.parentNode?.replaceChild(newImg, img);
-                }
-              }
-            } catch (err) {
-              console.warn('[EpubLoader] Failed to embed image:', originalPath, err);
-            }
-          }
-        };
+        const { embedAssetsAsDataUrls } = createAssetEmbedder(newEpubBook);
 
         await newEpubBook.ready;
         if (!active) return;
         
         // Register spine hook after ready: embeds all assets before serialization
         if ((newEpubBook as any).spine?.hooks?.content?.register) {
-          (newEpubBook as any).spine.hooks.content.register(async (doc: Document, section: any) => {
-            await embedAssetsAsDataUrls(doc, section?.url || section?.href);
+          (newEpubBook as any).spine.hooks.content.register(async (doc: Document, section: unknown) => {
+            const sec = section as { url?: string, href?: string };
+            await embedAssetsAsDataUrls(doc, sec?.url || sec?.href);
           });
         }
         
@@ -368,8 +172,10 @@ export function useEpubLoader(
                onUpdateBook(updates);
             }).catch(console.error);
 
-           newRendition.on('selected', (cfiRange: string, contents: any) => {
-              const windowSelection = contents.window.getSelection();
+           newRendition.on('selected', (cfiRange: string, contents: unknown) => {
+              const cont = contents as { window: Window, document: Document, cfiBase: string };
+              const windowSelection = cont.window.getSelection();
+              if (!windowSelection) return;
               let text = windowSelection.toString();
               
               if (Date.now() - globalLastHighlightClickRef.current < 500) {
@@ -384,7 +190,7 @@ export function useEpubLoader(
                     if (range.endOffset > 0) {
                         try {
                            range.setEnd(range.endContainer, range.endOffset - 1);
-                           cfiRange = new (ePub as any).CFI(range, contents.cfiBase).toString();
+                           cfiRange = new (ePub as unknown as { CFI: any }).CFI(range, cont.cfiBase).toString();
                         } catch (e) {}
                     }
                  }
@@ -401,7 +207,7 @@ export function useEpubLoader(
                  
                  let offsetX = 0;
                  let offsetY = 0;
-                 const iframe = contents.document?.defaultView?.frameElement;
+                 const iframe = cont.document?.defaultView?.frameElement;
                  if (iframe) {
                      const iframeRect = iframe.getBoundingClientRect();
                      offsetX = iframeRect.left;
@@ -459,11 +265,12 @@ export function useEpubLoader(
              (newRendition as any)._touchStartX = touch.screenX;
            });
 
-           newRendition.on('rendered', (_: any, view: any) => {
-             const doc = view.document;
+           newRendition.on('rendered', (_: unknown, view: unknown) => {
+             const v = view as { document: Document, section?: { url?: string, href?: string }, window: Window };
+             const doc = v.document;
              if (!doc) return;
              
-             embedAssetsAsDataUrls(doc, view.section?.url || view.section?.href);
+             embedAssetsAsDataUrls(doc, v.section?.url || v.section?.href);
 
              const style = doc.createElement('style');
              style.innerHTML = `
@@ -475,7 +282,7 @@ export function useEpubLoader(
              setTimeout(() => {
                 const firstTextNode = doc.querySelector('p') || doc.body;
                 if (firstTextNode) {
-                  const computedStyle = view.window.getComputedStyle(firstTextNode);
+                  const computedStyle = v.window.getComputedStyle(firstTextNode);
                   const font = computedStyle.fontFamily;
                   const size = computedStyle.fontSize;
                   if (font && (!originalFontName || originalFontName === 'Detectando...')) {
@@ -505,10 +312,10 @@ export function useEpubLoader(
            
         }
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("EPUB Load Error:", err);
         if (active) {
-          setEpubError(err.message || "Falha ao carregar EPUB");
+          setEpubError(err instanceof Error ? err.message : "Falha ao carregar EPUB");
           setLoading(false);
         }
       }

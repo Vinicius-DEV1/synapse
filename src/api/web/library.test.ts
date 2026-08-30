@@ -10,6 +10,7 @@ describe('webLibraryApi Unit Tests', () => {
   const createMockDb = () => {
     inMemoryDb = {
       library_books: [],
+      library_book_files: [],
       library_collections: [],
       library_book_collections: [],
       library_highlights: [],
@@ -28,6 +29,11 @@ describe('webLibraryApi Unit Tests', () => {
           inMemoryDb[table][index] = item;
         } else {
           inMemoryDb[table].push(item);
+        }
+      },
+      delete: async (table: string, id: string) => {
+        if (inMemoryDb[table]) {
+          inMemoryDb[table] = inMemoryDb[table].filter((item) => item.id !== id);
         }
       },
       getAllFromIndex: async (table: string, indexKey: string, indexValue: string) => {

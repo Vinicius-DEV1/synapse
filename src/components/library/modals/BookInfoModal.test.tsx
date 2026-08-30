@@ -3,8 +3,8 @@ import { render, fireEvent } from '@testing-library/react';
 import BookInfoModal from './BookInfoModal';
 import type { LibraryBook } from '../../types';
 
-vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('../../ui/Portal', () => ({
+  Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="portal">{children}</div>,
 }));
 
 describe('BookInfoModal Component', () => {
