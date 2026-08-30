@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import type { Transaction } from '../../../types';
 import { LoanSummaryCards } from './LoanSummaryCards';

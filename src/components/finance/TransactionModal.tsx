@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Calendar, ArrowRightLeft, Building2 } from 'lucide-react';
+import { X, Calendar, Building2 } from 'lucide-react';
 import type { Transaction, TransactionType, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
