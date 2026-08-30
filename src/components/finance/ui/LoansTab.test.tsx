@@ -166,5 +166,42 @@ describe('LoansTab component', () => {
     expect(screen.getByText(/Vencido há/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Vencidos/i })).toBeInTheDocument();
   });
+
+  it('correctly calculates summary and displays loan with interest (expected_amount)', () => {
+    const loanWithInterest: Transaction[] = [
+      {
+        id: 'interest-1',
+        description: 'Empréstimo com Juros',
+        amount: 500,
+        expected_amount: 600,
+        paid_amount: 100,
+        type: 'loan_made',
+        category: 'Pessoal',
+        date: '2026-08-20',
+        status: 'in_progress',
+        is_paid: 0,
+        created_at: '2026-08-20',
+      },
+    ];
+
+    render(
+      <LoansTab
+        loans={loanWithInterest}
+        onAddLoan={vi.fn()}
+        onPayLoan={vi.fn()}
+        onMarkAsPaid={vi.fn()}
+        onReopenLoan={vi.fn()}
+        onEditLoan={vi.fn()}
+        onDeleteLoan={vi.fn()}
+      />
+    );
+
+    // Pending should be 600 - 100 = 500.00
+    expect(screen.getByText('R$ 500.00')).toBeInTheDocument();
+    // Principal should be displayed in the card badge
+    expect(screen.getByText('Principal: R$ 500.00')).toBeInTheDocument();
+    // Total with interest should be displayed
+    expect(screen.getByText(/de R\$ 600\.00/i)).toBeInTheDocument();
+  });
 });
 

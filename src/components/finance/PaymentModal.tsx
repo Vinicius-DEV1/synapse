@@ -26,7 +26,8 @@ export default function PaymentModal({
   const [loading, setLoading] = useState(false);
 
   const isLoanMade = transaction.type === 'loan_made';
-  const pendingAmount = Math.max(0, transaction.amount - (transaction.paid_amount || 0));
+  const targetTotal = Number(transaction.expected_amount || transaction.amount || 0);
+  const pendingAmount = Math.max(0, targetTotal - (transaction.paid_amount || 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,11 +46,11 @@ export default function PaymentModal({
       if (onPayLoanWithAccount) {
         await onPayLoanWithAccount(transaction, parsedAmount, targetAccountId);
       } else if (onSave) {
-        const newPaidAmount = Math.min(transaction.amount, (transaction.paid_amount || 0) + parsedAmount);
+        const newPaidAmount = Math.min(targetTotal, (transaction.paid_amount || 0) + parsedAmount);
         const updates: Partial<Transaction> = {
           paid_amount: newPaidAmount,
         };
-        if (newPaidAmount >= transaction.amount - 0.001) {
+        if (newPaidAmount >= targetTotal - 0.001) {
           updates.is_paid = 1;
           updates.status = 'completed';
         }

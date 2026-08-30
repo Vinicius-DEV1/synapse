@@ -15,10 +15,10 @@ interface LoansTabProps {
 }
 
 function isLoanOverdue(loan: Transaction): boolean {
-  const isPaid = Boolean(loan.is_paid) || (Number(loan.amount) > 0 && Number(loan.paid_amount || 0) >= Number(loan.amount) - 0.001);
+  const total = Number(loan.expected_amount || loan.amount || 0);
+  const isPaid = Boolean(loan.is_paid) || (total > 0 && Number(loan.paid_amount || 0) >= total - 0.001);
   if (isPaid || !loan.due_date) return false;
   const parts = loan.due_date.split('-').map(Number);
-  if (parts.length !== 3 || parts.some(isNaN)) return false;
   const [y, m, d] = parts;
   const target = new Date(y, m - 1, d);
   const today = new Date();
@@ -52,7 +52,8 @@ export function LoansTab({
       }
 
       // Status filter
-      const isPaid = Boolean(loan.is_paid) || (Number(loan.amount) > 0 && Number(loan.paid_amount || 0) >= Number(loan.amount) - 0.001);
+      const total = Number(loan.expected_amount || loan.amount || 0);
+      const isPaid = Boolean(loan.is_paid) || (total > 0 && Number(loan.paid_amount || 0) >= total - 0.001);
       if (statusFilter === 'active' && isPaid) {
         return false;
       }

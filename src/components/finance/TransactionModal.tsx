@@ -25,6 +25,7 @@ export default function TransactionModal({
 }: TransactionModalProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || defaultType);
   const [amount, setAmount] = useState(initialData?.amount ? String(initialData.amount) : '');
+  const [expectedAmount, setExpectedAmount] = useState(initialData?.expected_amount ? String(initialData.expected_amount) : '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [category, setCategory] = useState(initialData?.category || 'Geral');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
@@ -57,6 +58,12 @@ export default function TransactionModal({
       return;
     }
 
+    const parsedExpectedAmount = isLoan && expectedAmount.trim() ? parseFloat(expectedAmount) : null;
+    if (parsedExpectedAmount !== null && (isNaN(parsedExpectedAmount) || parsedExpectedAmount <= 0)) {
+      triggerToast('O valor total com juros deve ser um número válido.', 'error');
+      return;
+    }
+
     if (isTransfer) {
       if (!accountId || !destinationAccountId) {
         triggerToast('Selecione as contas de origem e destino.', 'error');
@@ -79,6 +86,7 @@ export default function TransactionModal({
       await onSave({
         type,
         amount: parsedAmount,
+        expected_amount: parsedExpectedAmount,
         description: finalDescription,
         category: isTransfer ? 'Transferência' : (category.trim() || 'Geral'),
         date,
@@ -226,6 +234,29 @@ export default function TransactionModal({
                 </div>
               )}
             </div>
+
+            {isLoan && (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5 space-y-1">
+                <label className="block text-xs text-amber-300 font-medium flex items-center justify-between">
+                  <span>Valor Total a {type === 'loan_made' ? 'Receber' : 'Pagar'} (com Juros)</span>
+                  <span className="text-[10px] text-dark-subtext font-normal">Opcional</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={expectedAmount}
+                  onChange={(e) => setExpectedAmount(e.target.value)}
+                  placeholder={`Ex: ${amount ? (parseFloat(amount) * 1.1).toFixed(2) : '600.00'}`}
+                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-amber-500/50 outline-none"
+                />
+                <p className="text-[10px] text-dark-subtext leading-tight">
+                  {type === 'loan_made'
+                    ? 'Preencha caso tenha emprestado um valor e combinou de receber um total maior com juros.'
+                    : 'Preencha caso tenha pegado emprestado e precisará pagar um valor maior com juros.'}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs text-dark-subtext mb-1">Descrição</label>
