@@ -15,21 +15,24 @@ type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
  * #5: Checks whether error is caused by Firebase quota limits or permission denial.
  * Deduplicado — usado por todos os handlers de erro de sync.
  */
-function isQuotaOrPermissionError(err: any): boolean {
-  return err.code === 'resource-exhausted' 
-    || err.message?.toLowerCase().includes('quota') 
-    || err.message?.toLowerCase().includes('permission-denied');
+function isQuotaOrPermissionError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as { code?: string, message?: string };
+  return e.code === 'resource-exhausted' 
+    || e.message?.toLowerCase().includes('quota') === true
+    || e.message?.toLowerCase().includes('permission-denied') === true;
 }
 
 /**
  * #5: Handler centralizado de erros de sync.
  * Dispatches global window event on quota or permission errors.
  */
-function handleSyncError(err: any, context: string) {
-  console.warn(`[Sync] ${context} FALHOU: ${err.message}`, err);
+function handleSyncError(err: unknown, context: string) {
+  const e = err as { message?: string, code?: string };
+  console.warn(`[Sync] ${context} FALHOU: ${e.message || 'Erro desconhecido'}`, err);
   if (isQuotaOrPermissionError(err)) {
     window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
-      detail: { message: err.message, code: err.code } 
+      detail: { message: e.message, code: e.code } 
     }));
   }
 }
@@ -94,7 +97,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
             finishSync(true);
             syncChannel.postMessage('LOCAL_UPDATE');
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (!isClosed) {
             handleSyncError(err, 'doFullSync'); // #5: centralizado
             finishSync(false);
@@ -124,7 +127,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           if (!isClosed) {
             syncChannel.postMessage('LOCAL_UPDATE');
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (!isClosed) {
             handleSyncError(err, 'doPushOnlySync');
           }
@@ -159,7 +162,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
             loadPages();
             finishSync(true);
           })
-          .catch((err: any) => {
+          .catch((err: unknown) => {
             handleSyncError(err, 'Pull em Tempo Real'); // #5: centralizado
             finishSync(false);
           })

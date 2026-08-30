@@ -30,7 +30,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Sync ref with state for callbacks
-  tasksRef.current = tasks;
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
 
   const clearTaskTimeout = (id: string) => {
     const existing = timeoutsRef.current.get(id);
@@ -105,9 +107,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const timeouts = timeoutsRef.current;
     return () => {
-      timeoutsRef.current.forEach(timer => clearTimeout(timer));
-      timeoutsRef.current.clear();
+      timeouts.forEach(timer => clearTimeout(timer));
+      timeouts.clear();
     };
   }, []);
 

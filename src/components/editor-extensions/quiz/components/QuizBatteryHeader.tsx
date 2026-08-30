@@ -12,6 +12,7 @@ import {
   UploadCloud,
   List,
   LayoutList,
+  FileCode,
 } from 'lucide-react';
 import type { QuizLayout } from '../types';
 
@@ -30,6 +31,7 @@ interface QuizBatteryHeaderProps {
   onOpenAiAssistant: () => void;
   onOpenImport: () => void;
   onCopyJson: (e: React.MouseEvent) => void;
+  onCopySchemaPrompt?: (e: React.MouseEvent) => void;
   onOpenDeleteModal: () => void;
   onToggleCollapse: () => void;
 }
@@ -49,6 +51,7 @@ export default function QuizBatteryHeader({
   onOpenAiAssistant,
   onOpenImport,
   onCopyJson,
+  onCopySchemaPrompt,
   onOpenDeleteModal,
   onToggleCollapse,
 }: QuizBatteryHeaderProps) {
@@ -154,7 +157,7 @@ export default function QuizBatteryHeader({
         <button
           onClick={onOpenImport}
           className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 transition-colors"
-          title="Importar questões via JSON"
+          title="Importar questões (JSON, MD, PDF)"
         >
           <UploadCloud size={15} />
         </button>
@@ -165,6 +168,15 @@ export default function QuizBatteryHeader({
         >
           {copiedJson ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
         </button>
+        {onCopySchemaPrompt && (
+          <button
+            onClick={onCopySchemaPrompt}
+            className="p-1.5 rounded-xl bg-white/5 hover:bg-purple-500/20 text-dark-subtext hover:text-purple-300 border border-white/10 transition-colors"
+            title="Copiar Prompt / Schema de JSON para IAs externas"
+          >
+            <FileCode size={15} />
+          </button>
+        )}
         <button
           onClick={onOpenDeleteModal}
           className="p-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-dark-subtext hover:text-red-400 border border-white/10 transition-colors"

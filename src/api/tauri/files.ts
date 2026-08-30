@@ -10,9 +10,10 @@ export const tauriFilesApi = {
   saveLocal: async (filename: string, data: Uint8Array) => await invoke('files_save_local', { filename, data: Array.from(data) }),
   getLocal: async (idOrPath: string) => {
     try {
-      const { appDataDir, join } = await import('@tauri-apps/api/path');
+      const { getBaseAppDir } = await import('./path');
+      const { join } = await import('@tauri-apps/api/path');
       const { exists } = await import('@tauri-apps/plugin-fs');
-      const dataDir = await appDataDir();
+      const dataDir = await getBaseAppDir();
 
       const clean = idOrPath.replace(/^file:\/\//, '');
       const filename = clean.split(/[/\\]/).pop() || idOrPath;

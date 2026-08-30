@@ -8,7 +8,22 @@ export interface Tab {
   bookTitle?: string;
   unsavedContent: string | null;
   scrollY: number;
-  moduleState?: Record<string, any>;
+  moduleState?: Record<string, unknown>;
+}
+
+export interface AiChatMessagePart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+  [key: string]: unknown;
+}
+
+export interface AiChatMessage {
+  role: 'user' | 'model' | 'system' | string;
+  parts: AiChatMessagePart[];
+  [key: string]: unknown;
 }
 
 export interface AiChatSession {
@@ -17,7 +32,7 @@ export interface AiChatSession {
   pageTitle: string;
   contextText?: string;
   contextImage?: string;
-  messages: any[];
+  messages: AiChatMessage[];
   updatedAt: number;
 }
 
@@ -44,7 +59,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'diagrams'; bookId?: string | null; moduleState?: Record<string, any> }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'diagrams'; bookId?: string | null; moduleState?: Record<string, unknown> }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }
@@ -55,7 +70,7 @@ export type Action =
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SET_ACTIVE_TAB'; tabId: string }
   | { type: 'REORDER_TABS'; sourceIndex: number; targetIndex: number }
-  | { type: 'UPDATE_TAB_STATE'; tabId: string; stateUpdates: Record<string, any> }
+  | { type: 'UPDATE_TAB_STATE'; tabId: string; stateUpdates: Record<string, unknown> }
   | { type: 'NAVIGATE_IN_TAB'; pageId: string }
   | { type: 'SET_UNSAVED_CONTENT'; tabId: string; content: string }
   | { type: 'SET_SCROLL_Y'; tabId: string; scrollY: number }

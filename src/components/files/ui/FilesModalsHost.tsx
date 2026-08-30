@@ -8,7 +8,7 @@ import FileInfoModal from '../FileInfoModal';
 import FileViewer from '../FileViewer';
 import RenameModal from '../RenameModal';
 import MoveModal from '../MoveModal';
-import DriveAuthModal from '../../library/DriveAuthModal';
+import DriveAuthModal from '../../library/modals/DriveAuthModal';
 
 interface FilesModalsHostProps {
   selectedFolderId: string | null;
