@@ -300,6 +300,8 @@ export interface ICadernoAPI {
     saveLocal: (name: string, data: ArrayBuffer) => Promise<string>;
     getLocalPath: (name: string) => Promise<string | null>;
     deleteLocal: (name: string) => Promise<void>;
+    downloadFromDrive?: (driveId: string, accessToken: string, destFilename: string) => Promise<string>;
+    onDownloadProgress?: (callback: (payload: { driveId: string; percent: number }) => void) => () => void;
   };
 
   os?: {

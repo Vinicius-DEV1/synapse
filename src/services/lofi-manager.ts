@@ -141,7 +141,7 @@ export async function downloadLofiToLocal(
   masterKey?: CryptoKey,
   fallbackKey?: CryptoKey
 ): Promise<string> {
-  if (!window.api?.lofi?.saveLocal) {
+  if (!window.api?.lofi) {
     throw new Error("Download local só está disponível no ambiente Desktop.");
   }
   if (!lofi.drive_file_id) throw new Error("Lofi não está no Drive.");
@@ -152,10 +152,26 @@ export async function downloadLofiToLocal(
     throw new Error("Não foi possível autenticar com o Google Drive. Conecte sua conta para fazer o download.");
   }
 
-  const rawBufferFromDrive = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
-  const plainAudioBuffer = await decryptLofiBufferToPlainAudio(rawBufferFromDrive, masterKey, fallbackKey);
-
-  const localPath = await window.api.lofi.saveLocal(lofi.original_name, plainAudioBuffer);
+  let localPath = "";
+  if (window.api.lofi.downloadFromDrive) {
+    let unlisten: (() => void) | undefined;
+    if (onProgress && window.api.lofi.onDownloadProgress) {
+      unlisten = window.api.lofi.onDownloadProgress((payload) => {
+        if (payload.driveId === lofi.drive_file_id) {
+          onProgress(payload.percent);
+        }
+      });
+    }
+    try {
+      localPath = await window.api.lofi.downloadFromDrive(lofi.drive_file_id, token, lofi.original_name);
+    } finally {
+      if (unlisten) unlisten();
+    }
+  } else {
+    const rawBufferFromDrive = await downloadFromDrive(token, lofi.drive_file_id, onProgress);
+    const plainAudioBuffer = await decryptLofiBufferToPlainAudio(rawBufferFromDrive, masterKey, fallbackKey);
+    localPath = await window.api.lofi.saveLocal(lofi.original_name, plainAudioBuffer);
+  }
   
   if (window.api?.sync) {
     await window.api.sync.upsertRow(LOFI_TABLE, {

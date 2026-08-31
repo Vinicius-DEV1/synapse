@@ -1,12 +1,115 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
+use futures_util::StreamExt;
+use tokio::io::AsyncWriteExt;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[tauri::command]
+pub async fn lofi_download_drive_file(
+    drive_id: String,
+    access_token: String,
+    dest_filename: String,
+    db_state: tauri::State<'_, crate::db::DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let lofi_dir = get_lofi_dir(&app)?;
+    let safe_filename = sanitize_filename(&dest_filename);
+    let filename_enc = format!("{}.enc", safe_filename);
+    let final_path = lofi_dir.join(&filename_enc);
+    let temp_path = lofi_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
+
+    let url = format!("https://www.googleapis.com/drive/v3/files/{}?alt=media", drive_id);
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", access_token))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("Drive download failed: HTTP {}", response.status()));
+    }
+
+    let total_size = response.content_length().unwrap_or(0);
+    let mut stream = response.bytes_stream();
+    let mut file = tokio::fs::File::create(&temp_path).await.map_err(|e| e.to_string())?;
+
+    let mut downloaded: u64 = 0;
+    let mut last_percent = 0;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+
+        downloaded += chunk.len() as u64;
+        if total_size > 0 {
+            let percent = ((downloaded as f64 / total_size as f64) * 100.0) as i32;
+            if percent > last_percent {
+                last_percent = percent;
+                let _ = app.emit("lofi_download_progress", serde_json::json!({
+                    "driveId": drive_id,
+                    "percent": percent
+                }));
+            }
+        }
+    }
+
+    file.flush().await.map_err(|e| e.to_string())?;
+    drop(file);
+
+    // Check if downloaded file starts with ENC1 header
+    let is_enc1 = match std::fs::File::open(&temp_path) {
+        Ok(mut f) => {
+            use std::io::Read;
+            let mut buf = [0u8; 4];
+            f.read_exact(&mut buf).is_ok() && &buf == b"ENC1"
+        }
+        Err(_) => false,
+    };
+
+    if is_enc1 {
+        // Already chunk-encrypted: move directly to final destination
+        if final_path.exists() {
+            let _ = std::fs::remove_file(&final_path);
+        }
+        std::fs::rename(&temp_path, &final_path).map_err(|e| e.to_string())?;
+    } else {
+        // Raw audio: encrypt using focus module key
+        let keys_guard = db_state.keys.lock().unwrap();
+        let master_key = if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.focus {
+                k.clone()
+            } else {
+                let _ = std::fs::remove_file(&temp_path);
+                return Err("Focus key not found".into());
+            }
+        } else {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err("Keys not unlocked".into());
+        };
+
+        if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &final_path, &master_key) {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(e);
+        }
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    let _ = app.emit("lofi_download_progress", serde_json::json!({
+        "driveId": drive_id,
+        "percent": 100
+    }));
+
+    Ok(final_path.to_string_lossy().to_string())
+}
 
 
 
