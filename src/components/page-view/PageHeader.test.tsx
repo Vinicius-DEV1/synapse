@@ -18,15 +18,27 @@ describe('PageHeader Component', () => {
       parent_id: null,
       created_at: 100,
       updated_at: 100,
+      sort_order: 0,
       is_locked: false,
     },
     {
       id: 'sub-1',
-      title: 'Página Atual',
+      title: 'Primeira Filha',
       icon: '📄',
       parent_id: 'root-1',
       created_at: 100,
       updated_at: 100,
+      sort_order: 0,
+      is_locked: false,
+    },
+    {
+      id: 'sub-2',
+      title: 'Segunda Filha',
+      icon: '📄',
+      parent_id: 'root-1',
+      created_at: 100,
+      updated_at: 100,
+      sort_order: 1,
       is_locked: false,
     },
   ];
@@ -96,5 +108,63 @@ describe('PageHeader Component', () => {
         }),
       })
     );
+  });
+
+  it('navigates to previous sibling page when clicking the previous arrow', () => {
+    const onUpdatePage = vi.fn();
+    const onShowHistory = vi.fn();
+
+    render(
+      <PageHeader
+        page={mockPages[2]}
+        onUpdatePage={onUpdatePage}
+        onShowHistory={onShowHistory}
+      />
+    );
+
+    const prevButton = screen.getByLabelText('Página anterior');
+    const nextButton = screen.getByLabelText('Próxima página');
+
+    expect(prevButton).not.toBeDisabled();
+    expect(prevButton.getAttribute('title')).toContain('Primeira Filha');
+
+    expect(nextButton).toBeDisabled();
+    expect(nextButton.getAttribute('title')).toBe('Última página desta pasta');
+
+    fireEvent.click(prevButton);
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'NAVIGATE_IN_TAB',
+      pageId: 'sub-1',
+    });
+  });
+
+  it('disables previous arrow when on the first child of folder and next arrow navigates to next sibling', () => {
+    const onUpdatePage = vi.fn();
+    const onShowHistory = vi.fn();
+
+    render(
+      <PageHeader
+        page={mockPages[1]}
+        onUpdatePage={onUpdatePage}
+        onShowHistory={onShowHistory}
+      />
+    );
+
+    const prevButton = screen.getByLabelText('Página anterior');
+    const nextButton = screen.getByLabelText('Próxima página');
+
+    expect(prevButton).toBeDisabled();
+    expect(prevButton.getAttribute('title')).toBe('Primeira página desta pasta');
+
+    expect(nextButton).not.toBeDisabled();
+    expect(nextButton.getAttribute('title')).toContain('Segunda Filha');
+
+    fireEvent.click(nextButton);
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'NAVIGATE_IN_TAB',
+      pageId: 'sub-2',
+    });
   });
 });
