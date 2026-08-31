@@ -68,7 +68,18 @@ export const tauriLofiApi = {
   getLocalPath: async (filename: string) => await invoke('lofi_get_local_path', { filename }),
   deleteLocal: async (filename: string) => await invoke('lofi_delete_local', { filename }),
   saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('lofi_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
-  copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename })
+  copyLocal: async (sourcePath: string, filename: string) => await invoke('lofi_copy_local', { sourcePath, filename }),
+  downloadFromDrive: async (driveId: string, accessToken: string, destFilename: string) => {
+    return await invoke<string>('lofi_download_drive_file', { driveId, accessToken, destFilename });
+  },
+  onDownloadProgress: (callback: (payload: { driveId: string; percent: number }) => void) => {
+    const unlistenPromise = listen<{ driveId: string; percent: number }>('lofi_download_progress', (event) => {
+      callback(event.payload);
+    });
+    return () => {
+      unlistenPromise.then(unlisten => unlisten());
+    };
+  },
 };
 
 export const tauriYoutubeApi = {

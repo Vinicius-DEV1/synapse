@@ -147,7 +147,44 @@ describe('lofi-manager service', () => {
       await expect(downloadLofiToLocal(mockLofi)).rejects.toThrow('Download local só está disponível no ambiente Desktop.');
     });
 
-    it('downloads from drive, saves locally, and updates sync row', async () => {
+    it('downloads using native stream downloadFromDrive when available and reports progress', async () => {
+      const downloadFromDriveMock = vi.fn().mockResolvedValue('/app_data/lofi/rain.mp3.enc');
+      let progressCb: ((payload: { driveId: string; percent: number }) => void) | undefined;
+      const onDownloadProgressMock = vi.fn().mockImplementation((cb) => {
+        progressCb = cb;
+        return () => {};
+      });
+      const upsertRowMock = vi.fn().mockResolvedValue(undefined);
+
+      (window as any).api = {
+        lofi: {
+          downloadFromDrive: downloadFromDriveMock,
+          onDownloadProgress: onDownloadProgressMock,
+        },
+        sync: { upsertRow: upsertRowMock },
+      };
+
+      vi.spyOn(driveModule, 'getValidAccessToken').mockResolvedValue('valid-drive-token');
+      const onProgress = vi.fn();
+
+      const localPath = await downloadLofiToLocal(mockLofi, onProgress, dummyKey);
+      expect(localPath).toBe('/app_data/lofi/rain.mp3.enc');
+      expect(downloadFromDriveMock).toHaveBeenCalledWith('drive-rain-123', 'valid-drive-token', 'rain.mp3');
+
+      // Test progress reporting
+      if (progressCb) {
+        progressCb({ driveId: 'drive-rain-123', percent: 75 });
+        expect(onProgress).toHaveBeenCalledWith(75);
+      }
+
+      expect(upsertRowMock).toHaveBeenCalledWith('lofis', expect.objectContaining({
+        id: 'lofi-1',
+        is_local: true,
+        file_path: '/app_data/lofi/rain.mp3.enc',
+      }));
+    });
+
+    it('downloads from drive, saves locally, and updates sync row when native stream is absent', async () => {
       const saveLocalMock = vi.fn().mockResolvedValue('/app_data/lofi/rain.mp3.enc');
       const upsertRowMock = vi.fn().mockResolvedValue(undefined);
       (window as any).api = {

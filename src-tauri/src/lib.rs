@@ -297,6 +297,7 @@ pub fn run() {
             cmd_audio::lofi_delete_local,
             cmd_audio::lofi_save_local,
             cmd_audio::lofi_copy_local,
+            cmd_audio::lofi_download_drive_file,
             cmd_drive::drive_open_url,
             cmd_drive::drive_get_credentials,
             cmd_drive::drive_save_credentials,
