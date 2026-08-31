@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { ChevronRight, Clock, FolderInput } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
 import { getPagePath } from '../../utils/hierarchy';
+import { getSiblingPageNavigation } from '../../utils/page-navigation';
 import EmojiPopover from '../EmojiPopover';
 
 interface PageHeaderProps {
@@ -18,6 +19,23 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
     if (!page) return [];
     return getPagePath(state.pages, page.id) as Page[];
   }, [page, state.pages]);
+
+  const { prevPage, nextPage } = useMemo(() => {
+    return getSiblingPageNavigation(state, page);
+  }, [state, page]);
+
+  const isNested = Boolean(page?.parent_id);
+  const prevTooltip = prevPage
+    ? `Página anterior: ${prevPage.title || 'Sem Título'}`
+    : isNested
+    ? 'Primeira página desta pasta'
+    : 'Primeira página';
+
+  const nextTooltip = nextPage
+    ? `Próxima página: ${nextPage.title || 'Sem Título'}`
+    : isNested
+    ? 'Última página desta pasta'
+    : 'Última página';
 
   const handleNavigate = (pageId: string) => {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
@@ -54,25 +72,58 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
 
   return (
     <>
-      {breadcrumbs.length > 1 && (
-        <div className="flex items-center gap-1 text-xs text-dark-subtext mb-6 flex-wrap">
-          {breadcrumbs.map((crumb, i) => (
-            <span key={crumb.id} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight size={12} className="text-dark-subtext/50" />}
-              <button
-                onClick={() => handleNavigate(crumb.id)}
-                onContextMenu={(e) => handleContextMenu(e, crumb.id)}
-                onAuxClick={(e) => handleAuxClick(e, crumb.id)}
-                className={`hover:text-brand-400 transition-colors ${
-                  i === breadcrumbs.length - 1 ? 'text-dark-text font-medium' : ''
-                }`}
-              >
-                {crumb.icon} {crumb.title}
-              </button>
-            </span>
-          ))}
+      <div className="flex items-center gap-2 text-xs text-dark-subtext mb-6 flex-wrap">
+        {/* Sequential Sibling Navigation Arrows */}
+        <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/5 rounded-lg p-0.5 shadow-sm">
+          <button
+            onClick={() => prevPage && handleNavigate(prevPage.id)}
+            disabled={!prevPage}
+            title={prevTooltip}
+            aria-label="Página anterior"
+            className={`p-1 rounded-md transition-all ${
+              prevPage
+                ? 'text-dark-subtext hover:text-white hover:bg-white/10 active:scale-95 cursor-pointer'
+                : 'text-dark-subtext/25 cursor-not-allowed'
+            }`}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <button
+            onClick={() => nextPage && handleNavigate(nextPage.id)}
+            disabled={!nextPage}
+            title={nextTooltip}
+            aria-label="Próxima página"
+            className={`p-1 rounded-md transition-all ${
+              nextPage
+                ? 'text-dark-subtext hover:text-white hover:bg-white/10 active:scale-95 cursor-pointer'
+                : 'text-dark-subtext/25 cursor-not-allowed'
+            }`}
+          >
+            <ChevronRight size={13} />
+          </button>
         </div>
-      )}
+
+        {/* Breadcrumb Path */}
+        {breadcrumbs.length > 1 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {breadcrumbs.map((crumb, i) => (
+              <span key={crumb.id} className="flex items-center gap-1">
+                {i > 0 && <ChevronRight size={12} className="text-dark-subtext/50" />}
+                <button
+                  onClick={() => handleNavigate(crumb.id)}
+                  onContextMenu={(e) => handleContextMenu(e, crumb.id)}
+                  onAuxClick={(e) => handleAuxClick(e, crumb.id)}
+                  className={`hover:text-brand-400 transition-colors ${
+                    i === breadcrumbs.length - 1 ? 'text-dark-text font-medium' : ''
+                  }`}
+                >
+                  {crumb.icon} {crumb.title}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="flex items-start gap-3 mb-2 group">
         <EmojiPopover onEmojiSelect={(emoji) => onUpdatePage(page.id, { icon: emoji })}>
