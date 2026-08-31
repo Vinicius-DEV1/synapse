@@ -35,7 +35,9 @@ export function useLofiViewActions({
   const [uploadStatusText, setUploadStatusText] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const [bulkDownloadStatus, setBulkDownloadStatus] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleImport = async () => {
@@ -108,8 +110,16 @@ export function useLofiViewActions({
     }
 
     setDownloadingId(lofi.id);
+    setDownloadProgress(0);
+    triggerToast(`Iniciando download de "${lofi.title}"...`, 'info', 2000);
+
     try {
-      await downloadLofiToLocal(lofi, undefined, masterKey, fallbackKey);
+      await downloadLofiToLocal(
+        lofi, 
+        (percent) => setDownloadProgress(percent),
+        masterKey, 
+        fallbackKey
+      );
       await loadLofis();
       window.dispatchEvent(new Event('app-sync-trigger'));
       triggerToast(`Faixa "${lofi.title}" baixada para uso offline com sucesso!`, 'success');
@@ -118,6 +128,7 @@ export function useLofiViewActions({
       triggerToast(err?.message || `Erro ao baixar "${lofi.title}" para uso offline`, 'error', 5000);
     } finally {
       setDownloadingId(null);
+      setDownloadProgress(0);
     }
   };
 
@@ -136,8 +147,15 @@ export function useLofiViewActions({
     for (let i = 0; i < itemsToDownload.length; i++) {
       const item = itemsToDownload[i];
       setDownloadingId(item.id);
+      setDownloadProgress(0);
+      setBulkDownloadStatus(`Baixando (${i + 1}/${itemsToDownload.length})`);
       try {
-        await downloadLofiToLocal(item, undefined, masterKey, fallbackKey);
+        await downloadLofiToLocal(
+          item, 
+          (percent) => setDownloadProgress(percent),
+          masterKey, 
+          fallbackKey
+        );
         successCount++;
       } catch (err: any) {
         console.error(`Erro ao baixar "${item.title}" em lote:`, err);
@@ -145,7 +163,9 @@ export function useLofiViewActions({
     }
 
     setDownloadingId(null);
+    setDownloadProgress(0);
     setIsBulkDownloading(false);
+    setBulkDownloadStatus('');
     setSelectedIds(new Set());
     await loadLofis();
     window.dispatchEvent(new Event('app-sync-trigger'));
@@ -281,7 +301,9 @@ export function useLofiViewActions({
     deletingId,
     setDeletingId,
     downloadingId,
+    downloadProgress,
     isBulkDownloading,
+    bulkDownloadStatus,
     selectedIds,
     setSelectedIds,
     handleImport,

@@ -36,7 +36,9 @@ export const LofiView: React.FC = () => {
     deletingId,
     setDeletingId,
     downloadingId,
+    downloadProgress,
     isBulkDownloading,
+    bulkDownloadStatus,
     selectedIds,
     setSelectedIds,
     handleImport,
@@ -191,6 +193,7 @@ export const LofiView: React.FC = () => {
                     deletingId={deletingId}
                     setDeletingId={setDeletingId}
                     downloadingId={downloadingId}
+                    downloadProgress={downloadProgress}
                     onDownloadToLocal={handleDownloadToLocal}
                     onRename={handleRename}
                     formatDuration={formatDuration}
@@ -225,11 +228,16 @@ export const LofiView: React.FC = () => {
               className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
             >
               {isBulkDownloading ? (
-                <Loader2 size={13} className="animate-spin" />
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>{bulkDownloadStatus ? `${bulkDownloadStatus} (${Math.round(downloadProgress)}%)` : `Baixando ${Math.round(downloadProgress)}%`}</span>
+                </>
               ) : (
-                <DownloadCloud size={13} />
+                <>
+                  <DownloadCloud size={13} />
+                  <span>Baixar para offline</span>
+                </>
               )}
-              Baixar para offline
             </button>
           )}
           <button

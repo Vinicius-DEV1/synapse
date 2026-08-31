@@ -25,6 +25,7 @@ export interface SortableLofiItemProps {
   deletingId: string | null;
   setDeletingId: (id: string | null) => void;
   downloadingId?: string | null;
+  downloadProgress?: number;
   onDownloadToLocal?: (lofi: LofiItem, e: React.MouseEvent) => void;
   onRename: (lofi: LofiItem, newTitle: string) => void;
   formatDuration: (seconds?: number | null) => string;
@@ -42,6 +43,7 @@ export function SortableLofiItem({
   deletingId,
   setDeletingId,
   downloadingId,
+  downloadProgress,
   onDownloadToLocal,
   onRename,
   formatDuration,
@@ -87,12 +89,14 @@ export function SortableLofiItem({
     setIsEditing(false);
   };
 
+  const isCurrentDownloading = downloadingId === lofi.id;
+
   return (
     <div 
       ref={setNodeRef} 
       style={style}
       onClick={() => { if (!isEditing) onTogglePlay(lofi); }}
-      className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
+      className={`relative overflow-hidden p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
         isActive 
           ? 'bg-brand-500/10 border-brand-500/30 text-white' 
           : isSelected
@@ -100,6 +104,13 @@ export function SortableLofiItem({
           : 'bg-dark-card border-white/5 text-dark-subtext hover:bg-white/5 hover:text-white'
       }`}
     >
+      {isCurrentDownloading && downloadProgress !== undefined && downloadProgress > 0 && (
+        <div 
+          className="absolute bottom-0 left-0 h-1 bg-brand-500 transition-all duration-200 rounded-b-xl z-20"
+          style={{ width: `${Math.min(100, Math.max(3, downloadProgress))}%` }}
+        />
+      )}
+
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onToggleSelect(lofi, e); }}
@@ -186,19 +197,25 @@ export function SortableLofiItem({
       
       <div className="shrink-0 flex items-center gap-1 relative">
         {!lofi.is_local && lofi.drive_file_id && window.api?.lofi && onDownloadToLocal && (
-          <button
-            type="button"
-            onClick={(e) => onDownloadToLocal(lofi, e)}
-            disabled={downloadingId === lofi.id}
-            className="p-2 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors disabled:opacity-50"
-            title="Baixar para uso offline"
-          >
-            {downloadingId === lofi.id ? (
-              <Loader2 size={16} className="animate-spin text-brand-400" />
-            ) : (
+          isCurrentDownloading ? (
+            <div 
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-500/15 border border-brand-500/30 text-brand-400 text-xs font-semibold select-none"
+              title="Baixando áudio do Google Drive..."
+            >
+              <Loader2 size={13} className="animate-spin shrink-0 text-brand-400" />
+              <span>{downloadProgress !== undefined && downloadProgress > 0 ? `${Math.round(downloadProgress)}%` : 'Baixando...'}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => onDownloadToLocal(lofi, e)}
+              disabled={!!downloadingId}
+              className="p-2 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors disabled:opacity-30"
+              title="Baixar para uso offline"
+            >
               <DownloadCloud size={16} />
-            )}
-          </button>
+            </button>
+          )
         )}
 
         <button 
