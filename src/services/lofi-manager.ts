@@ -195,22 +195,19 @@ export async function resolveLofiUrl(
     try {
       const localPath = await window.api.lofi.getLocalPath(filename_enc);
       if (localPath) {
-        // Build the Tauri custom-protocol URL to fetch the encrypted file.
-        // We cannot use this URL directly as <audio src> because the browser
-        // audio player requires HTTP Range requests which custom protocols
-        // don't support — causing MediaError code 4.
-        // Instead, fetch the bytes and return a blob URL.
-        // The Tauri encrypted protocol already decrypts the content on the fly.
         const isWindows = navigator.userAgent.includes('Windows');
         const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
         const encUrl = `${baseUrl}/focus/${encodeURIComponent(filename_enc)}`;
 
         const response = await fetch(encUrl);
-        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-        const buffer = await response.arrayBuffer();
-
-        const blob = new Blob([buffer], { type: getAudioMimeType(lofi.original_name) });
-        return URL.createObjectURL(blob);
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          const audioBytes = await decryptLofiBufferToPlainAudio(buffer, masterKey, fallbackKey);
+          const blob = new Blob([audioBytes], { type: getAudioMimeType(lofi.original_name) });
+          return URL.createObjectURL(blob);
+        } else {
+          console.warn(`Fetch failed with status ${response.status}, falling back to Drive.`);
+        }
       } else {
         console.warn(`Local lofi file missing for ${lofi.original_name}, falling back to Drive.`);
       }
