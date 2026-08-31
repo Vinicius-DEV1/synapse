@@ -108,7 +108,16 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   });
 
   if (!res.ok) {
-    throw new Error('Falha ao renovar token do Google Drive');
+    let errorData: { error?: string; error_description?: string } = {};
+    try {
+      errorData = await res.json();
+    } catch {
+      // Ignored if not valid json
+    }
+    const err = new Error(errorData.error_description || errorData.error || `Falha ao renovar token do Google Drive (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).oauthError = errorData.error;
+    throw err;
   }
 
   const token: DriveToken = await res.json();
@@ -117,6 +126,26 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
     token.refresh_token = refresh_token;
   }
   return token;
+}
+
+/**
+ * Checks whether an error during token refresh represents an explicit OAuth revocation/expiration,
+ * rather than a temporary network failure or server timeout.
+ */
+export function isOAuthRevocationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { status?: number; oauthError?: string; message?: string };
+  if (err.oauthError === 'invalid_grant' || err.oauthError === 'unauthorized_client' || err.oauthError === 'invalid_client') {
+    return true;
+  }
+  if (err.status === 400 || err.status === 401) {
+    return true;
+  }
+  const msg = (err.message || '').toLowerCase();
+  if (msg.includes('invalid_grant') || msg.includes('token has been expired') || msg.includes('revoked')) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -223,16 +252,19 @@ export async function forceTokenRefresh(): Promise<string | null> {
     const newToken = await refreshToken(creds.token.refresh_token);
     await saveDriveCredentials(newToken);
     return newToken.access_token;
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("Failed to force refresh token", e);
-    await saveDriveCredentials(null);
-    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    if (isOAuthRevocationError(e)) {
+      await saveDriveCredentials(null);
+      window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    }
     return null;
   }
 }
 
 /**
  * Returns a valid Google Drive access token, automatically refreshing expired tokens.
+ * Only clears local credentials if Google OAuth explicitly reports the token is revoked/invalid.
  */
 export async function getValidAccessToken(forceRefresh = false): Promise<string | null> {
   if (forceRefresh) return await forceTokenRefresh();
@@ -248,10 +280,13 @@ export async function getValidAccessToken(forceRefresh = false): Promise<string 
       const newToken = await refreshToken(creds.token.refresh_token);
       await saveDriveCredentials(newToken);
       return newToken.access_token;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Failed to refresh token", e);
-      await saveDriveCredentials(null);
-      window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+      // Only clear credentials if the token was explicitly revoked/invalidated by Google
+      if (isOAuthRevocationError(e)) {
+        await saveDriveCredentials(null);
+        window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+      }
       return null;
     }
   }

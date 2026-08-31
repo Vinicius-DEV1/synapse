@@ -143,4 +143,77 @@ describe('drive-auth service', () => {
     const validToken = await getValidAccessToken();
     expect(validToken).toBe('brand_new_token');
   });
+
+  it('does NOT wipe stored credentials on temporary network failure during refresh', async () => {
+    const expiredToken = {
+      access_token: 'old_access',
+      refresh_token: 'valid_refresh',
+      expires_in: 10,
+      expires_at: Date.now() - 5000,
+    };
+
+    (window as any).api.sync.getTable.mockResolvedValue([
+      {
+        id: 'drive_credentials',
+        data: JSON.stringify({ token: expiredToken }),
+      },
+    ]);
+
+    // Simulate network error (offline, DNS failure)
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const token = await getValidAccessToken();
+    expect(token).toBeNull();
+
+    // upsertRow should NOT have been called with null data
+    expect(window.api.sync.upsertRow).not.toHaveBeenCalledWith(
+      'config',
+      expect.objectContaining({
+        id: 'drive_credentials',
+        data: JSON.stringify({ token: null }),
+      })
+    );
+  });
+
+  it('wipes stored credentials and dispatches drive-auth-expired on explicit invalid_grant OAuth error', async () => {
+    const expiredToken = {
+      access_token: 'old_access',
+      refresh_token: 'revoked_refresh',
+      expires_in: 10,
+      expires_at: Date.now() - 5000,
+    };
+
+    (window as any).api.sync.getTable.mockResolvedValue([
+      {
+        id: 'drive_credentials',
+        data: JSON.stringify({ token: expiredToken }),
+      },
+    ]);
+
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: 'invalid_grant',
+        error_description: 'Token has been expired or revoked.',
+      }),
+    } as Response);
+
+    const token = await getValidAccessToken();
+    expect(token).toBeNull();
+
+    // Must wipe credentials
+    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
+      'config',
+      expect.objectContaining({
+        id: 'drive_credentials',
+        data: JSON.stringify({ token: null }),
+      })
+    );
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'drive-auth-expired' })
+    );
+  });
 });
