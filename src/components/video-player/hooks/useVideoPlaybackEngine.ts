@@ -51,14 +51,28 @@ export function useVideoPlaybackEngine({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [subtitleOffset, setSubtitleOffset] = useState(0);
+
+  const [loopA, setLoopA] = useState<number | null>(null);
+  const [loopB, setLoopB] = useState<number | null>(null);
+
+  const clearLoop = () => {
+    setLoopA(null);
+    setLoopB(null);
+  };
+
+  const changePlaybackRate = (rate: number) => {
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+    setPlaybackRate(rate);
+  };
+
   const togglePlay = () => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
         if (audioRef.current && activeAudioUrl) {
-          if (Math.abs(audioRef.current.currentTime - videoRef.current.currentTime) > 0.05) {
-            audioRef.current.currentTime = videoRef.current.currentTime;
-          }
           audioRef.current.play().catch(() => {});
         }
         setIsPlaying(true);
@@ -67,6 +81,7 @@ export function useVideoPlaybackEngine({
         videoRef.current.pause();
         if (audioRef.current) audioRef.current.pause();
         setIsPlaying(false);
+        setIsBuffering(false);
         saveProgress(videoRef.current.currentTime);
       }
     }
@@ -137,6 +152,10 @@ export function useVideoPlaybackEngine({
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setIsBuffering(false);
+      if (loopA !== null && loopB !== null && videoRef.current.currentTime >= loopB) {
+        videoRef.current.currentTime = loopA;
+        if (audioRef.current) audioRef.current.currentTime = loopA;
+      }
     }
   };
 
@@ -169,5 +188,14 @@ export function useVideoPlaybackEngine({
     handleSeek,
     handleTimeUpdate,
     handleLoadedMetadata,
+    playbackRate,
+    changePlaybackRate,
+    subtitleOffset,
+    setSubtitleOffset,
+    loopA,
+    setLoopA,
+    loopB,
+    setLoopB,
+    clearLoop,
   };
 }

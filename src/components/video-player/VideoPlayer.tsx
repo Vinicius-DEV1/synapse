@@ -17,6 +17,8 @@ import { VideoControlsOverlay } from './ui/VideoControlsOverlay';
 import { VideoVocabularySidebar } from './ui/VideoVocabularySidebar';
 import { VideoResumePrompt } from './ui/VideoResumePrompt';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
+import { VideoHelpModal } from './modals/VideoHelpModal';
+import { FastForward, Rewind, Gauge, MessageSquare, Volume2 as VolIcon, Repeat } from 'lucide-react';
 
 interface VideoPlayerProps {
   src: string;
@@ -79,6 +81,15 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     handleSeek,
     handleTimeUpdate,
     handleLoadedMetadata,
+    playbackRate,
+    changePlaybackRate,
+    subtitleOffset,
+    setSubtitleOffset,
+    loopA,
+    setLoopA,
+    loopB,
+    setLoopB,
+    clearLoop,
   } = useVideoPlaybackEngine({
     video,
     videoRef,
@@ -135,6 +146,18 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     fetchNewSubtitle();
   }, [activeSubtitleIndex, subtitleTracks, _subtitleContent]);
 
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{ text: string, icon: 'rewind' | 'forward' | 'speed' | 'subtitle' | 'volume' | 'loop' } | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerFeedback = useCallback((text: string, icon: 'rewind' | 'forward' | 'speed' | 'subtitle' | 'volume' | 'loop') => {
+    setActionFeedback({ text, icon });
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => {
+      setActionFeedback(null);
+    }, 600);
+  }, []);
+
   useVideoKeyboardShortcuts({
     dictState,
     isFullscreen,
@@ -145,6 +168,15 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     seekBy,
     setActiveAudioIndex,
     setActiveSubtitleIndex,
+    playbackRate,
+    changePlaybackRate,
+    subtitleOffset,
+    setSubtitleOffset,
+    setLoopA,
+    setLoopB,
+    clearLoop,
+    videoRef: videoRef as React.RefObject<HTMLVideoElement>,
+    triggerFeedback,
   });
 
   const handleClose = async () => {
@@ -195,7 +227,9 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   const handleWaiting = useCallback(() => {
     if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
     bufferTimerRef.current = setTimeout(() => {
-      setIsBuffering(true);
+      if (videoRef.current && !videoRef.current.paused) {
+        setIsBuffering(true);
+      }
     }, 250);
   }, [setIsBuffering]);
 
@@ -214,7 +248,17 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full bg-black flex flex-col justify-center items-center overflow-hidden font-sans group">
+    <div 
+      ref={containerRef} 
+      className={`relative w-full h-full bg-black flex flex-col justify-center items-center overflow-hidden font-sans group ${(!showControls && isPlaying && !dictState && !showHelpModal && !showVocabDrawer) ? 'cursor-none' : ''}`}
+      onWheel={(e) => {
+        // Adjust volume on scroll
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        const newVol = Math.max(0, Math.min(1, volume + delta));
+        handleVolumeChange({ target: { value: String(newVol) } } as any);
+        triggerFeedback(`Vol ${Math.round(newVol * 100)}%`, 'volume');
+      }}
+    >
       {errorMsg && (
         <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center text-white p-6 text-center">
           <div className="bg-red-500/20 text-red-300 p-4 rounded-lg max-w-lg border border-red-500/30">
@@ -238,6 +282,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         autoPlay
         className="w-full h-full object-contain"
         onClick={togglePlay}
+        onDoubleClick={toggleFullscreen}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onWaiting={handleWaiting}
@@ -297,12 +342,36 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         }}
       />
 
+      {/* Action Feedback Overlay (Seek, Vol, Speed, Loop) */}
+      <div 
+        className={`absolute inset-0 flex pointer-events-none z-50 transition-all duration-300 ${
+          actionFeedback ? 'opacity-100' : 'opacity-0'
+        } ${
+          actionFeedback?.icon === 'forward' ? 'justify-end items-center pr-16 md:pr-32' :
+          actionFeedback?.icon === 'rewind' ? 'justify-start items-center pl-16 md:pl-32' :
+          'justify-center items-start pt-16'
+        }`}
+      >
+        {actionFeedback && (
+          <div className={`bg-black/50 backdrop-blur-sm rounded-full px-5 py-2.5 text-white flex items-center gap-3 shadow-2xl border border-white/10 ${actionFeedback ? 'animate-fade-in' : ''}`}>
+            {actionFeedback.icon === 'rewind' && <Rewind size={24} className="text-brand-400" />}
+            {actionFeedback.icon === 'forward' && <FastForward size={24} className="text-brand-400" />}
+            {actionFeedback.icon === 'speed' && <Gauge size={24} className="text-brand-400" />}
+            {actionFeedback.icon === 'volume' && <VolIcon size={24} className="text-brand-400" />}
+            {actionFeedback.icon === 'subtitle' && <MessageSquare size={24} className="text-brand-400" />}
+            {actionFeedback.icon === 'loop' && <Repeat size={24} className="text-brand-400" />}
+            <span className="text-lg font-bold font-mono tracking-wider">{actionFeedback.text}</span>
+          </div>
+        )}
+      </div>
+
       {!dictState && (
         <InteractiveSubtitles 
           cues={cues}
           videoRef={videoRef as React.RefObject<HTMLVideoElement>}
           onWordClick={handleWordClick} 
           savedWords={activeSavedWords}
+          subtitleOffset={subtitleOffset}
         />
       )}
 
@@ -321,6 +390,11 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         activeAudioIndex={activeAudioIndex}
         activeSubtitleIndex={activeSubtitleIndex}
         videoWordsCount={videoWords ? videoWords.length : 0}
+        videoWords={videoWords || []}
+        playbackRate={playbackRate}
+        loopA={loopA}
+        loopB={loopB}
+        clearLoop={clearLoop}
         onClose={handleClose}
         togglePlay={togglePlay}
         toggleMute={toggleMute}
@@ -329,7 +403,9 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         toggleFullscreen={toggleFullscreen}
         setActiveAudioIndex={setActiveAudioIndex}
         setActiveSubtitleIndex={setActiveSubtitleIndex}
+        changePlaybackRate={changePlaybackRate}
         setShowVocabDrawer={setShowVocabDrawer}
+        setShowHelpModal={setShowHelpModal}
         onPauseForDrawer={() => { if (videoRef.current) videoRef.current.pause(); }}
         formatTime={formatVideoTime}
         setIsHoveringControls={setIsHoveringControls}
@@ -370,6 +446,10 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           loadVideoWords={loadVideoWords}
           setDictState={setDictState}
         />
+      )}
+
+      {showHelpModal && (
+        <VideoHelpModal onClose={() => setShowHelpModal(false)} />
       )}
     </div>
   );
