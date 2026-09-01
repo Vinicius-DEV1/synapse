@@ -34,3 +34,15 @@ export interface VideoState {
   volume: number;
   isFullscreen: boolean;
 }
+
+export interface VideoWord {
+  id: string;
+  video_id: string;
+  word: string;
+  context: string;
+  timestamp: number;
+  color: string;
+  note?: string;
+  deleted_at?: string;
+}
+

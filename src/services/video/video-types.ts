@@ -28,7 +28,14 @@ export interface YouTubeDownloadOptions {
   url: string;
   quality: string;
   filename: string;
-  youtubeInfo?: any; 
+  youtubeInfo?: {
+    title?: string;
+    duration?: number;
+    description?: string;
+    uploader?: string;
+    thumbnail?: string;
+    entries?: unknown[];
+  } | null; 
   collectionId?: string;
   collectionName?: string;
   selectedSubs?: string[];
