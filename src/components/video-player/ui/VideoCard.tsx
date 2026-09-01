@@ -76,14 +76,15 @@ export const VideoCard = React.memo(({
             <Play fill="currentColor" size={20} className="ml-1" />
           </div>
           
-          <div className="absolute top-2 right-2 flex gap-1">
-            {video.is_local ? (
-              <div className="bg-emerald-950/80 border border-emerald-500/30 text-green-400 p-1 rounded-md" title="Baixado (Local)">
-                <HardDrive size={12} />
-              </div>
-            ) : (
-              <div className="bg-blue-950/80 border border-blue-500/30 text-blue-400 p-1 rounded-md" title="No Drive (Nuvem)">
+          <div className="absolute top-2 right-2 flex gap-1 z-10">
+            {(video.drive_file_id || video.drive_web_file_id) && (
+              <div className="bg-blue-500/80 backdrop-blur-md border border-blue-400/50 text-white p-1 rounded-md shadow-lg" title="No Drive (Nuvem)">
                 <Cloud size={12} />
+              </div>
+            )}
+            {video.is_local && (
+              <div className="bg-emerald-500/80 backdrop-blur-md border border-emerald-400/50 text-white p-1 rounded-md shadow-lg" title="Baixado (Local)">
+                <HardDrive size={12} />
               </div>
             )}
           </div>
@@ -131,11 +132,14 @@ export const VideoCard = React.memo(({
               </div>
             ) : null}
             
-            {video.is_local ? (
-              <span title="Baixado (Local)"><HardDrive size={14} className="text-green-500/80" /></span>
-            ) : (
-              <span title="No Drive (Nuvem)"><Cloud size={14} className="text-blue-500/80" /></span>
-            )}
+            <div className="flex items-center gap-1">
+              {(video.drive_file_id || video.drive_web_file_id) && (
+                <span title="No Drive (Nuvem)"><Cloud size={14} className="text-blue-400" /></span>
+              )}
+              {video.is_local && (
+                <span title="Baixado (Local)"><HardDrive size={14} className="text-emerald-400" /></span>
+              )}
+            </div>
           </div>
         )}
 

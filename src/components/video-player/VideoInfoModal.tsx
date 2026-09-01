@@ -16,15 +16,25 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     if (video.is_local && video.file_path) {
       import('@tauri-apps/plugin-fs').then(fs => {
         fs.stat(video.file_path as string).then(info => {
-          if (info && info.size) {
+          if (mounted && info && info.size) {
             setFileSize(formatBytes(info.size));
+          } else if (mounted) {
+            setFileSize('Desconhecido');
           }
-        }).catch(() => {});
-      }).catch(() => {});
+        }).catch(() => {
+          if (mounted) setFileSize('Desconhecido');
+        });
+      }).catch(() => {
+        if (mounted) setFileSize('Indisponível (Web)');
+      });
+    } else {
+      setFileSize('N/A');
     }
+    return () => { mounted = false; };
   }, [video]);
 
   const formatDuration = (seconds?: number) =>
@@ -96,11 +106,12 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
                   {formatDuration(video.duration)}
                 </span>
                 
-                {video.is_local ? (
+                {video.is_local && (
                   <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded text-xs text-green-400">
                     <HardDrive size={12} /> Local
                   </span>
-                ) : (
+                )}
+                {(video.drive_file_id || video.drive_web_file_id || (!video.is_local && !video.youtube_url)) && (
                   <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded text-xs text-blue-400">
                     <Cloud size={12} /> Nuvem
                   </span>
@@ -147,7 +158,7 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
                      <span className="font-medium">Original na Nuvem (Drive)</span>
                      <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{getExtension(video.original_name)}</span>
                    </div>
-                   <span className="text-xs text-white/50">Criptografado</span>
+                   <span className="text-xs text-white/50 flex items-center gap-1"><Cloud size={12} className="text-blue-400/50" /> Backup Seguro</span>
                  </li>
                )}
                {video.drive_web_file_id && (
@@ -156,7 +167,7 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
                      <span className="font-medium">Web Remux na Nuvem (Drive)</span>
                      <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">MP4</span>
                    </div>
-                   <span className="text-xs text-white/50">Criptografado</span>
+                   <span className="text-xs text-white/50 flex items-center gap-1"><Cloud size={12} className="text-blue-400/50" /> Backup Seguro</span>
                  </li>
                )}
                {!video.is_local && !video.drive_file_id && !video.drive_web_file_id && !video.youtube_url && (
@@ -194,12 +205,16 @@ export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) 
               </h4>
               {subtitleTracks.length > 0 ? (
                 <ul className="space-y-2">
-                  {subtitleTracks.map((track, idx) => (
-                    <li key={idx} className="text-sm text-white/90 bg-black/20 px-2 py-1.5 rounded flex items-center justify-between">
-                      <span className="capitalize">{track.label || 'Desconhecida'}</span>
-                      <span className="text-xs text-white/40">{track.id}</span>
-                    </li>
-                  ))}
+                  {subtitleTracks.map((track, idx) => {
+                    const isRedundant = track.label?.toLowerCase() === `legenda ${track.id.toLowerCase()}`;
+                    const label = isRedundant ? 'Legenda Embutida' : track.label || 'Desconhecida';
+                    return (
+                      <li key={idx} className="text-sm text-white/90 bg-black/20 px-2 py-1.5 rounded flex items-center justify-between">
+                        <span className="capitalize">{label}</span>
+                        <span className="text-xs text-white/40 font-mono">{track.id}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : video.local_subtitle_path ? (
                 <p className="text-sm text-white/90 bg-purple-500/10 px-2 py-1.5 rounded border border-purple-500/20 flex items-center justify-between">

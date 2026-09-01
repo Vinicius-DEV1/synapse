@@ -1,14 +1,15 @@
 import React from 'react';
 import { BookOpen, X, Trash2, Sparkles } from 'lucide-react';
-import type { VideoItem } from '../../../types';
+import type { VideoItem, VideoWord } from '../../../types';
+import type { DictionaryData } from '../../../types/dictionary';
 
 interface VideoVocabularySidebarProps {
   video: VideoItem;
-  videoWords: any[];
+  videoWords: VideoWord[];
   setShowVocabDrawer: (val: boolean) => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   loadVideoWords: () => void;
-  setDictState: (state: any) => void;
+  setDictState: (state: { word: string; context: string; preloadedData?: DictionaryData | null } | null) => void;
 }
 
 export function VideoVocabularySidebar({

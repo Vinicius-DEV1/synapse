@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react';
 import YouTubeDownloadModal from './YouTubeDownloadModal';
 
 vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="yt-portal">{children}</div>,
+  Portal: ({ children }) => <div data-testid="yt-portal">{children}</div>,
 }));
 
 vi.mock('../../store/TaskContext', () => ({

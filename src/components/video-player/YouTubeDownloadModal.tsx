@@ -120,7 +120,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                     <select 
                       value={selectedQuality}
                       onChange={(e) => setSelectedQuality(e.target.value)}
-                      className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
                     >
                       <option className="bg-dark-bg text-white" value="best">Melhor (Recomendado)</option>
                       <option className="bg-dark-bg text-white" value="bestvideo[height<=1080]+bestaudio/best[height<=1080]">1080p ou menor</option>
