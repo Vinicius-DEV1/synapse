@@ -27,7 +27,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   let originalSize: number | undefined = file.size;
   let webSize: number | undefined = undefined;
   
-  const sourcePath = (file as any).TauriPath;
+  const sourcePath = (file as File & { TauriPath?: string }).TauriPath;
   const baseName = file.name.replace(/\.[^/.]+$/, "");
   const standardizedName = `${baseName}.mp4`;
   
@@ -37,9 +37,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     try {
       if (onPhaseChange) onPhaseChange('Convertendo e criptografando vídeos no Desktop...');
       
-      let unlistenProgress: any = null;
+      let unlistenProgress: (() => void) | null = null;
       if (window.api?.events) {
-        unlistenProgress = await window.api.events.listen('video_upload_progress', (event: any) => {
+        unlistenProgress = await window.api.events.listen('video_upload_progress', (event: { payload: number }) => {
            if (onProgress) onProgress(5 + (event.payload * 0.35)); // Map 0-100 to 5-40%
         });
       }
@@ -53,7 +53,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
 
       let processRes;
       try {
-          processRes = await (window.api.video as any).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
+          processRes = await (window.api.video as unknown as { processUpload: (s: string, n: string, w: string, c: string, d?: number) => Promise<{ original_path: string, web_path: string, original_size?: number, web_size?: number }> }).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
       } finally {
           if (signal) signal.removeEventListener('abort', handleAbort);
       }
@@ -86,9 +86,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
            if (onProgress) onProgress(55 + (p * 0.15));
         });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.warn("Não foi possível processar o vídeo localmente:", e);
-      throw new Error("Falha no processamento nativo: " + (e.message || e));
+      throw new Error("Falha no processamento nativo: " + (e instanceof Error ? e.message : String(e)));
     }
   }
 
@@ -107,8 +107,8 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
           if (onProgress) onProgress(p * 0.7); 
         }, signal);
         driveFileName = standardizedName;
-      } catch (err: any) {
-        if (err.message === 'Cancelado pelo usuário' || signal?.aborted) {
+      } catch (err: unknown) {
+        if ((err instanceof Error && err.message === 'Cancelado pelo usuário') || signal?.aborted) {
           throw new Error('Cancelado pelo usuário');
         }
         console.error('Falha no FFmpeg Web:', err);
@@ -128,7 +128,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       
       if (signal?.aborted) throw new Error("Cancelado pelo usuário");
 
-      mainFileId = await uploadToDrive(token, driveFileName + ".enc", encryptedBlob, false as any, (p) => {
+      mainFileId = await uploadToDrive(token, driveFileName + ".enc", encryptedBlob, 'root', (p) => {
         if (signal?.aborted) throw new Error("Cancelado pelo usuário");
         if (onProgress) onProgress(70 + (p * 0.3));
       });
@@ -144,7 +144,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   if (sourcePath && window.api?.video && extraAudioTracks.length > 0) {
     for (const track of extraAudioTracks) {
       try {
-        const audioOutPath = await (window.api.video as any).extractAudio(sourcePath, track);
+        const audioOutPath = await (window.api.video as unknown as { extractAudio: (path: string, track: string) => Promise<string> }).extractAudio(sourcePath, track);
         if (audioOutPath) {
           const driveFileName = `${baseName} - Audio ${track.replace(/:/g, '')}.m4a`;
           const audioDriveId = await uploadLocalFileToDrive(token, audioOutPath, driveFileName);
@@ -187,7 +187,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       }
     }
 
-    const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false as any);
+    const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, 'root');
     
     subtitleTracksList.unshift({
       id: 'main_sub',
@@ -213,7 +213,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
             driveFileName += '.enc';
           }
           
-          const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, false as any);
+          const subDriveId = await uploadToDrive(token, driveFileName, subBuffer, 'root');
           
           subtitleTracksList.push({
             id: track,
@@ -292,9 +292,9 @@ export async function generateWebVersionTask(
   // 1. Convert video locally via FFmpeg
   if (onPhaseChange) onPhaseChange('Convertendo vídeo no Desktop...');
   
-  let unlistenProgress: any = null;
+  let unlistenProgress: (() => void) | null = null;
   if (window.api?.events && onProgress) {
-    unlistenProgress = await window.api.events.listen('video_upload_progress', (event: any) => {
+    unlistenProgress = await window.api.events.listen('video_upload_progress', (event: { payload: number }) => {
       onProgress(event.payload * 0.7);
     });
   }

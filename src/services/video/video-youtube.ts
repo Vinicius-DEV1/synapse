@@ -39,7 +39,7 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
       try {
         const scanResult = await desktopVideoApi.scanTracks(localPath);
         const streams = scanResult?.streams || [];
-        const subtitleStreams = streams.filter((s) => s.codec_type === 'subtitle');
+        const subtitleStreams = streams.filter((s: { codec_type?: string; index?: number | string; tags?: { language?: string; title?: string } }) => s.codec_type === 'subtitle');
         if (subtitleStreams.length > 0) {
           const firstSubIndex = String(subtitleStreams[0].index);
           const vttContent = await desktopVideoApi.extractSubtitles(localPath, firstSubIndex);
@@ -56,8 +56,8 @@ export async function downloadYouTubeAndSync(options: YouTubeDownloadOptions): P
             });
           }
         }
-      } catch (e) {
-        console.error("Falha ao extrair legenda do youtube:", e);
+      } catch (e: unknown) {
+        console.error("Falha ao extrair legenda do youtube:", e instanceof Error ? e.message : String(e));
       }
     }
 

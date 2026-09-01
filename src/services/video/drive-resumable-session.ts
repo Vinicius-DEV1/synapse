@@ -18,10 +18,10 @@ export async function uploadLocalFileToDrive(
       const blob = await fileReq.blob();
       const buffer = await blob.arrayBuffer();
       const { uploadToDrive } = await import('../drive');
-      return await uploadToDrive(token, driveFileName, buffer, false as any, onProgress);
+      return await uploadToDrive(token, driveFileName, buffer, 'root', onProgress);
     }
-  } catch (err: any) {
-    if (err.message && err.message.includes('Request had invalid authentication credentials')) {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes('Request had invalid authentication credentials')) {
       console.warn('Token expirado interceptado! Forçando renovação automática...');
       const { getValidAccessToken } = await import('../drive');
       const newToken = await getValidAccessToken(true);
@@ -38,7 +38,7 @@ export async function uploadLocalFileToDrive(
         const blob = await fileReq.blob();
         const buffer = await blob.arrayBuffer();
         const { uploadToDrive } = await import('../drive');
-        return await uploadToDrive(newToken, driveFileName, buffer, false as any, onProgress);
+        return await uploadToDrive(newToken, driveFileName, buffer, 'root', onProgress);
       }
     }
     throw err;
