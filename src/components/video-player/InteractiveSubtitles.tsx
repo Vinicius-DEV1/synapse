@@ -1,12 +1,51 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import type { SubtitleCue } from '../../utils/vtt-parser';
 
 interface InteractiveSubtitlesProps {
-  currentSubtitle: string;
+  cues?: SubtitleCue[];
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  currentSubtitle?: string;
   onWordClick: (word: string, context: string) => void;
   savedWords?: Array<{ word: string, color: string }>;
 }
 
-export default function InteractiveSubtitles({ currentSubtitle, onWordClick, savedWords = [] }: InteractiveSubtitlesProps) {
+export default function InteractiveSubtitles({ cues = [], videoRef, currentSubtitle: directSubtitle, onWordClick, savedWords = [] }: InteractiveSubtitlesProps) {
+  const [internalSubtitle, setInternalSubtitle] = useState('');
+  const currentSubtitle = directSubtitle !== undefined ? directSubtitle : internalSubtitle;
+
+  useEffect(() => {
+    if (directSubtitle !== undefined) return;
+    const vid = videoRef?.current;
+    if (!vid) return;
+
+    const handleTimeUpdate = () => {
+      const time = vid.currentTime;
+      if (cues.length > 0) {
+        let left = 0;
+        let right = cues.length - 1;
+        let activeCue = undefined;
+        while (left <= right) {
+          const mid = Math.floor((left + right) / 2);
+          const cue = cues[mid];
+          if (time >= cue.startTime && time <= cue.endTime) {
+            activeCue = cue;
+            break;
+          } else if (time < cue.startTime) {
+            right = mid - 1;
+          } else {
+            left = mid + 1;
+          }
+        }
+        const newText = activeCue ? activeCue.text : '';
+        setInternalSubtitle(prev => prev !== newText ? newText : prev);
+      } else {
+        setInternalSubtitle('');
+      }
+    };
+
+    vid.addEventListener('timeupdate', handleTimeUpdate);
+    return () => vid.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [cues, videoRef, directSubtitle]);
   // Regex to split by spaces and punctuation, but keeping punctuation so it renders correctly
   const tokens = useMemo(() => {
     if (!currentSubtitle) return [];
@@ -40,6 +79,12 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
     });
   }, [currentSubtitle]);
 
+  const savedWordsMap = useMemo(() => {
+    const map = new Map<string, { word: string, color: string }>();
+    savedWords.forEach(w => map.set(w.word.toLowerCase(), w));
+    return map;
+  }, [savedWords]);
+
   if (!currentSubtitle) return null;
 
   const handleMouseUp = () => {
@@ -64,7 +109,7 @@ export default function InteractiveSubtitles({ currentSubtitle, onWordClick, sav
         <p className="text-white text-2xl sm:text-3xl font-medium leading-relaxed drop-shadow-md">
           {tokens.map((token, index) => {
             if (token.isWord) {
-              const savedMatch = savedWords.find(w => w.word.toLowerCase() === token.text.toLowerCase());
+              const savedMatch = savedWordsMap.get(token.text.toLowerCase());
               const highlightStyle = savedMatch 
                 ? { backgroundColor: savedMatch.color === 'yellow' ? 'rgba(234, 179, 8, 0.3)' : savedMatch.color === 'green' ? 'rgba(34, 197, 94, 0.3)' : savedMatch.color === 'blue' ? 'rgba(59, 130, 246, 0.3)' : savedMatch.color === 'purple' ? 'rgba(168, 85, 247, 0.3)' : savedMatch.color === 'pink' ? 'rgba(236, 72, 153, 0.3)' : savedMatch.color === 'red' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(234, 179, 8, 0.3)',
                     color: savedMatch.color === 'yellow' ? '#facc15' : savedMatch.color === 'green' ? '#4ade80' : savedMatch.color === 'blue' ? '#60a5fa' : savedMatch.color === 'purple' ? '#c084fc' : savedMatch.color === 'pink' ? '#f472b6' : savedMatch.color === 'red' ? '#f87171' : '#facc15' }
