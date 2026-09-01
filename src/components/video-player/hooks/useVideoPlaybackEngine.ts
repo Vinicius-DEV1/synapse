@@ -56,7 +56,9 @@ export function useVideoPlaybackEngine({
       if (videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
         if (audioRef.current && activeAudioUrl) {
-          audioRef.current.currentTime = videoRef.current.currentTime;
+          if (Math.abs(audioRef.current.currentTime - videoRef.current.currentTime) > 0.05) {
+            audioRef.current.currentTime = videoRef.current.currentTime;
+          }
           audioRef.current.play().catch(() => {});
         }
         setIsPlaying(true);

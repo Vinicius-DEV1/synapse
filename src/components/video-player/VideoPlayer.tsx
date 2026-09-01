@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
@@ -190,6 +190,29 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     setDictState({ word, context: extendedContext, preloadedData, video_clip });
   };
 
+  const bufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleWaiting = useCallback(() => {
+    if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+    bufferTimerRef.current = setTimeout(() => {
+      setIsBuffering(true);
+    }, 250);
+  }, [setIsBuffering]);
+
+  const handleCanPlay = useCallback(() => {
+    if (bufferTimerRef.current) {
+      clearTimeout(bufferTimerRef.current);
+      bufferTimerRef.current = null;
+    }
+    setIsBuffering(false);
+  }, [setIsBuffering]);
+
+  useEffect(() => {
+    return () => {
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+    };
+  }, []);
+
   return (
     <div ref={containerRef} className="relative w-full h-full bg-black flex flex-col justify-center items-center overflow-hidden font-sans group">
       {errorMsg && (
@@ -217,26 +240,29 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onWaiting={() => setIsBuffering(true)}
-        onCanPlay={() => setIsBuffering(false)}
-        onSeeked={() => setIsBuffering(false)}
+        onWaiting={handleWaiting}
+        onCanPlay={handleCanPlay}
+        onSeeked={handleCanPlay}
         onError={() => {
-          setIsBuffering(false);
+          handleCanPlay();
           const err = videoRef.current?.error;
           if (err && err.code === 4) {
             setErrorMsg(window.api?.video ? 'Formato de vídeo não suportado nativamente.' : 'Este formato de vídeo não é suportado pelo navegador Web. Por favor, assista na versão Desktop.');
           }
         }}
         onPlay={() => {
-          setIsBuffering(false);
+          handleCanPlay();
           setIsPlaying(true);
           if (audioRef.current && activeAudioUrl) {
-            audioRef.current.currentTime = videoRef.current?.currentTime || 0;
+            const vidTime = videoRef.current?.currentTime || 0;
+            if (Math.abs(audioRef.current.currentTime - vidTime) > 0.05) {
+              audioRef.current.currentTime = vidTime;
+            }
             audioRef.current.play().catch(e => console.warn(e));
           }
         }}
         onPlaying={() => {
-          setIsBuffering(false);
+          handleCanPlay();
           setIsPlaying(true);
         }}
         onPause={() => {
