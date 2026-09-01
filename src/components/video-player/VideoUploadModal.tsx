@@ -31,6 +31,13 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -92,6 +99,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
       return;
     }
     const res = await window.api.video.openFileDialog();
+    if (!isMountedRef.current) return;
     if (res) {
       try {
         const dummyFile = new File([], res.name, { type: res.type || 'video/mp4' });
@@ -102,7 +110,9 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         resetTracks();
         await scanFilePath(res.path);
       } catch (err: any) {
-        setError('Falha ao carregar arquivo local: ' + err.message);
+        if (isMountedRef.current) {
+          setError('Falha ao carregar arquivo local: ' + err.message);
+        }
       }
     }
   };

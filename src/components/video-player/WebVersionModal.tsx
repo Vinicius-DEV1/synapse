@@ -47,10 +47,10 @@ export default function WebVersionModal({ isOpen, onClose, onConfirm, videoTitle
               onChange={e => setQuality(e.target.value)}
               className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all cursor-pointer"
             >
-              <option value="1080p">1080p Full HD (Alta Qualidade)</option>
-              <option value="720p">720p HD (Rápido e Leve - Recomendado)</option>
-              <option value="480p">480p SD (Bom para Celular)</option>
-              <option value="360p">360p (Economia Máxima de Espaço)</option>
+              <option className="bg-dark-bg text-white" value="1080p">1080p Full HD (Alta Qualidade)</option>
+              <option className="bg-dark-bg text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>
+              <option className="bg-dark-bg text-white" value="480p">480p SD (Bom para Celular)</option>
+              <option className="bg-dark-bg text-white" value="360p">360p (Economia Máxima de Espaço)</option>
             </select>
           </div>
 

@@ -4,9 +4,10 @@ import type { TrackItem } from '../../../types';
 
 interface VideoControlsOverlayProps {
   title: string;
+  videoExtension?: string;
   isPlaying: boolean;
-  progress: number;
   duration: number;
+  videoRef: React.RefObject<HTMLVideoElement>;
   volume: number;
   isMuted: boolean;
   isFullscreen: boolean;
@@ -31,11 +32,22 @@ interface VideoControlsOverlayProps {
 }
 
 export function VideoControlsOverlay({
-  title, isPlaying, progress, duration, volume, isMuted, isFullscreen, showControls,
+  title, videoExtension, isPlaying, duration, volume, isMuted, isFullscreen, showControls,
   audioTracks, subtitleTracks, activeAudioIndex, activeSubtitleIndex, videoWordsCount,
   onClose, togglePlay, toggleMute, handleVolumeChange, handleSeek, toggleFullscreen,
-  setActiveAudioIndex, setActiveSubtitleIndex, setShowVocabDrawer, onPauseForDrawer, formatTime, setIsHoveringControls
+  setActiveAudioIndex, setActiveSubtitleIndex, setShowVocabDrawer, onPauseForDrawer, formatTime, setIsHoveringControls,
+  videoRef
 }: VideoControlsOverlayProps) {
+  const [progress, setProgress] = React.useState(0);
+
+  React.useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const update = () => setProgress(vid.currentTime);
+    vid.addEventListener('timeupdate', update);
+    return () => vid.removeEventListener('timeupdate', update);
+  }, [videoRef]);
+
   return (
     <div 
       className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 \${showControls ? 'opacity-100' : 'opacity-0'}`}
@@ -45,14 +57,21 @@ export function VideoControlsOverlay({
         onMouseEnter={() => setIsHoveringControls(true)}
         onMouseLeave={() => setIsHoveringControls(false)}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <button 
             onClick={onClose}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors shrink-0"
           >
             <ArrowLeft size={20} />
           </button>
-          <h2 className="text-white font-medium text-lg drop-shadow-md">{title}</h2>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <h2 className="text-white font-medium text-lg drop-shadow-md truncate">{title}</h2>
+            {videoExtension && (
+              <span className="px-2 py-0.5 text-xs font-mono font-bold uppercase bg-brand-500/20 border border-brand-500/40 text-brand-300 rounded-md tracking-wider shrink-0 shadow-sm">
+                .{videoExtension.toLowerCase()}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center gap-3">
@@ -77,7 +96,16 @@ export function VideoControlsOverlay({
             >
               <Subtitles size={16} className="text-brand-400" />
               <span className="text-sm font-medium truncate max-w-[150px]">
-                {subtitleTracks[activeSubtitleIndex]?.label || `Legenda ${activeSubtitleIndex + 1}`}
+                {(() => {
+                  const currentTrack = subtitleTracks[activeSubtitleIndex];
+                  if (!currentTrack) return `Legenda ${activeSubtitleIndex + 1}`;
+                  if (currentTrack.id === 'none') return 'Sem Legenda';
+                  const rawLabel = currentTrack.label || '';
+                  if (/^(legenda\s+)?0:s:\d+$/i.test(rawLabel) || rawLabel === currentTrack.id) {
+                    return `Legenda ${activeSubtitleIndex}`;
+                  }
+                  return rawLabel;
+                })()}
               </span>
             </button>
           )}

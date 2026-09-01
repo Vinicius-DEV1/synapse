@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
@@ -67,7 +67,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     return () => unsubscribe();
   }, []);
 
-  const handlePlayVideo = async (video: VideoItem) => {
+  const handlePlayVideo = useCallback(async (video: VideoItem) => {
     try {
       setPlayerError(null);
       setActiveSubtitle(undefined);
@@ -78,7 +78,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       console.error(e);
       setPlayerError(e.message || 'Erro ao carregar o vídeo.');
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (pendingVideoId && videos.length > 0) {
@@ -115,7 +115,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     });
   };
 
-  const handleDownload = async (video: VideoItem) => {
+  const handleDownload = useCallback(async (video: VideoItem) => {
     let forceOriginal = false;
     const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
     const isUnsupported = !['mp4', 'webm'].includes(ext);
@@ -139,9 +139,9 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     } finally {
       setIsDownloadingId(null);
     }
-  };
+  }, []);
 
-  const handleDeleteLocal = async (video: VideoItem) => {
+  const handleDeleteLocal = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
       await window.api.app.showConfirm(`Tem certeza que deseja excluir '${video.title}' localmente? Ele ainda estará no Drive.`) 
       : 1;
@@ -165,9 +165,9 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     } finally {
       setIsDeletingId(null);
     }
-  };
+  }, []);
 
-  const handleDeleteCloud = async (video: VideoItem) => {
+  const handleDeleteCloud = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
       await window.api.app.showConfirm(`Tem certeza que deseja apagar permanentemente '${video.title}'? O arquivo local e os do Google Drive serão excluídos.`) 
       : 1;
@@ -183,9 +183,9 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     } finally {
       setIsDeletingId(null);
     }
-  };
+  }, []);
 
-  const handleStartWebVersion = async (quality: string) => {
+  const handleStartWebVersion = useCallback(async (quality: string) => {
     if (!webVersionVideo) return;
     const video = webVersionVideo;
     const taskId = `web_gen_${video.id}_${Date.now()}`;
@@ -210,7 +210,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
         failTask(taskId, errMsg || 'Erro desconhecido');
       }
     }
-  };
+  }, [webVersionVideo, addTask, updateTaskProgress, completeTask, failTask]);
 
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text relative">
