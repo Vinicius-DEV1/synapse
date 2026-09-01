@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
+import type { TrackItem } from '../../../types';
 
 interface UseVideoKeyboardShortcutsProps {
-  dictState: any;
+  dictState: Record<string, unknown> | null;
   isFullscreen: boolean;
-  audioTracks: any[];
-  subtitleTracks: any[];
+  audioTracks: TrackItem[];
+  subtitleTracks: TrackItem[];
   togglePlay: () => void;
   toggleFullscreen: () => void;
   seekBy: (seconds: number) => void;

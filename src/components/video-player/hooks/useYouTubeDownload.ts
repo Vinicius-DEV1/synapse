@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTasks } from '../../../store/TaskContext';
 import { downloadYouTubeAndSync } from '../../../services/video';
 import { triggerToast } from '../../ui/ToastContext';
@@ -10,14 +10,29 @@ interface UseYouTubeDownloadProps {
   onSuccess: () => void;
 }
 
+export interface YouTubeInfo {
+  id?: string;
+  title?: string;
+  uploader?: string;
+  thumbnail?: string;
+  _type?: string;
+  entries?: YouTubeInfo[];
+  url?: string;
+  webpage_url?: string;
+  subtitles?: Record<string, { name: string }[]>;
+  automatic_captions?: Record<string, { name: string }[]>;
+}
+
 export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadProps) {
   const [url, setUrl] = useState('');
   const [isFetching, setIsFetching] = useState(false);
-  const [videoInfo, setVideoInfo] = useState<any>(null);
+  const [videoInfo, setVideoInfo] = useState<YouTubeInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  
+  const isMountedRef = React.useRef(true);
 
   const [selectedQuality, setSelectedQuality] = useState('best');
   const [filename, setFilename] = useState('');
@@ -42,6 +57,7 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
 
     return () => {
       mounted = false;
+      isMountedRef.current = false;
     };
   }, []);
 
@@ -51,6 +67,7 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
     setError(null);
     try {
       const info = await window.api?.youtube?.fetchInfo(url);
+      if (!isMountedRef.current) return;
       if (!info) throw new Error('Não foi possível obter dados do vídeo.');
       
       setVideoInfo(info);
@@ -84,12 +101,13 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
         setIsPlaylist(false);
         setFilename(info.title ? `${info.title}.mp4` : 'video.mp4');
       }
-    } catch (err: any) {
-      const msg = err.message || 'Falha ao analisar a URL do YouTube.';
+    } catch (err: unknown) {
+      if (!isMountedRef.current) return;
+      const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
       triggerToast(msg, 'error');
     } finally {
-      setIsFetching(false);
+      if (isMountedRef.current) setIsFetching(false);
     }
   };
 
@@ -152,8 +170,8 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
         completeTask(taskId);
         triggerToast(`Download do YouTube concluído: ${displayTitle}`, 'success');
         onSuccess();
-      } catch (err: any) {
-        const errMsg = err.message || 'Falha durante o download do YouTube.';
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         failTask(taskId, errMsg);
         triggerToast(`Erro no download do YouTube: ${errMsg}`, 'error', 6000);
       }
