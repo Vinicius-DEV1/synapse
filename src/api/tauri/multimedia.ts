@@ -1,9 +1,10 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { open as openBrowser } from '@tauri-apps/plugin-shell';
 import { listen } from '@tauri-apps/api/event';
 
 export const tauriVideoApi = {
+  convertFileSrc: (path: string) => convertFileSrc(path),
   downloadFromDrive: async (driveId: string, accessToken: string, destFilename: string) => {
     return await invoke<string>('video_download_drive_file', { driveId, accessToken, destFilename });
   },

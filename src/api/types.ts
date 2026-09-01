@@ -147,6 +147,7 @@ export interface ICadernoAPI {
   };
 
   video?: {
+    convertFileSrc?: (path: string) => string;
     getLocalPath: (filename: string) => Promise<string | null>;
     deleteLocal: (filename: string) => Promise<boolean>;
     readLocalFile?: (path: string) => Promise<Uint8Array>;
@@ -156,6 +157,7 @@ export interface ICadernoAPI {
     copyLocal: (sourcePath: string, filename: string) => Promise<string>;
     extractSubtitles: (localPath: string, trackIndex?: string) => Promise<string | null>;
     scanSubtitles: (localPath: string) => Promise<{ subtitles: { index: string; language?: string; codec: string; title?: string }[]; error: string | null; debug: string }>;
+    scanTracks?: (localPath: string) => Promise<any>;
     openFileDialog: () => Promise<{ path: string; name: string; size: number; type: string } | null>;
     openFolderDialog: () => Promise<string | null>;
     // Extended video methods
