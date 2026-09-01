@@ -76,6 +76,8 @@ export function useVideoTracks(
     };
   }, [activeAudioIndex, audioTracks, isMuted, videoRef]);
 
+  const lastPlayTimeRef = useRef<number>(0);
+
   useEffect(() => {
     const syncAudio = () => {
       if (videoRef.current && audioRef.current && activeAudioUrl && isPlaying) {
@@ -83,14 +85,18 @@ export function useVideoTracks(
         const aTime = audioRef.current.currentTime;
         const diff = Math.abs(vTime - aTime);
         
-        if (diff > 0.15 && videoRef.current.readyState >= 3) {
-          audioRef.current.currentTime = vTime;
+        // Only force sync if we are past the 500ms grace period
+        if (Date.now() - lastPlayTimeRef.current > 500) {
+          if (diff > 0.25 && videoRef.current.readyState >= 3) {
+            audioRef.current.currentTime = vTime;
+          }
         }
       }
       syncLoopRef.current = requestAnimationFrame(syncAudio);
     };
 
     if (isPlaying) {
+      lastPlayTimeRef.current = Date.now();
       syncLoopRef.current = requestAnimationFrame(syncAudio);
     } else if (syncLoopRef.current) {
       cancelAnimationFrame(syncLoopRef.current);
