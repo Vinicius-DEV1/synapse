@@ -62,6 +62,27 @@ export function useFinanceTransactions({ transactions, loadData }: UseFinanceTra
           }
         }
 
+        // If editing a payment linked to a loan, recalculate the parent loan's paid_amount
+        if (tx.linked_loan_id && updates.amount !== undefined && updates.amount !== tx.amount) {
+          const parentLoan = transactions.find(t => t.id === tx.linked_loan_id);
+          if (parentLoan) {
+            const oldAmount = Number(tx.amount || 0);
+            const newAmount = Number(updates.amount || 0);
+            const diff = newAmount - oldAmount;
+            const targetTotal = Number(parentLoan.expected_amount || parentLoan.amount || 0);
+            const newPaidAmount = Math.max(0, Number(parentLoan.paid_amount || 0) + diff);
+            const isPaid = (targetTotal > 0 && newPaidAmount >= targetTotal - 0.001) ? 1 : 0;
+            const status = isPaid ? 'completed' : 'in_progress';
+
+            await window.api.finance.updateTransaction(parentLoan.id, {
+              ...parentLoan,
+              paid_amount: newPaidAmount,
+              is_paid: isPaid,
+              status,
+            });
+          }
+        }
+
         await window.api.finance.updateTransaction(id, merged);
         triggerToast('Transação atualizada com sucesso!', 'success');
         await loadData();

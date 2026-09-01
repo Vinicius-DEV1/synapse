@@ -64,6 +64,15 @@ export default function TransactionModal({
       return;
     }
 
+    if (isLoan && isEditing) {
+      const alreadyPaid = Number(initialData?.paid_amount || 0);
+      const effectiveTotal = parsedExpectedAmount !== null ? parsedExpectedAmount : parsedAmount;
+      if (alreadyPaid > 0 && effectiveTotal < alreadyPaid - 0.001) {
+        triggerToast(`O valor total não pode ser menor que o valor já pago (R$ ${alreadyPaid.toFixed(2)}).`, 'error');
+        return;
+      }
+    }
+
     if (isTransfer) {
       if (!accountId || !destinationAccountId) {
         triggerToast('Selecione as contas de origem e destino.', 'error');

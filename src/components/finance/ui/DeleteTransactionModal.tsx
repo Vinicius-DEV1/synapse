@@ -1,17 +1,21 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, Trash2, X, Info, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Trash2, X, RotateCcw } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import type { Transaction } from '../../../types';
 import { formatDateSafe } from './TransactionList';
 
 interface DeleteTransactionModalProps {
   transaction: Transaction | null;
+  linkedPaymentsCount?: number;
+  linkedPaymentsTotal?: number;
   onClose: () => void;
   onConfirm: (id: string) => Promise<void> | void;
 }
 
 export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
   transaction,
+  linkedPaymentsCount = 0,
+  linkedPaymentsTotal = 0,
   onClose,
   onConfirm,
 }) => {
@@ -71,9 +75,19 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
                 </span>
               </div>
             ) : isLoan ? (
-              <p className="text-xs text-dark-subtext leading-relaxed">
-                Tem certeza que deseja excluir este registro de empréstimo/dívida? O histórico deste empréstimo será removido.
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-dark-subtext leading-relaxed">
+                  Tem certeza que deseja excluir este registro de empréstimo/dívida?
+                </p>
+                {linkedPaymentsCount > 0 && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs leading-relaxed">
+                    <AlertTriangle size={15} className="flex-shrink-0 mt-0.5 text-rose-400" />
+                    <span>
+                      Existem <strong>{linkedPaymentsCount} pagamento(s)</strong> registrados (Total: <strong>R$ {linkedPaymentsTotal.toFixed(2)}</strong>). Ao excluir este empréstimo, esses pagamentos também serão removidos do histórico para manter as contas sincronizadas.
+                    </span>
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="text-xs text-dark-subtext leading-relaxed">
                 Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
