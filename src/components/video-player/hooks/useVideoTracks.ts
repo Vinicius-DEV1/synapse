@@ -46,6 +46,7 @@ export function useVideoTracks(
   }, [video]);
 
   useEffect(() => {
+    let isMounted = true;
     if (activeAudioIndex === -1) {
       setActiveAudioUrl(null);
       if (videoRef.current) videoRef.current.muted = isMuted;
@@ -57,20 +58,22 @@ export function useVideoTracks(
       if (videoRef.current) videoRef.current.muted = true;
       
       const resolveUrl = async () => {
-        if (track.local_path && window.api?.video) {
-          const { convertFileSrc } = await import('@tauri-apps/api/core');
-          const streamUrl = convertFileSrc(track.local_path);
-          setActiveAudioUrl(streamUrl);
+        if (track.local_path && window.api?.video?.convertFileSrc) {
+          const streamUrl = window.api.video.convertFileSrc(track.local_path);
+          if (isMounted) setActiveAudioUrl(streamUrl);
         } else if (track.drive_id) {
           const { getVideoStreamLink } = await import('../../../services/video');
           try {
             const url = await getVideoStreamLink(track.drive_id);
-            setActiveAudioUrl(url);
+            if (isMounted) setActiveAudioUrl(url);
           } catch(e) { console.error(e); }
         }
       };
       resolveUrl();
     }
+    return () => {
+      isMounted = false;
+    };
   }, [activeAudioIndex, audioTracks, isMuted, videoRef]);
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export function useVideoTracks(
         const aTime = audioRef.current.currentTime;
         const diff = Math.abs(vTime - aTime);
         
-        if (diff > 0.1) {
+        if (diff > 0.15 && videoRef.current.readyState >= 3) {
           audioRef.current.currentTime = vTime;
         }
       }

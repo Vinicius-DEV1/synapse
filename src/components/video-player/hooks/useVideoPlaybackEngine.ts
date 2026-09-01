@@ -8,14 +8,16 @@ interface UseVideoPlaybackEngineProps {
   containerRef: RefObject<HTMLDivElement | null>;
   activeAudioUrl?: string | null;
   duration: number;
-  setProgress: (time: number) => void;
   setDuration: (dur: number) => void;
   saveProgress: (time: number) => Promise<void>;
   showResumePrompt: boolean;
   setShowResumePrompt: (show: boolean) => void;
   resetControls: () => void;
   onDurationLoaded?: (duration: number) => void;
-  onTimeUpdateCallback?: (currentTime: number) => void;
+  isPlaying?: boolean;
+  setIsPlaying?: React.Dispatch<React.SetStateAction<boolean>>;
+  isBuffering?: boolean;
+  setIsBuffering?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useVideoPlaybackEngine({
@@ -25,20 +27,28 @@ export function useVideoPlaybackEngine({
   containerRef,
   activeAudioUrl,
   duration,
-  setProgress,
   setDuration,
   saveProgress,
   showResumePrompt,
   setShowResumePrompt,
   resetControls,
   onDurationLoaded,
-  onTimeUpdateCallback,
+  isPlaying: externalIsPlaying,
+  setIsPlaying: externalSetIsPlaying,
+  isBuffering: externalIsBuffering,
+  setIsBuffering: externalSetIsBuffering,
 }: UseVideoPlaybackEngineProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [internalIsPlaying, setInternalIsPlaying] = useState(false);
+  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+  const setIsPlaying = externalSetIsPlaying || setInternalIsPlaying;
+
+  const [internalIsBuffering, setInternalIsBuffering] = useState(true);
+  const isBuffering = externalIsBuffering !== undefined ? externalIsBuffering : internalIsBuffering;
+  const setIsBuffering = externalSetIsBuffering || setInternalIsBuffering;
+
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const togglePlay = () => {
@@ -68,7 +78,6 @@ export function useVideoPlaybackEngine({
 
       videoRef.current.currentTime = newTime;
       if (audioRef.current) audioRef.current.currentTime = newTime;
-      setProgress(newTime);
       resetControls();
     }
   };
@@ -120,18 +129,12 @@ export function useVideoPlaybackEngine({
     if (videoRef.current) {
       videoRef.current.currentTime = time;
       if (audioRef.current) audioRef.current.currentTime = time;
-      setProgress(time);
     }
   };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      const time = videoRef.current.currentTime;
-      setProgress(time);
       setIsBuffering(false);
-      if (onTimeUpdateCallback) {
-        onTimeUpdateCallback(time);
-      }
     }
   };
 

@@ -3,7 +3,8 @@ import InteractiveSubtitles from './InteractiveSubtitles';
 import { parseVtt } from '../../utils/vtt-parser';
 import type { SubtitleCue } from '../../utils/vtt-parser';
 import DictionaryModal from '../library/modals/DictionaryModal';
-import type { VideoItem } from '../../types';
+import type { VideoItem, VideoWord } from '../../types';
+import type { DictionaryData } from '../../types/dictionary';
 
 import { useVideoProgress } from './hooks/useVideoProgress';
 import { useVideoTracks } from './hooks/useVideoTracks';
@@ -32,12 +33,11 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [cues, setCues] = useState<SubtitleCue[]>([]);
-  const [activeCueText, setActiveCueText] = useState('');
   
   const [dictState, setDictState] = useState<{ 
     word: string; 
     context: string; 
-    preloadedData?: any;
+    preloadedData?: DictionaryData | null;
     video_clip?: { path: string; startMs: number; endMs: number };
   } | null>(null);
 
@@ -47,20 +47,28 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     setCurrentSrc(src);
   }, [src]);
 
+  const videoExtension = React.useMemo(() => {
+    if (src.includes('_web.mp4') || (video.drive_web_file_id && !video.is_local && !src.includes(video.original_name))) {
+      return 'mp4';
+    }
+    return video.original_name?.split('.').pop()?.toLowerCase() || 
+           video.file_path?.split('.').pop()?.toLowerCase() || 
+           'mp4';
+  }, [src, video]);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
+
   // Ref wrappers for video sub-hooks
-  const { progress, setProgress, duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, false, videoRef as React.RefObject<HTMLVideoElement>);
-  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, false, false, videoRef, audioRef);
-  const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, activeCueText);
-  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(false, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
+  const { duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
+  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isBuffering, videoRef, audioRef);
+  const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, '');
+  const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
 
   const {
-    isPlaying,
-    setIsPlaying,
     volume,
     isMuted,
     isFullscreen,
-    isBuffering,
-    setIsBuffering,
     errorMsg,
     setErrorMsg,
     togglePlay,
@@ -78,19 +86,16 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     containerRef,
     activeAudioUrl,
     duration,
-    setProgress,
     setDuration,
     saveProgress,
     showResumePrompt,
     setShowResumePrompt,
     resetControls,
     onDurationLoaded,
-    onTimeUpdateCallback: (time) => {
-      if (cues.length > 0) {
-        const activeCue = cues.find(c => time >= c.startTime && time <= c.endTime);
-        setActiveCueText(activeCue ? activeCue.text : '');
-      }
-    },
+    isPlaying,
+    setIsPlaying,
+    isBuffering,
+    setIsBuffering,
   });
 
   useTimeTracker({
@@ -156,14 +161,28 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
       setIsPlaying(false);
     }
     const time = videoRef.current ? videoRef.current.currentTime : 0;
-    const currentIndex = cues.findIndex(c => time >= c.startTime && time <= c.endTime);
+    let currentIndex = -1;
+    let left = 0;
+    let right = cues.length - 1;
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const cue = cues[mid];
+      if (time >= cue.startTime && time <= cue.endTime) {
+        currentIndex = mid;
+        break;
+      } else if (time < cue.startTime) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
+    }
     const extendedContext = buildVideoSubtitleContext(cues, currentIndex, title, context);
 
-    let preloadedData = null;
-    const existingWord = activeSavedWords.find(vw => vw.word.toLowerCase() === word.toLowerCase());
-    if (existingWord && existingWord.note) {
+    let preloadedData: DictionaryData | null = null;
+    const existingWord = (activeSavedWords as VideoWord[]).find(vw => vw.word.toLowerCase() === word.toLowerCase());
+    if (existingWord && typeof existingWord.note === 'string') {
       try {
-        preloadedData = JSON.parse(existingWord.note.replace('<!-- AI_DICT -->', ''));
+        preloadedData = JSON.parse(existingWord.note.replace('<!-- AI_DICT -->', '')) as DictionaryData;
       } catch {}
     }
 
@@ -254,7 +273,8 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
 
       {!dictState && (
         <InteractiveSubtitles 
-          currentSubtitle={activeCueText} 
+          cues={cues}
+          videoRef={videoRef as React.RefObject<HTMLVideoElement>}
           onWordClick={handleWordClick} 
           savedWords={activeSavedWords}
         />
@@ -262,9 +282,10 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
 
       <VideoControlsOverlay 
         title={title}
+        videoExtension={videoExtension}
         isPlaying={isPlaying}
-        progress={progress}
         duration={duration}
+        videoRef={videoRef as React.RefObject<HTMLVideoElement>}
         volume={volume}
         isMuted={isMuted}
         isFullscreen={isFullscreen}

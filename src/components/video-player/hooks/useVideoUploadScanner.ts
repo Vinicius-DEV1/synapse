@@ -1,5 +1,19 @@
 import { useState, useCallback } from 'react';
 
+export interface FfprobeStream {
+  codec_type: string;
+  codec_name?: string;
+  codec_tag_string?: string;
+  duration?: string | number;
+  tags?: {
+    language?: string;
+    LANGUAGE?: string;
+    title?: string;
+    TITLE?: string;
+    [key: string]: string | undefined;
+  };
+}
+
 export function useVideoUploadScanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [videoDuration, setVideoDuration] = useState<number | undefined>();
@@ -19,21 +33,21 @@ export function useVideoUploadScanner() {
   }, []);
 
   const scanFilePath = useCallback(async (filePath: string) => {
-    if ((window.api?.video as any)?.scanTracks) {
+    if (window.api?.video?.scanTracks) {
       setIsScanning(true);
       try {
-        const scanRes = await (window.api.video as any).scanTracks(filePath);
+        const scanRes = await window.api.video.scanTracks(filePath);
         if (scanRes?.error) {
           console.error('ffprobe error:', scanRes.error);
         }
-        const streams = scanRes?.streams || [];
+        const streams: FfprobeStream[] = scanRes?.streams || [];
         const dur = Number(scanRes?.format?.duration || streams[0]?.duration);
         if (!isNaN(dur) && dur > 0) {
           setVideoDuration(dur);
         }
         const subs = streams
-          .filter((s: any) => s.codec_type === 'subtitle')
-          .map((s: any, i: number) => {
+          .filter(s => s.codec_type === 'subtitle')
+          .map((s, i) => {
             const lang = s.tags?.language || s.tags?.LANGUAGE || 'und';
             const title = s.tags?.title || s.tags?.TITLE || '';
             const codec = (s.codec_name || s.codec_tag_string || 'SUB').toUpperCase();
@@ -46,8 +60,8 @@ export function useVideoUploadScanner() {
             };
           });
         const audios = streams
-          .filter((s: any) => s.codec_type === 'audio')
-          .map((s: any, i: number) => {
+          .filter(s => s.codec_type === 'audio')
+          .map((s, i) => {
             const lang = s.tags?.language || s.tags?.LANGUAGE || 'und';
             const title = s.tags?.title || s.tags?.TITLE || '';
             const codec = (s.codec_name || s.codec_tag_string || 'AAC').toUpperCase();
@@ -65,12 +79,12 @@ export function useVideoUploadScanner() {
         if (audios.length > 0) {
           setPrimaryAudioTrack(audios[0].index);
         }
-        setExtraSubtitleTracks(new Set(subs.map((s: any) => s.index)));
+        setExtraSubtitleTracks(new Set(subs.map(s => s.index)));
         if (audios.length > 1) {
-          setExtraAudioTracks(new Set(audios.slice(1).map((a: any) => a.index)));
+          setExtraAudioTracks(new Set(audios.slice(1).map(a => a.index)));
         }
-      } catch (err: any) {
-        console.warn('Falha ao rodar o escâner:', err.message);
+      } catch (err: unknown) {
+        console.warn('Falha ao rodar o escâner:', err instanceof Error ? err.message : String(err));
       } finally {
         setIsScanning(false);
       }
