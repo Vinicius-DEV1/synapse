@@ -320,8 +320,16 @@ pub fn finance_delete_transaction(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    conn.execute("UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
-        .map_err(|e| e.to_string())?;
+    // Cascade soft-delete any child transactions linked to this transaction (e.g. loan payments)
+    conn.execute(
+        "UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE linked_loan_id = ? AND deleted_at IS NULL",
+        [&id],
+    ).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [&id],
+    ).map_err(|e| e.to_string())?;
 
     Ok(true)
 }
