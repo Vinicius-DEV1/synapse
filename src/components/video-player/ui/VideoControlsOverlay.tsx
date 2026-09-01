@@ -50,10 +50,10 @@ export function VideoControlsOverlay({
 
   return (
     <div 
-      className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 \${showControls ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
     >
       <div 
-        className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-auto"
+        className={`absolute top-0 left-0 right-0 p-6 flex items-center justify-between transition-all ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
         onMouseEnter={() => setIsHoveringControls(true)}
         onMouseLeave={() => setIsHoveringControls(false)}
       >
@@ -138,7 +138,7 @@ export function VideoControlsOverlay({
       )}
 
       <div 
-        className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto"
+        className={`absolute bottom-0 left-0 right-0 p-6 transition-all ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
         onMouseEnter={() => setIsHoveringControls(true)}
         onMouseLeave={() => setIsHoveringControls(false)}
       >
