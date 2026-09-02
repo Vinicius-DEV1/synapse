@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Image as ImageIcon, X, Upload, Sparkles } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 import type { Page } from '../../types';
 
 interface PageCoverProps {
@@ -28,13 +29,30 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
   const [coverUrlInput, setCoverUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!showCoverModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowCoverModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCoverModal]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      triggerToast('Falha ao ler arquivo de imagem.', 'error');
+    };
     reader.onload = (event) => {
       const img = new Image();
+      img.onerror = () => {
+        triggerToast('Falha ao processar imagem da capa.', 'error');
+      };
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
@@ -51,6 +69,7 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           console.error('[PageCover] Não foi possível obter contexto 2D do canvas para redimensionar capa');
+          triggerToast('Não foi possível processar a imagem da capa.', 'error');
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
@@ -62,6 +81,9 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -99,7 +121,12 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
 
       {showCoverModal && (
         <Portal>
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCoverModal(false);
+          }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
+        >
           <div className="bg-dark-card border border-dark-border p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
             <button onClick={() => setShowCoverModal(false)} className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors">
               <X size={20} />

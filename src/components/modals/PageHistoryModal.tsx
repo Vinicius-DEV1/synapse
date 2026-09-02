@@ -36,6 +36,16 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
     };
   }, [pageId]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const currentEntry = history[selectedIndex];
   const previousEntry = history[selectedIndex + 1]; // Older entry since sorted DESC
 
@@ -48,7 +58,12 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6">
+      <div 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6"
+      >
       <div className="bg-dark-card w-full max-w-6xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-dark-border flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border bg-dark-card z-10">

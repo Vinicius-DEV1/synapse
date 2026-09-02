@@ -180,7 +180,7 @@ export default function Editor({
         }
         const link = targetElement.closest('a');
         if (link && link.href) {
-          window.open(link.href, '_blank');
+          window.open(link.href, '_blank', 'noopener,noreferrer');
           return true;
         }
         return false;

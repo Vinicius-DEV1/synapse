@@ -79,21 +79,25 @@ export function useEditorModals() {
 
     const handleOpenMediaAction = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      setMediaActionModal({
-        isOpen: true,
-        mediaId: detail.mediaId,
-        mediaType: detail.mediaType,
-        title: detail.title,
-      });
+      if (detail && detail.mediaId) {
+        setMediaActionModal({
+          isOpen: true,
+          mediaId: detail.mediaId,
+          mediaType: detail.mediaType,
+          title: detail.title || '',
+        });
+      }
     };
 
     const handleOpenFileAction = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      setFileActionModal({
-        isOpen: true,
-        fileId: detail.fileId,
-        title: detail.title,
-      });
+      if (detail && detail.fileId) {
+        setFileActionModal({
+          isOpen: true,
+          fileId: detail.fileId,
+          title: detail.title || '',
+        });
+      }
     };
 
     const handleRequestImageDelete = (e: Event) => {

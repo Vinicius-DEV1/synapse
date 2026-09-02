@@ -37,7 +37,12 @@ export default function RenamePageModal({ isOpen, onClose, currentTitle, onRenam
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      >
       <div 
         className="bg-dark-card border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative"
         onKeyDown={handleKeyDown}

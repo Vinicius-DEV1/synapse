@@ -72,8 +72,17 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
   };
 
   const submitLink = () => {
-    if (linkUrl.trim()) {
-      handleFormat('link', linkUrl.trim());
+    let trimmed = linkUrl.trim();
+    if (trimmed) {
+      if (
+        !/^https?:\/\//i.test(trimmed) &&
+        !trimmed.startsWith('/') &&
+        !trimmed.startsWith('#') &&
+        !trimmed.startsWith('mailto:')
+      ) {
+        trimmed = `https://${trimmed}`;
+      }
+      handleFormat('link', trimmed);
       setLinkUrl('');
       setShowLinkInput(false);
     }

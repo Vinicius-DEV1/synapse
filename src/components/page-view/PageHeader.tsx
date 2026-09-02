@@ -149,7 +149,7 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
 
       <div className="flex items-start gap-3 mb-2 group">
         <EmojiPopover onEmojiSelect={(emoji) => onUpdatePage(page.id, { icon: emoji })}>
-          <button className="text-5xl hover:bg-white/5 p-2 -ml-2 rounded-xl transition-colors">{page.icon}</button>
+          <button className="text-5xl hover:bg-white/5 p-2 -ml-2 rounded-xl transition-colors">{page.icon || '📄'}</button>
         </EmojiPopover>
         <div className="flex-1 min-w-0 flex items-start justify-between pt-2">
           <h1
