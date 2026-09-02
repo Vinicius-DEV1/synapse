@@ -127,9 +127,15 @@ export function FilesTable({
                     {new Date(file.updated_at || Date.now()).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[11px] text-dark-subtext border border-white/5 whitespace-nowrap">
-                      ☁️ Drive
-                    </span>
+                    {file.drive_file_id ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[11px] text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                        ☁️ Drive
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[11px] text-dark-subtext border border-white/5 whitespace-nowrap">
+                        💾 Local
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <button 

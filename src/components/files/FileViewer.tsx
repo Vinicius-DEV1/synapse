@@ -27,6 +27,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   const isImage = item.file_type === 'image';
   const isText = item.file_type === 'text';
+  const isPdf = item.file_type === 'pdf' || item.name.toLowerCase().endsWith('.pdf');
 
   const {
     scrollContainerRef,
@@ -59,7 +60,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     setIsLoading(true);
     setLoadError(null);
     
-    if (['image', 'pdf', 'text', 'other'].includes(item.file_type)) {
+    if (['image', 'pdf', 'text', 'other'].includes(item.file_type) || isPdf) {
       getDecryptedFileUrl(item, state.moduleKeys['files'])
         .then(async resolvedUrl => {
           if (isCancelled) return;
@@ -103,9 +104,11 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     
     return () => {
       isCancelled = true;
-      if (url) URL.revokeObjectURL(url);
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
     };
-  }, [item, state.moduleKeys]);
+  }, [item, state.moduleKeys, isPdf]);
 
   // Smooth keyboard navigation (Arrow keys, PageUp/PageDown)
   useEffect(() => {
@@ -262,6 +265,12 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             darkMode={darkMode}
             scrollContainerRef={scrollContainerRef}
             onScroll={handleScroll}
+          />
+        ) : isPdf ? (
+          <iframe 
+            src={objectUrl} 
+            title={item.name}
+            className="w-full h-full max-w-5xl rounded-xl border border-white/10 shadow-2xl bg-white"
           />
         ) : (
           <div className="flex flex-col items-center justify-center p-8 bg-dark-card border border-white/10 rounded-2xl max-w-md w-full shadow-2xl gap-4">
