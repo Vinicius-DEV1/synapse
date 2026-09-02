@@ -52,15 +52,23 @@ Activate this skill when the user requests performance improvements, refactoring
 - **Immutable State Discipline**: Ensure all state updates avoid in-place mutations (e.g., replace `array.push()` / `item.prop = x` with spread patterns or immutable reducers).
 - **Defensive Null/Undefined Guards**: Safely handle empty arrays, missing optional properties, and malformed IndexedDB/IPC responses.
 
-### 2.4. Performance & Efficiency
+### 2.4. Performance & Efficiency (Big Tech & Modern Industry Standards)
+- **Zero-Latency Perceived UX (SWR / Optimistic Caching)**:
+  - Employ Stale-While-Revalidate (RFC 5861) and in-memory caches. If data or backup state exists, render synchronously for 0ms perceived latency and revalidate asynchronously in the background.
+- **Zero-Rerender Visual Interactions (CSS-Driven Interactions)**:
+  - Never use React `useState` for hover or focus states that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `:hover`, `peer`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
+- **Layout Thrashing & Forced Reflow Prevention**:
+  - Strictly guard DOM geometry queries (`getBoundingClientRect()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in animation frame loops.
+- **Off-Main-Thread Media & Image Optimization**:
+  - Always specify native `loading="lazy"` and `decoding="async"` on images and media frames to prevent main-thread decoding bottlenecks during fast scrolling.
+- **Dynamic Bundle Code-Splitting**:
+  - Isolate heavy editor extensions, PDF viewers, diagrams, and media engines behind clean `React.lazy` and `Suspense` boundaries. Prevent static import leaks into root layout modals.
 - **React Rendering Optimization**:
   - Stabilize reference identities for handlers and computed values (`useCallback`, `useMemo`).
-  - Isolate high-frequency volatile state (e.g., mouse coordinates, playback progress) so parent subtrees do not needlessly re-render.
-- **Async I/O Concurrency**:
+  - Isolate high-frequency volatile state so parent subtrees do not needlessly re-render.
+- **Async I/O Concurrency & Algorithmic Efficiency**:
+  - Pre-index entities into $O(1)$ lookup structures (`Map`, `Set`) before executing iterative lookups or batch operations.
   - Batch independent async calls with `Promise.all` rather than sequential `await`s.
-  - Avoid unneeded repetitive disk or IndexedDB operations inside iterative loops.
-- **Algorithmic Efficiency**:
-  - Utilize $O(1)$ lookup structures (`Map`, `Set`, hash maps) for large collections of notes, flashcards, tags, and dictionary entries.
 
 ### 2.5. Structural Cleanliness & Language Standards
 - **Cohesive Directory Organization**:

@@ -129,3 +129,22 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 4. **Atomic & Well-Commented Commits**:
    - **Atomic Scope**: Whenever committing modifications, split changes into self-contained, atomic commits representing a single logical change (e.g., isolating a bug fix, refactoring a single helper, or updating a type interface). Avoid giant, monolithic multi-purpose commits.
    - **Descriptive Messages (English Only)**: Write clear, meaningful commit messages (following conventional commits: `fix(...)`, `feat(...)`, `refactor(...)`, `perf(...)`, `test(...)`), including a concise summary title and a well-elaborated body detailing the *why* and *what* whenever necessary.
+
+---
+
+## 9. Modern Industry Standards & Creative Performance Engineering (Big Tech Best Practices)
+
+To guarantee that Caderno operates with the responsiveness, fluidity, and elegance of elite industry applications (e.g., Notion, VS Code, Linear, Figma), code must adhere to these modern engineering standards:
+
+1. **Zero-Latency Perceived UX (SWR / Optimistic Transitions)**:
+   - Apply the Stale-While-Revalidate (RFC 5861) pattern and in-memory caches to transitions. If cached or backup data exists, render it synchronously for **0ms perceived latency**, revalidating silently in the background rather than freezing the UI with loading spinners.
+2. **Zero-Rerender Visual Interactions (CSS-Driven Hover & Active States)**:
+   - Never use React component state (`useState`, `isHovered`) for visual effects that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `peer`, `:hover`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
+3. **Layout Thrashing & Forced Synchronous Reflow Prevention**:
+   - Strictly guard calls to geometry-reading APIs (`getBoundingClientRect()`, `getComputedStyle()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in `requestAnimationFrame` loops.
+4. **Off-Main-Thread Media & Image Optimization**:
+   - Always specify native `loading="lazy"` and `decoding="async"` on images and media frames. Prevent main-thread decoding bottlenecks during fast scrolling.
+5. **Effective Dynamic Code-Splitting**:
+   - Isolate heavy editor extensions, PDF viewers, diagrams, and media engines behind clean `React.lazy` and `Suspense` boundaries. Avoid leaking static imports into root layout modals that break Vite/bundler chunk isolation.
+6. **Algorithmic Indexing ($O(1)$ Hash Maps vs $O(N)$ Scans)**:
+   - Pre-index entities into `Map` and `Set` collections before executing iterative lookups, transformations, or batch saves, maintaining constant-time execution regardless of vault size.
