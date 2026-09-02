@@ -1,17 +1,25 @@
 export function srtToVtt(srtContent: string): string {
-  // Replace commas with periods in timestamps (00:00:01,000 -> 00:00:01.000)
-  let vtt = srtContent.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  // Normalize newlines
+  let clean = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
-  // Add required WebVTT header
-  vtt = 'WEBVTT\n\n' + vtt;
+  // Strip UTF-8 BOM if present
+  if (clean.charCodeAt(0) === 0xFEFF) {
+    clean = clean.slice(1);
+  }
+
+  // Replace commas with periods in timestamps (00:00:01,000 -> 00:00:01.000)
+  let vtt = clean.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  
+  // Add required WebVTT header if missing
+  if (!vtt.trim().startsWith('WEBVTT')) {
+    vtt = 'WEBVTT\n\n' + vtt;
+  }
   
   return vtt;
 }
 
 export async function processSubtitleFile(file: File): Promise<string> {
   const text = await file.text();
-  if (file.name.toLowerCase().endsWith('.srt')) {
-    return srtToVtt(text);
-  }
-  return text; // Assumes text is already valid VTT or compatible
+  return srtToVtt(text);
 }
+
