@@ -8,6 +8,9 @@ import PageHistoryModal from '../modals/PageHistoryModal';
 import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
+import { getEditorBackupMap } from '../editor/hooks/editorBackupStore';
+
+const pageContentCache = new Map<string, { content: string; encrypted_content: string | null }>();
 
 interface PageViewProps {
   page: Page | null;
@@ -31,11 +34,24 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
       .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [page, state.pages]);
 
-  // Reset contentData synchronously when page changes to prevent stale content leaking
+  // SWR: Synchronously populate contentData if cached in-memory or in editor backup store
   if (page?.id && page.id !== contentPageId) {
-    setContentData(null);
     setContentPageId(page.id);
-    setIsUnlocked(false);
+    if (!page.is_locked) {
+      setIsUnlocked(true);
+      const backup = getEditorBackupMap().get(page.id);
+      const cached = pageContentCache.get(page.id);
+      if (backup?.html) {
+        setContentData({ content: backup.html, encrypted_content: null });
+      } else if (cached) {
+        setContentData(cached);
+      } else {
+        setContentData(null);
+      }
+    } else {
+      setContentData(null);
+      setIsUnlocked(false);
+    }
   }
 
   useEffect(() => {
@@ -45,6 +61,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
       if (!page?.id || !window.api?.getPageContent) return;
       window.api.getPageContent(page.id).then((data: { content: string; encrypted_content: string | null }) => {
         if (!mounted || !data) return;
+        pageContentCache.set(page.id, data);
         if (isBackground) {
           setContentData((prev) => {
             if (
@@ -87,6 +104,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
   const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => {
     if (page?.id) {
+      pageContentCache.set(page.id, { content, encrypted_content: null });
       onUpdateContent(page.id, content, crdtState, embeddedSaves, senderInstanceId);
     }
   }, [page?.id, onUpdateContent]);

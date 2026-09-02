@@ -220,6 +220,8 @@ export default function ImageFrame({
           title={title || undefined}
           style={imageStyle}
           draggable={false}
+          loading="lazy"
+          decoding="async"
           className={`image-node__img rounded-md border transition-shadow ${
             selected ? 'border-brand-500/60 ring-2 ring-brand-500' : 'border-white/10'
           }`}
