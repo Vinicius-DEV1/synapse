@@ -1,316 +1,215 @@
-import { useState, useEffect } from 'react';
-import { X, Info, HardDrive, Cloud, Languages, MessageSquare, Clock, Link as LinkIcon, MonitorPlay, Copy, Check, FileVideo } from 'lucide-react';
-import type { VideoItem, TrackItem } from '../../types';
+import { X, HardDrive, FileVideo, Clock, Play } from 'lucide-react';
+import type { VideoItem } from '../../types';
 import { Portal } from '../ui/Portal';
-import { formatBytes, formatHumanDuration } from '../../utils/format';
+import { useVideoInfoModal } from './modals/useVideoInfoModal';
+import { VideoInfoOverviewTab } from './modals/VideoInfoOverviewTab';
+import { VideoInfoTracksTab } from './modals/VideoInfoTracksTab';
+import { VideoInfoStorageTab } from './modals/VideoInfoStorageTab';
 
 interface VideoInfoModalProps {
   // `local_subtitle_path` extended optional field on VideoItem,
   // used for standalone subtitles downloaded from YouTube.
   video: VideoItem & { local_subtitle_path?: string };
   onClose: () => void;
+  onVideoUpdated?: (updatedVideo: VideoItem) => void;
+  onPlayVideo?: (video: VideoItem) => void;
 }
 
-export default function VideoInfoModal({ video, onClose }: VideoInfoModalProps) {
-  const [fileSize, setFileSize] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    if (video.is_local && video.file_path) {
-      import('@tauri-apps/plugin-fs').then(fs => {
-        fs.stat(video.file_path as string).then(info => {
-          if (mounted && info && info.size) {
-            setFileSize(formatBytes(info.size));
-          } else if (mounted) {
-            setFileSize('Desconhecido');
-          }
-        }).catch(() => {
-          if (mounted) setFileSize('Desconhecido');
-        });
-      }).catch(() => {
-        if (mounted) setFileSize('Indisponível (Web)');
-      });
-    } else {
-      setFileSize('N/A');
-    }
-    return () => { mounted = false; };
-  }, [video]);
-
-  const formatDuration = (seconds?: number) =>
-    formatHumanDuration(seconds, { includeSeconds: true, fallback: '--:--' });
-
-  const getYoutubeThumb = (url?: string) => {
-    if (!url) return null;
-    const match = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/);
-    if (match && match[1]) {
-      return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
-    }
-    return null;
-  };
-
-  const getExtension = (filename: string) => {
-    if (!filename) return 'UNKNOWN';
-    return filename.split('.').pop()?.toUpperCase() || 'UNKNOWN';
-  };
-
-  const copyToClipboard = (text: string, field: string) => {
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(text);
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 2000);
-    }
-  };
-
-  const thumbUrl = getYoutubeThumb(video.youtube_url);
-  
-  let audioTracks: TrackItem[] = [];
-  let subtitleTracks: TrackItem[] = [];
-  try {
-    if (video.audio_tracks_json) audioTracks = JSON.parse(video.audio_tracks_json);
-    if (video.subtitles_json) subtitleTracks = JSON.parse(video.subtitles_json);
-  } catch(e) {}
+export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayVideo }: VideoInfoModalProps) {
+  const {
+    currentVideo,
+    activeTab,
+    setActiveTab,
+    copiedField,
+    stats,
+    isLoadingStats,
+    isProcessingSub,
+    editingTrackId,
+    setEditingTrackId,
+    editLabelValue,
+    setEditLabelValue,
+    subFileInputRef,
+    formatDuration,
+    getExtension,
+    copyToClipboard,
+    handleOpenInFolder,
+    handleAddSubtitle,
+    handleRemoveSubtitle,
+    handleSaveRename,
+    audioTracks,
+    subtitleTracks,
+    progressPercent,
+    totalSizeFormatted,
+    origSizeFormatted,
+    webSizeFormatted
+  } = useVideoInfoModal({ video, onVideoUpdated });
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-[600px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
-          <h2 className="text-white font-medium flex items-center gap-2">
-            <Info size={18} className="text-brand-400" />
-            Informações do Vídeo
-          </h2>
-          <button onClick={onClose} className="text-dark-subtext hover:text-white transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-5 overflow-y-auto flex flex-col gap-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-fade-in">
+        <div className="bg-dark-card border border-white/10 rounded-2xl w-[660px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
           
-          {/* Cover & Basic Info */}
-          <div className="flex gap-4">
-            {thumbUrl ? (
-              <img src={thumbUrl} alt="Thumbnail" className="w-40 aspect-video object-cover rounded-lg border border-white/10 shadow-md" />
-            ) : (
-              <div className="w-40 aspect-video bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
-                <Info size={32} className="text-white/20" />
+          {/* Compact Integrated Header Bar */}
+          <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="p-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-brand-400 shrink-0">
+                  <FileVideo size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-brand-500/20 text-brand-300 border border-brand-500/30 rounded">
+                      {getExtension(currentVideo.file_path || currentVideo.original_name)}
+                    </span>
+                    {currentVideo.collection_name && (
+                      <span className="px-2 py-0.5 text-[11px] font-medium bg-white/5 text-white/70 border border-white/10 rounded truncate max-w-[160px]">
+                        📁 {currentVideo.collection_name}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-[11px] text-white/50 font-mono">
+                      <Clock size={11} className="text-brand-400" />
+                      {formatDuration(currentVideo.duration)}
+                    </span>
+                  </div>
+                  <h2 className="text-white font-bold text-base sm:text-lg leading-tight mt-1 truncate" title={currentVideo.title}>
+                    {currentVideo.title}
+                  </h2>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {currentVideo.is_local && (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <HardDrive size={13} />
+                    {totalSizeFormatted}
+                  </span>
+                )}
+                <button 
+                  onClick={onClose} 
+                  className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  title="Fechar (Esc)"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Watch Progress Sub-Bar if started */}
+            {progressPercent > 0 && (
+              <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden border border-white/5 mt-3">
+                <div 
+                  className="bg-gradient-to-r from-brand-500 to-indigo-400 h-full rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
             )}
-            
-            <div className="flex flex-col justify-start gap-2 flex-1">
-              <h3 className="text-lg font-bold text-white leading-tight">{video.title}</h3>
-              
-              <div className="flex flex-wrap gap-2 mt-1">
-                <span className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-2 py-1 rounded text-xs text-white/80">
-                  <Clock size={12} className="text-brand-400" />
-                  {formatDuration(video.duration)}
-                </span>
-                
-                {video.is_local && (
-                  <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded text-xs text-green-400">
-                    <HardDrive size={12} /> Local
-                  </span>
-                )}
-                {(video.drive_file_id || video.drive_web_file_id || (!video.is_local && !video.youtube_url)) && (
-                  <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded text-xs text-blue-400">
-                    <Cloud size={12} /> Nuvem
-                  </span>
-                )}
-
-                {video.youtube_url && (
-                  <span className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded text-xs text-red-400">
-                    <MonitorPlay size={12} /> YouTube
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
 
-          {/* Description */}
-          {video.youtube_description && (
-            <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-              <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-2">Descrição</h4>
-              <p className="text-sm text-white/80 whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar leading-relaxed">
-                {video.youtube_description}
-              </p>
-            </div>
-          )}
-
-          {/* Versions Info */}
-          <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-             <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
-                <FileVideo size={14} className="text-brand-400" />
-                Versões do Vídeo
-             </h4>
-             <ul className="space-y-2">
-               {video.is_local && video.file_path && (
-                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
-                   <div className="flex items-center gap-2">
-                     <span className="font-medium">Versão Local</span>
-                     <span className="text-[10px] bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded">{getExtension(video.file_path)}</span>
-                   </div>
-                   <span className="text-xs text-white/50">{fileSize || 'Calculando tamanho...'}</span>
-                 </li>
-               )}
-               {video.drive_file_id && (
-                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
-                   <div className="flex items-center gap-2">
-                     <span className="font-medium">Original na Nuvem (Drive)</span>
-                     <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{getExtension(video.original_name)}</span>
-                   </div>
-                   <span className="text-xs text-white/50 flex items-center gap-1"><Cloud size={12} className="text-blue-400/50" /> Backup Seguro</span>
-                 </li>
-               )}
-               {video.drive_web_file_id && (
-                 <li className="text-sm text-white/90 bg-black/20 px-3 py-2 rounded flex items-center justify-between border border-white/5">
-                   <div className="flex items-center gap-2">
-                     <span className="font-medium">Web Remux na Nuvem (Drive)</span>
-                     <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">MP4</span>
-                   </div>
-                   <span className="text-xs text-white/50 flex items-center gap-1"><Cloud size={12} className="text-blue-400/50" /> Backup Seguro</span>
-                 </li>
-               )}
-               {!video.is_local && !video.drive_file_id && !video.drive_web_file_id && !video.youtube_url && (
-                 <li className="text-sm text-white/50">Nenhuma versão encontrada</li>
-               )}
-             </ul>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* Audio Tracks */}
-            <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-              <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Languages size={14} className="text-brand-400" />
-                Idiomas (Áudio)
-              </h4>
-              {audioTracks.length > 0 ? (
-                <ul className="space-y-2">
-                  {audioTracks.map((track, idx) => (
-                    <li key={idx} className="text-sm text-white/90 bg-black/20 px-2 py-1.5 rounded flex items-center justify-between">
-                      <span className="capitalize">{track.label || 'Desconhecido'}</span>
-                      <span className="text-xs text-white/40">{track.id}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-white/50">Áudio nativo apenas</p>
+          {/* Clean Segmented Navigation Tabs */}
+          <div className="flex px-6 border-b border-white/10 gap-6 text-sm font-medium bg-white/[0.01]">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-3 relative transition-colors ${activeTab === 'overview' ? 'text-brand-400 font-semibold' : 'text-white/60 hover:text-white'}`}
+            >
+              Visão Geral
+              {activeTab === 'overview' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-400 rounded-full" />
               )}
-            </div>
-
-            {/* Subtitle Tracks */}
-            <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-              <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
-                <MessageSquare size={14} className="text-purple-400" />
-                Legendas Embutidas
-              </h4>
-              {subtitleTracks.length > 0 ? (
-                <ul className="space-y-2">
-                  {subtitleTracks.map((track, idx) => {
-                    const isRedundant = track.label?.toLowerCase() === `legenda ${track.id.toLowerCase()}`;
-                    const label = isRedundant ? 'Legenda Embutida' : track.label || 'Desconhecida';
-                    return (
-                      <li key={idx} className="text-sm text-white/90 bg-black/20 px-2 py-1.5 rounded flex items-center justify-between">
-                        <span className="capitalize">{label}</span>
-                        <span className="text-xs text-white/40 font-mono">{track.id}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : video.local_subtitle_path ? (
-                <p className="text-sm text-white/90 bg-purple-500/10 px-2 py-1.5 rounded border border-purple-500/20 flex items-center justify-between">
-                  <span className="truncate pr-2" title={video.local_subtitle_path.split(/[\\/]/).pop() || 'Legenda'}>
-                    {video.local_subtitle_path.split(/[\\/]/).pop() || 'Legenda.vtt'}
-                  </span>
-                  <span className="text-xs text-purple-400/80 flex-shrink-0">Padrão</span>
-                </p>
-              ) : (
-                <p className="text-sm text-white/50">Nenhuma legenda encontrada</p>
+            </button>
+            <button
+              onClick={() => setActiveTab('tracks')}
+              className={`py-3 relative transition-colors flex items-center gap-1.5 ${activeTab === 'tracks' ? 'text-brand-400 font-semibold' : 'text-white/60 hover:text-white'}`}
+            >
+              Áudios & Legendas
+              <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full text-white/80 font-mono">
+                {audioTracks.length + subtitleTracks.length}
+              </span>
+              {activeTab === 'tracks' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-400 rounded-full" />
               )}
-            </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`py-3 relative transition-colors ${activeTab === 'storage' ? 'text-brand-400 font-semibold' : 'text-white/60 hover:text-white'}`}
+            >
+              Caminhos & Nuvem
+              {activeTab === 'storage' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-400 rounded-full" />
+              )}
+            </button>
           </div>
 
-          {/* Paths Info */}
-          <div className="bg-black/20 border border-white/5 rounded-xl p-4 space-y-3">
-            <h4 className="text-xs font-medium text-dark-subtext uppercase tracking-wider mb-1 flex items-center gap-2">
-              <LinkIcon size={14} className="text-white/50" />
-              Caminhos do Arquivo
-            </h4>
-            
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-white/40 uppercase font-medium">Nome Original</span>
+          {/* Modal Tab Content Area */}
+          <div className="p-6 overflow-y-auto flex flex-col gap-4 max-h-[58vh] custom-scrollbar">
+            {activeTab === 'overview' && (
+              <VideoInfoOverviewTab
+                currentVideo={currentVideo}
+                stats={stats}
+                isLoadingStats={isLoadingStats}
+                origSizeFormatted={origSizeFormatted}
+                webSizeFormatted={webSizeFormatted}
+                progressPercent={progressPercent}
+                formatDuration={formatDuration}
+                getExtension={getExtension}
+                handleOpenInFolder={handleOpenInFolder}
+              />
+            )}
+
+            {activeTab === 'tracks' && (
+              <VideoInfoTracksTab
+                currentVideo={currentVideo}
+                audioTracks={audioTracks}
+                subtitleTracks={subtitleTracks}
+                stats={stats}
+                isProcessingSub={isProcessingSub}
+                editingTrackId={editingTrackId}
+                setEditingTrackId={setEditingTrackId}
+                editLabelValue={editLabelValue}
+                setEditLabelValue={setEditLabelValue}
+                subFileInputRef={subFileInputRef}
+                handleAddSubtitle={handleAddSubtitle}
+                handleRemoveSubtitle={handleRemoveSubtitle}
+                handleSaveRename={handleSaveRename}
+              />
+            )}
+
+            {activeTab === 'storage' && (
+              <VideoInfoStorageTab
+                currentVideo={currentVideo}
+                stats={stats}
+                copiedField={copiedField}
+                copyToClipboard={copyToClipboard}
+                handleOpenInFolder={handleOpenInFolder}
+              />
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="px-6 py-4 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
+            <span className="text-xs text-white/40">Caderno Vídeos</span>
+            <div className="flex items-center gap-2.5">
               <button 
-                onClick={() => copyToClipboard(video.original_name, 'original')}
-                className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
+                onClick={onClose}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-sm font-medium rounded-xl transition-colors border border-white/10"
               >
-                <span className="break-all">{video.original_name}</span>
-                {copiedField === 'original' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
+                Fechar
               </button>
+              {onPlayVideo && (
+                <button 
+                  onClick={() => {
+                    onClose();
+                    onPlayVideo(currentVideo);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-brand-500/20 active:scale-95"
+                >
+                  <Play size={15} className="fill-current" />
+                  Assistir
+                </button>
+              )}
             </div>
-
-            {video.youtube_url && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-medium">Link do YouTube</span>
-                <button 
-                  onClick={() => copyToClipboard(video.youtube_url!, 'youtube')}
-                  className="group flex items-center justify-between text-xs text-brand-400 font-mono bg-brand-500/10 px-2 py-1 rounded hover:bg-brand-500/20 transition-colors text-left"
-                >
-                  <span className="break-all">{video.youtube_url}</span>
-                  {copiedField === 'youtube' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-brand-400/40 group-hover:text-brand-400 flex-shrink-0 ml-2 transition-colors" />}
-                </button>
-              </div>
-            )}
-
-            {video.is_local && video.file_path && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-medium">Caminho Local</span>
-                <button 
-                  onClick={() => copyToClipboard(video.file_path!, 'local')}
-                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
-                >
-                  <span className="break-all">{video.file_path}</span>
-                  {copiedField === 'local' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
-                </button>
-              </div>
-            )}
-            
-            {video.drive_file_id && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-medium">Drive ID (Backup Original)</span>
-                <button 
-                  onClick={() => copyToClipboard(video.drive_file_id!, 'drive')}
-                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
-                >
-                  <span className="break-all">{video.drive_file_id}</span>
-                  {copiedField === 'drive' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
-                </button>
-              </div>
-            )}
-
-            {video.drive_web_file_id && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-white/40 uppercase font-medium">Drive ID (Backup Web)</span>
-                <button 
-                  onClick={() => copyToClipboard(video.drive_web_file_id!, 'drive_web')}
-                  className="group flex items-center justify-between text-xs text-white/70 font-mono bg-black/40 px-2 py-1 rounded hover:bg-black/60 transition-colors text-left"
-                >
-                  <span className="break-all">{video.drive_web_file_id}</span>
-                  {copiedField === 'drive_web' ? <Check size={14} className="text-green-400 flex-shrink-0 ml-2" /> : <Copy size={14} className="text-white/20 group-hover:text-white/60 flex-shrink-0 ml-2 transition-colors" />}
-                </button>
-              </div>
-            )}
           </div>
-        </div>
-
-        <div className="px-5 py-4 border-t border-white/5 bg-white/[0.02] flex justify-end">
-          <button 
-            onClick={onClose}
-            className="px-5 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Fechar
-          </button>
         </div>
       </div>
-    </div>
     </Portal>
   );
 }
