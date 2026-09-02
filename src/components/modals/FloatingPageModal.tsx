@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, lazy, Suspense } from 'react';
 import { Maximize2, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
-import PageView from '../page-view/PageView';
 import { Portal } from '../ui/Portal';
+
+const PageView = lazy(() => import('../page-view/PageView'));
 
 interface FloatingPageModalProps {
   pageId: string;
@@ -75,13 +76,15 @@ export default function FloatingPageModal({
 
         {/* Page Content */}
         <div className="flex-1 overflow-hidden flex flex-col relative pt-4">
-          <PageView
-            page={page}
-            onUpdateContent={onUpdateContent}
-            onCreatePage={onCreatePage}
-            onCreateLinkedPage={onCreateLinkedPage}
-            onUpdatePage={onUpdatePage}
-          />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-dark-subtext text-sm">Carregando página...</div>}>
+            <PageView
+              page={page}
+              onUpdateContent={onUpdateContent}
+              onCreatePage={onCreatePage}
+              onCreateLinkedPage={onCreateLinkedPage}
+              onUpdatePage={onUpdatePage}
+            />
+          </Suspense>
         </div>
       </div>
     </div>
