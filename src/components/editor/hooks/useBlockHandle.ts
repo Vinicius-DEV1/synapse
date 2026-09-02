@@ -137,6 +137,9 @@ export function useBlockHandle(
         return;
       }
 
+      // Early exit if block hasn't changed to prevent layout thrashing
+      if (posRef.current === block.pos) return;
+
       const rect = block.dom.getBoundingClientRect();
       if (rect.height === 0) {
         scheduleHide();
@@ -149,7 +152,6 @@ export function useBlockHandle(
         return;
       }
 
-      if (posRef.current === block.pos) return;
       posRef.current = block.pos;
       setAnchor({ x: Math.max(4, rect.left - BLOCK_HANDLE_GAP), y: rect.top + 2 });
     };
