@@ -56,19 +56,27 @@ Activate this skill when the user requests performance improvements, refactoring
 - **Zero-Latency Perceived UX (SWR / Optimistic Caching)**:
   - Employ Stale-While-Revalidate (RFC 5861) and in-memory caches. If data or backup state exists, render synchronously for 0ms perceived latency and revalidate asynchronously in the background.
 - **Zero-Rerender Visual Interactions (CSS-Driven Interactions)**:
-  - Never use React `useState` for hover or focus states that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `:hover`, `peer`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
+  - Never use React `useState` for hover or focus states that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `:hover`, `peer`, `focus-within`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
 - **Layout Thrashing & Forced Reflow Prevention**:
-  - Strictly guard DOM geometry queries (`getBoundingClientRect()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in animation frame loops.
+  - Strictly guard DOM geometry queries (`getBoundingClientRect()`, `getComputedStyle()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in animation frame loops. Batch DOM reads before writes.
 - **Off-Main-Thread Media & Image Optimization**:
   - Always specify native `loading="lazy"` and `decoding="async"` on images and media frames to prevent main-thread decoding bottlenecks during fast scrolling.
 - **Dynamic Bundle Code-Splitting**:
   - Isolate heavy editor extensions, PDF viewers, diagrams, and media engines behind clean `React.lazy` and `Suspense` boundaries. Prevent static import leaks into root layout modals.
-- **React Rendering Optimization**:
-  - Stabilize reference identities for handlers and computed values (`useCallback`, `useMemo`).
-  - Isolate high-frequency volatile state so parent subtrees do not needlessly re-render.
-- **Async I/O Concurrency & Algorithmic Efficiency**:
-  - Pre-index entities into $O(1)$ lookup structures (`Map`, `Set`) before executing iterative lookups or batch operations.
-  - Batch independent async calls with `Promise.all` rather than sequential `await`s.
+- **Algorithmic Indexing ($O(1)$ Hash Maps vs $O(N)$ Scans)**:
+  - Pre-index entities into `Map` and `Set` collections before executing iterative lookups, transformations, or batch saves, maintaining constant-time execution regardless of vault size.
+- **GPU Compositor Acceleration (Transform & Opacity Only)**:
+  - Never animate layout-triggering properties (`top`, `left`, `width`, `height`, `margin`, `padding`). Animate exclusively via hardware-accelerated CSS properties: `transform` (`translate3d`, `scale`, `rotate`) and `opacity`.
+- **Passive Event Listeners & RAF Throttling**:
+  - Always register scroll, mousewheel, and touch listeners with `{ passive: true }` so the browser compositor never waits on JavaScript execution. Throttle high-frequency events using `requestAnimationFrame`.
+- **Off-Main-Thread Heavy Computation (Web Workers & Schedulers)**:
+  - Heavy compute tasks (AES/PBKDF2 cryptography, OCR parsing, PDF text extraction, diffing algorithms, full-text fuzzy indexing) must run in Web Workers or be chunked across microtasks using `scheduler.yield()` / `requestIdleCallback`.
+- **Virtualization & DOM Bloat Prevention**:
+  - Avoid mounting hundreds of heavy off-screen DOM nodes. Leverage list virtualization or native CSS `content-visibility: auto` with `contain-intrinsic-size` to allow the browser to skip layout and paint of off-screen elements.
+- **Store Subscription Slicing & Selector Isolation**:
+  - Prevent whole-tree re-renders by selecting only the minimal required slice of state. Wrap high-frequency leaf components in `React.memo` with custom prop comparators.
+- **Zero-Leak Lifecycle & Garbage Collection Discipline**:
+  - Always clean up event listeners, timers (`clearTimeout`, `clearInterval`), Yjs CRDT observers, and abort in-flight asynchronous operations (`AbortController`) on unmount to prevent memory leaks and detached DOM retention.
 
 ### 2.5. Structural Cleanliness & Language Standards
 - **Cohesive Directory Organization**:

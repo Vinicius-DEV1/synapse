@@ -134,17 +134,30 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 
 ## 9. Modern Industry Standards & Creative Performance Engineering (Big Tech Best Practices)
 
-To guarantee that Caderno operates with the responsiveness, fluidity, and elegance of elite industry applications (e.g., Notion, VS Code, Linear, Figma), code must adhere to these modern engineering standards:
+To guarantee that Caderno operates with the responsiveness, fluidity, and elegance of elite industry applications (e.g., Notion, VS Code, Linear, Figma), code must strictly adhere to these 12 modern engineering standards:
 
 1. **Zero-Latency Perceived UX (SWR / Optimistic Transitions)**:
    - Apply the Stale-While-Revalidate (RFC 5861) pattern and in-memory caches to transitions. If cached or backup data exists, render it synchronously for **0ms perceived latency**, revalidating silently in the background rather than freezing the UI with loading spinners.
 2. **Zero-Rerender Visual Interactions (CSS-Driven Hover & Active States)**:
-   - Never use React component state (`useState`, `isHovered`) for visual effects that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `peer`, `:hover`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
+   - Never use React component state (`useState`, `isHovered`) for visual effects that native CSS handles natively. Leverage Tailwind composite utilities (`group-hover`, `peer`, `:hover`, `focus-within`) to offload interactions 100% to the GPU compositor without triggering React re-renders or garbage collection.
 3. **Layout Thrashing & Forced Synchronous Reflow Prevention**:
-   - Strictly guard calls to geometry-reading APIs (`getBoundingClientRect()`, `getComputedStyle()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in `requestAnimationFrame` loops.
+   - Strictly guard calls to geometry-reading APIs (`getBoundingClientRect()`, `getComputedStyle()`, `elementFromPoint()`). Always check node equality, positional identifiers, or cache flags *before* querying DOM metrics in `requestAnimationFrame` loops. Batch DOM reads before writes.
 4. **Off-Main-Thread Media & Image Optimization**:
    - Always specify native `loading="lazy"` and `decoding="async"` on images and media frames. Prevent main-thread decoding bottlenecks during fast scrolling.
 5. **Effective Dynamic Code-Splitting**:
    - Isolate heavy editor extensions, PDF viewers, diagrams, and media engines behind clean `React.lazy` and `Suspense` boundaries. Avoid leaking static imports into root layout modals that break Vite/bundler chunk isolation.
 6. **Algorithmic Indexing ($O(1)$ Hash Maps vs $O(N)$ Scans)**:
    - Pre-index entities into `Map` and `Set` collections before executing iterative lookups, transformations, or batch saves, maintaining constant-time execution regardless of vault size.
+7. **GPU Compositor Acceleration (Transform & Opacity Only)**:
+   - Never animate layout-triggering properties (`top`, `left`, `width`, `height`, `margin`, `padding`). Animate exclusively via hardware-accelerated CSS properties: `transform` (`translate3d`, `scale`, `rotate`) and `opacity`. Use `will-change` sparingly and only during active transitions.
+8. **Passive Event Listeners & RAF Throttling**:
+   - Always register scroll, mousewheel, and touch listeners with `{ passive: true }` so the browser compositor never waits on JavaScript execution. Throttle high-frequency events (cursor tracking, resize, drag) using `requestAnimationFrame`.
+9. **Off-Main-Thread Heavy Computation (Web Workers & Schedulers)**:
+   - Heavy compute tasks (AES/PBKDF2 cryptography, OCR parsing, PDF text extraction, diffing algorithms, full-text fuzzy indexing) must run in Web Workers or be chunked across microtasks using `scheduler.yield()` / `requestIdleCallback` to avoid dropping UI frames.
+10. **Virtualization & DOM Bloat Prevention**:
+    - Avoid mounting hundreds of heavy off-screen DOM nodes in lists (cards, flashcards, book grids, logs). Leverage list virtualization or native CSS `content-visibility: auto` with `contain-intrinsic-size` to allow the browser to skip layout and paint of off-screen elements.
+11. **Store Subscription Slicing & Selector Isolation**:
+    - Prevent whole-tree re-renders by selecting only the minimal required slice of state. Wrap high-frequency leaf components in `React.memo` with custom prop comparators to isolate render boundaries.
+12. **Zero-Leak Lifecycle & Garbage Collection Discipline**:
+    - Always clean up event listeners, timers (`clearTimeout`, `clearInterval`), Yjs CRDT observers, and abort in-flight asynchronous operations (`AbortController`) on unmount to prevent memory leaks and detached DOM node retention.
+
