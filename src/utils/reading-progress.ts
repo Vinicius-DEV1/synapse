@@ -37,7 +37,7 @@ export function saveReadingProgress(
       percentage: Math.min(100, Math.max(0, Math.round(data.percentage))),
       scrollHeight: data.scrollHeight,
       updatedAt: new Date().toISOString(),
-      bookmarks: existing?.bookmarks || []
+      bookmarks: existing?.bookmarks ? [...existing.bookmarks] : []
     };
     localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(updated));
   } catch (e) {
@@ -62,10 +62,13 @@ export function addBookmark(fileId: string, label: string, scrollTop: number): B
       createdAt: new Date().toISOString()
     };
 
-    existing.bookmarks.push(newBookmark);
-    existing.updatedAt = new Date().toISOString();
+    const updated: ReadingProgressData = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+      bookmarks: [...existing.bookmarks, newBookmark]
+    };
 
-    localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(existing));
+    localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(updated));
     return newBookmark;
   } catch (e) {
     console.error('Error adding bookmark', e);
@@ -78,10 +81,13 @@ export function removeBookmark(fileId: string, bookmarkId: string): void {
     const existing = getReadingProgress(fileId);
     if (!existing) return;
 
-    existing.bookmarks = existing.bookmarks.filter(b => b.id !== bookmarkId);
-    existing.updatedAt = new Date().toISOString();
+    const updated: ReadingProgressData = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+      bookmarks: existing.bookmarks.filter(b => b.id !== bookmarkId)
+    };
 
-    localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(existing));
+    localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(updated));
   } catch (e) {
     console.error('Error removing bookmark', e);
   }
@@ -92,12 +98,14 @@ export function updateBookmarkLabel(fileId: string, bookmarkId: string, newLabel
     const existing = getReadingProgress(fileId);
     if (!existing) return;
 
-    const bm = existing.bookmarks.find(b => b.id === bookmarkId);
-    if (bm) {
-      bm.label = newLabel.trim() || bm.label;
-      existing.updatedAt = new Date().toISOString();
-      localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(existing));
-    }
+    const trimmed = newLabel.trim();
+    const updated: ReadingProgressData = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+      bookmarks: existing.bookmarks.map(b => (b.id === bookmarkId ? { ...b, label: trimmed || b.label } : b))
+    };
+
+    localStorage.setItem(`${STORAGE_PREFIX}${fileId}`, JSON.stringify(updated));
   } catch (e) {
     console.error('Error updating bookmark label', e);
   }
