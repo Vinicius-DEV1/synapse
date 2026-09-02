@@ -1,6 +1,6 @@
 import { Editor } from '@tiptap/react';
 import { Trash2, ArrowUpFromLine, ArrowDownFromLine, ArrowLeftFromLine, ArrowRightFromLine, X, Palette } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface TableToolbarProps {
   editor: Editor;
@@ -19,6 +19,18 @@ const COLORS = [
 
 export default function TableToolbar({ editor }: TableToolbarProps) {
   const [showColors, setShowColors] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showColors) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        setShowColors(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showColors]);
 
   const setColor = (c: string) => {
     const colorVal = c === 'transparent' ? null : c;
@@ -28,7 +40,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
   };
 
   return (
-    <div className="flex flex-col bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in p-1 gap-1">
+    <div ref={toolbarRef} className="flex flex-col bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in p-1 gap-1">
       <div className="flex items-center gap-1">
         <button onClick={() => editor.chain().focus().addRowBefore().run()} className="p-1.5 hover:bg-white/10 rounded text-dark-subtext hover:text-white transition-colors" title="Adicionar linha acima">
           <ArrowUpFromLine size={16} />

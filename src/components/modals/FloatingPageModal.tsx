@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Maximize2, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import type { Page } from '../../types';
 import PageView from '../page-view/PageView';
 import { Portal } from '../ui/Portal';
 
@@ -8,10 +9,10 @@ interface FloatingPageModalProps {
   pageId: string;
   onClose: () => void;
   onExpand: (pageId: string) => void;
-  onUpdateContent: any;
-  onCreatePage: any;
-  onCreateLinkedPage: any;
-  onUpdatePage: any;
+  onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => Promise<void>;
+  onCreatePage: (parentId: string | null) => Promise<void>;
+  onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 
 export default function FloatingPageModal({
@@ -21,12 +22,12 @@ export default function FloatingPageModal({
   onUpdateContent,
   onCreatePage,
   onCreateLinkedPage,
-  onUpdatePage
+  onUpdatePage,
 }: FloatingPageModalProps) {
   const { state } = useStore();
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const page = state.pages.find(p => p.id === pageId) || null;
+  const page = state.pages.find((p: Page) => p.id === pageId && !p.deleted_at) || null;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

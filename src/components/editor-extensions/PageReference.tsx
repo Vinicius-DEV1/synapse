@@ -1,17 +1,18 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { getStoreState, StoreContext } from '../../store/useStore';
 import { useEffect, useState, useContext } from 'react';
 import { FileText, AlertCircle } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import type { Page } from '../../types';
 
-const PageReferenceComponent = (props: any) => {
+const PageReferenceComponent = (props: NodeViewProps) => {
   const { pageId, title } = props.node.attrs;
   const { deleteNode } = props;
   const store = useContext(StoreContext);
   const pages = store?.state?.pages ?? getStoreState().pages;
-  const targetPage = pages.find((p: any) => p.id === pageId);
+  const targetPage = pages.find((p: Page) => p.id === pageId);
   const isDeleted = !targetPage || Boolean(targetPage.deleted_at);
 
   const [pageTitle, setPageTitle] = useState(targetPage?.title || title || 'Página');
