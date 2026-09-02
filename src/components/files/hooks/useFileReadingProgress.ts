@@ -73,8 +73,14 @@ export function useFileReadingProgress(itemId: string, isText: boolean, textCont
 
   const handleResumeReading = () => {
     if (savedProgressData && scrollContainerRef.current) {
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      const maxScroll = scrollHeight - clientHeight;
+      const targetScroll = maxScroll > 0 && savedProgressData.percentage >= 0
+        ? (savedProgressData.percentage / 100) * maxScroll
+        : savedProgressData.scrollTop;
+
       scrollContainerRef.current.scrollTo({
-        top: savedProgressData.scrollTop,
+        top: targetScroll,
         behavior: 'smooth'
       });
       setShowResumePrompt(false);
