@@ -7,6 +7,17 @@ import { applyGroupDrop, consumeGroupDropTarget } from '../../editor-extensions/
 import { findNodePos } from '../../editor-extensions/image/imageUtils';
 import { triggerToast } from '../../ui/ToastContext';
 
+function registerPendingUpload(tempId: string, file: File) {
+  if (!window.__pendingImageUploads) {
+    window.__pendingImageUploads = new Map();
+  }
+  window.__pendingImageUploads.set(tempId, file);
+  // Auto-cleanup after 5 minutes to prevent memory leak
+  setTimeout(() => {
+    window.__pendingImageUploads?.delete(tempId);
+  }, 5 * 60 * 1000);
+}
+
 interface UseEditorDropPasteProps {
   editor?: Editor | null;
   editorRef?: React.RefObject<Editor | null>;
@@ -95,10 +106,7 @@ export function useEditorDropPaste({
               if (masterKey) {
                 const tempId =
                   'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-                if (!window.__pendingImageUploads) {
-                  window.__pendingImageUploads = new Map();
-                }
-                window.__pendingImageUploads.set(tempId, file);
+                registerPendingUpload(tempId, file);
                 file
                   .arrayBuffer()
                   .then((buffer) => {
@@ -212,10 +220,7 @@ export function useEditorDropPaste({
                     'uploading_' +
                     Date.now() +
                     Math.random().toString(36).substring(2, 6);
-                  if (!window.__pendingImageUploads) {
-                    window.__pendingImageUploads = new Map();
-                  }
-                  window.__pendingImageUploads.set(tempId, file);
+                  registerPendingUpload(tempId, file);
                   file
                     .arrayBuffer()
                     .then((buffer) => {
