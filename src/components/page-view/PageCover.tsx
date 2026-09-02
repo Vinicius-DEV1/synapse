@@ -90,7 +90,13 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
     <>
       {page.cover_image ? (
         <div className="w-full h-64 relative group border-b border-dark-border">
-          <img src={getStableCoverUrl(page.cover_image, page.id)} alt="Capa" className="w-full h-full object-cover" />
+          <img
+            src={getStableCoverUrl(page.cover_image, page.id)}
+            alt="Capa"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
             <button 
               onClick={() => setShowCoverModal(true)}
