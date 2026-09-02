@@ -10,7 +10,8 @@ import {
   PointerSensor,
   pointerWithin,
   rectIntersection,
-  useDroppable
+  useDroppable,
+  type CollisionDetection
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import {
@@ -32,11 +33,11 @@ interface SubPageGridProps {
 }
 
 // Custom collision detection to prioritize nesting dropzones over sorting dropzones
-const customCollisionDetection = (args: any) => {
+const customCollisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args);
   
   if (pointerCollisions.length > 0) {
-    const nestCollision = pointerCollisions.find((c: any) => c.id.toString().startsWith('nest-'));
+    const nestCollision = pointerCollisions.find((c) => c.id.toString().startsWith('nest-'));
     if (nestCollision) {
       return [nestCollision];
     }
@@ -203,7 +204,7 @@ const SubPageItem = memo(function SubPageItem({
 
 export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdatePage }: SubPageGridProps) {
   const { state, dispatch } = useStore();
-  const [activeDragData, setActiveDragData] = useState<any>(null);
+  const [activeDragData, setActiveDragData] = useState<{ type: string; page: Page; isNested?: boolean } | null>(null);
 
   const childrenMap = useMemo(() => {
     const map = new Map<string, Page[]>();

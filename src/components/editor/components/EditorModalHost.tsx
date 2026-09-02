@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import SlashMenu from './SlashMenu';
 import PageSearchMenu from '../../PageSearchMenu';
 import ImageViewerModal from '../../modals/ImageViewerModal';
@@ -106,8 +107,8 @@ interface EditorModalHostProps {
   setFileActionModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; fileId: string; title: string } | null>
   >;
-  imageToDelete: { node: any; pos: number | null } | null;
-  setImageToDelete: React.Dispatch<React.SetStateAction<{ node: any; pos: number | null } | null>>;
+  imageToDelete: { node: PMNode; pos: number | null } | null;
+  setImageToDelete: React.Dispatch<React.SetStateAction<{ node: PMNode; pos: number | null } | null>>;
 }
 
 export default function EditorModalHost({

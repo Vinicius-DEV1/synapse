@@ -43,7 +43,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
     const fetchContent = (isBackground = false) => {
       if (!page?.id || !window.api?.getPageContent) return;
-      window.api.getPageContent(page.id).then((data: any) => {
+      window.api.getPageContent(page.id).then((data: { content: string; encrypted_content: string | null }) => {
         if (!mounted || !data) return;
         if (isBackground) {
           setContentData((prev) => {

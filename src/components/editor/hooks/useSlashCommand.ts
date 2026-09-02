@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Editor } from '@tiptap/core';
+import type { EditorView } from '@tiptap/pm/view';
 import { triggerToast } from '../../ui/ToastContext';
 import { invoke } from '@tauri-apps/api/core';
 import { platform } from '../../../services/platform';
@@ -37,7 +38,7 @@ export function useSlashCommand({
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
-  const handleSlashKeyDown = useCallback((view: any, event: KeyboardEvent) => {
+  const handleSlashKeyDown = useCallback((view: EditorView, event: KeyboardEvent) => {
     if (event.key === '/') {
       const startPos = view.state.selection.$head.pos;
       const coords = view.coordsAtPos(startPos);

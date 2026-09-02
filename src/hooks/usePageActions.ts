@@ -115,7 +115,7 @@ export function usePageActions() {
     }
     if (window.api) {
       try {
-        await window.api.updatePage({ id, content, crdt_state: crdtState } as unknown as Omit<Partial<Page>, 'id'> & { id: string });
+        await window.api.updatePage({ id, content, crdt_state: crdtState });
         getEditorBackupMap().set(id, { html: content, crdt: crdtState || '' });
         broadcastPageSaved(id, crdtState, content, senderInstanceId);
         
