@@ -40,14 +40,23 @@ pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Val
     ]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = cmd.output().map_err(|e| {
+        println!("[DEBUG] video_scan_tracks - ffprobe command failed: {}", e);
+        e.to_string()
+    })?;
 
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);
-        let val: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
+        println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🔍 \x1b[1;32mffprobe escaneou com sucesso:\x1b[0m {} bytes de metadados", json_str.len());
+        let val: Value = serde_json::from_str(&json_str).map_err(|e| {
+            println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Erro ao ler JSON do ffprobe: {}", e);
+            e.to_string()
+        })?;
         Ok(val)
     } else {
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
+        let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha no ffprobe: {}", err_msg);
+        Err(err_msg)
     }
 }
 
@@ -79,6 +88,8 @@ pub async fn video_extract_subtitles(
         local_path.clone()
     };
 
+    println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 📝 \x1b[1;33mExtraindo legenda:\x1b[0m Faixa \x1b[35m{}\x1b[0m", track_index);
+
     let mut cmd = Command::new(ffmpeg_path);
     cmd.args([
         "-y", // overwrite
@@ -92,7 +103,11 @@ pub async fn video_extract_subtitles(
     ]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    
+    let output = cmd.output().map_err(|e| {
+        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para legenda: {}", e);
+        e.to_string()
+    })?;
 
     if output.status.success() || vtt_out_path.exists() {
         let content = fs::read(&vtt_out_path)
@@ -100,13 +115,13 @@ pub async fn video_extract_subtitles(
             .unwrap_or_default();
         let _ = fs::remove_file(&vtt_out_path);
         println!(
-            "[DEBUG] Subtitles extracted successfully (size: {})",
+            "\x1b[1;36m[CADERNO VIDEO]\x1b[0m ✅ \x1b[1;32mLegenda extraída com sucesso!\x1b[0m Tamanho: \x1b[33m{} caracteres\x1b[0m",
             content.len()
         );
         Ok(content)
     } else {
         let err = String::from_utf8_lossy(&output.stderr).to_string();
-        println!("[DEBUG] Failed to extract subtitles: {}", err);
+        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao extrair legenda: {}", err);
         Err(err)
     }
 }
@@ -142,6 +157,8 @@ pub async fn video_extract_audio(
         local_path.clone()
     };
 
+    println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🎵 \x1b[1;33mExtraindo áudio secundário:\x1b[0m Faixa \x1b[35m{}\x1b[0m (Forçando estéreo -ac 2)", track_index);
+
     let mut cmd = Command::new(ffmpeg_path);
     cmd.args([
         "-y",
@@ -151,13 +168,19 @@ pub async fn video_extract_audio(
         &track_index,
         "-c:a",
         "aac",
+        "-ac",
+        "2",
         "-b:a",
         "128k",
         &temp_audio.to_string_lossy().to_string(),
     ]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+
+    let output = cmd.output().map_err(|e| {
+        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para extrair áudio: {}", e);
+        e.to_string()
+    })?;
 
     if output.status.success() || temp_audio.exists() {
         let keys_guard = db_state.keys.lock().unwrap();
@@ -174,10 +197,13 @@ pub async fn video_extract_audio(
         crate::crypto_stream::encrypt_file_chunked(&temp_audio, &final_enc, &master_key)?;
         let _ = fs::remove_file(&temp_audio);
 
+        println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m ✅ \x1b[1;32mÁudio secundário extraído e criptografado com sucesso!\x1b[0m");
         Ok(final_enc.to_string_lossy().to_string())
     } else {
+        let err_output = String::from_utf8_lossy(&output.stderr).to_string();
+        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Erro no FFmpeg ao extrair áudio: {}", err_output);
         let _ = fs::remove_file(&temp_audio);
-        Err(String::from_utf8_lossy(&output.stderr).to_string())
+        Err(err_output)
     }
 }
 
