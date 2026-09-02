@@ -200,10 +200,8 @@ export default function Editor({
     },
     onCreate: ({ editor: currentEditor }) => {
       const hasMeaningfulCrdt = !!effectiveCrdtState && effectiveCrdtState.length > 8;
-      console.log(`[Caderno:Editor] onCreate for ${pageId}. hasMeaningfulCrdt: ${hasMeaningfulCrdt}`);
       if (!hasMeaningfulCrdt && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         try {
-          console.log(`[Caderno:Editor] onCreate loading HTML fallback (length: ${initialContent.length})`);
           currentEditor.commands.setContent(initialContent);
           hasInitializedContentRef.current = true;
         } catch (err) {
@@ -234,7 +232,6 @@ export default function Editor({
       const isEmptyEditor = editor.isEmpty || editor.getHTML() === '<p></p>';
       if (!hasMeaningfulCrdt && isEmptyEditor && typeof initialContent === 'string' && initialContent.trim() !== '' && initialContent !== '<p></p>') {
         try {
-          console.log(`[Caderno:Editor] useEffect loading HTML fallback (length: ${initialContent.length})`);
           editor.commands.setContent(initialContent);
           hasInitializedContentRef.current = true;
         } catch (err) {
