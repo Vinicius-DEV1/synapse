@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { filterActivePages } from '../utils/page-filter';
 
@@ -17,27 +17,32 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredPages = filterActivePages(state.pages).filter(p => {
+  const filteredPages = useMemo(() => {
     const q = localQuery.toLowerCase();
-    if (p.title.toLowerCase().includes(q)) return true;
-    // Search plain text representation to avoid matching HTML tags
-    if (p.content) {
-      const plain = p.content.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
-      return plain.toLowerCase().includes(q);
-    }
-    return false;
-  });
+    return filterActivePages(state.pages).filter(p => {
+      if (p.title.toLowerCase().includes(q)) return true;
+      // Search plain text representation to avoid matching HTML tags
+      if (p.content) {
+        const plain = p.content.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+        return plain.toLowerCase().includes(q);
+      }
+      return false;
+    });
+  }, [state.pages, localQuery]);
 
   const effectiveTitle = localQuery.trim() || 'Sem título';
-  const options = mode === 'create'
-    ? [
-        { id: 'new', title: `Criar página "${effectiveTitle}"`, icon: '✨' },
-        ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' }))
-      ]
-    : [
-        ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
-        ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery.trim()}"`, icon: '✨' }] : [])
-      ];
+
+  const options = useMemo(() => {
+    return mode === 'create'
+      ? [
+          { id: 'new', title: `Criar página "${effectiveTitle}"`, icon: '✨' },
+          ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' }))
+        ]
+      : [
+          ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
+          ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery.trim()}"`, icon: '✨' }] : [])
+        ];
+  }, [mode, effectiveTitle, filteredPages, localQuery]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

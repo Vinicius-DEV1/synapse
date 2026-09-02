@@ -275,14 +275,21 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
           
           if (oldIndex !== -1 && newIndex !== -1) {
             const newOrder = arrayMove(siblings, oldIndex, newIndex);
-            newOrder.forEach((p: Page, index: number) => {
-              if (p.sort_order !== index) {
-                onUpdatePage(p.id, { sort_order: index }).catch((err) => {
-                  console.error('[SubPageGrid] Falha ao reordenar página:', err);
-                  triggerToast('Falha ao salvar a nova ordem das páginas.', 'error');
-                });
-              }
-            });
+            const updates = newOrder
+              .map((p: Page, index: number) => {
+                if (p.sort_order !== index) {
+                  return onUpdatePage(p.id, { sort_order: index });
+                }
+                return null;
+              })
+              .filter((prom): prom is Promise<void> => prom !== null);
+
+            if (updates.length > 0) {
+              Promise.all(updates).catch((err) => {
+                console.error('[SubPageGrid] Falha ao reordenar páginas:', err);
+                triggerToast('Falha ao salvar a nova ordem das páginas.', 'error');
+              });
+            }
           }
        }
     }

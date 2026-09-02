@@ -106,7 +106,7 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
         if (document.visibilityState === 'visible' && window.api) {
           try {
             const pages = await window.api.getAllPages?.();
-            const currentPage = pages?.find((p: any) => p.id === pageId);
+            const currentPage = pages?.find((p: Page) => p.id === pageId);
             if (currentPage?.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
               applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
             }

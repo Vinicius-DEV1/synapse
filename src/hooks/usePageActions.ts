@@ -56,32 +56,27 @@ export function usePageActions() {
         if (window.api.calendar) {
           try {
             const events = await window.api.calendar.getEvents();
-            for (const ev of events) {
-              let shouldDeleteEvent = false;
-              if (ev.page_id && toDeleteIds.has(ev.page_id)) {
-                shouldDeleteEvent = true;
-              } else {
-                for (const pageId of toDeleteIds) {
-                  const pageObj = state.pages.find((p) => p.id === pageId);
-                  if (pageObj?.content && pageObj.content.includes(`data-event-id="${ev.id}"`)) {
-                    shouldDeleteEvent = true;
-                    break;
-                  }
-                }
-              }
-              if (shouldDeleteEvent) {
-                await window.api.calendar.deleteEvent(ev.id);
-              }
+            // Pre-aggregate page content string for fast matching
+            const deletedPagesContent = state.pages
+              .filter((p) => toDeleteIds.has(p.id))
+              .map((p) => p.content || '')
+              .join(' ');
+
+            const eventsToDelete = events.filter((ev) => {
+              if (ev.page_id && toDeleteIds.has(ev.page_id)) return true;
+              return deletedPagesContent.includes(`data-event-id="${ev.id}"`);
+            });
+
+            if (eventsToDelete.length > 0) {
+              await Promise.all(eventsToDelete.map((ev) => window.api.calendar!.deleteEvent(ev.id)));
             }
           } catch (err) {
             console.error('Erro ao excluir eventos vinculados à página e subpáginas:', err);
           }
         }
 
-        // 3. Delete pages in backend
-        for (const pageId of toDeleteIds) {
-          await window.api.deletePage(pageId);
-        }
+        // 3. Delete pages in backend concurrently
+        await Promise.all(Array.from(toDeleteIds).map((pageId) => window.api.deletePage(pageId)));
 
         // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
