@@ -44,6 +44,7 @@ export function VaultItemList({
           filteredItems.map((item) => (
             <div
               key={item.id}
+              data-testid={`vault-item-${item.id}`}
               onClick={() => handleSelectItem(item)}
               className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-1 transition-all group ${
                 selectedItem?.id === item.id
