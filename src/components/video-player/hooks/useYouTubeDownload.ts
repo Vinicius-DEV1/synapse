@@ -46,6 +46,7 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
   const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
 
   useEffect(() => {
+    isMountedRef.current = true;
     let mounted = true;
     getValidAccessToken()
       .then(t => {

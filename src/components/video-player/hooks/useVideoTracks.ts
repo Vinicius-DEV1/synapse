@@ -107,9 +107,22 @@ export function useVideoTracks(
     };
   }, [isPlaying, activeAudioUrl, videoRef, audioRef]);
 
+  const addSubtitleTrack = (newTrack: TrackItem) => {
+    setSubtitleTracks(prev => {
+      const updated = [...prev, newTrack];
+      setTimeout(() => {
+        const newIdx = updated.findIndex(t => t.id === newTrack.id);
+        if (newIdx !== -1) setActiveSubtitleIndex(newIdx);
+      }, 50);
+      return updated;
+    });
+  };
+
   return {
     audioTracks,
     subtitleTracks,
+    setSubtitleTracks,
+    addSubtitleTrack,
     activeAudioIndex,
     setActiveAudioIndex,
     activeSubtitleIndex,

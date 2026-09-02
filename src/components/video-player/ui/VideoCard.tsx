@@ -249,7 +249,7 @@ export const VideoCard = React.memo(({
                   }}
                 >
                   <HardDrive size={14} />
-                  Excluir localmente
+                  Excluir apenas do PC
                 </DropdownMenu.Item>
               )}
 
@@ -263,7 +263,7 @@ export const VideoCard = React.memo(({
                 }}
               >
                 <Trash2 size={14} />
-                Excluir do Drive
+                Excluir totalmente (PC e Nuvem)
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
