@@ -1,5 +1,16 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { SubtitleCue } from '../../utils/vtt-parser';
+
+const wordSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null;
+
+export const HIGHLIGHT_COLOR_MAP: Record<string, { bg: string; text: string }> = {
+  yellow: { bg: 'rgba(234, 179, 8, 0.3)', text: '#facc15' },
+  green: { bg: 'rgba(34, 197, 94, 0.3)', text: '#4ade80' },
+  blue: { bg: 'rgba(59, 130, 246, 0.3)', text: '#60a5fa' },
+  purple: { bg: 'rgba(168, 85, 247, 0.3)', text: '#c084fc' },
+  pink: { bg: 'rgba(236, 72, 153, 0.3)', text: '#f472b6' },
+  red: { bg: 'rgba(239, 68, 68, 0.3)', text: '#f87171' }
+};
 
 interface InteractiveSubtitlesProps {
   cues?: SubtitleCue[];
@@ -7,9 +18,17 @@ interface InteractiveSubtitlesProps {
   currentSubtitle?: string;
   onWordClick: (word: string, context: string) => void;
   savedWords?: Array<{ word: string, color: string }>;
+  subtitleOffset?: number;
 }
 
-export default function InteractiveSubtitles({ cues = [], videoRef, currentSubtitle: directSubtitle, onWordClick, savedWords = [] }: InteractiveSubtitlesProps) {
+export default function InteractiveSubtitles({ 
+  cues = [], 
+  videoRef, 
+  currentSubtitle: directSubtitle, 
+  onWordClick, 
+  savedWords = [],
+  subtitleOffset = 0 
+}: InteractiveSubtitlesProps) {
   const [internalSubtitle, setInternalSubtitle] = useState('');
   const currentSubtitle = directSubtitle !== undefined ? directSubtitle : internalSubtitle;
 
@@ -19,7 +38,7 @@ export default function InteractiveSubtitles({ cues = [], videoRef, currentSubti
     if (!vid) return;
 
     const handleTimeUpdate = () => {
-      const time = vid.currentTime;
+      const time = vid.currentTime - (subtitleOffset / 1000);
       if (cues.length > 0) {
         let left = 0;
         let right = cues.length - 1;
@@ -45,7 +64,7 @@ export default function InteractiveSubtitles({ cues = [], videoRef, currentSubti
 
     vid.addEventListener('timeupdate', handleTimeUpdate);
     return () => vid.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [cues, videoRef, directSubtitle]);
+  }, [cues, videoRef, directSubtitle, subtitleOffset]);
   // Regex to split by spaces and punctuation, but keeping punctuation so it renders correctly
   const tokens = useMemo(() => {
     if (!currentSubtitle) return [];
@@ -58,22 +77,25 @@ export default function InteractiveSubtitles({ cues = [], videoRef, currentSubti
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Robust tokenization using native Intl.Segmenter
-    const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
-    const segments = Array.from(segmenter.segment(nuclearSubtitle));
+    if (!wordSegmenter) {
+      return nuclearSubtitle.split(/(\s+)/).map(text => ({
+        text,
+        isWord: /\w+/.test(text)
+      }));
+    }
+
+    // Robust tokenization using hoisted native Intl.Segmenter
+    const segments = Array.from(wordSegmenter.segment(nuclearSubtitle));
     
     return segments.map(seg => {
       if (seg.isWordLike) {
         return { text: seg.segment, isWord: true };
       } else {
-        // Force compress any sequence of whitespace (including HTML spaces, tabs, etc) into a single standard space
+        // Force compress any sequence of whitespace into a single standard space
         let cleanSpace = seg.segment.replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ');
-        
-        // If it's pure whitespace, just return a single space. Otherwise, it might be punctuation like ". "
         if (cleanSpace.trim().length === 0 && cleanSpace.length > 0) {
           cleanSpace = ' ';
         }
-        
         return { text: cleanSpace, isWord: false };
       }
     });
@@ -110,9 +132,9 @@ export default function InteractiveSubtitles({ cues = [], videoRef, currentSubti
           {tokens.map((token, index) => {
             if (token.isWord) {
               const savedMatch = savedWordsMap.get(token.text.toLowerCase());
-              const highlightStyle = savedMatch 
-                ? { backgroundColor: savedMatch.color === 'yellow' ? 'rgba(234, 179, 8, 0.3)' : savedMatch.color === 'green' ? 'rgba(34, 197, 94, 0.3)' : savedMatch.color === 'blue' ? 'rgba(59, 130, 246, 0.3)' : savedMatch.color === 'purple' ? 'rgba(168, 85, 247, 0.3)' : savedMatch.color === 'pink' ? 'rgba(236, 72, 153, 0.3)' : savedMatch.color === 'red' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(234, 179, 8, 0.3)',
-                    color: savedMatch.color === 'yellow' ? '#facc15' : savedMatch.color === 'green' ? '#4ade80' : savedMatch.color === 'blue' ? '#60a5fa' : savedMatch.color === 'purple' ? '#c084fc' : savedMatch.color === 'pink' ? '#f472b6' : savedMatch.color === 'red' ? '#f87171' : '#facc15' }
+              const colorInfo = savedMatch ? (HIGHLIGHT_COLOR_MAP[savedMatch.color] || HIGHLIGHT_COLOR_MAP.yellow) : undefined;
+              const highlightStyle = colorInfo
+                ? { backgroundColor: colorInfo.bg, color: colorInfo.text }
                 : {};
                 
               return (
