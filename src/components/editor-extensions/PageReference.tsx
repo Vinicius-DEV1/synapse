@@ -39,12 +39,18 @@ const PageReferenceComponent = (props: any) => {
     const handleDeleteRequest = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.pageId === pageId) {
+        if (typeof detail.pos === 'number' && typeof props.getPos === 'function') {
+          const myPos = props.getPos();
+          if (typeof myPos === 'number' && Math.abs(myPos - detail.pos) > 1) {
+            return;
+          }
+        }
         setShowConfirm(true);
       }
     };
     window.addEventListener('page-reference-delete-request', handleDeleteRequest);
     return () => window.removeEventListener('page-reference-delete-request', handleDeleteRequest);
-  }, [pageId]);
+  }, [pageId, props]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -224,14 +230,16 @@ export const PageReference = Node.create({
 
         if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
           const pageId = selection.node.attrs.pageId;
-          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId } }));
+          const pos = selection.from;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
           return true;
         }
 
         const { $from } = selection;
         if (selection.empty && $from.nodeBefore?.type.name === nodeName) {
           const pageId = $from.nodeBefore.attrs.pageId;
-          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId } }));
+          const pos = $from.pos - $from.nodeBefore.nodeSize;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
           return true;
         }
 
@@ -243,14 +251,16 @@ export const PageReference = Node.create({
 
         if (selection instanceof NodeSelection && selection.node.type.name === nodeName) {
           const pageId = selection.node.attrs.pageId;
-          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId } }));
+          const pos = selection.from;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
           return true;
         }
 
         const { $from } = selection;
         if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
           const pageId = $from.nodeAfter.attrs.pageId;
-          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId } }));
+          const pos = $from.pos;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
           return true;
         }
 
