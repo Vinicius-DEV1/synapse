@@ -6,10 +6,17 @@ import { Editor } from '@tiptap/core';
 import { getEditorBackupMap } from './editorBackupStore';
 import { triggerToast } from '../../ui/ToastContext';
 
+export type EditorSaveCallback = (
+  content: string,
+  crdtState: string | null,
+  embeddedSaves?: { id: string; content: string }[],
+  senderInstanceId?: string
+) => void | Promise<void>;
+
 interface UseEditorSaveProps {
   pageId: string | null;
   ydocRef: MutableRefObject<Y.Doc | null>;
-  onSaveRef: MutableRefObject<Function>;
+  onSaveRef: MutableRefObject<EditorSaveCallback>;
   latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
   instanceId?: string;
 }
@@ -44,9 +51,9 @@ export function useEditorSave({
       const currentOnSave = onSaveRef.current;
       const currentPageId = pageId;
 
-      const saveResult = currentOnSave(html, crdtState, [], instanceId) as any;
-      if (saveResult && typeof saveResult.catch === 'function') {
-        saveResult.catch((err: any) => {
+      const saveResult = currentOnSave(html, crdtState, [], instanceId);
+      if (saveResult && typeof (saveResult as Promise<void>).catch === 'function') {
+        (saveResult as Promise<void>).catch((err: unknown) => {
           console.error(`[Caderno:Save] Falha ao persistir página ${currentPageId}:`, err);
           triggerToast('Falha ao salvar página. Verifique o armazenamento.', 'error');
         });

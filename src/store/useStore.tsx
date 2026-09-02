@@ -28,7 +28,7 @@ function loadSavedState(): Partial<AppState> {
     if (s) {
       const parsed = JSON.parse(s);
       // Migrate old activeModule into active tab if it's missing module property
-      const mappedTabs = parsed.tabs?.map((t: any) => ({
+      const mappedTabs = parsed.tabs?.map((t: Partial<Tab>) => ({
         ...t,
         module: t.module || (parsed.activeModule || 'notes'),
         unsavedContent: null,

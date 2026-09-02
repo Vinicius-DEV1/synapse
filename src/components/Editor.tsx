@@ -37,7 +37,7 @@ function EditorBlockHandleHost({
   editor,
   wrapperRef,
 }: {
-  editor: any;
+  editor: Editor | null;
   wrapperRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const blockHandle = useBlockHandle(editor, wrapperRef);
@@ -138,7 +138,7 @@ export default function Editor({
   });
 
   // 6. Drop & Paste Handlers
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<Editor | null>(null);
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
     editorRef,
     masterKey,
