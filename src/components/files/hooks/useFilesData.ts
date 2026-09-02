@@ -21,9 +21,10 @@ export function useFilesData() {
         const fds = await window.api.files.folders.getAll();
         setFiles(fs || []);
         setFolders(fds || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Erro ao carregar arquivos/pastas:', err);
-        triggerToast(err.message || 'Erro ao carregar lista de arquivos', 'error');
+        const msg = err instanceof Error ? err.message : 'Erro ao carregar lista de arquivos';
+        triggerToast(msg, 'error');
       }
     }
   }, []);
@@ -40,13 +41,18 @@ export function useFilesData() {
         a.click();
         document.body.removeChild(a);
         triggerToast(`Download iniciado: ${item.name}`, 'info');
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        // Revoke blob URL safely after 60s to prevent early revocation during large file disk writing
+        if (url.startsWith('blob:')) {
+          setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        }
       } else {
         triggerToast("Arquivo não está disponível para download local nem na nuvem.", "error");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to download", err);
-      triggerToast(err.message || "Erro ao tentar baixar o arquivo.", "error");
+      const msg = err instanceof Error ? err.message : "Erro ao tentar baixar o arquivo.";
+      triggerToast(msg, "error");
     }
   }, [state.moduleKeys]);
 
@@ -88,9 +94,9 @@ export function useFilesData() {
       .then(token => setDriveStatus(token ? 'connected' : 'disconnected'))
       .catch(() => setDriveStatus('disconnected'));
     
-    const handleNavigateFolder = (e: any) => {
-      const folderId = e.detail;
-      setSelectedFolderId(folderId);
+    const handleNavigateFolder = (e: Event) => {
+      const customEvent = e as CustomEvent<string | null>;
+      setSelectedFolderId(customEvent.detail ?? null);
     };
     
     window.addEventListener('navigate-folder', handleNavigateFolder);
@@ -107,12 +113,13 @@ export function useFilesData() {
   }, []);
 
   const toggleSelectAll = useCallback((currentFiles: FileItem[]) => {
-    if (selectedIds.size === currentFiles.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(currentFiles.map(f => f.id)));
-    }
-  }, [selectedIds.size]);
+    setSelectedIds(prev => {
+      if (currentFiles.length > 0 && prev.size === currentFiles.length) {
+        return new Set();
+      }
+      return new Set(currentFiles.map(f => f.id));
+    });
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());

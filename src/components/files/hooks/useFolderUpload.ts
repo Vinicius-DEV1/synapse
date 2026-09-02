@@ -2,12 +2,8 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../../../store/useStore';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { encryptFile } from '../../../services/storage';
+import { detectFileType } from '../../../utils/file-type-detector';
 import { triggerToast } from '../../ui/ToastContext';
-
-// The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
-// the filename plus the raw bytes; the declared ICadernoAPI signature only has one
-// param. Type the runtime function reference to match its actual shape.
-type SaveLocalFn = (filename: string, data: Uint8Array) => Promise<string>;
 
 export interface UploadTask {
   id: string;
@@ -119,7 +115,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
     setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, ...updates } : t)));
   };
 
-  const uploadSingleFile = async (task: UploadTask) => {
+  const uploadSingleFile = async (task: UploadTask): Promise<{ success: boolean; driveSynced: boolean }> => {
     updateTask(task.id, { status: 'uploading', progress: 0, errorMsg: undefined });
 
     try {
@@ -136,9 +132,8 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
       let driveFileName = task.file.name;
       let uploadBuffer = arrayBuffer;
 
-      const saveLocal = filesApi.saveLocal as SaveLocalFn | undefined;
-      if (saveLocal) {
-        localPath = await saveLocal(task.file.name, new Uint8Array(bytes));
+      if (filesApi.saveLocal) {
+        localPath = await filesApi.saveLocal(task.file.name, bytes);
       }
 
       updateTask(task.id, { progress: 40 });
@@ -166,14 +161,7 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
 
       updateTask(task.id, { progress: 95 });
 
-      let fileType = 'other';
-      const nameLower = task.file.name.toLowerCase();
-      if (nameLower.endsWith('.pdf')) fileType = 'pdf';
-      else if (nameLower.match(/\.(png|jpe?g|gif|webp)$/)) fileType = 'image';
-      else if (nameLower.match(/\.(mp4|mkv|webm)$/)) fileType = 'video';
-      else if (nameLower.endsWith('.epub')) fileType = 'epub';
-      else if (nameLower.match(/\.(pptx?|key|odp)$/)) fileType = 'slide';
-      else if (nameLower.match(/\.(txt|md|json|csv|xml|js|ts|jsx|css|html)$/)) fileType = 'text';
+      const fileType = detectFileType(task.file.name);
 
       const fileRecord = {
         id: crypto.randomUUID(),
@@ -188,11 +176,12 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
 
       await filesApi.create(fileRecord);
       updateTask(task.id, { status: 'completed', progress: 100, driveSynced });
-      return true;
-    } catch (err: any) {
+      return { success: true, driveSynced };
+    } catch (err: unknown) {
       console.error('Erro upload:', err);
-      updateTask(task.id, { status: 'error', errorMsg: err.message || 'Erro desconhecido' });
-      return false;
+      const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Erro desconhecido';
+      updateTask(task.id, { status: 'error', errorMsg: msg });
+      return { success: false, driveSynced: false };
     }
   };
 
@@ -203,20 +192,23 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
     let anyDriveMissed = false;
 
     for (let i = startIdx; i < tasks.length; i++) {
-      if (tasks[i].status === 'completed') continue;
+      if (tasks[i].status === 'completed') {
+        if (tasks[i].driveSynced) anyDriveSynced = true;
+        else anyDriveMissed = true;
+        continue;
+      }
 
       setCurrentTaskIndex(i);
-      const success = await uploadSingleFile(tasks[i]);
-      if (!success) {
+      const result = await uploadSingleFile(tasks[i]);
+      if (!result.success) {
         allGood = false;
       }
+      if (result.driveSynced) {
+        anyDriveSynced = true;
+      } else {
+        anyDriveMissed = true;
+      }
     }
-
-    // Check Drive outcomes across tasks
-    tasks.forEach(t => {
-      if (t.driveSynced) anyDriveSynced = true;
-      else anyDriveMissed = true;
-    });
 
     if (allGood) {
       if (anyDriveMissed && !anyDriveSynced) {
@@ -238,10 +230,14 @@ export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolder
     }
   };
 
-  const handleRetry = (taskId: string) => {
+  const handleRetry = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      uploadSingleFile(task);
+    if (!task || task.status === 'uploading' || isUploading) return;
+    setIsUploading(true);
+    try {
+      await uploadSingleFile(task);
+    } finally {
+      setIsUploading(false);
     }
   };
 
