@@ -169,11 +169,13 @@ export default function EditorModalHost({
             if (selectedPageId === 'new' && onCreateLinkedPage) {
               finalId = await onCreateLinkedPage(title);
             }
-            if (finalId && editor) {
-              const startPos = slashMenu
+            if (finalId && editor && !editor.isDestroyed) {
+              const rawStart = slashMenu
                 ? slashMenu.startPos
                 : editor.state.selection.$head.pos - pageSearchMenu.query.length - 1;
-              const endPos = editor.state.selection.$head.pos;
+              const docSize = editor.state.doc.content.size;
+              const startPos = Math.max(0, Math.min(rawStart, docSize));
+              const endPos = Math.max(startPos, Math.min(editor.state.selection.$head.pos, docSize));
 
               editor.commands.deleteRange({ from: startPos, to: endPos });
               editor.chain().focus().insertContent({

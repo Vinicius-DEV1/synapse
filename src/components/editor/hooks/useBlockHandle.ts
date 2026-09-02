@@ -318,7 +318,11 @@ export function useBlockHandle(
         }
       } else if (node.attrs && ('color' in node.attrs || 'bgColor' in node.attrs)) {
         const attrName = isBackground && 'bgColor' in node.attrs ? 'bgColor' : 'color';
-        editor.commands.updateAttributes(node.type.name, { [attrName]: color });
+        const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+          ...node.attrs,
+          [attrName]: color,
+        });
+        view.dispatch(tr);
       }
 
       forceHide();
