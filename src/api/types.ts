@@ -291,7 +291,7 @@ export interface ICadernoAPI {
     deleteGroup: (id: string) => Promise<void>;
     reorderGroups: (updates: { id: string; position: number }[]) => Promise<void>;
     getItems: (groupId?: string) => Promise<VaultItem[]>;
-    getItem: (id: string) => Promise<VaultItem>;
+    getItem: (id: string) => Promise<VaultItem | null>;
     upsertItem: (item: VaultItem) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
     searchItems: (query: string) => Promise<VaultItem[]>;
