@@ -230,7 +230,12 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
   );
 
   const handleDragStart = (e: DragStartEvent) => {
-    setActiveDragData(e.active.data.current);
+    const current = e.active.data.current;
+    if (current && 'page' in current) {
+      setActiveDragData(current as { type: string; page: Page; isNested?: boolean });
+    } else {
+      setActiveDragData(null);
+    }
   };
 
   const handleDragEnd = (e: DragEndEvent) => {

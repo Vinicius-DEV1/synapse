@@ -221,7 +221,7 @@ export interface ICadernoAPI {
 
   anki?: {
     getDecks: () => Promise<{ success: boolean; decks?: any[]; error?: string }>;
-    createDeck: (name: string, desc?: string) => Promise<{ success: boolean; id?: string; error?: string }>;
+    createDeck: (name: string, desc?: string, parentId?: string | null) => Promise<{ success: boolean; id?: string; error?: string }>;
     saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
     saveNote: (noteData: any) => Promise<{ success: boolean; note_id?: string; error?: string }>;
     getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;

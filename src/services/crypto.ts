@@ -36,7 +36,7 @@ export async function deriveMasterKey(password: string, customSalt?: Uint8Array 
   return await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: activeSalt,
+      salt: activeSalt as unknown as BufferSource,
       iterations: ITERATIONS,
       hash: HASH_ALGORITHM
     },

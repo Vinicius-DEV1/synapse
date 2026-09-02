@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor as TipTapEditor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { NodeSelection } from '@tiptap/pm/state';
 
@@ -30,14 +30,14 @@ interface EditorProps {
     embeddedSaves?: { id: string; content: string }[],
     senderInstanceId?: string
   ) => void;
-  onCreateLinkedPage?: (title: string) => Promise<string>;
+  onCreateLinkedPage?: (title: string) => Promise<string | null>;
 }
 
 function EditorBlockHandleHost({
   editor,
   wrapperRef,
 }: {
-  editor: Editor | null;
+  editor: TipTapEditor | null;
   wrapperRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const blockHandle = useBlockHandle(editor, wrapperRef);
@@ -138,7 +138,7 @@ export default function Editor({
   });
 
   // 6. Drop & Paste Handlers
-  const editorRef = useRef<Editor | null>(null);
+  const editorRef = useRef<TipTapEditor | null>(null);
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
     editorRef,
     masterKey,

@@ -27,7 +27,7 @@ interface EditorModalHostProps {
   setPageSearchMenu: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create' } | null>
   >;
-  onCreateLinkedPage?: (title: string) => Promise<string>;
+  onCreateLinkedPage?: (title: string) => Promise<string | null>;
   viewerState: {
     isOpen: boolean;
     src: string;
