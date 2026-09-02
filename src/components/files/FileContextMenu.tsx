@@ -1,22 +1,36 @@
 import { useEffect, useRef } from 'react';
-import type { FileItem } from '../../types';
-import { Eye, Info, Trash2, ArrowRightCircle, Download } from 'lucide-react';
+import type { FileItem, FileFolder } from '../../types';
+import { Eye, Info, Trash2, ArrowRightCircle, Download, Folder } from 'lucide-react';
 
 interface FileContextMenuProps {
   x: number;
   y: number;
-  item: FileItem;
+  item: FileItem | FileFolder;
+  isFolder?: boolean;
   onClose: () => void;
-  onView: (item: FileItem) => void;
+  onView: (item: FileItem | FileFolder) => void;
   onInfo: (item: FileItem) => void;
-  onDelete: (item: FileItem) => void;
-  onRename: (item: FileItem) => void;
-  onMove: (item: FileItem) => void;
+  onDelete: (item: FileItem | FileFolder) => void;
+  onRename: (item: FileItem | FileFolder) => void;
+  onMove: (item: FileItem | FileFolder) => void;
   onGoToOrigin?: (item: FileItem) => void;
-  onDownload: (item: FileItem) => void;
+  onDownload?: (item: FileItem) => void;
 }
 
-export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, onDelete, onRename, onMove, onGoToOrigin, onDownload }: FileContextMenuProps) {
+export default function FileContextMenu({
+  x,
+  y,
+  item,
+  isFolder = false,
+  onClose,
+  onView,
+  onInfo,
+  onDelete,
+  onRename,
+  onMove,
+  onGoToOrigin,
+  onDownload,
+}: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,11 +41,12 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
     };
     
     // Slight delay to avoid triggering on the right-click itself
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       window.addEventListener('click', handleClickOutside);
     }, 10);
     
     return () => {
+      clearTimeout(timerId);
       window.removeEventListener('click', handleClickOutside);
     };
   }, [onClose]);
@@ -55,17 +70,19 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
         onClick={() => { onView(item); onClose(); }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
       >
-        <Eye size={16} className="text-brand-400" />
-        <span>Visualizar</span>
+        {isFolder ? <Folder size={16} className="text-yellow-400" /> : <Eye size={16} className="text-brand-400" />}
+        <span>{isFolder ? 'Abrir Pasta' : 'Visualizar'}</span>
       </button>
 
-      <button 
-        onClick={() => { onDownload(item); onClose(); }}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
-      >
-        <Download size={16} className="text-emerald-400" />
-        <span>Baixar Descriptografado</span>
-      </button>
+      {!isFolder && onDownload && (
+        <button 
+          onClick={() => { onDownload(item as FileItem); onClose(); }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+        >
+          <Download size={16} className="text-emerald-400" />
+          <span>Baixar Descriptografado</span>
+        </button>
+      )}
 
       <button 
         onClick={() => { onRename(item); onClose(); }}
@@ -83,9 +100,9 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
         <span>Mover para...</span>
       </button>
 
-      {onGoToOrigin && (
+      {!isFolder && onGoToOrigin && (
         <button 
-          onClick={() => { onGoToOrigin(item); onClose(); }}
+          onClick={() => { onGoToOrigin(item as FileItem); onClose(); }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
         >
           <ArrowRightCircle size={16} className="text-blue-400" />
@@ -93,13 +110,15 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
         </button>
       )}
 
-      <button 
-        onClick={() => { onInfo(item); onClose(); }}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
-      >
-        <Info size={16} className="text-yellow-400" />
-        <span>Informações</span>
-      </button>
+      {!isFolder && (
+        <button 
+          onClick={() => { onInfo(item as FileItem); onClose(); }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+        >
+          <Info size={16} className="text-yellow-400" />
+          <span>Informações</span>
+        </button>
+      )}
 
       <div className="h-px bg-white/10 my-1 mx-2" />
 
@@ -108,7 +127,7 @@ export default function FileContextMenu({ x, y, item, onClose, onView, onInfo, o
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-400/10 transition-colors"
       >
         <Trash2 size={16} />
-        <span>Excluir Arquivo</span>
+        <span>{isFolder ? 'Excluir Pasta' : 'Excluir Arquivo'}</span>
       </button>
     </div>
   );

@@ -131,14 +131,15 @@ export function FilesModalsHost({
         <FileContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          item={contextMenu.item as FileItem}
+          item={contextMenu.item}
+          isFolder={contextMenu.isFolder}
           onClose={onCloseContextMenu}
           onView={contextMenu.isFolder ? () => onSelectFolder(contextMenu.item.id) : (item) => onViewItem(item as FileItem)}
-          onInfo={(item) => onInfoItem(item as FileItem)}
+          onInfo={(item) => onInfoItem(item)}
           onDelete={(item) => onSetItemToDelete({ item, isFolder: contextMenu.isFolder })}
           onRename={(item) => onSetItemToRename({ item, isFolder: contextMenu.isFolder })}
           onMove={(item) => onSetItemToMove({ item, isFolder: contextMenu.isFolder })}
-          onDownload={(item) => onDownloadItem(item as FileItem)}
+          onDownload={(item) => onDownloadItem(item)}
         />
       )}
 

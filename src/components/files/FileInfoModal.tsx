@@ -10,13 +10,29 @@ interface FileInfoModalProps {
 
 export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
   const [links, setLinks] = useState<FilePageLink[]>([]);
+  const [linksLoading, setLinksLoading] = useState(true);
   
   useEffect(() => {
-    if (window.api && window.api.files && window.api.files.links) {
+    let active = true;
+    if (window.api?.files?.links) {
+      setLinksLoading(true);
       window.api.files.links.getByFile(item.id)
-        .then(setLinks)
-        .catch(console.error);
+        .then((fetchedLinks) => {
+          if (active) {
+            setLinks(fetchedLinks || []);
+            setLinksLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load file links:", err);
+          if (active) setLinksLoading(false);
+        });
+    } else {
+      setLinksLoading(false);
     }
+    return () => {
+      active = false;
+    };
   }, [item.id]);
 
   const sizeStr = (item.file_size / 1024 / 1024).toFixed(2) + ' MB';
@@ -102,7 +118,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
                 </span>
               ))}
               
-              {!item.drive_file_id && links.length === 0 && (
+              {!linksLoading && !item.drive_file_id && links.length === 0 && (
                 <span className="text-dark-subtext text-sm italic">Nenhum vínculo externo encontrado.</span>
               )}
             </div>

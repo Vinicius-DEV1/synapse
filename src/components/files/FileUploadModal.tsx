@@ -4,13 +4,9 @@ import { useStore } from '../../store/useStore';
 import type { FileItem } from '../../types';
 import { getValidAccessToken, uploadToDrive } from '../../services/drive';
 import { encryptFile } from '../../services/storage';
+import { detectFileType } from '../../utils/file-type-detector';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
-
-// The real `files.saveLocal` implementation (Tauri, src/api/tauri/files.ts) takes
-// the filename plus the raw bytes; the declared ICadernoAPI signature only has one
-// param. Type the runtime function reference to match its actual shape.
-type SaveLocalFn = (filename: string, data: Uint8Array) => Promise<string>;
 
 interface FileUploadModalProps {
   onClose: () => void;
@@ -68,7 +64,7 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
       return;
     }
 
-    let lastCreated: any = null;
+    let lastCreated: FileItem | null = null;
     let anyDriveFailed = false;
     let anyDriveSuccess = false;
     let wasDriveDisconnected = false;
@@ -89,9 +85,8 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         let driveFileName = file.name;
         let uploadBuffer = arrayBuffer;
 
-        const saveLocal = window.api?.files?.saveLocal as SaveLocalFn | undefined;
-        if (saveLocal) {
-          localPath = await saveLocal(file.name, new Uint8Array(bytes));
+        if (window.api.files.saveLocal) {
+          localPath = await window.api.files.saveLocal(file.name, bytes);
         }
         
         setProgress(40);
@@ -122,15 +117,8 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         
         setProgress(95);
         
-        // 3. Create DB Record
-        let fileType = 'other';
-        const nameLower = file.name.toLowerCase();
-        if (nameLower.endsWith('.pdf')) fileType = 'pdf';
-        else if (nameLower.match(/\.(png|jpe?g|gif|webp)$/)) fileType = 'image';
-        else if (nameLower.match(/\.(mp4|mkv|webm)$/)) fileType = 'video';
-        else if (nameLower.endsWith('.epub')) fileType = 'epub';
-        else if (nameLower.match(/\.(pptx?|key|odp)$/)) fileType = 'slide';
-        else if (nameLower.match(/\.(txt|md|json|csv|xml|js|ts|jsx|tsx|css|html)$/)) fileType = 'text';
+        // 3. Create DB Record using centralized detector
+        const fileType = detectFileType(file.name);
         
         const fileRecord = {
           id: crypto.randomUUID(),
@@ -155,14 +143,14 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
         triggerToast('Arquivo(s) enviado(s) e sincronizado(s) com o Google Drive com sucesso!', 'success', 4000);
       }
 
-      if (onUploadComplete) {
+      if (onUploadComplete && lastCreated) {
         onUploadComplete(lastCreated);
       } else if (onUploaded && lastCreated) {
         onUploaded(lastCreated.id, lastCreated.name, lastCreated.file_type, !!masterKey);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      const msg = err.message || 'Erro desconhecido ao enviar arquivo';
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido ao enviar arquivo';
       setError(msg);
       triggerToast(msg, 'error', 5000);
     } finally {
