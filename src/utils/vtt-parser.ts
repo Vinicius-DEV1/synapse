@@ -19,58 +19,83 @@ function parseVttTime(timeStr: string): number {
   return seconds;
 }
 
+function sanitizeCueText(raw: string): string {
+  return raw
+    .replace(/<[^>]+>/g, '') // Strip HTML tags
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function parseVtt(vttContent: string): SubtitleCue[] {
-  const lines = vttContent.split('\n');
+  if (!vttContent || !vttContent.trim()) return [];
+
+  // Normalize line endings
+  const lines = vttContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const cues: SubtitleCue[] = [];
-  let currentCue: Partial<SubtitleCue> = {};
-  let isCueText = false;
+  let currentCue: Partial<SubtitleCue> | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    if (line === 'WEBVTT' || line === '') {
-      isCueText = false;
+    if (line === 'WEBVTT' || line.startsWith('NOTE') || line.startsWith('STYLE')) {
       continue;
     }
 
     if (line.includes('-->')) {
+      // If there was an unfinalized cue from before, push it!
+      if (currentCue && currentCue.text && currentCue.startTime !== undefined && currentCue.endTime !== undefined) {
+        cues.push({
+          startTime: currentCue.startTime,
+          endTime: currentCue.endTime,
+          text: sanitizeCueText(currentCue.text)
+        });
+      }
+
       const times = line.split('-->');
-      currentCue.startTime = parseVttTime(times[0]);
-      currentCue.endTime = parseVttTime(times[1]);
-      isCueText = true;
-      currentCue.text = '';
+      currentCue = {
+        startTime: parseVttTime(times[0]),
+        endTime: parseVttTime(times[1]),
+        text: ''
+      };
       continue;
     }
 
-    if (isCueText) {
-      if (currentCue.text) {
-        currentCue.text += ' ' + line;
+    if (currentCue) {
+      if (line === '') {
+        // End of cue block
+        if (currentCue.text && currentCue.startTime !== undefined && currentCue.endTime !== undefined) {
+          cues.push({
+            startTime: currentCue.startTime,
+            endTime: currentCue.endTime,
+            text: sanitizeCueText(currentCue.text)
+          });
+        }
+        currentCue = null;
       } else {
-        currentCue.text = line;
-      }
-      
-      // Look ahead to see if the next line is empty (end of cue)
-      if (i === lines.length - 1 || lines[i + 1].trim() === '') {
-        // Strip HTML tags sometimes found in VTT (e.g. <b>, <i>, <c.color>)
-        currentCue.text = currentCue.text.replace(/<[^>]+>/g, '');
-        
-        // Also decode standard HTML entities just in case (e.g. &amp;, &lt;, &gt;, &quot;, &#39;)
-        currentCue.text = currentCue.text
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        cues.push(currentCue as SubtitleCue);
-        currentCue = {};
-        isCueText = false;
+        if (currentCue.text) {
+          currentCue.text += ' ' + line;
+        } else {
+          currentCue.text = line;
+        }
       }
     }
   }
 
+  // Push final cue at end of file if any
+  if (currentCue && currentCue.text && currentCue.startTime !== undefined && currentCue.endTime !== undefined) {
+    cues.push({
+      startTime: currentCue.startTime,
+      endTime: currentCue.endTime,
+      text: sanitizeCueText(currentCue.text)
+    });
+  }
+
   return cues;
 }
+
