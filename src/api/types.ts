@@ -19,6 +19,30 @@ import type { AppNotification } from '../types/notifications';
 import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry, PasswordGenOptions, BreachCheckResult } from '../types/vault';
 import type { TutorSession, TutorMessage, TutorMemory } from '../types/practice';
 import type { DiagramMeta, DiagramContent } from '../types/diagrams';
+import type { FileItem, FileFolder, FilePageLink } from '../types/files';
+
+export interface FilesApi {
+  getAll: () => Promise<FileItem[]>;
+  getById: (id: string) => Promise<FileItem | null>;
+  create: (file: Partial<FileItem> & { name: string; file_type: string; file_size: number }) => Promise<FileItem>;
+  update: (file: FileItem) => Promise<number>;
+  delete: (id: string) => Promise<boolean>;
+  move: (id: string, folderId: string | null) => Promise<boolean>;
+  saveLocal: (filename: string, data: Uint8Array) => Promise<string>;
+  getLocal: (id: string) => Promise<string | null>;
+  folders: {
+    getAll: () => Promise<FileFolder[]>;
+    create: (folder: Partial<FileFolder> & { name: string }) => Promise<FileFolder>;
+    update: (folder: FileFolder) => Promise<number>;
+    delete: (id: string) => Promise<boolean>;
+  };
+  links: {
+    getByPage: (pageId: string) => Promise<FilePageLink[]>;
+    getByFile: (fileId: string) => Promise<FilePageLink[]>;
+    create: (link: Partial<FilePageLink> & { file_id: string; page_id: string }) => Promise<FilePageLink>;
+    delete: (id: string) => Promise<boolean>;
+  };
+}
 
 export interface AuthApi {
   setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
@@ -259,28 +283,7 @@ export interface ICadernoAPI {
     cancelBackup: () => Promise<boolean>;
   };
 
-  files?: {
-    getAll: () => Promise<any[]>;
-    getById: (id: string) => Promise<any>;
-    create: (file: any) => Promise<any>;
-    update: (file: any) => Promise<number>;
-    delete: (id: string) => Promise<boolean>;
-    move: (id: string, folderId: string | null) => Promise<boolean>;
-    saveLocal: (fileData: any) => Promise<string>;
-    getLocal: (id: string) => Promise<string>;
-    folders: {
-      getAll: () => Promise<any[]>;
-      create: (folder: any) => Promise<any>;
-      update: (folder: any) => Promise<number>;
-      delete: (id: string) => Promise<boolean>;
-    };
-    links: {
-      getByPage: (pageId: string) => Promise<any[]>;
-      getByFile: (fileId: string) => Promise<any[]>;
-      create: (link: any) => Promise<any>;
-      delete: (id: string) => Promise<boolean>;
-    };
-  };
+  files?: FilesApi;
 
   vault?: {
     getGroups: () => Promise<VaultGroup[]>;

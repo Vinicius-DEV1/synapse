@@ -1,14 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { FilesApi } from '../types';
+import type { FileFolder, FileItem, FilePageLink } from '../../types/files';
 
-export const tauriFilesApi = {
-  getAll: async () => await invoke('files_get_all'),
-  getById: async (id: string) => await invoke('files_get_by_id', { id }),
-  create: async (file: any) => await invoke('files_create', { file }),
-  update: async (id: string, file: any) => await invoke('files_update', { id, file }),
-  delete: async (id: string) => await invoke('files_delete', { id }),
-  move: async (id: string, folderId: string | null) => await invoke('files_move', { id, folderId }),
-  saveLocal: async (filename: string, data: Uint8Array) => await invoke('files_save_local', { filename, data: Array.from(data) }),
-  getLocal: async (idOrPath: string) => {
+export const tauriFilesApi: FilesApi = {
+  getAll: async (): Promise<FileItem[]> => await invoke('files_get_all'),
+  getById: async (id: string): Promise<FileItem | null> => await invoke('files_get_by_id', { id }),
+  create: async (file: Partial<FileItem> & { name: string; file_type: string; file_size: number }): Promise<FileItem> =>
+    await invoke('files_create', { file }),
+  update: async (file: FileItem): Promise<number> => await invoke('files_update', { id: file.id, file }),
+  delete: async (id: string): Promise<boolean> => await invoke('files_delete', { id }),
+  move: async (id: string, folderId: string | null): Promise<boolean> => await invoke('files_move', { id, folderId }),
+  saveLocal: async (filename: string, data: Uint8Array): Promise<string> =>
+    await invoke('files_save_local', { filename, data: Array.from(data) }),
+  getLocal: async (idOrPath: string): Promise<string | null> => {
     try {
       const { getBaseAppDir } = await import('./path');
       const { join } = await import('@tauri-apps/api/path');
@@ -46,16 +50,18 @@ export const tauriFilesApi = {
   },
   
   folders: {
-    getAll: async () => await invoke('file_folders_get_all'),
-    create: async (folder: any) => await invoke('file_folders_create', { folder }),
-    update: async (folder: any) => await invoke('file_folders_update', { folder }),
-    delete: async (id: string) => await invoke('file_folders_delete', { id })
+    getAll: async (): Promise<FileFolder[]> => await invoke('file_folders_get_all'),
+    create: async (folder: Partial<FileFolder> & { name: string }): Promise<FileFolder> =>
+      await invoke('file_folders_create', { folder }),
+    update: async (folder: FileFolder): Promise<number> => await invoke('file_folders_update', { folder }),
+    delete: async (id: string): Promise<boolean> => await invoke('file_folders_delete', { id })
   },
   
   links: {
-    getByPage: async (pageId: string) => await invoke('file_links_get_by_page', { pageId }),
-    getByFile: async (fileId: string) => await invoke('file_links_get_by_file', { fileId }),
-    create: async (link: any) => await invoke('file_links_create', { link }),
-    delete: async (id: string) => await invoke('file_links_delete', { id })
+    getByPage: async (pageId: string): Promise<FilePageLink[]> => await invoke('file_links_get_by_page', { pageId }),
+    getByFile: async (fileId: string): Promise<FilePageLink[]> => await invoke('file_links_get_by_file', { fileId }),
+    create: async (link: Partial<FilePageLink> & { file_id: string; page_id: string }): Promise<FilePageLink> =>
+      await invoke('file_links_create', { link }),
+    delete: async (id: string): Promise<boolean> => await invoke('file_links_delete', { id })
   }
 };
