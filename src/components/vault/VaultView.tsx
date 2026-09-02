@@ -25,6 +25,7 @@ export default function VaultView() {
     groupContextMenu,
     setGroupContextMenu,
     loadData,
+    refreshSelectedItem,
     handleCreateGroup,
     handleEditGroup,
     handleDeleteGroup,
@@ -83,6 +84,7 @@ export default function VaultView() {
               </div>
             ) : isEditingItem ? (
               <VaultItemForm
+                key={selectedItem?.id || 'new'}
                 item={selectedItem}
                 groups={groups}
                 groupId={selectedGroupId}
@@ -90,8 +92,7 @@ export default function VaultView() {
                   setIsEditingItem(false);
                   await loadData();
                   if (selectedItem?.id) {
-                    const updated = await window.api?.vault?.getItem(selectedItem.id);
-                    setSelectedItem(updated || null);
+                    await refreshSelectedItem(selectedItem.id);
                   }
                 }}
                 onCancel={() => {

@@ -1,28 +1,38 @@
 import { useState, useEffect } from 'react';
 import { History, Copy, Check } from 'lucide-react';
 import type { VaultPasswordHistoryEntry } from '../../types';
+import { triggerToast } from '../ui/ToastContext';
 
 export function VaultPasswordHistory({ itemId }: { itemId: string }) {
   const [history, setHistory] = useState<VaultPasswordHistoryEntry[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   useEffect(() => {
+    let isMounted = true;
+    const loadHistory = async () => {
+      try {
+        const h = await window.api?.vault?.getPasswordHistory(itemId);
+        if (isMounted && h) setHistory(h);
+      } catch (e: unknown) {
+        console.error('[Vault] Failed to load password history:', e);
+      }
+    };
     loadHistory();
+    return () => {
+      isMounted = false;
+    };
   }, [itemId]);
 
-  const loadHistory = async () => {
-    try {
-      const h = await window.api.vault?.getPasswordHistory(itemId);
-      if (h) setHistory(h);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const copyToClipboard = async (text: string, id: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err: unknown) {
+      console.error('[Vault] Failed to copy old password:', err);
+      triggerToast('Falha ao copiar senha antiga', 'error');
+    }
   };
 
   if (history.length === 0) {

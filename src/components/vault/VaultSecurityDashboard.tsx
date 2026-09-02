@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { VaultItem } from '../../types';
 
@@ -19,13 +19,22 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
   const [analyzedItems, setAnalyzedItems] = useState<AnalyzedItem[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const startAnalysis = async () => {
-    if (items.length === 0) return;
+    if (analyzing || items.length === 0) return;
     setAnalyzing(true);
     setProgress(0);
     setHasAnalyzed(false);
 
-    const results: AnalyzedItem[] = [...items];
+    // Deep clone each item to prevent mutating parent component state in-place
+    const results: AnalyzedItem[] = items.map((item) => ({ ...item }));
     
     // Group passwords to find reused ones
     const passwordMap = new Map<string, string[]>(); // password -> itemIds
@@ -47,48 +56,65 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
     // We only need to check breach once per unique password
     const breachCache = new Map<string, number>();
 
-    let totalChecks = items.length; // items to check strength + unique to check breach
+    const totalChecks = items.length;
     let completedChecks = 0;
 
     for (let i = 0; i < results.length; i++) {
+      if (!mountedRef.current) {
+        passwordMap.clear();
+        breachCache.clear();
+        return;
+      }
+
       const item = results[i];
       if (!item.password) {
         completedChecks++;
-        setProgress(Math.round((completedChecks / totalChecks) * 100));
+        if (mountedRef.current) {
+          setProgress(Math.round((completedChecks / totalChecks) * 100));
+        }
         continue;
       }
 
       item.isReused = reusedIds.has(item.id);
 
-      // Check strength
+      // Check strength safely
       try {
-        item.strengthScore = await window.api.vault?.checkStrength(item.password);
+        item.strengthScore = await window.api?.vault?.checkStrength(item.password);
       } catch {
         item.strengthScore = 0;
       }
+
+      if (!mountedRef.current) return;
 
       // Check breach (use cache to avoid duplicate network requests)
       if (breachCache.has(item.password)) {
         item.breachedCount = breachCache.get(item.password);
       } else {
         try {
-          const breachRes = await window.api.vault?.checkBreach(item.password);
+          const breachRes = await window.api?.vault?.checkBreach(item.password);
           item.breachedCount = breachRes?.count || 0;
           breachCache.set(item.password, item.breachedCount);
-          // Wait 100ms to avoid spamming the backend/API
+          // 100ms throttle to prevent rate limiting HIBP API
           await new Promise(r => setTimeout(r, 100));
         } catch {
           item.breachedCount = 0;
         }
       }
 
+      if (!mountedRef.current) return;
+
       completedChecks++;
       setProgress(Math.round((completedChecks / totalChecks) * 100));
-      setAnalyzedItems([...results]); // force partial render
+      setAnalyzedItems([...results]);
     }
 
-    setAnalyzing(false);
-    setHasAnalyzed(true);
+    passwordMap.clear();
+    breachCache.clear();
+
+    if (mountedRef.current) {
+      setAnalyzing(false);
+      setHasAnalyzed(true);
+    }
   };
 
   const weakItems = analyzedItems.filter(i => i.strengthScore !== undefined && i.strengthScore < 3);

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Save, RefreshCw, Star } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Save, RefreshCw, Star, Eye, EyeOff } from 'lucide-react';
 import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
+import { parseVaultCustomFields } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
 import { triggerToast } from '../ui/ToastContext';
@@ -18,24 +19,34 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
   const [username, setUsername] = useState(item?.username || '');
   const [email, setEmail] = useState(item?.email || '');
   const [password, setPassword] = useState(item?.password || '');
+  const [showPassword, setShowPassword] = useState(false);
   const [url, setUrl] = useState(item?.url || '');
   const [notes, setNotes] = useState(item?.notes || '');
   const [isFavorite, setIsFavorite] = useState(item?.is_favorite === 1);
   const [selectedGroupId, setSelectedGroupId] = useState(item ? (item.group_id || '') : (groupId || ''));
   
   const [customFields, setCustomFields] = useState<VaultCustomField[]>(() => {
-    if (!item?.custom_fields) return [];
-    try { return JSON.parse(item.custom_fields); } catch { return []; }
+    return parseVaultCustomFields(item?.custom_fields);
   });
 
   const [passwordStrength, setPasswordStrength] = useState(item?.password_strength || 0);
 
-  // Calculate strength on mount when editing an item with existing password
+  const checkStrength = useCallback(async (pass: string) => {
+    if (!pass) return setPasswordStrength(0);
+    try {
+      const str = await window.api?.vault?.checkStrength(pass);
+      setPasswordStrength(str ?? 0);
+    } catch {
+      setPasswordStrength(pass.length > 10 ? 3 : 1);
+    }
+  }, []);
+
+  // Calculate strength on mount or when item password changes
   useEffect(() => {
     if (item?.password) {
       checkStrength(item.password);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [item?.password, checkStrength]);
 
   const handleSave = async () => {
     if (!label.trim()) {
@@ -44,7 +55,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
     }
     
     try {
-      const itemToSave = {
+      const itemToSave: VaultItem = {
         ...item,
         id: item?.id || crypto.randomUUID(),
         group_id: selectedGroupId || null,
@@ -63,18 +74,19 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
         password_changed_at: item?.password_changed_at || null,
       };
 
-      await window.api.vault?.upsertItem(itemToSave as VaultItem);
+      await window.api?.vault?.upsertItem(itemToSave);
       triggerToast(item ? 'Item atualizado com sucesso!' : 'Item salvo no cofre!', 'success');
       onSave();
-    } catch (err: any) {
-      console.error('Erro ao salvar item no cofre:', err);
-      triggerToast(err.message || 'Erro ao salvar item no cofre.', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar item no cofre.';
+      console.error('[Vault] Error saving vault item:', err);
+      triggerToast(message, 'error');
     }
   };
 
   const generatePassword = async () => {
     try {
-      const newPass = await window.api.vault?.generatePassword({
+      const newPass = await window.api?.vault?.generatePassword({
         length: 16,
         uppercase: true,
         lowercase: true,
@@ -86,7 +98,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
         checkStrength(newPass);
       }
     } catch (e) {
-      console.error(e);
+      console.error('[Vault] Error generating password through API, using local secure fallback:', e);
       // Cryptographically secure local fallback
       const fallbackChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
       const array = new Uint8Array(16);
@@ -94,16 +106,6 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
       const fallbackPass = Array.from(array).map(b => fallbackChars[b % fallbackChars.length]).join('');
       setPassword(fallbackPass);
       checkStrength(fallbackPass);
-    }
-  };
-
-  const checkStrength = async (pass: string) => {
-    if (!pass) return setPasswordStrength(0);
-    try {
-      const str = await window.api.vault?.checkStrength(pass);
-      setPasswordStrength(str || 0);
-    } catch {
-      setPasswordStrength(pass.length > 10 ? 3 : 1);
     }
   };
 
@@ -206,16 +208,28 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
                 <RefreshCw size={12} /> Gerar Senha Forte
               </button>
             </div>
-            <input 
-              type="text" 
-              value={password} 
-              onChange={e => {
-                setPassword(e.target.value);
-                checkStrength(e.target.value);
-              }}
-              placeholder="Digite ou gere uma senha"
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text font-mono focus:outline-none focus:border-brand-500 transition-colors"
-            />
+            <div className="relative flex items-center">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={password} 
+                onChange={e => {
+                  setPassword(e.target.value);
+                  checkStrength(e.target.value);
+                }}
+                placeholder="Digite ou gere uma senha"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-dark-text font-mono focus:outline-none focus:border-brand-500 transition-colors"
+              />
+              {password ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 p-1 text-dark-subtext hover:text-white transition-colors"
+                  title={showPassword ? "Ocultar senha" : "Ver senha"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              ) : null}
+            </div>
             
             {password && (
               <div className="mt-3 space-y-1.5">
