@@ -38,16 +38,16 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const activeTab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
   const pendingVideoId = activeTab?.moduleState?.videoId;
 
-  const loadVideos = async () => {
+  const loadVideos = useCallback(async () => {
     try {
       if (window.api?.sync) {
         const rows = await window.api.sync.getTable('videos');
-        setVideos((rows as VideoItem[]).filter((v: any) => !v.deleted_at));
+        setVideos((rows as VideoItem[]).filter((v: VideoItem) => !v.deleted_at));
       }
     } catch (e) {
       console.error('Failed to load videos:', e);
     }
-  };
+  }, []);
 
   const {
     folders,
@@ -65,7 +65,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       unsubscribe = window.api.onSyncTrigger(() => loadVideos());
     }
     return () => unsubscribe();
-  }, []);
+  }, [loadVideos]);
 
   const handlePlayVideo = useCallback(async (video: VideoItem) => {
     try {
@@ -74,9 +74,9 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       const src = await resolveVideoUrl(video);
       setActiveVideoSrc(src);
       setActiveVideo(video);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setPlayerError(e.message || 'Erro ao carregar o vídeo.');
+      setPlayerError(e instanceof Error ? e.message : 'Erro ao carregar o vídeo.');
     }
   }, []);
 
@@ -89,7 +89,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
         }
       }
     }
-  }, [pendingVideoId, videos, activeVideo?.id]);
+  }, [pendingVideoId, videos, activeVideo?.id, handlePlayVideo]);
 
   const handleUpload = async (options: UploadOptions) => {
     const taskId = `upload_${Date.now()}`;
@@ -106,9 +106,9 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       completeTask(taskId);
       triggerToast(`Vídeo "${options.videoFile.name}" importado com sucesso!`, 'success');
       loadVideos();
-    }).catch((e: any) => {
-      if (e.message !== 'Cancelado pelo usuário') {
-        const msg = e.message || 'Erro desconhecido';
+    }).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== 'Cancelado pelo usuário') {
         failTask(taskId, msg);
         triggerToast(`Falha no upload do vídeo: ${msg}`, 'error', 5000);
       }
@@ -139,11 +139,11 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     } finally {
       setIsDownloadingId(null);
     }
-  }, []);
+  }, [loadVideos]);
 
   const handleDeleteLocal = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
-      await window.api.app.showConfirm(`Tem certeza que deseja excluir '${video.title}' localmente? Ele ainda estará no Drive.`) 
+      await window.api.app.showConfirm(`Deseja excluir '${video.title}' apenas deste computador? O vídeo permanecerá seguro no seu Google Drive.`) 
       : 1;
       
     if (confirm !== 1) return;
@@ -159,17 +159,19 @@ export default function VideoView({ tabId }: { tabId?: string }) {
           updated_at: new Date().toISOString()
         });
         await loadVideos();
+        triggerToast(`Vídeo '${video.title}' removido do computador.`, 'info');
       }
     } catch (e) {
       console.error("Erro ao excluir localmente", e);
+      triggerToast('Falha ao excluir arquivo local.', 'error');
     } finally {
       setIsDeletingId(null);
     }
-  }, []);
+  }, [loadVideos]);
 
   const handleDeleteCloud = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
-      await window.api.app.showConfirm(`Tem certeza que deseja apagar permanentemente '${video.title}'? O arquivo local e os do Google Drive serão excluídos.`) 
+      await window.api.app.showConfirm(`Tem certeza que deseja excluir totalmente '${video.title}'? Todos os arquivos do computador (vídeo, áudios, legendas) e do Google Drive serão apagados permanentemente.`) 
       : 1;
 
     if (confirm !== 1) return;
@@ -178,12 +180,14 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     try {
       await deleteVideoAndSync(video);
       await loadVideos();
+      triggerToast(`Vídeo '${video.title}' excluído totalmente com sucesso.`, 'success');
     } catch(e) {
-      console.error("Erro ao excluir da nuvem", e);
+      console.error("Erro ao excluir totalmente", e);
+      triggerToast('Falha ao excluir vídeo.', 'error');
     } finally {
       setIsDeletingId(null);
     }
-  }, []);
+  }, [loadVideos]);
 
   const handleStartWebVersion = useCallback(async (quality: string) => {
     if (!webVersionVideo) return;
@@ -204,13 +208,13 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       );
       completeTask(taskId);
       loadVideos();
-    } catch (e: any) {
-      const errMsg = typeof e === 'string' ? e : e.message;
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e);
       if (errMsg !== 'Cancelado pelo usuário') {
         failTask(taskId, errMsg || 'Erro desconhecido');
       }
     }
-  }, [webVersionVideo, addTask, updateTaskProgress, completeTask, failTask]);
+  }, [webVersionVideo, addTask, updateTaskProgress, completeTask, failTask, loadVideos]);
 
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text relative">

@@ -41,7 +41,7 @@ export function VideoVocabularySidebar({
             <p className="text-sm mt-2">Clique nas legendas para salvar!</p>
           </div>
         ) : (
-          videoWords.sort((a, b) => a.timestamp - b.timestamp).map(vw => (
+          [...videoWords].sort((a, b) => a.timestamp - b.timestamp).map(vw => (
             <div key={vw.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-2 group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

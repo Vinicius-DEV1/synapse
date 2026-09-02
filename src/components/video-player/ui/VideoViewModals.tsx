@@ -6,7 +6,7 @@ import WebVersionModal from '../WebVersionModal';
 interface VideoViewModalsProps {
   showUploadModal: boolean;
   onCloseUploadModal: () => void;
-  onUpload: (options: UploadOptions) => Promise<any>;
+  onUpload: (options: UploadOptions) => Promise<void> | void;
   selectedFolderId: string | null;
   selectedFolderName: string | null;
   showYoutubeModal: boolean;

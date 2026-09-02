@@ -35,12 +35,14 @@ export function useVideoControls(
       startTimer();
     };
 
+    const handleMouseLeave = () => {
+      if (isPlaying && !isDictOpen) setShowControls(false);
+    };
+
     const container = containerRef.current;
     if (container) {
       container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('mouseleave', () => { 
-        if (isPlaying && !isDictOpen) setShowControls(false); 
-      });
+      container.addEventListener('mouseleave', handleMouseLeave);
     }
     
     // Initial start or when dependencies change
@@ -50,6 +52,7 @@ export function useVideoControls(
       clearTimeout(timeout);
       if (container) {
         container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
   }, [isPlaying, isDictOpen, containerRef, isHoveringControls]);
