@@ -280,6 +280,7 @@ export function useSlashCommand({
                 const saveResult = await encryptAndSaveScrap(payload.id, payload.html_content, payload.local_path, masterKey);
 
                 // Atualizar os atributos do nó no editor
+                if (editor.isDestroyed) return;
                 editor.commands.command(({ tr, state }) => {
                   let found = false;
                   state.doc.descendants((node, pos) => {
@@ -307,6 +308,7 @@ export function useSlashCommand({
 
                 triggerToast('Página capturada e salva com sucesso!', 'success');
               } else {
+                if (editor.isDestroyed) return;
                 editor.commands.command(({ tr, state }) => {
                   state.doc.descendants((node, pos) => {
                     if (node.type.name === 'scrapWidget' && (node.attrs.id === tempId || node.attrs.url === cleanUrl)) {
@@ -325,6 +327,7 @@ export function useSlashCommand({
             } catch (err: any) {
               console.error('[SlashCommand] Erro ao capturar snapshot:', err);
               const msg = err?.message || String(err) || 'Falha ao conectar e baixar o conteúdo da página.';
+              if (editor.isDestroyed) return;
               editor.commands.command(({ tr, state }) => {
                 state.doc.descendants((node, pos) => {
                   if (node.type.name === 'scrapWidget' && (node.attrs.id === tempId || node.attrs.url === cleanUrl)) {

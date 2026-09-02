@@ -44,7 +44,6 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
       } catch (err) {
         console.warn('[Caderno:Sync] Falha ao aplicar backup CRDT:', err);
       }
-      backupMap.delete(pageId);
     }
     return doc;
   });

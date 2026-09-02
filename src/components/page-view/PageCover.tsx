@@ -49,7 +49,11 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
+        if (!ctx) {
+          console.error('[PageCover] Não foi possível obter contexto 2D do canvas para redimensionar capa');
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         onUpdatePage(page.id, { cover_image: dataUrl });

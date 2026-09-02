@@ -218,7 +218,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       return () => {
         isClosed = true;
         clearInterval(syncInterval);
-        window.removeEventListener('app-sync-trigger', handleSyncTrigger);
+        clearTimeout(syncDebounceTimer);
         window.removeEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (cleanupSyncTrigger) cleanupSyncTrigger();
