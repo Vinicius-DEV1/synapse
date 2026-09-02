@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, Clock, AlertCircle } from 'lucide-react';
 import type { PageHistoryEntry } from '../../types';
 // @ts-ignore
@@ -18,26 +18,33 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     window.api.getPageHistory(pageId)
       .then((data) => {
+        if (!mounted) return;
         setHistory(data);
         setLoading(false);
       })
       .catch((err) => {
+        if (!mounted) return;
         console.error('Failed to load history', err);
         setLoading(false);
       });
+
+    return () => {
+      mounted = false;
+    };
   }, [pageId]);
 
   const currentEntry = history[selectedIndex];
   const previousEntry = history[selectedIndex + 1]; // Older entry since sorted DESC
 
-  let diffHtml = '';
-  if (currentEntry) {
+  const diffHtml = useMemo(() => {
+    if (!currentEntry) return '';
     const oldHtml = previousEntry ? previousEntry.content : '';
     const newHtml = currentEntry.content;
-    diffHtml = HtmlDiff.execute(oldHtml, newHtml);
-  }
+    return HtmlDiff.execute(oldHtml, newHtml);
+  }, [currentEntry, previousEntry]);
 
   return (
     <Portal>
