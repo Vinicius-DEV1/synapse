@@ -132,7 +132,15 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
            <PageUnlockForm 
              page={page} 
              encryptedContent={contentData.encrypted_content} 
-             onUnlockSuccess={() => setIsUnlocked(true)} 
+             onUnlockSuccess={(decrypted) => {
+               if (decrypted) {
+                 setContentData((prev) => ({
+                   content: decrypted,
+                   encrypted_content: prev?.encrypted_content || null,
+                 }));
+               }
+               setIsUnlocked(true);
+             }} 
            />
         ) : (
           <Editor
