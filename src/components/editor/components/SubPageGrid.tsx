@@ -64,7 +64,6 @@ const SubPageItem = memo(function SubPageItem({
 }: SubPageItemProps) {
   const { state, dispatch } = useStore();
   const [expanded, setExpanded] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -132,8 +131,6 @@ const SubPageItem = memo(function SubPageItem({
       ref={setSortableRef} 
       style={style} 
       className="flex flex-col gap-2 w-full"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="group relative flex items-center w-full">
         {/* DRAG HANDLE */}
@@ -168,7 +165,7 @@ const SubPageItem = memo(function SubPageItem({
           
           {hasChildren && (
             <div 
-              className={`p-2 rounded transition-all ${isHovered || expanded ? 'opacity-100 hover:bg-white/10' : 'opacity-0'}`}
+              className={`p-2 rounded transition-all hover:bg-white/10 ${expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setExpanded(!expanded);

@@ -74,8 +74,8 @@ export function useSlashCommand({
           if (currentPos <= prev.startPos) return null;
           const rawQuery = editor.state.doc.textBetween(prev.startPos, currentPos);
           const query = rawQuery.startsWith('/') ? rawQuery.substring(1) : rawQuery;
-          const coords = editor.view.coordsAtPos(prev.startPos);
-          return { ...prev, query, x: coords.left, y: coords.top + 24 };
+          if (query === prev.query) return prev;
+          return { ...prev, query };
         } else {
           const { $head } = editor.state.selection;
           const textBefore = $head.parent.textBetween(0, $head.parentOffset);
