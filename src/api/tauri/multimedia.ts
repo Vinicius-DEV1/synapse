@@ -20,7 +20,19 @@ export const tauriVideoApi = {
       unlistenPromise.then(unlisten => unlisten());
     };
   },
-  getLocalPath: async (filename: string) => await invoke('video_get_local_path', { filename }),
+  getLocalPath: async (filename: string) => await invoke<string>('video_get_local_path', { filename }),
+  getStorageStats: async (filename: string, audioTracks?: string[], subtitleTracks?: string[]) => {
+    return await invoke<{
+      original_path: string | null;
+      original_size: number | null;
+      web_path: string | null;
+      web_size: number | null;
+      audio_sizes: Record<string, number>;
+      subtitle_sizes: Record<string, number>;
+      total_local_size: number;
+    }>('video_get_storage_stats', { filename, audioTracks, subtitleTracks });
+  },
+  showInFolder: async (path: string) => await invoke<boolean>('os_show_in_folder', { path }),
   readLocalFile: async (path: string): Promise<Uint8Array> => {
     const arr: number[] = await invoke('video_read_file', { path });
     return new Uint8Array(arr);
@@ -37,24 +49,33 @@ export const tauriVideoApi = {
   getStreamPort: async () => await invoke('video_get_stream_port'),
   saveLocal: async (filename: string, buffer: ArrayBuffer) => await invoke('video_save_local', { filename, buffer: Array.from(new Uint8Array(buffer)) }),
   copyLocal: async (sourcePath: string, filename: string) => await invoke('video_import_and_encrypt', { sourcePath, destFilename: filename }),
-  processUpload: async (sourcePath: string, filename: string, webQuality: string, conversionPreset: string, duration: number) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality, conversionPreset, duration }),
+  processUpload: async (sourcePath: string, filename: string, webQuality: string, conversionPreset: string, duration: number, primaryAudioTrack?: string) => await invoke<{ original_path: string, web_path: string | null }>('video_process_upload', { sourcePath, destFilename: filename, webQuality, conversionPreset, duration, primaryAudioTrack: primaryAudioTrack || null }),
   openFileDialog: async () => {
-    const selected = await open({
-      multiple: false,
-      filters: [{ name: 'Vídeos', extensions: ['mp4', 'mkv', 'avi', 'flv', 'wmv', 'mov', 'webm'] }]
-    });
-    if (!selected || Array.isArray(selected)) return null;
-    const pathStr = String(selected);
-    const name = pathStr.split('\\').pop()?.split('/').pop() || 'video.mp4';
-    const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
-    let type = 'video/mp4';
-    if (ext === 'mkv') type = 'video/x-matroska';
-    else if (ext === 'webm') type = 'video/webm';
-    return {
-      path: pathStr,
-      name,
-      type
-    };
+    try {
+      console.log('[DEBUG] openFileDialog - Opening Tauri file dialog...');
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Vídeos', extensions: ['mp4', 'mkv', 'avi', 'flv', 'wmv', 'mov', 'webm'] }]
+      });
+      console.log('[DEBUG] openFileDialog - Result from Tauri open dialog:', selected);
+      if (!selected || Array.isArray(selected)) return null;
+      const pathStr = typeof selected === 'object' && selected !== null && 'path' in (selected as Record<string, unknown>)
+        ? String((selected as Record<string, unknown>).path)
+        : String(selected);
+      const name = pathStr.split('\\').pop()?.split('/').pop() || 'video.mp4';
+      const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
+      let type = 'video/mp4';
+      if (ext === 'mkv') type = 'video/x-matroska';
+      else if (ext === 'webm') type = 'video/webm';
+      return {
+        path: pathStr,
+        name,
+        type
+      };
+    } catch (err) {
+      console.error('[DEBUG] openFileDialog - Error:', err);
+      return null;
+    }
   },
   openFolderDialog: async () => {
     const selected = await open({
@@ -87,8 +108,13 @@ export const tauriYoutubeApi = {
   fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
   fetchPlaylistInfo: async (url: string) => await invoke('youtube_fetch_playlist_info', { url }),
   download: async (url: string, filename: string, quality: string, subs?: string[]) => await invoke('youtube_download', { url, filename, quality, subs }),
-  onProgress: (_callback: (percent: number) => void) => {
-    // Usa tauri event listener (listen from @tauri-apps/api/event) no frontend real
+  onProgress: (callback: (percent: number) => void) => {
+    const unlistenPromise = listen<number>('youtube_download_progress', (event) => {
+      callback(event.payload);
+    });
+    return () => {
+      unlistenPromise.then(unlisten => unlisten());
+    };
   },
   getWatched: async (videoIds: string[]) => await invoke<string[]>('youtube_get_watched', { videoIds }),
   setWatched: async (videoId: string, isWatched: boolean, title?: string, channel?: string) => await invoke('youtube_set_watched', { videoId, isWatched, title, channel })

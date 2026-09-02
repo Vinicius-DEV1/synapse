@@ -12,7 +12,17 @@ const VIDEO_TABLE = 'videos';
  */
 export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: (phase: string) => void }): Promise<{ video: VideoItem; stats: UploadStats }> {
   const startTime = Date.now();
-  const { videoFile: file, subtitleText, duration, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, conversionPreset, onProgress, onPhaseChange, signal } = options;
+  const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, conversionPreset, onProgress, onPhaseChange, signal } = options;
+  
+  console.log('[DEBUG] uploadNewVideo - Started with options:', { 
+    fileName: file.name, 
+    duration, 
+    primaryAudioTrack,
+    extraAudioTracks, 
+    extraSubtitleTracks, 
+    webQuality, 
+    conversionPreset 
+  });
   
   if (signal?.aborted) throw new Error("Cancelado pelo usuário");
 
@@ -53,9 +63,17 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
 
       let processRes;
       try {
-          processRes = await (window.api.video as unknown as { processUpload: (s: string, n: string, w: string, c: string, d?: number) => Promise<{ original_path: string, web_path: string, original_size?: number, web_size?: number }> }).processUpload(sourcePath, file.name, webQuality, conversionPreset || 'medium', duration);
+        const desktopVideoApi = window.api.video as DesktopVideoApi;
+        processRes = await desktopVideoApi.processUpload(
+          sourcePath,
+          file.name,
+          webQuality,
+          conversionPreset || 'medium',
+          duration,
+          primaryAudioTrack
+        );
       } finally {
-          if (signal) signal.removeEventListener('abort', handleAbort);
+        if (signal) signal.removeEventListener('abort', handleAbort);
       }
       
       if (unlistenProgress) {
@@ -142,9 +160,14 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   // 2. Extract and Upload Extra Audios
   const audioTracksList: TrackItem[] = [];
   if (sourcePath && window.api?.video && extraAudioTracks.length > 0) {
+    const desktopVideoApi = window.api.video as DesktopVideoApi;
     for (const track of extraAudioTracks) {
       try {
-        const audioOutPath = await (window.api.video as unknown as { extractAudio: (path: string, track: string) => Promise<string> }).extractAudio(sourcePath, track);
+        console.log(`[DEBUG] uploadNewVideo - Requesting audio extraction for track: ${track}`);
+        const audioOutPath = desktopVideoApi.extractAudio
+          ? await desktopVideoApi.extractAudio(sourcePath, track)
+          : '';
+        console.log(`[DEBUG] uploadNewVideo - Audio extraction result for ${track}:`, audioOutPath);
         if (audioOutPath) {
           const driveFileName = `${baseName} - Audio ${track.replace(/:/g, '')}.m4a`;
           const audioDriveId = await uploadLocalFileToDrive(token, audioOutPath, driveFileName);
@@ -201,7 +224,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   if (sourcePath && window.api?.video && extraSubtitleTracks.length > 0) {
     for (const track of extraSubtitleTracks) {
       try {
+        console.log(`[DEBUG] uploadNewVideo - Requesting subtitle extraction for track: ${track}`);
         const vttText = await window.api.video.extractSubtitles(sourcePath, track);
+        console.log(`[DEBUG] uploadNewVideo - Subtitle extraction result length for ${track}:`, vttText ? vttText.length : 0);
         if (vttText) {
           const enc = new TextEncoder();
           let subBuffer = enc.encode(vttText).buffer as ArrayBuffer;
@@ -278,6 +303,8 @@ export async function generateWebVersionTask(
   if (!video.is_local || !video.file_path) {
     throw new Error("Vídeo precisa estar baixado localmente para gerar versão web.");
   }
+
+  console.log('[DEBUG] generateWebVersionTask - Started for video:', video.title, 'with quality:', webQuality);
 
   const desktopVideoApi = window.api?.video as DesktopVideoApi | undefined;
   if (!desktopVideoApi?.generateWebVersion) {

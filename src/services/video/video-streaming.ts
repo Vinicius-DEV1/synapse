@@ -1,15 +1,29 @@
 import { getValidAccessToken, downloadFromDrive } from '../drive';
 import type { VideoItem } from '../../types';
 import type { DesktopVideoApi } from './video-types';
+import { getSettings } from '../../utils/settings';
 
 const VIDEO_TABLE = 'videos';
+
+/**
+ * Revokes a blob streaming URL if it was created via URL.createObjectURL.
+ */
+export function revokeVideoStreamLink(url: string | null | undefined): void {
+  if (url && url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('Failed to revoke blob URL:', e);
+    }
+  }
+}
 
 /**
  * Retrieves streaming URL for a given Google Drive file ID.
  */
 export async function getVideoStreamLink(driveFileId: string, masterKey?: CryptoKey): Promise<string> {
   const token = await getValidAccessToken();
-  if (!token) throw new Error("Não foi possível autenticar com o Google Drive.");
+  if (!token) throw new Error("Could not authenticate with Google Drive.");
   
   if (!masterKey) {
     // If no key is provided, fallback to direct stream (unencrypted)
@@ -26,7 +40,7 @@ export async function getVideoStreamLink(driveFileId: string, masterKey?: Crypto
     const blob = new Blob([decryptedBuffer], { type: 'video/mp4' });
     return URL.createObjectURL(blob);
   } catch (e) {
-    console.warn("Could not decrypt video. Maybe it is not encrypted?", e);
+    console.warn("Could not decrypt video. Falling back to raw buffer:", e);
     const blob = new Blob([buffer], { type: 'video/mp4' });
     return URL.createObjectURL(blob);
   }
@@ -87,7 +101,6 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
  * If local, returns local streaming port or custom protocol URL. Otherwise returns Drive stream.
  */
 export async function resolveVideoUrl(video: VideoItem, _masterKey?: CryptoKey, forceWeb?: boolean): Promise<string> {
-  const { getSettings } = await import('../../utils/settings');
   const pref = getSettings().videoPlaybackPreference;
   
   const ext = video.original_name.split('.').pop()?.toLowerCase() || '';

@@ -29,13 +29,19 @@ export function useVideoProgress(
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
       const now = new Date().toISOString();
-      const updated = { 
-        ...video, 
-        progress: currentTime,
-        last_watched_at: now,
-        updated_at: now 
-      };
       try {
+        let currentRecord = video;
+        if (window.api.sync.getTable) {
+          const allVideos = (await window.api.sync.getTable('videos')) as VideoItem[];
+          const fresh = allVideos.find(v => v.id === video.id);
+          if (fresh) currentRecord = fresh;
+        }
+        const updated: VideoItem = { 
+          ...currentRecord, 
+          progress: currentTime,
+          last_watched_at: now,
+          updated_at: now 
+        };
         await window.api.sync.upsertRow('videos', updated);
       } catch (e) {
         console.error('Failed to save video progress:', e);
