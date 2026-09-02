@@ -28,7 +28,7 @@ export interface FilePageLink {
   id: string;
   file_id: string;
   page_id: string;
-  link_type: string; // 'upload' | 'link'
+  link_type: 'upload' | 'link';
   widget_id: string | null;
   created_at?: string;
   deleted_at?: string | null;
