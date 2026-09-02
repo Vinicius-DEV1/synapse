@@ -18,6 +18,10 @@ interface UseVideoPlaybackEngineProps {
   setIsPlaying?: React.Dispatch<React.SetStateAction<boolean>>;
   isBuffering?: boolean;
   setIsBuffering?: React.Dispatch<React.SetStateAction<boolean>>;
+  isMuted?: boolean;
+  setIsMuted?: React.Dispatch<React.SetStateAction<boolean>>;
+  volume?: number;
+  setVolume?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useVideoPlaybackEngine({
@@ -37,6 +41,10 @@ export function useVideoPlaybackEngine({
   setIsPlaying: externalSetIsPlaying,
   isBuffering: externalIsBuffering,
   setIsBuffering: externalSetIsBuffering,
+  isMuted: externalIsMuted,
+  setIsMuted: externalSetIsMuted,
+  volume: externalVolume,
+  setVolume: externalSetVolume,
 }: UseVideoPlaybackEngineProps) {
   const [internalIsPlaying, setInternalIsPlaying] = useState(false);
   const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
@@ -46,8 +54,13 @@ export function useVideoPlaybackEngine({
   const isBuffering = externalIsBuffering !== undefined ? externalIsBuffering : internalIsBuffering;
   const setIsBuffering = externalSetIsBuffering || setInternalIsBuffering;
 
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [internalVolume, setInternalVolume] = useState(1);
+  const volume = externalVolume !== undefined ? externalVolume : internalVolume;
+  const setVolume = (externalSetVolume as unknown as React.Dispatch<React.SetStateAction<number>>) || setInternalVolume;
+
+  const [internalIsMuted, setInternalIsMuted] = useState(false);
+  const isMuted = externalIsMuted !== undefined ? externalIsMuted : internalIsMuted;
+  const setIsMuted = externalSetIsMuted || setInternalIsMuted;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -127,18 +140,23 @@ export function useVideoPlaybackEngine({
     }
   };
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
+  const setVolumeDirectly = (val: number) => {
+    const clamped = Math.max(0, Math.min(1, val));
     if (videoRef.current) {
       if (activeAudioUrl && audioRef.current) {
-        audioRef.current.volume = val;
+        audioRef.current.volume = clamped;
       } else {
-        videoRef.current.volume = val;
+        videoRef.current.volume = clamped;
       }
-      setVolume(val);
-      if (val === 0) setIsMuted(true);
+      setVolume(clamped);
+      if (clamped === 0) setIsMuted(true);
       else setIsMuted(false);
     }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    setVolumeDirectly(val);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,6 +202,7 @@ export function useVideoPlaybackEngine({
     seekBy,
     toggleFullscreen,
     toggleMute,
+    setVolumeDirectly,
     handleVolumeChange,
     handleSeek,
     handleTimeUpdate,

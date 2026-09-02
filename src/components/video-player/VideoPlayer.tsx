@@ -19,6 +19,9 @@ import { VideoResumePrompt } from './ui/VideoResumePrompt';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
 import { VideoHelpModal } from './modals/VideoHelpModal';
 import { FastForward, Rewind, Gauge, MessageSquare, Volume2 as VolIcon, Repeat } from 'lucide-react';
+import { attachSubtitleToVideo } from '../../services/video';
+import { getCultureKey } from '../../store/useStore';
+import { triggerToast } from '../ui/ToastContext';
 
 interface VideoPlayerProps {
   src: string;
@@ -60,16 +63,28 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
 
   // Ref wrappers for video sub-hooks
   const { duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
-  const { audioTracks, subtitleTracks, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isBuffering, videoRef, audioRef);
-  const { videoWords, showVocabDrawer, setShowVocabDrawer, activeSavedWords, loadVideoWords } = useVideoVocabulary(video, cues, '');
+  const { audioTracks, subtitleTracks, addSubtitleTrack, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
+  const { videoWords, showVocabDrawer, setShowVocabDrawer, loadVideoWords } = useVideoVocabulary(video, cues, '');
   const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
 
+  const handleAttachSubtitle = async (file: File) => {
+    try {
+      const { newTrack } = await attachSubtitleToVideo(video, file, undefined, getCultureKey());
+      addSubtitleTrack(newTrack);
+      triggerToast(`Legenda "${newTrack.label}" carregada e ativada!`, 'success');
+    } catch (err: unknown) {
+      console.error('Erro ao anexar legenda no player:', err);
+      const msg = err instanceof Error ? err.message : 'Falha ao carregar legenda.';
+      triggerToast(msg, 'error');
+    }
+  };
+
   const {
-    volume,
-    isMuted,
     isFullscreen,
     errorMsg,
     setErrorMsg,
@@ -77,6 +92,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     seekBy,
     toggleFullscreen,
     toggleMute,
+    setVolumeDirectly,
     handleVolumeChange,
     handleSeek,
     handleTimeUpdate,
@@ -107,6 +123,10 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     setIsPlaying,
     isBuffering,
     setIsBuffering,
+    isMuted,
+    setIsMuted,
+    volume,
+    setVolume,
   });
 
   useTimeTracker({
@@ -117,6 +137,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   });
 
   useEffect(() => {
+    let isMounted = true;
     const fetchNewSubtitle = async () => {
       if (activeSubtitleIndex > 0 && subtitleTracks[activeSubtitleIndex]) {
         try {
@@ -125,26 +146,26 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           const { getCultureKey } = await import('../../store/useStore');
           const subText = (await getSubtitleText(track.drive_id, track.local_path, getCultureKey())) || '';
           
-          if (subText) {
-            const parsed = parseVtt(subText);
-            setCues(parsed);
-          } else {
-            setCues([]);
+          if (isMounted) {
+            if (subText) {
+              const parsed = parseVtt(subText);
+              setCues(parsed);
+            } else {
+              setCues([]);
+            }
           }
         } catch (e) {
-          console.error('Error changing subtitle', e);
+          console.error('Erro ao trocar legenda:', e);
+          if (isMounted) setCues([]);
         }
-      } else if (activeSubtitleIndex === 0) {
-        if (_subtitleContent) {
-          const parsed = parseVtt(_subtitleContent);
-          setCues(parsed);
-        } else {
-          setCues([]);
-        }
+      } else {
+        // activeSubtitleIndex === 0 ("Sem Legenda")
+        if (isMounted) setCues([]);
       }
     };
     fetchNewSubtitle();
-  }, [activeSubtitleIndex, subtitleTracks, _subtitleContent]);
+    return () => { isMounted = false; };
+  }, [activeSubtitleIndex, subtitleTracks]);
 
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<{ text: string, icon: 'rewind' | 'forward' | 'speed' | 'subtitle' | 'volume' | 'loop' } | null>(null);
@@ -211,11 +232,13 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     const extendedContext = buildVideoSubtitleContext(cues, currentIndex, title, context);
 
     let preloadedData: DictionaryData | null = null;
-    const existingWord = (activeSavedWords as VideoWord[]).find(vw => vw.word.toLowerCase() === word.toLowerCase());
+    const existingWord = videoWords.find(vw => vw.word.toLowerCase() === word.toLowerCase());
     if (existingWord && typeof existingWord.note === 'string') {
       try {
         preloadedData = JSON.parse(existingWord.note.replace('<!-- AI_DICT -->', '')) as DictionaryData;
-      } catch {}
+      } catch (err) {
+        console.warn('Failed to parse preloaded dictionary note:', err);
+      }
     }
 
     const video_clip = calculateVideoClip(cues, currentIndex, video.file_path || src);
@@ -244,6 +267,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   useEffect(() => {
     return () => {
       if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
 
@@ -255,7 +279,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         // Adjust volume on scroll
         const delta = e.deltaY < 0 ? 0.05 : -0.05;
         const newVol = Math.max(0, Math.min(1, volume + delta));
-        handleVolumeChange({ target: { value: String(newVol) } } as any);
+        setVolumeDirectly(newVol);
         triggerFeedback(`Vol ${Math.round(newVol * 100)}%`, 'volume');
       }}
     >
@@ -370,7 +394,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           cues={cues}
           videoRef={videoRef as React.RefObject<HTMLVideoElement>}
           onWordClick={handleWordClick} 
-          savedWords={activeSavedWords}
+          savedWords={videoWords}
           subtitleOffset={subtitleOffset}
         />
       )}
@@ -403,6 +427,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
         toggleFullscreen={toggleFullscreen}
         setActiveAudioIndex={setActiveAudioIndex}
         setActiveSubtitleIndex={setActiveSubtitleIndex}
+        onAttachSubtitle={handleAttachSubtitle}
         changePlaybackRate={changePlaybackRate}
         setShowVocabDrawer={setShowVocabDrawer}
         setShowHelpModal={setShowHelpModal}
