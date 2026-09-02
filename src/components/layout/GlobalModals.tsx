@@ -15,6 +15,7 @@ import { ScrapViewerModal } from '../modals/ScrapViewerModal';
 import { ScrapDeleteModal } from '../modals/ScrapDeleteModal';
 import { ScrapInputModal } from '../modals/ScrapInputModal';
 import { UploadProgressModal } from '../library/ui/UploadProgressModal';
+import type { Page } from '../../types';
 
 interface GlobalModalsProps {
   renamePageId: string | null;
@@ -26,10 +27,10 @@ interface GlobalModalsProps {
   isDriveAuthModalOpen: boolean;
   setIsDriveAuthModalOpen: (open: boolean) => void;
   syncStatus: 'idle' | 'syncing' | 'success' | 'error';
-  handleDeletePage: (id: string) => void;
-  handleUpdatePage: (id: string, updates: any) => void;
-  handleUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[]) => void;
-  handleCreatePage: (parentId: string | null) => void;
+  handleDeletePage: (id: string) => Promise<void>;
+  handleUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  handleUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
+  handleCreatePage: (parentId: string | null) => Promise<void>;
   handleCreateLinkedPage: (title: string, parentId?: string | null) => Promise<string | null>;
 }
 

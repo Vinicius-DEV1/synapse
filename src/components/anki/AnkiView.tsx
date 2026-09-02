@@ -42,16 +42,20 @@ export default function AnkiView() {
   }, []);
 
   const loadDecks = async () => {
-    if (window.api?.anki) {
-      const res = await window.api.anki.getDecks();
-      let loadedDecks = [];
-      if (res.success && res.decks) {
-        loadedDecks = res.decks;
-      } else if (Array.isArray(res)) {
-        loadedDecks = res;
+    try {
+      if (window.api?.anki) {
+        const res = await window.api.anki.getDecks();
+        let loadedDecks = [];
+        if (res.success && res.decks) {
+          loadedDecks = res.decks;
+        } else if (Array.isArray(res)) {
+          loadedDecks = res;
+        }
+        setDecks(loadedDecks);
+        loadStats(loadedDecks);
       }
-      setDecks(loadedDecks);
-      loadStats(loadedDecks);
+    } catch (err) {
+      console.error('[Flashcards] Failed to load decks:', err);
     }
   };
 
@@ -90,11 +94,14 @@ export default function AnkiView() {
 
   const handleCreateDeck = async (name: string, description: string, parentId: string | null) => {
     if (window.api?.anki) {
-      // @ts-ignore
-      await window.api.anki.createDeck(name, description, parentId);
-      setShowCreateModal(false);
-      setParentDeckId(null);
-      loadDecks();
+      try {
+        await window.api.anki.createDeck(name, description, parentId || undefined);
+        setShowCreateModal(false);
+        setParentDeckId(null);
+        await loadDecks();
+      } catch (err) {
+        console.error('[Flashcards] Failed to create deck:', err);
+      }
     }
   };
 

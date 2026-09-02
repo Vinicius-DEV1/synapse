@@ -13,7 +13,7 @@ interface PageViewProps {
   page: Page | null;
   onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
   onCreatePage: (parentId: string | null) => Promise<void>;
-  onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
+  onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string | null>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 

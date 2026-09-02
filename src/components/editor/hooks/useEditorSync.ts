@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as Y from 'yjs';
+import type { Page } from '../../../types';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 import { getEditorBackupMap } from './editorBackupStore';
 import { onPageSaved } from '../../../services/page-broadcast';

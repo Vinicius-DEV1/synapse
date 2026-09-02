@@ -12,7 +12,7 @@ export async function exportPageFile(id: string) {
     }
 
     if (page.is_locked) {
-      triggerToast('Desbloqueie a página antes de exportar.', 'warning');
+      triggerToast('Desbloqueie a página antes de exportar.', 'info');
       return;
     }
 

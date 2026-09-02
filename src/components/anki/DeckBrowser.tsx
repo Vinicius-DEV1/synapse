@@ -109,8 +109,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }, [filteredCards]);
 
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = 'auto'; };
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+    };
   }, []);
 
   const handleDeleteSelected = async () => {
@@ -124,10 +131,13 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
 
   const handleMoveSelected = async (targetDeckId: string) => {
     if (!window.confirm(`Mover ${selectedIds.size} cartões para o baralho selecionado?`)) return;
-    if (window.api?.anki) {
-      for (const id of selectedIds) {
-        await window.api.anki.updateCard(id, { deck_id: targetDeckId });
-      }
+    const ankiApi = window.api?.anki;
+    if (ankiApi) {
+      await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          ankiApi.updateCard(id, { deck_id: targetDeckId })
+        )
+      );
       clearSelection();
       loadCards();
     }
@@ -232,6 +242,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
                 onSave={handleUpdateDeck} 
                 onDelete={handleDeleteDeck} 
                 onResetProgress={handleResetProgress} 
+                onImportSuccess={loadCards}
               />
             </div>
           )}
