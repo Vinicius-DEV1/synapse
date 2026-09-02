@@ -15,10 +15,14 @@ export function useVideoFolders(videos: VideoItem[], onRefreshVideos: () => Prom
     }
   }, []);
 
-  const saveFolders = useCallback(async (newFolders: { id: string; name: string }[]) => {
-    setFolders(newFolders);
+  const saveFolders = useCallback(async (newFoldersOrFn: { id: string; name: string }[] | ((prev: { id: string; name: string }[]) => { id: string; name: string }[])) => {
+    let nextFolders: { id: string; name: string }[] = [];
+    setFolders(prev => {
+      nextFolders = typeof newFoldersOrFn === 'function' ? newFoldersOrFn(prev) : newFoldersOrFn;
+      return nextFolders;
+    });
     if (window.api?.config) {
-      await window.api.config.set('videoFolders', newFolders);
+      await window.api.config.set('videoFolders', nextFolders);
     }
   }, []);
 
@@ -28,47 +32,47 @@ export function useVideoFolders(videos: VideoItem[], onRefreshVideos: () => Prom
 
   const handleCreateFolder = useCallback((name: string) => {
     const newFolder = { id: crypto.randomUUID(), name };
-    saveFolders([...folders, newFolder]);
-  }, [folders, saveFolders]);
+    saveFolders(prev => [...prev, newFolder]);
+  }, [saveFolders]);
 
   const handleRenameFolder = useCallback(async (id: string, newName: string) => {
-    await saveFolders(folders.map(f => f.id === id ? { ...f, name: newName } : f));
+    await saveFolders(prev => prev.map(f => f.id === id ? { ...f, name: newName } : f));
     const videosInFolder = videos.filter(v => v.collection_id === id);
     try {
-      for (const v of videosInFolder) {
-        if (window.api?.sync) {
-          await window.api.sync.upsertRow('videos', {
+      if (window.api?.sync) {
+        await Promise.all(videosInFolder.map(v => 
+          window.api.sync.upsertRow('videos', {
             ...v,
             collection_name: newName,
             updated_at: new Date().toISOString()
-          });
-        }
+          })
+        ));
       }
     } catch (e) {
-      console.error('Error renaming folder videos', e);
+      console.error('Error renaming folder videos:', e);
     }
     await onRefreshVideos();
-  }, [folders, videos, saveFolders, onRefreshVideos]);
+  }, [videos, saveFolders, onRefreshVideos]);
 
   const handleDeleteFolder = useCallback(async (id: string) => {
-    await saveFolders(folders.filter(f => f.id !== id));
+    await saveFolders(prev => prev.filter(f => f.id !== id));
     const videosInFolder = videos.filter(v => v.collection_id === id);
     try {
-      for (const v of videosInFolder) {
-        if (window.api?.sync) {
-          await window.api.sync.upsertRow('videos', {
+      if (window.api?.sync) {
+        await Promise.all(videosInFolder.map(v => 
+          window.api.sync.upsertRow('videos', {
             ...v,
             collection_id: undefined,
             collection_name: undefined,
             updated_at: new Date().toISOString()
-          });
-        }
+          })
+        ));
       }
     } catch (e) {
-      console.error('Error deleting folder videos', e);
+      console.error('Error deleting folder videos:', e);
     }
     await onRefreshVideos();
-  }, [folders, videos, saveFolders, onRefreshVideos]);
+  }, [videos, saveFolders, onRefreshVideos]);
 
   const handleMoveVideo = useCallback(async (video: VideoItem, folderId: string | null, folderName: string | null) => {
     if (window.api?.sync) {

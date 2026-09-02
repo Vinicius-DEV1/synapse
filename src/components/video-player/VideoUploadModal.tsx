@@ -16,7 +16,7 @@ interface VideoUploadModalProps {
   collectionId?: string;
   collectionName?: string;
   onClose: () => void;
-  onUpload: (options: UploadOptions) => Promise<any>;
+  onUpload: (options: UploadOptions) => Promise<void> | void;
 }
 
 export default function VideoUploadModal({ collectionId, collectionName, onClose, onUpload }: VideoUploadModalProps) {
@@ -34,6 +34,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -94,25 +95,37 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   };
 
   const handleSelectLocalFile = async () => {
+    console.log('[DEBUG] handleSelectLocalFile - Clicked. Has Tauri openFileDialog:', !!window.api?.video?.openFileDialog);
     if (!window.api?.video?.openFileDialog) {
-      videoFileInputRef.current?.click();
+      console.log('[DEBUG] handleSelectLocalFile - Opening standard HTML file picker');
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = '';
+        videoFileInputRef.current.click();
+      }
       return;
     }
-    const res = await window.api.video.openFileDialog();
-    if (!isMountedRef.current) return;
-    if (res) {
-      try {
-        const dummyFile = new File([], res.name, { type: res.type || 'video/mp4' });
-        (dummyFile as any).TauriPath = res.path;
+    try {
+      console.log('[DEBUG] handleSelectLocalFile - Awaiting Tauri dialog result...');
+      const res = await window.api.video.openFileDialog();
+      console.log('[DEBUG] handleSelectLocalFile - Dialog result:', res);
+      if (!isMountedRef.current) return;
+      if (res) {
+        const dummyFile = new File([], res.name, { type: res.type || 'video/mp4' }) as File & { TauriPath?: string };
+        dummyFile.TauriPath = res.path;
         
+        console.log('[DEBUG] handleSelectLocalFile - Setting videoFile state with:', res.name, res.path);
         setVideoFile(dummyFile);
         setError(null);
         resetTracks();
         await scanFilePath(res.path);
-      } catch (err: any) {
-        if (isMountedRef.current) {
-          setError('Falha ao carregar arquivo local: ' + err.message);
-        }
+      } else {
+        console.log('[DEBUG] handleSelectLocalFile - No file chosen or dialog cancelled');
+      }
+    } catch (err: unknown) {
+      console.error('[DEBUG] handleSelectLocalFile - Exception:', err);
+      if (isMountedRef.current) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError('Falha ao carregar arquivo local: ' + msg);
       }
     }
   };
@@ -263,12 +276,16 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
                   </button>
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/*,.mkv,.mp4,.avi,.mov,.webm,.flv,.wmv"
                     ref={videoFileInputRef}
                     className="hidden"
                     disabled={isUploading || isScanning}
+                    onClick={(e) => {
+                      (e.target as HTMLInputElement).value = '';
+                    }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
+                      console.log('[DEBUG] HTML file input onChange:', file);
                       if (file) {
                         setVideoFile(file);
                         if (webQuality === 'original' && !file.name.toLowerCase().endsWith('.mp4') && !file.name.toLowerCase().endsWith('.webm')) {
