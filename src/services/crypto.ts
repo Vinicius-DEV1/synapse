@@ -18,9 +18,12 @@ const IV_LENGTH = 12; // Standard AES-GCM IV length
 /**
  * Derives a Master CryptoKey from user password using PBKDF2 with SHA-256.
  */
-export async function deriveMasterKey(password: string): Promise<CryptoKey> {
+export async function deriveMasterKey(password: string, customSalt?: Uint8Array | string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const passwordBuffer = encoder.encode(password);
+  const activeSalt = typeof customSalt === 'string'
+    ? encoder.encode(customSalt)
+    : (customSalt || SALT);
 
   const baseKey = await crypto.subtle.importKey(
     'raw',
@@ -33,7 +36,7 @@ export async function deriveMasterKey(password: string): Promise<CryptoKey> {
   return await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: SALT,
+      salt: activeSalt,
       iterations: ITERATIONS,
       hash: HASH_ALGORITHM
     },
