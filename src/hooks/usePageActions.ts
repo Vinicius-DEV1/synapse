@@ -30,8 +30,8 @@ export function usePageActions() {
       try {
         const page = await window.api.createPage({ parentId });
         await window.api.updatePage({ id: page.id, title });
-        page.title = title;
-        dispatch({ type: 'ADD_PAGE', page });
+        const updatedPage = { ...page, title };
+        dispatch({ type: 'ADD_PAGE', page: updatedPage });
         return page.id;
       } catch (err: unknown) {
         console.error('Erro ao criar página vinculada:', err);

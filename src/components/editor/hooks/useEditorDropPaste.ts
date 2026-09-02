@@ -8,7 +8,8 @@ import { findNodePos } from '../../editor-extensions/image/imageUtils';
 import { triggerToast } from '../../ui/ToastContext';
 
 interface UseEditorDropPasteProps {
-  editor: Editor | null;
+  editor?: Editor | null;
+  editorRef?: React.RefObject<Editor | null>;
   masterKey?: CryptoKey | null;
   viewerState: {
     isOpen: boolean;
@@ -31,20 +32,24 @@ interface UseEditorDropPasteProps {
  */
 export function useEditorDropPaste({
   editor,
+  editorRef,
   masterKey,
   viewerState,
   setViewerState,
 }: UseEditorDropPasteProps) {
+  const getEditor = useCallback(() => editorRef?.current ?? editor ?? null, [editor, editorRef]);
+
   const handlePaste = useCallback(
     (view: EditorView, event: ClipboardEvent) => {
       try {
-        if (!editor) return false;
+        const currentEditor = getEditor();
+        if (!currentEditor) return false;
 
         // 1. Se estiver dentro de um bloco de código (codeBlock) ou elemento code,
         // não interceptar a colagem para permitir que o link seja colado como texto puro
         const isInsideCodeBlock =
-          (typeof editor?.isActive === 'function' &&
-            (editor.isActive('codeBlock') || editor.isActive('code'))) ||
+          (typeof currentEditor?.isActive === 'function' &&
+            (currentEditor.isActive('codeBlock') || currentEditor.isActive('code'))) ||
           view.state.selection.$from?.parent?.type?.name === 'codeBlock' ||
           !!view.state.selection.$from?.parent?.type?.spec?.code;
 
@@ -68,7 +73,7 @@ export function useEditorDropPaste({
           }
 
           if (isUrl && view.state.selection.empty) {
-            editor.chain().focus().insertContent({
+            currentEditor.chain().focus().insertContent({
               type: 'linkPreview',
               attrs: { url: urlStr, isLoading: true },
             }).run();
@@ -142,9 +147,9 @@ export function useEditorDropPaste({
             if (nodes.length === 0) return;
             try {
               if (insertPos !== null) {
-                editor.chain().insertContentAt(insertPos, nodes).focus().run();
+                currentEditor.chain().insertContentAt(insertPos, nodes).focus().run();
               } else {
-                editor.chain().focus().insertContent(nodes).run();
+                currentEditor.chain().focus().insertContent(nodes).run();
               }
             } catch (err) {
               console.error('[Editor] Erro ao inserir nós de imagem:', err);
@@ -157,7 +162,7 @@ export function useEditorDropPaste({
           } else if (readers.length > 0) {
             Promise.all(readers).then((results) => {
               const validResults = results.filter((r) => r.src);
-              if (editor && validResults.length > 0) {
+              if (currentEditor && validResults.length > 0) {
                 insertPastedNodes(
                   validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
                 );
@@ -174,12 +179,13 @@ export function useEditorDropPaste({
 
       return false;
     },
-    [editor, masterKey]
+    [getEditor, masterKey]
   );
 
   const handleDrop = useCallback(
     (view: EditorView, event: DragEvent, _slice: any, moved: boolean) => {
       try {
+        const currentEditor = getEditor();
         if (
           !moved &&
           event.dataTransfer &&
@@ -200,7 +206,7 @@ export function useEditorDropPaste({
           for (const file of files) {
             if (file.type.indexOf('image') === 0) {
               imageDropped = true;
-              if (editor) {
+              if (currentEditor) {
                 if (masterKey) {
                   const tempId =
                     'uploading_' +
@@ -256,18 +262,18 @@ export function useEditorDropPaste({
             });
 
             const insertNodes = (nodes: any[]) => {
-              if (!editor || nodes.length === 0) return;
+              if (!currentEditor || nodes.length === 0) return;
 
               try {
                 if (columnTarget) {
-                  const pmNodes = nodes.map((n) => editor.schema.nodeFromJSON(n));
-                  if (applyGroupDrop(editor.view, columnTarget, pmNodes)) return;
+                  const pmNodes = nodes.map((n) => currentEditor.schema.nodeFromJSON(n));
+                  if (applyGroupDrop(currentEditor.view, columnTarget, pmNodes)) return;
                 }
 
                 if (pos !== undefined) {
-                  editor.chain().insertContentAt(pos, nodes).focus().run();
+                  currentEditor.chain().insertContentAt(pos, nodes).focus().run();
                 } else {
-                  editor.chain().focus().insertContent(nodes).run();
+                  currentEditor.chain().focus().insertContent(nodes).run();
                 }
               } catch (err) {
                 console.error('[Editor] Erro ao posicionar imagem no documento:', err);
@@ -280,7 +286,7 @@ export function useEditorDropPaste({
             } else if (readers.length > 0) {
               Promise.all(readers).then((results) => {
                 const validResults = results.filter((r) => r.src);
-                if (validResults.length > 0) {
+                if (currentEditor && validResults.length > 0) {
                   insertNodes(
                     validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
                   );
@@ -297,18 +303,19 @@ export function useEditorDropPaste({
       }
       return false;
     },
-    [editor, masterKey]
+    [getEditor, masterKey]
   );
 
   const handleCroppedImage = useCallback(
     async (croppedDataUrl: string) => {
-      if (!editor || viewerState.nodePos === null) {
+      const currentEditor = getEditor();
+      if (!currentEditor || viewerState.nodePos === null) {
         setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null });
         return;
       }
 
       const pos = viewerState.nodePos;
-      const node = editor.state.doc.nodeAt(pos);
+      const node = currentEditor.state.doc.nodeAt(pos);
       setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null });
       if (!node) return;
 
@@ -324,10 +331,10 @@ export function useEditorDropPaste({
           });
           const driveFileId = await uploadEncryptedImage(file, masterKey);
 
-          const currentPos = findNodePos(editor.state.doc, node, pos);
+          const currentPos = findNodePos(currentEditor.state.doc, node, pos);
           if (currentPos === null) return;
-          editor.view.dispatch(
-            editor.state.tr.setNodeMarkup(currentPos, undefined, {
+          currentEditor.view.dispatch(
+            currentEditor.state.tr.setNodeMarkup(currentPos, undefined, {
               ...node.attrs,
               driveFileId,
               width: null,
@@ -336,10 +343,10 @@ export function useEditorDropPaste({
           );
           triggerToast('Recorte salvo no cofre com sucesso!', 'success');
         } else {
-          const currentPos = findNodePos(editor.state.doc, node, pos);
+          const currentPos = findNodePos(currentEditor.state.doc, node, pos);
           if (currentPos === null) return;
-          editor.view.dispatch(
-            editor.state.tr.setNodeMarkup(currentPos, undefined, {
+          currentEditor.view.dispatch(
+            currentEditor.state.tr.setNodeMarkup(currentPos, undefined, {
               ...node.attrs,
               src: croppedDataUrl,
               width: null,
@@ -353,7 +360,7 @@ export function useEditorDropPaste({
         triggerToast('Não foi possível salvar o recorte da imagem.', 'error');
       }
     },
-    [editor, viewerState.nodePos, masterKey, setViewerState]
+    [getEditor, viewerState.nodePos, masterKey, setViewerState]
   );
 
   return { handlePaste, handleDrop, handleCroppedImage };

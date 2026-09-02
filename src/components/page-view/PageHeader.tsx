@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Clock, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
@@ -14,6 +14,28 @@ interface PageHeaderProps {
 
 export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProps) {
   const { state, dispatch } = useStore();
+  const isEditingTitleRef = useRef(false);
+  const isEditingDescRef = useRef(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (!isEditingTitleRef.current && titleRef.current) {
+      const displayTitle = page.title === 'Sem Título' ? '' : page.title;
+      if (titleRef.current.textContent !== displayTitle) {
+        titleRef.current.textContent = displayTitle;
+      }
+    }
+  }, [page.title]);
+
+  useEffect(() => {
+    if (!isEditingDescRef.current && descRef.current) {
+      const displayDesc = page.description || '';
+      if (descRef.current.textContent !== displayDesc) {
+        descRef.current.textContent = displayDesc;
+      }
+    }
+  }, [page.description]);
 
   const breadcrumbs = useMemo(() => {
     if (!page) return [];
@@ -131,10 +153,15 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
         </EmojiPopover>
         <div className="flex-1 min-w-0 flex items-start justify-between pt-2">
           <h1
+            ref={titleRef}
             contentEditable
             suppressContentEditableWarning
             className="text-4xl font-bold text-dark-text outline-none flex-1 min-w-0 leading-tight empty:before:content-['Sem_Título'] empty:before:text-dark-subtext/50"
+            onFocus={() => {
+              isEditingTitleRef.current = true;
+            }}
             onBlur={(e) => {
+              isEditingTitleRef.current = false;
               const newTitle = e.currentTarget.textContent?.trim();
               if (newTitle !== undefined && newTitle !== page.title) {
                 onUpdatePage(page.id, { title: newTitle || 'Sem Título' });
@@ -176,10 +203,15 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
 
       <div className="ml-14 mb-8">
         <p
+          ref={descRef}
           contentEditable
           suppressContentEditableWarning
           className="text-base text-dark-subtext outline-none empty:before:content-['Adicionar_descrição...'] empty:before:text-dark-subtext/30 focus:empty:before:text-dark-subtext/50 transition-colors"
+          onFocus={() => {
+            isEditingDescRef.current = true;
+          }}
           onBlur={(e) => {
+            isEditingDescRef.current = false;
             const newDesc = e.currentTarget.textContent?.trim();
             if (newDesc !== undefined && newDesc !== (page.description || '')) {
               onUpdatePage(page.id, { description: newDesc });
