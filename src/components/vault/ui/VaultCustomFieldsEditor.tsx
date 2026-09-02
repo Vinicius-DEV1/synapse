@@ -60,7 +60,7 @@ export function VaultCustomFieldsEditor({ customFields, onChange }: VaultCustomF
           <div className="flex flex-col gap-2">
             <select 
               value={field.type}
-              onChange={e => handleUpdateField(idx, { type: e.target.value as any })}
+              onChange={e => handleUpdateField(idx, { type: e.target.value as VaultCustomField['type'] })}
               className="bg-dark-bg text-xs border border-white/10 rounded p-1 text-dark-subtext"
             >
               <option className="bg-dark-bg text-white" value="text">Texto</option>

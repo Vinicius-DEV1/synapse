@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Key, Star, ExternalLink, Trash2, Eye, EyeOff, Check, Copy, History } from 'lucide-react';
-import type { VaultItem } from '../../types';
+import type { VaultItem, VaultCustomField } from '../../types';
+import { parseVaultCustomFields } from '../../types';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';
+import { triggerToast } from '../ui/ToastContext';
 
 interface VaultItemDetailsProps {
   item: VaultItem;
@@ -16,18 +18,18 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
 
   const copyToClipboard = async (text: string, field: string) => {
     if (!text) return;
-    await navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err: unknown) {
+      console.error('[Vault] Failed to copy to clipboard:', err);
+      triggerToast('Falha ao copiar para a área de transferência', 'error');
+    }
   };
 
-  const parsedCustomFields = React.useMemo(() => {
-    if (!item.custom_fields) return [];
-    try {
-      return JSON.parse(item.custom_fields);
-    } catch {
-      return [];
-    }
+  const parsedCustomFields: VaultCustomField[] = React.useMemo(() => {
+    return parseVaultCustomFields(item.custom_fields);
   }, [item.custom_fields]);
 
   return (
@@ -144,7 +146,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
           <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
             <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Campos Adicionais</h3>
             <div className="grid grid-cols-2 gap-4">
-              {parsedCustomFields.map((field: any, idx: number) => (
+              {parsedCustomFields.map((field, idx: number) => (
                 <div key={idx} className="flex flex-col p-3 rounded-xl bg-white/5">
                   <span className="text-xs text-dark-subtext">{field.key}</span>
                   <div className="flex items-center justify-between mt-1">

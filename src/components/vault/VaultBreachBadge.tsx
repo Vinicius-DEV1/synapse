@@ -2,13 +2,26 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
 import type { BreachCheckResult } from '../../types';
 
+// In-memory cache to prevent spamming HIBP API when switching items or re-rendering
+const breachCache = new Map<string, BreachCheckResult>();
+
 export function VaultBreachBadge({ password }: { password?: string | null }) {
-  const [result, setResult] = useState<BreachCheckResult | null>(null);
+  const [result, setResult] = useState<BreachCheckResult | null>(() => {
+    return password && breachCache.has(password) ? breachCache.get(password)! : null;
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!password) {
       setResult(null);
+      setLoading(false);
+      return;
+    }
+
+    // Check if result is already in memory cache
+    if (breachCache.has(password)) {
+      setResult(breachCache.get(password)!);
+      setLoading(false);
       return;
     }
     
@@ -17,12 +30,13 @@ export function VaultBreachBadge({ password }: { password?: string | null }) {
     const check = async () => {
       setLoading(true);
       try {
-        const res = await window.api.vault?.checkBreach(password);
+        const res = await window.api?.vault?.checkBreach(password);
         if (isMounted && res) {
+          breachCache.set(password, res);
           setResult(res);
         }
       } catch (e) {
-        console.error("Erro ao checar vazamento", e);
+        console.error('[Vault] Failed to check breach:', e);
       } finally {
         if (isMounted) setLoading(false);
       }
