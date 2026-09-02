@@ -163,29 +163,33 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
       }
       
       // Fire and forget
-      onUpload({
-        videoFile,
-        subtitleText,
-        duration: videoDuration,
-        primaryAudioTrack: primaryAudioTrack || undefined,
-        extraAudioTracks: Array.from(extraAudioTracks),
-        extraSubtitleTracks: Array.from(extraSubtitleTracks),
-        masterKey,
-        collectionId,
-        collectionName,
-        webQuality,
-        conversionPreset: (await import('../../utils/settings')).getSettings().videoConversionPreset,
-      }).catch(err => {
-        console.error("Erro no upload assíncrono", err);
+      const uploadPromise = Promise.resolve(
+        onUpload({
+          videoFile,
+          subtitleText,
+          duration: videoDuration,
+          primaryAudioTrack: primaryAudioTrack || undefined,
+          extraAudioTracks: Array.from(extraAudioTracks),
+          extraSubtitleTracks: Array.from(extraSubtitleTracks),
+          masterKey,
+          collectionId,
+          collectionName,
+          webQuality,
+          conversionPreset: (await import('../../utils/settings')).getSettings().videoConversionPreset,
+        })
+      );
+
+      uploadPromise.catch((err: unknown) => {
+        console.error('Async video upload error:', err);
       });
       
       onClose();
-    } catch (err: any) {
-      if (err.name === 'AbortError' || err.message === 'Cancelado pelo usuário') {
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'AbortError' || err.message === 'Cancelado pelo usuário')) {
         setError('Upload cancelado.');
       } else {
         console.error(err);
-        setError(err.message || 'Ocorreu um erro durante o upload.');
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro durante o upload.');
       }
       setIsUploading(false);
     }

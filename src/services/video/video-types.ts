@@ -88,7 +88,7 @@ export interface DesktopVideoApi {
   getStreamPort?: () => Promise<number>;
   saveLocal: (filename: string, buffer: ArrayBuffer) => Promise<string>;
   copyLocal: (sourcePath: string, filename: string) => Promise<string>;
-  processUpload: (
+  processUpload?: (
     sourcePath: string,
     filename: string,
     webQuality: string,

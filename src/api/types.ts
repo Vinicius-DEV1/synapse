@@ -165,6 +165,34 @@ export interface ICadernoAPI {
     getStreamPort?: () => Promise<number>;
     cancelConversion?: (jobId: string) => Promise<{ success: boolean }>;
     generateWebVersion?: (sourcePath: string, options?: any) => Promise<{ success: boolean; outputPath?: string; error?: string }>;
+    processUpload?: (
+      sourcePath: string,
+      filename: string,
+      webQuality: string,
+      conversionPreset: string,
+      duration?: number,
+      primaryAudioTrack?: string
+    ) => Promise<{
+      original_path: string;
+      web_path: string | null;
+      original_size?: number;
+      web_size?: number;
+    }>;
+    extractAudio?: (localPath: string, trackIndex: string) => Promise<string | null>;
+    getStorageStats?: (
+      originalPathOrName: string,
+      audioFiles?: string[],
+      subFiles?: string[]
+    ) => Promise<{
+      original_path: string | null;
+      original_size: number | null;
+      web_path: string | null;
+      web_size: number | null;
+      audio_sizes: Record<string, number>;
+      subtitle_sizes: Record<string, number>;
+      total_local_size: number;
+    }>;
+    showInFolder?: (pathOrName: string) => Promise<boolean>;
   };
 
   anki?: {

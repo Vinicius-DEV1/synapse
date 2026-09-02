@@ -101,7 +101,7 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
   const handleOpenInFolder = async (pathOrName?: string) => {
     const target = pathOrName || stats?.original_path || currentVideo.file_path || currentVideo.original_name;
     if (!target) {
-      triggerToast('Caminho não disponível.', 'warning');
+      triggerToast('Caminho não disponível.', 'info');
       return;
     }
 
