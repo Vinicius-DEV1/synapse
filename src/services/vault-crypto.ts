@@ -14,8 +14,14 @@ export async function getVaultKeyHash(password: string): Promise<string> {
   return arrayBufferToHex(hashBuffer);
 }
 
+const HEX_REGEX = /^[0-9a-fA-F]+$/;
+
+function isHex(str: string): boolean {
+  return str.length > 0 && HEX_REGEX.test(str);
+}
+
 export async function encryptVaultField(text: string, keyHex: string): Promise<string> {
-  if (!text) return text;
+  if (text === null || text === undefined || text === '') return text;
   try {
     const keyBuffer = hexToArrayBuffer(keyHex);
     const cryptoKey = await crypto.subtle.importKey(
@@ -53,8 +59,8 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
 
     return `${ivHex}:${authTagHex}:${cipherTextHex}`;
   } catch (e) {
-    console.error("Vault Encryption Error:", e);
-    throw new Error("Failed to encrypt vault field");
+    console.error('[Vault Crypto] Encryption error:', e);
+    throw new Error('Failed to encrypt vault field');
   }
 }
 
@@ -67,8 +73,21 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     return payload;
   }
 
+  const [ivHex, authTagHex, cipherTextHex] = parts;
+
+  // The wire format requires 12-byte IV (24 hex chars), 16-byte AuthTag (32 hex chars), and hex ciphertext
+  if (
+    ivHex.length !== 24 ||
+    authTagHex.length !== 32 ||
+    !isHex(ivHex) ||
+    !isHex(authTagHex) ||
+    !isHex(cipherTextHex)
+  ) {
+    // Not valid ciphertext wire format (e.g. URLs with ports or colon-separated text)
+    return payload;
+  }
+
   try {
-    const [ivHex, authTagHex, cipherTextHex] = parts;
     const keyBuffer = hexToArrayBuffer(keyHex);
     
     const cryptoKey = await crypto.subtle.importKey(
@@ -101,7 +120,7 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
   } catch (e) {
-    console.warn('Failed to decrypt vault field, returning as plaintext', e);
+    console.warn('[Vault Crypto] Failed to decrypt vault field, returning as plaintext fallback:', e);
     return payload; // Fallback returning original text on decryption failure
   }
 }

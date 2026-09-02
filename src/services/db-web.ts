@@ -1,5 +1,6 @@
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
+import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry } from '../types/vault';
 
 // NOTE (B18): Schema uses 'value: any' for CRDT flexibility and dynamic payloads.
 // Reduces strict TypeScript type-safety but avoids serialization issues.
@@ -29,9 +30,9 @@ export interface CadernoDBSchema extends DBSchema {
   activity_logs: { key: string; value: any };
   calendar_events: { key: string; value: any };
   notifications: { key: string; value: any };
-  vault_groups: { key: string; value: any };
-  vault_items: { key: string; value: any; indexes: { 'group_id': string } };
-  vault_password_history: { key: string; value: any; indexes: { 'item_id': string } };
+  vault_groups: { key: string; value: VaultGroup };
+  vault_items: { key: string; value: VaultItem; indexes: { 'group_id': string } };
+  vault_password_history: { key: string; value: VaultPasswordHistoryEntry; indexes: { 'item_id': string } };
   tutor_sessions: { key: string; value: any };
   tutor_messages: { key: string; value: any; indexes: { 'session_id': string } };
   tutor_memories: { key: string; value: any };
