@@ -31,7 +31,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
         inputRef.current.select();
       }
     }
-  }, [isFolder]);
+  }, [isFolder, name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +45,10 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
       await onRename(item.id, name.trim(), isFolder);
       triggerToast(isFolder ? 'Pasta renomeada com sucesso!' : 'Arquivo renomeado com sucesso!', 'success');
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to rename:", err);
-      triggerToast(err.message || "Erro ao renomear.", 'error');
+      const msg = err instanceof Error ? err.message : "Erro ao renomear.";
+      triggerToast(msg, 'error');
     } finally {
       setIsSubmitting(false);
     }
