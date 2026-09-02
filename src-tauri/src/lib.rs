@@ -145,7 +145,15 @@ pub fn get_app_data_dir() -> std::path::PathBuf {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .level_for("h2", log::LevelFilter::Warn)
+                .level_for("hyper", log::LevelFilter::Warn)
+                .level_for("reqwest", log::LevelFilter::Warn)
+                .level_for("tracing", log::LevelFilter::Warn)
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .register_uri_scheme_protocol("encrypted", |ctx, req| {
@@ -273,6 +281,8 @@ pub fn run() {
             cmd_binaries::force_download_binaries,
             cmd_stream::video_get_stream_port,
             cmd_video::video_get_local_path,
+            cmd_video::video_get_storage_stats,
+            cmd_video::os_show_in_folder,
             cmd_video::video_read_file,
             cmd_video::video_upload_file_to_drive,
             cmd_video::video_delete_local,

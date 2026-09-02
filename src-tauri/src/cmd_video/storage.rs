@@ -10,17 +10,59 @@ use crate::video_probe::{
 #[cfg(target_os = "windows")]
 use crate::video_probe::CREATE_NO_WINDOW;
 
-/// Retrieves the absolute filesystem path for a locally stored video file (with debug fallback).
+#[derive(serde::Serialize)]
+pub struct VideoStorageStats {
+    pub original_path: Option<String>,
+    pub original_size: Option<u64>,
+    pub web_path: Option<String>,
+    pub web_size: Option<u64>,
+    pub audio_sizes: std::collections::HashMap<String, u64>,
+    pub subtitle_sizes: std::collections::HashMap<String, u64>,
+    pub total_local_size: u64,
+}
+
+/// Retrieves the absolute filesystem path for a locally stored video file (with enc and debug fallback).
 #[tauri::command]
 pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app)?;
     let safe_filename = sanitize_filename(&filename);
+
+    // 1. Direct match
     let path = videos_dir.join(&safe_filename);
     if path.exists() {
         return Ok(path.to_string_lossy().to_string());
     }
 
-    // Fallback: Search release folder when executing in debug mode
+    // 2. Encrypted variant
+    let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
+    if enc_path.exists() {
+        return Ok(enc_path.to_string_lossy().to_string());
+    }
+
+    // 3. Stripped enc variant
+    if safe_filename.ends_with(".enc") {
+        let stripped = safe_filename.trim_end_matches(".enc");
+        let p = videos_dir.join(stripped);
+        if p.exists() {
+            return Ok(p.to_string_lossy().to_string());
+        }
+    }
+
+    // 4. Web version variant
+    let stem = std::path::Path::new(&safe_filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&safe_filename);
+    let web_enc = videos_dir.join(format!("{}_web.mp4.enc", stem));
+    if web_enc.exists() {
+        return Ok(web_enc.to_string_lossy().to_string());
+    }
+    let web_path = videos_dir.join(format!("{}_web.mp4", stem));
+    if web_path.exists() {
+        return Ok(web_path.to_string_lossy().to_string());
+    }
+
+    // 5. Fallback: Search release folder when executing in debug mode
     if let Some(parent) = videos_dir.parent() {
         if let Some(grandparent) = parent.parent() {
             if let Some(greatgrandparent) = grandparent.parent() {
@@ -28,9 +70,17 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
                     .join("release")
                     .join("data")
                     .join("videos")
-                    .join(&filename);
+                    .join(&safe_filename);
                 if release_path.exists() {
                     return Ok(release_path.to_string_lossy().to_string());
+                }
+                let release_enc = greatgrandparent
+                    .join("release")
+                    .join("data")
+                    .join("videos")
+                    .join(format!("{}.enc", safe_filename));
+                if release_enc.exists() {
+                    return Ok(release_enc.to_string_lossy().to_string());
                 }
             }
         }
@@ -39,17 +89,205 @@ pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, 
     Ok("".to_string())
 }
 
-/// Reads a local video file into memory with a 50MB safety limit to avoid WebView IPC OOM.
+/// Computes accurate file sizes on disk for all variants of a video (original, web, audios, subtitles).
 #[tauri::command]
-pub fn video_read_file(path: String) -> Result<Vec<u8>, String> {
+pub fn video_get_storage_stats(
+    filename: String,
+    audio_tracks: Option<Vec<String>>,
+    subtitle_tracks: Option<Vec<String>>,
+    app: AppHandle,
+) -> Result<VideoStorageStats, String> {
+    let videos_dir = get_videos_dir(&app)?;
+    let safe_filename = sanitize_filename(&filename);
+
+    let mut total_size = 0u64;
+
+    // 1. Original file
+    let mut original_path = None;
+    let mut original_size = None;
+    let direct_orig = videos_dir.join(&safe_filename);
+    let enc_orig = videos_dir.join(format!("{}.enc", safe_filename));
+    if direct_orig.exists() {
+        if let Ok(meta) = fs::metadata(&direct_orig) {
+            original_size = Some(meta.len());
+            total_size += meta.len();
+            original_path = Some(direct_orig.to_string_lossy().to_string());
+        }
+    } else if enc_orig.exists() {
+        if let Ok(meta) = fs::metadata(&enc_orig) {
+            original_size = Some(meta.len());
+            total_size += meta.len();
+            original_path = Some(enc_orig.to_string_lossy().to_string());
+        }
+    }
+
+    // 2. Web version
+    let mut web_path = None;
+    let mut web_size = None;
+    let stem = std::path::Path::new(&safe_filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&safe_filename);
+    let direct_web = videos_dir.join(format!("{}_web.mp4", stem));
+    let enc_web = videos_dir.join(format!("{}_web.mp4.enc", stem));
+    if direct_web.exists() {
+        if let Ok(meta) = fs::metadata(&direct_web) {
+            web_size = Some(meta.len());
+            total_size += meta.len();
+            web_path = Some(direct_web.to_string_lossy().to_string());
+        }
+    } else if enc_web.exists() {
+        if let Ok(meta) = fs::metadata(&enc_web) {
+            web_size = Some(meta.len());
+            total_size += meta.len();
+            web_path = Some(enc_web.to_string_lossy().to_string());
+        }
+    }
+
+    // 3. Audio track sizes
+    let mut audio_sizes = std::collections::HashMap::new();
+    if let Some(audios) = audio_tracks {
+        for a in audios {
+            let a_safe = sanitize_filename(&a);
+            let a_file = videos_dir.join(&a_safe);
+            let a_enc = videos_dir.join(format!("{}.enc", a_safe));
+            if a_file.exists() {
+                if let Ok(m) = fs::metadata(&a_file) {
+                    audio_sizes.insert(a.clone(), m.len());
+                    total_size += m.len();
+                }
+            } else if a_enc.exists() {
+                if let Ok(m) = fs::metadata(&a_enc) {
+                    audio_sizes.insert(a.clone(), m.len());
+                    total_size += m.len();
+                }
+            }
+        }
+    }
+
+    // 4. Subtitle track sizes
+    let mut subtitle_sizes = std::collections::HashMap::new();
+    if let Some(subs) = subtitle_tracks {
+        for s in subs {
+            let s_safe = sanitize_filename(&s);
+            let s_file = videos_dir.join(&s_safe);
+            let s_enc = videos_dir.join(format!("{}.enc", s_safe));
+            if s_file.exists() {
+                if let Ok(m) = fs::metadata(&s_file) {
+                    subtitle_sizes.insert(s.clone(), m.len());
+                    total_size += m.len();
+                }
+            } else if s_enc.exists() {
+                if let Ok(m) = fs::metadata(&s_enc) {
+                    subtitle_sizes.insert(s.clone(), m.len());
+                    total_size += m.len();
+                }
+            }
+        }
+    }
+
+    Ok(VideoStorageStats {
+        original_path,
+        original_size,
+        web_path,
+        web_size,
+        audio_sizes,
+        subtitle_sizes,
+        total_local_size: total_size,
+    })
+}
+
+/// Reveals a file or directory in the native desktop file manager.
+#[tauri::command]
+pub fn os_show_in_folder(path: String, app: AppHandle) -> Result<bool, String> {
+    let mut target_path = std::path::PathBuf::from(&path);
+
+    // If given just a filename, resolve against videos_dir
+    if !target_path.exists() {
+        if let Ok(videos_dir) = get_videos_dir(&app) {
+            let direct = videos_dir.join(&path);
+            let enc = videos_dir.join(format!("{}.enc", path));
+            if direct.exists() {
+                target_path = direct;
+            } else if enc.exists() {
+                target_path = enc;
+            }
+        }
+    }
+
+    if !target_path.exists() {
+        return Err(format!("Caminho não encontrado: {}", path));
+    }
+
+    let folder = if target_path.is_dir() {
+        target_path.clone()
+    } else {
+        target_path.parent().unwrap_or(&target_path).to_path_buf()
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        if target_path.is_file() {
+            std::process::Command::new("explorer")
+                .args(["/select,", &target_path.to_string_lossy()])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("explorer")
+                .arg(&folder)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if target_path.is_file() {
+            std::process::Command::new("open")
+                .args(["-R", &target_path.to_string_lossy()])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            std::process::Command::new("open")
+                .arg(&folder)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(true)
+}
+
+/// Reads a local video or subtitle file into memory with a 50MB safety limit to avoid WebView IPC OOM.
+#[tauri::command]
+pub fn video_read_file(path: String, app: AppHandle) -> Result<Vec<u8>, String> {
+    let mut file_path = std::path::PathBuf::from(&path);
+    if !file_path.exists() {
+        if let Ok(videos_dir) = get_videos_dir(&app) {
+            let direct = videos_dir.join(&path);
+            let enc = videos_dir.join(format!("{}.enc", path));
+            if direct.exists() {
+                file_path = direct;
+            } else if enc.exists() {
+                file_path = enc;
+            }
+        }
+    }
+
     // Safety: limit to 50 MB to prevent OOM crash via IPC for large video files
-    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+    let metadata = fs::metadata(&file_path).map_err(|e| format!("Arquivo não encontrado ({:?}): {}", file_path, e))?;
     if metadata.len() > 50 * 1024 * 1024 {
         return Err(
             "File too large to read via IPC. Use video_upload_file_to_drive instead.".into(),
         );
     }
-    fs::read(&path).map_err(|e| e.to_string())
+    fs::read(&file_path).map_err(|e| e.to_string())
 }
 
 /// Deletes a local video file from the application's video storage directory.
@@ -57,10 +295,37 @@ pub fn video_read_file(path: String) -> Result<Vec<u8>, String> {
 pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
     let videos_dir = get_videos_dir(&app)?;
     let safe_filename = sanitize_filename(&filename);
+    
+    // 1. Direct path
     let path = videos_dir.join(&safe_filename);
     if path.exists() {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
+        let _ = fs::remove_file(&path);
     }
+
+    // 2. Encrypted variant (.enc)
+    if !safe_filename.ends_with(".enc") {
+        let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
+        if enc_path.exists() {
+            let _ = fs::remove_file(&enc_path);
+        }
+    }
+
+    // 3. Web version variants (e.g. video_web.mp4 and video_web.mp4.enc)
+    let stem = std::path::Path::new(&safe_filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&safe_filename);
+    let web_name = format!("{}_web.mp4", stem);
+    let web_path = videos_dir.join(&web_name);
+    if web_path.exists() {
+        let _ = fs::remove_file(&web_path);
+    }
+    let web_enc_path = videos_dir.join(format!("{}.enc", web_name));
+    if web_enc_path.exists() {
+        let _ = fs::remove_file(&web_enc_path);
+    }
+
+    println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🗑️  \x1b[1;33mArquivos locais excluídos para:\x1b[0m {}", safe_filename);
     Ok(true)
 }
 
@@ -124,6 +389,7 @@ pub async fn video_process_upload(
     web_quality: String,
     conversion_preset: String,
     duration: f64,
+    primary_audio_track: Option<String>,
     db_state: tauri::State<'_, crate::db::DbState>,
     app_handle: AppHandle,
 ) -> Result<ProcessUploadResult, String> {
@@ -171,10 +437,17 @@ pub async fn video_process_upload(
         let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
         let mut cmd = tokio::process::Command::new(&ffmpeg_path);
 
+        let selected_audio = primary_audio_track.unwrap_or_else(|| "0:a:0".to_string());
+        println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🎬 \x1b[1;32mTranscodificando versão Web:\x1b[0m Vídeo: \x1b[33m0:v:0\x1b[0m | Áudio Principal: \x1b[1;33m{}\x1b[0m | Qualidade: \x1b[35m{}\x1b[0m", selected_audio, web_quality);
+
         let mut args = vec![
             "-y".to_string(),
             "-i".to_string(),
             source_path.clone(),
+            "-map".to_string(),
+            "0:v:0".to_string(),
+            "-map".to_string(),
+            selected_audio,
             "-movflags".to_string(),
             "+faststart".to_string(),
             "-map_chapters".to_string(),
@@ -204,6 +477,8 @@ pub async fn video_process_upload(
                 args.push("copy".to_string());
             } else {
                 args.push("aac".to_string());
+                args.push("-ac".to_string());
+                args.push("2".to_string());
             }
         } else {
             let scale_val = match web_quality.as_str() {
@@ -219,6 +494,8 @@ pub async fn video_process_upload(
                 "libx264".to_string(),
                 "-c:a".to_string(),
                 "aac".to_string(),
+                "-ac".to_string(),
+                "2".to_string(),
                 "-preset".to_string(),
                 preset_str.to_string(),
                 "-threads".to_string(),
@@ -241,7 +518,7 @@ pub async fn video_process_upload(
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::piped());
 
-        println!("[DEBUG] Spawning FFmpeg child process...");
+        println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m ⚙️  \x1b[34mExecutando FFmpeg com argumentos:\x1b[0m {:?}", args);
         let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to spawn FFmpeg: {}", e))?;
@@ -259,7 +536,9 @@ pub async fn video_process_upload(
 
             error_log.push_str(&line);
             error_log.push('\n');
-            println!("[DEBUG] FFmpeg: {}", line);
+            if !line.contains("frame=") && !line.contains("size=") {
+                println!("\x1b[1;35m[FFMPEG]\x1b[0m {}", line);
+            }
 
             if line.contains("time=") {
                 if let Some(time_idx) = line.find("time=") {

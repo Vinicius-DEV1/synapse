@@ -1,3 +1,5 @@
+import { isTauri } from '@tauri-apps/api/core';
+
 export interface PlatformCapabilities {
   platform: 'web' | 'desktop' | 'mobile-webview';
   canReadLocalFilesystem: boolean;
@@ -5,22 +7,40 @@ export interface PlatformCapabilities {
   supportsNativeTabs: boolean;
 }
 
-// The single location in the application where runtime environment variable is injected
-const isDesktop = typeof window !== 'undefined' && (!!window.__TAURI_INTERNALS__ || !!(window as any).__TAURI_IPC__);
-const isMobileWebViewEnv = typeof window !== 'undefined' && (!!(window as any).__CADERNO_MOBILE_WEBVIEW__ || !!(window as any).ReactNativeWebView);
+function checkIsDesktop(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return isTauri() || !!(window as any).isTauri || !!window.__TAURI_INTERNALS__ || !!(window as any).__TAURI__ || !!(window as any).__TAURI_IPC__;
+  } catch {
+    return !!(window as any).isTauri || !!window.__TAURI_INTERNALS__ || !!(window as any).__TAURI__ || !!(window as any).__TAURI_IPC__;
+  }
+}
+
+function checkIsMobileWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!(window as any).__CADERNO_MOBILE_WEBVIEW__ || !!(window as any).ReactNativeWebView;
+}
 
 export const platform: PlatformCapabilities = {
-  platform: isDesktop ? 'desktop' : (isMobileWebViewEnv ? 'mobile-webview' : 'web'),
-  canReadLocalFilesystem: isDesktop || isMobileWebViewEnv,
-  useNativeTitleBar: isDesktop,
-  supportsNativeTabs: isDesktop
+  get platform() {
+    return checkIsDesktop() ? 'desktop' : (checkIsMobileWebView() ? 'mobile-webview' : 'web');
+  },
+  get canReadLocalFilesystem() {
+    return checkIsDesktop() || checkIsMobileWebView();
+  },
+  get useNativeTitleBar() {
+    return checkIsDesktop();
+  },
+  get supportsNativeTabs() {
+    return checkIsDesktop();
+  }
 };
 
 export function isDesktopApp(): boolean {
-  return platform.canReadLocalFilesystem || (typeof window !== 'undefined' && !!window.api);
+  return checkIsDesktop() || (typeof window !== 'undefined' && !!window.api);
 }
 
 export function isMobileWebView(): boolean {
-  return typeof window !== 'undefined' && (!!(window as any).__CADERNO_MOBILE_WEBVIEW__ || !!(window as any).ReactNativeWebView);
+  return checkIsMobileWebView();
 }
 
