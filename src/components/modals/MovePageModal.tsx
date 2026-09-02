@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { isValidHierarchyMove, getPageBreadcrumbString } from '../../utils/hierarchy';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { filterActivePages } from '../../utils/page-filter';
 
 import { MovePageTreeNode, type TreeNode } from './move-page/MovePageTreeNode';
 
@@ -22,6 +23,8 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const activePages = useMemo(() => filterActivePages(state.pages), [state.pages]);
+
   const sourcePage = useMemo(() => {
     return state.pages.find((p) => p.id === pageId) || null;
   }, [state.pages, pageId]);
@@ -36,7 +39,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
       let currentParentId = sourcePage.parent_id;
       while (currentParentId) {
         parents.add(currentParentId);
-        const parent = state.pages.find((p) => p.id === currentParentId);
+        const parent = activePages.find((p) => p.id === currentParentId);
         currentParentId = parent?.parent_id || null;
       }
       setExpandedNodes(parents);
@@ -44,22 +47,22 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
         searchInputRef.current?.focus();
       }, 50);
     }
-  }, [isOpen, sourcePage, state.pages]);
+  }, [isOpen, sourcePage, activePages]);
 
   // Helper to retrieve full breadcrumb path
   const getBreadcrumb = (targetId: string | null): string => {
     if (!targetId) return 'Raiz (Início)';
-    return getPageBreadcrumbString(state.pages, targetId, {
+    return getPageBreadcrumbString(activePages, targetId, {
       includeSelf: true,
       separator: ' > ',
       rootLabel: 'Raiz (Início)',
     });
   };
 
-  // Build complete hierarchical tree
+  // Build complete hierarchical tree excluding soft-deleted pages
   const pageTree = useMemo(() => {
     const buildTree = (parentId: string | null, level: number = 0): TreeNode[] => {
-      const children = state.pages
+      const children = activePages
         .filter((p) => p.parent_id === parentId)
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
@@ -71,14 +74,14 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
     };
 
     return buildTree(null);
-  }, [state.pages]);
+  }, [activePages]);
 
   // Filtered list during active search
   const filteredPages = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
 
-    return state.pages
+    return activePages
       .filter((p) => {
         const titleMatch = (p.title || 'Sem Título').toLowerCase().includes(query);
         const breadcrumbMatch = getBreadcrumb(p.id).toLowerCase().includes(query);
@@ -87,16 +90,16 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
       .map((p) => ({
         page: p,
         breadcrumb: getBreadcrumb(p.id),
-        isValid: sourcePage ? isValidHierarchyMove(state.pages, sourcePage.id, p.id) : true,
+        isValid: sourcePage ? isValidHierarchyMove(activePages, sourcePage.id, p.id) : true,
       }));
-  }, [searchQuery, state.pages, sourcePage]);
+  }, [searchQuery, activePages, sourcePage]);
 
   if (!isOpen || !sourcePage) return null;
 
   const currentParentId = sourcePage.parent_id;
   const effectiveSelectedId = selectedTargetId === 'UNSET' ? currentParentId : selectedTargetId;
   const isTargetSameAsCurrent = effectiveSelectedId === currentParentId;
-  const isSelectedValid = effectiveSelectedId === null || (sourcePage ? isValidHierarchyMove(state.pages, sourcePage.id, effectiveSelectedId) : true);
+  const isSelectedValid = effectiveSelectedId === null || (sourcePage ? isValidHierarchyMove(activePages, sourcePage.id, effectiveSelectedId) : true);
 
   const toggleExpand = (nodeId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,7 +112,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
   };
 
   const handleSelect = (targetId: string | null) => {
-    if (targetId !== null && !isValidHierarchyMove(state.pages, sourcePage.id, targetId)) {
+    if (targetId !== null && !isValidHierarchyMove(activePages, sourcePage.id, targetId)) {
       return;
     }
     setSelectedTargetId(targetId);
@@ -302,7 +305,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
                   <MovePageTreeNode
                     key={node.page.id}
                     node={node}
-                    allPages={state.pages}
+                    allPages={activePages}
                     sourcePageId={sourcePage.id}
                     effectiveSelectedId={effectiveSelectedId}
                     currentParentId={currentParentId}

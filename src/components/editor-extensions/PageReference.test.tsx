@@ -2,13 +2,17 @@ import { createContext } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, act } from '@testing-library/react';
 import { PageReference } from './PageReference';
+import { StoreContext, getStoreState } from '../../store/useStore';
 
-vi.mock('../../store/useStore', () => ({
-  StoreContext: createContext(null),
-  getStoreState: vi.fn(() => ({
-    pages: [{ id: 'p1', title: 'Página de Destino' }],
-  })),
-}));
+vi.mock('../../store/useStore', () => {
+  const ctx = createContext<any>(null);
+  return {
+    StoreContext: ctx,
+    getStoreState: vi.fn(() => ({
+      pages: [{ id: 'p1', title: 'Página de Destino' }],
+    })),
+  };
+});
 
 vi.mock('@tiptap/react', () => ({
   NodeViewWrapper: ({ children, className }: any) => (
@@ -117,6 +121,35 @@ describe('PageReference Extension & NodeView', () => {
     fireEvent.click(getByText('Manter'));
     expect(deleteNodeMock).not.toHaveBeenCalled();
     expect(queryByText('Página Excluída')).toBeNull();
+  });
+
+  it('renders deleted state when page exists in store but has deleted_at', () => {
+    const Component = (PageReference.config.addNodeView as any)();
+    const mockStore = {
+      state: {
+        pages: [
+          { id: 'trashed-1', title: 'Página no Lixo', deleted_at: '2026-09-01T10:00:00Z' },
+        ],
+      },
+    };
+
+    const trashedProps = {
+      node: {
+        attrs: {
+          pageId: 'trashed-1',
+          title: 'Página no Lixo',
+        },
+      },
+      deleteNode: vi.fn(),
+    };
+
+    const { getByText } = render(
+      <StoreContext.Provider value={mockStore as any}>
+        <Component {...trashedProps} />
+      </StoreContext.Provider>
+    );
+
+    expect(getByText('Página no Lixo (Excluída)')).toBeDefined();
   });
 });
 

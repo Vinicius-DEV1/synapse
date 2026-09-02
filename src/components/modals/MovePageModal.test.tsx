@@ -152,4 +152,34 @@ describe('MovePageModal component', () => {
 
     expect(handleMove).toHaveBeenCalledWith('sub-2', null);
   });
+
+  it('excludes soft-deleted pages from the destination tree and search', () => {
+    const pagesWithTrash: Page[] = [
+      ...mockPages,
+      {
+        id: 'trash-1',
+        title: 'Pasta Excluída',
+        parent_id: null,
+        content: '',
+        icon: '🗑️',
+        sort_order: 2,
+        deleted_at: '2026-09-01T12:00:00Z',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+
+    render(
+      <StoreContext.Provider value={{ state: { ...mockState, pages: pagesWithTrash }, dispatch: mockDispatch }}>
+        <MovePageModal
+          isOpen={true}
+          pageId="sub-2"
+          onClose={vi.fn()}
+          onMovePage={vi.fn()}
+        />
+      </StoreContext.Provider>
+    );
+
+    expect(screen.queryByText('Pasta Excluída')).toBeNull();
+  });
 });

@@ -12,7 +12,7 @@ const PageReferenceComponent = (props: any) => {
   const store = useContext(StoreContext);
   const pages = store?.state?.pages ?? getStoreState().pages;
   const targetPage = pages.find((p: any) => p.id === pageId);
-  const isDeleted = !targetPage;
+  const isDeleted = !targetPage || Boolean(targetPage.deleted_at);
 
   const [pageTitle, setPageTitle] = useState(targetPage?.title || title || 'Página');
   const [showConfirm, setShowConfirm] = useState(false);
