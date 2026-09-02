@@ -27,7 +27,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
   const childPages = useMemo(() => {
     if (!page) return [];
     return state.pages
-      .filter((p: Page) => p.parent_id === page.id)
+      .filter((p: Page) => p.parent_id === page.id && !p.deleted_at)
       .sort((a: Page, b: Page) => a.sort_order - b.sort_order);
   }, [page, state.pages]);
 

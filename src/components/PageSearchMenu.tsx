@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { filterActivePages } from '../utils/page-filter';
 
 interface PageSearchMenuProps {
   x: number;
@@ -16,7 +17,7 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredPages = state.pages.filter(p => {
+  const filteredPages = filterActivePages(state.pages).filter(p => {
     const q = localQuery.toLowerCase();
     if (p.title.toLowerCase().includes(q)) return true;
     // Search plain text representation to avoid matching HTML tags

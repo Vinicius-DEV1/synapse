@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFlatPageOrder, getSiblingPageNavigation } from './page-navigation';
+import { getFlatPageOrder, getSiblingPageNavigation, getSiblingPages } from './page-navigation';
 import type { AppState, Page } from '../types';
 
 describe('pageNavigation - getFlatPageOrder & getSiblingPageNavigation', () => {
@@ -106,5 +106,24 @@ describe('pageNavigation - getFlatPageOrder & getSiblingPageNavigation', () => {
     const nav30 = getSiblingPageNavigation(state, pages[3]);
     expect(nav30.prevPage?.id).toBe('p28');
     expect(nav30.nextPage).toBeNull();
+  });
+
+  it('excludes soft-deleted pages from sibling navigation and flat order', () => {
+    const pages = [
+      createMockPage('p1', null, false, undefined, undefined, 'Active Page 1', 1),
+      { ...createMockPage('p2', null, false, undefined, undefined, 'Deleted Page', 2), deleted_at: '2026-09-02T12:00:00Z' },
+      createMockPage('p3', null, false, undefined, undefined, 'Active Page 2', 3),
+    ];
+
+    const state = { pages } as AppState;
+
+    const siblings = getSiblingPages(state, pages[0]);
+    expect(siblings.map(p => p.id)).toEqual(['p1', 'p3']);
+
+    const nav1 = getSiblingPageNavigation(state, pages[0]);
+    expect(nav1.nextPage?.id).toBe('p3'); // Skips p2 since it's deleted
+
+    const flat = getFlatPageOrder(state);
+    expect(flat.map(p => p.id)).toEqual(['p1', 'p3']);
   });
 });

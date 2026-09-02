@@ -97,7 +97,7 @@ const SubPageItem = memo(function SubPageItem({
   const childPages = childrenMap
     ? (childrenMap.get(page.id) || [])
     : state.pages
-        .filter((p: Page) => p.parent_id === page.id)
+        .filter((p: Page) => p.parent_id === page.id && !p.deleted_at)
         .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const hasChildren = childPages.length > 0;
@@ -208,7 +208,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
   const childrenMap = useMemo(() => {
     const map = new Map<string, Page[]>();
     for (const p of state.pages) {
-      if (p.parent_id) {
+      if (p.parent_id && !p.deleted_at) {
         const list = map.get(p.parent_id);
         if (list) list.push(p);
         else map.set(p.parent_id, [p]);
@@ -267,7 +267,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
        
        if (activePage && overPage && activePage.parent_id === overPage.parent_id) {
           const siblings = state.pages
-             .filter((p: Page) => p.parent_id === activePage.parent_id)
+             .filter((p: Page) => p.parent_id === activePage.parent_id && !p.deleted_at)
              .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
              
           const oldIndex = siblings.findIndex((p: Page) => p.id === active.id);
