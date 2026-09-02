@@ -28,7 +28,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     if (!page) return [];
     return state.pages
       .filter((p: Page) => p.parent_id === page.id && !p.deleted_at)
-      .sort((a: Page, b: Page) => a.sort_order - b.sort_order);
+      .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [page, state.pages]);
 
   // Reset contentData synchronously when page changes to prevent stale content leaking

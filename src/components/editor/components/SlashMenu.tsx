@@ -1,7 +1,15 @@
 import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-const SLASH_COMMANDS = [
+interface SlashCommandItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  keywords: string[];
+}
+
+const SLASH_COMMANDS: SlashCommandItem[] = [
   { id: 'text', title: 'Texto', subtitle: 'Comece a escrever com texto normal.', icon: Type, keywords: ['texto', 'paragrafo', 'p'] },
   { id: 'h1', title: 'Título 1', subtitle: 'Título de seção grande.', icon: Heading1, keywords: ['h1', 'titulo 1', 'header 1'] },
   { id: 'h2', title: 'Título 2', subtitle: 'Título de seção médio.', icon: Heading2, keywords: ['h2', 'titulo 2', 'header 2'] },
@@ -45,20 +53,21 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredCommands = SLASH_COMMANDS.filter(cmd => {
+  const filteredCommands = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return true;
-    const cmdId = cmd.id.toLowerCase();
-    const cmdTitle = cmd.title.toLowerCase();
-    const cmdSubtitle = cmd.subtitle.toLowerCase();
-    const keywords = (cmd as any).keywords || [];
-    return (
-      cmdId.includes(q) ||
-      cmdTitle.includes(q) ||
-      cmdSubtitle.includes(q) ||
-      keywords.some((k: string) => k.includes(q) || q.includes(k))
-    );
-  });
+    if (!q) return SLASH_COMMANDS;
+    return SLASH_COMMANDS.filter((cmd) => {
+      const cmdId = cmd.id.toLowerCase();
+      const cmdTitle = cmd.title.toLowerCase();
+      const cmdSubtitle = cmd.subtitle.toLowerCase();
+      return (
+        cmdId.includes(q) ||
+        cmdTitle.includes(q) ||
+        cmdSubtitle.includes(q) ||
+        cmd.keywords.some((k) => k.includes(q) || q.includes(k))
+      );
+    });
+  }, [query]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

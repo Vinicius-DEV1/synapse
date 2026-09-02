@@ -4,10 +4,15 @@ import { triggerToast } from '../components/ui/ToastContext';
 export async function exportPageFile(id: string) {
   if (!window.api) return;
   try {
-    const pages = await window.api.sync.getTable('pages');
+    const pages = await window.api.getAllPages();
     const page = pages.find((p: Page) => p.id === id);
     if (!page) {
       triggerToast('Página não encontrada para exportação.', 'error');
+      return;
+    }
+
+    if (page.is_locked) {
+      triggerToast('Desbloqueie a página antes de exportar.', 'warning');
       return;
     }
 
