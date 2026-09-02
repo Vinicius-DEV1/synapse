@@ -58,7 +58,7 @@ export default function FilesView() {
         const f = files.find(x => x.id === id);
         return f ? { item: f, isFolder: false } : null;
       })
-      .filter(Boolean) as Array<{ item: FileItem | FileFolder; isFolder: boolean }>;
+      .filter((x): x is { item: FileItem | FileFolder; isFolder: boolean } => x !== null);
     setItemsToMove(items);
   };
 
@@ -68,7 +68,7 @@ export default function FilesView() {
         const f = files.find(x => x.id === id);
         return f ? { item: f, isFolder: false } : null;
       })
-      .filter(Boolean) as Array<{ item: FileItem | FileFolder; isFolder: boolean }>;
+      .filter((x): x is { item: FileItem | FileFolder; isFolder: boolean } => x !== null);
     setItemsToDelete(items);
   };
 

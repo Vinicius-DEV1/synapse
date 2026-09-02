@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, Search, File, Image as ImageIcon, Film, FileText, FileArchive, Folder } from 'lucide-react';
+import { X, Search, File, Image as ImageIcon, Film, FileText, FileArchive, Folder, Code } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
+import { detectFileType } from '../../utils/file-type-detector';
 import { Portal } from '../ui/Portal';
 
 interface FileSelectModalProps {
   onClose: () => void;
-  onSelect: (item: { id: string, name: string, type: string, isFolder: boolean }) => void;
+  onSelect: (item: { id: string; name: string; type: string; isFolder: boolean }) => void;
 }
 
 export default function FileSelectModal({ onClose, onSelect }: FileSelectModalProps) {
@@ -15,36 +16,44 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
       try {
         if (window.api && window.api.files) {
           const fetchedFiles = await window.api.files.getAll();
           const fetchedFolders = await window.api.files.folders.getAll();
-          setFiles(fetchedFiles);
-          setFolders(fetchedFolders);
+          if (active) {
+            setFiles(fetchedFiles || []);
+            setFolders(fetchedFolders || []);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch data", err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchData();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const getFileIcon = (type: string) => {
+  const getFileIcon = (file: FileItem) => {
+    const type = file.file_type || detectFileType(file.name);
     switch (type) {
       case 'image': return <ImageIcon size={20} className="text-blue-400" />;
       case 'video': return <Film size={20} className="text-purple-400" />;
       case 'pdf': return <FileText size={20} className="text-red-400" />;
       case 'epub': return <FileText size={20} className="text-green-400" />;
       case 'slide': return <FileArchive size={20} className="text-yellow-400" />;
+      case 'code': return <Code size={20} className="text-cyan-400" />;
       default: return <File size={20} className="text-gray-400" />;
     }
   };
 
-  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
-  const filteredFolders = folders.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredFiles = files.filter(f => !f.deleted_at && f.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredFolders = folders.filter(f => !f.deleted_at && f.name.toLowerCase().includes(search.toLowerCase()));
 
   const hasResults = filteredFiles.length > 0 || filteredFolders.length > 0;
 
@@ -105,7 +114,7 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
                   className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
                 >
                   <div className="p-2 bg-dark-bg rounded-lg border border-white/5">
-                    {getFileIcon(file.file_type)}
+                    {getFileIcon(file)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{file.name}</p>

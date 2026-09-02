@@ -25,6 +25,8 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
   const handleDelete = async () => {
     if (!window.api.files) return;
     setIsDeleting(true);
+    let driveDeleteFailed = false;
+
     try {
       for (const entry of list) {
         if (entry.isFolder) {
@@ -44,15 +46,22 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
               }
             } catch (e) {
               console.warn("Failed to delete from Drive", e);
+              driveDeleteFailed = true;
             }
           }
         }
       }
-      triggerToast(isBulk ? `${list.length} itens excluídos.` : 'Item excluído.', 'info');
+
+      if (driveDeleteFailed) {
+        triggerToast('Item(ns) excluído(s) localmente, mas houve falha ao remover do Google Drive.', 'error', 4000);
+      } else {
+        triggerToast(isBulk ? `${list.length} itens excluídos.` : 'Item excluído.', 'info');
+      }
       onDeleted();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Delete failed", e);
-      triggerToast(e.message || "Falha ao excluir item(ns).", 'error');
+      const msg = e instanceof Error ? e.message : "Falha ao excluir item(ns).";
+      triggerToast(msg, 'error');
     } finally {
       setIsDeleting(false);
     }

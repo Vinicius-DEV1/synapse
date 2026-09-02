@@ -42,9 +42,10 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
       }
       triggerToast(list.length > 1 ? `${list.length} itens movidos com sucesso!` : 'Item movido com sucesso!', 'success');
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to move:", err);
-      triggerToast(err.message || "Erro ao mover item(ns).", 'error');
+      const msg = err instanceof Error ? err.message : "Erro ao mover item(ns).";
+      triggerToast(msg, 'error');
     } finally {
       setIsSubmitting(false);
     }

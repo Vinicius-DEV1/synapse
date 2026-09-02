@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import type { FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 
 interface FolderModalProps {
   onClose: () => void;
@@ -23,14 +24,18 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (!window.api.files) return;
+    if (!window.api.files) {
+      triggerToast('Módulo de arquivos indisponível', 'error');
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       if (existingFolder) {
-        const updatedFolder = { ...existingFolder, name: name.trim(), color };
+        const updatedFolder: FileFolder = { ...existingFolder, name: name.trim(), color };
         await window.api.files.folders.update(updatedFolder);
+        triggerToast('Pasta atualizada com sucesso!', 'success');
         onSave(updatedFolder);
       } else {
         const newFolder = {
@@ -40,11 +45,14 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
           color
         };
         const created = await window.api.files.folders.create(newFolder);
+        triggerToast('Pasta criada com sucesso!', 'success');
         onSave(created);
       }
       onClose();
-    } catch (e) {
-      console.error('Failed to save folder', e);
+    } catch (err: unknown) {
+      console.error('Failed to save folder', err);
+      const msg = err instanceof Error ? err.message : 'Falha ao salvar pasta';
+      triggerToast(msg, 'error');
       setIsSubmitting(false);
     }
   };
