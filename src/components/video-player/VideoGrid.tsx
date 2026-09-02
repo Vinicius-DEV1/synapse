@@ -178,6 +178,8 @@ export default function VideoGrid({
         <VideoInfoModal
           video={activeInfoVideo}
           onClose={() => setActiveInfoVideo(null)}
+          onVideoUpdated={(updated) => setActiveInfoVideo(updated)}
+          onPlayVideo={onPlayVideo}
         />
       )}
     </div>

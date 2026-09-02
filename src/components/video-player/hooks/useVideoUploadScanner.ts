@@ -5,6 +5,11 @@ export interface FfprobeStream {
   codec_name?: string;
   codec_tag_string?: string;
   duration?: string | number;
+  disposition?: {
+    default?: number;
+    forced?: number;
+    [key: string]: number | undefined;
+  };
   tags?: {
     language?: string;
     LANGUAGE?: string;
@@ -51,14 +56,22 @@ export function useVideoUploadScanner() {
             const lang = s.tags?.language || s.tags?.LANGUAGE || 'und';
             const title = s.tags?.title || s.tags?.TITLE || '';
             const codec = (s.codec_name || s.codec_tag_string || 'SUB').toUpperCase();
+            const isForced = s.disposition?.forced === 1 || title.toLowerCase().includes('forced');
+            
+            let label = title || (lang !== 'und' ? lang.toUpperCase() : `Legenda ${i + 1}`);
+            if (isForced && !label.toLowerCase().includes('forced')) {
+              label += ' (Forced)';
+            }
+
             return {
               index: `0:s:${i}`,
               language: lang,
               title: title,
               codec: codec,
-              label: title || (lang !== 'und' ? lang.toUpperCase() : `Legenda ${i + 1}`)
+              label: label
             };
           });
+        console.log('[DEBUG] useVideoUploadScanner - Extracted subtitles:', subs);
         const audios = streams
           .filter(s => s.codec_type === 'audio')
           .map((s, i) => {
@@ -73,6 +86,7 @@ export function useVideoUploadScanner() {
               label: title || (lang !== 'und' ? lang.toUpperCase() : `Áudio ${i + 1}`)
             };
           });
+        console.log('[DEBUG] useVideoUploadScanner - Extracted audios:', audios);
         setEmbeddedSubs(subs);
         setEmbeddedAudios(audios);
         
