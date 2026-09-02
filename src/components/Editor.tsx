@@ -140,7 +140,7 @@ export default function Editor({
   // 6. Drop & Paste Handlers
   const editorRef = useRef<any>(null);
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
-    editor: editorRef.current,
+    editorRef,
     masterKey,
     viewerState: modals.viewerState,
     setViewerState: modals.setViewerState,
@@ -209,6 +209,7 @@ export default function Editor({
         try {
           console.log(`[Caderno:Editor] onCreate loading HTML fallback (length: ${initialContent.length})`);
           currentEditor.commands.setContent(initialContent);
+          hasInitializedContentRef.current = true;
         } catch (err) {
           console.error('[Caderno:Editor] Error setting HTML content in onCreate:', err);
         }
@@ -222,6 +223,10 @@ export default function Editor({
   });
 
   const hasInitializedContentRef = useRef(false);
+
+  useEffect(() => {
+    hasInitializedContentRef.current = false;
+  }, [pageId]);
 
   useEffect(() => {
     editorRef.current = editor;
