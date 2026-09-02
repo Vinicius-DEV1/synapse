@@ -40,11 +40,11 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
   const breadcrumbs = useMemo(() => {
     if (!page) return [];
     return getPagePath(state.pages, page.id) as Page[];
-  }, [page, state.pages]);
+  }, [page?.id, page?.parent_id, state.pages]);
 
   const { prevPage, nextPage } = useMemo(() => {
     return getSiblingPageNavigation(state, page);
-  }, [state, page]);
+  }, [state.pages, page]);
 
   const isNested = Boolean(page?.parent_id);
   const prevTooltip = prevPage
