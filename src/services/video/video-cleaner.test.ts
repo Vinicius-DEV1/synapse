@@ -10,6 +10,7 @@ describe('video-cleaner service', () => {
         deleteLocal: vi.fn().mockResolvedValue(undefined),
       },
       sync: {
+        getTable: vi.fn().mockResolvedValue([]),
         upsertRow: vi.fn().mockResolvedValue(undefined),
       },
     };
