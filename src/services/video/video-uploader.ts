@@ -64,6 +64,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       let processRes;
       try {
         const desktopVideoApi = window.api.video as DesktopVideoApi;
+        if (!desktopVideoApi.processUpload) {
+          throw new Error('Desktop video upload processing is not supported in this environment.');
+        }
         processRes = await desktopVideoApi.processUpload(
           sourcePath,
           file.name,

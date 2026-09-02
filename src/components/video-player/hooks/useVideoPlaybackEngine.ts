@@ -21,7 +21,8 @@ interface UseVideoPlaybackEngineProps {
   isMuted?: boolean;
   setIsMuted?: React.Dispatch<React.SetStateAction<boolean>>;
   volume?: number;
-  setVolume?: React.Dispatch<React.SetStateAction<boolean>>;
+  setVolume?: React.Dispatch<React.SetStateAction<number>>;
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
 }
 
 export function useVideoPlaybackEngine({

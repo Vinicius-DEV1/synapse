@@ -144,7 +144,7 @@ export async function attachSubtitleToVideo(
   if (window.api?.video?.saveLocal && window.api?.video?.getLocalPath) {
     const localFileName = `${video.id}_${trackId}${ext}`;
     await window.api.video.saveLocal(localFileName, subBuffer);
-    localPath = await window.api.video.getLocalPath(localFileName);
+    localPath = (await window.api.video.getLocalPath(localFileName)) || undefined;
   }
 
   // 3. Upload to Google Drive if connected

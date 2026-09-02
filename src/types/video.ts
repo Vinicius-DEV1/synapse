@@ -19,12 +19,14 @@ export interface VideoItem {
   audio_tracks_json?: string;  // Serialized TrackItem[]
   is_local: boolean;
   progress: number;            // Current playback progress in seconds
+  last_watched_at?: string;    // Timestamp when the video was last played
   collection_id?: string;      // Used for grouping playlist videos
   collection_name?: string;    // Name of the playlist folder
   youtube_url?: string;        // Original YouTube URL
   youtube_description?: string;// YouTube video description
   created_at: string;
   updated_at: string;
+  deleted_at?: string;
 }
 
 export interface VideoState {
