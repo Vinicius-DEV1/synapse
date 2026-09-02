@@ -120,8 +120,9 @@ export function usePageActions() {
         broadcastPageSaved(id, crdtState, content, senderInstanceId);
         
         if (embeddedSaves && embeddedSaves.length > 0) {
+          const pageMap = new Map(state.pages.map(p => [p.id, p]));
           for (const embed of embeddedSaves) {
-            const embedPage = state.pages.find(p => p.id === embed.id);
+            const embedPage = pageMap.get(embed.id);
             if (!embedPage || !embedPage.deleted_at) {
               await window.api.updatePage({ id: embed.id, content: embed.content });
               getEditorBackupMap().set(embed.id, { html: embed.content, crdt: '' });
