@@ -1,4 +1,5 @@
 import type { AppState, Page } from '../types';
+import { filterActivePages } from './page-filter';
 
 /**
  * Compares two pages predictably:
@@ -32,14 +33,16 @@ export function comparePages(a: Page, b: Page): number {
 export function getSiblingPages(state: AppState, page: Page | null): Page[] {
   if (!page) return [];
 
+  const activePages = filterActivePages(state.pages);
+
   if (page.parent_id !== null) {
-    return state.pages
+    return activePages
       .filter((p) => p.parent_id === page.parent_id)
       .sort(comparePages);
   }
 
   if (page.is_pinned) {
-    return state.pages
+    return activePages
       .filter((p) => p.is_pinned)
       .sort((a, b) => {
         const pinA = a.pinned_order ?? 0;
@@ -49,7 +52,7 @@ export function getSiblingPages(state: AppState, page: Page | null): Page[] {
       });
   }
 
-  return state.pages
+  return activePages
     .filter((p) => p.parent_id === null && !p.is_pinned)
     .sort(comparePages);
 }
@@ -82,9 +85,10 @@ export function getSiblingPageNavigation(
  */
 export function getFlatPageOrder(state: AppState): Page[] {
   const flatList: Page[] = [];
+  const activePages = filterActivePages(state.pages);
 
   // 1. Pinned pages
-  const pinnedPages = state.pages
+  const pinnedPages = activePages
     .filter((p) => p.is_pinned)
     .sort((a, b) => {
       const pinA = a.pinned_order ?? 0;
@@ -96,13 +100,13 @@ export function getFlatPageOrder(state: AppState): Page[] {
   flatList.push(...pinnedPages);
 
   // 2. Root pages
-  const rootPages = state.pages
+  const rootPages = activePages
     .filter((p) => p.parent_id === null && !p.is_pinned)
     .sort(comparePages);
 
   // Recursive function to add children
   const addChildren = (parentId: string) => {
-    const children = state.pages
+    const children = activePages
       .filter((p) => p.parent_id === parentId && !p.is_pinned)
       .sort(comparePages);
 
