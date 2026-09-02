@@ -36,4 +36,34 @@ describe('vault-crypto service', () => {
     const result = await decryptVaultField(plaintext, keyHex);
     expect(result).toBe(plaintext);
   });
+
+  it('correctly encrypts and decrypts "0" without bypassing it as falsy', async () => {
+    const keyHex = await getVaultKeyHash('masterKey123');
+    const secret = '0';
+
+    const encrypted = await encryptVaultField(secret, keyHex);
+    expect(encrypted).not.toBe('0');
+    expect(encrypted.split(':')).toHaveLength(3);
+
+    const decrypted = await decryptVaultField(encrypted, keyHex);
+    expect(decrypted).toBe('0');
+  });
+
+  it('safely handles URLs with port numbers without attempting corrupt crypto operations', async () => {
+    const keyHex = await getVaultKeyHash('masterKey123');
+    const urlWithPort = 'https://localhost:8080/dashboard';
+
+    const result = await decryptVaultField(urlWithPort, keyHex);
+    expect(result).toBe(urlWithPort);
+  });
+
+  it('leaves empty strings untouched', async () => {
+    const keyHex = await getVaultKeyHash('masterKey123');
+    const encrypted = await encryptVaultField('', keyHex);
+    expect(encrypted).toBe('');
+
+    const decrypted = await decryptVaultField('', keyHex);
+    expect(decrypted).toBe('');
+  });
 });
+
