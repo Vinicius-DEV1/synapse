@@ -1,6 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { VaultGroup, VaultItem } from '../../../types';
 import { triggerToast } from '../../ui/ToastContext';
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  return fallback;
+}
 
 /**
  * State management and operations hook for Password Vault.
@@ -16,21 +22,43 @@ export function useVault() {
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados de menu de contexto
+  // Context menu state for groups
   const [groupContextMenu, setGroupContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
+  // Request counter to guard against race conditions on rapid navigation
+  const requestIdRef = useRef(0);
+
   const loadData = useCallback(async () => {
+    const currentRequestId = ++requestIdRef.current;
     setIsLoading(true);
     try {
-      const g = (await window.api?.vault?.getGroups()) || [];
-      const i = (await window.api?.vault?.getItems(selectedGroupId || undefined)) || [];
-      setGroups(g);
-      setItems(i);
-    } catch (e: any) {
-      console.error('Erro ao carregar dados do cofre:', e);
-      triggerToast(e.message || 'Erro ao carregar dados do cofre', 'error');
+      const api = window.api?.vault;
+      if (!api) {
+        console.warn('[Vault] Vault API is not available');
+        return;
+      }
+
+      // Fetch groups and items concurrently
+      const [g, i] = await Promise.all([
+        api.getGroups(),
+        api.getItems(selectedGroupId || undefined),
+      ]);
+
+      // Only update state if this is still the freshest in-flight request
+      if (requestIdRef.current === currentRequestId) {
+        setGroups(g || []);
+        setItems(i || []);
+      }
+    } catch (error: unknown) {
+      if (requestIdRef.current === currentRequestId) {
+        const message = getErrorMessage(error, 'Erro ao carregar dados do cofre');
+        console.error('[Vault] Error loading vault data:', error);
+        triggerToast(message, 'error');
+      }
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   }, [selectedGroupId]);
 
@@ -38,13 +66,28 @@ export function useVault() {
     loadData();
   }, [loadData]);
 
-  const handleCreateGroup = useCallback(async () => {
-    const name = prompt('Nome do Grupo:');
-    if (!name || !name.trim()) return;
+  const refreshSelectedItem = useCallback(async (id: string): Promise<VaultItem | null> => {
     try {
-      const newGroup = {
+      const api = window.api?.vault;
+      if (!api) return null;
+      const updated = await api.getItem(id);
+      if (updated) {
+        setSelectedItem(updated);
+      }
+      return updated;
+    } catch (error: unknown) {
+      console.error('[Vault] Error refreshing selected item:', error);
+      return null;
+    }
+  }, []);
+
+  const createGroup = useCallback(async (name: string): Promise<void> => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      const newGroup: VaultGroup = {
         id: crypto.randomUUID(),
-        name: name.trim(),
+        name: trimmed,
         icon: 'Folder',
         color: '#3b82f6',
         position: groups.length,
@@ -54,39 +97,62 @@ export function useVault() {
       };
       await window.api?.vault?.upsertGroup(newGroup);
       triggerToast('Grupo criado com sucesso!', 'success');
-      loadData();
-    } catch (e: any) {
-      console.error('Erro ao criar grupo:', e);
-      triggerToast(e.message || 'Erro ao criar grupo', 'error');
+      await loadData();
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Erro ao criar grupo');
+      console.error('[Vault] Error creating group:', error);
+      triggerToast(message, 'error');
     }
   }, [groups.length, loadData]);
 
-  const handleEditGroup = useCallback(async (group: VaultGroup) => {
-    const newName = prompt('Novo nome para o grupo:', group.name);
-    if (!newName || newName.trim() === group.name) return;
+  const handleCreateGroup = useCallback(async () => {
+    const name = window.prompt('Nome do Grupo:');
+    if (name) {
+      await createGroup(name);
+    }
+  }, [createGroup]);
+
+  const editGroup = useCallback(async (group: VaultGroup, newName: string): Promise<void> => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === group.name) return;
     try {
-      await window.api?.vault?.upsertGroup({ ...group, name: newName.trim() });
+      await window.api?.vault?.upsertGroup({ ...group, name: trimmed });
       triggerToast('Grupo renomeado com sucesso!', 'success');
-      loadData();
-    } catch (e: any) {
-      console.error('Erro ao editar grupo:', e);
-      triggerToast(e.message || 'Erro ao editar grupo', 'error');
+      await loadData();
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Erro ao editar grupo');
+      console.error('[Vault] Error editing group:', error);
+      triggerToast(message, 'error');
     }
   }, [loadData]);
 
-  const handleDeleteGroup = useCallback(async (group: VaultGroup) => {
-    if (confirm(`Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`)) {
-      try {
-        await window.api?.vault?.deleteGroup(group.id);
-        if (selectedGroupId === group.id) setSelectedGroupId(null);
-        triggerToast('Grupo excluído com sucesso.', 'info');
-        loadData();
-      } catch (e: any) {
-        console.error('Erro ao excluir grupo:', e);
-        triggerToast(e.message || 'Erro ao excluir grupo', 'error');
+  const handleEditGroup = useCallback(async (group: VaultGroup) => {
+    const newName = window.prompt('Novo nome para o grupo:', group.name);
+    if (newName) {
+      await editGroup(group, newName);
+    }
+  }, [editGroup]);
+
+  const deleteGroup = useCallback(async (groupId: string): Promise<void> => {
+    try {
+      await window.api?.vault?.deleteGroup(groupId);
+      if (selectedGroupId === groupId) {
+        setSelectedGroupId(null);
       }
+      triggerToast('Grupo excluído com sucesso.', 'info');
+      await loadData();
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Erro ao excluir grupo');
+      console.error('[Vault] Error deleting group:', error);
+      triggerToast(message, 'error');
     }
   }, [selectedGroupId, loadData]);
+
+  const handleDeleteGroup = useCallback(async (group: VaultGroup) => {
+    if (window.confirm(`Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`)) {
+      await deleteGroup(group.id);
+    }
+  }, [deleteGroup]);
 
   const handleSelectItem = useCallback((item: VaultItem) => {
     setViewMode('list');
@@ -95,15 +161,16 @@ export function useVault() {
   }, []);
 
   const handleDeleteItem = useCallback(async (id: string) => {
-    if (confirm('Tem certeza que deseja apagar este item?')) {
+    if (window.confirm('Tem certeza que deseja apagar este item?')) {
       try {
         await window.api?.vault?.deleteItem(id);
         setSelectedItem(null);
         triggerToast('Item excluído do cofre.', 'info');
-        loadData();
-      } catch (e: any) {
-        console.error('Erro ao excluir item:', e);
-        triggerToast(e.message || 'Erro ao excluir item do cofre', 'error');
+        await loadData();
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, 'Erro ao excluir item do cofre');
+        console.error('[Vault] Error deleting item:', error);
+        triggerToast(message, 'error');
       }
     }
   }, [loadData]);
@@ -135,6 +202,10 @@ export function useVault() {
     groupContextMenu,
     setGroupContextMenu,
     loadData,
+    refreshSelectedItem,
+    createGroup,
+    editGroup,
+    deleteGroup,
     handleCreateGroup,
     handleEditGroup,
     handleDeleteGroup,
