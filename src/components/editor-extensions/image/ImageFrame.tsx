@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { GripVertical, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { GripVertical, ArrowUp, ArrowDown, Plus, AlertCircle } from 'lucide-react';
 
 import { useImageResize } from './useImageResize';
 import type { ImageSize } from './useImageResize';
@@ -64,6 +64,11 @@ export default function ImageFrame({
 
   const [hovered, setHovered] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
 
   const align = normalizeAlign(node.attrs.align);
   const width: number | null = node.attrs.width ? Number(node.attrs.width) : null;
@@ -213,25 +218,52 @@ export default function ImageFrame({
       onMouseLeave={() => setHovered(false)}
     >
       <div ref={innerRef} className="relative inline-block max-w-full leading-[0]">
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt || ''}
-          title={title || undefined}
-          style={imageStyle}
-          draggable={false}
-          loading="lazy"
-          decoding="async"
-          className={`image-node__img rounded-md border transition-shadow ${
-            selected ? 'border-brand-500/60 ring-2 ring-brand-500' : 'border-white/10'
-          }`}
-          onMouseDown={selectSelf}
-          onDoubleClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onOpenViewer();
-          }}
-        />
+        {hasError ? (
+          <div
+            className="flex flex-col items-center justify-center p-5 border border-dashed border-red-500/40 rounded-lg bg-red-500/5 text-center min-w-[280px] max-w-full my-1 leading-normal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 mb-2">
+              <AlertCircle size={20} />
+            </div>
+            <span className="text-xs font-semibold text-white mb-1">
+              Imagem inacessível (403 Forbidden)
+            </span>
+            <p className="text-[11px] text-dark-subtext max-w-sm mb-3">
+              {src?.includes('claude.ai') || src?.includes('chatgpt') || src?.includes('/api/')
+                ? 'Esta imagem está em um servidor protegido que exige autenticação. No navegador, clique com o botão direito na imagem e escolha "Copiar imagem" (em vez de copiar link ou texto).'
+                : 'O endereço da imagem está quebrado, expirado ou inacessível.'}
+            </p>
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              className="px-3 py-1 bg-white/5 hover:bg-red-500/20 text-dark-subtext hover:text-red-300 rounded text-xs transition-colors"
+            >
+              Remover imagem
+            </button>
+          </div>
+        ) : (
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt || ''}
+            title={title || undefined}
+            style={imageStyle}
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            className={`image-node__img rounded-md border transition-shadow ${
+              selected ? 'border-brand-500/60 ring-2 ring-brand-500' : 'border-white/10'
+            }`}
+            onError={() => setHasError(true)}
+            onMouseDown={selectSelf}
+            onDoubleClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onOpenViewer();
+            }}
+          />
+        )}
 
         {/* Alça e controles de movimentação discretos */}
         {showChrome && (
