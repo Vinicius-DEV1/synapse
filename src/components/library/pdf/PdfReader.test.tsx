@@ -13,7 +13,12 @@ vi.mock('pdfjs-dist/build/pdf.worker.mjs?url', () => ({
 
 vi.mock('./hooks/usePdfDocument', () => ({
   usePdfDocument: vi.fn(() => ({
-    pdfDoc: { numPages: 100 },
+    pdfDoc: {
+      numPages: 100,
+      getPage: vi.fn().mockResolvedValue({
+        getViewport: () => ({ width: 600, height: 800 }),
+      }),
+    },
     totalPages: 100,
     pdfError: null,
     loading: false,
