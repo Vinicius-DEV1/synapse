@@ -34,8 +34,8 @@ export default {
           '100%': { opacity: '1' },
         },
         'scale-in': {
-          '0%': { opacity: '0', transform: 'translate(-50%, -100%) scale(0.95)' },
-          '100%': { opacity: '1', transform: 'translate(-50%, -100%) scale(1)' },
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
         },
         'shake': {
           '0%, 100%': { transform: 'translateX(0)' },

@@ -1,3 +1,0 @@
-src/components/editor-extensions/group-layout/groupSpecs.test.ts(2,26): error TS6133: 'PMNode' is declared but its value is never read.
-src/components/editor-extensions/group-layout/groupSpecs.test.ts(2,34): error TS6133: 'Fragment' is declared but its value is never read.
-src/components/editor-extensions/group-layout/groupSpecs.test.ts(3,46): error TS6133: 'getSpecForGroup' is declared but its value is never read.
