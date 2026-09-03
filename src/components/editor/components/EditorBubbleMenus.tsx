@@ -42,7 +42,7 @@ export function EditorBubbleMenus({ editor }: EditorBubbleMenusProps) {
           }
           return true;
         }}
-        className="flex shadow-elevated rounded-xl overflow-hidden border border-white/5 bg-dark-bg/80 backdrop-blur-xl"
+        className="flex shadow-elevated rounded-xl border border-white/5 bg-dark-bg/80 backdrop-blur-xl overflow-visible"
       >
         <FloatingToolbar editor={editor} />
       </BubbleMenu>
@@ -55,7 +55,7 @@ export function EditorBubbleMenus({ editor }: EditorBubbleMenusProps) {
         }}
         pluginKey="tableBubbleMenu"
         shouldShow={({ editor: activeEditor }) => activeEditor.isActive('table')}
-        className="z-[100] relative flex shadow-2xl rounded-xl overflow-hidden border border-white/10 bg-dark-card/95 backdrop-blur-xl"
+        className="z-[100] relative flex overflow-visible"
       >
         <TableToolbar editor={editor} />
       </BubbleMenu>
