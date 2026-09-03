@@ -49,12 +49,15 @@ describe('QuestionBlockNodeView Component', () => {
   });
 
   it('renders battery title input, questions and switches between practice and edit modes', () => {
-    const { getByDisplayValue, getByText } = render(<QuestionBlockNodeView {...mockProps} />);
+    const { getByDisplayValue, getByText, getByTitle } = render(<QuestionBlockNodeView {...mockProps} />);
 
     expect(getByDisplayValue('Bateria de Exercícios de Redes')).toBeDefined();
     expect(getByText('Qual a porta padrão do HTTPS?')).toBeDefined();
 
-    // Toggle mode to edit
+    // Open options menu and toggle mode to edit
+    const moreOptionsBtn = getByTitle('Mais opções da bateria');
+    fireEvent.click(moreOptionsBtn);
+
     const editModeBtn = getByText('Editar');
     fireEvent.click(editModeBtn);
 

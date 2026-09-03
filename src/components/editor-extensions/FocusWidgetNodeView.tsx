@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
 import { Play, Pause, XSquare, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
+import { Portal } from '../ui/Portal';
 
 export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
   const { sessionId, duration, tag,  status } = node.attrs;
@@ -27,6 +29,19 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
 
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const { refs, floatingStyles } = useFloating({
+    placement: 'top',
+    middleware: [offset(6), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      refs.setReference(containerRef.current);
+    }
+  }, [refs]);
 
   // Auto-complete status if global session is no longer matching our ID
   // and we are still "running"
@@ -59,12 +74,27 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        (!containerRef.current || !containerRef.current.contains(target))
+      ) {
         setShowPopover(false);
       }
     };
-    if (showPopover) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPopover(false);
+    };
+
+    if (showPopover) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [showPopover]);
 
   const togglePopover = (e: React.MouseEvent) => {
@@ -134,48 +164,56 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
       </span>
 
       {showPopover && isMySessionRunning && (
-        <div 
-          className="absolute z-[9999] bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-bottom-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => handleAddQuickTime(1)}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
-            title="+1 minuto"
-          >
-            <Plus size={14} /> 1m
-          </button>
-          
-          <button
-            onClick={() => handleAddQuickTime(5)}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
-            title="+5 minutos"
-          >
-            <Plus size={14} /> 5m
-          </button>
-          
-          <div className="w-px h-4 bg-white/10 mx-1" />
-          
-          <button
-            onClick={() => setIsPaused(!isPaused)}
-            className="p-1.5 rounded-md text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"
-            title={isPaused ? "Retomar" : "Pausar"}
-          >
-            {isPaused ? <Play size={16} /> : <Pause size={16} />}
-          </button>
-          
-          <button
-            onClick={() => {
-              handleTimerCancel();
-              setShowPopover(false);
+        <Portal>
+          <div 
+            ref={(node) => {
+              refs.setFloating(node);
+              (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
             }}
-            className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
-            title="Cancelar Foco"
+            style={{ ...floatingStyles, zIndex: 9999 }}
+            className="fixed bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
           >
-            <XSquare size={16} />
-          </button>
-        </div>
+            <button
+              onClick={() => handleAddQuickTime(1)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              title="+1 minuto"
+            >
+              <Plus size={14} /> 1m
+            </button>
+            
+            <button
+              onClick={() => handleAddQuickTime(5)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-bold text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              title="+5 minutos"
+            >
+              <Plus size={14} /> 5m
+            </button>
+            
+            <div className="w-px h-4 bg-white/10 mx-1" />
+            
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="p-1.5 rounded-md text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"
+              title={isPaused ? "Retomar" : "Pausar"}
+            >
+              {isPaused ? <Play size={16} /> : <Pause size={16} />}
+            </button>
+            
+            <button
+              onClick={() => {
+                handleTimerCancel();
+                setShowPopover(false);
+              }}
+              className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+              title="Cancelar Foco"
+            >
+              <XSquare size={16} />
+            </button>
+          </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );
 }
+

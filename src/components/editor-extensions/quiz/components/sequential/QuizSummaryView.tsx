@@ -21,35 +21,35 @@ export function QuizSummaryView({
   onSwitchToListLayout,
 }: QuizSummaryViewProps) {
   return (
-    <div className="p-6 md:p-8 bg-dark-bg/60 border border-white/10 rounded-2xl space-y-6 animate-scale-in">
+    <div className="p-6 md:p-8 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-6 animate-scale-in">
       <div className="text-center space-y-3">
-        <div className="w-16 h-16 rounded-3xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mx-auto text-brand-400 shadow-xl shadow-brand-500/10">
-          <Trophy size={32} />
+        <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-amber-300/90 shadow-xs">
+          <Trophy size={28} />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-white">Bateria Concluída!</h3>
+          <h3 className="text-lg md:text-xl font-semibold text-white">Bateria Concluída!</h3>
           <p className="text-xs text-dark-subtext mt-1">
             Confira seu desempenho geral neste bloco de exercícios:
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-4 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 my-2">
+        <div className="inline-flex items-center gap-6 px-6 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] my-2">
           <div className="text-left">
-            <span className="text-[10px] uppercase font-bold text-dark-subtext block">Acertos</span>
+            <span className="text-[10px] uppercase font-medium text-dark-subtext block">Acertos</span>
             <span className="text-2xl font-bold text-white font-mono">
-              {correctCount} <span className="text-sm text-dark-subtext">/ {total}</span>
+              {correctCount} <span className="text-sm text-dark-subtext font-normal">/ {total}</span>
             </span>
           </div>
-          <div className="h-8 w-px bg-white/10" />
+          <div className="h-8 w-px bg-white/[0.06]" />
           <div className="text-left">
-            <span className="text-[10px] uppercase font-bold text-dark-subtext block">Aproveitamento</span>
+            <span className="text-[10px] uppercase font-medium text-dark-subtext block">Aproveitamento</span>
             <span
               className={`text-2xl font-bold font-mono ${
                 hitPercentage >= 70
-                  ? 'text-green-400'
+                  ? 'text-emerald-400'
                   : hitPercentage >= 50
                     ? 'text-amber-400'
-                    : 'text-red-400'
+                    : 'text-rose-400'
               }`}
             >
               {hitPercentage}%
@@ -59,8 +59,8 @@ export function QuizSummaryView({
       </div>
 
       {/* Resumo Rápido de Questões */}
-      <div className="space-y-2 max-w-xl mx-auto pt-2 border-t border-white/5">
-        <span className="text-xs font-bold text-dark-subtext uppercase tracking-wider block">
+      <div className="space-y-2 max-w-xl mx-auto pt-3 border-t border-white/[0.05]">
+        <span className="text-xs font-medium text-dark-subtext uppercase tracking-wider block">
           Questões Respondidas:
         </span>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -77,16 +77,16 @@ export function QuizSummaryView({
                 onClick={() => onSelectQuestion(idx)}
                 className={`p-2.5 rounded-xl border text-left text-xs flex items-center justify-between gap-2 transition-all hover:scale-[1.01] ${
                   isCorrect
-                    ? 'bg-green-500/10 border-green-500/30 text-green-200'
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
                     : isPartial
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                      : 'bg-red-500/10 border-red-500/30 text-red-200'
+                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-200'
+                      : 'bg-rose-500/10 border-rose-500/25 text-rose-200'
                 }`}
               >
-                <span className="font-semibold truncate">
+                <span className="font-medium truncate">
                   #{idx + 1}. {q.question || 'Sem enunciado'}
                 </span>
-                <span className="shrink-0 text-xs">
+                <span className="shrink-0 text-xs font-bold">
                   {isCorrect ? '✓' : isPartial ? '≈' : '✕'}
                 </span>
               </button>
@@ -96,28 +96,28 @@ export function QuizSummaryView({
       </div>
 
       {/* Ações Finais */}
-      <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t border-white/5">
+      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-4 border-t border-white/[0.05]">
         <button
           onClick={onResetAll}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 text-brand-200 hover:text-white rounded-xl text-xs font-medium shadow-xs transition-all"
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
           <span>Refazer Bateria</span>
         </button>
 
         {onSwitchToListLayout && (
           <button
             onClick={onSwitchToListLayout}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-brand-200 border border-white/10 rounded-xl text-xs font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] hover:bg-white/[0.08] text-white/80 hover:text-white border border-white/[0.06] rounded-xl text-xs font-medium transition-colors"
           >
-            <List size={14} />
+            <List size={13} />
             <span>Ver em Lista Completa</span>
           </button>
         )}
 
         <button
           onClick={() => onSelectQuestion(0)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] hover:bg-white/[0.08] text-dark-subtext hover:text-white border border-white/[0.06] rounded-xl text-xs font-medium transition-colors"
         >
           <span>Revisar desde a Questão 1</span>
         </button>

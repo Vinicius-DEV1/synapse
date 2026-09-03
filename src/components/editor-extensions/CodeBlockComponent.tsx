@@ -1,8 +1,10 @@
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
+import { Portal } from '../ui/Portal';
 
 export default function CodeBlockComponent(props: any) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -10,18 +12,44 @@ export default function CodeBlockComponent(props: any) {
   const [copied, setCopied] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
+  const floatingConfirmRef = useRef<HTMLDivElement>(null);
+
+  const { refs, floatingStyles } = useFloating({
+    placement: 'bottom-end',
+    middleware: [offset(4), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    if (confirmRef.current) {
+      refs.setReference(confirmRef.current);
+    }
+  }, [refs]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (confirmRef.current && !confirmRef.current.contains(e.target as globalThis.Node)) {
+      const target = e.target as globalThis.Node;
+      if (
+        floatingConfirmRef.current &&
+        !floatingConfirmRef.current.contains(target) &&
+        (!confirmRef.current || !confirmRef.current.contains(target))
+      ) {
         setShowConfirm(false);
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowConfirm(false);
+    };
+
     if (showConfirm) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [showConfirm]);
 
   const handleDragMouseDown = () => {
@@ -183,23 +211,36 @@ export default function CodeBlockComponent(props: any) {
               </button>
 
               {showConfirm && (
-                <div className="absolute top-full right-0 mt-1 bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px]">
-                  <span className="text-xs text-white">Excluir código?</span>
-                  <div className="flex gap-1 justify-end">
-                    <button
-                      onClick={() => setShowConfirm(false)}
-                      className="px-2 py-1 text-xs text-dark-subtext hover:text-white rounded hover:bg-white/5"
-                    >
-                      Não
-                    </button>
-                    <button
-                      onClick={() => deleteNode()}
-                      className="px-2 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded"
-                    >
-                      Sim
-                    </button>
+                <Portal>
+                  <div
+                    ref={(node) => {
+                      refs.setFloating(node);
+                      (floatingConfirmRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+                    }}
+                    style={{ ...floatingStyles, zIndex: 9999 }}
+                    className="fixed bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px] animate-in fade-in zoom-in-95"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-xs text-white">Excluir código?</span>
+                    <div className="flex gap-1 justify-end">
+                      <button
+                        onClick={() => setShowConfirm(false)}
+                        className="px-2 py-1 text-xs text-dark-subtext hover:text-white rounded hover:bg-white/5"
+                      >
+                        Não
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowConfirm(false);
+                          deleteNode();
+                        }}
+                        className="px-2 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded"
+                      >
+                        Sim
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </Portal>
               )}
             </div>
           </div>

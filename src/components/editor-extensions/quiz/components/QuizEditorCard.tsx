@@ -34,21 +34,21 @@ export const QuizEditorCard = memo(function QuizEditorCard({
   const isOpen = q.type === 'open';
 
   return (
-    <div className="p-5 bg-black/40 border border-purple-500/20 rounded-2xl space-y-4 relative group/q hover:border-purple-500/40">
+    <div className="p-4 md:p-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-4 relative group/q hover:border-white/[0.12] transition-colors">
       {/* Header da Questão */}
-      <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-3">
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-3">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold font-mono">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/80 text-xs font-medium font-mono">
             {qIndex + 1}
           </span>
 
           {/* Seletor de Tipo */}
-          <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/5 text-xs">
+          <div className="flex items-center gap-1 bg-white/[0.03] p-0.5 rounded-xl border border-white/[0.05] text-xs">
             <button
               onClick={() => onToggleQuestionType(q, 'multiple_choice')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
                 !isOpen
-                  ? 'bg-purple-600 text-white font-semibold'
+                  ? 'bg-white/10 text-white font-medium shadow-xs'
                   : 'text-dark-subtext hover:text-white'
               }`}
             >
@@ -59,7 +59,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
               onClick={() => onToggleQuestionType(q, 'open')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
                 isOpen
-                  ? 'bg-purple-600 text-white font-semibold'
+                  ? 'bg-white/10 text-white font-medium shadow-xs'
                   : 'text-dark-subtext hover:text-white'
               }`}
             >
@@ -74,7 +74,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
           <button
             onClick={() => onMoveQuestion(qIndex, 'up')}
             disabled={qIndex === 0}
-            className="p-1 text-dark-subtext hover:text-white disabled:opacity-30 rounded hover:bg-white/5 transition-colors"
+            className="p-1 text-dark-subtext hover:text-white disabled:opacity-20 rounded-md hover:bg-white/5 transition-colors"
             title="Mover para cima"
           >
             <ChevronUp size={15} />
@@ -82,14 +82,14 @@ export const QuizEditorCard = memo(function QuizEditorCard({
           <button
             onClick={() => onMoveQuestion(qIndex, 'down')}
             disabled={qIndex === totalQuestions - 1}
-            className="p-1 text-dark-subtext hover:text-white disabled:opacity-30 rounded hover:bg-white/5 transition-colors"
+            className="p-1 text-dark-subtext hover:text-white disabled:opacity-20 rounded-md hover:bg-white/5 transition-colors"
             title="Mover para baixo"
           >
             <ChevronDown size={15} />
           </button>
           <button
             onClick={() => onDeleteQuestion(q.id, qIndex)}
-            className="p-1 text-dark-subtext hover:text-red-400 rounded hover:bg-red-500/10 transition-colors ml-1"
+            className="p-1 text-dark-subtext hover:text-rose-400 rounded-md hover:bg-rose-500/10 transition-colors ml-1"
             title="Excluir questão"
           >
             <Trash2 size={15} />
@@ -99,14 +99,14 @@ export const QuizEditorCard = memo(function QuizEditorCard({
 
       {/* Enunciado */}
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider block">
+        <label className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider block">
           Enunciado da Questão:
         </label>
         <textarea
           value={q.question}
           onChange={(e) => onUpdateQuestion(q.id, { question: e.target.value })}
           placeholder="Digite a pergunta ou problema aqui..."
-          className="w-full bg-black/30 border border-purple-500/20 focus:border-purple-500/50 rounded-xl p-3 text-xs text-purple-100 placeholder-white/20 outline-none resize-y min-h-[70px] leading-relaxed transition-colors"
+          className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-y min-h-[70px] leading-relaxed transition-colors"
           rows={3}
         />
       </div>
@@ -114,7 +114,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
       {/* Alternativas (Múltipla Escolha) */}
       {!isOpen && (
         <div className="space-y-2.5">
-          <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider block">
+          <label className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider block">
             Alternativas (selecione a correta):
           </label>
           <div className="space-y-2">
@@ -126,10 +126,10 @@ export const QuizEditorCard = memo(function QuizEditorCard({
                 <div key={optIndex} className="flex items-start gap-2">
                   <button
                     onClick={() => onUpdateQuestion(q.id, { correctIndex: optIndex }, true)}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-bold transition-all shrink-0 mt-1 ${
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs font-medium transition-all shrink-0 mt-1 ${
                       isCorrect
-                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
-                        : 'bg-black/50 text-dark-subtext hover:text-white border border-white/10'
+                        ? 'bg-emerald-500 text-white shadow-xs'
+                        : 'bg-black/30 text-dark-subtext hover:text-white border border-white/10'
                     }`}
                     title={isCorrect ? 'Alternativa Correta' : 'Marcar como Correta'}
                   >
@@ -144,10 +144,10 @@ export const QuizEditorCard = memo(function QuizEditorCard({
                     }}
                     placeholder={`Texto da alternativa ${letter}...`}
                     rows={1}
-                    className={`flex-1 bg-black/30 border rounded-xl px-3 py-2 text-xs text-purple-100 placeholder-white/20 outline-none resize-y min-h-[36px] transition-colors leading-relaxed ${
+                    className={`flex-1 bg-black/20 border rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none resize-y min-h-[36px] transition-colors leading-relaxed ${
                       isCorrect
-                        ? 'border-green-500/40 focus:border-green-500'
-                        : 'border-white/10 focus:border-purple-500/50'
+                        ? 'border-emerald-500/40 focus:border-emerald-500'
+                        : 'border-white/10 focus:border-white/20'
                     }`}
                   />
                   {(q.options || []).length > 2 && (
@@ -166,7 +166,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
                           true
                         );
                       }}
-                      className="p-1.5 text-dark-subtext hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors shrink-0 mt-1"
+                      className="p-1.5 text-dark-subtext hover:text-rose-400 rounded-lg hover:bg-white/5 transition-colors shrink-0 mt-1"
                       title="Remover alternativa"
                     >
                       <Trash2 size={13} />
@@ -182,7 +182,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
               onClick={() => {
                 onUpdateQuestion(q.id, { options: [...(q.options || []), ''] }, true);
               }}
-              className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 pt-1"
+              className="text-[11px] font-medium text-brand-300 hover:text-brand-200 flex items-center gap-1 pt-1"
             >
               <Plus size={13} />
               <span>Adicionar Alternativa</span>
@@ -194,31 +194,31 @@ export const QuizEditorCard = memo(function QuizEditorCard({
       {/* Resposta Esperada (Questão Aberta) */}
       {isOpen && (
         <div className="space-y-1.5">
-          <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider block">
+          <label className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider block">
             Resposta Esperada / Palavras-chave:
           </label>
           <textarea
             value={q.expectedAnswer}
             onChange={(e) => onUpdateQuestion(q.id, { expectedAnswer: e.target.value })}
             placeholder="Critérios essenciais ou resposta modelo para a avaliação da IA..."
-            className="w-full bg-black/30 border border-purple-500/20 focus:border-purple-500/50 rounded-xl p-3 text-xs text-purple-100 placeholder-white/20 outline-none resize-y min-h-[60px] leading-relaxed transition-colors"
+            className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-y min-h-[60px] leading-relaxed transition-colors"
             rows={2}
           />
         </div>
       )}
 
       {/* Tags e Explicação */}
-      <div className="space-y-3 pt-2 border-t border-white/5">
+      <div className="space-y-3 pt-2 border-t border-white/[0.05]">
         {/* Tags */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1">
-            <Tag size={12} />
+          <span className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider flex items-center gap-1">
+            <Tag size={12} className="opacity-70" />
             <span>Tags:</span>
           </span>
           {(q.tags || []).map((tag, tIdx) => (
             <span
               key={tIdx}
-              className="text-[11px] px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1"
+              className="text-[11px] px-2 py-0.5 rounded-lg bg-white/[0.03] text-dark-subtext border border-white/[0.06] flex items-center gap-1"
             >
               #{tag}
               <button
@@ -226,7 +226,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
                   const newTags = (q.tags || []).filter((_, i) => i !== tIdx);
                   onUpdateQuestion(q.id, { tags: newTags }, true);
                 }}
-                className="hover:text-red-400"
+                className="hover:text-rose-400"
               >
                 ×
               </button>
@@ -256,7 +256,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
               }
               e.target.value = '';
             }}
-            className="bg-black/30 border border-purple-500/20 focus:border-purple-500/50 rounded-lg px-2 py-0.5 text-[11px] text-purple-100 placeholder-white/20 outline-none w-20 transition-colors"
+            className="bg-black/20 border border-white/[0.08] focus:border-white/20 rounded-lg px-2 py-0.5 text-[11px] text-white placeholder-white/20 outline-none w-20 transition-colors"
           />
 
           <button
@@ -264,7 +264,7 @@ export const QuizEditorCard = memo(function QuizEditorCard({
               const autoTags = generateAutoTags(q.question, q.options, q.explanation);
               onUpdateQuestion(q.id, { tags: autoTags }, true);
             }}
-            className="text-[11px] px-2 py-0.5 rounded-lg bg-purple-950/40 hover:bg-purple-950/70 text-purple-300 border border-purple-500/30 flex items-center gap-1 transition-colors"
+            className="text-[11px] px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-brand-300 border border-brand-500/20 flex items-center gap-1 transition-colors"
             title="Gerar tags automáticas baseadas no conteúdo"
           >
             <Sparkles size={11} />
@@ -274,14 +274,14 @@ export const QuizEditorCard = memo(function QuizEditorCard({
 
         {/* Explicação */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider block">
+          <label className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider block">
             Explicação do Gabarito (Markdown suportado):
           </label>
           <textarea
             value={q.explanation}
             onChange={(e) => onUpdateQuestion(q.id, { explanation: e.target.value })}
             placeholder="Explicação detalhada para enriquecer o estudo..."
-            className="w-full bg-black/30 border border-purple-500/20 focus:border-purple-500/50 rounded-xl p-3 text-xs text-purple-100 placeholder-white/20 outline-none resize-y min-h-[60px] leading-relaxed transition-colors"
+            className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-y min-h-[60px] leading-relaxed transition-colors"
             rows={2}
           />
         </div>

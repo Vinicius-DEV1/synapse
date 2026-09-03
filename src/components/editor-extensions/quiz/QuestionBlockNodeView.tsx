@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { ChevronUp, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
@@ -97,6 +97,35 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
 
   const blockContainerRef = useRef<HTMLDivElement>(null);
 
+  const handleScrollToTop = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const container = blockContainerRef.current;
+    if (!container) return;
+
+    // Find the scrollable page container (#page-view-scroll or closest overflow-y-auto)
+    const scrollParent =
+      container.closest<HTMLElement>('#page-view-scroll, .overflow-y-auto') ||
+      document.getElementById('page-view-scroll');
+
+    if (scrollParent) {
+      const targetRect = container.getBoundingClientRect();
+      const parentRect = scrollParent.getBoundingClientRect();
+      const relativeOffset = targetRect.top - parentRect.top;
+      // Scroll strictly within the page container, preserving TabBar and window scroll
+      const targetScrollTop = scrollParent.scrollTop + relativeOffset - 20;
+
+      scrollParent.scrollTo({
+        top: Math.max(0, targetScrollTop),
+        behavior: 'smooth',
+      });
+    } else {
+      // Fallback without forcing viewport top alignment
+      container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, []);
+
   const handleDragMouseDown = () => {
     if (typeof props.getPos === 'function' && props.editor?.view) {
       const pos = props.getPos();
@@ -171,7 +200,7 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
 
       <div
         ref={blockContainerRef}
-        className={`rounded-2xl border border-white/10 bg-dark-card/90 shadow-md hover:border-white/20 transition-all overflow-hidden ${
+        className={`rounded-2xl border border-white/[0.07] bg-dark-card/75 shadow-xs hover:border-white/[0.12] transition-all overflow-hidden ${
           isCollapsed ? 'hover:bg-dark-card' : ''
         }`}
       >
@@ -180,7 +209,7 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
           className={`${
             isCollapsed
               ? 'p-3 md:p-3.5 bg-dark-card/40'
-              : 'p-4 md:p-5 border-b border-white/10 bg-white/[0.02]'
+              : 'p-4 md:p-5 border-b border-white/[0.06] bg-white/[0.01]'
           } transition-all`}
         >
           <QuizBatteryHeader
@@ -220,7 +249,7 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
             className={
               layout === 'sequential' && mode === 'practice'
                 ? 'p-4 md:p-5 space-y-4'
-                : 'p-6 space-y-6'
+                : 'p-5 md:p-6 space-y-5'
             }
           >
             {mode === 'edit' ? (
@@ -253,17 +282,13 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
 
             {/* Botão Voltar ao Topo da Bateria */}
             {questions.length > 1 && (
-              <div className="flex justify-center pt-3 pb-1 border-t border-white/5">
+              <div className="flex justify-center pt-3 pb-1 border-t border-white/[0.05]">
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    blockContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-purple-300 bg-black/40 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/30 px-4 py-1.5 rounded-full transition-all duration-200 group shadow-sm"
+                  onClick={handleScrollToTop}
+                  className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] px-4 py-1.5 rounded-full transition-all duration-200 group shadow-xs"
                   title="Rolar suavemente até o topo desta bateria de questões"
                 >
-                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform text-purple-400" />
+                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform text-white/70" />
                   <span>Voltar ao topo da bateria</span>
                 </button>
               </div>

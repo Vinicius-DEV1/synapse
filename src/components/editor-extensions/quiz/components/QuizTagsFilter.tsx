@@ -17,17 +17,17 @@ export default function QuizTagsFilter({
   if (tags.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-purple-500/10">
-      <span className="text-[11px] font-semibold text-purple-300 flex items-center gap-1 mr-1">
-        <Tag size={11} />
+    <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-white/[0.06]">
+      <span className="text-[11px] font-medium text-dark-subtext flex items-center gap-1 mr-1">
+        <Tag size={11} className="opacity-70" />
         <span>Filtrar:</span>
       </span>
       <button
         onClick={() => onSelectTag(null)}
-        className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors ${
+        className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-all ${
           selectedTagFilter === null
-            ? 'bg-purple-600 border-purple-500 text-white font-semibold'
-            : 'bg-black/30 border-white/10 text-dark-subtext hover:text-white'
+            ? 'bg-white/10 border-white/15 text-white font-medium shadow-xs'
+            : 'bg-white/[0.02] border-white/[0.05] text-dark-subtext hover:text-white hover:bg-white/[0.06]'
         }`}
       >
         Todas ({questions.length})
@@ -39,10 +39,10 @@ export default function QuizTagsFilter({
           <button
             key={tag}
             onClick={() => onSelectTag(isSelected ? null : tag)}
-            className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-colors ${
+            className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition-all ${
               isSelected
-                ? 'bg-purple-600 border-purple-500 text-white font-semibold'
-                : 'bg-black/30 border-white/10 text-purple-300 hover:text-white'
+                ? 'bg-brand-500/20 border-brand-500/30 text-brand-200 font-medium shadow-xs'
+                : 'bg-white/[0.02] border-white/[0.05] text-dark-subtext hover:text-white hover:bg-white/[0.06]'
             }`}
           >
             #{tag} ({count})

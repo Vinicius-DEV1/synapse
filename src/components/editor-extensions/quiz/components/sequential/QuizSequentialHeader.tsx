@@ -21,10 +21,10 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   onSelectIndex,
 }: QuizSequentialHeaderProps) {
   return (
-    <div className="p-3 md:p-3.5 bg-dark-bg/60 border border-white/10 rounded-xl space-y-2">
+    <div className="p-3 md:p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-2.5">
       <div className="flex items-center justify-between text-xs gap-2">
-        <div className="flex items-center gap-2 font-semibold text-white">
-          <span className="px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[10px] font-mono font-bold">
+        <div className="flex items-center gap-2 font-medium text-white">
+          <span className="px-2 py-0.5 rounded-md bg-white/[0.04] text-white/90 border border-white/[0.06] text-[10px] font-mono font-medium">
             {activeIndex + 1} / {total}
           </span>
           <span className="text-dark-subtext font-normal text-xs">
@@ -34,10 +34,10 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
 
         <div className="flex items-center gap-2.5 text-[11px]">
           <span className="text-dark-subtext">
-            Respondidas: <strong className="text-white font-mono">{answeredCount}/{total}</strong>
+            Respondidas: <strong className="text-white font-mono font-medium">{answeredCount}/{total}</strong>
           </span>
           {answeredCount > 0 && (
-            <span className="text-green-400 font-mono font-semibold">
+            <span className="text-emerald-400 font-mono font-medium">
               {correctCount} {correctCount === 1 ? 'acerto' : 'acertos'}
             </span>
           )}
@@ -55,14 +55,14 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
               : q.aiFeedback?.verdict === 'Correto';
           const isPartial = q.type === 'open' && q.aiFeedback?.verdict === 'Parcial';
 
-          let pillClass = 'bg-white/5 border-white/10 text-dark-subtext hover:text-white hover:bg-white/10';
+          let pillClass = 'bg-white/[0.03] border-white/[0.05] text-dark-subtext hover:text-white hover:bg-white/[0.07]';
           if (isAnswered) {
             if (isCorrect) {
-              pillClass = 'bg-green-500/20 border-green-500/40 text-green-300';
+              pillClass = 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 font-medium';
             } else if (isPartial) {
-              pillClass = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
+              pillClass = 'bg-amber-500/15 border-amber-500/30 text-amber-300 font-medium';
             } else {
-              pillClass = 'bg-red-500/20 border-red-500/40 text-red-300';
+              pillClass = 'bg-rose-500/15 border-rose-500/30 text-rose-300 font-medium';
             }
           }
 
@@ -70,8 +70,8 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
             <button
               key={q.id}
               onClick={() => onSelectIndex(idx)}
-              className={`w-6 h-6 md:w-6.5 md:h-6.5 rounded-lg border text-[11px] font-mono font-bold flex items-center justify-center transition-all shrink-0 ${pillClass} ${
-                isCurrent ? 'ring-2 ring-brand-500 scale-105 shadow-sm font-bold' : ''
+              className={`w-6 h-6 md:w-6.5 md:h-6.5 rounded-lg border text-[11px] font-mono font-medium flex items-center justify-center transition-all shrink-0 ${pillClass} ${
+                isCurrent ? 'ring-1.5 ring-brand-400 border-transparent text-white font-semibold scale-105 shadow-xs' : ''
               }`}
               title={`Ir para questão ${idx + 1}`}
             >

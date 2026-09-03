@@ -88,9 +88,11 @@ export default function BlockquoteToggleToolbar({
           </button>
           {showColors && (
             <ColorPalettePicker
+              anchorRef={colorMenuRef}
               currentColor={currentColor}
               onSelectColor={onSelectColor}
               onClearColor={onClearColor}
+              onClose={onToggleColors}
             />
           )}
         </div>

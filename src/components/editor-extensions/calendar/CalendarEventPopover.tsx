@@ -1,6 +1,9 @@
+import React, { useRef, useEffect } from 'react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { Clock, Bell, ExternalLink, Trash2 } from 'lucide-react';
 import type { CalendarEvent } from '../../../types/core';
 import { BG_COLORS } from '../../../utils/colors';
+import { Portal } from '../../ui/Portal';
 
 interface CalendarEventPopoverProps {
   title: string;
@@ -8,6 +11,7 @@ interface CalendarEventPopoverProps {
   formatDateLabel: (isoDate?: string) => string;
   remindersLabel: string | null;
   color?: string;
+  anchorRef?: React.RefObject<HTMLElement | null>;
   onChangeColor?: (color: string) => void;
   onOpenCalendar: () => void;
   onOpenDeleteConfirm: () => void;
@@ -20,13 +24,63 @@ export function CalendarEventPopover({
   formatDateLabel,
   remindersLabel,
   color,
+  anchorRef,
   onChangeColor,
   onOpenCalendar,
   onOpenDeleteConfirm,
   onClose,
 }: CalendarEventPopoverProps) {
-  return (
-    <div className="absolute left-0 top-full mt-1.5 z-[100] w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 text-left animate-in fade-in zoom-in-95">
+  const { refs, floatingStyles } = useFloating({
+    placement: 'bottom-start',
+    middleware: [offset(6), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    if (anchorRef?.current) {
+      refs.setReference(anchorRef.current);
+    }
+  }, [anchorRef, refs]);
+
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!anchorRef) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        (!anchorRef.current || !anchorRef.current.contains(target))
+      ) {
+        onClose();
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, anchorRef]);
+
+  const content = (
+    <div
+      ref={(node) => {
+        if (anchorRef) {
+          refs.setFloating(node);
+        }
+        (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }}
+      style={anchorRef ? { ...floatingStyles, zIndex: 9999 } : undefined}
+      className={`${
+        anchorRef ? 'fixed' : 'absolute left-0 top-full mt-1.5'
+      } z-[100] w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 text-left animate-in fade-in zoom-in-95`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">
         <div>
           <p className="text-xs font-semibold text-white">{eventData?.title || title}</p>
@@ -102,4 +156,10 @@ export function CalendarEventPopover({
       </div>
     </div>
   );
+
+  if (anchorRef) {
+    return <Portal>{content}</Portal>;
+  }
+
+  return content;
 }

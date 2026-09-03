@@ -40,25 +40,29 @@ export function QuizOptionList({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {optionsList.map((opt, optIndex) => {
         const letter = String.fromCharCode(65 + optIndex);
         const isSelected = q.selectedIndex === optIndex;
         const isCorrect = q.correctIndex === optIndex;
 
-        let optClass = 'bg-black/30 border-white/10 hover:border-purple-500/40 text-purple-100';
+        let optClass = 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] text-white/90';
+        let badgeClass = 'bg-white/[0.04] border-white/[0.06] text-white/70';
+
         if (q.answered) {
           if (isCorrect) {
-            optClass =
-              'bg-green-500/20 border-green-500 text-green-200 shadow-md shadow-green-500/10';
+            optClass = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-100 font-medium';
+            badgeClass = 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
           } else if (isSelected && !isCorrect) {
-            optClass =
-              'bg-red-500/20 border-red-500 text-red-200 shadow-md shadow-red-500/10';
+            optClass = 'bg-rose-500/10 border-rose-500/30 text-rose-200 opacity-80';
+            badgeClass = 'bg-rose-500/20 border-rose-500/40 text-rose-300';
           } else {
-            optClass = 'bg-black/20 border-white/5 opacity-50 text-purple-200';
+            optClass = 'bg-black/10 border-white/[0.03] opacity-40 text-dark-subtext';
+            badgeClass = 'bg-white/[0.02] border-white/[0.04] text-dark-subtext';
           }
         } else if (isSelected) {
-          optClass = 'bg-purple-600/30 border-purple-500 text-white';
+          optClass = 'bg-brand-500/15 border-brand-500/30 text-white font-medium';
+          badgeClass = 'bg-brand-500/30 border-brand-500/50 text-brand-200';
         }
 
         return (
@@ -75,14 +79,14 @@ export function QuizOptionList({
                 handleSelectOption(optIndex);
               }
             }}
-            className={`w-full p-3 rounded-xl border text-left flex items-start gap-3 transition-colors select-none ${optClass} ${
+            className={`w-full p-2.5 md:p-3 rounded-xl border text-left flex items-start gap-2.5 transition-colors select-none ${optClass} ${
               q.answered ? 'cursor-default' : 'cursor-pointer'
             }`}
           >
-            <span className="w-6 h-6 rounded-lg bg-black/40 flex items-center justify-center text-xs font-bold font-mono shrink-0">
+            <span className={`w-6 h-6 rounded-md border flex items-center justify-center text-xs font-mono font-medium shrink-0 transition-colors ${badgeClass}`}>
               {letter}
             </span>
-            <div className="text-xs flex-1 pt-0.5 leading-relaxed">
+            <div className="text-xs md:text-sm flex-1 pt-0.5 leading-relaxed">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={markdownComponents}
