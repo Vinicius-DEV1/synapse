@@ -53,7 +53,6 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
 
     // Check if editor has an active table or cursor in table
     let tableEl: HTMLTableElement | null = null;
-    const { selection } = editor.state;
     const domSelection = window.getSelection();
 
     if (domSelection && domSelection.anchorNode) {
