@@ -9,7 +9,7 @@ import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Link } from '@tiptap/extension-link';
-import { Table, TableRow, TableHeader } from '@tiptap/extension-table';
+import { Table, TableRow } from '@tiptap/extension-table';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Collaboration } from '@tiptap/extension-collaboration';
@@ -20,6 +20,7 @@ import * as Y from 'yjs';
 
 // Custom Extensions
 import { TableCell } from '../../editor-extensions/TableCell';
+import { TableHeader } from '../../editor-extensions/TableHeader';
 import { CollectionBlock } from '../../editor-extensions/CollectionBlock';
 import { QuestionBlock } from '../../editor-extensions/QuestionBlock';
 import { ToggleBlock } from '../../editor-extensions/ToggleBlock';

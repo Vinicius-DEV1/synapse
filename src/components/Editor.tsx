@@ -14,6 +14,7 @@ import { useEditorDropPaste } from './editor/hooks/useEditorDropPaste';
 import { useBlockHandle } from './editor/hooks/useBlockHandle';
 import BlockHandle from './editor/components/BlockHandle';
 import EditorModalHost from './editor/components/EditorModalHost';
+import TableExcelGrips from './editor/components/table/TableExcelGrips';
 
 interface EditorProps {
   pageId: string | null;
@@ -251,6 +252,7 @@ export default function Editor({
 
       <div className="editor-container relative z-0">
         <EditorContent editor={editor} />
+        <TableExcelGrips editor={editor} wrapperRef={wrapperRef} />
       </div>
 
       <EditorBlockHandleHost editor={editor} wrapperRef={wrapperRef} />

@@ -231,7 +231,8 @@
   position: absolute;
   content: "";
   left: 0; right: 0; top: 0; bottom: 0;
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.6);
   pointer-events: none;
 }
 
@@ -239,6 +240,12 @@
   font-weight: bold;
   text-align: left;
   background-color: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ProseMirror th:hover {
+  background-color: rgba(139, 92, 246, 0.1);
 }
 
 .ProseMirror .column-resize-handle {
@@ -251,8 +258,10 @@
   pointer-events: none;
 }
 
-.table-wrapper:hover .table-controls {
-  opacity: 1;
+/* Excel Grips Styling */
+.table-excel-grips button {
+  backdrop-filter: blur(8px);
+  user-select: none;
 }
 
 .ProseMirror td:focus, .ProseMirror th:focus {
