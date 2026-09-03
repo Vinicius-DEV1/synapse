@@ -266,7 +266,7 @@ export default function TabBar() {
     const target = e.target as HTMLElement;
     if (
       target.closest(
-        'button, input, textarea, a, select, [role="button"], [data-no-drag], .tab-scrollbar, [data-active-tab]'
+        'button, input, textarea, a, select, [role="button"], [data-no-drag], [data-active-tab]'
       )
     ) {
       return;
@@ -285,7 +285,7 @@ export default function TabBar() {
     const target = e.target as HTMLElement;
     if (
       target.closest(
-        'button, input, textarea, a, select, [role="button"], [data-no-drag], .tab-scrollbar, [data-active-tab]'
+        'button, input, textarea, a, select, [role="button"], [data-no-drag], [data-active-tab]'
       )
     ) {
       return;
@@ -336,8 +336,6 @@ export default function TabBar() {
           ref={tabStripRef}
           onWheel={handleWheel}
           className="flex-1 flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1"
-          data-no-drag
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {state.tabs.map((tab, index) => {
             const isActive = tab.id === state.activeTabId;
@@ -388,8 +386,8 @@ export default function TabBar() {
           </button>
         )}
 
-        {/* Dedicated Window Drag Region Spacer between tabs and utility buttons */}
-        <div className="flex-1 h-full min-w-[20px]" data-tauri-drag-region />
+        {/* Small spacer before utility buttons */}
+        <div className="w-2 h-full shrink-0" data-tauri-drag-region />
 
         {/* Pinned Utility Area - Fixed to the right, never scrolls vertically or horizontally */}
         <div className="flex items-center shrink-0 h-full pl-1 gap-0.5" data-tauri-drag-region={false}>
