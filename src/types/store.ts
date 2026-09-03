@@ -9,6 +9,7 @@ export interface Tab {
   unsavedContent: string | null;
   scrollY: number;
   moduleState?: Record<string, unknown>;
+  isPinned?: boolean;
 }
 
 export interface AiChatMessagePart {
@@ -68,6 +69,10 @@ export type Action =
   | { type: 'DELETE_PAGE'; id: string }
   | { type: 'ADD_TAB'; tab: Tab }
   | { type: 'CLOSE_TAB'; tabId: string }
+  | { type: 'TOGGLE_PIN_TAB'; tabId: string }
+  | { type: 'CLOSE_OTHER_TABS'; tabId: string }
+  | { type: 'CLOSE_TABS_TO_RIGHT'; tabId: string }
+  | { type: 'DUPLICATE_TAB'; tabId: string }
   | { type: 'SET_ACTIVE_TAB'; tabId: string }
   | { type: 'REORDER_TABS'; sourceIndex: number; targetIndex: number }
   | { type: 'UPDATE_TAB_STATE'; tabId: string; stateUpdates: Record<string, unknown> }

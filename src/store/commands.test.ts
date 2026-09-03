@@ -126,6 +126,83 @@ describe('appReducer (store/commands)', () => {
       expect(state.tabs[0].scrollY).toBe(0);
     });
 
+    it('toggles pin state and maintains pinned tabs grouped at the beginning', () => {
+      let state = createBaseState();
+      const tab2: Tab = { id: 'tab-2', module: 'anki', pageId: null, unsavedContent: null, scrollY: 0 };
+      const tab3: Tab = { id: 'tab-3', module: 'vault', pageId: null, unsavedContent: null, scrollY: 0 };
+
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab2 });
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab3 });
+      // Current tabs: [tab-1, tab-2, tab-3]
+
+      // Pin tab-3
+      state = appReducer(state, { type: 'TOGGLE_PIN_TAB', tabId: 'tab-3' });
+      expect(state.tabs[0].id).toBe('tab-3');
+      expect(state.tabs[0].isPinned).toBe(true);
+
+      // Pin tab-2
+      state = appReducer(state, { type: 'TOGGLE_PIN_TAB', tabId: 'tab-2' });
+      expect(state.tabs[0].id).toBe('tab-3');
+      expect(state.tabs[1].id).toBe('tab-2');
+      expect(state.tabs[1].isPinned).toBe(true);
+      expect(state.tabs[2].id).toBe('tab-1');
+      expect(state.tabs[2].isPinned).toBeFalsy();
+
+      // Unpin tab-3
+      state = appReducer(state, { type: 'TOGGLE_PIN_TAB', tabId: 'tab-3' });
+      expect(state.tabs[0].id).toBe('tab-2');
+      expect(state.tabs[0].isPinned).toBe(true);
+      expect(state.tabs[1].id).toBe('tab-3');
+      expect(state.tabs[1].isPinned).toBe(false);
+    });
+
+    it('closes other tabs while preserving pinned tabs on CLOSE_OTHER_TABS', () => {
+      let state = createBaseState();
+      const tab2: Tab = { id: 'tab-2', module: 'anki', pageId: null, unsavedContent: null, scrollY: 0, isPinned: true };
+      const tab3: Tab = { id: 'tab-3', module: 'vault', pageId: null, unsavedContent: null, scrollY: 0 };
+      const tab4: Tab = { id: 'tab-4', module: 'culture', pageId: null, unsavedContent: null, scrollY: 0 };
+
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab2 });
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab3 });
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab4 });
+
+      // Close other tabs from perspective of tab-3 (tab-2 is pinned so it must NOT be closed)
+      state = appReducer(state, { type: 'CLOSE_OTHER_TABS', tabId: 'tab-3' });
+      const remainingIds = state.tabs.map(t => t.id);
+      expect(remainingIds).toContain('tab-3');
+      expect(remainingIds).toContain('tab-2'); // Pinned tab preserved
+      expect(remainingIds).not.toContain('tab-1');
+      expect(remainingIds).not.toContain('tab-4');
+    });
+
+    it('closes tabs to the right while preserving pinned tabs on CLOSE_TABS_TO_RIGHT', () => {
+      let state = createBaseState();
+      const tab2: Tab = { id: 'tab-2', module: 'anki', pageId: null, unsavedContent: null, scrollY: 0 };
+      const tab3: Tab = { id: 'tab-3', module: 'vault', pageId: null, unsavedContent: null, scrollY: 0 };
+      const tab4: Tab = { id: 'tab-4', module: 'culture', pageId: null, unsavedContent: null, scrollY: 0, isPinned: true };
+
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab2 });
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab3 });
+      state = appReducer(state, { type: 'ADD_TAB', tab: tab4 });
+
+      // Close tabs to right of tab-2 (tab-3 should be closed, but tab-4 is pinned so it must remain)
+      state = appReducer(state, { type: 'CLOSE_TABS_TO_RIGHT', tabId: 'tab-2' });
+      const remainingIds = state.tabs.map(t => t.id);
+      expect(remainingIds).toEqual(['tab-1', 'tab-2', 'tab-4']);
+    });
+
+    it('duplicates tab accurately and marks copy as unpinned on DUPLICATE_TAB', () => {
+      let state = createBaseState();
+      state.tabs[0].isPinned = true;
+      state.tabs[0].pageId = 'p-123';
+
+      state = appReducer(state, { type: 'DUPLICATE_TAB', tabId: 'tab-1' });
+      expect(state.tabs).toHaveLength(2);
+      expect(state.tabs[1].pageId).toBe('p-123');
+      expect(state.tabs[1].isPinned).toBe(false);
+      expect(state.activeTabId).toBe(state.tabs[1].id);
+    });
+
     it('cleans up deleted book, video and page references across all tabs on CLEANUP_DELETED_ENTITY_TABS', () => {
       let state = createBaseState();
       state = appReducer(state, {

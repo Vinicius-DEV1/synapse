@@ -1,6 +1,6 @@
 import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import type { Card, Grade } from 'ts-fsrs';
-import type { AnkiDeckSettings } from '../types';
+import type { AnkiDeckSettings, FSRSCardInput } from '../types/anki';
 
 const defaultParams = generatorParameters({
   maximum_interval: 36500,
@@ -11,96 +11,145 @@ const defaultParams = generatorParameters({
   ],
 });
 
-export const getFSRS = (customWeights?: string) => {
+function safeNumber(val: unknown, fallback = 0): number {
+  if (val === null || val === undefined) return fallback;
+  const num = Number(val);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+export function parseStepMinutes(stepStr?: string | null, fallbackMinutes = 5): number {
+  if (!stepStr || typeof stepStr !== 'string') return fallbackMinutes;
+  const firstStep = stepStr.split(',')[0]?.trim();
+  if (!firstStep) return fallbackMinutes;
+  const match = firstStep.match(/^(\d+)(m|h|d)?$/i);
+  if (!match) return fallbackMinutes;
+  const val = parseInt(match[1], 10);
+  if (!Number.isFinite(val) || val <= 0) return fallbackMinutes;
+  const unit = (match[2] || 'm').toLowerCase();
+  if (unit === 'h') return val * 60;
+  if (unit === 'd') return val * 1440;
+  return val;
+}
+
+export const getFSRS = (customWeights?: string | null) => {
   if (customWeights) {
     try {
       const weights = JSON.parse(customWeights);
-      if (Array.isArray(weights) && weights.length === 17) {
+      if (Array.isArray(weights) && (weights.length === 17 || weights.length === 19 || weights.length === 21)) {
         return fsrs(generatorParameters({ ...defaultParams, w: weights }));
       }
-    } catch (e) {
+    } catch {
       console.warn('Failed to parse FSRS weights, falling back to default');
     }
   }
   return fsrs(defaultParams);
 };
 
-export const migrateCardToFSRS = (card: any): Card => {
-  if (card.scheduled_days !== undefined) {
+export const migrateCardToFSRS = (card: FSRSCardInput): Card => {
+  const stability = safeNumber(card.stability, 0);
+  const difficulty = safeNumber(card.difficulty, 0);
+  const reps = safeNumber(card.reps, 0);
+  const lapses = safeNumber(card.lapses, 0);
+  const learningSteps = safeNumber(card.learning_steps, 0);
+  const due = card.due_date ? new Date(card.due_date) : new Date();
+  const lastReview = card.last_review ? new Date(card.last_review) : undefined;
+
+  if (card.scheduled_days !== undefined && card.scheduled_days !== null) {
     return {
-      due: card.due_date ? new Date(card.due_date) : new Date(),
-      stability: Number(card.stability) || 0,
-      difficulty: Number(card.difficulty) || 0,
-      elapsed_days: Number(card.elapsed_days) || 0,
-      scheduled_days: Number(card.scheduled_days) || 0,
-      learning_steps: Number(card.learning_steps) || 0,
-      reps: Number(card.reps) || 0,
-      lapses: Number(card.lapses) || 0,
+      due: isNaN(due.getTime()) ? new Date() : due,
+      stability,
+      difficulty,
+      elapsed_days: safeNumber(card.elapsed_days, 0),
+      scheduled_days: safeNumber(card.scheduled_days, 0),
+      learning_steps: learningSteps,
+      reps,
+      lapses,
       state: parseState(card.state),
-      last_review: card.last_review ? new Date(card.last_review) : undefined,
+      last_review: lastReview && !isNaN(lastReview.getTime()) ? lastReview : undefined,
     };
   }
 
-  const oldState = String(card.state || '0');
-  const stability = Number(card.stability) || 0;
-  
+  const oldState = String(card.state ?? '0');
   let state = State.New;
-  if (oldState === '1') state = State.Learning;
-  if (oldState === '2') state = State.Review;
-  if (oldState === '3') state = State.Relearning;
-  
+  if (oldState === '1' || oldState.toLowerCase() === 'learning') state = State.Learning;
+  else if (oldState === '2' || oldState.toLowerCase() === 'review') state = State.Review;
+  else if (oldState === '3' || oldState.toLowerCase() === 'relearning') state = State.Relearning;
+
   if (stability > 0 && state === State.New) {
-      state = State.Review;
+    state = State.Review;
   }
 
   return {
-    due: card.due_date ? new Date(card.due_date) : new Date(),
-    stability: stability,
-    difficulty: Number(card.difficulty) || 0,
+    due: isNaN(due.getTime()) ? new Date() : due,
+    stability,
+    difficulty,
     elapsed_days: 0,
     scheduled_days: Math.round(stability),
-    learning_steps: Number(card.learning_steps) || 0,
-    reps: Number(card.reps) || 0,
-    lapses: Number(card.lapses) || 0,
+    learning_steps: learningSteps,
+    reps,
+    lapses,
     state,
-    last_review: card.last_review ? new Date(card.last_review) : undefined,
+    last_review: lastReview && !isNaN(lastReview.getTime()) ? lastReview : undefined,
   };
 };
 
-export function parseState(stateStr: string | number): State {
-  if (typeof stateStr === 'number') return stateStr as State;
-  switch (String(stateStr).toLowerCase()) {
+export function parseState(stateVal: unknown): State {
+  if (typeof stateVal === 'number') {
+    if (stateVal >= 0 && stateVal <= 3) return stateVal as State;
+    return State.New;
+  }
+  switch (String(stateVal ?? '').toLowerCase()) {
     case '0':
-    case 'new': return State.New;
+    case 'new':
+      return State.New;
     case '1':
-    case 'learning': return State.Learning;
+    case 'learning':
+      return State.Learning;
     case '2':
-    case 'review': return State.Review;
+    case 'review':
+      return State.Review;
     case '3':
-    case 'relearning': return State.Relearning;
-    default: return State.New;
+    case 'relearning':
+      return State.Relearning;
+    default:
+      return State.New;
   }
 }
 
-export const processReview = (card: any, ratingNum: number, settings?: AnkiDeckSettings): Card => {
-  const f = getFSRS(settings?.fsrs_weights || undefined);
+export const processReview = (
+  card: FSRSCardInput,
+  ratingNum: number,
+  settings?: AnkiDeckSettings | null
+): Card => {
+  const f = getFSRS(settings?.fsrs_weights);
   const fsrsCard = migrateCardToFSRS(card);
   const now = new Date();
-  
+
   let rating = Rating.Good;
   switch (ratingNum) {
-    case 1: rating = Rating.Again; break;
-    case 2: rating = Rating.Hard; break;
-    case 3: rating = Rating.Good; break;
-    case 4: rating = Rating.Easy; break;
+    case 1:
+      rating = Rating.Again;
+      break;
+    case 2:
+      rating = Rating.Hard;
+      break;
+    case 3:
+      rating = Rating.Good;
+      break;
+    case 4:
+      rating = Rating.Easy;
+      break;
   }
-  
+
   const record = f.next(fsrsCard, now, rating);
-  
+
   if (rating === Rating.Again && (record.card.state === State.Learning || record.card.state === State.Relearning)) {
-     record.card.due = new Date(now.getTime() + 5 * 60000); 
+    const isRelearning = record.card.state === State.Relearning;
+    const stepsConfig = isRelearning ? settings?.relearning_steps : settings?.learning_steps;
+    const stepMinutes = parseStepMinutes(stepsConfig, 5);
+    record.card.due = new Date(now.getTime() + stepMinutes * 60000);
   }
-  
+
   return record.card;
 };
 
@@ -117,25 +166,31 @@ export const formatAnkiInterval = (diffMs: number): string => {
   return `${years}y`;
 };
 
-export const previewIntervals = (card: any, settings?: AnkiDeckSettings): string[] => {
-  const f = getFSRS(settings?.fsrs_weights || undefined);
+export const previewIntervals = (
+  card: FSRSCardInput,
+  settings?: AnkiDeckSettings | null
+): string[] => {
+  const f = getFSRS(settings?.fsrs_weights);
   const fsrsCard = migrateCardToFSRS(card);
   const now = new Date();
-  
+
   const intervals: string[] = [];
   const ratings: Grade[] = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
-  
+
   for (const rating of ratings) {
     const record = f.next(fsrsCard, now, rating);
     let due = record.card.due;
-    
+
     if (rating === Rating.Again && (record.card.state === State.Learning || record.card.state === State.Relearning)) {
-       due = new Date(now.getTime() + 5 * 60000); 
+      const isRelearning = record.card.state === State.Relearning;
+      const stepsConfig = isRelearning ? settings?.relearning_steps : settings?.learning_steps;
+      const stepMinutes = parseStepMinutes(stepsConfig, 5);
+      due = new Date(now.getTime() + stepMinutes * 60000);
     }
-    
+
     const diff = due.getTime() - now.getTime();
     intervals.push(formatAnkiInterval(diff));
   }
-  
+
   return intervals;
 };
