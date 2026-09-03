@@ -24,6 +24,13 @@ describe('TableToolbar Component', () => {
 
     mockEditor = {
       chain: vi.fn(() => chainObj),
+      isActive: vi.fn((name: string) => name === 'table'),
+      state: {
+        selection: {
+          $from: { pos: 5 },
+          $to: { pos: 5 },
+        },
+      },
     };
   });
 
@@ -40,5 +47,47 @@ describe('TableToolbar Component', () => {
     fireEvent.click(deleteTableBtn);
 
     expect(chainObj.deleteTable).toHaveBeenCalled();
+  });
+
+  it('triggers text formatting commands like bold, italic, and spoiler', () => {
+    chainObj.toggleBold = vi.fn().mockReturnThis();
+    chainObj.toggleItalic = vi.fn().mockReturnThis();
+    chainObj.toggleSpoiler = vi.fn().mockReturnThis();
+
+    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+
+    const boldBtn = getByTitle(/Negrito/i);
+    fireEvent.click(boldBtn);
+    expect(chainObj.toggleBold).toHaveBeenCalled();
+
+    const italicBtn = getByTitle(/Itálico/i);
+    fireEvent.click(italicBtn);
+    expect(chainObj.toggleItalic).toHaveBeenCalled();
+
+    const spoilerBtn = getByTitle(/Spoiler/i);
+    fireEvent.click(spoilerBtn);
+    expect(chainObj.toggleSpoiler).toHaveBeenCalled();
+  });
+
+  it('renders excel selection buttons for column and row', () => {
+    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+
+    const selectColBtn = getByTitle(/Selecionar Coluna \(Excel\)/i);
+    expect(selectColBtn).toBeInTheDocument();
+
+    const selectRowBtn = getByTitle(/Selecionar Linha \(Excel\)/i);
+    expect(selectRowBtn).toBeInTheDocument();
+
+    const selectTabBtn = getByTitle(/Selecionar Tabela Inteira \(Excel\)/i);
+    expect(selectTabBtn).toBeInTheDocument();
+  });
+
+  it('opens color popover when clicking cell background color button', () => {
+    const { getByTitle, getByText } = render(<TableToolbar editor={mockEditor} />);
+
+    const cellBgBtn = getByTitle(/Cor da célula/i);
+    fireEvent.click(cellBgBtn);
+
+    expect(getByText(/Cor da Célula \/ Linha \/ Coluna/i)).toBeInTheDocument();
   });
 });
