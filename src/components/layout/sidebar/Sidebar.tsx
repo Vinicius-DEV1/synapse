@@ -38,9 +38,38 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab.module as ModuleId;
 
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    if (e.buttons === 1) {
+      try {
+        getCurrentWindow().startDragging();
+      } catch {
+        invoke('app_window_start_dragging').catch(() => {});
+      }
+    }
+  };
+
+  const handleHeaderDoubleClick = (e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    try {
+      getCurrentWindow().toggleMaximize();
+    } catch {
+      invoke('app_window_toggle_maximize').catch(() => {});
+    }
+  };
+
   if (state.sidebarCollapsed) {
     return (
-      <div className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-4 gap-4 z-20">
+      <div 
+        className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-2.5 z-20 select-none cursor-default"
+        data-tauri-drag-region
+        onMouseDown={handleHeaderMouseDown}
+        onDoubleClick={handleHeaderDoubleClick}
+      >
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
           className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
@@ -48,12 +77,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         >
           <PanelLeft size={18} />
         </button>
-        
-        <div className="mt-auto flex flex-col gap-4">
-          <SidebarModuleList 
-            isCollapsedView={true} 
-          />
-        </div>
       </div>
     );
   }
@@ -100,29 +123,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     }
   };
 
-  const handleHeaderMouseDown = (e: React.MouseEvent) => {
-    if (!isDesktopApp()) return;
-    const target = e.target as HTMLElement;
-    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
-    if (e.buttons === 1) {
-      try {
-        getCurrentWindow().startDragging();
-      } catch {
-        invoke('app_window_start_dragging').catch(() => {});
-      }
-    }
-  };
-
-  const handleHeaderDoubleClick = (e: React.MouseEvent) => {
-    if (!isDesktopApp()) return;
-    const target = e.target as HTMLElement;
-    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
-    try {
-      getCurrentWindow().toggleMaximize();
-    } catch {
-      invoke('app_window_toggle_maximize').catch(() => {});
-    }
-  };
 
   return (
     <>
