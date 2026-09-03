@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { NodeViewWrapper } from '@tiptap/react';
 import { Portal } from '../../ui/Portal';
@@ -41,7 +42,55 @@ export const LinkPreviewComponent = (props: any) => {
   const [loading, setLoading] = useState(isLoading);
   const [isReloading, setIsReloading] = useState(false);
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
+  const [copiedModalUrl, setCopiedModalUrl] = useState(false);
+  const copyModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (copyModalTimeoutRef.current) {
+        clearTimeout(copyModalTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCloseLinkConfirm = useCallback(() => {
+    setShowLinkConfirm(false);
+    setCopiedModalUrl(false);
+    if (copyModalTimeoutRef.current) {
+      clearTimeout(copyModalTimeoutRef.current);
+    }
+  }, []);
+
+  const handleCopyModalUrl = useCallback(async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!url) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedModalUrl(true);
+      triggerToast('Link copiado para a área de transferência!', 'info', 2000);
+      if (copyModalTimeoutRef.current) clearTimeout(copyModalTimeoutRef.current);
+      copyModalTimeoutRef.current = setTimeout(() => setCopiedModalUrl(false), 2000);
+    } catch (err) {
+      console.error('[LinkPreview] Falha ao copiar link:', err);
+      triggerToast('Não foi possível copiar o link.', 'error');
+    }
+  }, [url]);
 
   const currentPos = useCallback((): number | null => {
     if (typeof props.getPos !== 'function') return null;
@@ -276,7 +325,7 @@ export const LinkPreviewComponent = (props: any) => {
         <Portal>
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-            onClick={() => setShowLinkConfirm(false)}
+            onClick={handleCloseLinkConfirm}
           >
             <div
               className="bg-dark-card border border-white/10 rounded-2xl p-6 w-[400px] shadow-2xl animate-scale-in"
@@ -286,19 +335,47 @@ export const LinkPreviewComponent = (props: any) => {
               <p className="text-dark-subtext text-sm mb-4">
                 Deseja abrir o seguinte link no seu navegador padrão?
               </p>
-              <div className="bg-black/30 border border-white/5 p-3 rounded-lg mb-6 overflow-hidden">
-                <p className="text-brand-400 text-xs break-all">{url}</p>
+              <div
+                onClick={handleCopyModalUrl}
+                className="group relative bg-black/30 hover:bg-black/50 border border-white/5 hover:border-brand-500/30 p-3 rounded-xl mb-6 flex items-center justify-between gap-2.5 cursor-pointer transition-all"
+                title="Clique para copiar o link"
+              >
+                <p className="text-brand-400 text-xs break-all select-all flex-1 font-mono">
+                  {url}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopyModalUrl}
+                  className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    copiedModalUrl
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      : 'bg-white/5 border-white/10 text-dark-subtext group-hover:text-white group-hover:bg-white/10'
+                  }`}
+                  title={copiedModalUrl ? 'Link copiado!' : 'Copiar link'}
+                >
+                  {copiedModalUrl ? (
+                    <>
+                      <Check size={13} className="text-emerald-400" />
+                      <span className="text-[11px] text-emerald-400 font-medium">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} />
+                      <span className="text-[11px] font-medium">Copiar</span>
+                    </>
+                  )}
+                </button>
               </div>
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setShowLinkConfirm(false)}
+                  onClick={handleCloseLinkConfirm}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-dark-subtext hover:bg-white/5 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={() => {
-                    setShowLinkConfirm(false);
+                    handleCloseLinkConfirm();
                     if (window.api?.os?.openInBrowser) {
                       window.api.os.openInBrowser(url);
                     } else {

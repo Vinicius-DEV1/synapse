@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { LinkPreviewBlock } from './LinkPreviewBlock';
 
 vi.mock('@tiptap/react', () => ({
@@ -116,6 +116,65 @@ describe('LinkPreviewBlock Component', () => {
     expect(card).toBeDefined();
     expect(card?.getAttribute('style')).toContain('border-color');
     expect(card?.className).toContain('border');
+  });
+
+  it('copies link URL to clipboard when clicking copy button', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle } = render(<Component {...mockProps} />);
+
+    const copyBtn = getByTitle(/Copiar link original/i);
+    expect(copyBtn).toBeDefined();
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeTextMock).toHaveBeenCalledWith('https://github.com/google/antigravity');
+  });
+
+  it('allows 1-click copying of URL directly inside the external link modal', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByText, findByText, getByTitle } = render(<Component {...mockProps} />);
+
+    // Click card to open external link modal
+    const cardTitle = getByText('Google Antigravity Repository');
+    fireEvent.click(cardTitle);
+
+    // Modal should be visible
+    expect(await findByText('Abrir Link Externo')).toBeDefined();
+    expect(getByText(/Deseja abrir o seguinte link no seu navegador padrão\?/i)).toBeDefined();
+
+    // Click the 1-click copy button inside the modal
+    const copyButtonInModal = getByText('Copiar');
+    expect(copyButtonInModal).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(copyButtonInModal);
+    });
+
+    expect(writeTextMock).toHaveBeenCalledWith('https://github.com/google/antigravity');
+    expect(await findByText('Copiado!')).toBeDefined();
+
+    // Reset mock and verify clicking the URL container itself also triggers 1-click copy
+    writeTextMock.mockClear();
+    const urlText = getByText('https://github.com/google/antigravity');
+    await act(async () => {
+      fireEvent.click(urlText);
+    });
+    expect(writeTextMock).toHaveBeenCalledWith('https://github.com/google/antigravity');
   });
 });
 
