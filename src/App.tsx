@@ -183,7 +183,7 @@ function AppContent() {
       )}
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Tab Bar - Show always on mobile or if enabled in settings for current platform */}
         {!state.isReadingModeFullScreen && 
          (platform.platform === 'mobile-webview' || (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb)) && <TabBar />}

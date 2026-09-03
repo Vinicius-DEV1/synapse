@@ -29,7 +29,7 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
   // Load single virtual book if opened by ID outside the regular library list
   useEffect(() => {
     if (selectedBookId && !books.find(b => b.id === selectedBookId) && window.api?.files) {
-      window.api.files.getById(selectedBookId).then((file: { id: string; name: string; local_path?: string; drive_file_id?: string; created_at?: string; updated_at?: string }) => {
+      window.api.files.getById(selectedBookId).then((file) => {
         if (!isMounted.current) return;
         if (file) {
           const storedPrefsStr = localStorage.getItem(`caderno_avulso_${file.id}`);
