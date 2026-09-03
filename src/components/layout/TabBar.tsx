@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MAIN_MODULES, SPECIAL_MODULES } from './sidebar/modules.config';
 import NotificationBell from '../notifications/NotificationBell';
+import WindowControls from './WindowControls';
 import { triggerHaptic } from '../../services/haptics';
 
 interface TabItemProps {
@@ -152,7 +153,10 @@ export default function TabBar() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="h-[46px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-1 overflow-x-auto scrollbar-none">
+      <div 
+        className="h-[46px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-1 overflow-x-auto scrollbar-none"
+        data-tauri-drag-region
+      >
       {/* Mobile Sidebar Toggle Button */}
       <button
         onClick={() => {
@@ -192,24 +196,33 @@ export default function TabBar() {
         <Plus size={15} />
       </button>
 
-      {/* Spacer to push AI button to the right */}
-      <div className="flex-1"></div>
+      {/* Spacer to push utility buttons to the right and serve as window drag region */}
+      <div className="flex-1 h-full min-w-[20px]" data-tauri-drag-region />
 
       {/* Central de Notificações (Sino) */}
       <NotificationBell />
 
+      {/* Assistente IA (Ícone com tooltip flutuante ao passar o mouse) */}
       <button
         onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
-        className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 mx-2 mb-1 rounded-lg text-xs font-medium transition-colors ${
+        className={`group relative flex-shrink-0 flex items-center justify-center p-2 mx-0.5 mb-1 rounded-lg text-xs font-medium transition-colors ${
           state.showAiSidebar 
             ? 'bg-brand-500/20 text-brand-400' 
             : 'text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10'
         }`}
-        title="Chats Ativos (IA)"
+        title="Assistente IA (Chats Ativos)"
+        aria-label="Assistente IA"
       >
-        <span className="text-[14px]">✨</span>
-        <span className="hidden sm:inline">Assistente</span>
+        <span className="text-[15px] flex items-center justify-center">✨</span>
+
+        {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
+        <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
+          Assistente
+        </span>
       </button>
+
+      {/* Desktop Window Controls (Minimize, Maximize/Restore, Close) */}
+      <WindowControls />
     </div>
     </DndContext>
   );
