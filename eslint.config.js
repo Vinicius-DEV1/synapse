@@ -6,7 +6,14 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'dist-web',
+    'caderno-mobile/**',
+    'caderno-mobile-webview/**',
+    'src-tauri/target/**',
+    '.firebase/**',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
