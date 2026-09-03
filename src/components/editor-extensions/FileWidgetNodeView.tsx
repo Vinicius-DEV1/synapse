@@ -48,19 +48,36 @@ export default function FileWidgetNodeView(props: any) {
     props.editor.state.selection.from === pos
   );
 
-  const loadFile = () => {
+  const loadFile = (isBackground = false) => {
     if (window.api && window.api.files && fileId) {
-      setIsLoadingFile(true);
+      if (!isBackground) {
+        setIsLoadingFile(true);
+      }
       window.api.files.getById(fileId)
         .then((item: any) => {
-          setFileItem(item || null);
+          setFileItem((prev: any) => {
+            if (!item && !prev) return null;
+            if (
+              prev &&
+              item &&
+              prev.id === item.id &&
+              prev.updated_at === item.updated_at &&
+              prev.local_path === item.local_path &&
+              prev.name === item.name
+            ) {
+              return prev; // Preserve reference identity to prevent downstream re-renders
+            }
+            return item || null;
+          });
         })
         .catch((err: any) => {
-          console.error(err);
+          console.error('[FileWidgetNodeView] Failed to load file info:', err);
           setFileItem(null);
         })
         .finally(() => {
-          setIsLoadingFile(false);
+          if (!isBackground) {
+            setIsLoadingFile(false);
+          }
         });
     } else {
       setIsLoadingFile(false);
@@ -68,10 +85,10 @@ export default function FileWidgetNodeView(props: any) {
   };
 
   useEffect(() => {
-    loadFile();
+    loadFile(false);
 
     const handleSync = () => {
-      loadFile();
+      loadFile(true);
     };
     window.addEventListener('app-sync-trigger', handleSync);
     window.addEventListener('caderno-sync-complete', handleSync);
