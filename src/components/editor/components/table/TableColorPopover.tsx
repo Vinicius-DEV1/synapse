@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../../../../utils/colors';
 
 export const CELL_BG_COLORS = [
@@ -22,6 +22,18 @@ interface TableColorPopoverProps {
 
 export default function TableColorPopover({ mode, onSelectColor, onClose }: TableColorPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
+
+  useEffect(() => {
+    if (popoverRef.current) {
+      const rect = popoverRef.current.getBoundingClientRect();
+      if (rect.bottom > window.innerHeight - 20) {
+        setPlacement('top');
+      } else {
+        setPlacement('bottom');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -33,11 +45,13 @@ export default function TableColorPopover({ mode, onSelectColor, onClose }: Tabl
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [onClose]);
 
+  const positionClass = placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2';
+
   if (mode === 'textColor') {
     return (
       <div
         ref={popoverRef}
-        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card border border-white/10 rounded-xl p-2.5 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] animate-scale-in"
+        className={`absolute ${positionClass} left-1/2 -translate-x-1/2 bg-dark-card/98 backdrop-blur-xl border border-white/20 rounded-xl p-2.5 shadow-2xl z-[200] flex flex-col gap-2 min-w-[210px] animate-scale-in pointer-events-auto`}
       >
         <span className="text-[11px] font-semibold text-dark-subtext uppercase tracking-wider px-1">
           Cor do Texto
@@ -69,7 +83,7 @@ export default function TableColorPopover({ mode, onSelectColor, onClose }: Tabl
     return (
       <div
         ref={popoverRef}
-        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card border border-white/10 rounded-xl p-2.5 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] animate-scale-in"
+        className={`absolute ${positionClass} left-1/2 -translate-x-1/2 bg-dark-card/98 backdrop-blur-xl border border-white/20 rounded-xl p-2.5 shadow-2xl z-[200] flex flex-col gap-2 min-w-[210px] animate-scale-in pointer-events-auto`}
       >
         <span className="text-[11px] font-semibold text-dark-subtext uppercase tracking-wider px-1">
           Destaque do Texto
@@ -111,7 +125,7 @@ export default function TableColorPopover({ mode, onSelectColor, onClose }: Tabl
   return (
     <div
       ref={popoverRef}
-      className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card border border-white/10 rounded-xl p-2.5 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] animate-scale-in"
+      className={`absolute ${positionClass} left-1/2 -translate-x-1/2 bg-dark-card/98 backdrop-blur-xl border border-white/20 rounded-xl p-2.5 shadow-2xl z-[200] flex flex-col gap-2 min-w-[210px] animate-scale-in pointer-events-auto`}
     >
       <span className="text-[11px] font-semibold text-dark-subtext uppercase tracking-wider px-1">
         Cor da Célula / Linha / Coluna
