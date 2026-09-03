@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback, useState, Fragment } from 'react';
+import { memo, useMemo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
 import { Plus, X, FileText, Library, Settings, PanelLeft, Pin } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Tab } from '../../types';
@@ -74,6 +74,7 @@ const TabItem = memo(function TabItem({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      data-active-tab={isActive}
       onClick={() => onSelect(tab.id)}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -121,11 +122,28 @@ const TabItem = memo(function TabItem({
 
 export default function TabBar() {
   const { state, dispatch } = useStore();
+  const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number;
     y: number;
     tab: Tab;
   } | null>(null);
+
+  // Automatically scroll active tab into view when active tab changes
+  useEffect(() => {
+    if (!tabStripRef.current || !state.activeTabId) return;
+    const activeEl = tabStripRef.current.querySelector<HTMLElement>('[data-active-tab="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [state.activeTabId]);
+
+  // Translate vertical mouse wheel scrolling into horizontal tab strip scrolling
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0) {
+      e.currentTarget.scrollLeft += e.deltaY;
+    }
+  }, []);
 
   const handleNewTab = useCallback(() => {
     triggerHaptic('medium');
@@ -266,7 +284,9 @@ export default function TabBar() {
 
         {/* Scrolling Tab Strip - Horizontal scroll only, zero vertical scrollbar */}
         <div 
-          className="flex-1 flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none gap-1"
+          ref={tabStripRef}
+          onWheel={handleWheel}
+          className="flex-1 flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1"
           data-tauri-drag-region
         >
           {state.tabs.map((tab, index) => {

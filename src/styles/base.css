@@ -34,6 +34,32 @@
   display: none;
 }
 
+/* Tab Bar Horizontal Scrollbar (Slim & Elegant) */
+.tab-scrollbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.tab-scrollbar::-webkit-scrollbar {
+  height: 5px;
+  width: 0px;
+}
+.tab-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  transition: background 0.15s ease-in-out;
+}
+.tab-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+.tab-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.75);
+}
+
 /* Highlight.js Clean Override */
 .hljs {
   background: transparent !important;
