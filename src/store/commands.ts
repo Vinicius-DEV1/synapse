@@ -1,4 +1,4 @@
-import type { AppState, Action } from '../types';
+import type { AppState, Action, Tab } from '../types';
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -55,11 +55,78 @@ export function appReducer(state: AppState, action: Action): AppState {
       }
       return { ...state, tabs: newTabs, activeTabId: newActiveId };
     }
+    case 'TOGGLE_PIN_TAB': {
+      const tabIndex = state.tabs.findIndex((t) => t.id === action.tabId);
+      if (tabIndex === -1) return state;
+      const targetTab = state.tabs[tabIndex];
+      const isPinning = !targetTab.isPinned;
+      const updatedTab: Tab = { ...targetTab, isPinned: isPinning };
+      const otherTabs = state.tabs.filter((t) => t.id !== action.tabId);
+
+      let newTabs: Tab[];
+      if (isPinning) {
+        // Place at the end of the pinned tabs section
+        const lastPinnedIdx = otherTabs.reduce((acc, t, idx) => (t.isPinned ? idx : acc), -1);
+        if (lastPinnedIdx === -1) {
+          newTabs = [updatedTab, ...otherTabs];
+        } else {
+          newTabs = [
+            ...otherTabs.slice(0, lastPinnedIdx + 1),
+            updatedTab,
+            ...otherTabs.slice(lastPinnedIdx + 1),
+          ];
+        }
+      } else {
+        // Place at the start of the unpinned tabs section
+        const firstUnpinnedIdx = otherTabs.findIndex((t) => !t.isPinned);
+        if (firstUnpinnedIdx === -1) {
+          newTabs = [...otherTabs, updatedTab];
+        } else {
+          newTabs = [
+            ...otherTabs.slice(0, firstUnpinnedIdx),
+            updatedTab,
+            ...otherTabs.slice(firstUnpinnedIdx),
+          ];
+        }
+      }
+      return { ...state, tabs: newTabs };
+    }
+    case 'CLOSE_OTHER_TABS': {
+      // Keep target tab and all other pinned tabs
+      const newTabs = state.tabs.filter((t) => t.id === action.tabId || t.isPinned);
+      if (newTabs.length === 0) return state;
+      const newActiveId = newTabs.some((t) => t.id === state.activeTabId) ? state.activeTabId : action.tabId;
+      return { ...state, tabs: newTabs, activeTabId: newActiveId };
+    }
+    case 'CLOSE_TABS_TO_RIGHT': {
+      const targetIdx = state.tabs.findIndex((t) => t.id === action.tabId);
+      if (targetIdx === -1) return state;
+      // Close tabs located to the right of targetIdx, unless they are pinned
+      const newTabs = state.tabs.filter((t, idx) => idx <= targetIdx || t.isPinned);
+      const newActiveId = newTabs.some((t) => t.id === state.activeTabId) ? state.activeTabId : action.tabId;
+      return { ...state, tabs: newTabs, activeTabId: newActiveId };
+    }
+    case 'DUPLICATE_TAB': {
+      const tabToDup = state.tabs.find((t) => t.id === action.tabId);
+      if (!tabToDup) return state;
+      const dupIdx = state.tabs.findIndex((t) => t.id === action.tabId);
+      const newTab: Tab = {
+        ...tabToDup,
+        id: 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+        isPinned: false,
+      };
+      const newTabs = [...state.tabs];
+      newTabs.splice(dupIdx + 1, 0, newTab);
+      return { ...state, tabs: newTabs, activeTabId: newTab.id };
+    }
     case 'REORDER_TABS': {
       const newTabs = [...state.tabs];
       const [moved] = newTabs.splice(action.sourceIndex, 1);
       newTabs.splice(action.targetIndex, 0, moved);
-      return { ...state, tabs: newTabs };
+      // Maintain invariant: pinned tabs always come first
+      const pinned = newTabs.filter((t) => t.isPinned);
+      const unpinned = newTabs.filter((t) => !t.isPinned);
+      return { ...state, tabs: [...pinned, ...unpinned] };
     }
     case 'UPDATE_TAB_STATE':
       return {

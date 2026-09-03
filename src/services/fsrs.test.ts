@@ -7,6 +7,7 @@ import {
   processReview,
   formatAnkiInterval,
   previewIntervals,
+  parseStepMinutes,
 } from './fsrs';
 
 describe('FSRS Service', () => {
@@ -21,6 +22,18 @@ describe('FSRS Service', () => {
       expect(parseState('3')).toBe(State.Relearning);
       expect(parseState('relearning')).toBe(State.Relearning);
       expect(parseState('unknown')).toBe(State.New);
+    });
+  });
+
+  describe('parseStepMinutes', () => {
+    it('parses step string into minutes properly', () => {
+      expect(parseStepMinutes('1m,10m')).toBe(1);
+      expect(parseStepMinutes('10m')).toBe(10);
+      expect(parseStepMinutes('2h')).toBe(120);
+      expect(parseStepMinutes('1d')).toBe(1440);
+      expect(parseStepMinutes(null, 5)).toBe(5);
+      expect(parseStepMinutes('', 5)).toBe(5);
+      expect(parseStepMinutes('invalid', 5)).toBe(5);
     });
   });
 
