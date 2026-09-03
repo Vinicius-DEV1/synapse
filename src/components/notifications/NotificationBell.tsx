@@ -11,12 +11,13 @@ export default function NotificationBell() {
     <>
       <button
         onClick={() => setShowModal(!showModal)}
-        className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 mx-1 mb-1 rounded-lg text-xs font-medium transition-colors ${
+        className={`group relative flex-shrink-0 flex items-center justify-center p-2 mx-0.5 mb-1 rounded-lg text-xs font-medium transition-colors ${
           showModal || unreadCount > 0
             ? 'bg-brand-500/20 text-brand-400'
             : 'text-dark-subtext hover:text-white hover:bg-white/5'
         }`}
         title="Central de Notificações"
+        aria-label="Central de Notificações"
       >
         <div className="relative flex items-center justify-center">
           <Bell size={16} />
@@ -26,7 +27,11 @@ export default function NotificationBell() {
             </span>
           )}
         </div>
-        <span className="hidden sm:inline">Notificações</span>
+
+        {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
+        <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
+          Notificações
+        </span>
       </button>
 
       {showModal && (

@@ -105,8 +105,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       />
       
       <div className="fixed md:relative z-[70] md:z-20 w-[260px] h-full bg-dark-bg md:bg-dark-card/50 border-r border-white/5 flex flex-col shadow-2xl md:shadow-none animate-slide-right md:animate-none">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5" data-tauri-drag-region>
+          <div className="flex items-center gap-2" data-tauri-drag-region>
             {renderModuleHeaderIcon()}
             <span className="font-semibold text-sm">
               {renderModuleHeaderLabel()}
