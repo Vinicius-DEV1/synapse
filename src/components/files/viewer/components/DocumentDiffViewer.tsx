@@ -37,7 +37,7 @@ export function DocumentDiffViewer({
     }
   }, [originalText, proposedText]);
 
-  function safeNewHtmlFallback(oldText: string, newText: string): string {
+  function safeNewHtmlFallback(_oldText: string, newText: string): string {
     return `<div class="p-4 text-dark-subtext">Não foi possível calcular o diff linha a linha. Exibindo nova versão proposta.</div><pre class="p-4 text-white">${newText}</pre>`;
   }
 
