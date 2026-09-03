@@ -100,6 +100,34 @@ export async function uploadToDrive(
 }
 
 /**
+ * Updates content of an existing file in Google Drive
+ */
+export async function updateInDrive(
+  accessToken: string,
+  fileId: string,
+  buffer: ArrayBuffer | Blob
+): Promise<void> {
+  const decryptedId = await decryptDriveFileId(fileId);
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PATCH', `https://www.googleapis.com/upload/drive/v3/files/${decryptedId}?uploadType=media`, true);
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Erro ao atualizar arquivo no Google Drive: ${xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Falha na rede durante a atualização no Google Drive.'));
+    xhr.send(buffer);
+  });
+}
+
+/**
  * Baixa um arquivo do Google Drive
  */
 export async function downloadFromDrive(

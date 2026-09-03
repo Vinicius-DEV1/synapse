@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FileViewer from './FileViewer';
 import type { FileItem } from '../../types';
 import * as fileFetcher from '../../utils/file-fetcher';
+import * as downloadUtils from './viewer/utils/documentDownloadUtils';
 
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
@@ -14,6 +15,10 @@ vi.mock('../../store/useStore', () => ({
 
 vi.mock('../../utils/file-fetcher', () => ({
   getDecryptedFileUrl: vi.fn(),
+}));
+
+vi.mock('./viewer/utils/documentDownloadUtils', () => ({
+  downloadDocumentFile: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 describe('FileViewer Component', () => {
@@ -31,6 +36,13 @@ describe('FileViewer Component', () => {
     deleted_at: null,
   };
 
+  const mdMockItem: FileItem = {
+    ...baseMockItem,
+    id: 'f2',
+    name: 'notes.md',
+    file_type: 'text',
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -38,6 +50,7 @@ describe('FileViewer Component', () => {
   it('renders text file preview with controls', async () => {
     vi.mocked(fileFetcher.getDecryptedFileUrl).mockResolvedValue('blob:http://localhost/test-blob');
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       text: () => Promise.resolve('Hello world text content'),
     } as any);
 
@@ -97,5 +110,47 @@ describe('FileViewer Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Não foi possível carregar o arquivo')).toBeInTheDocument();
     });
+  });
+
+  it('renders AI button and edit pencil button for markdown files', async () => {
+    vi.mocked(fileFetcher.getDecryptedFileUrl).mockResolvedValue('blob:http://localhost/test-md');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('# Markdown Content'),
+    } as any);
+
+    render(<FileViewer item={mdMockItem} onClose={() => {}} />);
+
+    await waitFor(() => {
+      const aiBtn = screen.getByTitle(/Assistente de IA para este documento/i);
+      expect(aiBtn).toBeInTheDocument();
+
+      const editBtn = screen.getByTitle(/Editar documento \(Markdown\)/i);
+      expect(editBtn).toBeInTheDocument();
+    });
+
+    // Click edit pencil button to switch to editor
+    const editBtn = screen.getByTitle(/Editar documento \(Markdown\)/i);
+    fireEvent.click(editBtn);
+
+    expect(screen.getByPlaceholderText(/Digite ou edite o conteúdo em Markdown aqui/i)).toBeInTheDocument();
+  });
+
+  it('triggers downloadDocumentFile when clicking download button', async () => {
+    vi.mocked(fileFetcher.getDecryptedFileUrl).mockResolvedValue('blob:http://localhost/test-blob');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('File text'),
+    } as any);
+
+    render(<FileViewer item={baseMockItem} onClose={() => {}} />);
+
+    await waitFor(() => {
+      const downloadBtn = screen.getByTitle('Download');
+      expect(downloadBtn).toBeInTheDocument();
+      fireEvent.click(downloadBtn);
+    });
+
+    expect(downloadUtils.downloadDocumentFile).toHaveBeenCalledWith('blob:http://localhost/test-blob', 'document.txt');
   });
 });

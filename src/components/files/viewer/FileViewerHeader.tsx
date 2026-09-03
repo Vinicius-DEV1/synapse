@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, FileText, Moon, Sun, Eye, Code } from 'lucide-react';
+import { X, Download, FileText, Moon, Sun, Eye, Code, Pencil, Loader2 } from 'lucide-react';
 import type { FileItem } from '../../../types';
 import { BookmarksDrawer } from './BookmarksDrawer';
 import type { Bookmark as BookmarkType } from '../../../utils/reading-progress';
@@ -28,6 +28,11 @@ interface FileViewerHeaderProps {
   onSaveRenameBookmark: (bmId: string, e?: React.FormEvent) => void;
   onRemoveBookmark: (id: string) => void;
   onJumpToBookmark: (scrollTop: number, label?: string) => void;
+  isEditing?: boolean;
+  onToggleEdit?: () => void;
+  onOpenAi?: () => void;
+  onDownload?: () => void;
+  isDownloading?: boolean;
   onClose: () => void;
 }
 
@@ -55,6 +60,11 @@ export function FileViewerHeader({
   onSaveRenameBookmark,
   onRemoveBookmark,
   onJumpToBookmark,
+  isEditing = false,
+  onToggleEdit,
+  onOpenAi,
+  onDownload,
+  isDownloading = false,
   onClose,
 }: FileViewerHeaderProps) {
   return (
@@ -82,7 +92,36 @@ export function FileViewerHeader({
       <div className="flex items-center gap-2 shrink-0">
         {isText && (
           <>
+            {/* Discreet AI Button */}
+            {isMd && onOpenAi && (
+              <button
+                type="button"
+                onClick={onOpenAi}
+                className="p-2 text-dark-subtext hover:text-brand-300 hover:bg-brand-500/15 rounded-lg transition-all flex items-center justify-center group"
+                title="Assistente de IA para este documento"
+              >
+                <span className="text-base group-hover:scale-125 transition-transform">✨</span>
+              </button>
+            )}
+
+            {/* Manual Edit (Pencil) Button */}
+            {isMd && onToggleEdit && (
+              <button
+                type="button"
+                onClick={onToggleEdit}
+                className={`p-2 rounded-lg transition-all flex items-center justify-center ${
+                  isEditing
+                    ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30'
+                    : 'text-dark-subtext hover:text-white hover:bg-white/10'
+                }`}
+                title={isEditing ? 'Visualizar documento' : 'Editar documento (Markdown)'}
+              >
+                <Pencil size={18} />
+              </button>
+            )}
+
             <button
+              type="button"
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
               title={darkMode ? 'Modo Normal' : 'Modo Alto Contraste / Noturno'}
@@ -106,9 +145,10 @@ export function FileViewerHeader({
               onJumpToBookmark={onJumpToBookmark}
             />
 
-            {isMd && (
+            {isMd && !isEditing && (
               <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1 gap-1">
                 <button
+                  type="button"
                   onClick={() => setViewMode('rendered')}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors ${
                     viewMode === 'rendered' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white'
@@ -119,6 +159,7 @@ export function FileViewerHeader({
                   <span>Formatado</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode('raw')}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors ${
                     viewMode === 'raw' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white'
@@ -133,17 +174,24 @@ export function FileViewerHeader({
           </>
         )}
 
-        {objectUrl && (
-          <a 
-            href={objectUrl} 
-            download={item.name}
-            className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2"
+        {objectUrl && onDownload && (
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={isDownloading}
+            className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
             title="Download"
           >
-            <Download size={20} />
-          </a>
+            {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+          </button>
         )}
-        <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Fechar">
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          title="Fechar"
+        >
           <X size={20} />
         </button>
       </div>
