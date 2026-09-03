@@ -4,6 +4,9 @@ import { useStore } from '../../../store/useStore';
 import type { Tab } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
+import { isDesktopApp } from '../../../services/platform';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
@@ -97,6 +100,30 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     }
   };
 
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    if (e.buttons === 1) {
+      try {
+        getCurrentWindow().startDragging();
+      } catch {
+        invoke('app_window_start_dragging').catch(() => {});
+      }
+    }
+  };
+
+  const handleHeaderDoubleClick = (e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    try {
+      getCurrentWindow().toggleMaximize();
+    } catch {
+      invoke('app_window_toggle_maximize').catch(() => {});
+    }
+  };
+
   return (
     <>
       <div 
@@ -105,7 +132,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       />
       
       <div className="fixed md:relative z-[70] md:z-20 w-[260px] h-full bg-dark-bg md:bg-dark-card/50 border-r border-white/5 flex flex-col shadow-2xl md:shadow-none animate-slide-right md:animate-none">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5" data-tauri-drag-region>
+        <div 
+          className="flex items-center justify-between px-4 py-3 border-b border-white/5 select-none cursor-default" 
+          data-tauri-drag-region
+          onMouseDown={handleHeaderMouseDown}
+          onDoubleClick={handleHeaderDoubleClick}
+        >
           <div className="flex items-center gap-2" data-tauri-drag-region>
             {renderModuleHeaderIcon()}
             <span className="font-semibold text-sm">

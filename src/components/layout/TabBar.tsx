@@ -6,6 +6,9 @@ import { MAIN_MODULES, SPECIAL_MODULES } from './sidebar/modules.config';
 import NotificationBell from '../notifications/NotificationBell';
 import WindowControls from './WindowControls';
 import { triggerHaptic } from '../../services/haptics';
+import { isDesktopApp } from '../../services/platform';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 interface TabItemProps {
   tab: any;
@@ -151,11 +154,37 @@ export default function TabBar() {
     }
   }, [handleDropTab]);
 
+  const handleWindowMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    if (e.buttons === 1) {
+      try {
+        getCurrentWindow().startDragging();
+      } catch {
+        invoke('app_window_start_dragging').catch(() => {});
+      }
+    }
+  }, []);
+
+  const handleWindowDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (!isDesktopApp()) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    try {
+      getCurrentWindow().toggleMaximize();
+    } catch {
+      invoke('app_window_toggle_maximize').catch(() => {});
+    }
+  }, []);
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div 
-        className="h-[46px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-1 overflow-x-auto scrollbar-none"
+        className="h-[46px] bg-dark-card/30 border-b border-white/5 flex items-end px-1 gap-1 overflow-x-auto scrollbar-none select-none cursor-default"
         data-tauri-drag-region
+        onMouseDown={handleWindowMouseDown}
+        onDoubleClick={handleWindowDoubleClick}
       >
       {/* Mobile Sidebar Toggle Button */}
       <button

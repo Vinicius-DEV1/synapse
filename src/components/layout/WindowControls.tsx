@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Minus, Square, Copy, X } from 'lucide-react';
 import { isDesktopApp } from '../../services/platform';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 export default function WindowControls() {
   const [isDesktop, setIsDesktop] = useState(false);
@@ -35,8 +36,12 @@ export default function WindowControls() {
     e.stopPropagation();
     try {
       await getCurrentWindow().minimize();
-    } catch (err) {
-      console.warn('[WindowControls] Falha ao minimizar:', err);
+    } catch {
+      try {
+        await invoke('app_window_minimize');
+      } catch (err) {
+        console.warn('[WindowControls] Falha ao minimizar:', err);
+      }
     }
   };
 
@@ -47,8 +52,13 @@ export default function WindowControls() {
       await win.toggleMaximize();
       const maximized = await win.isMaximized();
       setIsMaximized(maximized);
-    } catch (err) {
-      console.warn('[WindowControls] Falha ao maximizar/restaurar:', err);
+    } catch {
+      try {
+        const maximized = await invoke<boolean>('app_window_toggle_maximize');
+        setIsMaximized(maximized);
+      } catch (err) {
+        console.warn('[WindowControls] Falha ao maximizar/restaurar:', err);
+      }
     }
   };
 
@@ -56,8 +66,12 @@ export default function WindowControls() {
     e.stopPropagation();
     try {
       await getCurrentWindow().close();
-    } catch (err) {
-      console.warn('[WindowControls] Falha ao fechar:', err);
+    } catch {
+      try {
+        await invoke('app_window_close');
+      } catch (err) {
+        console.warn('[WindowControls] Falha ao fechar:', err);
+      }
     }
   };
 
