@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { Download, File, Bookmark } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Download, File, Bookmark, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
@@ -8,6 +8,10 @@ import { useFileReadingProgress } from './hooks/useFileReadingProgress';
 import { TextPreviewer } from './viewer/TextPreviewer';
 import { FileViewerHeader } from './viewer/FileViewerHeader';
 import { FileViewerResumeBanner } from './viewer/FileViewerResumeBanner';
+import { DocumentEditorView } from './viewer/components/DocumentEditorView';
+import { DocumentAiModal } from './viewer/modals/DocumentAiModal';
+import { downloadDocumentFile } from './viewer/utils/documentDownloadUtils';
+import { useDocumentSync } from './viewer/hooks/useDocumentSync';
 
 interface FileViewerProps {
   item: FileItem;
@@ -21,6 +25,10 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const isMd = item.name.toLowerCase().endsWith('.md') || item.name.toLowerCase().endsWith('.markdown');
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>(isMd ? 'rendered' : 'raw');
@@ -38,6 +46,12 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   const currentLoadedKeyRef = useRef<string | null>(null);
   const fileKey = `${itemId}_${itemUpdatedAt || ''}_${itemLocalPath || ''}_${itemDriveId || ''}`;
+
+  const { saveDocument } = useDocumentSync({
+    item,
+    masterKey: filesMasterKey,
+    onContentUpdated: (newText) => setTextContent(newText),
+  });
 
   const {
     scrollContainerRef,
@@ -61,11 +75,20 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     handleStartRenameBookmark,
     handleSaveRenameBookmark,
     handleRemoveBookmark,
-    handleJumpToBookmark
+    handleJumpToBookmark,
   } = useFileReadingProgress(item.id, isText, textContent);
 
+  const handleDownload = useCallback(async () => {
+    if (!objectUrl || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      await downloadDocumentFile(objectUrl, item.name);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [objectUrl, item.name, isDownloading]);
+
   useEffect(() => {
-    // If this exact file revision is already loaded and active, avoid re-fetching and flickering
     if (currentLoadedKeyRef.current === fileKey && objectUrl) {
       return;
     }
@@ -74,10 +97,10 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     let isCancelled = false;
     setIsLoading(true);
     setLoadError(null);
-    
+
     if (['image', 'pdf', 'text', 'other'].includes(itemFileType) || isPdf || isText) {
       getDecryptedFileUrl(item, filesMasterKey)
-        .then(async resolvedUrl => {
+        .then(async (resolvedUrl) => {
           if (isCancelled) return;
           if (resolvedUrl && typeof resolvedUrl === 'string') {
             url = resolvedUrl;
@@ -89,12 +112,12 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                 const txt = await res.text();
                 if (!isCancelled) setTextContent(txt);
               } catch (e) {
-                console.error("[FileViewer] Failed to fetch text", e);
-                if (!isCancelled) setTextContent("Erro ao carregar texto.");
+                console.error('[FileViewer] Failed to fetch text', e);
+                if (!isCancelled) setTextContent('Erro ao carregar texto.');
               }
             }
           } else {
-            console.warn("[FileViewer] No local or Drive file available");
+            console.warn('[FileViewer] No local or Drive file available');
             if (!isCancelled) {
               setLoadError(
                 itemDriveId
@@ -104,8 +127,8 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             }
           }
         })
-        .catch(err => {
-          console.error("[FileViewer] Error resolving file URL:", err);
+        .catch((err) => {
+          console.error('[FileViewer] Error resolving file URL:', err);
           if (!isCancelled) {
             setLoadError(err?.message || 'Falha ao carregar o arquivo.');
           }
@@ -117,7 +140,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
       setIsLoading(false);
       setLoadError('Tipo de arquivo não suportado para visualização.');
     }
-    
+
     return () => {
       isCancelled = true;
       if (url && url.startsWith('blob:')) {
@@ -126,50 +149,15 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     };
   }, [fileKey, filesMasterKey, isPdf, isText, item, itemDriveId, itemFileType, objectUrl]);
 
-  // Smooth keyboard navigation (Arrow keys, PageUp/PageDown)
-  useEffect(() => {
-    if (!isText || !textContent) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-
-      if (!scrollContainerRef.current) return;
-      const container = scrollContainerRef.current;
-      const step = 60;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        container.scrollBy({ top: step, behavior: 'auto' });
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        container.scrollBy({ top: -step, behavior: 'auto' });
-      } else if (e.key === 'PageDown') {
-        e.preventDefault();
-        container.scrollBy({ top: container.clientHeight * 0.8, behavior: 'smooth' });
-      } else if (e.key === 'PageUp') {
-        e.preventDefault();
-        container.scrollBy({ top: -container.clientHeight * 0.8, behavior: 'smooth' });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isText, textContent, scrollContainerRef]);
-
-  const wordCount = textContent ? textContent.trim().split(/\s+/).filter(Boolean).length : 0;
-  const estimatedMinutes = Math.max(1, Math.ceil(wordCount / 200));
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col animate-fade-in">
+      {/* Header */}
       <FileViewerHeader
         item={item}
         isText={isText}
         isMd={isMd}
-        wordCount={wordCount}
-        estimatedMinutes={estimatedMinutes}
+        wordCount={textContent.trim() ? textContent.trim().split(/\s+/).length : 0}
+        estimatedMinutes={Math.ceil((textContent.trim() ? textContent.trim().split(/\s+/).length : 0) / 200)}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         viewMode={viewMode}
@@ -188,22 +176,29 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         onSaveRenameBookmark={handleSaveRenameBookmark}
         onRemoveBookmark={handleRemoveBookmark}
         onJumpToBookmark={handleJumpToBookmark}
+        isEditing={isEditing}
+        onToggleEdit={() => setIsEditing(!isEditing)}
+        onOpenAi={() => setShowAiModal(true)}
+        onDownload={handleDownload}
+        isDownloading={isDownloading}
         onClose={onClose}
       />
 
       {/* Reading Progress Bar with Visual Markers */}
-      {isText && (
+      {isText && !isEditing && (
         <div className="w-full bg-white/5 h-1.5 relative z-20">
-          <div 
+          <div
             ref={progressBarRef}
-            className="bg-brand-500 h-full transition-all duration-150" 
+            className="bg-brand-500 h-full transition-all duration-150"
             style={{ width: `${progressPercentRef.current}%` }}
           />
 
           {/* Bookmark Visual Pins */}
-          {scrollContainerRef.current && (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.clientHeight) > 0 && (
-            bookmarks.map(bm => {
-              const maxScroll = scrollContainerRef.current!.scrollHeight - scrollContainerRef.current!.clientHeight;
+          {scrollContainerRef.current &&
+            scrollContainerRef.current.scrollHeight - scrollContainerRef.current.clientHeight > 0 &&
+            bookmarks.map((bm) => {
+              const maxScroll =
+                scrollContainerRef.current!.scrollHeight - scrollContainerRef.current!.clientHeight;
               const bmPercent = Math.min(100, Math.max(0, (bm.scrollTop / maxScroll) * 100));
               return (
                 <button
@@ -214,17 +209,19 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                   title={`📌 ${bm.label} (${Math.round(bmPercent)}%)`}
                 />
               );
-            })
-          )}
+            })}
         </div>
       )}
-      
+
+      {/* Main Content View */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-4 relative">
         {/* Toast Notificação de Marcador Ativo */}
         {activeBookmarkToast && (
           <div className="absolute top-4 right-6 z-50 bg-amber-500/90 text-black font-medium text-xs px-3.5 py-2 rounded-xl shadow-2xl flex items-center gap-2 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150">
             <Bookmark size={15} className="fill-black" />
-            <span>Navegou para: <strong>{activeBookmarkToast}</strong></span>
+            <span>
+              Navegou para: <strong>{activeBookmarkToast}</strong>
+            </span>
           </div>
         )}
 
@@ -267,10 +264,21 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
               Fechar
             </button>
           </div>
+        ) : isEditing ? (
+          <DocumentEditorView
+            initialContent={textContent}
+            fileName={item.name}
+            onSave={async (newTxt) => {
+              const ok = await saveDocument(newTxt);
+              if (ok) setIsEditing(false);
+              return ok;
+            }}
+            onCancel={() => setIsEditing(false)}
+          />
         ) : isImage ? (
-          <img 
-            src={objectUrl} 
-            alt={item.name} 
+          <img
+            src={objectUrl}
+            alt={item.name}
             className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
           />
         ) : isText ? (
@@ -283,8 +291,8 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             onScroll={handleScroll}
           />
         ) : isPdf ? (
-          <iframe 
-            src={objectUrl} 
+          <iframe
+            src={objectUrl}
             title={item.name}
             className="w-full h-full max-w-5xl rounded-xl border border-white/10 shadow-2xl bg-white"
           />
@@ -295,20 +303,34 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             </div>
             <h3 className="text-xl font-semibold text-white text-center break-all">{item.name}</h3>
             <p className="text-dark-subtext text-center mb-4 text-sm">
-              Visualização não suportada para este formato. <br/> 
+              Visualização não suportada para este formato. <br />
               Tamanho: {(item.file_size / 1024 / 1024).toFixed(2)} MB
             </p>
-            <a 
-              href={objectUrl} 
-              download={item.name}
-              className="w-full px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="w-full px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Download size={20} />
-              Baixar Arquivo
-            </a>
+              {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+              <span>Baixar Arquivo</span>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Contextual AI Assistant Modal */}
+      {showAiModal && (
+        <DocumentAiModal
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          documentTitle={item.name}
+          documentText={textContent}
+          onApplyChanges={async (updatedContent) => {
+            return await saveDocument(updatedContent);
+          }}
+        />
+      )}
     </div>
   );
 }
