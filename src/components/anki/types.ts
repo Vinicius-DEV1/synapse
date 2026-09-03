@@ -32,6 +32,14 @@ export interface Card {
   updated_at?: string;
 }
 
+export interface VideoClipDraft {
+  path: string;
+  startMs: number;
+  endMs: number;
+}
+
+export type CardState = 0 | 1 | 2 | 3; // 0: new, 1: learning, 2: review, 3: relearning
+
 export interface CardDraft {
   front: string;
   back: string;
@@ -43,6 +51,6 @@ export interface CardDraft {
   source_id?: string;
   deck_id?: string;
   tags?: string[];
-  video_clip?: any;
+  video_clip?: VideoClipDraft;
   tts_text?: string;
 }

@@ -22,7 +22,7 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
   importDeck: (payload: any) => importDeck(db, payload),
   getDecks: () => getDecks(db),
   getReviews: () => getReviews(db),
-  createDeck: (name: string, description?: string, parentId?: string) =>
+  createDeck: (name: string, description?: string, parentId?: string | null) =>
     createDeck(db, generateId, name, description, parentId),
   getNote: (noteId: string) => getNote(db, noteId),
   getCard: (cardId: string) => getCard(db, cardId),

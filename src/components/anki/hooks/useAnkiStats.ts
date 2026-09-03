@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { computeAnkiStats, type AnkiStatsSummary } from '../stats/ankiStatsCalculator';
 
 export function useAnkiStats() {
@@ -20,6 +20,14 @@ export function useAnkiStats() {
   const [cardsCreatedData, setCardsCreatedData] = useState<any[]>([]);
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -31,20 +39,19 @@ export function useAnkiStats() {
         if (revRes?.success && revRes.reviews) allReviews = revRes.reviews;
         else if (Array.isArray(revRes)) allReviews = revRes;
 
-        const decksRes = await window.api.anki.getDecks();
-        let decks: any[] = [];
-        if (decksRes?.success && decksRes.decks) decks = decksRes.decks;
-        else if (Array.isArray(decksRes)) decks = decksRes;
-
-        for (const deck of decks) {
-          const cRes = await window.api.anki.getAllCards(deck.id);
-          if (cRes?.success && cRes.cards) allCards = allCards.concat(cRes.cards);
-          else if (Array.isArray(cRes)) allCards = allCards.concat(cRes);
+        // Fetch all cards globally in one pass
+        const cRes = await window.api.anki.getAllCards();
+        if (cRes?.success && cRes.cards) {
+          allCards = cRes.cards;
+        } else if (Array.isArray(cRes)) {
+          allCards = cRes;
         }
       }
 
+      if (!isMountedRef.current) return;
+
       const uniqueCardsMap = new Map();
-      allCards.forEach(c => uniqueCardsMap.set(c.id, c));
+      allCards.forEach((c) => uniqueCardsMap.set(c.id, c));
       const uniqueCards = Array.from(uniqueCardsMap.values());
 
       const computed = computeAnkiStats(allReviews, uniqueCards);
@@ -56,9 +63,9 @@ export function useAnkiStats() {
       setCardsCreatedData(computed.cardsCreatedData);
       setHeatmapData(computed.heatmapData);
     } catch (err) {
-      console.error('Failed to load stats data:', err);
+      if (isMountedRef.current) console.error('Failed to load stats data:', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, []);
 

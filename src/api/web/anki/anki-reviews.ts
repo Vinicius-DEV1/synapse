@@ -1,4 +1,6 @@
-import { processReview } from '../../../services/fsrs';
+import { processReview, previewIntervals } from '../../../services/fsrs';
+import { collectDescendantDeckIds } from './utils/deck-tree';
+import { joinCardsWithNotes } from './utils/card-note-join';
 
 export async function getReviews(db: any) {
   const all = (await db.getAll('anki_reviews')) || [];
@@ -10,25 +12,10 @@ export async function getDueCards(db: any, deckId: string) {
   const allDecks = (await db.getAll('anki_decks')) || [];
   const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
 
-  const deckIds = new Set<string>();
-  deckIds.add(deckId);
-
-  let added = true;
-  while (added) {
-    added = false;
-    for (const d of activeDecks) {
-      if (d.parent_id && deckIds.has(d.parent_id) && !deckIds.has(d.id)) {
-        deckIds.add(d.id);
-        added = true;
-      }
-    }
-  }
+  const deckIds = collectDescendantDeckIds(activeDecks, deckId);
 
   const allCards: any[] = (await db.getAll('anki_cards')) || [];
   const allNotes: any[] = (await db.getAll('anki_notes')) || [];
-  const notesMap = new Map(
-    allNotes.filter((n: any) => !n.deleted_at).map((n: any): [string, any] => [n.id, n])
-  );
 
   const now = new Date().toISOString();
   const allSettings = (await db.getAll('anki_deck_settings')) || [];
@@ -38,13 +25,7 @@ export async function getDueCards(db: any, deckId: string) {
   };
 
   const validCards = allCards.filter((c: any) => !c.deleted_at && deckIds.has(c.deck_id));
-
-  const joinedCards = validCards
-    .map((c: any) => {
-      const note = notesMap.get(c.note_id);
-      return note ? { ...note, ...c, id: c.id, note_id: note.id, deck_id: c.deck_id } : null;
-    })
-    .filter((c: any) => c !== null);
+  const joinedCards = joinCardsWithNotes(validCards, allNotes);
 
   let newCards: any[] = [];
   let learningCards: any[] = [];
@@ -69,10 +50,10 @@ export async function getDueCards(db: any, deckId: string) {
     (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
   );
   learningCards.sort(
-    (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    (a, b) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime()
   );
   reviewCards.sort(
-    (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    (a, b) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime()
   );
 
   newCards = newCards.slice(0, deckSettings.new_limit);
@@ -129,7 +110,6 @@ export async function getCardIntervals(db: any, cardId: string) {
     const allSettings = (await db.getAll('anki_deck_settings')) || [];
     const deckSettings = allSettings.find((s: any) => s.deck_id === card.deck_id);
 
-    const { previewIntervals } = await import('../../../services/fsrs');
     const intervals = previewIntervals(card, deckSettings);
     return { success: true, intervals };
   }

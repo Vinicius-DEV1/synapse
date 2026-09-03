@@ -32,12 +32,17 @@ export function useCardEditorForm({
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadDecks();
     if (!mediaUrl && (draft.video_clip || draft.tts_text)) {
       generatePreviewAudio();
     }
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -58,22 +63,25 @@ export function useCardEditorForm({
         if (draft.video_clip) {
           const { path, startMs, endMs } = draft.video_clip;
           const audioRes = await window.api.audio.extractClip(path, startMs, endMs);
-          if (audioRes.success) setMediaUrl(audioRes.filePath);
+          if (isMountedRef.current && audioRes.success) setMediaUrl(audioRes.filePath);
         } else if (draft.tts_text) {
           const audioRes = await window.api.audio.generateTTS(draft.tts_text, 'en-US');
-          if (audioRes.success) setMediaUrl(audioRes.filePath);
+          if (isMountedRef.current && audioRes.success) setMediaUrl(audioRes.filePath);
         }
       }
     } catch (err) {
       console.error('Audio preview failed:', err);
     } finally {
-      setGeneratingAudio(false);
+      if (isMountedRef.current) {
+        setGeneratingAudio(false);
+      }
     }
   };
 
   const loadDecks = async () => {
     if (window.api?.anki) {
       const res = await window.api.anki.getDecks();
+      if (!isMountedRef.current) return;
       if (res.success && res.decks && res.decks.length > 0) {
         setDecks(res.decks);
         if (draft.deck_id) {

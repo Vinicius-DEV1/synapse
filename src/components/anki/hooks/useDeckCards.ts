@@ -1,9 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useDeckCards(deckId: string) {
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const fetchCards = useCallback(async () => {
     if (!deckId) return;
@@ -12,6 +20,7 @@ export function useDeckCards(deckId: string) {
     try {
       if (window.api?.anki) {
         const res = await window.api.anki.getAllCards(deckId);
+        if (!isMountedRef.current) return;
         if (res?.success && res.cards) {
           setCards(res.cards);
         } else if (Array.isArray(res)) {
@@ -19,9 +28,9 @@ export function useDeckCards(deckId: string) {
         }
       }
     } catch (err: any) {
-      setError(err);
+      if (isMountedRef.current) setError(err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, [deckId]);
 

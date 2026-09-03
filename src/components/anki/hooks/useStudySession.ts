@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, type AppSettings } from '../../../utils/settings';
 import { playFlipSound, playCorrectSound, playIncorrectSound } from '../utils/sounds';
 import { triggerCelebrationConfetti } from '../../../utils/confetti';
@@ -27,6 +27,14 @@ export function useStudySession(deckId: string) {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [flipState, setFlipState] = useState<'front' | 'flipping-out' | 'flipping-in' | 'back'>('front');
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     setAppSettings(getSettings());
   }, []);
@@ -39,51 +47,68 @@ export function useStudySession(deckId: string) {
     }
   }, [loading, cards.length]);
 
-  useEffect(() => {
-    loadDueCards();
-  }, [deckId]);
-
-  useEffect(() => {
-    if (showingAnswer && cards[currentIndex] && !isRetry) {
-      if (window.api?.anki) {
-        window.api.anki
-          .getCardIntervals?.(cards[currentIndex].id)
-          .then((res: any) => {
-            if (res?.success && res.intervals) {
-              setIntervals(res.intervals);
-            }
-          })
-          .catch(console.error);
-      }
-    }
-  }, [showingAnswer, currentIndex, cards, isRetry]);
-
-  const loadDueCards = async () => {
-    setLoading(true);
-    if (window.api?.anki) {
-      const res = await window.api.anki.getDueCards(deckId);
-      if (res && res.success && res.cards) {
-        setCards(res.cards);
-      } else if (Array.isArray(res)) {
-        setCards(res);
-      }
-    }
-    setCurrentIndex(0);
-    setShowingAnswer(false);
-    setFlipState('front');
-    setIsRetry(false);
-    resetCardState();
-    setLoading(false);
-  };
-
-  const resetCardState = () => {
+  const resetCardState = useCallback(() => {
     setEvaluating(false);
     setAiFeedback(null);
     setExactMatch(null);
     setIntervals(['', '', '', '']);
-  };
+  }, []);
 
-  const handleDeleteCard = async () => {
+  const loadDueCards = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (window.api?.anki) {
+        const res = await window.api.anki.getDueCards(deckId);
+        if (!isMountedRef.current) return;
+        if (res && res.success && res.cards) {
+          setCards(res.cards);
+        } else if (Array.isArray(res)) {
+          setCards(res);
+        }
+      }
+    } catch (err) {
+      if (isMountedRef.current) console.error('[SRS] Failed to load due cards:', err);
+    } finally {
+      if (isMountedRef.current) {
+        setCurrentIndex(0);
+        setShowingAnswer(false);
+        setFlipState('front');
+        setIsRetry(false);
+        resetCardState();
+        setLoading(false);
+      }
+    }
+  }, [deckId, resetCardState]);
+
+  useEffect(() => {
+    loadDueCards();
+  }, [loadDueCards]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    const targetCard = cards[currentIndex];
+
+    if (showingAnswer && targetCard && !isRetry) {
+      if (window.api?.anki) {
+        window.api.anki
+          .getCardIntervals?.(targetCard.id)
+          .then((res: any) => {
+            if (isCurrent && isMountedRef.current && res?.success && res.intervals) {
+              setIntervals(res.intervals);
+            }
+          })
+          .catch((err) => {
+            if (isCurrent) console.error('[SRS] Interval fetch error:', err);
+          });
+      }
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [showingAnswer, currentIndex, cards, isRetry]);
+
+  const handleDeleteCard = useCallback(async () => {
     const card = cards[currentIndex];
     if (!card) return;
     if (window.confirm('Tem certeza que deseja excluir este cartão definitivamente?')) {
@@ -92,52 +117,58 @@ export function useStudySession(deckId: string) {
         loadDueCards();
       }
     }
-  };
+  }, [cards, currentIndex, loadDueCards]);
 
-  const handleRating = async (rating: number) => {
-    if (appSettings?.enableStudySfx) {
-      if (rating <= 2) playIncorrectSound();
-      else playCorrectSound();
-    }
+  const handleRating = useCallback(
+    async (rating: number) => {
+      if (appSettings?.enableStudySfx) {
+        if (rating <= 2) playIncorrectSound();
+        else playCorrectSound();
+      }
 
-    const card = cards[currentIndex];
+      const card = cards[currentIndex];
+      if (!card) return;
 
-    setSessionStats((prev) => ({
-      reviewed: prev.reviewed + 1,
-      correct: prev.correct + (rating >= 3 ? 1 : 0),
-    }));
+      setSessionStats((prev) => ({
+        reviewed: prev.reviewed + 1,
+        correct: prev.correct + (rating >= 3 ? 1 : 0),
+      }));
 
-    if (window.api?.anki) {
-      await window.api.anki.reviewCard(card.id, rating);
-    }
+      if (window.api?.anki) {
+        await window.api.anki.reviewCard(card.id, rating);
+      }
 
-    if (currentIndex + 1 < cards.length) {
-      setCurrentIndex((curr) => curr + 1);
-      setShowingAnswer(false);
-      setFlipState('front');
-      setIsRetry(false);
-      resetCardState();
-    } else {
-      loadDueCards();
-    }
-  };
+      if (currentIndex + 1 < cards.length) {
+        setCurrentIndex((curr) => curr + 1);
+        setShowingAnswer(false);
+        setFlipState('front');
+        setIsRetry(false);
+        resetCardState();
+      } else {
+        loadDueCards();
+      }
+    },
+    [appSettings, cards, currentIndex, loadDueCards, resetCardState]
+  );
 
-  const handleRetryPractice = () => {
+  const handleRetryPractice = useCallback(() => {
     setShowingAnswer(false);
     setFlipState('front');
     setIsRetry(false);
     resetCardState();
-  };
+  }, [resetCardState]);
 
-  const revealAnswer = () => {
+  const revealAnswer = useCallback(() => {
     if (appSettings?.enableStudySfx) playFlipSound();
 
     if (appSettings?.enableStudy3DFlip) {
       setFlipState('flipping-out');
       setTimeout(() => {
+        if (!isMountedRef.current) return;
         setShowingAnswer(true);
         setFlipState('flipping-in');
         setTimeout(() => {
+          if (!isMountedRef.current) return;
           setFlipState('back');
         }, 50);
       }, 200);
@@ -145,7 +176,7 @@ export function useStudySession(deckId: string) {
       setShowingAnswer(true);
       setFlipState('back');
     }
-  };
+  }, [appSettings]);
 
   return {
     cards,

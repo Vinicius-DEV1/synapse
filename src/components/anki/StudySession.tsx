@@ -57,7 +57,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
         playAudio();
       }
     }
-  }, [currentIndex, showingAnswer, loading]);
+  }, [currentIndex, showingAnswer, loading, currentCard?.id, currentCard?.media_url]);
 
   const handleAnswerSubmit = async (typedAnswer?: string, audioBase64?: string) => {
     if (!currentCard) return;
@@ -131,7 +131,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showingAnswer, currentIndex, currentCard]);
+  }, [showingAnswer, currentIndex, currentCard, handleRating, handleRetryPractice, revealAnswer, onClose]);
 
   if (editingCard) {
     return (

@@ -60,4 +60,30 @@ describe('ClozeCard Component', () => {
     expect(screen.getByText('___')).toBeInTheDocument();
     expect(screen.getByText('Cidade luz.')).toBeInTheDocument();
   });
+
+  it('renders correct expected answer for multi-cloze card matching ord target', () => {
+    const multiClozeCard: AnkiCard = {
+      id: 'card_cloze_2',
+      deck_id: 'deck_1',
+      front: 'O gato é {{c1::felino}} e o cão é {{c2::canino}}.',
+      back: '',
+      card_type: 'cloze',
+      validation_mode: 'exact',
+      ord: 1, // targeting c2
+    };
+
+    render(
+      <ClozeCard
+        card={multiClozeCard}
+        showingAnswer={true}
+        onAnswerSubmit={vi.fn()}
+        evaluating={false}
+        exactMatch={false}
+        aiFeedback={null}
+      />
+    );
+
+    // Should display 'canino' as expected answer for c2, NOT 'felino'
+    expect(screen.getByText(/Resposta Esperada: canino/i)).toBeInTheDocument();
+  });
 });

@@ -53,7 +53,7 @@ export function CardTableView({
           const card = group[0];
           const isSelected = group.every(c => selectedIds.has(c.id));
           return (
-          <tr key={card.note_id} className="hover:bg-dark-card transition-colors group">
+          <tr key={card.note_id || card.id} className="hover:bg-dark-card transition-colors group">
             <td className="p-3">
               <input 
                 type="checkbox" 
@@ -72,8 +72,8 @@ export function CardTableView({
                   {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
                 </span>
               )}
-              {card.tags && card.tags.map((t: string) => (
-                <span key={t} className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-bold uppercase tracking-wider align-middle border border-indigo-500/20 whitespace-nowrap">#{t}</span>
+              {card.tags && card.tags.map((t: string, idx: number) => (
+                <span key={`${t}-${idx}`} className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-bold uppercase tracking-wider align-middle border border-indigo-500/20 whitespace-nowrap">#{t}</span>
               ))}
               {group.length > 1 && (
                 <span className="inline-flex items-center justify-center bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 border border-indigo-500/30 align-middle" title={`${group.length} cartões nesta nota`}>
