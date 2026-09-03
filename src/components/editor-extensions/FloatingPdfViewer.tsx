@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { X, Maximize2, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useStore } from '../../store/useStore';
@@ -17,12 +17,25 @@ function FloatingPdfViewerContent({ item, onClose, onExpand }: FloatingPdfViewer
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const filesMasterKey = state.moduleKeys['files'];
+  const itemId = item.id;
+  const itemUpdatedAt = item.updated_at;
+  const itemLocalPath = item.local_path;
+  const itemDriveId = item.drive_file_id;
+  const fileKey = `${itemId}_${itemUpdatedAt || ''}_${itemLocalPath || ''}_${itemDriveId || ''}`;
+  const currentKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (currentKeyRef.current === fileKey && objectUrl) {
+      return;
+    }
+
     if (item.file_type === 'pdf') {
-      getDecryptedFileUrl(item, state.moduleKeys['files'])
+      getDecryptedFileUrl(item, filesMasterKey)
         .then(url => {
           if (typeof url === 'string') {
             setObjectUrl(url);
+            currentKeyRef.current = fileKey;
           } else {
             setError(true);
           }
@@ -37,7 +50,7 @@ function FloatingPdfViewerContent({ item, onClose, onExpand }: FloatingPdfViewer
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [item, state.moduleKeys]);
+  }, [fileKey, filesMasterKey, item, objectUrl]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose} contentEditable={false}>

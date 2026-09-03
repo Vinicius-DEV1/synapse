@@ -74,7 +74,15 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(FileWidgetNodeView);
+    return ReactNodeViewRenderer(FileWidgetNodeView, {
+      stopEvent: ({ event }) => {
+        const target = event?.target as HTMLElement;
+        if (target?.closest?.('[data-portal], [role="dialog"], .fixed, button, input, textarea, select')) {
+          return true;
+        }
+        return false;
+      },
+    });
   },
 
   addCommands() {

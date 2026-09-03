@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Download, File, Bookmark } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
@@ -26,8 +26,18 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>(isMd ? 'rendered' : 'raw');
 
   const isImage = item.file_type === 'image';
-  const isText = item.file_type === 'text';
+  const isText = item.file_type === 'text' || isMd || item.name.toLowerCase().endsWith('.txt');
   const isPdf = item.file_type === 'pdf' || item.name.toLowerCase().endsWith('.pdf');
+
+  const filesMasterKey = state.moduleKeys['files'];
+  const itemId = item.id;
+  const itemLocalPath = item.local_path;
+  const itemDriveId = item.drive_file_id;
+  const itemFileType = item.file_type;
+  const itemUpdatedAt = item.updated_at;
+
+  const currentLoadedKeyRef = useRef<string | null>(null);
+  const fileKey = `${itemId}_${itemUpdatedAt || ''}_${itemLocalPath || ''}_${itemDriveId || ''}`;
 
   const {
     scrollContainerRef,
@@ -55,33 +65,39 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   } = useFileReadingProgress(item.id, isText, textContent);
 
   useEffect(() => {
+    // If this exact file revision is already loaded and active, avoid re-fetching and flickering
+    if (currentLoadedKeyRef.current === fileKey && objectUrl) {
+      return;
+    }
+
     let url: string | null = null;
     let isCancelled = false;
     setIsLoading(true);
     setLoadError(null);
     
-    if (['image', 'pdf', 'text', 'other'].includes(item.file_type) || isPdf) {
-      getDecryptedFileUrl(item, state.moduleKeys['files'])
+    if (['image', 'pdf', 'text', 'other'].includes(itemFileType) || isPdf || isText) {
+      getDecryptedFileUrl(item, filesMasterKey)
         .then(async resolvedUrl => {
           if (isCancelled) return;
           if (resolvedUrl && typeof resolvedUrl === 'string') {
             url = resolvedUrl;
             setObjectUrl(resolvedUrl);
-            if (item.file_type === 'text') {
+            currentLoadedKeyRef.current = fileKey;
+            if (isText) {
               try {
                 const res = await fetch(resolvedUrl);
                 const txt = await res.text();
                 if (!isCancelled) setTextContent(txt);
               } catch (e) {
-                console.error("Failed to fetch text", e);
+                console.error("[FileViewer] Failed to fetch text", e);
                 if (!isCancelled) setTextContent("Erro ao carregar texto.");
               }
             }
           } else {
-            console.warn("No local or Drive file available");
+            console.warn("[FileViewer] No local or Drive file available");
             if (!isCancelled) {
               setLoadError(
-                item.drive_file_id
+                itemDriveId
                   ? 'Arquivo não encontrado localmente e não autenticado no Google Drive para download.'
                   : 'Arquivo não encontrado no armazenamento local.'
               );
@@ -89,7 +105,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           }
         })
         .catch(err => {
-          console.error("Error resolving file URL:", err);
+          console.error("[FileViewer] Error resolving file URL:", err);
           if (!isCancelled) {
             setLoadError(err?.message || 'Falha ao carregar o arquivo.');
           }
@@ -108,7 +124,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         URL.revokeObjectURL(url);
       }
     };
-  }, [item, state.moduleKeys, isPdf]);
+  }, [fileKey, filesMasterKey, isPdf, isText, item, itemDriveId, itemFileType, objectUrl]);
 
   // Smooth keyboard navigation (Arrow keys, PageUp/PageDown)
   useEffect(() => {
