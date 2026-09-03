@@ -6,9 +6,10 @@ interface DeckSettingsPanelProps {
   onSave: (name: string, desc: string, newLimit: number, reviewLimit: number, fsrsWeights: string) => Promise<void>;
   onDelete: () => Promise<void>;
   onResetProgress: () => Promise<void>;
+  onImportSuccess?: () => void;
 }
 
-export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgress }: DeckSettingsPanelProps) {
+export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgress, onImportSuccess }: DeckSettingsPanelProps) {
   const [deckName, setDeckName] = useState(deck.name);
   const [deckDesc, setDeckDesc] = useState(deck.description || '');
   const [newLimit, setNewLimit] = useState(20);
@@ -56,10 +57,12 @@ export default function DeckSettingsPanel({ deck, onSave, onDelete, onResetProgr
         if (res.success && res.stats) {
           const { stats } = res;
           triggerToast(`Importação concluída: ${stats.decksCreated} decks criados, ${stats.cardsCreated} cartões criados.`, 'success', 5000);
-          window.location.reload(); 
+          loadSettings();
+          if (onImportSuccess) onImportSuccess();
         } else if (res.success) {
           triggerToast('Baralho importado com sucesso!', 'success');
-          window.location.reload(); 
+          loadSettings();
+          if (onImportSuccess) onImportSuccess();
         } else {
           triggerToast('Erro ao importar: ' + (res.error || 'Falha desconhecida'), 'error');
         }

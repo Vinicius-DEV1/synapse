@@ -11,15 +11,16 @@ export async function createDeck(
   generateId: () => string,
   name: string,
   description?: string,
-  parentId?: string
+  parentId?: string | null
 ) {
+  const now = new Date().toISOString();
   const deck = {
     id: generateId(),
     name,
     description: description || '',
     parent_id: parentId || null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   };
   await db.put('anki_decks', deck);
 
@@ -31,8 +32,8 @@ export async function createDeck(
     learning_steps: '1m,10m',
     relearning_steps: '10m',
     fsrs_weights: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   };
   await db.put('anki_deck_settings', settings);
 
@@ -51,51 +52,61 @@ export async function updateDeck(db: any, deckId: string, name: string, descript
 
 export async function deleteDeck(db: any, deckId: string) {
   const deck = await db.get('anki_decks', deckId);
-  if (deck) {
-    deck.deleted_at = new Date().toISOString();
-    deck.updated_at = new Date().toISOString();
-    await db.put('anki_decks', deck);
-
-    const allNotes = (await db.getAllFromIndex('anki_notes', 'deck_id', deckId)) || [];
-    for (const note of allNotes) {
-      note.deleted_at = new Date().toISOString();
-      note.updated_at = new Date().toISOString();
-      await db.put('anki_notes', note);
-    }
-
-    const allCards = (await db.getAllFromIndex('anki_cards', 'deck_id', deckId)) || [];
-    for (const card of allCards) {
-      card.deleted_at = new Date().toISOString();
-      card.updated_at = new Date().toISOString();
-      await db.put('anki_cards', card);
-    }
-    return { success: true };
+  if (!deck) {
+    return { success: false, error: 'Deck not found' };
   }
-  return { success: false, error: 'Deck not found' };
+
+  const now = new Date().toISOString();
+  await db.put('anki_decks', { ...deck, deleted_at: now, updated_at: now });
+
+  const allNotes = (await db.getAllFromIndex('anki_notes', 'deck_id', deckId)) || [];
+  const notePromises = allNotes
+    .filter((note: any) => !note.deleted_at)
+    .map((note: any) =>
+      db.put('anki_notes', { ...note, deleted_at: now, updated_at: now })
+    );
+
+  const allCards = (await db.getAllFromIndex('anki_cards', 'deck_id', deckId)) || [];
+  const cardPromises = allCards
+    .filter((card: any) => !card.deleted_at)
+    .map((card: any) =>
+      db.put('anki_cards', { ...card, deleted_at: now, updated_at: now })
+    );
+
+  await Promise.all([...notePromises, ...cardPromises]);
+  return { success: true };
 }
 
 export async function resetDeckProgress(db: any, deckId: string) {
+  const now = new Date().toISOString();
   const allCards = (await db.getAllFromIndex('anki_cards', 'deck_id', deckId)) || [];
-  for (const card of allCards) {
-    card.srs_state = null;
-    card.state = 0;
-    card.reps = 0;
-    card.lapses = 0;
-    card.stability = 0;
-    card.difficulty = 0;
-    card.due_date = null;
-    card.updated_at = new Date().toISOString();
-    await db.put('anki_cards', card);
-  }
+  const cardIdsInDeck = new Set<string>(allCards.map((c: any) => c.id));
+
+  const cardUpdates = allCards.map((card: any) =>
+    db.put('anki_cards', {
+      ...card,
+      srs_state: null,
+      state: 0,
+      reps: 0,
+      lapses: 0,
+      stability: 0,
+      difficulty: 0,
+      due_date: null,
+      updated_at: now,
+    })
+  );
 
   const allReviews = (await db.getAll('anki_reviews')) || [];
-  for (const review of allReviews) {
-    const card = await db.get('anki_cards', review.card_id);
-    if (card && card.deck_id === deckId) {
-      review.deleted_at = new Date().toISOString();
-      review.updated_at = new Date().toISOString();
-      await db.put('anki_reviews', review);
-    }
-  }
+  const reviewUpdates = allReviews
+    .filter((r: any) => cardIdsInDeck.has(r.card_id) && !r.deleted_at)
+    .map((review: any) =>
+      db.put('anki_reviews', {
+        ...review,
+        deleted_at: now,
+        updated_at: now,
+      })
+    );
+
+  await Promise.all([...cardUpdates, ...reviewUpdates]);
   return { success: true };
 }

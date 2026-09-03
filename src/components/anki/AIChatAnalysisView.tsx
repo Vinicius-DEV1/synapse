@@ -84,22 +84,31 @@ export default function AIChatAnalysisView({
     }
   }, [deckId]);
 
+  const safeSaveSessions = (dId: string, sess: ChatSession[]) => {
+    try {
+      const pruned = sess.slice(-20);
+      localStorage.setItem(`ai_chat_sessions_${dId}`, JSON.stringify(pruned));
+    } catch (e) {
+      console.warn('[AIChat] Failed to persist chat sessions to localStorage:', e);
+    }
+  };
+
   useEffect(() => {
     if (!activeSessionId && chatHistory.length > 0) {
-       const newId = Date.now().toString();
-       const newSession = { id: newId, date: new Date().toISOString(), history: chatHistory };
-       setSessions(prev => {
-         const next = [...prev, newSession];
-         localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
-         return next;
-       });
-       setActiveSessionId(newId);
+      const newId = Date.now().toString();
+      const newSession = { id: newId, date: new Date().toISOString(), history: chatHistory };
+      setSessions(prev => {
+        const next = [...prev, newSession];
+        safeSaveSessions(deckId, next);
+        return next;
+      });
+      setActiveSessionId(newId);
     } else if (activeSessionId) {
-       setSessions(prev => {
-         const next = prev.map(s => s.id === activeSessionId ? { ...s, history: chatHistory } : s);
-         localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
-         return next;
-       });
+      setSessions(prev => {
+        const next = prev.map(s => s.id === activeSessionId ? { ...s, history: chatHistory } : s);
+        safeSaveSessions(deckId, next);
+        return next;
+      });
     }
   }, [chatHistory, activeSessionId, deckId]);
 
@@ -221,7 +230,7 @@ export default function AIChatAnalysisView({
       handleAddAll,
       cancelSuggestions: () => { setSuggestions([]); setActiveReviewAction(null); }
     });
-  }, [suggestions, chatHistory, chatPrompt, prompt, selectedModel]);
+  }, [suggestions, chatHistory, chatPrompt, prompt, selectedModel, deckId, loading]);
 
   if (suggestions.length > 0) {
     return (

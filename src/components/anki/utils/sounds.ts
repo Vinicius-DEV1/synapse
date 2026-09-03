@@ -1,10 +1,18 @@
+interface WindowWithWebkitAudio extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 let audioCtx: AudioContext | null = null;
 
-function getAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+function getAudioContext(): AudioContext | null {
+  if (!audioCtx && typeof window !== 'undefined') {
+    const AudioCtxClass =
+      window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
+    if (AudioCtxClass) {
+      audioCtx = new AudioCtxClass();
+    }
   }
-  if (audioCtx.state === 'suspended') {
+  if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
   return audioCtx;
@@ -13,6 +21,7 @@ function getAudioContext() {
 export function playFlipSound() {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
     
@@ -36,6 +45,7 @@ export function playFlipSound() {
 export function playCorrectSound() {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     
     // Play two quick chimes (pleasant, confirming)
     const playNote = (freq: number, startTime: number) => {
@@ -64,6 +74,7 @@ export function playCorrectSound() {
 export function playIncorrectSound() {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
     

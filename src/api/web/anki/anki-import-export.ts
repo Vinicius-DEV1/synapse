@@ -1,20 +1,10 @@
+import { collectDescendantDeckIds } from './utils/deck-tree';
+
 export async function exportDeckRecursive(db: any, deckId: string) {
   const allDecks = (await db.getAll('anki_decks')) || [];
   const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
 
-  const deckIds = new Set<string>();
-  deckIds.add(deckId);
-
-  let added = true;
-  while (added) {
-    added = false;
-    for (const d of activeDecks) {
-      if (d.parent_id && deckIds.has(d.parent_id) && !deckIds.has(d.id)) {
-        deckIds.add(d.id);
-        added = true;
-      }
-    }
-  }
+  const deckIds = collectDescendantDeckIds(activeDecks, deckId);
 
   const exportedDecks = activeDecks.filter((d: any) => deckIds.has(d.id));
 
@@ -34,16 +24,48 @@ export async function exportDeckRecursive(db: any, deckId: string) {
   return { success: true, payload };
 }
 
+function areRecordsEqual(
+  a: Record<string, any>,
+  b: Record<string, any>,
+  ignoreKeys: string[] = ['updated_at', 'created_at', 'deleted_at']
+): boolean {
+  if (!a || !b) return a === b;
+  const ignoreSet = new Set(ignoreKeys);
+  const keysA = Object.keys(a).filter((k) => !ignoreSet.has(k));
+  const keysB = new Set(Object.keys(b).filter((k) => !ignoreSet.has(k)));
+
+  if (keysA.length !== keysB.size) return false;
+
+  for (const key of keysA) {
+    if (!keysB.has(key)) return false;
+    const valA = a[key];
+    const valB = b[key];
+
+    if (valA === valB) continue;
+
+    if (Array.isArray(valA) && Array.isArray(valB)) {
+      if (valA.length !== valB.length) return false;
+      if (JSON.stringify(valA) !== JSON.stringify(valB)) return false;
+    } else if (typeof valA === 'object' && valA !== null && typeof valB === 'object' && valB !== null) {
+      if (!areRecordsEqual(valA, valB, ignoreKeys)) return false;
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export async function importDeck(db: any, payload: any) {
   try {
     if (typeof payload !== 'object' || payload === null) {
-      throw new Error('Payload inválido');
+      throw new Error('Invalid import payload');
     }
 
     const { decks = [], notes = [], cards = [] } = payload;
 
     if (!Array.isArray(decks) || !Array.isArray(notes) || !Array.isArray(cards)) {
-      throw new Error('Formato corrompido: decks, notes ou cards não são listas válidas.');
+      throw new Error('Corrupted format: decks, notes or cards are not valid lists');
     }
 
     const stats = {
@@ -58,16 +80,6 @@ export async function importDeck(db: any, payload: any) {
       cardsIgnored: 0,
     };
 
-    const isIdentical = (a: any, b: any, ignoreKeys = ['updated_at', 'created_at', 'deleted_at']) => {
-      const objA = { ...a };
-      const objB = { ...b };
-      ignoreKeys.forEach((k) => {
-        delete objA[k];
-        delete objB[k];
-      });
-      return JSON.stringify(objA) === JSON.stringify(objB);
-    };
-
     const now = new Date().toISOString();
     const tx = db.transaction(['anki_decks', 'anki_notes', 'anki_cards'], 'readwrite');
     const storeDecks = tx.objectStore('anki_decks');
@@ -75,10 +87,10 @@ export async function importDeck(db: any, payload: any) {
     const storeCards = tx.objectStore('anki_cards');
 
     for (const d of decks) {
-      if (!d.id) throw new Error('Baralho sem ID detectado.');
+      if (!d.id) throw new Error('Deck without ID detected');
       const existing = await storeDecks.get(d.id);
       if (existing) {
-        if (isIdentical(existing, d)) {
+        if (areRecordsEqual(existing, d)) {
           stats.decksIgnored++;
         } else {
           await storeDecks.put({ ...existing, ...d, updated_at: now });
@@ -91,10 +103,10 @@ export async function importDeck(db: any, payload: any) {
     }
 
     for (const n of notes) {
-      if (!n.id) throw new Error('Nota sem ID detectada.');
+      if (!n.id) throw new Error('Note without ID detected');
       const existing = await storeNotes.get(n.id);
       if (existing) {
-        if (isIdentical(existing, n)) {
+        if (areRecordsEqual(existing, n)) {
           stats.notesIgnored++;
         } else {
           await storeNotes.put({ ...existing, ...n, updated_at: now });
@@ -106,22 +118,24 @@ export async function importDeck(db: any, payload: any) {
       }
     }
 
+    const cardIgnoreKeys = [
+      'updated_at',
+      'created_at',
+      'deleted_at',
+      'last_reviewed',
+      'last_review',
+      'state',
+      'due',
+      'due_date',
+      'stability',
+      'difficulty',
+    ];
+
     for (const c of cards) {
-      if (!c.id) throw new Error('Cartão sem ID detectado.');
+      if (!c.id) throw new Error('Card without ID detected');
       const existing = await storeCards.get(c.id);
       if (existing) {
-        if (
-          isIdentical(existing, c, [
-            'updated_at',
-            'created_at',
-            'deleted_at',
-            'last_reviewed',
-            'state',
-            'due',
-            'stability',
-            'difficulty',
-          ])
-        ) {
+        if (areRecordsEqual(existing, c, cardIgnoreKeys)) {
           stats.cardsIgnored++;
         } else {
           await storeCards.put({ ...existing, ...c, updated_at: now });

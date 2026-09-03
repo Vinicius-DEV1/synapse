@@ -97,7 +97,12 @@ export function ClozeCard({ card, showingAnswer, onAnswerSubmit, evaluating, exa
 
             {card.validation_mode === 'exact' && !exactMatch && (
               <div className="mb-4 text-green-400 font-medium bg-green-500/10 px-4 py-2 rounded-lg">
-                Resposta Esperada: {card.front.match(/\{\{c\d+::(.*?)\}\}/)?.[1]}
+                Resposta Esperada:{' '}
+                {(() => {
+                  const targetC = (card.ord ?? 0) + 1;
+                  const regex = new RegExp(`\\{\\{c${targetC}::(.*?)\\}\\}`);
+                  return card.front.match(regex)?.[1] || '';
+                })()}
               </div>
             )}
 
