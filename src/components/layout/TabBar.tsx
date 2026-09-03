@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
-import { Plus, X, FileText, Library, Settings, PanelLeft, Pin } from 'lucide-react';
+import { Plus, X, FileText, Library, Settings, PanelLeft, Pin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Tab } from '../../types';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
@@ -128,6 +128,27 @@ export default function TabBar() {
     y: number;
     tab: Tab;
   } | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = tabStripRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll, state.tabs.length]);
 
   // Automatically scroll active tab into view when active tab changes
   useEffect(() => {
@@ -142,6 +163,8 @@ export default function TabBar() {
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (e.deltaY !== 0) {
       e.currentTarget.scrollLeft += e.deltaY;
+    } else if (e.deltaX !== 0) {
+      e.currentTarget.scrollLeft += e.deltaX;
     }
   }, []);
 
@@ -241,7 +264,13 @@ export default function TabBar() {
   const handleWindowMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isDesktopApp()) return;
     const target = e.target as HTMLElement;
-    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    if (
+      target.closest(
+        'button, input, textarea, a, select, [role="button"], [data-no-drag], .tab-scrollbar, [data-active-tab]'
+      )
+    ) {
+      return;
+    }
     if (e.buttons === 1) {
       try {
         getCurrentWindow().startDragging();
@@ -254,7 +283,13 @@ export default function TabBar() {
   const handleWindowDoubleClick = useCallback((e: React.MouseEvent) => {
     if (!isDesktopApp()) return;
     const target = e.target as HTMLElement;
-    if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
+    if (
+      target.closest(
+        'button, input, textarea, a, select, [role="button"], [data-no-drag], .tab-scrollbar, [data-active-tab]'
+      )
+    ) {
+      return;
+    }
     try {
       getCurrentWindow().toggleMaximize();
     } catch {
@@ -278,16 +313,31 @@ export default function TabBar() {
           }}
           className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
           title="Abrir menu"
+          data-no-drag
         >
           <PanelLeft size={18} />
         </button>
+
+        {/* Left Scroll Chevron when tabs overflow */}
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => tabStripRef.current?.scrollBy({ left: -220, behavior: 'smooth' })}
+            className="flex-shrink-0 p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all active:scale-95 mb-0.5 z-10"
+            title="Rolar abas para a esquerda"
+            data-no-drag
+          >
+            <ChevronLeft size={14} />
+          </button>
+        )}
 
         {/* Scrolling Tab Strip - Horizontal scroll only, zero vertical scrollbar */}
         <div 
           ref={tabStripRef}
           onWheel={handleWheel}
           className="flex-1 flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1"
-          data-tauri-drag-region
+          data-no-drag
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {state.tabs.map((tab, index) => {
             const isActive = tab.id === state.activeTabId;
@@ -319,13 +369,27 @@ export default function TabBar() {
             onClick={handleNewTab}
             className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-all active:scale-95 mb-0.5"
             title="Nova aba"
+            data-no-drag
           >
             <Plus size={15} />
           </button>
-
-          {/* Spacer to push utility buttons to the right and serve as window drag region */}
-          <div className="flex-1 h-full min-w-[20px]" data-tauri-drag-region />
         </div>
+
+        {/* Right Scroll Chevron when tabs overflow */}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => tabStripRef.current?.scrollBy({ left: 220, behavior: 'smooth' })}
+            className="flex-shrink-0 p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all active:scale-95 mb-0.5 z-10"
+            title="Rolar abas para a direita"
+            data-no-drag
+          >
+            <ChevronRight size={14} />
+          </button>
+        )}
+
+        {/* Dedicated Window Drag Region Spacer between tabs and utility buttons */}
+        <div className="flex-1 h-full min-w-[20px]" data-tauri-drag-region />
 
         {/* Pinned Utility Area - Fixed to the right, never scrolls vertically or horizontally */}
         <div className="flex items-center shrink-0 h-full pl-1 gap-0.5" data-tauri-drag-region={false}>

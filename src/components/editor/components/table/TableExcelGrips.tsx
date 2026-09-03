@@ -170,7 +170,7 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
   }
 
   return (
-    <div className="table-excel-grips pointer-events-none absolute inset-0 z-30" data-table-grip="container">
+    <div className="table-excel-grips pointer-events-none absolute inset-0 z-20" data-table-grip="container">
       {/* Top-Left Corner Grip: Selects Entire Table */}
       {cornerPosition && (
         <button

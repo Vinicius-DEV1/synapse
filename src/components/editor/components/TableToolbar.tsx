@@ -73,7 +73,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
   return (
     <div
       ref={toolbarRef}
-      className="relative flex items-center flex-wrap gap-0.5 bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1 animate-fade-in text-xs select-none"
+      className="relative z-[100] flex items-center flex-wrap gap-0.5 bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1 animate-fade-in text-xs select-none"
     >
       {/* 1. Text Formatting Controls */}
       <div className="flex items-center gap-0.5">
