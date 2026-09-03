@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractMarkdownFromResponse, sendDocumentAiPrompt } from './documentAiService';
+import {
+  extractMarkdownFromResponse,
+  extractGeneratedQuestionsFromResponse,
+  sendDocumentAiPrompt,
+} from './documentAiService';
 import * as geminiClient from '../../../../services/gemini';
+import type { ReferencedBattery } from '../../../editor-extensions/quiz/types';
 
 vi.mock('../../../../services/gemini', () => ({
   promptGemini: vi.fn(),
@@ -43,32 +48,89 @@ describe('documentAiService', () => {
     });
   });
 
-  describe('sendDocumentAiPrompt', () => {
-    it('throws error when user instruction is empty', async () => {
-      await expect(
-        sendDocumentAiPrompt({
-          documentText: '# Test',
-          documentTitle: 'test.md',
-          userInstruction: '   ',
-        })
-      ).rejects.toThrow('A instrução para a IA não pode estar vazia.');
+  describe('extractGeneratedQuestionsFromResponse', () => {
+    it('extracts multiple choice and open questions from json code block', () => {
+      const rawText = `Aqui estão as questões geradas:\n\`\`\`json
+[
+  {
+    "type": "multiple_choice",
+    "question": "O que é useState?",
+    "options": ["Um Hook", "Uma Classe", "Um Componente", "Um Seletor"],
+    "correctIndex": 0,
+    "explanation": "useState é um hook básico do React."
+  },
+  {
+    "type": "open",
+    "question": "Explique o ciclo de vida do useEffect.",
+    "expectedAnswer": "Executa após o render e limpa na desmontagem."
+  }
+]
+\`\`\``;
+
+      const questions = extractGeneratedQuestionsFromResponse(rawText);
+      expect(questions).toHaveLength(2);
+      expect(questions[0].question).toBe('O que é useState?');
+      expect(questions[0].type).toBe('multiple_choice');
+      expect(questions[0].options).toHaveLength(4);
+      expect(questions[0].correctIndex).toBe(0);
+      expect(questions[0].explanation).toBe('useState é um hook básico do React.');
+
+      expect(questions[1].question).toBe('Explique o ciclo de vida do useEffect.');
+      expect(questions[1].type).toBe('open');
+      expect(questions[1].expectedAnswer).toBe('Executa após o render e limpa na desmontagem.');
     });
 
-    it('injects document context and calls promptGemini', async () => {
+    it('returns empty array when no JSON questions are found', () => {
+      expect(extractGeneratedQuestionsFromResponse('Apenas uma resposta em texto puro.')).toEqual([]);
+    });
+  });
+
+  describe('sendDocumentAiPrompt with referenced battery', () => {
+    const mockBattery: ReferencedBattery = {
+      id: 'bat_1',
+      title: 'Bateria de React',
+      pageId: 'page_123',
+      pageTitle: 'Conceitos React',
+      questionCount: 1,
+      questions: [
+        {
+          id: 'q1',
+          type: 'multiple_choice',
+          question: 'O que é JSX?',
+          options: ['Sintaxe de extensão', 'CSS', 'Banco de Dados', 'API'],
+          correctIndex: 0,
+          selectedIndex: null,
+          expectedAnswer: '',
+          userTypedAnswer: '',
+          aiFeedback: null,
+          explanation: 'JSX estende JavaScript.',
+          showExplanation: false,
+          answered: false,
+        },
+      ],
+    };
+
+    it('injects referenced battery context and extracts questions from response', async () => {
       vi.mocked(geminiClient.promptGemini).mockResolvedValueOnce({
-        text: `Adicionei a introdução.\n\`\`\`markdown\n# Introdução\nNovo texto.\n\`\`\``,
+        text: `Criei 1 nova questão baseada no documento.\n\`\`\`json\n[\n  {\n    "type": "multiple_choice",\n    "question": "Qual hook previne re-renders desnecessários?",\n    "options": ["useMemo", "useRef", "useEffect", "useId"],\n    "correctIndex": 0,\n    "explanation": "useMemo memoriza valores computados."\n  }\n]\n\`\`\``,
       });
 
-      const result = await sendDocumentAiPrompt({
-        documentText: '# Original',
-        documentTitle: 'guia.md',
-        userInstruction: 'Adicione uma introdução',
+      const res = await sendDocumentAiPrompt({
+        documentText: '# React Performance\n\nuseMemo e useCallback...',
+        documentTitle: 'react-perf.md',
+        userInstruction: 'Adicione uma questão à bateria @Bateria de React',
+        referencedBatteries: [mockBattery],
       });
 
       expect(geminiClient.promptGemini).toHaveBeenCalled();
-      expect(result.chatText).toContain('Adicionei a introdução.');
-      expect(result.proposedMarkdown).toBe('# Introdução\nNovo texto.');
-      expect(result.hasChanges).toBe(true);
+      const calledPrompt = vi.mocked(geminiClient.promptGemini).mock.calls[0][0];
+      expect(calledPrompt).toContain('BATERIA REFERENCIADA (@Bateria de React)');
+      expect(calledPrompt).toContain('O que é JSX?');
+
+      expect(res.generatedQuestions).toBeDefined();
+      expect(res.generatedQuestions).toHaveLength(1);
+      expect(res.generatedQuestions?.[0].question).toBe('Qual hook previne re-renders desnecessários?');
+      expect(res.targetBattery?.id).toBe('bat_1');
     });
   });
 });

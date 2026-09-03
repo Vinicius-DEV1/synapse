@@ -1,11 +1,26 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, X, Send, Loader2, FileDiff, MessageSquare, AlertTriangle, Settings } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  Send,
+  Loader2,
+  FileDiff,
+  MessageSquare,
+  AlertTriangle,
+  Settings,
+  Layers,
+  AtSign,
+} from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import { DocumentDiffViewer } from '../components/DocumentDiffViewer';
+import { QuizQuestionsGeneratedCard } from './components/QuizQuestionsGeneratedCard';
+import { useQuizBatteryMentions } from '../../../editor-extensions/quiz/hooks/useQuizBatteryMentions';
+import { appendQuestionsToBattery } from '../services/quizBatteryAppender';
 import {
   sendDocumentAiPrompt,
   type DocumentAiMessage,
 } from '../services/documentAiService';
+import type { QuestionItem, ReferencedBattery } from '../../../editor-extensions/quiz/types';
 
 interface DocumentAiModalProps {
   isOpen: boolean;
@@ -36,9 +51,22 @@ export function DocumentAiModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proposedMarkdown, setProposedMarkdown] = useState<string | null>(null);
+  const [addedQuestionMessageIndices, setAddedQuestionMessageIndices] = useState<Set<number>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    attachedBatteries,
+    showMentionMenu,
+    mentionQuery,
+    mentionSelectedIndex,
+    filteredBatteries,
+    handleAttachBattery,
+    handleRemoveBattery,
+    handleInputChange,
+    handleKeyDown: handleMentionKeyDown,
+  } = useQuizBatteryMentions(inputPrompt, setInputPrompt);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -69,19 +97,21 @@ export function DocumentAiModal({
           documentTitle,
           userInstruction: promptText,
           history: updatedHistory,
+          referencedBatteries: attachedBatteries,
         });
 
         const modelMsg: DocumentAiMessage = {
           role: 'model',
           text: result.chatText,
           proposedMarkdown: result.proposedMarkdown,
+          generatedQuestions: result.generatedQuestions,
+          targetBattery: result.targetBattery,
         };
 
         setMessages((prev) => [...prev, modelMsg]);
 
         if (result.proposedMarkdown && result.hasChanges) {
           setProposedMarkdown(result.proposedMarkdown);
-          // Automatically offer diff tab switch
           setActiveTab('diff');
         }
       } catch (err: unknown) {
@@ -91,7 +121,7 @@ export function DocumentAiModal({
         setIsLoading(false);
       }
     },
-    [inputPrompt, isLoading, messages, proposedMarkdown, documentText, documentTitle]
+    [inputPrompt, isLoading, messages, proposedMarkdown, documentText, documentTitle, attachedBatteries]
   );
 
   const handleApply = async (updatedContent: string) => {
@@ -106,6 +136,17 @@ export function DocumentAiModal({
   const handleDiscard = () => {
     setProposedMarkdown(null);
     setActiveTab('chat');
+  };
+
+  const handleAddQuestions = async (
+    battery: ReferencedBattery,
+    questions: QuestionItem[],
+    msgIndex: number
+  ) => {
+    const ok = await appendQuestionsToBattery(battery, questions);
+    if (ok) {
+      setAddedQuestionMessageIndices((prev) => new Set(prev).add(msgIndex));
+    }
   };
 
   if (!isOpen) return null;
@@ -126,7 +167,7 @@ export function DocumentAiModal({
                   <span className="text-brand-300 font-mono text-xs">{documentTitle}</span>
                 </h3>
                 <p className="text-[11px] text-dark-subtext">
-                  Contexto ativo do documento • Peça análises, ampliações ou edições
+                  Contexto ativo do documento • Digite @ para referenciar baterias de exercícios
                 </p>
               </div>
             </div>
@@ -198,7 +239,7 @@ export function DocumentAiModal({
                         Como posso ajudar com este documento?
                       </h4>
                       <p className="text-xs leading-relaxed mb-6">
-                        Você pode me pedir para aprofundar um conceito, reformular trechos, remover tópicos ou organizar as seções em tabelas.
+                        Peça análises, aprofundamento de tópicos ou digite <strong className="text-brand-300">@</strong> para marcar uma bateria de questões e pedir novas questões baseadas no texto.
                       </p>
 
                       <div className="flex flex-wrap gap-2 justify-center">
@@ -230,6 +271,17 @@ export function DocumentAiModal({
                       >
                         <p className="whitespace-pre-wrap">{msg.text}</p>
 
+                        {/* Generated Questions Card */}
+                        {msg.generatedQuestions && msg.targetBattery && (
+                          <QuizQuestionsGeneratedCard
+                            battery={msg.targetBattery}
+                            questions={msg.generatedQuestions}
+                            isAdded={addedQuestionMessageIndices.has(idx)}
+                            onAdd={(bat, qList) => handleAddQuestions(bat, qList, idx)}
+                          />
+                        )}
+
+                        {/* Proposed Markdown Diff Button */}
                         {msg.proposedMarkdown && (
                           <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
                             <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
@@ -297,8 +349,75 @@ export function DocumentAiModal({
                   </div>
                 )}
 
-                {/* Prompt Input Bar */}
-                <div className="p-4 border-t border-white/10 bg-dark-bg/60">
+                {/* Attached Batteries Pill Bar */}
+                {attachedBatteries.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 px-6 py-2 bg-dark-bg/80 border-t border-white/5">
+                    <span className="text-[11px] text-dark-subtext flex items-center gap-1 mr-1">
+                      <AtSign size={12} className="text-brand-400" />
+                      <span>Baterias referenciadas:</span>
+                    </span>
+                    {attachedBatteries.map((bat) => (
+                      <div
+                        key={bat.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-500/20 border border-brand-500/40 rounded-lg text-xs text-brand-300 animate-fade-in"
+                      >
+                        <Layers size={12} className="text-brand-400" />
+                        <span className="font-medium max-w-[180px] truncate">{bat.title}</span>
+                        <span className="text-[10px] text-dark-subtext">({bat.questionCount} q.)</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBattery(bat.id)}
+                          className="p-0.5 hover:text-white rounded transition-colors ml-0.5"
+                          title="Remover referência"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Prompt Input Bar with Autocomplete Dropdown */}
+                <div className="p-4 border-t border-white/10 bg-dark-bg/60 relative">
+                  {/* Mention Autocomplete Dropdown */}
+                  {showMentionMenu && (
+                    <div className="absolute bottom-full left-4 right-4 mb-2 bg-dark-card border border-brand-500/40 rounded-xl shadow-2xl overflow-hidden z-50 max-h-56 overflow-y-auto animate-fade-in">
+                      <div className="px-3 py-1.5 border-b border-white/10 bg-dark-bg/80 text-[11px] font-semibold text-brand-400 flex items-center gap-1.5">
+                        <Layers size={13} />
+                        <span>Baterias de Questões Disponíveis</span>
+                      </div>
+                      {filteredBatteries.length === 0 ? (
+                        <div className="p-3 text-xs text-dark-subtext text-center">
+                          Nenhuma bateria encontrada com "{mentionQuery}"
+                        </div>
+                      ) : (
+                        filteredBatteries.map((bat, idx) => (
+                          <button
+                            key={bat.id}
+                            type="button"
+                            onClick={() => handleAttachBattery(bat)}
+                            className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between transition-colors ${
+                              idx === mentionSelectedIndex
+                                ? 'bg-brand-500/20 text-white'
+                                : 'hover:bg-white/5 text-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Layers size={14} className="text-brand-400 shrink-0" />
+                              <div className="truncate">
+                                <span className="font-medium text-white">{bat.title}</span>
+                                <span className="text-[10px] text-dark-subtext ml-2">Página: {bat.pageTitle}</span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] text-dark-subtext shrink-0 ml-2 font-mono">
+                              {bat.questionCount} {bat.questionCount === 1 ? 'questão' : 'questões'}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -310,8 +429,9 @@ export function DocumentAiModal({
                       ref={inputRef}
                       type="text"
                       value={inputPrompt}
-                      onChange={(e) => setInputPrompt(e.target.value)}
-                      placeholder="Peça à IA para editar o documento, expandir um ponto, resumir..."
+                      onChange={handleInputChange}
+                      onKeyDown={handleMentionKeyDown}
+                      placeholder="Peça à IA para editar o texto ou digite @ para marcar uma bateria de questões..."
                       disabled={isLoading}
                       className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-xs text-white placeholder:text-dark-subtext outline-none transition-colors"
                     />

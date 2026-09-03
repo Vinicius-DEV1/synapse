@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { ChevronUp, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
@@ -11,6 +11,7 @@ import QuizSequentialPlayer from './components/QuizSequentialPlayer';
 import QuizAIAssistant from './components/QuizAIAssistant';
 import QuizImportModal from './components/QuizImportModal';
 import { QuizDeleteModals } from './components/QuizDeleteModals';
+import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
 import { useQuizState } from './hooks/useQuizState';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { useQuizAiChat } from './hooks/useQuizAiChat';
@@ -79,8 +80,32 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
     description,
   });
 
-  // Import and deletion modal states
+  // Listen for questions appended externally (e.g. from Document AI Assistant)
+  useEffect(() => {
+    const handleAppend = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || !Array.isArray(detail.questions) || detail.questions.length === 0) return;
+
+      const matchesTitle =
+        detail.batteryTitle &&
+        String(detail.batteryTitle).trim().toLowerCase() === String(title || '').trim().toLowerCase();
+      const matchesId =
+        detail.batteryId &&
+        (detail.batteryId === props.node.attrs.id || String(detail.batteryId).includes(String(title || '')));
+
+      if (matchesTitle || matchesId) {
+        updateQuestions([...questions, ...detail.questions]);
+      }
+    };
+
+    window.addEventListener('caderno-append-quiz-questions', handleAppend);
+    return () => window.removeEventListener('caderno-append-quiz-questions', handleAppend);
+  }, [title, questions, updateQuestions, props.node.attrs.id]);
+
+  // Import, focus and deletion modal states
   const [showImportModal, setShowImportModal] = useState(false);
+  const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
+  const [sequentialActiveIndex, setSequentialActiveIndex] = useState(0);
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{
     id: string;
     index: number;
@@ -200,16 +225,20 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
 
       <div
         ref={blockContainerRef}
-        className={`rounded-2xl border border-white/[0.07] bg-dark-card/75 shadow-xs hover:border-white/[0.12] transition-all overflow-hidden ${
-          isCollapsed ? 'hover:bg-dark-card' : ''
+        className={`rounded-2xl border transition-all duration-200 relative overflow-visible ${
+          props.selected
+            ? 'ring-2 ring-brand-400/70 border-brand-400/90 shadow-[0_0_16px_rgba(99,102,241,0.25)] bg-dark-card/85'
+            : isCollapsed
+              ? 'border-white/[0.07] bg-dark-card/75 shadow-xs hover:border-white/[0.14] hover:bg-dark-card'
+              : 'border-white/[0.07] bg-dark-card/75 shadow-xs hover:border-white/[0.12]'
         }`}
       >
         {/* Header Principal */}
         <div
           className={`${
             isCollapsed
-              ? 'p-3 md:p-3.5 bg-dark-card/40'
-              : 'p-4 md:p-5 border-b border-white/[0.06] bg-white/[0.01]'
+              ? 'p-3 md:p-3.5 bg-dark-card/40 rounded-2xl'
+              : 'p-4 md:p-5 border-b border-white/[0.06] bg-white/[0.01] rounded-t-2xl'
           } transition-all`}
         >
           <QuizBatteryHeader
@@ -230,6 +259,7 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
             onCopySchemaPrompt={handleCopySchemaPrompt}
             onOpenDeleteModal={() => setShowDeleteContainerModal(true)}
             onToggleCollapse={() => props.updateAttributes({ isCollapsed: !isCollapsed })}
+            onToggleFocusMode={() => setIsFocusModeOpen((prev) => !prev)}
           />
 
           {/* Filtro por Tags */}
@@ -246,11 +276,11 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
         {/* Corpo (Lista de Questões) */}
         {!isCollapsed && (
           <div
-            className={
+            className={`rounded-b-2xl ${
               layout === 'sequential' && mode === 'practice'
-                ? 'p-4 md:p-5 space-y-4'
+                ? 'p-3 md:p-3.5 space-y-2.5'
                 : 'p-5 md:p-6 space-y-5'
-            }
+            }`}
           >
             {mode === 'edit' ? (
               <QuizEditor
@@ -269,6 +299,8 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
                 evaluatingIds={evaluatingIds}
                 onDiscussInChat={handleDiscussInChat}
                 onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
+                activeIndex={sequentialActiveIndex}
+                onActiveIndexChange={setSequentialActiveIndex}
               />
             ) : (
               <QuizPlayer
@@ -280,8 +312,8 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
               />
             )}
 
-            {/* Botão Voltar ao Topo da Bateria */}
-            {questions.length > 1 && (
+            {/* Botão Voltar ao Topo da Bateria (Apenas no modo lista ou edição com múltiplas questões) */}
+            {questions.length > 1 && layout !== 'sequential' && (
               <div className="flex justify-center pt-3 pb-1 border-t border-white/[0.05]">
                 <button
                   onClick={handleScrollToTop}
@@ -345,6 +377,21 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
           setShowDeleteContainerModal(false);
           props.deleteNode();
         }}
+      />
+
+      {/* Modal Modo Foco (Tela Cheia Sequencial) */}
+      <QuizSequentialFocusModal
+        isOpen={isFocusModeOpen}
+        onClose={() => setIsFocusModeOpen(false)}
+        title={title}
+        questions={displayedQuestions}
+        onUpdateSingleQuestion={updateSingleQuestion}
+        onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+        evaluatingIds={evaluatingIds}
+        onDiscussInChat={handleDiscussInChat}
+        onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
+        activeIndex={sequentialActiveIndex}
+        onActiveIndexChange={setSequentialActiveIndex}
       />
     </NodeViewWrapper>
   );
