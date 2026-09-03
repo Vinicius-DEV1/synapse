@@ -9,7 +9,7 @@ interface HighlightToolbarProps {
   onHighlight?: (color: HighlightColor, note?: string) => void;
   onUpdateHighlight?: (id: string, color: HighlightColor, note?: string) => void;
   onDeleteHighlight?: (id: string) => void;
-  onDictionary?: (text: string, preloadedData?: any) => void;
+  onDictionary?: (text: string, preloadedData?: unknown) => void;
   onDismiss: () => void;
 }
 
@@ -21,10 +21,15 @@ const HIGHLIGHT_COLORS: { color: HighlightColor; hex: string; label: string }[] 
   { color: 'orange', hex: '#fb923c', label: 'Laranja' },
 ];
 
-export default function HighlightToolbar({ 
-  position, selectedText, existingHighlight,
-  onHighlight, onUpdateHighlight, onDeleteHighlight,
-  onDictionary, onDismiss 
+export default function HighlightToolbar({
+  position,
+  selectedText,
+  existingHighlight,
+  onHighlight,
+  onUpdateHighlight,
+  onDeleteHighlight,
+  onDictionary,
+  onDismiss,
 }: HighlightToolbarProps) {
   const [showNoteInput, setShowNoteInput] = useState(!!existingHighlight?.note);
   const [selectedColor, setSelectedColor] = useState<HighlightColor | null>(existingHighlight?.color || null);
@@ -50,17 +55,18 @@ export default function HighlightToolbar({
     return { x, y, translateY };
   })();
 
-  // Click outside to dismiss
+  // Click outside to dismiss with guaranteed timer cleanup
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
         onDismiss();
       }
     };
-    // Delay attaching so the mouseup that opened us doesn't immediately close
+
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 50);
+
     return () => {
       clearTimeout(timer);
       document.removeEventListener('mousedown', handleClickOutside);
@@ -74,40 +80,50 @@ export default function HighlightToolbar({
     }
   }, [showNoteInput]);
 
-  const handleColorClick = useCallback((color: HighlightColor) => {
-    if (existingHighlight && onUpdateHighlight) {
-      onUpdateHighlight(existingHighlight.id, color, noteText.trim() || undefined);
-      if (!showNoteInput) onDismiss();
-      else setSelectedColor(color);
-    } else if (showNoteInput) {
-      setSelectedColor(color);
-    } else if (onHighlight) {
-      onHighlight(color);
-    }
-  }, [existingHighlight, onUpdateHighlight, noteText, showNoteInput, onHighlight, onDismiss]);
+  const handleColorClick = useCallback(
+    (color: HighlightColor) => {
+      if (existingHighlight && onUpdateHighlight) {
+        onUpdateHighlight(existingHighlight.id, color, noteText.trim() || undefined);
+        if (!showNoteInput) onDismiss();
+        else setSelectedColor(color);
+      } else if (showNoteInput) {
+        setSelectedColor(color);
+      } else if (onHighlight) {
+        onHighlight(color);
+      }
+    },
+    [existingHighlight, onUpdateHighlight, noteText, showNoteInput, onHighlight, onDismiss]
+  );
 
   const handleNoteToggle = useCallback(() => {
-    setShowNoteInput(prev => !prev);
+    setShowNoteInput((prev) => !prev);
   }, []);
 
   const handleNoteSubmit = useCallback(() => {
     if (existingHighlight && onUpdateHighlight) {
-      onUpdateHighlight(existingHighlight.id, selectedColor || existingHighlight.color, noteText.trim() || undefined);
+      onUpdateHighlight(
+        existingHighlight.id,
+        selectedColor || existingHighlight.color,
+        noteText.trim() || undefined
+      );
       onDismiss();
     } else if (onHighlight && selectedColor) {
       onHighlight(selectedColor, noteText.trim() || undefined);
     }
   }, [existingHighlight, onUpdateHighlight, selectedColor, noteText, onHighlight, onDismiss]);
 
-  const handleNoteKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNoteSubmit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      onDismiss();
-    }
-  }, [handleNoteSubmit, onDismiss]);
+  const handleNoteKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleNoteSubmit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onDismiss();
+      }
+    },
+    [handleNoteSubmit, onDismiss]
+  );
 
   return (
     <div
@@ -163,7 +179,7 @@ export default function HighlightToolbar({
                 ? 'bg-brand-500/20 text-brand-400'
                 : 'text-dark-subtext hover:bg-white/10 hover:text-brand-400'
             }`}
-            title={existingHighlight?.note ? "Editar nota" : "Adicionar nota"}
+            title={existingHighlight?.note ? 'Editar nota' : 'Adicionar nota'}
           >
             <StickyNote size={14} />
           </button>
@@ -194,28 +210,34 @@ export default function HighlightToolbar({
                 <div className="text-xs opacity-90 italic text-dark-text whitespace-normal">
                   {(() => {
                     try {
-                      const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-                      return data.portuguese?.translation 
-                        ? `"${data.portuguese.translation}"` 
-                        : "Tradução disponível no dicionário completo.";
-                    } catch(e) {
-                      return "Tradução detalhada salva pela IA.";
+                      const data = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')) as {
+                        portuguese?: { translation?: string };
+                      };
+                      return data.portuguese?.translation
+                        ? `"${data.portuguese.translation}"`
+                        : 'Tradução disponível no dicionário completo.';
+                    } catch {
+                      return 'Tradução detalhada salva pela IA.';
                     }
                   })()}
                 </div>
                 <div className="flex justify-end mt-1">
-                  <button 
+                  <button
                     onClick={() => {
-                      let preloadedData = null;
-                      try { preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')); } catch(e){}
+                      let preloadedData: unknown = null;
+                      try {
+                        preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+                      } catch {
+                        preloadedData = null;
+                      }
                       if (onDictionary) {
-                         onDictionary(selectedText || existingHighlight?.note || '', preloadedData);
+                        onDictionary(selectedText || existingHighlight?.note || '', preloadedData);
                       }
                       onDismiss();
-                    }} 
+                    }}
                     className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-[11px] font-bold hover:bg-brand-600 transition-colors flex items-center gap-1.5"
                   >
-                    <BookType size={12}/> Ver Dicionário
+                    <BookType size={12} /> Ver Dicionário
                   </button>
                 </div>
               </div>

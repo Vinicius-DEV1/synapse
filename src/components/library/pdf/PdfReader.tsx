@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { LibraryBook, LibraryHighlight } from '../../../types';
 import { CloudDownload } from 'lucide-react';
 
+import type { LibraryBook, LibraryHighlight } from '../../../types';
+import type { ReadingMode, DictionaryTargetState } from './types';
 import HighlightToolbar from './components/HighlightToolbar';
 import AnnotationPanel from './components/AnnotationPanel';
 import PdfSearchBar from './components/PdfSearchBar';
@@ -16,17 +17,11 @@ import { PdfErrorState } from './PdfErrorState';
 import BookInfoModal from '../modals/BookInfoModal';
 import { triggerToast } from '../../ui/ToastContext';
 import { usePdfKeyboardShortcuts } from './hooks/usePdfKeyboardShortcuts';
-
 import { usePdfDocument } from './hooks/usePdfDocument';
 import { usePdfRenderer } from './hooks/usePdfRenderer';
 import { usePdfHighlights } from './hooks/usePdfHighlights';
 import { useTimeTracker } from '../../../hooks/useTimeTracker';
-import {
-  MODE_NAMES,
-  THEME_CLASSES,
-  getPdfCssFilter,
-  type ReadingMode,
-} from './utils/pdfThemes';
+import { MODE_NAMES, THEME_CLASSES, getPdfCssFilter } from './utils/pdfThemes';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -48,17 +43,15 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     requireInteraction: true,
   });
 
-  const [readingMode, setReadingMode] = useState<ReadingMode>(
-    (() => {
-      try {
-        return JSON.parse(book.reading_preferences || '{}')?.theme;
-      } catch {
-        return undefined;
-      }
-    })() ||
-      (settings.defaultReadingMode as ReadingMode) ||
-      'light'
-  );
+  const [readingMode, setReadingMode] = useState<ReadingMode>(() => {
+    try {
+      const savedTheme = JSON.parse(book.reading_preferences || '{}')?.theme as ReadingMode | undefined;
+      if (savedTheme) return savedTheme;
+    } catch {
+      // Ignore JSON parse error and fallback
+    }
+    return (settings.defaultReadingMode as ReadingMode) || 'light';
+  });
 
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -69,23 +62,18 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const [reattachError, setReattachError] = useState<string | null>(null);
   const [showBookInfo, setShowBookInfo] = useState(false);
 
-  const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
-  const [dictionaryTarget, setDictionaryTarget] = useState<{
-    word: string;
-    context?: string;
-    preloadedData?: unknown;
-    selection?: unknown;
-  } | null>(null);
+  const toolsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dictionaryTarget, setDictionaryTarget] = useState<DictionaryTargetState | null>(null);
   const [modeToast, setModeToast] = useState<string | null>(null);
   const [ocrProcessing, setOcrProcessing] = useState<Set<number>>(new Set());
 
-  const initialPage = typeof book.last_read_page === 'number'
-    ? book.last_read_page
-    : (parseInt(String(book.last_read_page || 1), 10) || 1);
+  const initialPage = useMemo(() => {
+    return typeof book.last_read_page === 'number'
+      ? book.last_read_page
+      : parseInt(String(book.last_read_page || 1), 10) || 1;
+  }, [book.id]);
 
-  // Hook 1: Document Loading & Sync
+  // Hook 1: Document Loading, Metadata & Synchronization
   const {
     pdfDoc,
     totalPages,
@@ -101,17 +89,39 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     reload,
   } = usePdfDocument(book, onUpdateBook, initialPage);
 
+  // Hook 2: Virtualization, Stable Offsets & Centered Zoom
+  const {
+    scrollRef,
+    zoom,
+    handleZoom,
+    currentPage,
+    scrollToPage,
+    virtualWindow,
+    renderedPages,
+    dimensionCache,
+    PAGE_GAP,
+  } = usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc });
+
+  // Hook 3: Highlights & Text Selection
+  const {
+    activeHighlight,
+    setActiveHighlight,
+    selection,
+    setSelection,
+    handleSaveHighlight,
+    handleDeleteHighlight,
+  } = usePdfHighlights({ book, highlights, setHighlights });
+
   const handleReattach = async () => {
+    if (!window.api?.library?.reattachBookFile) return;
     try {
       setIsReattaching(true);
       setReattachError(null);
-      if (window.api?.library?.reattachBookFile) {
-        const newPath = await window.api.library.reattachBookFile(book.id);
-        if (newPath) {
-          onUpdateBook({ file_path: newPath });
-          reload();
-          triggerToast('Arquivo PDF reanexado com sucesso!', 'success');
-        }
+      const newPath = await window.api.library.reattachBookFile(book.id);
+      if (newPath) {
+        onUpdateBook({ file_path: newPath });
+        reload();
+        triggerToast('Arquivo PDF reanexado com sucesso!', 'success');
       }
     } catch (err: unknown) {
       console.error('Erro ao reanexar PDF:', err);
@@ -124,9 +134,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   };
 
   const handleDeleteBook = async () => {
+    if (!window.api?.library?.deleteBook) return;
     try {
       setIsDeleting(true);
-      await window.api?.library?.deleteBook(book.id);
+      await window.api.library.deleteBook(book.id);
       triggerToast('Livro excluído da biblioteca.', 'info');
       onBack();
     } catch (err: unknown) {
@@ -135,30 +146,6 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       setIsDeleting(false);
     }
   };
-
-  // Hook 2: Virtualization & Zoom
-  const {
-    scrollRef,
-    zoom,
-    handleZoom,
-    currentPage,
-    scrollToPage,
-    virtualWindow,
-    renderedPages,
-    measuredHeights,
-    getPageHeight,
-    PAGE_GAP,
-  } = usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc });
-
-  // Hook 3: Highlights & Selection
-  const {
-    activeHighlight,
-    setActiveHighlight,
-    selection,
-    setSelection,
-    handleSaveHighlight,
-    handleDeleteHighlight,
-  } = usePdfHighlights({ book, highlights, setHighlights });
 
   const handlePdfClick = () => {
     setShowMobileTools((prev) => {
@@ -176,7 +163,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     return () => dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
   }, [showMobileTools, dispatch]);
 
-  const cycleReadingMode = () => {
+  const cycleReadingMode = useCallback(() => {
     setReadingMode((prev) => {
       const modes: ReadingMode[] = [
         'light',
@@ -194,7 +181,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       setModeToast(MODE_NAMES[next]);
       return next;
     });
-  };
+  }, []);
 
   usePdfKeyboardShortcuts({
     showSearch,
@@ -224,7 +211,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         isDeleting={isDeleting}
         confirmDelete={confirmDelete}
         onReattach={handleReattach}
-        onReload={() => reload()}
+        onReload={reload}
         onBack={onBack}
         onDeleteBook={handleDeleteBook}
         setConfirmDelete={setConfirmDelete}
@@ -236,15 +223,50 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const isDarkMode = ['dim', 'nord', 'midnight', 'dark', 'high-contrast'].includes(readingMode);
   const cssFilter = getPdfCssFilter(readingMode);
 
-  const spacerHeights = {
-    top: 0,
-    bottom: 0,
-  };
+  // Group highlights by page for O(1) rendering lookup
+  const highlightsByPage = useMemo(() => {
+    const map = new Map<number, LibraryHighlight[]>();
+    for (const h of highlights) {
+      const list = map.get(h.page_number) || [];
+      list.push(h);
+      map.set(h.page_number, list);
+    }
+    return map;
+  }, [highlights]);
+
+  // Set of bookmarked page numbers for O(1) checks
+  const bookmarkedPages = useMemo(() => {
+    return new Set(bookmarks.map((b) => b.page_number));
+  }, [bookmarks]);
+
+  // Memoized page measurement callback
+  const handleMeasurePage = useCallback(
+    (pageNum: number, unscaledW: number, unscaledH: number) => {
+      dimensionCache.current.setPageDimension(pageNum, unscaledW, unscaledH);
+    },
+    [dimensionCache]
+  );
+
+  // Memoized highlight click callback
+  const handleHighlightClick = useCallback(
+    (h: LibraryHighlight, rect: DOMRect) => {
+      setActiveHighlight({
+        highlight: h,
+        position: { x: rect.left + rect.width / 2, y: rect.bottom + window.scrollY },
+      });
+    },
+    [setActiveHighlight]
+  );
+
+  // Calculate stable spacers without layout thrashing
+  let topSpacerHeight = 0;
   for (let i = 1; i < virtualWindow.start; i++) {
-    spacerHeights.top += getPageHeight(i) + PAGE_GAP;
+    topSpacerHeight += dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
   }
+
+  let bottomSpacerHeight = 0;
   for (let i = virtualWindow.end + 1; i <= totalPages; i++) {
-    spacerHeights.bottom += getPageHeight(i) + PAGE_GAP;
+    bottomSpacerHeight += dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
   }
 
   const pagesToRender: number[] = [];
@@ -253,7 +275,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   }
 
   return (
-    <div className={`flex h-full relative font-sans transition-colors duration-300 ${THEME_CLASSES[readingMode]}`}>
+    <div
+      className={`flex h-full relative font-sans transition-colors duration-300 ${THEME_CLASSES[readingMode]}`}
+    >
       {/* Sidebar de Anotações */}
       {showAnnotations && (
         <div className="w-80 flex-shrink-0 border-r border-black/10 dark:border-white/10 flex flex-col bg-white/5 backdrop-blur-md">
@@ -265,8 +289,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             currentPage={currentPage}
             onNavigateToPage={(page: number) => scrollToPage(page, false)}
             onUpdateHighlight={async (id: string, updates: Partial<LibraryHighlight>) => {
+              if (!window.api?.library) return;
               try {
-                const existing = highlights.find(h => h.id === id);
+                const existing = highlights.find((h) => h.id === id);
                 if (existing) {
                   const merged = { ...existing, ...updates };
                   await window.api.library.updateHighlight({
@@ -282,6 +307,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             }}
             onDeleteHighlight={handleDeleteHighlight}
             onUpdateBookmark={async (id: string, label: string) => {
+              if (!window.api?.library) return;
               try {
                 await window.api.library.updateBookmark({ id, label });
                 setBookmarks((prev) => prev.map((b) => (b.id === id ? { ...b, label } : b)));
@@ -290,6 +316,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
               }
             }}
             onDeleteBookmark={(id: string) => {
+              if (!window.api?.library) return;
               window.api.library
                 .deleteBookmark(id)
                 .then(() => {
@@ -309,7 +336,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           ref={scrollRef}
           className="flex-1 overflow-y-auto overflow-x-hidden relative"
           onClick={handlePdfClick}
-          style={{ scrollBehavior: 'auto', backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)' }}
+          style={{
+            scrollBehavior: 'auto',
+            backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)',
+          }}
         >
           {loading ? (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
@@ -331,13 +361,19 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                 <div className="w-full bg-white/5 rounded-full h-2 mb-2 overflow-hidden border border-white/5">
                   <div
                     className="bg-gradient-to-r from-brand-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm"
-                    style={{ width: `${loadProgress ? Math.max(5, Math.min(100, loadProgress.percent)) : 15}%` }}
+                    style={{
+                      width: `${loadProgress ? Math.max(5, Math.min(100, loadProgress.percent)) : 15}%`,
+                    }}
                   />
                 </div>
 
                 <div className="w-full flex justify-between items-center text-[11px] text-dark-subtext mb-5">
                   <span>
-                    {loadProgress?.stage === 'downloading' ? 'Download' : loadProgress?.stage === 'decrypting' ? 'Segurança' : 'Carregando'}
+                    {loadProgress?.stage === 'downloading'
+                      ? 'Download'
+                      : loadProgress?.stage === 'decrypting'
+                      ? 'Segurança'
+                      : 'Carregando'}
                   </span>
                   <span className="font-mono font-medium text-white">
                     {loadProgress ? `${Math.round(loadProgress.percent)}%` : '...'}
@@ -354,7 +390,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             </div>
           ) : (
             <div className="pdf-container pb-32 pt-8 flex flex-col items-center">
-              {spacerHeights.top > 0 && <div style={{ height: spacerHeights.top, width: '100%' }} />}
+              {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight, width: '100%' }} />}
 
               {pagesToRender.map((pageNum) => (
                 <PdfPage
@@ -364,24 +400,23 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   zoom={zoom}
                   isRendered={renderedPages.has(pageNum)}
                   cssFilter={cssFilter}
-                  highlights={highlights.filter((h) => h.page_number === pageNum)}
-                  activeHighlight={activeHighlight}
-                  ocrProcessing={ocrProcessing}
-                  setOcrProcessing={setOcrProcessing}
+                  highlights={highlightsByPage.get(pageNum) || []}
                   readingMode={readingMode}
                   bookId={book.id}
-                  isBookmarked={bookmarks.some((b) => b.page_number === pageNum)}
+                  isBookmarked={bookmarkedPages.has(pageNum)}
                   onToggleBookmark={() => toggleBookmark(pageNum)}
-                  pageRefs={pageRefs}
-                  canvasRefs={canvasRefs}
-                  onMeasure={(h) => {
-                    measuredHeights.current.set(pageNum, h);
-                  }}
-                  onHighlightClick={(h, pos) => setActiveHighlight({ highlight: h, position: pos })}
+                  ocrProcessing={ocrProcessing}
+                  setOcrProcessing={setOcrProcessing}
+                  onMeasure={(unscaledW, unscaledH) => handleMeasurePage(pageNum, unscaledW, unscaledH)}
+                  onHighlightClick={handleHighlightClick}
+                  pageWidth={dimensionCache.current.getPageWidth(pageNum, zoom)}
+                  pageHeight={dimensionCache.current.getPageHeight(pageNum, zoom)}
                 />
               ))}
 
-              {spacerHeights.bottom > 0 && <div style={{ height: spacerHeights.bottom, width: '100%' }} />}
+              {bottomSpacerHeight > 0 && (
+                <div style={{ height: bottomSpacerHeight, width: '100%' }} />
+              )}
             </div>
           )}
         </div>
@@ -424,13 +459,18 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           />
         )}
 
-        {/* Toolbars Contextuais (Highlight) */}
+        {/* Floating Contextual Highlight Toolbar */}
         {selection && (
           <HighlightToolbar
             position={selection.position}
+            selectedText={selection.text}
             onHighlight={handleSaveHighlight}
-            onDictionary={() => {
-              setDictionaryTarget({ word: selection.text, context: selection.pageContext });
+            onDictionary={(text, preloadedData) => {
+              setDictionaryTarget({
+                word: text,
+                context: selection.pageContext,
+                preloadedData,
+              });
             }}
             onDismiss={() => setSelection(null)}
           />
@@ -439,7 +479,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         {activeHighlight && (
           <div
             className="absolute z-[100] animate-in fade-in slide-in-from-bottom-2"
-            style={{ top: activeHighlight.position.y + 10, left: activeHighlight.position.x - 75 }}
+            style={{
+              top: activeHighlight.position.y + 10,
+              left: activeHighlight.position.x - 75,
+            }}
           >
             <div className="bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-2 flex gap-2">
               <button
