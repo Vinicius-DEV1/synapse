@@ -159,13 +159,39 @@ export default function TabBar() {
     }
   }, [state.activeTabId]);
 
-  // Translate vertical mouse wheel scrolling into horizontal tab strip scrolling
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY !== 0) {
-      e.currentTarget.scrollLeft += e.deltaY;
-    } else if (e.deltaX !== 0) {
-      e.currentTarget.scrollLeft += e.deltaX;
+  // Translate mouse wheel scrolling into horizontal tab strip scrolling with delta normalization and precise edge clamping
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLElement>) => {
+    const el = tabStripRef.current;
+    if (!el) return;
+
+    let delta = e.deltaY;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      delta = e.deltaX;
     }
+    if (!delta) return;
+
+    // Normalize delta across line vs pixel modes (e.g. Linux mice with DOM_DELTA_LINE)
+    if (e.deltaMode === 1) {
+      delta *= 35;
+    } else if (e.deltaMode === 2) {
+      delta *= 100;
+    }
+
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    let targetScroll = el.scrollLeft + delta;
+
+    if (maxScroll > 0) {
+      // Clean snap to 0% at the start
+      if (targetScroll <= 8) {
+        targetScroll = 0;
+      }
+      // Clean snap to 100% at the end
+      else if (targetScroll >= maxScroll - 8) {
+        targetScroll = maxScroll;
+      }
+    }
+
+    el.scrollLeft = targetScroll;
   }, []);
 
   const handleNewTab = useCallback(() => {
@@ -304,6 +330,7 @@ export default function TabBar() {
         data-tauri-drag-region
         onMouseDown={handleWindowMouseDown}
         onDoubleClick={handleWindowDoubleClick}
+        onWheel={handleWheel}
       >
         {/* Mobile Sidebar Toggle Button */}
         <button
@@ -318,73 +345,79 @@ export default function TabBar() {
           <PanelLeft size={18} />
         </button>
 
-        {/* Left Scroll Chevron when tabs overflow */}
-        {canScrollLeft && (
-          <button
-            type="button"
-            onClick={() => tabStripRef.current?.scrollBy({ left: -220, behavior: 'smooth' })}
-            className="flex-shrink-0 p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all active:scale-95 mb-0.5 z-10"
-            title="Rolar abas para a esquerda"
-            data-no-drag
+        {/* Tab Strip Wrapper - Fixed width allocation with non-shifting overlay chevrons */}
+        <div className="relative flex-1 flex items-end h-full min-w-0 overflow-hidden">
+          {/* Left Scroll Chevron Overlay */}
+          {canScrollLeft && (
+            <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center pr-4 bg-gradient-to-r from-dark-bg/95 via-dark-bg/80 to-transparent pointer-events-none">
+              <button
+                type="button"
+                onClick={() => tabStripRef.current?.scrollBy({ left: -220, behavior: 'smooth' })}
+                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 ml-0.5 mb-0.5"
+                title="Rolar abas para a esquerda"
+                data-no-drag
+              >
+                <ChevronLeft size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* Scrolling Tab Strip - Horizontal scroll only, zero vertical scrollbar */}
+          <div 
+            ref={tabStripRef}
+            className="w-full flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1 px-1"
           >
-            <ChevronLeft size={14} />
-          </button>
-        )}
+            {state.tabs.map((tab, index) => {
+              const isActive = tab.id === state.activeTabId;
+              const page = tab.pageId ? pageMap.get(tab.pageId) || null : null;
+              const isLastPinned = tab.isPinned && !state.tabs[index + 1]?.isPinned;
 
-        {/* Scrolling Tab Strip - Horizontal scroll only, zero vertical scrollbar */}
-        <div 
-          ref={tabStripRef}
-          onWheel={handleWheel}
-          className="flex-1 flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1"
-        >
-          {state.tabs.map((tab, index) => {
-            const isActive = tab.id === state.activeTabId;
-            const page = tab.pageId ? pageMap.get(tab.pageId) || null : null;
-            const isLastPinned = tab.isPinned && !state.tabs[index + 1]?.isPinned;
+              return (
+                <Fragment key={tab.id}>
+                  <TabItem
+                    tab={tab}
+                    index={index}
+                    isActive={isActive}
+                    page={page}
+                    onSelect={handleSelectTab}
+                    onClose={handleCloseTab}
+                    onDropTab={handleDropTab}
+                    tabCount={state.tabs.length}
+                    onContextMenu={handleTabContextMenu}
+                  />
+                  {isLastPinned && index < state.tabs.length - 1 && (
+                    <div className="h-5 w-px bg-white/10 mx-1 mb-2 self-center flex-shrink-0" />
+                  )}
+                </Fragment>
+              );
+            })}
 
-            return (
-              <Fragment key={tab.id}>
-                <TabItem
-                  tab={tab}
-                  index={index}
-                  isActive={isActive}
-                  page={page}
-                  onSelect={handleSelectTab}
-                  onClose={handleCloseTab}
-                  onDropTab={handleDropTab}
-                  tabCount={state.tabs.length}
-                  onContextMenu={handleTabContextMenu}
-                />
-                {isLastPinned && index < state.tabs.length - 1 && (
-                  <div className="h-5 w-px bg-white/10 mx-1 mb-2 self-center flex-shrink-0" />
-                )}
-              </Fragment>
-            );
-          })}
+            {/* New Tab Button */}
+            <button
+              onClick={handleNewTab}
+              className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-all active:scale-95 mb-0.5"
+              title="Nova aba"
+              data-no-drag
+            >
+              <Plus size={15} />
+            </button>
+          </div>
 
-          {/* New Tab Button */}
-          <button
-            onClick={handleNewTab}
-            className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-all active:scale-95 mb-0.5"
-            title="Nova aba"
-            data-no-drag
-          >
-            <Plus size={15} />
-          </button>
+          {/* Right Scroll Chevron Overlay */}
+          {canScrollRight && (
+            <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center pl-4 bg-gradient-to-l from-dark-bg/95 via-dark-bg/80 to-transparent pointer-events-none">
+              <button
+                type="button"
+                onClick={() => tabStripRef.current?.scrollBy({ left: 220, behavior: 'smooth' })}
+                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 mr-0.5 mb-0.5"
+                title="Rolar abas para a direita"
+                data-no-drag
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Right Scroll Chevron when tabs overflow */}
-        {canScrollRight && (
-          <button
-            type="button"
-            onClick={() => tabStripRef.current?.scrollBy({ left: 220, behavior: 'smooth' })}
-            className="flex-shrink-0 p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all active:scale-95 mb-0.5 z-10"
-            title="Rolar abas para a direita"
-            data-no-drag
-          >
-            <ChevronRight size={14} />
-          </button>
-        )}
 
         {/* Small spacer before utility buttons */}
         <div className="w-2 h-full shrink-0" data-tauri-drag-region />
