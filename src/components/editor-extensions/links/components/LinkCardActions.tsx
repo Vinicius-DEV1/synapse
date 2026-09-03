@@ -1,4 +1,4 @@
-import type React from 'react';
+import React, { useRef } from 'react';
 import {
   RefreshCw,
   X,
@@ -43,7 +43,7 @@ export default function LinkCardActions({
   isInsideGroup,
   isReloading,
   showColorPicker,
-  colorPickerRef,
+  colorPickerRef: _colorPickerRef,
   setShowColorPicker,
   onChangeColor,
   onToggleWatched,
@@ -54,6 +54,8 @@ export default function LinkCardActions({
   onReload,
   onDelete,
 }: LinkCardActionsProps) {
+  const paletteButtonRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div
       className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${
@@ -63,6 +65,7 @@ export default function LinkCardActions({
       {onChangeColor && (
         <div className="relative">
           <button
+            ref={paletteButtonRef}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -78,19 +81,19 @@ export default function LinkCardActions({
             <Palette size={14} />
           </button>
           {showColorPicker && (
-            <div ref={colorPickerRef} onClick={(e) => e.stopPropagation()}>
-              <ColorPalettePicker
-                currentColor={color || 'default'}
-                onSelectColor={(c) => {
-                  onChangeColor(c);
-                  setShowColorPicker(false);
-                }}
-                onClearColor={() => {
-                  onChangeColor('default');
-                  setShowColorPicker(false);
-                }}
-              />
-            </div>
+            <ColorPalettePicker
+              anchorRef={paletteButtonRef}
+              currentColor={color || 'default'}
+              onSelectColor={(c) => {
+                onChangeColor(c);
+                setShowColorPicker(false);
+              }}
+              onClearColor={() => {
+                onChangeColor('default');
+                setShowColorPicker(false);
+              }}
+              onClose={() => setShowColorPicker(false)}
+            />
           )}
         </div>
       )}

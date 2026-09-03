@@ -65,36 +65,36 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
           onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true);
         }
       }}
-      className={`p-5 rounded-2xl border space-y-4 focus:outline-none focus:border-purple-500/50 ${
+      className={`p-4 md:p-5 rounded-2xl border space-y-4 focus:outline-none transition-all ${
         q.answered
           ? isWin
-            ? 'bg-green-950/10 border-green-500/30'
+            ? 'bg-emerald-500/[0.04] border-emerald-500/20'
             : isPartial
-              ? 'bg-amber-950/10 border-amber-500/30'
-              : 'bg-red-950/10 border-red-500/30'
-          : 'bg-black/40 border-purple-500/20'
+              ? 'bg-amber-500/[0.04] border-amber-500/20'
+              : 'bg-rose-500/[0.04] border-rose-500/20'
+          : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.1]'
       }`}
     >
       {/* Header da Questão */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold font-mono">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/80 text-xs font-medium font-mono">
             {qIndex + 1}
           </span>
-          <span className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">
+          <span className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider">
             {isOpen ? 'Questão Aberta' : 'Múltipla Escolha'}
           </span>
 
-          {/* BOTÃO DISCRETO DE EMOJI DO GABARITO NO TOPO ESQUERDO DO CARD */}
+          {/* BOTÃO DE GABARITO NO TOPO ESQUERDO DO CARD */}
           {hasGabarito && (
             <button
               onClick={() =>
                 onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true)
               }
-              className={`px-1.5 py-0.5 rounded-md transition-all flex items-center justify-center border text-xs leading-none ${
+              className={`px-2 py-0.5 rounded-md transition-all flex items-center gap-1 border text-[11px] font-medium ${
                 q.showExplanation
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-amber-300'
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-dark-subtext hover:text-white'
               }`}
               title={
                 q.showExplanation
@@ -102,7 +102,8 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
                   : '💡 Consultar Gabarito de Referência (Alt+G)'
               }
             >
-              <span className="text-[12px]">💡</span>
+              <span className="text-[11px]">💡</span>
+              <span className="hidden sm:inline">Gabarito</span>
             </button>
           )}
         </div>
@@ -112,9 +113,9 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
             {q.tags.map((tag, tIdx) => (
               <span
                 key={tIdx}
-                className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20 flex items-center gap-0.5"
+                className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.03] text-dark-subtext border border-white/[0.06] flex items-center gap-1"
               >
-                <Tag size={9} />
+                <Tag size={9} className="opacity-60" />
                 {tag}
               </span>
             ))}
@@ -123,7 +124,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
       </div>
 
       {/* Enunciado */}
-      <div className="text-xs text-purple-100 font-medium leading-relaxed">
+      <div className="text-xs md:text-sm text-white/95 font-medium leading-relaxed">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={markdownComponents}
@@ -174,7 +175,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
               }
             }}
             placeholder="Escreva sua resposta detalhada aqui... (Enter para enviar | Alt+G para Gabarito)"
-            className="w-full bg-black/40 border border-purple-500/20 focus:border-purple-500/50 rounded-xl p-3 text-xs text-purple-100 placeholder-white/25 outline-none resize-y min-h-[80px] leading-relaxed transition-colors disabled:opacity-75"
+            className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-y min-h-[80px] leading-relaxed transition-colors disabled:opacity-75"
             rows={3}
           />
 
@@ -182,12 +183,12 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
             <button
               onClick={() => onEvaluateOpenAnswer(q, qIndex)}
               disabled={isEvaluating || !q.userTypedAnswer?.trim()}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/30 transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 disabled:opacity-40 text-brand-200 hover:text-white rounded-xl text-xs font-medium transition-all flex items-center gap-2 shadow-xs"
             >
               {isEvaluating ? (
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin text-brand-300" />
               ) : (
-                <Sparkles size={14} />
+                <Sparkles size={14} className="text-brand-300" />
               )}
               <span>{isEvaluating ? 'Avaliando com IA...' : 'Avaliar Resposta com IA'}</span>
             </button>
@@ -197,22 +198,22 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
             <div
               className={`p-3.5 rounded-xl border space-y-2 text-xs leading-relaxed ${
                 isWin
-                  ? 'bg-green-500/10 border-green-500/30 text-green-200'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
                   : isPartial
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                    : 'bg-red-500/10 border-red-500/30 text-red-200'
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                    : 'bg-rose-500/10 border-rose-500/20 text-rose-200'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold flex items-center gap-1.5">
-                  {isWin && <CheckCircle2 size={15} className="text-green-400" />}
+                <span className="font-medium flex items-center gap-1.5">
+                  {isWin && <CheckCircle2 size={15} className="text-emerald-400" />}
                   {isPartial && <Sparkles size={15} className="text-amber-400" />}
-                  {isLoss && <XCircle size={15} className="text-red-400" />}
+                  {isLoss && <XCircle size={15} className="text-rose-400" />}
                   <span>Parecer da IA: {q.aiFeedback.verdict}</span>
                 </span>
                 <button
                   onClick={() => onDiscussInChat(q, qIndex)}
-                  className="text-[11px] font-semibold text-purple-300 hover:text-purple-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-white/5 transition-colors"
+                  className="text-[11px] font-medium text-dark-subtext hover:text-white flex items-center gap-1 px-2 py-0.5 rounded hover:bg-white/5 transition-colors"
                 >
                   <MessageSquare size={12} />
                   <span>Discutir no Chat</span>
@@ -226,13 +227,13 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
 
       {/* Ações após responder (Explicação / Refazer) */}
       {q.answered && (
-        <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2">
+        <div className="pt-2 border-t border-white/[0.05] flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <button
               onClick={() =>
                 onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true)
               }
-              className="text-xs text-purple-300 hover:text-purple-200 font-semibold flex items-center gap-1 px-2.5 py-1 rounded hover:bg-white/5 transition-colors"
+              className="text-xs text-white/80 hover:text-white font-medium flex items-center gap-1 px-2.5 py-1 rounded hover:bg-white/5 transition-colors"
             >
               <span>{q.showExplanation ? 'Ocultar Gabarito' : '💡 Ver Gabarito / Explicação'}</span>
               {q.showExplanation ? <ChevronUp size={13} /> : <ChevronDown size={13} />}

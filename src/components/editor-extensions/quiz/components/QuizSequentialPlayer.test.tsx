@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import QuizSequentialPlayer from './QuizSequentialPlayer';
+import * as fireworksModule from '../utils/fireworks';
 import type { QuestionItem } from '../types';
 
 describe('QuizSequentialPlayer Unit Tests', () => {
@@ -176,4 +177,32 @@ describe('QuizSequentialPlayer Unit Tests', () => {
       true
     );
   });
+
+  it('does not trigger fireworks on initial mount when questions were already answered', () => {
+    const fireworksSpy = vi.spyOn(fireworksModule, 'triggerFireworksAnimation');
+    fireworksSpy.mockClear();
+
+    const alreadyCompleted: QuestionItem[] = [
+      {
+        ...mockQuestions[0],
+        answered: true,
+        selectedIndex: 0,
+      },
+    ];
+
+    render(
+      <QuizSequentialPlayer
+        questions={alreadyCompleted}
+        onUpdateSingleQuestion={vi.fn()}
+        onEvaluateOpenAnswer={vi.fn()}
+        evaluatingIds={{}}
+        onDiscussInChat={vi.fn()}
+      />
+    );
+
+    // Opening an already completed note should not spam fireworks
+    expect(fireworksSpy).not.toHaveBeenCalled();
+    fireworksSpy.mockRestore();
+  });
 });
+

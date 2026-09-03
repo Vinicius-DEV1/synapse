@@ -23,6 +23,7 @@ import type { GroupDropTarget } from './dropEvaluation';
 import { contentToDrop, selectNodeForDrag as selectNodeForDragUtil } from './dragContent';
 
 export type { GroupDropTarget };
+export { extractNodesFromSlice } from './dragContent';
 
 function clearTarget(view: EditorView) {
   hideIndicator();

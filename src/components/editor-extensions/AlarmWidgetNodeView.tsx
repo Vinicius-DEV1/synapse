@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/core';
 import { useFocusContext } from '../../store/FocusContext';
 import { XSquare } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 
 export default function AlarmWidgetNodeView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const { alarmId, timeStr, label, status } = node.attrs;
@@ -10,6 +12,19 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
 
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const { refs, floatingStyles } = useFloating({
+    placement: 'top',
+    middleware: [offset(6), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      refs.setReference(containerRef.current);
+    }
+  }, [refs]);
 
   // Auto-complete status if global alarm is no longer active or exists
   useEffect(() => {
@@ -27,12 +42,27 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        (!containerRef.current || !containerRef.current.contains(target))
+      ) {
         setShowPopover(false);
       }
     };
-    if (showPopover) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPopover(false);
+    };
+
+    if (showPopover) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [showPopover]);
 
   const togglePopover = (e: React.MouseEvent) => {
@@ -51,8 +81,9 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
   };
 
   return (
-    <NodeViewWrapper as="span" className="inline-block relative mx-1" ref={containerRef}>
+    <NodeViewWrapper as="span" className="inline-block relative mx-1">
       <span 
+        ref={containerRef}
         contentEditable={false}
         onClick={togglePopover}
         onMouseDown={() => {
@@ -82,18 +113,25 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
       </span>
 
       {showPopover && isPending && (
-        <div 
-          className="absolute z-[9999] bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 animate-in fade-in slide-in-from-bottom-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={onCancel}
-            className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-1"
-            title="Cancelar Alarme"
+        <Portal>
+          <div 
+            ref={(node) => {
+              refs.setFloating(node);
+              (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            }}
+            style={{ ...floatingStyles, zIndex: 9999 }}
+            className="fixed bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
           >
-            <XSquare size={16} /> <span className="text-xs">Cancelar</span>
-          </button>
-        </div>
+            <button
+              onClick={onCancel}
+              className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+              title="Cancelar Alarme"
+            >
+              <XSquare size={16} /> <span className="text-xs">Cancelar</span>
+            </button>
+          </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );

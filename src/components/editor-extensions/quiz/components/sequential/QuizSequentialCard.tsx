@@ -36,11 +36,11 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
   onDiscussInChat,
 }: QuizSequentialCardProps) {
   return (
-    <div className="p-4 md:p-5 bg-dark-bg/70 border border-white/10 rounded-xl space-y-3.5 shadow-lg relative">
+    <div className="p-4 md:p-6 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-4 shadow-xs relative">
       {/* Header do Card (Tags, Feedback Verdict & Gabarito) */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5 flex-wrap">
+      <div className="flex items-center justify-between gap-2 border-b border-white/[0.05] pb-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-bold text-brand-300 bg-brand-500/10 px-2 py-0.5 rounded-md border border-brand-500/20">
+          <span className="text-[11px] font-medium text-white/80 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.06]">
             Questão {activeIndex + 1}
           </span>
 
@@ -50,7 +50,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
               {currentQ.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-dark-subtext"
+                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.05] text-dark-subtext"
                 >
                   #{tag}
                 </span>
@@ -63,16 +63,16 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
         <div className="flex items-center gap-2">
           {currentQ.answered && (
             <span
-              className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+              className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
                 currentQ.type === 'multiple_choice'
                   ? currentQ.selectedIndex === currentQ.correctIndex
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                   : currentQ.aiFeedback?.verdict === 'Correto'
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     : currentQ.aiFeedback?.verdict === 'Parcial'
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                      : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
               }`}
             >
               {currentQ.type === 'multiple_choice' ? (
@@ -108,8 +108,8 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
               }
               className={`px-2 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 ${
                 currentQ.showExplanation
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-dark-subtext hover:text-white'
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-dark-subtext hover:text-white'
               }`}
               title="Ver/ocultar explicação e gabarito (Alt+G)"
             >
@@ -121,7 +121,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
       </div>
 
       {/* Enunciado */}
-      <div className="text-sm md:text-[15px] font-semibold text-white leading-snug md:leading-relaxed">
+      <div className="text-sm md:text-base font-medium text-white/95 leading-relaxed pt-1">
         {currentQ.question ? (
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {preprocessMarkdownCode(currentQ.question)}
@@ -131,29 +131,34 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
         )}
       </div>
 
-      {/* OPÇÕES: MÚLTIPLA ESCOLHA (Kahoot Style) */}
+      {/* OPÇÕES: MÚLTIPLA ESCOLHA (Grid Clean) */}
       {!isOpenType && currentQ.options && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
           {currentQ.options.map((opt, optIndex) => {
             const letter = String.fromCharCode(65 + optIndex);
             const isSelected = currentQ.selectedIndex === optIndex;
             const isCorrect = optIndex === currentQ.correctIndex;
 
             let style =
-              'bg-white/5 border-white/10 hover:border-brand-500/40 text-white/90 hover:bg-white/10';
+              'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.15] text-white/90 hover:bg-white/[0.05]';
+            let badgeStyle = 'border-white/[0.06] bg-white/[0.04] text-white/70';
 
             if (currentQ.answered) {
               if (isCorrect) {
                 style =
-                  'bg-green-500/20 border-green-500/60 text-green-100 font-semibold shadow-md shadow-green-950/40';
+                  'bg-emerald-500/10 border-emerald-500/30 text-emerald-100 font-medium';
+                badgeStyle = 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300';
               } else if (isSelected && !isCorrect) {
                 style =
-                  'bg-red-500/20 border-red-500/60 text-red-200 line-through opacity-80';
+                  'bg-rose-500/10 border-rose-500/30 text-rose-200 line-through opacity-80';
+                badgeStyle = 'border-rose-500/40 bg-rose-500/20 text-rose-300';
               } else {
-                style = 'bg-black/20 border-white/5 text-dark-subtext opacity-40';
+                style = 'bg-black/10 border-white/[0.03] text-dark-subtext opacity-40';
+                badgeStyle = 'border-white/[0.04] bg-white/[0.02] text-dark-subtext';
               }
             } else if (isSelected) {
-              style = 'bg-brand-500/20 border-brand-500 text-white font-semibold';
+              style = 'bg-brand-500/15 border-brand-500/30 text-white font-medium';
+              badgeStyle = 'border-brand-500/50 bg-brand-500/30 text-brand-200';
             }
 
             return (
@@ -164,11 +169,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                 className={`p-3 md:p-3.5 rounded-xl border text-xs md:text-sm text-left flex items-center gap-2.5 transition-all cursor-pointer disabled:cursor-default ${style}`}
               >
                 <span
-                  className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${
-                    isSelected
-                      ? 'bg-brand-500 border-brand-400 text-white shadow-sm'
-                      : 'border-white/10 bg-black/40 text-dark-subtext'
-                  }`}
+                  className={`w-6 h-6 rounded-md flex items-center justify-center font-mono font-medium text-xs shrink-0 border ${badgeStyle}`}
                 >
                   {letter}
                 </span>
@@ -178,10 +179,10 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                   </ReactMarkdown>
                 </span>
                 {currentQ.answered && isCorrect && (
-                  <Check size={16} className="text-green-400 shrink-0" />
+                  <Check size={16} className="text-emerald-400 shrink-0" />
                 )}
                 {currentQ.answered && isSelected && !isCorrect && (
-                  <X size={16} className="text-red-400 shrink-0" />
+                  <X size={16} className="text-rose-400 shrink-0" />
                 )}
               </button>
             );
@@ -193,7 +194,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
       {isOpenType && (
         <div className="space-y-3 pt-1">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-dark-subtext flex items-center justify-between">
+            <label className="text-xs font-medium text-dark-subtext flex items-center justify-between">
               <span>✍️ Sua Resposta Discursiva:</span>
               <span className="text-[10px] opacity-70">Pressione Enter para enviar para avaliação</span>
             </label>
@@ -213,7 +214,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
               disabled={currentQ.answered || isEvaluating}
               placeholder="Escreva sua resposta completa com clareza..."
               rows={3}
-              className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs md:text-sm text-white placeholder-white/20 outline-none focus:border-brand-500 resize-none transition-colors"
+              className="w-full bg-black/20 border border-white/[0.08] rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none focus:border-brand-500/50 resize-none transition-colors"
             />
           </div>
 
@@ -221,16 +222,16 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
             <button
               onClick={() => onEvaluateOpenAnswer(currentQ, activeIndex)}
               disabled={!currentQ.userTypedAnswer?.trim() || isEvaluating}
-              className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-brand-500/20"
+              className="w-full py-2.5 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 disabled:opacity-40 text-brand-200 hover:text-white rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
             >
               {isEvaluating ? (
                 <>
-                  <Loader2 size={15} className="animate-spin text-white" />
+                  <Loader2 size={15} className="animate-spin text-brand-300" />
                   <span>Avaliando com IA do Gemini...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles size={14} />
+                  <Sparkles size={14} className="text-brand-300" />
                   <span>Enviar Resposta para Avaliação IA</span>
                 </>
               )}
@@ -240,15 +241,15 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
           {/* Parecer da IA */}
           {currentQ.answered && currentQ.aiFeedback && (
             <div
-              className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+              className={`p-3 rounded-xl border text-xs space-y-1.5 leading-relaxed ${
                 currentQ.aiFeedback.verdict === 'Correto'
-                  ? 'bg-green-500/10 border-green-500/30 text-green-200'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
                   : currentQ.aiFeedback.verdict === 'Parcial'
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                    : 'bg-red-500/10 border-red-500/30 text-red-200'
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                    : 'bg-rose-500/10 border-rose-500/20 text-rose-200'
               }`}
             >
-              <div className="flex items-center justify-between font-bold">
+              <div className="flex items-center justify-between font-medium">
                 <span className="flex items-center gap-1.5">
                   <Sparkles size={13} />
                   <span>Avaliação: {currentQ.aiFeedback.verdict}</span>
@@ -256,10 +257,10 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                 <span className="text-[10px] opacity-70 font-normal">Gemini AI</span>
               </div>
               <p className="leading-relaxed opacity-95">{currentQ.aiFeedback.feedback}</p>
-              <div className="pt-1.5 border-t border-white/10 flex justify-end">
+              <div className="pt-1.5 border-t border-white/[0.06] flex justify-end">
                 <button
                   onClick={() => onDiscussInChat(currentQ, activeIndex)}
-                  className="text-[10px] font-semibold text-brand-300 hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
+                  className="text-[10px] font-medium text-dark-subtext hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors flex items-center gap-1"
                 >
                   <MessageSquare size={11} />
                   <span>Discutir com Assistente IA</span>
@@ -273,10 +274,10 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
       {/* Caixa de Explicação / Gabarito Comentado */}
       {currentQ.showExplanation &&
         (currentQ.explanation || (isOpenType && currentQ.expectedAnswer)) && (
-          <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30 text-xs text-brand-100 space-y-1.5 shadow-inner">
+          <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] text-xs text-white/90 space-y-2">
             {isOpenType && currentQ.expectedAnswer && (
               <div className="space-y-0.5">
-                <span className="font-bold text-brand-300 text-[10px] block">
+                <span className="font-semibold text-amber-300/90 text-[10px] uppercase tracking-wider block">
                   📌 Gabarito de Referência:
                 </span>
                 <p className="leading-relaxed opacity-90">{currentQ.expectedAnswer}</p>
@@ -284,12 +285,14 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
             )}
             {currentQ.explanation && (
               <div className="space-y-0.5">
-                <span className="font-bold text-brand-300 text-[10px] block">
+                <span className="font-semibold text-white/60 text-[10px] uppercase tracking-wider block">
                   💡 Explicação Detalhada:
                 </span>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                  {preprocessMarkdownCode(currentQ.explanation)}
-                </ReactMarkdown>
+                <div className="text-xs text-white/90">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {preprocessMarkdownCode(currentQ.explanation)}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
           </div>

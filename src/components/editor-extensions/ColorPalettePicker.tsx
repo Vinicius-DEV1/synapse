@@ -1,18 +1,77 @@
+import React, { useRef, useEffect } from 'react';
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { BG_COLORS } from '../../utils/colors';
+import { Portal } from '../ui/Portal';
 
 interface ColorPalettePickerProps {
   currentColor: string;
   onSelectColor: (color: string) => void;
   onClearColor: () => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
+  onClose?: () => void;
 }
 
 export default function ColorPalettePicker({
   currentColor,
   onSelectColor,
   onClearColor,
+  anchorRef,
+  onClose,
 }: ColorPalettePickerProps) {
-  return (
-    <div className="absolute top-full right-0 mt-1 bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px]">
+  const { refs, floatingStyles } = useFloating({
+    placement: 'bottom-end',
+    middleware: [offset(6), flip(), shift({ padding: 12 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    if (anchorRef?.current) {
+      refs.setReference(anchorRef.current);
+    }
+  }, [anchorRef, refs]);
+
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!anchorRef) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(target) &&
+        (!anchorRef.current || !anchorRef.current.contains(target))
+      ) {
+        onClose?.();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, anchorRef]);
+
+  const content = (
+    <div
+      ref={(node) => {
+        if (anchorRef) {
+          refs.setFloating(node);
+        }
+        (pickerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }}
+      style={anchorRef ? { ...floatingStyles, zIndex: 9999 } : undefined}
+      className={`${
+        anchorRef ? 'fixed' : 'absolute top-full right-0 mt-1'
+      } bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] animate-scale-in`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="text-[11px] font-medium text-dark-subtext px-1">Cor do Destaque</div>
       <div className="grid grid-cols-5 gap-1.5">
         <button
@@ -43,4 +102,11 @@ export default function ColorPalettePicker({
       </div>
     </div>
   );
+
+  if (anchorRef) {
+    return <Portal>{content}</Portal>;
+  }
+
+  return content;
 }
+

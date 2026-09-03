@@ -28,38 +28,45 @@ export default function QuizPlayer({
   }).length;
 
   const prevAnsweredRef = useRef(0);
+  const celebratedRef = useRef(false);
 
   // Fireworks celebration effect triggered on high score completion (>= 80%)
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
     const isCompleted =
       safeQuestions.length > 0 &&
       answeredCount === safeQuestions.length &&
       prevAnsweredRef.current < safeQuestions.length;
 
-    if (isCompleted) {
+    if (isCompleted && !celebratedRef.current) {
       const hitRatio = correctCount / safeQuestions.length;
       if (hitRatio >= 0.8 && correctCount > 0) {
-        triggerFireworksAnimation();
+        celebratedRef.current = true;
+        cleanup = triggerFireworksAnimation();
       }
     }
     prevAnsweredRef.current = answeredCount;
+
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [answeredCount, correctCount, safeQuestions.length]);
 
   return (
     <div className="space-y-6">
       {/* Barra de Progresso / Desempenho */}
-      <div className="p-4 bg-black/40 border border-purple-500/20 rounded-2xl flex items-center justify-between gap-4">
+      <div className="p-3 md:p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-purple-200">
-            <span>Progresso:</span>
-            <span className="font-mono text-purple-400">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-white/90">
+            <span className="text-dark-subtext">Progresso:</span>
+            <span className="font-mono text-white font-semibold">
               {answeredCount}/{safeQuestions.length}
             </span>
           </div>
           {answeredCount > 0 && (
-            <div className="flex items-center gap-1.5 text-xs font-bold text-green-300">
-              <span>• Acertos:</span>
-              <span className="font-mono">{correctCount}</span>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+              <span className="text-dark-subtext font-normal">• Acertos:</span>
+              <span className="font-mono font-semibold">{correctCount}</span>
               <span className="text-[10px] opacity-70">
                 ({Math.round((correctCount / answeredCount) * 100)}%)
               </span>
@@ -70,6 +77,8 @@ export default function QuizPlayer({
         {answeredCount > 0 && (
           <button
             onClick={() => {
+              celebratedRef.current = false;
+              prevAnsweredRef.current = 0;
               safeQuestions.forEach((q) => {
                 onUpdateSingleQuestion(
                   q.id,
@@ -84,7 +93,7 @@ export default function QuizPlayer({
                 );
               });
             }}
-            className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/5 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors"
           >
             <RotateCcw size={12} />
             <span>Refazer Bateria</span>

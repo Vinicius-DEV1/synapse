@@ -377,6 +377,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
 
       {showPopover && (
         <CalendarEventPopover
+          anchorRef={widgetRef}
           title={title}
           eventData={eventData}
           formatDateLabel={formatDateLabel}

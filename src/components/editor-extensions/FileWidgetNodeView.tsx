@@ -24,21 +24,7 @@ export default function FileWidgetNodeView(props: any) {
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
   const [fileItem, setFileItem] = useState<any>(null);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
-        setShowColorPicker(false);
-      }
-    };
-    if (showColorPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showColorPicker]);
+  const paletteButtonRef = useRef<HTMLButtonElement>(null);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
   const isNodeSelected = !!(
@@ -245,6 +231,7 @@ export default function FileWidgetNodeView(props: any) {
         <div className={`flex items-center gap-0.5 ml-1 transition-opacity ${showColorPicker ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
           <div className="relative">
             <button
+              ref={paletteButtonRef}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
@@ -255,19 +242,19 @@ export default function FileWidgetNodeView(props: any) {
               <Palette size={12} />
             </button>
             {showColorPicker && (
-              <div ref={colorPickerRef} onClick={(e) => e.stopPropagation()} className="absolute top-full right-0 z-50">
-                <ColorPalettePicker
-                  currentColor={color}
-                  onSelectColor={(c) => {
-                    updateAttributes?.({ color: c });
-                    setShowColorPicker(false);
-                  }}
-                  onClearColor={() => {
-                    updateAttributes?.({ color: 'default' });
-                    setShowColorPicker(false);
-                  }}
-                />
-              </div>
+              <ColorPalettePicker
+                anchorRef={paletteButtonRef}
+                currentColor={color}
+                onSelectColor={(c) => {
+                  updateAttributes?.({ color: c });
+                  setShowColorPicker(false);
+                }}
+                onClearColor={() => {
+                  updateAttributes?.({ color: 'default' });
+                  setShowColorPicker(false);
+                }}
+                onClose={() => setShowColorPicker(false)}
+              />
             )}
           </div>
           <button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -48,12 +48,26 @@ export default function QuizSequentialPlayer({
   const hitPercentage = answeredCount > 0 ? Math.round((correctCount / total) * 100) : 0;
   const allAnswered = total > 0 && answeredCount === total;
 
-  // Triggers celebration when all questions are answered with high score
+  const prevAnsweredRef = useRef(answeredCount);
+  const celebratedRef = useRef(false);
+
+  // Triggers celebration when all questions are answered with high score (>= 80%)
+  // only upon genuine completion transition, and properly cleans up on unmount
   useEffect(() => {
-    if (allAnswered && hitPercentage >= 80) {
-      triggerFireworksAnimation();
+    let cleanup: (() => void) | undefined;
+    const isCompleted = total > 0 && answeredCount === total && prevAnsweredRef.current < total;
+
+    if (isCompleted && !celebratedRef.current && hitPercentage >= 80 && correctCount > 0) {
+      celebratedRef.current = true;
+      cleanup = triggerFireworksAnimation();
     }
-  }, [allAnswered, hitPercentage]);
+
+    prevAnsweredRef.current = answeredCount;
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [allAnswered, answeredCount, total, hitPercentage, correctCount]);
 
   const handleSelectOption = useCallback(
     (optIndex: number) => {
@@ -87,6 +101,7 @@ export default function QuizSequentialPlayer({
 
   const handleResetCurrent = useCallback(() => {
     if (!currentQ) return;
+    celebratedRef.current = false;
     onUpdateSingleQuestion(
       currentQ.id,
       {
@@ -101,6 +116,8 @@ export default function QuizSequentialPlayer({
   }, [currentQ, onUpdateSingleQuestion]);
 
   const handleResetAll = useCallback(() => {
+    celebratedRef.current = false;
+    prevAnsweredRef.current = 0;
     safeQuestions.forEach((q) => {
       onUpdateSingleQuestion(
         q.id,

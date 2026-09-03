@@ -1,7 +1,7 @@
 import { triggerCelebrationConfetti } from '../../../../utils/confetti';
 
-export const triggerFireworksAnimation = () => {
-  triggerCelebrationConfetti({ durationMs: 2500, zIndex: 9999 });
+export const triggerFireworksAnimation = (): (() => void) => {
+  return triggerCelebrationConfetti({ durationMs: 2500, zIndex: 9999 });
 };
 
 export const createDefaultQuestion = (idSuffix: number = 1) => ({
