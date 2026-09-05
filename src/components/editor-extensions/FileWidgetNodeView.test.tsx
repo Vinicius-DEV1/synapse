@@ -25,6 +25,7 @@ describe('FileWidgetNodeView Component', () => {
           name: 'Relatorio_Final.pdf',
           file_type: 'pdf',
         }),
+        update: vi.fn().mockResolvedValue({}),
       },
     };
   });
@@ -168,6 +169,97 @@ describe('FileWidgetNodeView Component', () => {
       expect(screen.getByText('Relatorio_Final.pdf')).toBeInTheDocument();
       expect(screen.queryByText('Relatorio_Final.pdf (Excluído)')).toBeNull();
     });
+  });
+
+  it('allows renaming the file in-widget and updates DB, node attributes, and dispatches event', async () => {
+    const updateAttributesMock = vi.fn();
+    const eventListener = vi.fn();
+    window.addEventListener('caderno-file-updated', eventListener);
+
+    render(
+      <FileWidgetNodeView
+        node={{
+          attrs: {
+            fileId: 'file_1',
+            name: 'Relatorio_Final.pdf',
+            fileType: 'pdf',
+            isLink: false,
+          },
+        }}
+        updateAttributes={updateAttributesMock}
+        deleteNode={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Relatorio_Final.pdf')).toBeInTheDocument();
+    });
+
+    // Double click file name to start renaming
+    fireEvent.doubleClick(screen.getByText('Relatorio_Final.pdf'));
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('Relatorio_Final.pdf');
+
+    // Change value
+    fireEvent.change(input, { target: { value: 'Relatorio_Atualizado.pdf' } });
+
+    // Press Enter to save
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+    });
+
+    await waitFor(() => {
+      expect((window as any).api.files.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'file_1',
+          name: 'Relatorio_Atualizado.pdf',
+        })
+      );
+      expect(updateAttributesMock).toHaveBeenCalledWith({ name: 'Relatorio_Atualizado.pdf' });
+      expect(eventListener).toHaveBeenCalled();
+    });
+
+    window.removeEventListener('caderno-file-updated', eventListener);
+  });
+
+  it('allows cancelling renaming with Escape key', async () => {
+    const updateAttributesMock = vi.fn();
+
+    render(
+      <FileWidgetNodeView
+        node={{
+          attrs: {
+            fileId: 'file_1',
+            name: 'Relatorio_Final.pdf',
+            fileType: 'pdf',
+            isLink: false,
+          },
+        }}
+        updateAttributes={updateAttributesMock}
+        deleteNode={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Relatorio_Final.pdf')).toBeInTheDocument();
+    });
+
+    // Start renaming via pencil button
+    const renameButton = screen.getByTitle('Renomear arquivo');
+    fireEvent.click(renameButton);
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'Nao_Salvo.pdf' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByText('Relatorio_Final.pdf')).toBeInTheDocument();
+    expect(updateAttributesMock).not.toHaveBeenCalled();
+    expect((window as any).api.files.update).not.toHaveBeenCalled();
   });
 });
 

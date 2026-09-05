@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { File, FileText, Image as ImageIcon, Film, X, Folder, ArrowUp, ArrowDown, Palette, AlertCircle } from 'lucide-react';
+import { File, FileText, Image as ImageIcon, Film, X, Folder, ArrowUp, ArrowDown, Palette, AlertCircle, Pencil, Check } from 'lucide-react';
 import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
@@ -24,6 +24,10 @@ export default function FileWidgetNodeView(props: any) {
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
   const [fileItem, setFileItem] = useState<any>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [isSavingRename, setIsSavingRename] = useState(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const paletteButtonRef = useRef<HTMLButtonElement>(null);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
@@ -124,6 +128,96 @@ export default function FileWidgetNodeView(props: any) {
     }
   };
 
+  const handleStartRename = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (isNotFound) return;
+    const currentName = name || fileItem?.name || 'Arquivo';
+    setRenameValue(currentName);
+    setIsRenaming(true);
+  };
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      const dotIndex = renameValue.lastIndexOf('.');
+      if (dotIndex > 0) {
+        renameInputRef.current.setSelectionRange(0, dotIndex);
+      } else {
+        renameInputRef.current.select();
+      }
+    }
+  }, [isRenaming]);
+
+  const handleSaveRename = async (e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    const trimmed = renameValue.trim();
+    const currentName = name || fileItem?.name || 'Arquivo';
+
+    if (!trimmed || trimmed === currentName) {
+      setIsRenaming(false);
+      return;
+    }
+
+    setIsSavingRename(true);
+    try {
+      if (window.api?.files && fileId) {
+        const itemToUpdate = fileItem || (await window.api.files.getById(fileId).catch(() => null));
+        if (itemToUpdate) {
+          await window.api.files.update({
+            ...itemToUpdate,
+            name: trimmed,
+          });
+          setFileItem((prev: any) => (prev ? { ...prev, name: trimmed } : prev));
+        }
+      }
+
+      updateAttributes?.({ name: trimmed });
+
+      if (props.editor && fileId) {
+        const tr = props.editor.state.tr;
+        let modified = false;
+        props.editor.state.doc.descendants((docNode: any, docPos: number) => {
+          if (
+            docNode.type.name === 'fileWidget' &&
+            docNode.attrs.fileId === fileId &&
+            docNode.attrs.name !== trimmed
+          ) {
+            tr.setNodeMarkup(docPos, undefined, {
+              ...docNode.attrs,
+              name: trimmed,
+            });
+            modified = true;
+          }
+        });
+        if (modified) {
+          props.editor.view.dispatch(tr);
+        }
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('caderno-file-updated', {
+          detail: { fileId, newName: trimmed },
+        })
+      );
+      window.dispatchEvent(new CustomEvent('app-sync-trigger'));
+
+      triggerToast('Arquivo renomeado com sucesso.', 'success');
+      setIsRenaming(false);
+    } catch (err: unknown) {
+      console.error('[FileWidgetNodeView] Rename failed:', err);
+      const msg = err instanceof Error ? err.message : 'Falha ao renomear arquivo.';
+      triggerToast(msg, 'error');
+    } finally {
+      setIsSavingRename(false);
+    }
+  };
+
+  const handleCancelRename = (e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    setIsRenaming(false);
+  };
+
   const handleDelete = () => {
     setShowDeleteConfirm(true);
   };
@@ -203,6 +297,7 @@ export default function FileWidgetNodeView(props: any) {
             : 'bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/20'
         }`}
         onClick={() => {
+          if (isRenaming) return;
           if (isNotFound) {
             setShowDeletedNotice(true);
             return;
@@ -225,10 +320,68 @@ export default function FileWidgetNodeView(props: any) {
         <div className="flex items-center justify-center p-2 bg-dark-bg rounded-lg border border-white/5 mr-1">
           {getIcon()}
         </div>
-        <span className="flex-1 break-words leading-tight group-hover:text-white transition-colors">
-          {name || fileItem?.name || 'Arquivo'}{isNotFound ? ' (Excluído)' : ''}
-        </span>
+        {isRenaming ? (
+          <div
+            className="flex items-center gap-1 min-w-0"
+            contentEditable={false}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              disabled={isSavingRename}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                  handleSaveRename(e);
+                } else if (e.key === 'Escape') {
+                  handleCancelRename(e);
+                }
+              }}
+              className="bg-black/40 border border-brand-500/80 rounded px-1.5 py-0.5 text-xs text-white outline-none focus:ring-1 focus:ring-brand-400 min-w-[140px] max-w-[260px] font-medium"
+            />
+            <button
+              type="button"
+              onClick={handleSaveRename}
+              disabled={isSavingRename}
+              title="Salvar (Enter)"
+              className="p-1 rounded hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+            >
+              <Check size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelRename}
+              disabled={isSavingRename}
+              title="Cancelar (Esc)"
+              className="p-1 rounded hover:bg-white/10 text-dark-subtext hover:text-white transition-colors"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ) : (
+          <span
+            onDoubleClick={handleStartRename}
+            title="Clique duplo para renomear"
+            className="flex-1 break-words leading-tight group-hover:text-white transition-colors cursor-text"
+          >
+            {name || fileItem?.name || 'Arquivo'}{isNotFound ? ' (Excluído)' : ''}
+          </span>
+        )}
         <div className={`flex items-center gap-0.5 ml-1 transition-opacity ${showColorPicker ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          {!isRenaming && !isNotFound && (
+            <button
+              type="button"
+              onClick={handleStartRename}
+              className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
+              title="Renomear arquivo"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
           <div className="relative">
             <button
               ref={paletteButtonRef}
