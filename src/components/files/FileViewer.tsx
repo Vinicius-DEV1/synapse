@@ -150,7 +150,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   }, [fileKey, filesMasterKey, isPdf, isText, item, itemDriveId, itemFileType, objectUrl]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-[#0f0f11] flex flex-col animate-fade-in select-text">
       {/* Header */}
       <FileViewerHeader
         item={item}
@@ -186,7 +186,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
       {/* Reading Progress Bar with Visual Markers */}
       {isText && !isEditing && (
-        <div className="w-full bg-white/5 h-1.5 relative z-20">
+        <div className="w-full bg-white/5 h-1 relative z-20">
           <div
             ref={progressBarRef}
             className="bg-brand-500 h-full transition-all duration-150"
@@ -204,7 +204,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                 <button
                   key={bm.id}
                   onClick={() => handleJumpToBookmark(bm.scrollTop, bm.label)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-400 hover:bg-amber-300 hover:scale-150 rounded-full border border-black shadow-md transition-all z-30 cursor-pointer"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-amber-400 hover:bg-amber-300 hover:scale-150 rounded-full border border-black shadow-md transition-all z-30 cursor-pointer"
                   style={{ left: `${bmPercent}%` }}
                   title={`📌 ${bm.label} (${Math.round(bmPercent)}%)`}
                 />
@@ -214,7 +214,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
       )}
 
       {/* Main Content View */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4 relative">
+      <div className="flex-1 overflow-hidden flex flex-col relative w-full h-full">
         {/* Toast Notificação de Marcador Ativo */}
         {activeBookmarkToast && (
           <div className="absolute top-4 right-6 z-50 bg-amber-500/90 text-black font-medium text-xs px-3.5 py-2 rounded-xl shadow-2xl flex items-center gap-2 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150">
@@ -234,35 +234,37 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         />
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-3 text-dark-subtext">
-            <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm">Carregando arquivo...</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-400">
+            <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-mono">Carregando arquivo...</span>
           </div>
         ) : !objectUrl ? (
-          <div className="flex flex-col items-center justify-center p-8 bg-dark-card border border-white/10 rounded-2xl max-w-md w-full shadow-2xl gap-4 text-center">
-            <div className="p-4 bg-red-500/10 text-red-400 rounded-2xl">
-              <File size={40} />
-            </div>
-            <h3 className="text-lg font-semibold text-white">Não foi possível carregar o arquivo</h3>
-            <p className="text-dark-subtext text-xs leading-relaxed">
-              {loadError || 'O arquivo não foi encontrado localmente e não pôde ser baixado.'}
-            </p>
-            {item.drive_file_id && (
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex flex-col items-center justify-center p-8 bg-white/[0.03] border border-white/5 rounded-2xl max-w-md w-full shadow-2xl gap-4 text-center">
+              <div className="p-3.5 bg-red-500/10 text-red-400 rounded-xl">
+                <File size={36} />
+              </div>
+              <h3 className="text-base font-semibold text-white">Não foi possível carregar o arquivo</h3>
+              <p className="text-zinc-400 text-xs leading-relaxed">
+                {loadError || 'O arquivo não foi encontrado localmente e não pôde ser baixado.'}
+              </p>
+              {item.drive_file_id && (
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+                  }}
+                  className="w-full px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-medium transition-colors shadow-lg shadow-brand-500/20"
+                >
+                  Conectar ao Google Drive
+                </button>
+              )}
               <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('drive-auth-expired'));
-                }}
-                className="w-full px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-colors"
+                onClick={onClose}
+                className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-xl text-xs transition-colors"
               >
-                Conectar ao Google Drive
+                Fechar
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white rounded-xl text-sm transition-colors"
-            >
-              Fechar
-            </button>
+            </div>
           </div>
         ) : isEditing ? (
           <DocumentEditorView
@@ -276,11 +278,13 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             onCancel={() => setIsEditing(false)}
           />
         ) : isImage ? (
-          <img
-            src={objectUrl}
-            alt={item.name}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          />
+          <div className="flex-1 flex items-center justify-center p-6 overflow-hidden bg-black/95">
+            <img
+              src={objectUrl}
+              alt={item.name}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+            />
+          </div>
         ) : isText ? (
           <TextPreviewer
             textContent={textContent}
@@ -294,27 +298,29 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           <iframe
             src={objectUrl}
             title={item.name}
-            className="w-full h-full max-w-5xl rounded-xl border border-white/10 shadow-2xl bg-white"
+            className="w-full h-full border-none bg-white"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center p-8 bg-dark-card border border-white/10 rounded-2xl max-w-md w-full shadow-2xl gap-4">
-            <div className="p-4 bg-brand-500/20 text-brand-400 rounded-2xl mb-2">
-              <File size={48} />
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex flex-col items-center justify-center p-8 bg-white/[0.03] border border-white/5 rounded-2xl max-w-md w-full shadow-2xl gap-4">
+              <div className="p-3.5 bg-white/5 text-zinc-400 rounded-xl mb-1">
+                <File size={40} />
+              </div>
+              <h3 className="text-lg font-semibold text-white text-center break-all">{item.name}</h3>
+              <p className="text-zinc-400 text-center text-xs leading-relaxed">
+                Visualização não suportada para este formato. <br />
+                Tamanho: {(item.file_size / 1024 / 1024).toFixed(2)} MB
+              </p>
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="w-full px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                <span>Baixar Arquivo</span>
+              </button>
             </div>
-            <h3 className="text-xl font-semibold text-white text-center break-all">{item.name}</h3>
-            <p className="text-dark-subtext text-center mb-4 text-sm">
-              Visualização não suportada para este formato. <br />
-              Tamanho: {(item.file_size / 1024 / 1024).toFixed(2)} MB
-            </p>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="w-full px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-              <span>Baixar Arquivo</span>
-            </button>
           </div>
         )}
       </div>
