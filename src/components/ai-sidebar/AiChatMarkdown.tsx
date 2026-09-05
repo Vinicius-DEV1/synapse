@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import hljs from 'highlight.js';
+import { ScrollablePre } from '../../utils/scroll-forwarding';
 
 export const mdRenderers = {
   p: ({ children }: any) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
@@ -59,9 +60,9 @@ export const mdRenderers = {
     );
   },
   pre: ({ children }: any) => (
-    <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto mb-2 custom-scrollbar">
+    <ScrollablePre className="bg-black/30 p-3 rounded-lg overflow-x-auto mb-2 custom-scrollbar">
       {children}
-    </pre>
+    </ScrollablePre>
   )
 };
 

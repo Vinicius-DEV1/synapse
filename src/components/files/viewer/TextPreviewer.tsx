@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import hljs from 'highlight.js';
+import { ScrollablePre, ScrollableDiv } from '../../../utils/scroll-forwarding';
 
 interface TextPreviewerProps {
   textContent: string;
@@ -57,9 +58,9 @@ const mdRenderers: Components = {
     </a>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto my-6 border-y border-white/10">
+    <ScrollableDiv className="overflow-x-auto my-6 border-y border-white/10">
       <table className="min-w-full divide-y divide-white/10 text-left">{children}</table>
-    </div>
+    </ScrollableDiv>
   ),
   thead: ({ children }) => <thead className="bg-white/[0.02]">{children}</thead>,
   th: ({ children }) => (
@@ -86,9 +87,9 @@ const mdRenderers: Components = {
             <div className="absolute top-2.5 right-3 text-[10px] uppercase font-mono text-zinc-400 bg-black/50 px-2 py-0.5 rounded border border-white/5 tracking-wider">
               {language}
             </div>
-            <pre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm border border-white/5 font-mono leading-relaxed">
+            <ScrollablePre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm border border-white/5 font-mono leading-relaxed">
               <code dangerouslySetInnerHTML={{ __html: highlighted }} />
-            </pre>
+            </ScrollablePre>
           </div>
         );
       } catch {
@@ -98,9 +99,9 @@ const mdRenderers: Components = {
 
     if (!inline) {
       return (
-        <pre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm my-5 border border-white/5 font-mono text-zinc-300 leading-relaxed">
+        <ScrollablePre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm my-5 border border-white/5 font-mono text-zinc-300 leading-relaxed">
           <code>{codeString}</code>
-        </pre>
+        </ScrollablePre>
       );
     }
 
@@ -109,7 +110,8 @@ const mdRenderers: Components = {
         {children}
       </code>
     );
-  }
+  },
+  pre: ({ children }) => <>{children}</>,
 };
 
 export function TextPreviewer({
