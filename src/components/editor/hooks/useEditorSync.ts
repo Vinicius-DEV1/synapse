@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as Y from 'yjs';
-import type { Page } from '../../../types';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 import { getEditorBackupMap } from './editorBackupStore';
 import { onPageSaved } from '../../../services/page-broadcast';
+import { getStoreState } from '../../../store/useStore';
+import type { Page } from '../../../types';
+import type { EditorSaveCallback } from './useEditorSave';
 
 interface UseEditorSyncProps {
   pageId: string | null;
   initialCrdtState?: string | null;
-  onSaveRef: MutableRefObject<Function>;
+  onSaveRef: MutableRefObject<EditorSaveCallback>;
   latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
   instanceId?: string;
 }
@@ -94,19 +96,28 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   }, [pageId, latestContentRef, instanceId]);
 
   // 3. Protection fallback when gaining focus / returning to visibility
+  // Checks in-memory cache first (0ms) and only queries database as fallback
   useEffect(() => {
     const handleFocusCheck = async () => {
       if (pageId && ydocRef.current) {
-        // First check in-memory backup cache (synchronous and immediate)
+        // First check in-memory backup cache (synchronous and immediate, 0ms latency)
         const backup = getEditorBackupMap().get(pageId);
         if (backup?.crdt && backup.crdt.length > 8) {
           applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+          return;
         }
 
-        // Then query database as reliable fallback
-        if (document.visibilityState === 'visible' && window.api) {
+        // Check the in-memory global store before querying the database
+        const storePage = getStoreState().pages.find((p) => p.id === pageId);
+        if (storePage?.crdt_state && storePage.crdt_state.length > 8) {
+          applyBase64StateToYDoc(ydocRef.current, storePage.crdt_state);
+          return;
+        }
+
+        // Reliable fallback to database only if not already resolved in-memory
+        if (document.visibilityState === 'visible' && window.api?.getAllPages) {
           try {
-            const pages = await window.api.getAllPages?.();
+            const pages = await window.api.getAllPages();
             const currentPage = pages?.find((p: Page) => p.id === pageId);
             if (currentPage?.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
               applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
@@ -132,9 +143,9 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
     return () => {
       const saveFn = onSaveRef.current;
       if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        const result = saveFn(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId) as any;
-        if (result && typeof result.catch === 'function') {
-          result.catch((err: any) => {
+        const result = saveFn(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId);
+        if (result && typeof (result as Promise<void>).catch === 'function') {
+          (result as Promise<void>).catch((err: unknown) => {
             console.error(`[Caderno:Flush] Falha ao persistir alterações no unmount de ${pageId}:`, err);
           });
         }
