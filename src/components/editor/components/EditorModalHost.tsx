@@ -1,20 +1,23 @@
+import { lazy, Suspense } from 'react';
 import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import SlashMenu from './SlashMenu';
 import PageSearchMenu from '../../PageSearchMenu';
-import ImageViewerModal from '../../modals/ImageViewerModal';
-import SetupModal from '../../focus/SetupModal';
-import AlarmSetupModal from '../../focus/AlarmSetupModal';
-import FileUploadModal from '../../files/FileUploadModal';
-import FileSelectModal from '../../files/FileSelectModal';
-import CalendarEventModal from '../../editor-extensions/CalendarEventModal';
-import MediaSelectModal from '../../modals/MediaSelectModal';
-import MediaActionModal from '../../modals/MediaActionModal';
-import FileActionModal from '../../modals/FileActionModal';
-import ImageDeleteModal from '../../modals/ImageDeleteModal';
 import { deleteImageAt } from '../../editor-extensions/image/imageUtils';
+import { triggerToast } from '../../ui/ToastContext';
 import type { SlashMenuState } from '../hooks/useSlashCommand';
 import type { Alarm } from '../../focus/types';
+
+const ImageViewerModal = lazy(() => import('../../modals/ImageViewerModal'));
+const SetupModal = lazy(() => import('../../focus/SetupModal'));
+const AlarmSetupModal = lazy(() => import('../../focus/AlarmSetupModal'));
+const FileUploadModal = lazy(() => import('../../files/FileUploadModal'));
+const FileSelectModal = lazy(() => import('../../files/FileSelectModal'));
+const CalendarEventModal = lazy(() => import('../../editor-extensions/CalendarEventModal'));
+const MediaSelectModal = lazy(() => import('../../modals/MediaSelectModal'));
+const MediaActionModal = lazy(() => import('../../modals/MediaActionModal'));
+const FileActionModal = lazy(() => import('../../modals/FileActionModal'));
+const ImageDeleteModal = lazy(() => import('../../modals/ImageDeleteModal'));
 
 interface EditorModalHostProps {
   editor: Editor | null;
@@ -189,164 +192,169 @@ export default function EditorModalHost({
         />
       )}
 
-      <ImageViewerModal
-        isOpen={viewerState.isOpen}
-        imageSrc={viewerState.src}
-        onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null })}
-        onSave={handleCroppedImage}
-      />
-
-      {focusModal?.isOpen && (
-        <SetupModal
-          onCancel={() => setFocusModal(null)}
-          onStart={(tag, description, targetTime) => {
-            handleStartTimer(tag, description, targetTime);
-            setFocusModal(null);
-          }}
-          initialTag={focusModal.initialTag}
-          initialDescription={focusModal.initialDesc}
-          initialTargetTime={focusModal.initialTime}
+      <Suspense fallback={null}>
+        <ImageViewerModal
+          isOpen={viewerState.isOpen}
+          imageSrc={viewerState.src}
+          onClose={() => setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null })}
+          onSave={handleCroppedImage}
         />
-      )}
 
-      {alarmModal?.isOpen && (
-        <AlarmSetupModal
-          onCancel={() => setAlarmModal(null)}
-          onSave={(alarm) => {
-            handleSaveAlarm(alarm);
-            setAlarmModal(null);
-          }}
-          initialTimeStr={alarmModal.initialTimeStr}
-        />
-      )}
+        {focusModal?.isOpen && (
+          <SetupModal
+            onCancel={() => setFocusModal(null)}
+            onStart={(tag, description, targetTime) => {
+              handleStartTimer(tag, description, targetTime);
+              setFocusModal(null);
+            }}
+            initialTag={focusModal.initialTag}
+            initialDescription={focusModal.initialDesc}
+            initialTargetTime={focusModal.initialTime}
+          />
+        )}
 
-      {fileUploadModal?.isOpen && (
-        <FileUploadModal
-          isOpen={true}
-          onClose={() => setFileUploadModal(null)}
-          onUploadComplete={(file) => {
-            if (editor && file) {
-              editor.chain().focus().insertContent({
-                type: 'fileWidget',
-                attrs: {
-                  fileId: file.id,
-                  name: file.name,
-                  fileType: file.file_type || 'other',
-                  isLink: fileUploadModal.isLink || false,
-                },
-              }).run();
+        {alarmModal?.isOpen && (
+          <AlarmSetupModal
+            onCancel={() => setAlarmModal(null)}
+            onSave={(alarm) => {
+              handleSaveAlarm(alarm);
+              setAlarmModal(null);
+            }}
+            initialTimeStr={alarmModal.initialTimeStr}
+          />
+        )}
+
+        {fileUploadModal?.isOpen && (
+          <FileUploadModal
+            isOpen={true}
+            onClose={() => setFileUploadModal(null)}
+            onUploadComplete={(file) => {
+              if (editor && file) {
+                editor.chain().focus().insertContent({
+                  type: 'fileWidget',
+                  attrs: {
+                    fileId: file.id,
+                    name: file.name,
+                    fileType: file.file_type || 'other',
+                    isLink: fileUploadModal.isLink || false,
+                  },
+                }).run();
+              }
+              setFileUploadModal(null);
+            }}
+            onUploaded={(fileId, fileName, fileType) => {
+              if (editor) {
+                editor.chain().focus().insertContent({
+                  type: 'fileWidget',
+                  attrs: {
+                    fileId,
+                    name: fileName,
+                    fileType,
+                    isLink: fileUploadModal.isLink || false,
+                  },
+                }).run();
+              }
+              setFileUploadModal(null);
+            }}
+            isLink={fileUploadModal.isLink}
+          />
+        )}
+
+        {fileSelectModal && (
+          <FileSelectModal
+            onClose={() => setFileSelectModal(false)}
+            onSelect={(item) => {
+              if (editor) {
+                editor.chain().focus().insertContent({
+                  type: 'fileWidget',
+                  attrs: { fileId: item.id, name: item.name, fileType: item.type, isLink: true },
+                }).run();
+              }
+              setFileSelectModal(false);
+            }}
+          />
+        )}
+
+        {calendarEventModal?.isOpen && (
+          <CalendarEventModal
+            isOpen={true}
+            onClose={() => setCalendarEventModal(null)}
+            onSave={(eventId, title, dateStr, linkedPageId) => {
+              if (editor) {
+                editor.chain().focus().insertCalendarEventWidget({
+                  eventId,
+                  title,
+                  dateStr,
+                  pageId: linkedPageId,
+                  status: 'pending',
+                }).run();
+              }
+              setCalendarEventModal(null);
+            }}
+            initialTitle={calendarEventModal.initialTitle}
+            pageId={pageId}
+            pageTitle={pageTitle}
+          />
+        )}
+
+        {mediaSelectModal?.isOpen && (
+          <MediaSelectModal
+            isOpen={true}
+            type={mediaSelectModal.type}
+            onClose={() => setMediaSelectModal(null)}
+            onSelect={(item) => {
+              if (editor) {
+                editor.chain().focus().insertContent({
+                  type: 'mediaWidget',
+                  attrs: { mediaId: item.id, mediaType: mediaSelectModal.type, title: item.title },
+                }).run();
+              }
+              setMediaSelectModal(null);
+            }}
+          />
+        )}
+
+        {mediaActionModal?.isOpen && (
+          <MediaActionModal
+            isOpen={true}
+            mediaId={mediaActionModal.mediaId}
+            mediaType={mediaActionModal.mediaType}
+            title={mediaActionModal.title}
+            onClose={() => setMediaActionModal(null)}
+          />
+        )}
+
+        {fileActionModal?.isOpen && (
+          <FileActionModal
+            isOpen={true}
+            fileId={fileActionModal.fileId}
+            title={fileActionModal.title}
+            onClose={() => setFileActionModal(null)}
+            onOpenViewer={() => {
+              window.dispatchEvent(
+                new CustomEvent('open-quick-viewer', {
+                  detail: { fileId: fileActionModal.fileId },
+                })
+              );
+            }}
+          />
+        )}
+
+        <ImageDeleteModal
+          isOpen={!!imageToDelete}
+          onClose={() => setImageToDelete(null)}
+          onConfirm={() => {
+            if (imageToDelete && editor) {
+              const success = deleteImageAt(editor, imageToDelete.node, imageToDelete.pos);
+              if (success) {
+                triggerToast('Imagem excluída do documento.', 'info', 2000);
+              }
+              editor.commands.focus();
             }
-            setFileUploadModal(null);
-          }}
-          onUploaded={(fileId, fileName, fileType) => {
-            if (editor) {
-              editor.chain().focus().insertContent({
-                type: 'fileWidget',
-                attrs: {
-                  fileId,
-                  name: fileName,
-                  fileType,
-                  isLink: fileUploadModal.isLink || false,
-                },
-              }).run();
-            }
-            setFileUploadModal(null);
-          }}
-          isLink={fileUploadModal.isLink}
-        />
-      )}
-
-      {fileSelectModal && (
-        <FileSelectModal
-          onClose={() => setFileSelectModal(false)}
-          onSelect={(item) => {
-            if (editor) {
-              editor.chain().focus().insertContent({
-                type: 'fileWidget',
-                attrs: { fileId: item.id, name: item.name, fileType: item.type, isLink: true },
-              }).run();
-            }
-            setFileSelectModal(false);
+            setImageToDelete(null);
           }}
         />
-      )}
-
-      {calendarEventModal?.isOpen && (
-        <CalendarEventModal
-          isOpen={true}
-          onClose={() => setCalendarEventModal(null)}
-          onSave={(eventId, title, dateStr, linkedPageId) => {
-            if (editor) {
-              editor.chain().focus().insertCalendarEventWidget({
-                eventId,
-                title,
-                dateStr,
-                pageId: linkedPageId,
-                status: 'pending',
-              }).run();
-            }
-            setCalendarEventModal(null);
-          }}
-          initialTitle={calendarEventModal.initialTitle}
-          pageId={pageId}
-          pageTitle={pageTitle}
-        />
-      )}
-
-      {mediaSelectModal?.isOpen && (
-        <MediaSelectModal
-          isOpen={true}
-          type={mediaSelectModal.type}
-          onClose={() => setMediaSelectModal(null)}
-          onSelect={(item) => {
-            if (editor) {
-              editor.chain().focus().insertContent({
-                type: 'mediaWidget',
-                attrs: { mediaId: item.id, mediaType: mediaSelectModal.type, title: item.title },
-              }).run();
-            }
-            setMediaSelectModal(null);
-          }}
-        />
-      )}
-
-      {mediaActionModal?.isOpen && (
-        <MediaActionModal
-          isOpen={true}
-          mediaId={mediaActionModal.mediaId}
-          mediaType={mediaActionModal.mediaType}
-          title={mediaActionModal.title}
-          onClose={() => setMediaActionModal(null)}
-        />
-      )}
-
-      {fileActionModal?.isOpen && (
-        <FileActionModal
-          isOpen={true}
-          fileId={fileActionModal.fileId}
-          title={fileActionModal.title}
-          onClose={() => setFileActionModal(null)}
-          onOpenViewer={() => {
-            window.dispatchEvent(
-              new CustomEvent('open-quick-viewer', {
-                detail: { fileId: fileActionModal.fileId },
-              })
-            );
-          }}
-        />
-      )}
-
-      <ImageDeleteModal
-        isOpen={!!imageToDelete}
-        onClose={() => setImageToDelete(null)}
-        onConfirm={() => {
-          if (imageToDelete && editor) {
-            deleteImageAt(editor, imageToDelete.node, imageToDelete.pos);
-            editor.commands.focus();
-          }
-          setImageToDelete(null);
-        }}
-      />
+      </Suspense>
     </>
   );
 }
