@@ -11,6 +11,10 @@ vi.mock('@tiptap/react', () => ({
   ReactNodeViewRenderer: (component: any) => component,
 }));
 
+vi.mock('./hooks/useLinkDuplicates', () => ({
+  useLinkDuplicates: vi.fn(() => ({ duplicatePages: [], isSearching: false })),
+}));
+
 describe('LinkPreviewBlock Component', () => {
   let mockProps: any;
 
@@ -58,9 +62,13 @@ describe('LinkPreviewBlock Component', () => {
 
   it('handles watched toggle button click', () => {
     const Component = (LinkPreviewBlock.config.addNodeView as any)();
-    const { getByTitle } = render(<Component {...mockProps} />);
+    const { getByTitle, getByText } = render(<Component {...mockProps} />);
 
-    const watchedBtn = getByTitle(/Marcar como assistido/i);
+    const moreBtn = getByTitle(/Mais opções do link/i);
+    expect(moreBtn).toBeDefined();
+    fireEvent.click(moreBtn);
+
+    const watchedBtn = getByText(/Marcar como concluído/i);
     expect(watchedBtn).toBeDefined();
     fireEvent.click(watchedBtn);
 
@@ -127,15 +135,46 @@ describe('LinkPreviewBlock Component', () => {
     });
 
     const Component = (LinkPreviewBlock.config.addNodeView as any)();
-    const { getByTitle } = render(<Component {...mockProps} />);
+    const { getByTitle, getByText } = render(<Component {...mockProps} />);
 
-    const copyBtn = getByTitle(/Copiar link original/i);
+    const moreBtn = getByTitle(/Mais opções do link/i);
+    expect(moreBtn).toBeDefined();
+    fireEvent.click(moreBtn);
+
+    const copyBtn = getByText(/Copiar Link Original/i);
     expect(copyBtn).toBeDefined();
     await act(async () => {
       fireEvent.click(copyBtn);
     });
 
     expect(writeTextMock).toHaveBeenCalledWith('https://github.com/google/antigravity');
+  });
+
+  it('displays offline saved badge when scrap is ready and opens scrap modal', () => {
+    const scrapProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          ...mockProps.node.attrs,
+          scrapId: 'scrap_123',
+          scrapStatus: 'ready',
+        },
+      },
+    };
+
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByText } = render(<Component {...scrapProps} />);
+
+    const scrapBadge = getByText('Offline Salvo');
+    expect(scrapBadge).toBeDefined();
+
+    fireEvent.click(scrapBadge);
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'caderno-open-scrap-action',
+      })
+    );
   });
 
   it('allows 1-click copying of URL directly inside the external link modal', async () => {
@@ -175,6 +214,34 @@ describe('LinkPreviewBlock Component', () => {
       fireEvent.click(urlText);
     });
     expect(writeTextMock).toHaveBeenCalledWith('https://github.com/google/antigravity');
+  });
+
+  it('displays duplicate indicator badge when link is found in other pages and opens modal on click', async () => {
+    const { useLinkDuplicates } = await import('./hooks/useLinkDuplicates');
+    vi.mocked(useLinkDuplicates).mockReturnValue({
+      duplicatePages: [
+        {
+          id: 'page-dup-1',
+          title: 'Anotações de IA',
+          icon: '🤖',
+          ancestors: [{ id: 'parent-1', title: 'Estudos' }],
+        },
+      ],
+      isSearching: false,
+    });
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByText, findByText } = render(<Component {...mockProps} />);
+
+    // Duplicate badge should be displayed
+    const badge = getByText('Em 1 outra página');
+    expect(badge).toBeDefined();
+
+    // Clicking badge opens the clean duplicates modal
+    fireEvent.click(badge);
+    expect(await findByText('Link já utilizado no Caderno')).toBeDefined();
+    expect(getByText('Anotações de IA')).toBeDefined();
+    expect(getByText('OK, Entendido')).toBeDefined();
   });
 });
 
