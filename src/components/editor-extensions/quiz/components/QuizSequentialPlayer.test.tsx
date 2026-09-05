@@ -244,13 +244,13 @@ describe('QuizSequentialPlayer Unit Tests', () => {
     expect(nextBtn).toBeInTheDocument();
     if (nextBtn) fireEvent.click(nextBtn);
 
-    // Ao avançar, a explicação da questão 1 deve ser fechada (showExplanation: false)
+    // Ao avançar, a explicação da questão 1 deve ser fechada sem bloquear a thread (immediate: false)
     expect(onUpdate).toHaveBeenCalledWith(
       'q1',
       expect.objectContaining({
         showExplanation: false,
       }),
-      true
+      false
     );
   });
 
