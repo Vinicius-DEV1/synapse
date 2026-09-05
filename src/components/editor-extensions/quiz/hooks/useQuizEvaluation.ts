@@ -2,6 +2,11 @@ import { useState, useCallback } from 'react';
 import type { QuestionItem, AttemptItem } from '../types';
 import { promptGeminiForOpenQuestionEvaluation } from '../../../../services/gemini';
 import { triggerToast } from '../../../../components/ui/ToastContext';
+import {
+  playQuizSuccessSound,
+  playQuizFailureSound,
+  playQuizSubmitSound,
+} from '../utils/quizSounds';
 
 export function useQuizEvaluation(
   updateSingleQuestion: (qId: string, partial: Partial<QuestionItem>) => void
@@ -10,21 +15,29 @@ export function useQuizEvaluation(
 
   const handleEvaluateOpenAnswer = useCallback(
     async (q: QuestionItem) => {
-      if (!q.userTypedAnswer.trim() || evaluatingIds[q.id]) return;
+      const typed = q.userTypedAnswer?.trim();
+      if (!typed || evaluatingIds[q.id]) return;
 
+      playQuizSubmitSound();
       setEvaluatingIds((prev) => ({ ...prev, [q.id]: true }));
       try {
         const evaluation = await promptGeminiForOpenQuestionEvaluation(
           q.question || 'Questão sem enunciado',
           q.expectedAnswer || 'Gabarito não cadastrado',
-          q.userTypedAnswer
+          typed
         );
+
+        if (evaluation.verdict === 'Correto' || evaluation.verdict === 'Parcial') {
+          playQuizSuccessSound();
+        } else {
+          playQuizFailureSound();
+        }
 
         const newAttempt: AttemptItem = {
           id: `att_${Date.now()}`,
           timestamp: Date.now(),
           type: 'open',
-          userTypedAnswer: q.userTypedAnswer,
+          userTypedAnswer: q.userTypedAnswer || '',
           aiFeedback: evaluation,
         };
 

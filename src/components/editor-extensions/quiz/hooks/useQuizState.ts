@@ -17,6 +17,7 @@ export function useQuizState(
     normalizeQuizQuestions(rawQuestions)
   );
 
+  const localQuestionsRef = useRef(localQuestions);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInternalUpdateRef = useRef(false);
 
@@ -27,6 +28,7 @@ export function useQuizState(
       return;
     }
     const incoming = normalizeQuizQuestions(rawQuestions);
+    localQuestionsRef.current = incoming;
     setLocalQuestions(incoming);
   }, [rawQuestions]);
 
@@ -79,6 +81,7 @@ export function useQuizState(
 
   const updateQuestions = useCallback(
     (newQuestions: QuestionItem[], immediate: boolean = true) => {
+      localQuestionsRef.current = newQuestions;
       setLocalQuestions(newQuestions);
       syncToTipTap(newQuestions, immediate);
     },
@@ -87,11 +90,11 @@ export function useQuizState(
 
   const updateSingleQuestion = useCallback(
     (qId: string, partial: Partial<QuestionItem>, immediate: boolean = false) => {
-      setLocalQuestions((prev) => {
-        const updated = prev.map((q) => (q.id === qId ? { ...q, ...partial } : q));
-        syncToTipTap(updated, immediate);
-        return updated;
-      });
+      const current = localQuestionsRef.current;
+      const updated = current.map((q) => (q.id === qId ? { ...q, ...partial } : q));
+      localQuestionsRef.current = updated;
+      setLocalQuestions(updated);
+      syncToTipTap(updated, immediate);
     },
     [syncToTipTap]
   );
