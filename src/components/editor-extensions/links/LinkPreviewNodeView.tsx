@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Copy, Check } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { Copy, Check, FileArchive, ExternalLink, Eye } from 'lucide-react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { NodeViewWrapper } from '@tiptap/react';
 import { Portal } from '../../ui/Portal';
@@ -11,6 +11,13 @@ import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
 import { triggerToast } from '../../ui/ToastContext';
+import { invoke } from '@tauri-apps/api/core';
+import { StoreContext, getNotesKey, getStoreState } from '../../../store/useStore';
+import type { Action } from '../../../types';
+import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
+import { platform } from '../../../services/platform';
+import { useLinkDuplicates } from './hooks/useLinkDuplicates';
+import LinkDuplicatesModal from './components/LinkDuplicatesModal';
 
 export const LinkPreviewComponent = (props: any) => {
   const {
@@ -26,7 +33,15 @@ export const LinkPreviewComponent = (props: any) => {
     showNotes: rawShowNotes,
     watched: rawWatched,
     color: rawColor,
+    scrapId,
+    scrapStatus,
+    scrapLocalPath,
+    scrapDriveFileId,
+    scrapFileSize,
+    scrapCreatedAt,
   } = props.node.attrs as LinkPreviewAttrs;
+
+  const masterKey = getNotesKey() || getStoreState().moduleKeys['files'];
 
   const notes = rawNotes || '';
   const showNotes = !!rawShowNotes;
@@ -45,6 +60,22 @@ export const LinkPreviewComponent = (props: any) => {
   const [copiedModalUrl, setCopiedModalUrl] = useState(false);
   const copyModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+
+  const storeCtx = useContext(StoreContext);
+  const state = storeCtx?.state || getStoreState();
+  const dispatch = storeCtx?.dispatch || ((_action: Action) => {});
+  const activeTab = state?.tabs?.find((t) => t.id === state?.activeTabId);
+  const currentPageId = activeTab?.pageId || null;
+  const { duplicatePages } = useLinkDuplicates(url, currentPageId);
+
+  const handleNavigateToPage = useCallback(
+    (targetPageId: string) => {
+      dispatch({ type: 'NAVIGATE_IN_TAB', pageId: targetPageId });
+      setShowDuplicatesModal(false);
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
     return () => {
@@ -255,11 +286,65 @@ export const LinkPreviewComponent = (props: any) => {
     fetchTitle(true);
   };
 
+  const handleCaptureScrap = useCallback(async () => {
+    if (!url) return;
+    props.updateAttributes({ scrapStatus: 'capturing' });
+
+    try {
+      if (platform.platform === 'desktop') {
+        const payload: any = await invoke('scrap_capture_page', { url });
+        const saveResult = await encryptAndSaveScrap(
+          payload.id,
+          payload.html_content,
+          payload.local_path,
+          masterKey
+        );
+
+        props.updateAttributes({
+          scrapId: payload.id,
+          scrapLocalPath: payload.local_path,
+          scrapDriveFileId: saveResult.driveFileId,
+          scrapFileSize: payload.file_size,
+          scrapStatus: saveResult.isSynced ? 'ready' : 'sync_pending',
+          scrapCreatedAt: payload.created_at || new Date().toISOString(),
+        });
+        triggerToast('Snapshot offline salvo com sucesso!', 'info', 3000);
+      } else {
+        props.updateAttributes({ scrapStatus: 'error' });
+        triggerToast('A captura completa de páginas está disponível no app Desktop.', 'error');
+      }
+    } catch (err: any) {
+      console.error('[LinkPreview] Erro na captura de scrap:', err);
+      props.updateAttributes({ scrapStatus: 'error' });
+      triggerToast(err?.message || 'Falha ao salvar página offline.', 'error');
+    }
+  }, [url, masterKey, props]);
+
+  const handleOpenScrap = useCallback(() => {
+    if (!scrapId) return;
+    window.dispatchEvent(
+      new CustomEvent('caderno-open-scrap-action', {
+        detail: {
+          scrapId,
+          url,
+          title: fetchedTitle || title || url,
+          driveFileId: scrapDriveFileId,
+          localPath: scrapLocalPath,
+          fileSize: scrapFileSize,
+          createdAt: scrapCreatedAt,
+          status: scrapStatus,
+        },
+      })
+    );
+  }, [scrapId, url, fetchedTitle, title, scrapDriveFileId, scrapLocalPath, scrapFileSize, scrapCreatedAt, scrapStatus]);
+
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowDeleteConfirm(true);
   };
+
+  const hasScrap = Boolean(scrapId && (scrapStatus === 'ready' || scrapStatus === 'sync_pending'));
 
   return (
     <NodeViewWrapper
@@ -301,6 +386,12 @@ export const LinkPreviewComponent = (props: any) => {
         onUngroup={handleUngroupSelf}
         onGroupWithNext={handleGroupWithNext}
         onDragStartHandle={handleSelectSelf}
+        duplicatePages={duplicatePages}
+        onOpenDuplicates={() => setShowDuplicatesModal(true)}
+        scrapId={scrapId}
+        scrapStatus={scrapStatus}
+        onCaptureScrap={handleCaptureScrap}
+        onOpenScrap={handleOpenScrap}
         onMoveUp={() => {
           const pos = currentPos();
           if (pos !== null && props.editor) moveBlockUp(props.editor.view, pos);
@@ -328,12 +419,22 @@ export const LinkPreviewComponent = (props: any) => {
             onClick={handleCloseLinkConfirm}
           >
             <div
-              className="bg-dark-card border border-white/10 rounded-2xl p-6 w-[400px] shadow-2xl animate-scale-in"
+              className="bg-dark-card border border-white/10 rounded-2xl p-6 w-[420px] shadow-2xl animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-bold text-white mb-2">Abrir Link Externo</h3>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="text-lg font-bold text-white">Abrir Link Externo</h3>
+                {hasScrap && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 text-[10px] font-medium">
+                    <FileArchive size={11} />
+                    <span>Snapshot Salvo</span>
+                  </span>
+                )}
+              </div>
               <p className="text-dark-subtext text-sm mb-4">
-                Deseja abrir o seguinte link no seu navegador padrão?
+                {hasScrap
+                  ? 'Este link possui uma cópia offline salva. Como deseja acessá-lo?'
+                  : 'Deseja abrir o seguinte link no seu navegador padrão?'}
               </p>
               <div
                 onClick={handleCopyModalUrl}
@@ -366,26 +467,60 @@ export const LinkPreviewComponent = (props: any) => {
                   )}
                 </button>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap items-center justify-end gap-2.5">
                 <button
+                  type="button"
                   onClick={handleCloseLinkConfirm}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-dark-subtext hover:bg-white/5 transition-colors"
+                  className="px-3.5 py-2 rounded-lg text-sm font-medium text-dark-subtext hover:bg-white/5 transition-colors"
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={() => {
-                    handleCloseLinkConfirm();
-                    if (window.api?.os?.openInBrowser) {
-                      window.api.os.openInBrowser(url);
-                    } else {
-                      window.open(url, '_blank');
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors"
-                >
-                  Abrir Link
-                </button>
+                {hasScrap ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseLinkConfirm();
+                        handleOpenScrap();
+                      }}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Eye size={15} />
+                      <span>Ver Snapshot Offline</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseLinkConfirm();
+                        if (window.api?.os?.openInBrowser) {
+                          window.api.os.openInBrowser(url);
+                        } else {
+                          window.open(url, '_blank');
+                        }
+                      }}
+                      className="px-3.5 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white transition-colors flex items-center gap-1.5"
+                    >
+                      <ExternalLink size={14} />
+                      <span>Abrir no Navegador</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCloseLinkConfirm();
+                      if (window.api?.os?.openInBrowser) {
+                        window.api.os.openInBrowser(url);
+                      } else {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors flex items-center gap-1.5"
+                  >
+                    <ExternalLink size={14} />
+                    <span>Abrir no Navegador</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -427,6 +562,15 @@ export const LinkPreviewComponent = (props: any) => {
           </div>
         </Portal>
       )}
+
+      <LinkDuplicatesModal
+        isOpen={showDuplicatesModal}
+        onClose={() => setShowDuplicatesModal(false)}
+        url={url}
+        title={fetchedTitle || title}
+        duplicatePages={duplicatePages}
+        onNavigateToPage={handleNavigateToPage}
+      />
     </NodeViewWrapper>
   );
 };

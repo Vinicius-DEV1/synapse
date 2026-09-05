@@ -6,6 +6,9 @@ import {
   ListVideo,
   Calendar,
   Check,
+  FileArchive,
+  Loader2,
+  Layers,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import { formatDuration, formatDate, isYouTubeUrl } from './youtubeUtils';
@@ -13,6 +16,7 @@ import LinkNotesDrawer from './LinkNotesDrawer';
 import LinkDragControls from './components/LinkDragControls';
 import LinkCardActions from './components/LinkCardActions';
 import LinkEmbeddedVideo from './components/LinkEmbeddedVideo';
+import type { DuplicatePageInfo } from './hooks/useLinkDuplicates';
 
 interface LinkPreviewCardProps {
   url: string;
@@ -44,6 +48,14 @@ interface LinkPreviewCardProps {
   onMoveUp?: (e: React.MouseEvent) => void;
   onMoveDown?: (e: React.MouseEvent) => void;
   onAddLineBelow?: (e: React.MouseEvent) => void;
+  // Duplicate links integration
+  duplicatePages?: DuplicatePageInfo[];
+  onOpenDuplicates?: () => void;
+  // Scrap integration
+  scrapId?: string | null;
+  scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;
+  onCaptureScrap?: () => void;
+  onOpenScrap?: () => void;
 }
 
 export default function LinkPreviewCard({
@@ -76,6 +88,12 @@ export default function LinkPreviewCard({
   onMoveUp,
   onMoveDown,
   onAddLineBelow,
+  duplicatePages,
+  onOpenDuplicates,
+  scrapId,
+  scrapStatus,
+  onCaptureScrap,
+  onOpenScrap,
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -132,6 +150,9 @@ export default function LinkPreviewCard({
       }
     : {};
 
+  const hasScrap = Boolean(scrapId && (scrapStatus === 'ready' || scrapStatus === 'sync_pending'));
+  const isScrapCapturing = scrapStatus === 'capturing';
+
   return (
     <div className="relative group/link">
       {/* Drag handle and movement controls */}
@@ -142,131 +163,195 @@ export default function LinkPreviewCard({
         onDragStartHandle={onDragStartHandle}
       />
 
+      {/* Unified Card Container: fuses preview header and integrated notes seamlessly */}
       <div
-        onClick={onOpenConfirm}
         style={customCardStyle}
-        className={`block transition-all rounded-lg p-3 border cursor-pointer ${
-          isInsideGroup ? 'pr-20' : 'pr-24'
-        } ${
+        className={`block transition-all rounded-lg border overflow-hidden ${
           isCustomColor
-            ? 'bg-dark-card/90 hover:brightness-110'
+            ? 'bg-dark-card/90 hover:brightness-105'
             : selected
             ? 'bg-brand-500/5 border-brand-500/50 ring-2 ring-brand-500/30 shadow-lg shadow-brand-500/10'
-            : 'bg-dark-card border-white/10 hover:bg-white/5 hover:border-white/20'
+            : 'bg-dark-card border-white/10 hover:bg-white/[0.03] hover:border-white/20'
         }`}
       >
-        <div className="flex items-start gap-3">
-          <div className="relative w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-visible mt-0.5">
-            {isYouTube ? (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (isPlaylist) {
-                    setShowPlaylistModal(true);
-                  } else {
-                    setShowVideo(!showVideo);
-                  }
-                }}
-                className="w-full h-full flex items-center justify-center hover:bg-white/10 rounded transition-colors"
-                title={isPlaylist ? 'Abrir Playlist' : showVideo ? 'Fechar vídeo' : 'Assistir vídeo'}
-              >
-                {isPlaylist ? (
-                  <ListVideo
-                    size={16}
-                    className="text-brand-500 drop-shadow-sm flex-shrink-0 transition-colors"
-                  />
-                ) : (
-                  <PlaySquare
-                    size={16}
-                    className={`${showVideo ? 'text-white' : 'text-brand-500'} drop-shadow-sm flex-shrink-0 transition-colors`}
-                  />
-                )}
-              </button>
-            ) : (
-              renderIcon()
-            )}
-            {watched && (
-              <div
-                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-sm ring-1 ring-black/50 pointer-events-none"
-                title="Assistido / Concluído"
-              >
-                <Check size={9} className="stroke-[3.5]" />
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col flex-1 min-w-0">
-            {loading || isReloading ? (
-              <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1" />
-            ) : (
-              <span className="text-[13px] font-medium text-white/95 leading-snug tracking-wide break-words">
-                {title || domain || url}
-              </span>
-            )}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[11px] text-zinc-400">
-              {domain && <span className="text-brand-300 font-medium tracking-wide shrink-0">{domain}</span>}
-              {channel && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                  <span className="text-zinc-300 font-normal break-words">{channel}</span>
-                </>
-              )}
-              {isPlaylist && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                  <span className="flex items-center gap-1 text-brand-300 font-medium shrink-0">
-                    <ListVideo size={11} className="text-brand-400" />
-                    {playlistCount !== null && playlistCount !== undefined && playlistCount > 0
-                      ? `${playlistCount} ${playlistCount === 1 ? 'vídeo' : 'vídeos'}`
-                      : 'Playlist'}
-                  </span>
-                </>
-              )}
-              {duration && !isPlaylist && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                  <span className="flex items-center gap-1 text-zinc-400 shrink-0">
-                    <Clock size={11} className="text-zinc-500" />
-                    {formatDuration(duration)}
-                  </span>
-                </>
-              )}
-              {uploadDate && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                  <span className="flex items-center gap-1 text-zinc-400 shrink-0">
-                    <Calendar size={11} className="text-zinc-500" />
-                    {formatDate(uploadDate)}
-                  </span>
-                </>
-              )}
-              {isPlaylist && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
+        <div
+          onClick={onOpenConfirm}
+          className={`p-3 cursor-pointer ${isInsideGroup ? 'pr-20' : 'pr-20'}`}
+        >
+          <div className="flex items-start gap-3">
+            <div className="relative w-8 h-8 rounded bg-dark-bg border border-white/5 flex items-center justify-center shrink-0 overflow-visible mt-0.5">
+              {isYouTube ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isPlaylist) {
                       setShowPlaylistModal(true);
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 rounded text-[11px] font-medium transition-colors border border-brand-500/30 shadow-sm"
-                    title="Abrir detalhes e lista de vídeos da playlist"
-                  >
-                    <ListVideo size={12} />
-                    Ver Playlist
-                  </button>
-                </>
+                    } else {
+                      setShowVideo(!showVideo);
+                    }
+                  }}
+                  className="w-full h-full flex items-center justify-center hover:bg-white/10 rounded transition-colors"
+                  title={isPlaylist ? 'Abrir Playlist' : showVideo ? 'Fechar vídeo' : 'Assistir vídeo'}
+                >
+                  {isPlaylist ? (
+                    <ListVideo
+                      size={16}
+                      className="text-brand-500 drop-shadow-sm flex-shrink-0 transition-colors"
+                    />
+                  ) : (
+                    <PlaySquare
+                      size={16}
+                      className={`${showVideo ? 'text-white' : 'text-brand-500'} drop-shadow-sm flex-shrink-0 transition-colors`}
+                    />
+                  )}
+                </button>
+              ) : (
+                renderIcon()
+              )}
+              {watched && (
+                <div
+                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-sm ring-1 ring-black/50 pointer-events-none"
+                  title="Assistido / Concluído"
+                >
+                  <Check size={9} className="stroke-[3.5]" />
+                </div>
               )}
             </div>
+            <div className="flex flex-col flex-1 min-w-0">
+              {loading || isReloading ? (
+                <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse mb-1" />
+              ) : (
+                <span className="text-[13px] font-medium text-white/95 leading-snug tracking-wide break-words">
+                  {title || domain || url}
+                </span>
+              )}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[11px] text-zinc-400">
+                {domain && <span className="text-brand-300 font-medium tracking-wide shrink-0">{domain}</span>}
+                {channel && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span className="text-zinc-300 font-normal break-words">{channel}</span>
+                  </>
+                )}
+                {isPlaylist && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span className="flex items-center gap-1 text-brand-300 font-medium shrink-0">
+                      <ListVideo size={11} className="text-brand-400" />
+                      {playlistCount !== null && playlistCount !== undefined && playlistCount > 0
+                        ? `${playlistCount} ${playlistCount === 1 ? 'vídeo' : 'vídeos'}`
+                        : 'Playlist'}
+                    </span>
+                  </>
+                )}
+                {duration && !isPlaylist && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span className="flex items-center gap-1 text-zinc-400 shrink-0">
+                      <Clock size={11} className="text-zinc-500" />
+                      {formatDuration(duration)}
+                    </span>
+                  </>
+                )}
+                {uploadDate && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span className="flex items-center gap-1 text-zinc-400 shrink-0">
+                      <Calendar size={11} className="text-zinc-500" />
+                      {formatDate(uploadDate)}
+                    </span>
+                  </>
+                )}
+
+                {/* Subtle Scrap Badge */}
+                {hasScrap && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onOpenScrap?.();
+                      }}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-[10px] font-medium transition-colors shadow-xs"
+                      title="Snapshot offline salvo. Clique para abrir."
+                    >
+                      <FileArchive size={11} className="text-emerald-400" />
+                      <span>Offline Salvo</span>
+                    </button>
+                  </>
+                )}
+                {isScrapCapturing && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 font-medium animate-pulse">
+                      <Loader2 size={11} className="animate-spin text-brand-400" />
+                      <span>Salvando offline...</span>
+                    </span>
+                  </>
+                )}
+
+                {/* Subtle Duplicate Pages Badge */}
+                {duplicatePages && duplicatePages.length > 0 && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onOpenDuplicates?.();
+                      }}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 text-[10px] font-medium transition-colors shadow-xs group/dup cursor-pointer"
+                      title={`Este link também foi inserido em ${duplicatePages.length} ${
+                        duplicatePages.length === 1 ? 'outra página' : 'outras páginas'
+                      }. Clique para ver.`}
+                    >
+                      <Layers size={11} className="text-amber-400 group-hover/dup:scale-110 transition-transform" />
+                      <span>
+                        {duplicatePages.length === 1
+                          ? 'Em 1 outra página'
+                          : `Em ${duplicatePages.length} outras páginas`}
+                      </span>
+                    </button>
+                  </>
+                )}
+
+                {isPlaylist && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowPlaylistModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 rounded text-[11px] font-medium transition-colors border border-brand-500/30 shadow-sm"
+                      title="Abrir detalhes e lista de vídeos da playlist"
+                    >
+                      <ListVideo size={12} />
+                      Ver Playlist
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
+
+          {showVideo && isYouTube && <LinkEmbeddedVideo url={url} />}
         </div>
 
-        {showVideo && isYouTube && <LinkEmbeddedVideo url={url} />}
+        {/* Integrated Notes Section: nested inside the continuous card */}
+        <LinkNotesDrawer showNotes={showNotes} notes={notes} onChangeNotes={onChangeNotes} />
       </div>
 
-      {/* Action Buttons Toolbar */}
+      {/* Action Buttons Toolbar: Notes toggle + ••• menu */}
       <LinkCardActions
+        url={url}
         color={color}
         isCustomColor={isCustomColor}
         watched={watched}
@@ -285,9 +370,13 @@ export default function LinkPreviewCard({
         onGroupWithNext={onGroupWithNext}
         onReload={onReload}
         onDelete={onDelete}
+        duplicateCount={duplicatePages?.length || 0}
+        onOpenDuplicates={onOpenDuplicates}
+        scrapId={scrapId}
+        scrapStatus={scrapStatus}
+        onCaptureScrap={onCaptureScrap}
+        onOpenScrap={onOpenScrap}
       />
-
-      <LinkNotesDrawer showNotes={showNotes} notes={notes} onChangeNotes={onChangeNotes} />
 
       {showPlaylistModal && (
         <YouTubePlaylistModal
