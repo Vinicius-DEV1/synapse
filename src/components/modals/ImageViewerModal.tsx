@@ -109,7 +109,7 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
 
       <div 
         ref={viewContainerRef}
-        className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden z-10"
+        className="relative w-full flex-1 flex items-center justify-center overflow-hidden z-10"
         onWheel={handleWheel}
       >
         {mode === 'view' ? (
@@ -117,7 +117,7 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
             <img 
               src={activeSrc} 
               alt="Viewer" 
-              className="max-w-full max-h-full object-contain transition-transform duration-150"
+              className="max-w-full max-h-full object-contain transition-transform duration-150 select-none"
               style={{ transform: `scale(${zoom})` }}
               draggable={false}
             />
@@ -140,8 +140,8 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
         )}
       </div>
 
-      <div className="w-full max-w-md p-4 mt-3 bg-dark-card/80 rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl z-20">
-        <ZoomOut className="text-white/50 flex-shrink-0" size={18} />
+      <div className="absolute bottom-6 z-20 w-full max-w-sm px-4 py-2.5 bg-black/70 backdrop-blur-md rounded-2xl border border-white/10 flex items-center gap-3 shadow-2xl">
+        <ZoomOut className="text-white/50 flex-shrink-0" size={16} />
         <input
           type="range"
           value={zoom}
@@ -150,10 +150,10 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
           step={0.1}
           aria-labelledby="Zoom"
           onChange={(e) => setZoom(Number(e.target.value))}
-          className="w-full accent-brand-500"
+          className="w-full accent-white"
         />
-        <ZoomIn className="text-white/50 flex-shrink-0" size={18} />
-        <span className="text-white/40 text-xs min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
+        <ZoomIn className="text-white/50 flex-shrink-0" size={16} />
+        <span className="text-white/60 text-xs font-mono min-w-[3rem] text-right">{Math.round(zoom * 100)}%</span>
       </div>
     </div>
     </Portal>
