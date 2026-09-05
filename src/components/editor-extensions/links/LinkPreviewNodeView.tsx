@@ -61,6 +61,7 @@ export const LinkPreviewComponent = (props: any) => {
   const copyModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const mountedRef = useRef(true);
 
   const storeCtx = useContext(StoreContext);
   const state = storeCtx?.state || getStoreState();
@@ -78,7 +79,9 @@ export const LinkPreviewComponent = (props: any) => {
   );
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (copyModalTimeoutRef.current) {
         clearTimeout(copyModalTimeoutRef.current);
       }
@@ -236,10 +239,13 @@ export const LinkPreviewComponent = (props: any) => {
   const fetchTitle = useCallback(
     async (forceReload = false) => {
       if (!forceReload && (fetchedTitle || !loading)) return;
+      if (!url) return;
 
       setIsReloading(true);
       try {
         const metadata = await fetchLinkMetadata(url);
+        if (!mountedRef.current || props.editor?.isDestroyed) return;
+
         setFetchedTitle(metadata.title || null);
         if (metadata.channel) setFetchedChannel(metadata.channel);
         if (metadata.duration) setFetchedDuration(metadata.duration);
@@ -258,6 +264,7 @@ export const LinkPreviewComponent = (props: any) => {
         });
         setLoading(false);
       } catch (err) {
+        if (!mountedRef.current || props.editor?.isDestroyed) return;
         console.error('[LinkPreview] Falha ao carregar metadados:', err);
         try {
           const fallback = new URL(url).hostname;
@@ -268,10 +275,12 @@ export const LinkPreviewComponent = (props: any) => {
         }
         setLoading(false);
       } finally {
-        setIsReloading(false);
+        if (mountedRef.current) {
+          setIsReloading(false);
+        }
       }
     },
-    [fetchedTitle, loading, url, updateAttributes]
+    [fetchedTitle, loading, url, updateAttributes, props.editor]
   );
 
   useEffect(() => {
