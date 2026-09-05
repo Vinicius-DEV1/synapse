@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, Clock, FolderInput } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
@@ -12,7 +12,7 @@ interface PageHeaderProps {
   onShowHistory: () => void;
 }
 
-export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProps) {
+export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProps) {
   const { state, dispatch } = useStore();
   const isEditingTitleRef = useRef(false);
   const isEditingDescRef = useRef(false);
@@ -229,4 +229,4 @@ export function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProp
       </div>
     </>
   );
-}
+});
