@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/core';
@@ -14,13 +14,16 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
   const containerRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
+    elements: {
+      reference: containerRef.current,
+    },
     placement: 'top',
     middleware: [offset(6), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (containerRef.current) {
       refs.setReference(containerRef.current);
     }
@@ -119,8 +122,16 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
               refs.setFloating(node);
               (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
             }}
-            style={{ ...floatingStyles, zIndex: 9999 }}
-            className="fixed bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 animate-in fade-in zoom-in-95"
+            style={{
+              ...floatingStyles,
+              zIndex: 9999,
+              visibility: isPositioned ? 'visible' : 'hidden',
+              opacity: isPositioned ? 1 : 0,
+              pointerEvents: isPositioned ? 'auto' : 'none',
+            }}
+            className={`fixed bg-dark-card border border-white/10 rounded-lg shadow-xl p-1.5 flex items-center gap-1 ${
+              isPositioned ? 'animate-in fade-in zoom-in-95' : ''
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <button

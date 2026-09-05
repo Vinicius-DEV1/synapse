@@ -1,30 +1,97 @@
-import { NodeViewContent, NodeViewWrapper } from '@tiptap/react';
+import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { Portal } from '../ui/Portal';
 
-export default function CodeBlockComponent(props: any) {
+export default function CodeBlockComponent(props: NodeViewProps) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
-  const defaultLanguage = node.attrs.language;
+  const defaultLanguage = (node.attrs.language as string | null) || null;
   const [copied, setCopied] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
   const floatingConfirmRef = useRef<HTMLDivElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
 
-  const { refs, floatingStyles } = useFloating({
+  useEffect(() => {
+    const handleMouseUp = () => {
+      const parent = confirmRef.current?.closest('.code-block-wrapper');
+      if (parent) {
+        parent.classList.remove('opacity-40');
+      }
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const { refs, floatingStyles, isPositioned } = useFloating({
+    elements: {
+      reference: confirmRef.current,
+    },
     placement: 'bottom-end',
     middleware: [offset(4), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (confirmRef.current) {
       refs.setReference(confirmRef.current);
     }
   }, [refs]);
+
+  // Preserve uninterrupted vertical page scroll when cursor is over code block
+  useEffect(() => {
+    const pre = preRef.current;
+    if (!pre) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // 1. Check for intentional horizontal scrolling:
+      // Either holding Shift (standard desktop convention) or trackpad gesture predominantly horizontal
+      const isHorizontalIntent = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
+
+      if (isHorizontalIntent) {
+        // Translate Shift + vertical wheel into horizontal code scroll
+        if (e.shiftKey && Math.abs(e.deltaY) > 0 && Math.abs(e.deltaX) === 0) {
+          const maxScroll = pre.scrollWidth - pre.clientWidth;
+          if (maxScroll > 0) {
+            e.preventDefault();
+            let delta = e.deltaY;
+            if (e.deltaMode === 1) delta *= 35;
+            else if (e.deltaMode === 2) delta *= 100;
+            pre.scrollLeft += delta;
+          }
+        }
+        return;
+      }
+
+      // 2. Vertical scroll intent:
+      // Prevent Linux / WebKitGTK / Chromium from hijacking deltaY into horizontal scroll
+      // or latching the scroll gesture to this container. Forward vertical scroll to page container.
+      const scrollParent =
+        pre.closest<HTMLElement>('#page-view-scroll, .overflow-y-auto') ||
+        document.getElementById('page-view-scroll');
+
+      if (scrollParent) {
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) delta *= 35;
+        else if (e.deltaMode === 2) delta *= 100;
+
+        if (delta !== 0) {
+          e.preventDefault();
+          scrollParent.scrollTop += delta;
+        }
+      }
+    };
+
+    pre.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      pre.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,9 +168,11 @@ export default function CodeBlockComponent(props: any) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof getPos === 'function') {
+            if (typeof getPos === 'function' && editor) {
               const pos = getPos();
-              editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
+              if (typeof pos === 'number') {
+                editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
+              }
             }
           }}
           className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
@@ -217,8 +286,16 @@ export default function CodeBlockComponent(props: any) {
                       refs.setFloating(node);
                       (floatingConfirmRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
                     }}
-                    style={{ ...floatingStyles, zIndex: 9999 }}
-                    className="fixed bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px] animate-in fade-in zoom-in-95"
+                    style={{
+                      ...floatingStyles,
+                      zIndex: 9999,
+                      visibility: isPositioned ? 'visible' : 'hidden',
+                      opacity: isPositioned ? 1 : 0,
+                      pointerEvents: isPositioned ? 'auto' : 'none',
+                    }}
+                    className={`fixed bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px] ${
+                      isPositioned ? 'animate-in fade-in zoom-in-95' : ''
+                    }`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <span className="text-xs text-white">Excluir código?</span>
@@ -247,7 +324,11 @@ export default function CodeBlockComponent(props: any) {
         </div>
 
         {/* Área de Código */}
-        <pre className="hljs !bg-transparent !p-4 !m-0 font-mono text-[13.5px] leading-relaxed overflow-x-auto custom-scrollbar" spellCheck={false}>
+        <pre
+          ref={preRef}
+          className="hljs !bg-transparent !p-4 !m-0 font-mono text-[13.5px] leading-relaxed overflow-x-auto overflow-y-hidden custom-scrollbar"
+          spellCheck={false}
+        >
           <NodeViewContent<'code'> as="code" className="font-mono" />
         </pre>
       </div>
