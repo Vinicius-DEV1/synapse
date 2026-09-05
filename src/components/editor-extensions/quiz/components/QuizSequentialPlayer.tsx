@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -56,20 +56,35 @@ export default function QuizSequentialPlayer({
 
   const [showSummaryView, setShowSummaryView] = useState(false);
   const [showFinishConfirmModal, setShowFinishConfirmModal] = useState(false);
+  const [navDirection, setNavDirection] = useState<'forward' | 'backward' | 'none'>('forward');
 
   // Ensures index remains within valid question bounds
   const activeIndex = Math.min(Math.max(0, currentIndex), Math.max(0, total - 1));
   const currentQ = safeQuestions[activeIndex];
 
-  const answeredCount = safeQuestions.filter((q) => q.answered).length;
-  const correctCount = safeQuestions.filter((q) => {
-    if (!q.answered) return false;
-    if (q.type === 'multiple_choice') return q.selectedIndex === q.correctIndex;
-    return q.aiFeedback?.verdict === 'Correto';
-  }).length;
-
-  const hitPercentage = answeredCount > 0 ? Math.round((correctCount / total) * 100) : 0;
-  const allAnswered = total > 0 && answeredCount === total;
+  // Single-pass O(N) calculation of quiz metrics to prevent multiple array allocations on each render
+  const { answeredCount, correctCount, hitPercentage, allAnswered } = useMemo(() => {
+    let answered = 0;
+    let correct = 0;
+    for (let i = 0; i < safeQuestions.length; i++) {
+      const q = safeQuestions[i];
+      if (q.answered) {
+        answered++;
+        if (q.type === 'multiple_choice') {
+          if (q.selectedIndex === q.correctIndex) correct++;
+        } else if (q.aiFeedback?.verdict === 'Correto') {
+          correct++;
+        }
+      }
+    }
+    const pct = answered > 0 && total > 0 ? Math.round((correct / total) * 100) : 0;
+    return {
+      answeredCount: answered,
+      correctCount: correct,
+      hitPercentage: pct,
+      allAnswered: total > 0 && answered === total,
+    };
+  }, [safeQuestions, total]);
 
   const prevAnsweredRef = useRef(answeredCount);
   const celebratedRef = useRef(false);
@@ -92,20 +107,23 @@ export default function QuizSequentialPlayer({
     };
   }, [allAnswered, answeredCount, total, hitPercentage, correctCount]);
 
-  // Unified navigation helper: closes explanation on current question and target question
+  // Unified navigation helper: closes explanation on current question and target question without blocking UI
   const goToQuestion = useCallback(
     (targetIndex: number) => {
       const bounded = Math.min(Math.max(0, targetIndex), Math.max(0, total - 1));
       if (bounded === activeIndex) return;
 
-      // Close explanation on the question being left behind
+      // Track slide animation direction based on target vs current index
+      setNavDirection(bounded >= activeIndex ? 'forward' : 'backward');
+
+      // Close explanation on the question being left behind without blocking TipTap transaction
       if (currentQ?.showExplanation) {
-        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, true);
+        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, false);
       }
-      // Also ensure target question explanation is not open upon arriving
+      // Also ensure target question explanation is not open upon arriving without blocking TipTap transaction
       const targetQ = safeQuestions[bounded];
       if (targetQ?.showExplanation) {
-        onUpdateSingleQuestion(targetQ.id, { showExplanation: false }, true);
+        onUpdateSingleQuestion(targetQ.id, { showExplanation: false }, false);
       }
 
       setCurrentIndex(bounded);
@@ -115,22 +133,24 @@ export default function QuizSequentialPlayer({
 
   // Auto-close explanation if active question transitions by any external prop update
   const prevActiveQuestionIdRef = useRef<string | null>(currentQ?.id || null);
+  const safeQuestionsRef = useRef(safeQuestions);
+  safeQuestionsRef.current = safeQuestions;
 
   useEffect(() => {
     const prevId = prevActiveQuestionIdRef.current;
     const currentId = currentQ?.id;
 
     if (prevId && currentId && prevId !== currentId) {
-      const prevQ = safeQuestions.find((q) => q.id === prevId);
+      const prevQ = safeQuestionsRef.current.find((q) => q.id === prevId);
       if (prevQ?.showExplanation) {
-        onUpdateSingleQuestion(prevQ.id, { showExplanation: false }, true);
+        onUpdateSingleQuestion(prevQ.id, { showExplanation: false }, false);
       }
       if (currentQ?.showExplanation) {
-        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, true);
+        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, false);
       }
     }
     prevActiveQuestionIdRef.current = currentId || null;
-  }, [currentQ?.id, safeQuestions, onUpdateSingleQuestion]);
+  }, [currentQ?.id, onUpdateSingleQuestion]);
 
   const handleSelectOption = useCallback(
     (optIndex: number) => {
@@ -156,6 +176,7 @@ export default function QuizSequentialPlayer({
 
   const handleNext = useCallback(() => {
     if (activeIndex < total - 1) {
+      setNavDirection('forward');
       goToQuestion(activeIndex + 1);
     } else {
       setShowFinishConfirmModal(true);
@@ -164,6 +185,7 @@ export default function QuizSequentialPlayer({
 
   const handlePrev = useCallback(() => {
     if (activeIndex > 0) {
+      setNavDirection('backward');
       goToQuestion(activeIndex - 1);
     }
   }, [activeIndex, goToQuestion]);
@@ -352,51 +374,76 @@ export default function QuizSequentialPlayer({
         onSelectIndex={(idx) => goToQuestion(idx)}
       />
 
-      {/* Card da Questão Atual */}
-      <QuizSequentialCard
-        currentQ={currentQ}
-        activeIndex={activeIndex}
-        isEvaluating={isEvaluating}
-        isOpenType={isOpenType}
-        onSelectOption={handleSelectOption}
-        onUpdateSingleQuestion={onUpdateSingleQuestion}
-        onEvaluateOpenAnswer={onEvaluateOpenAnswer}
-        onDiscussInChat={onDiscussInChat}
-      />
+      {/* Card da Questão Atual com animação direcional 60fps acelerada por GPU */}
+      <div className="overflow-hidden rounded-2xl">
+        <div
+          key={`${currentQ.id || 'q'}_${activeIndex}`}
+          className={
+            navDirection === 'forward'
+              ? 'animate-quiz-slide-forward'
+              : navDirection === 'backward'
+              ? 'animate-quiz-slide-backward'
+              : 'animate-fade-in'
+          }
+        >
+          <QuizSequentialCard
+            currentQ={currentQ}
+            activeIndex={activeIndex}
+            isEvaluating={isEvaluating}
+            isOpenType={isOpenType}
+            onSelectOption={handleSelectOption}
+            onUpdateSingleQuestion={onUpdateSingleQuestion}
+            onEvaluateOpenAnswer={onEvaluateOpenAnswer}
+            onDiscussInChat={onDiscussInChat}
+          />
+        </div>
+      </div>
 
-      {/* Navigation Footer */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
+      {/* Ergonomic Navigation Footer with tactile micro-interactions on < and > */}
+      <div className="flex items-center justify-between gap-3 pt-1">
         <button
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 text-dark-subtext hover:text-white border border-white/10 rounded-lg text-xs font-medium transition-colors"
+          className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/5 hover:bg-white/10 active:scale-[0.97] disabled:opacity-25 disabled:pointer-events-none text-zinc-300 hover:text-white border border-white/[0.08] rounded-xl text-xs sm:text-sm font-medium transition-all duration-150 cursor-pointer shadow-xs"
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft
+            size={16}
+            className="transition-transform duration-200 ease-out group-hover:-translate-x-1.5 group-active:-translate-x-2.5 text-zinc-400 group-hover:text-white"
+          />
           <span>Anterior</span>
+          <kbd className="hidden sm:inline-block px-1 py-0.5 text-[10px] font-mono bg-black/30 border border-white/10 rounded text-zinc-400">
+            ←
+          </kbd>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {currentQ.answered && (
             <button
               onClick={handleResetCurrent}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-lg text-xs transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-white/5 hover:bg-white/10 active:scale-[0.97] text-zinc-400 hover:text-white border border-white/[0.08] rounded-xl text-xs sm:text-sm transition-all duration-150 cursor-pointer shadow-xs"
               title="Tentar responder esta questão novamente"
             >
-              <RotateCcw size={12} />
-              <span>Tentar Novamente</span>
+              <RotateCcw size={13} />
+              <span className="hidden sm:inline">Tentar Novamente</span>
             </button>
           )}
 
           <button
             onClick={handleNext}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs ${
+            className={`group flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all duration-150 cursor-pointer shadow-sm ${
               currentQ.answered
-                ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-brand-500/20 ring-1 ring-brand-500/30'
-                : 'bg-white/10 hover:bg-white/15 text-white'
+                ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-brand-500/25 ring-1 ring-brand-400/40'
+                : 'bg-white/10 hover:bg-white/15 text-white border border-white/[0.08]'
             }`}
           >
             <span>{activeIndex === total - 1 ? 'Finalizar Bateria' : 'Próxima Questão'}</span>
-            <ChevronRight size={14} />
+            <kbd className="hidden sm:inline-block px-1 py-0.5 text-[10px] font-mono bg-black/30 border border-white/15 rounded text-white/80">
+              {currentQ.answered ? 'Enter ↵' : '→'}
+            </kbd>
+            <ChevronRight
+              size={16}
+              className="transition-transform duration-200 ease-out group-hover:translate-x-1.5 group-active:translate-x-2.5 text-white/80 group-hover:text-white"
+            />
           </button>
         </div>
       </div>
