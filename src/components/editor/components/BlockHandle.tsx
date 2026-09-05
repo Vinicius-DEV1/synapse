@@ -55,7 +55,12 @@ export default function BlockHandle({
   return (
     <div 
       className="block-handle fixed z-40 flex items-center justify-center cursor-pointer text-dark-subtext/40 hover:text-white transition-colors group"
-      style={{ left: x, top: y }}
+      style={{
+        transform: `translate3d(${x}px, ${y}px, 0)`,
+        top: 0,
+        left: 0,
+        willChange: 'transform',
+      }}
     >
       {/* Ponte invisível de hit-box para a direita conectando o handle ao texto sem gap morto */}
       <div className="absolute left-full top-0 w-6 h-full pointer-events-auto -z-10" />
