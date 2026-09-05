@@ -76,21 +76,21 @@ export function DocumentEditorView({
   const lineCount = content.split('\n').length;
 
   return (
-    <div className="flex flex-col w-full h-full max-w-5xl mx-auto rounded-2xl border border-white/10 bg-dark-card/90 backdrop-blur-xl shadow-2xl overflow-hidden animate-fade-in">
+    <div className="flex flex-col w-full h-full bg-[#0f0f11] animate-fade-in">
       {/* Top Action Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-dark-bg/60">
-        <div className="flex items-center gap-2 text-sm font-medium text-white">
-          <Edit3 size={17} className="text-brand-400" />
-          <span>Editando: <strong className="font-semibold text-brand-300">{fileName}</strong></span>
+      <div className="flex items-center justify-between px-5 sm:px-8 py-2.5 border-b border-white/5 bg-[#0f0f11]/90 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-2.5 text-xs font-medium text-zinc-300">
+          <Edit3 size={15} className="text-zinc-400" />
+          <span>Editando: <strong className="font-semibold text-white">{fileName}</strong></span>
           {isDirty && (
-            <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
               Modificado
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-dark-subtext font-mono mr-2 hidden sm:inline">
+          <span className="text-xs text-zinc-500 font-mono mr-2 hidden sm:inline">
             Ctrl+S para salvar • Esc para sair
           </span>
 
@@ -98,9 +98,9 @@ export function DocumentEditorView({
             type="button"
             onClick={handleCancel}
             disabled={isSaving}
-            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-dark-subtext hover:text-white hover:bg-white/10 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40"
           >
-            <X size={14} />
+            <X size={13} />
             <span>Cancelar</span>
           </button>
 
@@ -108,16 +108,16 @@ export function DocumentEditorView({
             type="button"
             onClick={handleSave}
             disabled={isSaving || !isDirty}
-            className="px-4 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-950/40 transition-all active:scale-95 flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/15 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
           >
-            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            <span>Salvar Alterações</span>
+            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            <span>Salvar</span>
           </button>
         </div>
       </div>
 
-      {/* Main Textarea */}
-      <div className="flex-1 p-4 bg-dark-bg/40 flex flex-col">
+      {/* Main Textarea in Centered Reading Column */}
+      <div className="flex-1 overflow-hidden w-full flex justify-center px-6 sm:px-12 py-6">
         <textarea
           ref={textareaRef}
           value={content}
@@ -125,12 +125,12 @@ export function DocumentEditorView({
           onKeyDown={handleKeyDownTextarea}
           placeholder="Digite ou edite o conteúdo em Markdown aqui..."
           spellCheck={false}
-          className="flex-1 w-full p-4 rounded-xl bg-black/40 border border-white/5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 outline-none font-mono text-sm leading-relaxed text-gray-200 resize-none transition-colors selection:bg-brand-500/30"
+          className="w-full max-w-3xl h-full font-mono text-sm leading-[1.8] text-zinc-200 bg-transparent border-none outline-none focus:outline-none focus:ring-0 resize-none selection:bg-brand-500/30 placeholder:text-zinc-600"
         />
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-6 py-2 border-t border-white/5 bg-dark-bg/80 text-[11px] font-mono text-dark-subtext">
+      <div className="flex items-center justify-between px-6 sm:px-8 py-2 border-t border-white/5 bg-[#0f0f11] text-[11px] font-mono text-zinc-500 shrink-0">
         <div className="flex items-center gap-4">
           <span>{lineCount} linhas</span>
           <span>{wordCount} palavras</span>
