@@ -38,11 +38,11 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
   const { state, dispatch } = useStore();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [loadedData, setLoadedData] = useState<{ pageId: string; data: PageContentData } | null>(null);
-  const [unlockedPageId, setUnlockedPageId] = useState<string | null>(null);
+  const [unlockedPageIds, setUnlockedPageIds] = useState<Set<string>>(() => new Set());
 
   const activePageId = page?.id || null;
   const isLocked = Boolean(page?.is_locked);
-  const isUnlocked = !isLocked || (activePageId !== null && unlockedPageId === activePageId);
+  const isUnlocked = !isLocked || (activePageId !== null && unlockedPageIds.has(activePageId));
 
   // SWR: Synchronously resolve cached content for active page to guarantee 0ms perceived latency
   const contentData: PageContentData | null = useMemo(() => {
@@ -162,7 +162,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
              encryptedContent={contentData.encrypted_content} 
              onUnlockSuccess={(decrypted) => {
                if (page?.id) {
-                 setUnlockedPageId(page.id);
+                 setUnlockedPageIds((prev) => new Set(prev).add(page.id));
                  if (decrypted) {
                    const newData: PageContentData = {
                      content: decrypted,
