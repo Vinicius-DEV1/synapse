@@ -126,4 +126,23 @@ describe('useLinkDuplicates', () => {
     expect(duplicates).toHaveLength(1);
     expect(duplicates[0].id).toBe('page-lazy');
   });
+
+  it('updates duplicate detection dynamically when editor backup map content changes', async () => {
+    const { getEditorBackupMap } = await import('../../../editor/hooks/editorBackupStore');
+    const backupMap = getEditorBackupMap();
+
+    // Initially page-child has the YouTube link
+    let duplicates = await findDuplicatePagesForLink('https://youtu.be/dQw4w9WgXcQ', mockPages, 'page-current');
+    expect(duplicates).toHaveLength(1);
+    expect(duplicates[0].id).toBe('page-child');
+
+    // Simulate user editing page-child and removing the link (editor backup updated)
+    backupMap.set('page-child', { html: '<p>Conteúdo novo sem o link</p>', crdt: '' });
+
+    duplicates = await findDuplicatePagesForLink('https://youtu.be/dQw4w9WgXcQ', mockPages, 'page-current');
+    expect(duplicates).toHaveLength(0);
+
+    // Clean up
+    backupMap.delete('page-child');
+  });
 });
