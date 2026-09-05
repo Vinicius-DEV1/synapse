@@ -41,6 +41,31 @@ export default function FilesView() {
   const [itemToMove, setItemToMove] = useState<{ item: FileItem | FileFolder; isFolder: boolean } | null>(null);
   const [itemsToMove, setItemsToMove] = useState<Array<{ item: FileItem | FileFolder; isFolder: boolean }> | null>(null);
   const [showDriveAuth, setShowDriveAuth] = useState(false);
+  const [dragInitialFiles, setDragInitialFiles] = useState<File[]>([]);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+
+  const handleFilesDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setDragInitialFiles(Array.from(e.dataTransfer.files));
+      setShowUploadModal(true);
+    }
+  };
+
+  const handleFilesDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingFiles) setIsDraggingFiles(true);
+  };
+
+  const handleFilesDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingFiles(false);
+  };
 
   const filteredFiles = files
     .filter(f => selectedFolderId === null || f.folder_id === selectedFolderId)
@@ -92,7 +117,15 @@ export default function FilesView() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <div
+        onDragOver={handleFilesDragOver}
+        onDragEnter={handleFilesDragOver}
+        onDragLeave={handleFilesDragLeave}
+        onDrop={handleFilesDrop}
+        className={`flex-1 flex flex-col h-full overflow-hidden min-w-0 transition-colors ${
+          isDraggingFiles ? 'ring-2 ring-inset ring-brand-500/50 bg-brand-500/5' : ''
+        }`}
+      >
         <FilesHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -127,7 +160,11 @@ export default function FilesView() {
         selectedFolderId={selectedFolderId}
         folders={folders}
         showUploadModal={showUploadModal}
-        onCloseUploadModal={() => setShowUploadModal(false)}
+        uploadInitialFiles={dragInitialFiles}
+        onCloseUploadModal={() => {
+          setShowUploadModal(false);
+          setDragInitialFiles([]);
+        }}
         showFolderUploadModal={showFolderUploadModal}
         onCloseFolderUploadModal={() => setShowFolderUploadModal(false)}
         onUploadComplete={handleUploadComplete}

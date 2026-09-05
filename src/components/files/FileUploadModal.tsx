@@ -15,12 +15,20 @@ interface FileUploadModalProps {
   currentFolderId?: string | null;
   isOpen?: boolean;
   isLink?: boolean;
+  initialFiles?: File[];
 }
 
-export default function FileUploadModal({ onClose, onUploadComplete, onUploaded, currentFolderId = null }: FileUploadModalProps) {
+export default function FileUploadModal({
+  onClose,
+  onUploadComplete,
+  onUploaded,
+  currentFolderId = null,
+  initialFiles = [],
+}: FileUploadModalProps) {
   const { state } = useStore();
   const masterKey = state.moduleKeys['files'];
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>(initialFiles);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState<string>('');
@@ -42,9 +50,32 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
     };
   }, []);
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingOver) setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
+      setError(null);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFiles(Array.from(e.target.files));
+      setSelectedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
       setError(null);
     }
   };
@@ -205,38 +236,88 @@ export default function FileUploadModal({ onClose, onUploadComplete, onUploaded,
           )}
 
           {selectedFiles.length === 0 ? (
-            <div className="relative border-2 border-dashed border-white/20 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors group">
+            <div
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`relative border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all group ${
+                isDraggingOver
+                  ? 'border-brand-500 bg-brand-500/10 ring-2 ring-brand-500/20'
+                  : 'border-white/20 hover:bg-white/5'
+              }`}
+            >
               <input 
                 type="file" 
                 multiple
                 onChange={handleFileSelect}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <UploadCloud size={48} className="text-brand-500 mb-4 group-hover:scale-110 transition-transform" />
-              <p className="text-white font-medium mb-1">Clique ou arraste arquivo(s)</p>
+              <UploadCloud
+                size={48}
+                className={`mb-4 transition-transform ${
+                  isDraggingOver ? 'text-brand-400 scale-110' : 'text-brand-500 group-hover:scale-110'
+                }`}
+              />
+              <p className="text-white font-medium mb-1">
+                {isDraggingOver ? 'Solte os arquivos aqui' : 'Clique ou arraste arquivo(s)'}
+              </p>
               <p className="text-dark-subtext text-sm">PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-              {selectedFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center p-3 bg-white/5 border border-white/10 rounded-xl gap-3">
-                  <div className="p-2 bg-brand-500/20 text-brand-400 rounded-lg">
-                    <File size={20} />
+            <div className="flex flex-col gap-2">
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`flex flex-col gap-2 max-h-48 overflow-y-auto p-1 rounded-xl transition-all ${
+                  isDraggingOver ? 'border-2 border-dashed border-brand-500 bg-brand-500/10' : ''
+                }`}
+              >
+                {selectedFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center p-3 bg-white/5 border border-white/10 rounded-xl gap-3">
+                    <div className="p-2 bg-brand-500/20 text-brand-400 rounded-lg">
+                      <File size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-dark-subtext text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    {!isUploading && (
+                      <button 
+                        onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-dark-subtext text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                  {!isUploading && (
-                    <button 
-                      onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                      className="p-1.5 text-dark-subtext hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
+                ))}
+              </div>
+
+              {!isUploading && (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative border border-dashed rounded-xl py-2 px-3 flex items-center justify-center gap-2 text-xs transition-colors cursor-pointer ${
+                    isDraggingOver
+                      ? 'border-brand-500 bg-brand-500/15 text-brand-300'
+                      : 'border-white/20 text-dark-subtext hover:text-white hover:border-white/40 hover:bg-white/5'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <UploadCloud size={14} />
+                  <span>+ Adicionar mais arquivos (ou arraste aqui)</span>
                 </div>
-              ))}
+              )}
             </div>
           )}
           
