@@ -6,9 +6,11 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { triggerFireworksAnimation } from '../utils/fireworks';
+import { playQuizSuccessSound, playQuizFailureSound } from '../utils/quizSounds';
 import { QuizSummaryView } from './sequential/QuizSummaryView';
 import { QuizSequentialHeader } from './sequential/QuizSequentialHeader';
 import { QuizSequentialCard } from './sequential/QuizSequentialCard';
+import { QuizFinishConfirmModal } from './sequential/QuizFinishConfirmModal';
 import type { QuestionItem } from '../types';
 
 interface QuizSequentialPlayerProps {
@@ -18,6 +20,8 @@ interface QuizSequentialPlayerProps {
   evaluatingIds: Record<string, boolean>;
   onDiscussInChat: (q: QuestionItem, index: number) => void;
   onSwitchToListLayout?: () => void;
+  activeIndex?: number;
+  onActiveIndexChange?: (index: number) => void;
 }
 
 export default function QuizSequentialPlayer({
@@ -27,12 +31,31 @@ export default function QuizSequentialPlayer({
   evaluatingIds,
   onDiscussInChat,
   onSwitchToListLayout,
+  activeIndex: activeIndexProp,
+  onActiveIndexChange,
 }: QuizSequentialPlayerProps) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const total = safeQuestions.length;
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [internalIndex, setInternalIndex] = useState(0);
+  const isControlled = typeof activeIndexProp === 'number';
+  const currentIndex = isControlled ? activeIndexProp : internalIndex;
+
+  const setCurrentIndex = useCallback(
+    (updater: number | ((prev: number) => number)) => {
+      const nextVal = typeof updater === 'function' ? updater(currentIndex) : updater;
+      if (onActiveIndexChange) {
+        onActiveIndexChange(nextVal);
+      }
+      if (!isControlled) {
+        setInternalIndex(nextVal);
+      }
+    },
+    [currentIndex, isControlled, onActiveIndexChange]
+  );
+
   const [showSummaryView, setShowSummaryView] = useState(false);
+  const [showFinishConfirmModal, setShowFinishConfirmModal] = useState(false);
 
   // Ensures index remains within valid question bounds
   const activeIndex = Math.min(Math.max(0, currentIndex), Math.max(0, total - 1));
@@ -69,9 +92,55 @@ export default function QuizSequentialPlayer({
     };
   }, [allAnswered, answeredCount, total, hitPercentage, correctCount]);
 
+  // Unified navigation helper: closes explanation on current question and target question
+  const goToQuestion = useCallback(
+    (targetIndex: number) => {
+      const bounded = Math.min(Math.max(0, targetIndex), Math.max(0, total - 1));
+      if (bounded === activeIndex) return;
+
+      // Close explanation on the question being left behind
+      if (currentQ?.showExplanation) {
+        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, true);
+      }
+      // Also ensure target question explanation is not open upon arriving
+      const targetQ = safeQuestions[bounded];
+      if (targetQ?.showExplanation) {
+        onUpdateSingleQuestion(targetQ.id, { showExplanation: false }, true);
+      }
+
+      setCurrentIndex(bounded);
+    },
+    [activeIndex, currentQ, safeQuestions, onUpdateSingleQuestion, setCurrentIndex, total]
+  );
+
+  // Auto-close explanation if active question transitions by any external prop update
+  const prevActiveQuestionIdRef = useRef<string | null>(currentQ?.id || null);
+
+  useEffect(() => {
+    const prevId = prevActiveQuestionIdRef.current;
+    const currentId = currentQ?.id;
+
+    if (prevId && currentId && prevId !== currentId) {
+      const prevQ = safeQuestions.find((q) => q.id === prevId);
+      if (prevQ?.showExplanation) {
+        onUpdateSingleQuestion(prevQ.id, { showExplanation: false }, true);
+      }
+      if (currentQ?.showExplanation) {
+        onUpdateSingleQuestion(currentQ.id, { showExplanation: false }, true);
+      }
+    }
+    prevActiveQuestionIdRef.current = currentId || null;
+  }, [currentQ?.id, safeQuestions, onUpdateSingleQuestion]);
+
   const handleSelectOption = useCallback(
     (optIndex: number) => {
       if (!currentQ || currentQ.answered) return;
+      const isCorrect = optIndex === currentQ.correctIndex;
+      if (isCorrect) {
+        playQuizSuccessSound();
+      } else {
+        playQuizFailureSound();
+      }
       onUpdateSingleQuestion(
         currentQ.id,
         {
@@ -87,17 +156,26 @@ export default function QuizSequentialPlayer({
 
   const handleNext = useCallback(() => {
     if (activeIndex < total - 1) {
-      setCurrentIndex((prev) => prev + 1);
+      goToQuestion(activeIndex + 1);
     } else {
-      setShowSummaryView(true);
+      setShowFinishConfirmModal(true);
     }
-  }, [activeIndex, total]);
+  }, [activeIndex, total, goToQuestion]);
 
   const handlePrev = useCallback(() => {
     if (activeIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
+      goToQuestion(activeIndex - 1);
     }
-  }, [activeIndex]);
+  }, [activeIndex, goToQuestion]);
+
+  const handleConfirmFinish = useCallback(() => {
+    setShowFinishConfirmModal(false);
+    setShowSummaryView(true);
+  }, []);
+
+  const handleCancelFinish = useCallback(() => {
+    setShowFinishConfirmModal(false);
+  }, []);
 
   const handleResetCurrent = useCallback(() => {
     if (!currentQ) return;
@@ -132,36 +210,98 @@ export default function QuizSequentialPlayer({
       );
     });
     setCurrentIndex(0);
+    setShowFinishConfirmModal(false);
     setShowSummaryView(false);
-  }, [safeQuestions, onUpdateSingleQuestion]);
+  }, [safeQuestions, onUpdateSingleQuestion, setCurrentIndex]);
 
-  // Keyboard navigation shortcuts
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    // Focus the sequential player container on mount / question transition if no input is actively focused
+    const timer = setTimeout(() => {
+      const active = document.activeElement;
+      const isInputFocused =
+        active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      if (!isInputFocused) {
+        containerRef.current?.focus();
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [activeIndex]);
+
+  // Local keyboard navigation shortcuts — strictly isolated to this widget instance
+  const handleContainerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
       const activeEl = document.activeElement;
       const isInput =
         activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
 
-      if (showSummaryView) return;
+      if (showSummaryView || showFinishConfirmModal || !currentQ) return;
 
-      if (e.key === 'ArrowRight' && (e.altKey || !isInput)) {
+      const keyLower = e.key.toLowerCase();
+      const isGKey = keyLower === 'g';
+      const hasOptionG = Boolean(
+        currentQ.type === 'multiple_choice' &&
+        currentQ.options &&
+        currentQ.options.length > 6
+      );
+
+      // Gabarito / Explicação toggle:
+      // 1. Alt+G or Ctrl+G always toggles (even if typing or if option G exists)
+      // 2. Plain 'G' / 'g' toggles if not typing in an input/textarea and question has no option 'G'
+      if ((isGKey && (e.altKey || e.ctrlKey)) || (isGKey && !isInput && !hasOptionG)) {
         e.preventDefault();
+        e.stopPropagation();
+        onUpdateSingleQuestion(
+          currentQ.id,
+          { showExplanation: !currentQ.showExplanation },
+          true
+        );
+        return;
+      }
+
+      const isNextKey = e.key === 'ArrowRight' || (!isInput && e.key === '>');
+      const isPrevKey = e.key === 'ArrowLeft' || (!isInput && e.key === '<');
+
+      if (isNextKey && (e.altKey || !isInput)) {
+        e.preventDefault();
+        e.stopPropagation();
         handleNext();
-      } else if (e.key === 'ArrowLeft' && (e.altKey || !isInput)) {
+      } else if (isPrevKey && (e.altKey || !isInput)) {
         e.preventDefault();
+        e.stopPropagation();
         handlePrev();
-      } else if (!isInput && !currentQ?.answered && currentQ?.type === 'multiple_choice') {
+      } else if (!isInput && !currentQ.answered && currentQ.type === 'multiple_choice') {
         const num = parseInt(e.key, 10);
         if (num >= 1 && num <= (currentQ.options?.length || 0)) {
           e.preventDefault();
+          e.stopPropagation();
           handleSelectOption(num - 1);
+          return;
+        }
+
+        // Letter selection (A-D / a-d)
+        if (keyLower.length === 1 && keyLower >= 'a' && keyLower <= 'z' && !e.altKey && !e.ctrlKey) {
+          const letterIndex = keyLower.charCodeAt(0) - 97;
+          if (letterIndex >= 0 && letterIndex < (currentQ.options?.length || 0)) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSelectOption(letterIndex);
+            return;
+          }
+        }
+      } else if (!isInput && currentQ.answered) {
+        // Fast progression: Enter or Space to advance to next question
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleNext();
+          return;
         }
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSummaryView, activeIndex, total, currentQ]);
+    },
+    [showSummaryView, showFinishConfirmModal, currentQ, handleNext, handlePrev, handleSelectOption, onUpdateSingleQuestion]
+  );
 
   if (total === 0 || !currentQ) {
     return (
@@ -183,7 +323,7 @@ export default function QuizSequentialPlayer({
         onResetAll={handleResetAll}
         onSelectQuestion={(idx) => {
           setShowSummaryView(false);
-          setCurrentIndex(idx);
+          goToQuestion(idx);
         }}
         onSwitchToListLayout={onSwitchToListLayout}
       />
@@ -195,7 +335,12 @@ export default function QuizSequentialPlayer({
   const isOpenType = currentQ.type === 'open';
 
   return (
-    <div className="space-y-3.5 animate-fade-in">
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onKeyDown={handleContainerKeyDown}
+      className="space-y-2.5 animate-fade-in focus:outline-none"
+    >
       {/* Progress bar and Steppers */}
       <QuizSequentialHeader
         safeQuestions={safeQuestions}
@@ -204,7 +349,7 @@ export default function QuizSequentialPlayer({
         isOpenType={isOpenType}
         answeredCount={answeredCount}
         correctCount={correctCount}
-        onSelectIndex={(idx) => setCurrentIndex(idx)}
+        onSelectIndex={(idx) => goToQuestion(idx)}
       />
 
       {/* Card da Questão Atual */}
@@ -220,13 +365,13 @@ export default function QuizSequentialPlayer({
       />
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between gap-2.5 pt-1">
+      <div className="flex items-center justify-between gap-2 pt-0.5">
         <button
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 text-dark-subtext hover:text-white border border-white/10 rounded-lg text-xs font-medium transition-colors"
         >
-          <ChevronLeft size={15} />
+          <ChevronLeft size={14} />
           <span>Anterior</span>
         </button>
 
@@ -234,7 +379,7 @@ export default function QuizSequentialPlayer({
           {currentQ.answered && (
             <button
               onClick={handleResetCurrent}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-xl text-xs transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white border border-white/10 rounded-lg text-xs transition-colors"
               title="Tentar responder esta questão novamente"
             >
               <RotateCcw size={12} />
@@ -244,17 +389,26 @@ export default function QuizSequentialPlayer({
 
           <button
             onClick={handleNext}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-md ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs ${
               currentQ.answered
-                ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-brand-500/20 ring-2 ring-brand-500/30'
+                ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-brand-500/20 ring-1 ring-brand-500/30'
                 : 'bg-white/10 hover:bg-white/15 text-white'
             }`}
           >
             <span>{activeIndex === total - 1 ? 'Finalizar Bateria' : 'Próxima Questão'}</span>
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           </button>
         </div>
       </div>
+
+      {/* Confirmation Modal when arriving at last question and proceeding */}
+      <QuizFinishConfirmModal
+        isOpen={showFinishConfirmModal}
+        total={total}
+        answeredCount={answeredCount}
+        onCancel={handleCancelFinish}
+        onConfirm={handleConfirmFinish}
+      />
     </div>
   );
 }
