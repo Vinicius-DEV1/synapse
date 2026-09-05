@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react';
 import { Editor } from '@tiptap/core';
 import type { EditorView } from '@tiptap/pm/view';
 import { triggerToast } from '../../ui/ToastContext';
-import { invoke } from '@tauri-apps/api/core';
 import { platform } from '../../../services/platform';
 import { getNotesKey } from '../../../store/useStore';
 import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
+import { captureWebScrap } from '../../../services/scrap/scrap-service';
 
 export interface SlashMenuState {
   query: string;
@@ -276,7 +276,7 @@ export function useSlashCommand({
           (async () => {
             try {
               if (platform.platform === 'desktop') {
-                const payload: any = await invoke('scrap_capture_page', { url: cleanUrl });
+                const payload = await captureWebScrap(cleanUrl);
                 const masterKey = getNotesKey();
                 const saveResult = await encryptAndSaveScrap(payload.id, payload.html_content, payload.local_path, masterKey);
 
@@ -325,9 +325,9 @@ export function useSlashCommand({
                   return true;
                 });
               }
-            } catch (err: any) {
+            } catch (err: unknown) {
               console.error('[SlashCommand] Erro ao capturar snapshot:', err);
-              const msg = err?.message || String(err) || 'Falha ao conectar e baixar o conteúdo da página.';
+              const msg = err instanceof Error ? err.message : String(err) || 'Falha ao conectar e baixar o conteúdo da página.';
               if (editor.isDestroyed) return;
               editor.commands.command(({ tr, state }) => {
                 state.doc.descendants((node, pos) => {

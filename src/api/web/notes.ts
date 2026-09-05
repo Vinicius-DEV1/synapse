@@ -1,20 +1,49 @@
-export const createWebNotesApi = (db: any, generateId: () => string) => ({
-  getAllPages: async () => {
-    const all = await db.getAll('pages');
-    return all.filter((p: any) => !p.deleted_at).map((p: any) => {
-      const { content, encrypted_content, ...rest } = p;
-      if (rest.parent_id === undefined) rest.parent_id = null;
-      if (rest.is_pinned === undefined) rest.is_pinned = 0;
-      return rest;
-    });
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web';
+import type { Page, PageMeta, PageHistoryEntry } from '../../types/notes';
+
+export interface UpdatePagePayload {
+  id: string;
+  title?: string;
+  icon?: string;
+  content?: string;
+  crdt_state?: string | null;
+  is_locked?: number;
+  password_salt?: string | null;
+  encrypted_content?: string | null;
+  parent_id?: string | null;
+  is_pinned?: number;
+  pinned_order?: number;
+  cover_image?: string | null;
+  description?: string | null;
+}
+
+export interface PageOrderUpdate {
+  id: string;
+  sort_order: number;
+}
+
+export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+  getAllPages: async (): Promise<Page[]> => {
+    const all = (await db.getAll('pages')) as Page[];
+    return all
+      .filter((p) => !p.deleted_at)
+      .map((p) => {
+        const { content: _content, encrypted_content: _encrypted, ...rest } = p;
+        if (rest.parent_id === undefined) rest.parent_id = null;
+        if (rest.is_pinned === undefined) rest.is_pinned = 0;
+        return rest as Page;
+      });
   },
-  getPageContent: async (id: string) => {
-    const page = await db.get('pages', id);
+
+  getPageContent: async (id: string): Promise<{ content: string; encrypted_content: string | null }> => {
+    const page = (await db.get('pages', id)) as Page | undefined;
     if (!page || page.deleted_at) return { content: '', encrypted_content: null };
     return { content: page.content || '', encrypted_content: page.encrypted_content || null };
   },
-  createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }) => {
-    const page = {
+
+  createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }): Promise<Page> => {
+    const page: Page = {
       id: generateId(),
       parent_id: parentId || null,
       title: title || 'Nova Página',
@@ -27,12 +56,22 @@ export const createWebNotesApi = (db: any, generateId: () => string) => ({
     await db.put('pages', page);
     return page;
   },
-  updatePage: async (page: any) => {
-    const existing = await db.get('pages', page.id);
+
+  updatePage: async (page: UpdatePagePayload): Promise<number> => {
+    const existing = (await db.get('pages', page.id)) as Page | undefined;
     if (!existing) return 0;
 
     // Check for actual changes before updating updated_at
-    const fieldsToCheck = ['title', 'icon', 'content', 'encrypted_content', 'crdt_state', 'parent_id', 'is_pinned', 'pinned_order'];
+    const fieldsToCheck: (keyof UpdatePagePayload)[] = [
+      'title',
+      'icon',
+      'content',
+      'encrypted_content',
+      'crdt_state',
+      'parent_id',
+      'is_pinned',
+      'pinned_order',
+    ];
     let hasChanges = false;
 
     for (const field of fieldsToCheck) {
@@ -42,7 +81,7 @@ export const createWebNotesApi = (db: any, generateId: () => string) => ({
       }
     }
 
-    const updated = { ...existing, ...page };
+    const updated: Page = { ...existing, ...page };
     if (hasChanges) {
       updated.updated_at = new Date().toISOString();
     }
@@ -50,30 +89,36 @@ export const createWebNotesApi = (db: any, generateId: () => string) => ({
     await db.put('pages', updated);
     return 1;
   },
-  deletePage: async (id: string) => {
-    const existing = await db.get('pages', id);
+
+  deletePage: async (id: string): Promise<boolean> => {
+    const existing = (await db.get('pages', id)) as Page | undefined;
     if (!existing) return false;
     existing.deleted_at = new Date().toISOString();
     existing.updated_at = new Date().toISOString();
     await db.put('pages', existing);
     return true;
   },
-  getDeletedPages: async () => {
-    const all = await db.getAll('pages');
-    return all.filter((p: any) => p.deleted_at).sort((a: any, b: any) => new Date(b.deleted_at!).getTime() - new Date(a.deleted_at!).getTime());
+
+  getDeletedPages: async (): Promise<PageMeta[]> => {
+    const all = (await db.getAll('pages')) as Page[];
+    return all
+      .filter((p): p is Page & { deleted_at: string } => Boolean(p.deleted_at))
+      .sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
   },
-  restorePage: async (id: string) => {
-    const existing = await db.get('pages', id);
+
+  restorePage: async (id: string): Promise<boolean> => {
+    const existing = (await db.get('pages', id)) as Page | undefined;
     if (!existing) return false;
     existing.deleted_at = null;
     existing.updated_at = new Date().toISOString();
     await db.put('pages', existing);
     return true;
   },
-  reorderPages: async (updates: any[]) => {
+
+  reorderPages: async (updates: PageOrderUpdate[]): Promise<boolean> => {
     const tx = db.transaction('pages', 'readwrite');
     for (const update of updates) {
-      const existing = await tx.store.get(update.id);
+      const existing = (await tx.store.get(update.id)) as Page | undefined;
       if (existing) {
         existing.sort_order = update.sort_order;
         existing.updated_at = new Date().toISOString();
@@ -83,6 +128,11 @@ export const createWebNotesApi = (db: any, generateId: () => string) => ({
     await tx.done;
     return true;
   },
-  getPageHistory: async (_pageId: string) => [],
-  exportBackup: async () => ({ success: false, error: "Backup não suportado na versão Web" }),
+
+  getPageHistory: async (_pageId: string): Promise<PageHistoryEntry[]> => [],
+
+  exportBackup: async (): Promise<{ success: boolean; error: string }> => ({
+    success: false,
+    error: 'Backup não suportado na versão Web',
+  }),
 });
