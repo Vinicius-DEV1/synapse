@@ -10,6 +10,7 @@ import FloatingPdfViewer from './FloatingPdfViewer';
 import ColorPalettePicker from './ColorPalettePicker';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import type { FileItem } from '../../types/files';
 
 export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
@@ -23,12 +24,21 @@ export default function FileWidgetNodeView(props: any) {
   const [isLoadingFile, setIsLoadingFile] = useState(true);
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
-  const [fileItem, setFileItem] = useState<any>(null);
+  const [fileItem, setFileItem] = useState<FileItem | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const paletteButtonRef = useRef<HTMLButtonElement>(null);
+  const mountedRef = useRef(true);
+  const reqIdRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
   const isNodeSelected = !!(
@@ -39,13 +49,15 @@ export default function FileWidgetNodeView(props: any) {
   );
 
   const loadFile = (isBackground = false) => {
-    if (window.api && window.api.files && fileId) {
+    if (window.api?.files && fileId) {
+      const currentReqId = ++reqIdRef.current;
       if (!isBackground) {
         setIsLoadingFile(true);
       }
       window.api.files.getById(fileId)
-        .then((item: any) => {
-          setFileItem((prev: any) => {
+        .then((item: FileItem | null) => {
+          if (!mountedRef.current || currentReqId !== reqIdRef.current) return;
+          setFileItem((prev) => {
             if (!item && !prev) return null;
             if (
               prev &&
@@ -60,17 +72,20 @@ export default function FileWidgetNodeView(props: any) {
             return item || null;
           });
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
+          if (!mountedRef.current || currentReqId !== reqIdRef.current) return;
           console.error('[FileWidgetNodeView] Failed to load file info:', err);
           setFileItem(null);
         })
         .finally(() => {
-          if (!isBackground) {
+          if (mountedRef.current && currentReqId === reqIdRef.current && !isBackground) {
             setIsLoadingFile(false);
           }
         });
     } else {
-      setIsLoadingFile(false);
+      if (mountedRef.current) {
+        setIsLoadingFile(false);
+      }
     }
   };
 
@@ -244,12 +259,15 @@ export default function FileWidgetNodeView(props: any) {
       }
       deleteNode();
       triggerToast('Arquivo excluído com sucesso.', 'info');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Delete failed", e);
-      triggerToast(e.message || "Falha ao excluir arquivo do sistema.", "error");
+      const msg = e instanceof Error ? e.message : "Falha ao excluir arquivo do sistema.";
+      triggerToast(msg, "error");
     } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
+      if (mountedRef.current) {
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
     }
   };
 
@@ -309,7 +327,7 @@ export default function FileWidgetNodeView(props: any) {
             window.dispatchEvent(new CustomEvent('navigate-folder', { detail: { folderId: fileId } }));
           } else if ((fileType === 'pdf' || fileType === 'epub') && fileItem) {
             window.dispatchEvent(new CustomEvent('open-file-action', { 
-              detail: { fileId, title: name || fileItem?.name } 
+              detail: { editor: props.editor, fileId, title: name || fileItem?.name } 
             }));
           } else {
             if (fileItem) setShowViewer(true);
