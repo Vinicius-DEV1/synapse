@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X,
   UploadCloud,
@@ -53,6 +53,27 @@ export default function QuizImportModal({
   const [isRefining, setIsRefining] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    onClose();
+  }, [onClose]);
 
   const handleDeleteSingleQuestion = useCallback((indexToDelete: number) => {
     setImportPreview((prev) => {
@@ -158,11 +179,17 @@ export default function QuizImportModal({
     setImportPreview(null);
 
     try {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       if (selectedFile) {
         const fileExt = selectedFile.name.split('.').pop()?.toLowerCase();
 
         if (fileExt === 'json') {
           const text = await selectedFile.text();
+          if (!mountedRef.current) return;
           const parsed = parseJsonToQuestions(text);
           if (parsed.length === 0) throw new Error('Nenhuma questão encontrada no arquivo JSON.');
           setImportPreview(parsed);
@@ -173,11 +200,15 @@ export default function QuizImportModal({
           setIsProcessingAi(true);
           setAiStatusMessage('Lendo Markdown e adaptando questões com IA...');
           const text = await selectedFile.text();
+          if (!mountedRef.current) return;
           const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
             text,
             'markdown',
-            (msg) => setAiStatusMessage(msg)
+            (msg) => {
+              if (mountedRef.current) setAiStatusMessage(msg);
+            }
           );
+          if (!mountedRef.current) return;
           const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
           setImportPreview(mapped);
           return;
@@ -187,7 +218,9 @@ export default function QuizImportModal({
           setIsProcessingAi(true);
           setAiStatusMessage('Extraindo texto das páginas do PDF...');
           const arrayBuffer = await selectedFile.arrayBuffer();
+          if (!mountedRef.current) return;
           const extractedText = await extractTextFromPdf(arrayBuffer);
+          if (!mountedRef.current) return;
 
           if (!extractedText.trim()) {
             throw new Error('Não foi possível extrair texto legível do arquivo PDF.');
@@ -197,8 +230,11 @@ export default function QuizImportModal({
           const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
             extractedText,
             'pdf',
-            (msg) => setAiStatusMessage(msg)
+            (msg) => {
+              if (mountedRef.current) setAiStatusMessage(msg);
+            }
           );
+          if (!mountedRef.current) return;
           const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
           setImportPreview(mapped);
           return;
@@ -222,22 +258,29 @@ export default function QuizImportModal({
         const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
           trimmed,
           'markdown',
-          (msg) => setAiStatusMessage(msg)
+          (msg) => {
+            if (mountedRef.current) setAiStatusMessage(msg);
+          }
         );
+        if (!mountedRef.current) return;
         const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
         setImportPreview(mapped);
         return;
       }
 
       const parsed = parseJsonToQuestions(trimmed);
+      if (!mountedRef.current) return;
       if (parsed.length === 0) throw new Error('Nenhuma questão encontrada no texto JSON.');
       setImportPreview(parsed);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : 'Erro ao processar as questões.';
       setImportError(msg);
     } finally {
-      setIsProcessingAi(false);
-      setAiStatusMessage('');
+      if (mountedRef.current) {
+        setIsProcessingAi(false);
+        setAiStatusMessage('');
+      }
     }
   };
 
@@ -247,9 +290,12 @@ export default function QuizImportModal({
         currentBatteryQuestions.length > 0 ? currentBatteryQuestions : undefined
       );
       await navigator.clipboard.writeText(prompt);
+      if (!mountedRef.current) return;
       setCopiedPrompt(true);
       triggerToast('Prompt e formato JSON copiados com sucesso!', 'success', 3500);
-      setTimeout(() => setCopiedPrompt(false), 2500);
+      setTimeout(() => {
+        if (mountedRef.current) setCopiedPrompt(false);
+      }, 2500);
     } catch (err) {
       console.error('Erro ao copiar prompt:', err);
       triggerToast('Erro ao copiar prompt para a área de transferência.', 'error');
@@ -262,16 +308,25 @@ export default function QuizImportModal({
 
     setIsRefining(true);
     try {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       const refined = await promptGeminiToRefineImportedQuestions(importPreview, instruction.trim());
+      if (!mountedRef.current) return;
       const mapped = mapParsedToQuestionItems(refined as unknown as Array<Record<string, unknown>>);
       setImportPreview(mapped);
       setRefinePrompt('');
       triggerToast('Questões refinadas com sucesso pela IA!', 'success', 3000);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : 'Erro ao refinar questões.';
       triggerToast(msg, 'error', 4000);
     } finally {
-      setIsRefining(false);
+      if (mountedRef.current) {
+        setIsRefining(false);
+      }
     }
   };
 
@@ -286,7 +341,7 @@ export default function QuizImportModal({
         'success',
         3000
       );
-      onClose();
+      handleClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao importar questões.';
       triggerToast(msg, 'error', 4000);
@@ -299,7 +354,7 @@ export default function QuizImportModal({
     <Portal>
       <div
         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
-        onClick={onClose}
+        onClick={handleClose}
       >
         <div
           className="bg-dark-card border border-purple-500/30 rounded-3xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
@@ -319,7 +374,7 @@ export default function QuizImportModal({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
             >
               <X size={18} />
