@@ -121,14 +121,17 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     };
   }, [onClose]);
 
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
+  const MENU_WIDTH = 288;
   const MENU_MAX_HEIGHT = 320;
   const CURSOR_OFFSET = 24; // Distance from top of cursor defined in Editor.tsx
   
   const willOverflowBottom = y + MENU_MAX_HEIGHT > viewportHeight;
+  const clampedX = Math.min(Math.max(8, x), Math.max(8, viewportWidth - MENU_WIDTH - 16));
   
   const positionStyle: React.CSSProperties = {
-    left: x,
+    left: clampedX,
     maxHeight: MENU_MAX_HEIGHT
   };
 

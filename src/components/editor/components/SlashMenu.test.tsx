@@ -79,4 +79,20 @@ describe('SlashMenu component', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalled();
   });
+
+  it('clamps left coordinate within viewport bounds', () => {
+    const { container } = render(
+      <SlashMenu
+        x={5000}
+        y={100}
+        query=""
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const menu = container.firstChild as HTMLElement;
+    const leftVal = parseInt(menu.style.left, 10);
+    expect(leftVal).toBeLessThan(5000);
+  });
 });
