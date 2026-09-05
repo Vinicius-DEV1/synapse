@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { Portal } from '../ui/Portal';
+import { handleScrollableWheel } from '../../utils/scroll-forwarding';
 
 export default function CodeBlockComponent(props: NodeViewProps) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -49,42 +50,7 @@ export default function CodeBlockComponent(props: NodeViewProps) {
     if (!pre) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // 1. Check for intentional horizontal scrolling:
-      // Either holding Shift (standard desktop convention) or trackpad gesture predominantly horizontal
-      const isHorizontalIntent = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
-
-      if (isHorizontalIntent) {
-        // Translate Shift + vertical wheel into horizontal code scroll
-        if (e.shiftKey && Math.abs(e.deltaY) > 0 && Math.abs(e.deltaX) === 0) {
-          const maxScroll = pre.scrollWidth - pre.clientWidth;
-          if (maxScroll > 0) {
-            e.preventDefault();
-            let delta = e.deltaY;
-            if (e.deltaMode === 1) delta *= 35;
-            else if (e.deltaMode === 2) delta *= 100;
-            pre.scrollLeft += delta;
-          }
-        }
-        return;
-      }
-
-      // 2. Vertical scroll intent:
-      // Prevent Linux / WebKitGTK / Chromium from hijacking deltaY into horizontal scroll
-      // or latching the scroll gesture to this container. Forward vertical scroll to page container.
-      const scrollParent =
-        pre.closest<HTMLElement>('#page-view-scroll, .overflow-y-auto') ||
-        document.getElementById('page-view-scroll');
-
-      if (scrollParent) {
-        let delta = e.deltaY;
-        if (e.deltaMode === 1) delta *= 35;
-        else if (e.deltaMode === 2) delta *= 100;
-
-        if (delta !== 0) {
-          e.preventDefault();
-          scrollParent.scrollTop += delta;
-        }
-      }
+      handleScrollableWheel(e, pre);
     };
 
     pre.addEventListener('wheel', handleWheel, { passive: false });

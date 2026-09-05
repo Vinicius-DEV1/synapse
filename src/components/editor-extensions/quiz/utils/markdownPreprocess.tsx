@@ -1,5 +1,6 @@
 import type { Components } from 'react-markdown';
 import { Code, Copy } from 'lucide-react';
+import { ScrollablePre } from '../../../../utils/scroll-forwarding';
 
 export const preprocessMarkdownCode = (text: string): string => {
   if (!text) return '';
@@ -69,12 +70,13 @@ export const markdownComponents: Components = {
             <span>Copiar</span>
           </button>
         </div>
-        <pre className="p-3 overflow-x-auto text-xs text-purple-100 font-mono leading-relaxed custom-scrollbar bg-black/70">
+        <ScrollablePre className="p-3 overflow-x-auto text-xs text-purple-100 font-mono leading-relaxed custom-scrollbar bg-black/70">
           <code className={className} {...props}>
             {children}
           </code>
-        </pre>
+        </ScrollablePre>
       </div>
     );
   },
+  pre: ({ children }) => <>{children}</>,
 };
