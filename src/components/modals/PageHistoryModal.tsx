@@ -59,58 +59,60 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
   return (
     <Portal>
       <div 
+        className="fixed inset-0 bg-[#0f0f11] flex flex-col z-50 animate-fade-in select-text"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
-        className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-6"
       >
-      <div className="bg-dark-card w-full max-w-6xl h-full max-h-[85vh] rounded-xl shadow-2xl border border-dark-border flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-border bg-dark-card z-10">
+        <div className="h-14 border-b border-white/5 flex items-center justify-between px-5 sm:px-8 bg-[#0f0f11]/90 backdrop-blur-md z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-500">
-              <Clock size={20} />
+            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-400 border border-white/5">
+              <Clock size={16} />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-dark-text">Histórico de Edições</h2>
-              <p className="text-sm text-dark-subtext">Revise alterações feitas nesta página ao longo do tempo</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-white">Histórico de Edições</h2>
+              <span className="text-xs text-zinc-500 font-mono hidden sm:inline">
+                • {history.length} {history.length === 1 ? 'revisão' : 'revisões'}
+              </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-dark-bg rounded-lg text-dark-subtext hover:text-dark-text transition-colors"
+            className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            title="Fechar (Esc)"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Content Split: Sidebar Timeline + Main Diff Canvas */}
+        <div className="flex-1 flex overflow-hidden w-full h-full">
           {/* Sidebar - History List */}
-          <div className="w-80 border-r border-dark-border bg-dark-bg/30 flex flex-col overflow-y-auto">
+          <div className="w-72 sm:w-80 border-r border-white/5 bg-[#121214] flex flex-col overflow-y-auto shrink-0">
             {loading ? (
-              <div className="p-6 text-center text-dark-subtext">Carregando...</div>
+              <div className="p-6 text-center text-zinc-500 text-xs font-mono">Carregando...</div>
             ) : history.length === 0 ? (
-              <div className="p-6 flex flex-col items-center justify-center text-dark-subtext h-full opacity-60">
-                <AlertCircle size={32} className="mb-2" />
-                <p>Nenhum histórico encontrado.</p>
+              <div className="p-6 flex flex-col items-center justify-center text-zinc-500 h-full opacity-60 text-center">
+                <AlertCircle size={28} className="mb-2 text-zinc-500" />
+                <p className="text-xs">Nenhum histórico encontrado.</p>
               </div>
             ) : (
-              <div className="p-3 flex flex-col gap-2">
+              <div className="p-3 flex flex-col gap-1.5">
                 {history.map((entry, index) => (
                   <button
                     key={entry.id}
                     onClick={() => setSelectedIndex(index)}
-                    className={`text-left p-4 rounded-lg transition-all border ${
+                    className={`text-left p-3.5 rounded-xl transition-all border ${
                       selectedIndex === index
-                        ? 'bg-brand-500/10 border-brand-500/30 text-brand-400'
-                        : 'bg-dark-card border-transparent hover:border-dark-border text-dark-text hover:bg-dark-bg'
+                        ? 'bg-white/10 border-white/15 text-white shadow-sm'
+                        : 'bg-transparent border-transparent hover:bg-white/5 text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    <div className="text-sm font-medium mb-1">
+                    <div className="text-xs font-semibold mb-1">
                       {index === 0 ? 'Versão Atual' : `Revisão ${history.length - index}`}
                     </div>
-                    <div className={`text-xs ${selectedIndex === index ? 'text-brand-500/70' : 'text-dark-subtext'}`}>
+                    <div className={`text-[11px] font-mono ${selectedIndex === index ? 'text-zinc-300' : 'text-zinc-500'}`}>
                       {formatDateTimeWithSeconds(entry.created_at)}
                     </div>
                   </button>
@@ -120,23 +122,31 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
           </div>
 
           {/* Main Area - Diff Viewer */}
-          <div className="flex-1 bg-dark-bg overflow-y-auto relative diff-viewer-container">
+          <div className="flex-1 bg-[#0f0f11] overflow-y-auto relative diff-viewer-container">
             {currentEntry ? (
-              <div className="p-8 max-w-4xl mx-auto">
+              <div className="max-w-3xl mx-auto px-6 py-10 sm:px-12 sm:py-16">
+                <div className="mb-8 pb-4 border-b border-white/5 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white tracking-tight">{currentEntry.title}</h3>
+                    <p className="text-xs text-zinc-500 font-mono mt-1">
+                      Visualizando {selectedIndex === 0 ? 'versão atual' : `revisão salva em ${formatDateTimeWithSeconds(currentEntry.created_at)}`}
+                    </p>
+                  </div>
+                </div>
+
                 <div 
-                  className="prose prose-invert max-w-none text-dark-text"
+                  className="prose prose-invert max-w-none text-zinc-200 leading-[1.8]"
                   dangerouslySetInnerHTML={{ __html: diffHtml }}
                 />
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center text-dark-subtext">
+              <div className="flex h-full items-center justify-center text-zinc-500 text-xs font-mono">
                 {loading ? 'Buscando histórico...' : 'Selecione uma revisão à esquerda'}
               </div>
             )}
           </div>
         </div>
       </div>
-    </div>
     </Portal>
   );
 }
