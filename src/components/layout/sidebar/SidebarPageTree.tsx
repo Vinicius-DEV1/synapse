@@ -10,11 +10,12 @@ import { isValidHierarchyMove } from '../../../utils/hierarchy';
 import { triggerToast } from '../../ui/ToastContext';
 import { PinnedSidebarItem } from './PinnedSidebarItem';
 import { RootDroppable } from './RootDroppable';
+import { Page, Tab } from '../../../types';
 
 interface SidebarPageTreeProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
-  onUpdatePage: (id: string, updates: Partial<any>) => Promise<void>;
-  activeTab: any;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  activeTab: Tab | null;
 }
 
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
@@ -23,10 +24,12 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
 
+  const expandedSet = useMemo(() => new Set(state.expandedNodes), [state.expandedNodes]);
+
   const { pinnedPages, rootPages, childrenMap } = useMemo(() => {
-    const pinned: any[] = [];
-    const roots: any[] = [];
-    const map = new Map<string, any[]>();
+    const pinned: Page[] = [];
+    const roots: Page[] = [];
+    const map = new Map<string, Page[]>();
 
     for (const p of state.pages) {
       if (p.is_pinned) {
@@ -58,14 +61,14 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     if (draggedId === targetId) return;
     
     const currentPinned = [...pinnedPages];
-    const draggedIdx = currentPinned.findIndex((p: any) => p.id === draggedId);
-    const targetIdx = currentPinned.findIndex((p: any) => p.id === targetId);
+    const draggedIdx = currentPinned.findIndex((p) => p.id === draggedId);
+    const targetIdx = currentPinned.findIndex((p) => p.id === targetId);
     
     if (draggedIdx === -1 || targetIdx === -1) return;
     
     const reordered = arrayMove(currentPinned, draggedIdx, targetIdx);
     
-    reordered.forEach((p: any, idx: number) => {
+    reordered.forEach((p, idx) => {
       if (p.pinned_order !== idx) {
         onUpdatePage(p.id, { pinned_order: idx }).catch((err) => {
           console.error('[Sidebar] Falha ao atualizar ordem de fixados:', err);
@@ -83,10 +86,10 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     })
   );
 
-  const [activeDragData, setActiveDragData] = useState<any>(null);
+  const [activeDragData, setActiveDragData] = useState<{ type: string; page?: Page; pageId?: string } | null>(null);
 
   const handleDragStart = (e: DragStartEvent) => {
-    setActiveDragData(e.active.data.current);
+    setActiveDragData(e.active.data.current as { type: string; page?: Page; pageId?: string } | null);
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -120,13 +123,13 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
               triggerToast('Falha ao mover a página.', 'error');
             });
         } else {
-          triggerToast('Não é possível mover uma página para dentro de si mesma ou de suas subpáginas.', 'error');
+          triggerToast('Não é possível mover uma página para dentro dela mesma.', 'error');
         }
       }
-    } else if (active.data.current?.type === 'hierarchy' && over.data.current?.type === 'hierarchy-root') {
+    } else if (active.data.current?.type === 'hierarchy' && over.id === 'root-droppable') {
       const draggedId = active.data.current.page.id;
       onUpdatePage(draggedId, { parent_id: null }).catch((err) => {
-        console.error('[Sidebar] Falha ao mover página para raiz:', err);
+        console.error('[Sidebar] Falha ao mover para a raiz:', err);
         triggerToast('Falha ao mover a página para a raiz.', 'error');
       });
     }
@@ -169,10 +172,10 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
               <Pin size={12} /> Fixados
             </div>
             <SortableContext
-              items={pinnedPages.slice(0, visiblePinnedCount).map((p: any) => `pinned-sort-${p.id}`)}
+              items={pinnedPages.slice(0, visiblePinnedCount).map((p) => `pinned-sort-${p.id}`)}
               strategy={verticalListSortingStrategy}
             >
-              {pinnedPages.slice(0, visiblePinnedCount).map((page: any, index: number) => (
+              {pinnedPages.slice(0, visiblePinnedCount).map((page, index) => (
                 <PinnedSidebarItem
                   key={page.id}
                   page={page}
@@ -181,6 +184,8 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                   onCreatePage={onCreatePage}
                   onUpdatePage={onUpdatePage}
                   childrenMap={childrenMap}
+                  isExpanded={expandedSet.has(page.id)}
+                  expandedSet={expandedSet}
                 />
               ))}
             </SortableContext>
@@ -206,7 +211,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             Nenhuma página criada
           </div>
         )}
-        {rootPages.slice(0, visiblePagesCount).map((page: any) => (
+        {rootPages.slice(0, visiblePagesCount).map((page) => (
           <SidebarItem
             key={page.id}
             page={page}
@@ -217,6 +222,8 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             isSearchResult={false}
             disableHierarchyDnD={false}
             childrenMap={childrenMap}
+            isExpanded={expandedSet.has(page.id)}
+            expandedSet={expandedSet}
           />
         ))}
         {rootPages.length > visiblePagesCount && (
@@ -232,8 +239,8 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       <DragOverlay dropAnimation={null}>
         {activeDragData ? (
           <div className="bg-brand-500/20 backdrop-blur-md border border-brand-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-xl text-xs font-medium text-brand-300">
-            <span>{activeDragData.page.icon || '📄'}</span>
-            <span>{activeDragData.page.title}</span>
+            <span>{activeDragData.page?.icon || '📄'}</span>
+            <span>{activeDragData.page?.title}</span>
           </div>
         ) : null}
       </DragOverlay>
