@@ -2,14 +2,17 @@ import { GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import SidebarItem from './SidebarItem';
+import type { Page, Tab } from '../../../types';
 
 interface PinnedSidebarItemProps {
-  page: any;
+  page: Page;
   index?: number;
-  activeTab: any;
+  activeTab: Tab | null;
   onCreatePage: (parentId: string | null) => Promise<void>;
-  onUpdatePage: (id: string, updates: Partial<any>) => Promise<void>;
-  childrenMap: Map<string, any[]>;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  childrenMap: Map<string, Page[]>;
+  isExpanded?: boolean;
+  expandedSet?: Set<string>;
 }
 
 export function PinnedSidebarItem({
@@ -18,6 +21,8 @@ export function PinnedSidebarItem({
   onCreatePage,
   onUpdatePage,
   childrenMap,
+  isExpanded,
+  expandedSet,
 }: PinnedSidebarItemProps) {
   const {
     attributes,
@@ -62,6 +67,8 @@ export function PinnedSidebarItem({
           isSearchResult={false}
           disableHierarchyDnD={false}
           childrenMap={childrenMap}
+          isExpanded={isExpanded}
+          expandedSet={expandedSet}
         />
       </div>
     </div>
