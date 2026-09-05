@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useContext } from 'react';
 import { StoreContext, getStoreState } from '../../../../store/useStore';
 import type { Page } from '../../../../types';
 import { getPageAncestors } from '../../../../utils/hierarchy';
+import { getEditorBackupMap } from '../../../editor/hooks/editorBackupStore';
+import { onPageSaved } from '../../../../services/page-broadcast';
 import {
   normalizeLinkUrl,
   extractUrlSignature,
@@ -60,9 +62,10 @@ export async function findDuplicatePagesForLink(
       continue;
     }
 
-    let content = page.content;
+    // 1. Check in-memory editor backup first (freshest unsaved / just-saved content)
+    let content = getEditorBackupMap().get(page.id)?.html || page.content;
 
-    // Check module-level cache if resident content is missing or if cached version matches updated_at
+    // 2. Check module-level cache if resident content is missing or if cached version matches updated_at
     if (!content) {
       const cached = pageContentCache.get(page.id);
       if (cached && (!page.updated_at || cached.updatedAt === page.updated_at)) {
@@ -169,9 +172,25 @@ export function useLinkDuplicates(
     // Defer search execution slightly to prevent layout thrashing on fast mounts
     timer = setTimeout(performSearch, 80);
 
+    // Listen to real-time page saves across tabs and local components
+    const unsubscribe = onPageSaved((msg) => {
+      // Update cache with freshly saved content
+      pageContentCache.set(msg.pageId, {
+        content: msg.html,
+        updatedAt: String(msg.timestamp),
+      });
+
+      // Re-trigger duplicate detection if the saved page is not our current page
+      if (msg.pageId !== currentPageId) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(performSearch, 100);
+      }
+    });
+
     return () => {
       cancelRef.current = true;
       if (timer) clearTimeout(timer);
+      unsubscribe();
     };
   }, [url, currentPageId, state?.pages]);
 
