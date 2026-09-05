@@ -100,7 +100,17 @@ export function useFilesData() {
     };
     
     window.addEventListener('navigate-folder', handleNavigateFolder);
-    return () => window.removeEventListener('navigate-folder', handleNavigateFolder);
+    const handleFileUpdate = () => {
+      loadData();
+    };
+    window.addEventListener('caderno-file-updated', handleFileUpdate);
+    window.addEventListener('app-sync-trigger', handleFileUpdate);
+
+    return () => {
+      window.removeEventListener('navigate-folder', handleNavigateFolder);
+      window.removeEventListener('caderno-file-updated', handleFileUpdate);
+      window.removeEventListener('app-sync-trigger', handleFileUpdate);
+    };
   }, [loadData]);
 
   const toggleSelect = useCallback((fileId: string) => {
