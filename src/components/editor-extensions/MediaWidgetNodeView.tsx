@@ -6,6 +6,57 @@ import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import ColorPalettePicker from './ColorPalettePicker';
 import { Portal } from '../ui/Portal';
 
+let cachedVideosPromise: Promise<any[]> | null = null;
+let videosCacheTimestamp = 0;
+let cachedBooksPromise: Promise<any[]> | null = null;
+let booksCacheTimestamp = 0;
+const MEDIA_CACHE_TTL_MS = 2000;
+
+async function fetchVideosCached(): Promise<any[]> {
+  const now = Date.now();
+  if (cachedVideosPromise && now - videosCacheTimestamp < MEDIA_CACHE_TTL_MS) {
+    return cachedVideosPromise;
+  }
+  videosCacheTimestamp = now;
+  cachedVideosPromise = (async () => {
+    try {
+      if (!window.api?.sync) return [];
+      const rows = await window.api.sync.getTable('videos');
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      cachedVideosPromise = null;
+      throw err;
+    }
+  })();
+  return cachedVideosPromise;
+}
+
+async function fetchBooksCached(): Promise<any[]> {
+  const now = Date.now();
+  if (cachedBooksPromise && now - booksCacheTimestamp < MEDIA_CACHE_TTL_MS) {
+    return cachedBooksPromise;
+  }
+  booksCacheTimestamp = now;
+  cachedBooksPromise = (async () => {
+    try {
+      if (!window.api?.library) return [];
+      const books = await window.api.library.getBooks();
+      return Array.isArray(books) ? books : [];
+    } catch (err) {
+      cachedBooksPromise = null;
+      throw err;
+    }
+  })();
+  return cachedBooksPromise;
+}
+
+function invalidateMediaCache() {
+  cachedVideosPromise = null;
+  videosCacheTimestamp = 0;
+  cachedBooksPromise = null;
+  booksCacheTimestamp = 0;
+}
+
 export default function MediaWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
   const { mediaId, mediaType, title, color: rawColor } = node.attrs;
@@ -17,6 +68,8 @@ export default function MediaWidgetNodeView(props: any) {
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const paletteButtonRef = useRef<HTMLButtonElement>(null);
+  const mountedRef = useRef(true);
+  const reqIdRef = useRef(0);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
   const isNodeSelected = !!(
@@ -26,43 +79,68 @@ export default function MediaWidgetNodeView(props: any) {
     props.editor.state.selection.from === pos
   );
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const loadMedia = async () => {
+    const currentReqId = ++reqIdRef.current;
     if (!mediaId) {
-      setIsLoadingMedia(false);
+      if (mountedRef.current) setIsLoadingMedia(false);
       return;
     }
-    setIsLoadingMedia(true);
+    if (mountedRef.current) setIsLoadingMedia(true);
     try {
       if (mediaType === 'video') {
         if (window.api?.sync) {
-          const rows = await window.api.sync.getTable('videos');
-          const found = (rows as any[])?.find((v: any) => v.id === mediaId && !v.deleted_at);
-          setMediaItem(found || null);
+          const rows = await fetchVideosCached();
+          const found = rows.find((v: any) => v.id === mediaId && !v.deleted_at);
+          if (mountedRef.current && currentReqId === reqIdRef.current) {
+            setMediaItem(found || null);
+          }
         } else {
-          setMediaItem({ id: mediaId, title });
+          if (mountedRef.current && currentReqId === reqIdRef.current) {
+            setMediaItem({ id: mediaId, title });
+          }
         }
       } else if (mediaType === 'book') {
         if (window.api?.library) {
-          const books = await window.api.library.getBooks();
-          const found = (books as any[])?.find((b: any) => b.id === mediaId && !b.deleted_at);
-          setMediaItem(found || null);
+          const books = await fetchBooksCached();
+          const found = books.find((b: any) => b.id === mediaId && !b.deleted_at);
+          if (mountedRef.current && currentReqId === reqIdRef.current) {
+            setMediaItem(found || null);
+          }
         } else {
-          setMediaItem({ id: mediaId, title });
+          if (mountedRef.current && currentReqId === reqIdRef.current) {
+            setMediaItem({ id: mediaId, title });
+          }
         }
       } else {
-        setMediaItem({ id: mediaId, title });
+        if (mountedRef.current && currentReqId === reqIdRef.current) {
+          setMediaItem({ id: mediaId, title });
+        }
       }
     } catch (e) {
       console.error("Failed to load media widget item", e);
-      setMediaItem(null);
+      if (mountedRef.current && currentReqId === reqIdRef.current) {
+        setMediaItem(null);
+      }
     } finally {
-      setIsLoadingMedia(false);
+      if (mountedRef.current && currentReqId === reqIdRef.current) {
+        setIsLoadingMedia(false);
+      }
     }
   };
 
   useEffect(() => {
     loadMedia();
-    const handleSync = () => loadMedia();
+    const handleSync = () => {
+      invalidateMediaCache();
+      loadMedia();
+    };
     window.addEventListener('app-sync-trigger', handleSync);
     window.addEventListener('caderno-sync-complete', handleSync);
     window.addEventListener('caderno-library-updated', handleSync);
@@ -94,7 +172,7 @@ export default function MediaWidgetNodeView(props: any) {
       return;
     }
     window.dispatchEvent(new CustomEvent('open-media-action', { 
-      detail: { mediaId, mediaType, title: mediaItem?.title || title } 
+      detail: { editor: props.editor, mediaId, mediaType, title: mediaItem?.title || title } 
     }));
   };
 
