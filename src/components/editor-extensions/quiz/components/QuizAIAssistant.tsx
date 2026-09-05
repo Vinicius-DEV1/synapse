@@ -48,6 +48,7 @@ export default function QuizAIAssistant({
   currentBatteryTitle,
 }: QuizAIAssistantProps) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const {
     attachedBatteries,
@@ -67,6 +68,15 @@ export default function QuizAIAssistant({
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [isOpen, chatHistory, isSendingChat]);
+
+  // Adjust textarea height on chatInput changes
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, 42), 140)}px`;
+    }
+  }, [chatInput]);
 
   if (!isOpen) return null;
 
@@ -192,7 +202,7 @@ export default function QuizAIAssistant({
           )}
 
           {/* Chat Input & Mention Menu */}
-          <div className="p-4 border-t border-purple-500/20 bg-gradient-to-r from-purple-950/30 via-dark-card to-purple-950/20 relative flex items-center gap-3">
+          <div className="p-4 border-t border-purple-500/20 bg-gradient-to-r from-purple-950/30 via-dark-card to-purple-950/20 relative flex items-end gap-3">
             {/* Popover de Menções com @ */}
             {showMentionMenu && (
               <div className="absolute bottom-full left-4 right-4 mb-2 bg-dark-card border border-purple-500/40 rounded-2xl shadow-2xl overflow-hidden z-30 max-h-64 flex flex-col animate-fade-in">
@@ -246,26 +256,36 @@ export default function QuizAIAssistant({
             )}
 
             <div className="relative flex-1">
-              <input
-                type="text"
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 value={chatInput}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  handleInputChange(e);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 42), 140)}px`;
+                }}
                 onKeyDown={(e) => {
                   const intercepted = handleMentionKeyDown(e);
                   if (intercepted) return;
 
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    onSendMessage(undefined, attachedBatteries);
+                    if (chatInput.trim() && !isSendingChat) {
+                      onSendMessage(undefined, attachedBatteries);
+                      if (textareaRef.current) {
+                        textareaRef.current.style.height = 'auto';
+                      }
+                    }
                   }
                 }}
-                placeholder="Digite seu pedido para a IA... (dica: digite @ para referenciar outras baterias)"
-                className="w-full bg-black/50 border border-purple-500/20 focus:border-purple-500/60 rounded-xl pl-4 pr-10 py-3 text-xs text-purple-100 placeholder-white/25 outline-none transition-all shadow-inner"
+                placeholder="Digite seu pedido para a IA... (Shift+Enter para nova linha, @ para referenciar outras baterias)"
+                className="w-full bg-black/50 border border-purple-500/20 focus:border-purple-500/60 rounded-xl pl-4 pr-10 py-2.5 text-xs text-purple-100 placeholder-white/25 outline-none transition-all shadow-inner resize-none min-h-[42px] max-h-[140px] overflow-y-auto leading-relaxed break-words"
               />
               <button
                 type="button"
                 onClick={() => setShowMentionMenu((prev) => !prev)}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors text-xs flex items-center gap-0.5 ${
+                className={`absolute right-3 top-2.5 p-1 rounded-lg transition-colors text-xs flex items-center gap-0.5 ${
                   showMentionMenu ? 'bg-purple-500/30 text-white' : 'text-purple-400/60 hover:text-purple-300'
                 }`}
                 title="Referenciar outra bateria de exercícios (@)"
@@ -275,9 +295,16 @@ export default function QuizAIAssistant({
             </div>
 
             <button
-              onClick={() => onSendMessage(undefined, attachedBatteries)}
+              onClick={() => {
+                if (chatInput.trim() && !isSendingChat) {
+                  onSendMessage(undefined, attachedBatteries);
+                  if (textareaRef.current) {
+                    textareaRef.current.style.height = 'auto';
+                  }
+                }
+              }}
               disabled={isSendingChat || !chatInput.trim()}
-              className="px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all font-semibold text-xs flex items-center gap-2 shrink-0"
+              className="px-4 py-2.5 h-[42px] bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all font-semibold text-xs flex items-center justify-center gap-2 shrink-0"
             >
               {isSendingChat ? (
                 <Loader2 size={16} className="animate-spin" />

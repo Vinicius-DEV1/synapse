@@ -14,6 +14,7 @@ import {
   LayoutList,
   FileCode,
   MoreHorizontal,
+  Maximize2,
 } from 'lucide-react';
 import type { QuizLayout } from '../types';
 
@@ -35,6 +36,7 @@ interface QuizBatteryHeaderProps {
   onCopySchemaPrompt?: (e: React.MouseEvent) => void;
   onOpenDeleteModal: () => void;
   onToggleCollapse: () => void;
+  onToggleFocusMode?: () => void;
 }
 
 export default function QuizBatteryHeader({
@@ -55,6 +57,7 @@ export default function QuizBatteryHeader({
   onCopySchemaPrompt,
   onOpenDeleteModal,
   onToggleCollapse,
+  onToggleFocusMode,
 }: QuizBatteryHeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -109,6 +112,18 @@ export default function QuizBatteryHeader({
             <Edit2 size={11} />
             <span>Editando</span>
           </span>
+        )}
+
+        {/* Modo Foco / Maximizar (Apenas em Modo Sequencial Prática e não recolhido) */}
+        {mode === 'practice' && layout === 'sequential' && !isCollapsed && onToggleFocusMode && (
+          <button
+            onClick={onToggleFocusMode}
+            className="p-1.5 md:p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-dark-subtext hover:text-white border border-white/[0.06] transition-colors flex items-center justify-center shadow-xs"
+            title="Modo Foco / Maximizar"
+            aria-label="Abrir modo foco para resolução imersiva"
+          >
+            <Maximize2 size={15} />
+          </button>
         )}
 
         {/* Menu de Ações (•••) contendo Modo, Visualização, IA e Ferramentas */}

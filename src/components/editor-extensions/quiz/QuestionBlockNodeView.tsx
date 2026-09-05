@@ -292,16 +292,22 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
                 onAddQuestion={handleAddQuestion}
               />
             ) : layout === 'sequential' ? (
-              <QuizSequentialPlayer
-                questions={displayedQuestions}
-                onUpdateSingleQuestion={updateSingleQuestion}
-                onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
-                evaluatingIds={evaluatingIds}
-                onDiscussInChat={handleDiscussInChat}
-                onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
-                activeIndex={sequentialActiveIndex}
-                onActiveIndexChange={setSequentialActiveIndex}
-              />
+              isFocusModeOpen ? (
+                <div className="p-6 text-center text-dark-subtext border border-white/[0.06] rounded-2xl bg-white/[0.02] flex items-center justify-center gap-2">
+                  <span className="text-xs">Modo Foco em execução na tela cheia...</span>
+                </div>
+              ) : (
+                <QuizSequentialPlayer
+                  questions={displayedQuestions}
+                  onUpdateSingleQuestion={updateSingleQuestion}
+                  onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+                  evaluatingIds={evaluatingIds}
+                  onDiscussInChat={handleDiscussInChat}
+                  onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
+                  activeIndex={sequentialActiveIndex}
+                  onActiveIndexChange={setSequentialActiveIndex}
+                />
+              )
             ) : (
               <QuizPlayer
                 questions={displayedQuestions}
