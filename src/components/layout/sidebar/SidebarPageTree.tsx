@@ -10,7 +10,7 @@ import { isValidHierarchyMove } from '../../../utils/hierarchy';
 import { triggerToast } from '../../ui/ToastContext';
 import { PinnedSidebarItem } from './PinnedSidebarItem';
 import { RootDroppable } from './RootDroppable';
-import { Page, Tab } from '../../../types';
+import type { Page, Tab } from '../../../types';
 
 interface SidebarPageTreeProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
