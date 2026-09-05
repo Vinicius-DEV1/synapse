@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import {
   FileArchive,
@@ -64,13 +64,16 @@ export default function LinkMoreOptionsMenu({
   onConvertToText,
   onDelete,
 }: LinkMoreOptionsMenuProps) {
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
+    elements: {
+      reference: anchorRef?.current,
+    },
     placement: 'bottom-end',
     middleware: [offset(6), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (anchorRef?.current) {
       refs.setReference(anchorRef.current);
     }
@@ -116,8 +119,15 @@ export default function LinkMoreOptionsMenu({
           refs.setFloating(node);
           (menuRef as any).current = node;
         }}
-        style={floatingStyles}
-        className="z-[999] w-56 rounded-xl bg-zinc-900/95 border border-white/[0.08] shadow-2xl backdrop-blur-xl p-1.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-100 select-none space-y-1"
+        style={{
+          ...floatingStyles,
+          visibility: isPositioned ? 'visible' : 'hidden',
+          opacity: isPositioned ? 1 : 0,
+          pointerEvents: isPositioned ? 'auto' : 'none',
+        }}
+        className={`z-[999] w-56 rounded-xl bg-zinc-900/95 border border-white/[0.08] shadow-2xl backdrop-blur-xl p-1.5 text-xs text-zinc-300 ${
+          isPositioned ? 'animate-in fade-in zoom-in-95 duration-100' : ''
+        } select-none space-y-1`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Seção 1: Scrap / Snapshot Offline */}

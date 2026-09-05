@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { Clock, Bell, ExternalLink, Trash2 } from 'lucide-react';
 import type { CalendarEvent } from '../../../types/core';
@@ -30,13 +30,16 @@ export function CalendarEventPopover({
   onOpenDeleteConfirm,
   onClose,
 }: CalendarEventPopoverProps) {
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
+    elements: {
+      reference: anchorRef?.current,
+    },
     placement: 'bottom-start',
     middleware: [offset(6), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (anchorRef?.current) {
       refs.setReference(anchorRef.current);
     }
@@ -75,10 +78,22 @@ export function CalendarEventPopover({
         }
         (popoverRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
-      style={anchorRef ? { ...floatingStyles, zIndex: 9999 } : undefined}
+      style={
+        anchorRef
+          ? {
+              ...floatingStyles,
+              zIndex: 9999,
+              visibility: isPositioned ? 'visible' : 'hidden',
+              opacity: isPositioned ? 1 : 0,
+              pointerEvents: isPositioned ? 'auto' : 'none',
+            }
+          : undefined
+      }
       className={`${
         anchorRef ? 'fixed' : 'absolute left-0 top-full mt-1.5'
-      } z-[100] w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 text-left animate-in fade-in zoom-in-95`}
+      } z-[100] w-64 bg-dark-card border border-white/10 rounded-xl shadow-2xl p-3 text-left ${
+        !anchorRef || isPositioned ? 'animate-in fade-in zoom-in-95' : ''
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">

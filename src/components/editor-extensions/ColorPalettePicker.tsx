@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { BG_COLORS } from '../../utils/colors';
 import { Portal } from '../ui/Portal';
@@ -18,13 +18,16 @@ export default function ColorPalettePicker({
   anchorRef,
   onClose,
 }: ColorPalettePickerProps) {
-  const { refs, floatingStyles } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
+    elements: {
+      reference: anchorRef?.current,
+    },
     placement: 'bottom-end',
     middleware: [offset(6), flip(), shift({ padding: 12 })],
     whileElementsMounted: autoUpdate,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (anchorRef?.current) {
       refs.setReference(anchorRef.current);
     }
@@ -66,10 +69,22 @@ export default function ColorPalettePicker({
         }
         (pickerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
-      style={anchorRef ? { ...floatingStyles, zIndex: 9999 } : undefined}
+      style={
+        anchorRef
+          ? {
+              ...floatingStyles,
+              zIndex: 9999,
+              visibility: isPositioned ? 'visible' : 'hidden',
+              opacity: isPositioned ? 1 : 0,
+              pointerEvents: isPositioned ? 'auto' : 'none',
+            }
+          : undefined
+      }
       className={`${
         anchorRef ? 'fixed' : 'absolute top-full right-0 mt-1'
-      } bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] animate-scale-in`}
+      } bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl z-50 flex flex-col gap-2 min-w-[200px] ${
+        isPositioned || !anchorRef ? 'animate-scale-in' : ''
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="text-[11px] font-medium text-dark-subtext px-1">Cor do Destaque</div>
