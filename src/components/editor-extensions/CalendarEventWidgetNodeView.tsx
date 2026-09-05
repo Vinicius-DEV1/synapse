@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { Calendar, Check, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
@@ -47,6 +47,8 @@ export default function CalendarEventWidgetNodeView(props: any) {
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [isCompleted, setIsCompleted] = useState(status === 'completed');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const mountedRef = useRef(true);
+  const reqIdRef = useRef(0);
 
   const pos = typeof props.getPos === 'function' ? props.getPos() : null;
   const isNodeSelected = !!(
@@ -57,19 +59,27 @@ export default function CalendarEventWidgetNodeView(props: any) {
   );
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     setIsCompleted(status === 'completed');
   }, [status]);
 
-  const fetchEvent = async (isMounted = true) => {
+  const fetchEvent = async () => {
+    const currentReqId = ++reqIdRef.current;
     if (!eventId || !window.api?.calendar) {
-      if (isMounted) setIsLoadingEvents(false);
+      if (mountedRef.current) setIsLoadingEvents(false);
       return;
     }
-    if (isMounted) setIsLoadingEvents(true);
+    if (mountedRef.current) setIsLoadingEvents(true);
     try {
       const events = await fetchCalendarEventsCached();
       const found = events.find((e: CalendarEvent) => e.id === eventId);
-      if (isMounted) {
+      if (mountedRef.current && currentReqId === reqIdRef.current) {
         if (found) {
           setEventData(found);
           setIsCompleted(found.status === 'completed');
@@ -79,19 +89,18 @@ export default function CalendarEventWidgetNodeView(props: any) {
       }
     } catch (err) {
       console.error('Erro ao buscar evento do widget:', err);
-      if (isMounted) setEventData(null);
+      if (mountedRef.current && currentReqId === reqIdRef.current) setEventData(null);
     } finally {
-      if (isMounted) setIsLoadingEvents(false);
+      if (mountedRef.current && currentReqId === reqIdRef.current) setIsLoadingEvents(false);
     }
   };
 
   useEffect(() => {
-    let isMounted = true;
-    fetchEvent(isMounted);
+    fetchEvent();
 
     const handleSync = () => {
       invalidateCalendarEventsCache();
-      fetchEvent(isMounted);
+      fetchEvent();
     };
 
     window.addEventListener('app-sync-trigger', handleSync);
@@ -99,7 +108,6 @@ export default function CalendarEventWidgetNodeView(props: any) {
     window.addEventListener('caderno-calendar-updated', handleSync);
 
     return () => {
-      isMounted = false;
       window.removeEventListener('app-sync-trigger', handleSync);
       window.removeEventListener('caderno-sync-complete', handleSync);
       window.removeEventListener('caderno-calendar-updated', handleSync);
