@@ -14,6 +14,7 @@ interface FilesModalsHostProps {
   selectedFolderId: string | null;
   folders: FileFolder[];
   showUploadModal: boolean;
+  uploadInitialFiles?: File[];
   onCloseUploadModal: () => void;
   showFolderUploadModal: boolean;
   onCloseFolderUploadModal: () => void;
@@ -55,6 +56,7 @@ export function FilesModalsHost({
   selectedFolderId,
   folders,
   showUploadModal,
+  uploadInitialFiles,
   onCloseUploadModal,
   showFolderUploadModal,
   onCloseFolderUploadModal,
@@ -98,6 +100,7 @@ export function FilesModalsHost({
           onClose={onCloseUploadModal}
           onUploadComplete={onUploadComplete}
           currentFolderId={selectedFolderId}
+          initialFiles={uploadInitialFiles}
         />
       )}
       

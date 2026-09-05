@@ -23,6 +23,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   const { state } = useStore();
   const masterKey = state.moduleKeys['culture'];
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -127,6 +128,34 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
         const msg = err instanceof Error ? err.message : String(err);
         setError('Falha ao carregar arquivo local: ' + msg);
       }
+    }
+  };
+  const handleVideoDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingOver) setIsDraggingOver(true);
+  };
+
+  const handleVideoDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (isUploading || isScanning) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      if (webQuality === 'original' && !file.name.toLowerCase().endsWith('.mp4') && !file.name.toLowerCase().endsWith('.webm')) {
+        setWebQuality('720p');
+      }
+      setError(null);
+      resetTracks();
     }
   };
 
@@ -266,16 +295,24 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
                   <button 
                     type="button"
                     onClick={handleSelectLocalFile}
+                    onDragOver={handleVideoDragOver}
+                    onDragEnter={handleVideoDragOver}
+                    onDragLeave={handleVideoDragLeave}
+                    onDrop={handleVideoDrop}
                     disabled={isUploading}
-                    className={`w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
+                    className={`w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-all ${
                       isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer focus:outline-none focus:border-brand-500'
                     } ${
-                      videoFile ? 'border-brand-500/50 bg-brand-500/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'
+                      isDraggingOver
+                        ? 'border-brand-500 bg-brand-500/20 ring-2 ring-brand-500/30'
+                        : videoFile
+                        ? 'border-brand-500/50 bg-brand-500/10'
+                        : 'border-white/10 hover:border-white/30 hover:bg-white/5'
                     }`}
                   >
-                    <FileVideo size={24} className={videoFile ? 'text-brand-400' : 'text-dark-subtext'} />
-                    <span className={`text-sm ${videoFile ? 'text-white font-medium' : 'text-dark-subtext'}`}>
-                      {videoFile ? videoFile.name : 'Clique para selecionar um vídeo do PC'}
+                    <FileVideo size={24} className={isDraggingOver || videoFile ? 'text-brand-400' : 'text-dark-subtext'} />
+                    <span className={`text-sm ${videoFile || isDraggingOver ? 'text-white font-medium' : 'text-dark-subtext'}`}>
+                      {isDraggingOver ? 'Solte o vídeo aqui' : videoFile ? videoFile.name : 'Clique ou arraste um vídeo aqui'}
                     </span>
                   </button>
                   <input

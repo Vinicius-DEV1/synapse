@@ -22,6 +22,7 @@ import { TaskProvider } from './store/TaskContext';
 import { GlobalModals } from './components/layout/GlobalModals';
 import { useAppEvents } from './hooks/useAppEvents';
 import { useAppBackPress } from './hooks/useAppBackPress';
+import WindowControls from './components/layout/WindowControls';
 
 
 function AppContent() {
@@ -38,6 +39,23 @@ function AppContent() {
     };
     window.addEventListener('app-settings-changed', handleSettingsChange);
     return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
+  }, []);
+
+  // Prevent default window-level file drop navigation (e.g. WebKitGTK navigating to file://)
+  useEffect(() => {
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+    };
   }, []);
   
   useAppShortcuts(state, dispatch);
@@ -162,7 +180,10 @@ function AppContent() {
 
   if (authStatus === null) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext" style={{ height: '100dvh' }}>
+      <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext relative" style={{ height: '100dvh' }}>
+        <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none">
+          <WindowControls />
+        </div>
         <span className="animate-pulse">Iniciando ambiente seguro...</span>
       </div>
     );
@@ -235,6 +256,7 @@ function AppContent() {
               pageId={state.contextMenu.pageId}
               isPinned={!!contextPage?.is_pinned}
               onOpenInNewTab={(id) => {
+                dispatch({ type: 'HIDE_CONTEXT_MENU' });
                 const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
                 dispatch({
                   type: 'ADD_TAB',
