@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Image as ImageIcon, X, Upload, Sparkles } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
@@ -24,7 +24,7 @@ function getStableCoverUrl(url?: string | null, pageId?: string): string | undef
   return url;
 }
 
-export function PageCover({ page, onUpdatePage }: PageCoverProps) {
+export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCoverProps) {
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [coverUrlInput, setCoverUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -198,4 +198,4 @@ export function PageCover({ page, onUpdatePage }: PageCoverProps) {
       )}
     </>
   );
-}
+});

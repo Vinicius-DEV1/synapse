@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { Page } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
 import { deriveMasterKey, decryptText } from '../../services/crypto';
@@ -9,7 +9,7 @@ interface PageUnlockFormProps {
   onUnlockSuccess: (decryptedContent: string) => void;
 }
 
-export function PageUnlockForm({ page, encryptedContent, onUnlockSuccess }: PageUnlockFormProps) {
+export const PageUnlockForm = memo(function PageUnlockForm({ page, encryptedContent, onUnlockSuccess }: PageUnlockFormProps) {
   const [unlockPassword, setUnlockPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,4 +66,5 @@ export function PageUnlockForm({ page, encryptedContent, onUnlockSuccess }: Page
       </button>
     </form>
   );
-}
+});
+

@@ -10,7 +10,20 @@ import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
 import { getEditorBackupMap } from '../editor/hooks/editorBackupStore';
 
-const pageContentCache = new Map<string, { content: string; encrypted_content: string | null }>();
+export interface PageContentData {
+  content: string;
+  encrypted_content: string | null;
+}
+
+const pageContentCache = new Map<string, PageContentData>();
+
+function getCachedPageContent(pageId: string): PageContentData | null {
+  const backup = getEditorBackupMap().get(pageId);
+  if (backup?.html) {
+    return { content: backup.html, encrypted_content: null };
+  }
+  return pageContentCache.get(pageId) || null;
+}
 
 interface PageViewProps {
   page: Page | null;
@@ -18,14 +31,27 @@ interface PageViewProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
   onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string | null>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  isActive?: boolean;
 }
 
-export default function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage }: PageViewProps) {
+export default function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage, isActive = true }: PageViewProps) {
   const { state, dispatch } = useStore();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [contentData, setContentData] = useState<{ content: string; encrypted_content: string | null } | null>(null);
-  const [contentPageId, setContentPageId] = useState<string | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [loadedData, setLoadedData] = useState<{ pageId: string; data: PageContentData } | null>(null);
+  const [unlockedPageId, setUnlockedPageId] = useState<string | null>(null);
+
+  const activePageId = page?.id || null;
+  const isLocked = Boolean(page?.is_locked);
+  const isUnlocked = !isLocked || (activePageId !== null && unlockedPageId === activePageId);
+
+  // SWR: Synchronously resolve cached content for active page to guarantee 0ms perceived latency
+  const contentData: PageContentData | null = useMemo(() => {
+    if (!activePageId) return null;
+    if (loadedData && loadedData.pageId === activePageId) {
+      return loadedData.data;
+    }
+    return getCachedPageContent(activePageId);
+  }, [activePageId, loadedData]);
 
   const childPages = useMemo(() => {
     if (!page) return [];
@@ -34,52 +60,34 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
       .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [page, state.pages]);
 
-  // SWR: Synchronously populate contentData if cached in-memory or in editor backup store
-  if (page?.id && page.id !== contentPageId) {
-    setContentPageId(page.id);
-    if (!page.is_locked) {
-      setIsUnlocked(true);
-      const backup = getEditorBackupMap().get(page.id);
-      const cached = pageContentCache.get(page.id);
-      if (backup?.html) {
-        setContentData({ content: backup.html, encrypted_content: null });
-      } else if (cached) {
-        setContentData(cached);
-      } else {
-        setContentData(null);
-      }
-    } else {
-      setContentData(null);
-      setIsUnlocked(false);
-    }
-  }
-
   useEffect(() => {
     let mounted = true;
 
     const fetchContent = (isBackground = false) => {
       if (!page?.id || !window.api?.getPageContent) return;
-      window.api.getPageContent(page.id).then((data: { content: string; encrypted_content: string | null }) => {
+      const targetPageId = page.id;
+
+      window.api.getPageContent(targetPageId).then((data: PageContentData) => {
         if (!mounted || !data) return;
-        pageContentCache.set(page.id, data);
+        pageContentCache.set(targetPageId, data);
         if (isBackground) {
-          setContentData((prev) => {
+          setLoadedData((prev) => {
             if (
               prev &&
-              prev.content === data.content &&
-              prev.encrypted_content === data.encrypted_content
+              prev.pageId === targetPageId &&
+              prev.data.content === data.content &&
+              prev.data.encrypted_content === data.encrypted_content
             ) {
               return prev;
             }
-            return data;
+            return { pageId: targetPageId, data };
           });
         } else {
-          setContentData(data);
-          if (!page.is_locked) setIsUnlocked(true);
+          setLoadedData({ pageId: targetPageId, data });
         }
       }).catch(err => {
         if (mounted) {
-          console.error(`[Caderno:PageView] Failed to load content for ${page.id}:`, err);
+          console.error(`[Caderno:PageView] Failed to load content for ${targetPageId}:`, err);
         }
       });
     };
@@ -104,7 +112,9 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
   const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => {
     if (page?.id) {
-      pageContentCache.set(page.id, { content, encrypted_content: null });
+      const data: PageContentData = { content, encrypted_content: null };
+      pageContentCache.set(page.id, data);
+      setLoadedData({ pageId: page.id, data });
       onUpdateContent(page.id, content, crdtState, embeddedSaves, senderInstanceId);
     }
   }, [page?.id, onUpdateContent]);
@@ -151,13 +161,17 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
              page={page} 
              encryptedContent={contentData.encrypted_content} 
              onUnlockSuccess={(decrypted) => {
-               if (decrypted) {
-                 setContentData((prev) => ({
-                   content: decrypted,
-                   encrypted_content: prev?.encrypted_content || null,
-                 }));
+               if (page?.id) {
+                 setUnlockedPageId(page.id);
+                 if (decrypted) {
+                   const newData: PageContentData = {
+                     content: decrypted,
+                     encrypted_content: contentData?.encrypted_content || null,
+                   };
+                   pageContentCache.set(page.id, newData);
+                   setLoadedData({ pageId: page.id, data: newData });
+                 }
                }
-               setIsUnlocked(true);
              }} 
            />
         ) : (
@@ -168,6 +182,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
             initialCrdtState={page.crdt_state}
             onSave={handleSave}
             onCreateLinkedPage={handleCreateLinked}
+            isActive={isActive}
           />
         )}
 
