@@ -12,9 +12,9 @@ import {
   Loader2,
   HardDrive
 } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../../../store/useStore';
 import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
+import { captureWebScrap } from '../../../services/scrap/scrap-service';
 import { platform } from '../../../services/platform';
 
 function formatBytes(bytes?: number | null): string {
@@ -57,7 +57,7 @@ export function ScrapWidgetNodeView(props: any) {
 
     try {
       if (platform.platform === 'desktop') {
-        const payload: any = await invoke('scrap_capture_page', { url });
+        const payload = await captureWebScrap(url);
         const saveResult = await encryptAndSaveScrap(payload.id, payload.html_content, payload.local_path, masterKey);
 
         updateAttributes({
@@ -78,11 +78,11 @@ export function ScrapWidgetNodeView(props: any) {
           error_reason: 'A captura completa está disponível no Desktop.'
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[ScrapWidget] Erro no retry de captura:', err);
       updateAttributes({
         status: 'error',
-        error_reason: err?.message || String(err) || 'Falha ao conectar à página.'
+        error_reason: err instanceof Error ? err.message : String(err) || 'Falha ao conectar à página.'
       });
     } finally {
       setIsRetrying(false);

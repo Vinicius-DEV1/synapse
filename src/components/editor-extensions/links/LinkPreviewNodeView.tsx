@@ -11,10 +11,10 @@ import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
 import { triggerToast } from '../../ui/ToastContext';
-import { invoke } from '@tauri-apps/api/core';
 import { StoreContext, getNotesKey, getStoreState } from '../../../store/useStore';
 import type { Action } from '../../../types';
 import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
+import { captureWebScrap } from '../../../services/scrap/scrap-service';
 import { platform } from '../../../services/platform';
 import { useLinkDuplicates } from './hooks/useLinkDuplicates';
 import LinkDuplicatesModal from './components/LinkDuplicatesModal';
@@ -292,7 +292,7 @@ export const LinkPreviewComponent = (props: any) => {
 
     try {
       if (platform.platform === 'desktop') {
-        const payload: any = await invoke('scrap_capture_page', { url });
+        const payload = await captureWebScrap(url);
         const saveResult = await encryptAndSaveScrap(
           payload.id,
           payload.html_content,
@@ -313,10 +313,11 @@ export const LinkPreviewComponent = (props: any) => {
         props.updateAttributes({ scrapStatus: 'error' });
         triggerToast('A captura completa de páginas está disponível no app Desktop.', 'error');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[LinkPreview] Erro na captura de scrap:', err);
       props.updateAttributes({ scrapStatus: 'error' });
-      triggerToast(err?.message || 'Falha ao salvar página offline.', 'error');
+      const msg = err instanceof Error ? err.message : String(err) || 'Falha ao salvar página offline.';
+      triggerToast(msg, 'error');
     }
   }, [url, masterKey, props]);
 
