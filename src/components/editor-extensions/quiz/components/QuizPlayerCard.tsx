@@ -1,6 +1,4 @@
-import { memo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { memo, useRef, useEffect } from 'react';
 import {
   Sparkles,
   Tag,
@@ -12,7 +10,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { preprocessMarkdownCode, markdownComponents } from '../utils/markdownPreprocess';
+import { FastMarkdown } from '../utils/markdownPreprocess';
 import QuizHistorySection from './QuizHistorySection';
 import { QuizOptionList } from './player/QuizOptionList';
 import { QuizExplanationPanel } from './player/QuizExplanationPanel';
@@ -40,6 +38,15 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
   onDiscussInChat,
 }: QuizPlayerCardProps) {
   const isOpen = q.type === 'open';
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el && isOpen) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, 68), 260)}px`;
+    }
+  }, [q.userTypedAnswer, isOpen]);
 
   const isWin = !isOpen
     ? q.answered && q.selectedIndex === q.correctIndex
@@ -59,7 +66,14 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
     <div
       tabIndex={0}
       onKeyDown={(e) => {
-        if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
+        const activeEl = document.activeElement;
+        const isInput =
+          activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+        const isGKey = e.key.toLowerCase() === 'g';
+        const hasOptionG = Boolean(!isOpen && optionsList.length > 6);
+
+        if ((isGKey && (e.altKey || e.ctrlKey)) || (isGKey && !isInput && !hasOptionG)) {
           e.preventDefault();
           e.stopPropagation();
           onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true);
@@ -125,12 +139,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
 
       {/* Enunciado */}
       <div className="text-xs md:text-sm text-white/95 font-medium leading-relaxed">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={markdownComponents}
-        >
-          {preprocessMarkdownCode(q.question || '')}
-        </ReactMarkdown>
+        <FastMarkdown content={q.question || ''} className="inline leading-relaxed" />
       </div>
 
       {/* Alternativas (Múltipla Escolha) */}
@@ -146,11 +155,14 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
       {isOpen && (
         <div className="space-y-3">
           <textarea
+            ref={textareaRef}
             value={q.userTypedAnswer || ''}
             disabled={q.answered || isEvaluating}
-            onChange={(e) =>
-              onUpdateSingleQuestion(q.id, { userTypedAnswer: e.target.value })
-            }
+            onChange={(e) => {
+              onUpdateSingleQuestion(q.id, { userTypedAnswer: e.target.value });
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 68), 260)}px`;
+            }}
             onKeyDown={(e) => {
               e.stopPropagation();
 
@@ -174,9 +186,9 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
                 }
               }
             }}
-            placeholder="Escreva sua resposta detalhada aqui... (Enter para enviar | Alt+G para Gabarito)"
-            className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-y min-h-[80px] leading-relaxed transition-colors disabled:opacity-75"
-            rows={3}
+            placeholder="Escreva sua resposta detalhada aqui... (Enter para enviar | Shift+Enter para nova linha | Alt+G para Gabarito)"
+            className="w-full bg-black/20 border border-white/[0.08] focus:border-brand-500/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none resize-none min-h-[68px] max-h-[260px] overflow-y-auto leading-relaxed transition-[border-color] disabled:opacity-75 break-words"
+            rows={2}
           />
 
           {!q.answered && (

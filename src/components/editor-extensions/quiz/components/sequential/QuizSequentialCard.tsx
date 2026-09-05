@@ -1,6 +1,4 @@
-import { memo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { memo, useRef, useEffect } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -11,7 +9,8 @@ import {
   X,
   MessageSquare,
 } from 'lucide-react';
-import { markdownComponents, preprocessMarkdownCode } from '../../utils/markdownPreprocess';
+import { FastMarkdown } from '../../utils/markdownPreprocess';
+import { playQuizTickSound } from '../../utils/quizSounds';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialCardProps {
@@ -35,129 +34,142 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
   onEvaluateOpenAnswer,
   onDiscussInChat,
 }: QuizSequentialCardProps) {
-  return (
-    <div className="p-4 md:p-6 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-4 shadow-xs relative">
-      {/* Header do Card (Tags, Feedback Verdict & Gabarito) */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/[0.05] pb-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-medium text-white/80 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.06]">
-            Questão {activeIndex + 1}
-          </span>
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Auto-expand textarea height based on content
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el && isOpenType) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, 56), 240)}px`;
+    }
+  }, [currentQ.userTypedAnswer, activeIndex, isOpenType]);
+
+  const hasMeta = Boolean(
+    (currentQ.tags && currentQ.tags.length > 0) ||
+      currentQ.answered ||
+      currentQ.explanation ||
+      (isOpenType && currentQ.expectedAnswer)
+  );
+
+  return (
+    <div className="p-4 sm:p-5 md:p-6 bg-white/[0.025] border border-white/[0.08] rounded-2xl space-y-4 shadow-sm relative backdrop-blur-xs">
+      {/* Header do Card (Tags, Feedback Verdict & Gabarito) — apenas se houver metadados */}
+      {hasMeta && (
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Tags */}
-          {currentQ.tags && currentQ.tags.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {currentQ.tags.map((tag) => (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {currentQ.tags && currentQ.tags.length > 0 &&
+              currentQ.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.05] text-dark-subtext"
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06] text-zinc-400 font-mono"
                 >
                   #{tag}
                 </span>
               ))}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* Status / Veredicto */}
-        <div className="flex items-center gap-2">
-          {currentQ.answered && (
-            <span
-              className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                currentQ.type === 'multiple_choice'
-                  ? currentQ.selectedIndex === currentQ.correctIndex
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : currentQ.aiFeedback?.verdict === 'Correto'
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                    : currentQ.aiFeedback?.verdict === 'Parcial'
-                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+          {/* Status / Veredicto e Gabarito */}
+          <div className="flex items-center gap-2 ml-auto">
+            {currentQ.answered && (
+              <span
+                className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                  currentQ.type === 'multiple_choice'
+                    ? currentQ.selectedIndex === currentQ.correctIndex
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                       : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-              }`}
-            >
-              {currentQ.type === 'multiple_choice' ? (
-                currentQ.selectedIndex === currentQ.correctIndex ? (
-                  <>
-                    <CheckCircle2 size={12} />
-                    <span>Correto</span>
-                  </>
+                    : currentQ.aiFeedback?.verdict === 'Correto'
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      : currentQ.aiFeedback?.verdict === 'Parcial'
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                }`}
+              >
+                {currentQ.type === 'multiple_choice' ? (
+                  currentQ.selectedIndex === currentQ.correctIndex ? (
+                    <>
+                      <CheckCircle2 size={13} />
+                      <span>Correto</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={13} />
+                      <span>Incorreto</span>
+                    </>
+                  )
                 ) : (
                   <>
-                    <XCircle size={12} />
-                    <span>Incorreto</span>
+                    <Sparkles size={13} />
+                    <span>{currentQ.aiFeedback?.verdict || 'Avaliada'}</span>
                   </>
-                )
-              ) : (
-                <>
-                  <Sparkles size={12} />
-                  <span>{currentQ.aiFeedback?.verdict || 'Avaliada'}</span>
-                </>
-              )}
-            </span>
-          )}
+                )}
+              </span>
+            )}
 
-          {/* Botão Ver Gabarito */}
-          {(currentQ.explanation || (currentQ.type === 'open' && currentQ.expectedAnswer)) && (
-            <button
-              onClick={() =>
-                onUpdateSingleQuestion(
-                  currentQ.id,
-                  { showExplanation: !currentQ.showExplanation },
-                  true
-                )
-              }
-              className={`px-2 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 ${
-                currentQ.showExplanation
-                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
-                  : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-dark-subtext hover:text-white'
-              }`}
-              title="Ver/ocultar explicação e gabarito (Alt+G)"
-            >
-              <HelpCircle size={13} />
-              <span className="text-[10px] hidden sm:inline">Gabarito</span>
-            </button>
-          )}
+            {/* Botão Ver Gabarito */}
+            {(currentQ.explanation || (currentQ.type === 'open' && currentQ.expectedAnswer)) && (
+              <button
+                onClick={() =>
+                  onUpdateSingleQuestion(
+                    currentQ.id,
+                    { showExplanation: !currentQ.showExplanation },
+                    true
+                  )
+                }
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentQ.showExplanation
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-zinc-400 hover:text-white'
+                }`}
+                title="Ver/ocultar explicação e gabarito (Alt+G)"
+              >
+                <HelpCircle size={13} />
+                <span className="hidden sm:inline">Gabarito</span>
+                <kbd className="text-[10px] font-mono opacity-60">Alt+G</kbd>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Enunciado */}
-      <div className="text-sm md:text-base font-medium text-white/95 leading-relaxed pt-1">
+      {/* Enunciado Hero com tipografia relaxada e legível */}
+      <div className="text-base sm:text-lg md:text-xl font-medium text-zinc-100 leading-relaxed tracking-tight select-text">
         {currentQ.question ? (
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {preprocessMarkdownCode(currentQ.question)}
-          </ReactMarkdown>
+          <FastMarkdown content={currentQ.question} className="inline leading-relaxed" />
         ) : (
-          <span className="italic text-dark-subtext">Questão sem enunciado cadastrado.</span>
+          <span className="italic text-zinc-500">Questão sem enunciado cadastrado.</span>
         )}
       </div>
 
-      {/* OPÇÕES: MÚLTIPLA ESCOLHA (Grid Clean) */}
+      {/* OPÇÕES: MÚLTIPLA ESCOLHA (Coluna Única Ergonômica - Padrão Typeform/Anki) */}
       {!isOpenType && currentQ.options && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+        <div className="flex flex-col gap-2.5 pt-1">
           {currentQ.options.map((opt, optIndex) => {
             const letter = String.fromCharCode(65 + optIndex);
             const isSelected = currentQ.selectedIndex === optIndex;
             const isCorrect = optIndex === currentQ.correctIndex;
+            const optText = opt || `Opção ${letter}`;
 
             let style =
-              'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.15] text-white/90 hover:bg-white/[0.05]';
-            let badgeStyle = 'border-white/[0.06] bg-white/[0.04] text-white/70';
+              'bg-white/[0.025] border-white/[0.07] hover:border-white/[0.18] text-zinc-200 hover:text-white hover:bg-white/[0.05] active:scale-[0.995]';
+            let badgeStyle = 'border-white/[0.08] bg-white/[0.05] text-zinc-300 group-hover:scale-105';
 
             if (currentQ.answered) {
               if (isCorrect) {
                 style =
-                  'bg-emerald-500/10 border-emerald-500/30 text-emerald-100 font-medium';
-                badgeStyle = 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300';
+                  'bg-emerald-500/10 border-emerald-500/35 text-emerald-100 font-medium scale-[1.005] shadow-[0_0_20px_rgba(16,185,129,0.12)] ring-1 ring-emerald-500/25';
+                badgeStyle = 'border-emerald-500/50 bg-emerald-500/25 text-emerald-300 scale-105';
               } else if (isSelected && !isCorrect) {
                 style =
-                  'bg-rose-500/10 border-rose-500/30 text-rose-200 line-through opacity-80';
-                badgeStyle = 'border-rose-500/40 bg-rose-500/20 text-rose-300';
+                  'bg-rose-500/10 border-rose-500/35 text-rose-200 line-through opacity-80';
+                badgeStyle = 'border-rose-500/50 bg-rose-500/25 text-rose-300';
               } else {
-                style = 'bg-black/10 border-white/[0.03] text-dark-subtext opacity-40';
-                badgeStyle = 'border-white/[0.04] bg-white/[0.02] text-dark-subtext';
+                style = 'bg-black/10 border-white/[0.03] text-zinc-500 opacity-40';
+                badgeStyle = 'border-white/[0.04] bg-white/[0.02] text-zinc-600';
               }
             } else if (isSelected) {
-              style = 'bg-brand-500/15 border-brand-500/30 text-white font-medium';
+              style = 'bg-brand-500/15 border-brand-500/35 text-white font-medium ring-1 ring-brand-500/30';
               badgeStyle = 'border-brand-500/50 bg-brand-500/30 text-brand-200';
             }
 
@@ -165,24 +177,25 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
               <button
                 key={optIndex}
                 onClick={() => onSelectOption(optIndex)}
+                onPointerEnter={() => {
+                  if (!currentQ.answered) playQuizTickSound();
+                }}
                 disabled={currentQ.answered}
-                className={`p-3 md:p-3.5 rounded-xl border text-xs md:text-sm text-left flex items-center gap-2.5 transition-all cursor-pointer disabled:cursor-default ${style}`}
+                className={`group py-3 px-3.5 sm:py-3.5 sm:px-4.5 rounded-xl border text-sm sm:text-base text-left flex items-start gap-3.5 transition-all duration-150 ease-out cursor-pointer disabled:cursor-default ${style}`}
               >
                 <span
-                  className={`w-6 h-6 rounded-md flex items-center justify-center font-mono font-medium text-xs shrink-0 border ${badgeStyle}`}
+                  className={`w-7 h-7 mt-0.5 rounded-lg flex items-center justify-center font-mono font-semibold text-xs shrink-0 border transition-all duration-150 ease-out ${badgeStyle}`}
                 >
                   {letter}
                 </span>
-                <span className="flex-1 leading-snug">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {preprocessMarkdownCode(opt || `Opção ${letter}`)}
-                  </ReactMarkdown>
+                <span className="flex-1 leading-relaxed pt-0.5 text-zinc-200">
+                  <FastMarkdown content={optText} className="inline leading-relaxed" />
                 </span>
                 {currentQ.answered && isCorrect && (
-                  <Check size={16} className="text-emerald-400 shrink-0" />
+                  <Check size={16} className="text-emerald-400 shrink-0 mt-1" />
                 )}
                 {currentQ.answered && isSelected && !isCorrect && (
-                  <X size={16} className="text-rose-400 shrink-0" />
+                  <X size={16} className="text-rose-400 shrink-0 mt-1" />
                 )}
               </button>
             );
@@ -193,17 +206,31 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
       {/* OPÇÕES: QUESTÃO ABERTA */}
       {isOpenType && (
         <div className="space-y-3 pt-1">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-dark-subtext flex items-center justify-between">
+          <div className="space-y-1.5">
+            <label className="text-xs sm:text-sm font-medium text-zinc-400 flex items-center justify-between">
               <span>✍️ Sua Resposta Discursiva:</span>
-              <span className="text-[10px] opacity-70">Pressione Enter para enviar para avaliação</span>
+              <span className="text-[11px] opacity-70">Pressione Enter para enviar (Shift+Enter para nova linha)</span>
             </label>
             <textarea
+              ref={textareaRef}
               value={currentQ.userTypedAnswer || ''}
-              onChange={(e) =>
-                onUpdateSingleQuestion(currentQ.id, { userTypedAnswer: e.target.value })
-              }
+              onChange={(e) => {
+                onUpdateSingleQuestion(currentQ.id, { userTypedAnswer: e.target.value });
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(Math.max(e.target.scrollHeight, 72), 260)}px`;
+              }}
               onKeyDown={(e) => {
+                if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onUpdateSingleQuestion(
+                    currentQ.id,
+                    { showExplanation: !currentQ.showExplanation },
+                    true
+                  );
+                  return;
+                }
+
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   if (currentQ.userTypedAnswer?.trim() && !currentQ.answered && !isEvaluating) {
@@ -212,9 +239,9 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                 }
               }}
               disabled={currentQ.answered || isEvaluating}
-              placeholder="Escreva sua resposta completa com clareza..."
-              rows={3}
-              className="w-full bg-black/20 border border-white/[0.08] rounded-xl p-3 text-xs md:text-sm text-white placeholder-white/20 outline-none focus:border-brand-500/50 resize-none transition-colors"
+              placeholder="Escreva sua resposta completa com clareza... (Shift+Enter para nova linha)"
+              rows={2}
+              className="w-full bg-black/30 border border-white/[0.09] rounded-xl p-3.5 sm:p-4 text-sm sm:text-base text-zinc-100 placeholder-zinc-500 outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 resize-none min-h-[72px] max-h-[260px] overflow-y-auto leading-relaxed transition-[border-color] break-words shadow-inner"
             />
           </div>
 
@@ -222,16 +249,16 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
             <button
               onClick={() => onEvaluateOpenAnswer(currentQ, activeIndex)}
               disabled={!currentQ.userTypedAnswer?.trim() || isEvaluating}
-              className="w-full py-2.5 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 disabled:opacity-40 text-brand-200 hover:text-white rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
+              className="w-full py-2.5 sm:py-3 px-4 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/35 disabled:opacity-40 text-brand-200 hover:text-white rounded-xl font-semibold text-xs sm:text-sm transition-all duration-150 flex items-center justify-center gap-2 shadow-xs active:scale-[0.99] cursor-pointer"
             >
               {isEvaluating ? (
                 <>
-                  <Loader2 size={15} className="animate-spin text-brand-300" />
+                  <Loader2 size={16} className="animate-spin text-brand-300" />
                   <span>Avaliando com IA do Gemini...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles size={14} className="text-brand-300" />
+                  <Sparkles size={15} className="text-brand-300" />
                   <span>Enviar Resposta para Avaliação IA</span>
                 </>
               )}
@@ -241,7 +268,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
           {/* Parecer da IA */}
           {currentQ.answered && currentQ.aiFeedback && (
             <div
-              className={`p-3 rounded-xl border text-xs space-y-1.5 leading-relaxed ${
+              className={`p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm space-y-2 leading-relaxed ${
                 currentQ.aiFeedback.verdict === 'Correto'
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
                   : currentQ.aiFeedback.verdict === 'Parcial'
@@ -251,18 +278,18 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
             >
               <div className="flex items-center justify-between font-medium">
                 <span className="flex items-center gap-1.5">
-                  <Sparkles size={13} />
+                  <Sparkles size={14} />
                   <span>Avaliação: {currentQ.aiFeedback.verdict}</span>
                 </span>
-                <span className="text-[10px] opacity-70 font-normal">Gemini AI</span>
+                <span className="text-[11px] opacity-70 font-normal">Gemini AI</span>
               </div>
-              <p className="leading-relaxed opacity-95">{currentQ.aiFeedback.feedback}</p>
-              <div className="pt-1.5 border-t border-white/[0.06] flex justify-end">
+              <p className="leading-relaxed opacity-95 text-xs sm:text-sm">{currentQ.aiFeedback.feedback}</p>
+              <div className="pt-2 border-t border-white/[0.06] flex justify-end">
                 <button
                   onClick={() => onDiscussInChat(currentQ, activeIndex)}
-                  className="text-[10px] font-medium text-dark-subtext hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors flex items-center gap-1"
+                  className="text-xs font-medium text-zinc-300 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <MessageSquare size={11} />
+                  <MessageSquare size={12} />
                   <span>Discutir com Assistente IA</span>
                 </button>
               </div>
@@ -271,32 +298,40 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
         </div>
       )}
 
-      {/* Caixa de Explicação / Gabarito Comentado */}
-      {currentQ.showExplanation &&
-        (currentQ.explanation || (isOpenType && currentQ.expectedAnswer)) && (
-          <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] text-xs text-white/90 space-y-2">
+      {/* Caixa de Explicação / Gabarito Comentado (Accordion Suave) */}
+      <div
+        className={`grid transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
+          currentQ.showExplanation &&
+          (currentQ.explanation || (isOpenType && currentQ.expectedAnswer))
+            ? 'grid-rows-[1fr] opacity-100 mt-3'
+            : 'grid-rows-[0fr] opacity-0 mt-0'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="p-4 sm:p-5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs sm:text-sm text-zinc-200 space-y-3 shadow-inner">
             {isOpenType && currentQ.expectedAnswer && (
-              <div className="space-y-0.5">
-                <span className="font-semibold text-amber-300/90 text-[10px] uppercase tracking-wider block">
-                  📌 Gabarito de Referência:
+              <div className="space-y-1.5">
+                <span className="font-semibold text-amber-300/90 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 rounded-full bg-amber-400"></span>
+                  Gabarito de Referência:
                 </span>
-                <p className="leading-relaxed opacity-90">{currentQ.expectedAnswer}</p>
+                <p className="leading-relaxed opacity-95 text-xs sm:text-sm">{currentQ.expectedAnswer}</p>
               </div>
             )}
             {currentQ.explanation && (
-              <div className="space-y-0.5">
-                <span className="font-semibold text-white/60 text-[10px] uppercase tracking-wider block">
-                  💡 Explicação Detalhada:
+              <div className="space-y-1.5">
+                <span className="font-semibold text-zinc-400 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 rounded-full bg-white/40"></span>
+                  Explicação Detalhada:
                 </span>
-                <div className="text-xs text-white/90">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {preprocessMarkdownCode(currentQ.explanation)}
-                  </ReactMarkdown>
+                <div className="text-xs sm:text-sm text-zinc-200 leading-relaxed">
+                  <FastMarkdown content={currentQ.explanation} className="text-xs sm:text-sm text-zinc-200 leading-relaxed inline" />
                 </div>
               </div>
             )}
           </div>
-        )}
+        </div>
+      </div>
     </div>
   );
 });
