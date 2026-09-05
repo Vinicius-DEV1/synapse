@@ -1,6 +1,33 @@
-import type { Components } from 'react-markdown';
+import { memo } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Code, Copy } from 'lucide-react';
 import { ScrollablePre } from '../../../../utils/scroll-forwarding';
+
+const MARKDOWN_SYNTAX_REGEX = /[`*_~\[\]#$<\\]|\n/;
+
+export function isPlainMarkdownText(text: string): boolean {
+  if (!text) return true;
+  return !MARKDOWN_SYNTAX_REGEX.test(text);
+}
+
+export const FastMarkdown = memo(function FastMarkdown({
+  content,
+  className = 'inline leading-relaxed',
+}: {
+  content?: string | null;
+  className?: string;
+}) {
+  if (!content) return null;
+  if (isPlainMarkdownText(content)) {
+    return <span className={className}>{content}</span>;
+  }
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      {preprocessMarkdownCode(content)}
+    </ReactMarkdown>
+  );
+});
 
 export const preprocessMarkdownCode = (text: string): string => {
   if (!text) return '';
