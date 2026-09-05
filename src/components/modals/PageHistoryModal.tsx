@@ -127,7 +127,9 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
               <div className="max-w-3xl mx-auto px-6 py-10 sm:px-12 sm:py-16">
                 <div className="mb-8 pb-4 border-b border-white/5 flex items-center justify-between">
                   <div>
-                    <h3 className="text-2xl font-bold text-white tracking-tight">{currentEntry.title}</h3>
+                    <h3 className="text-2xl font-bold text-white tracking-tight">
+                      {selectedIndex === 0 ? 'Versão Atual' : `Revisão ${history.length - selectedIndex}`}
+                    </h3>
                     <p className="text-xs text-zinc-500 font-mono mt-1">
                       Visualizando {selectedIndex === 0 ? 'versão atual' : `revisão salva em ${formatDateTimeWithSeconds(currentEntry.created_at)}`}
                     </p>
