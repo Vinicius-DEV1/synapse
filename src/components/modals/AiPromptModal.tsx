@@ -5,6 +5,7 @@ import { Portal } from '../ui/Portal';
 import { AiChatMarkdown } from '../ai-sidebar/AiChatMarkdown';
 import type { AiChatMessage, AiChatMessagePart } from '../../types/store';
 import { parseSearchReplaceBlocks, applySearchReplace, generateDiffHtml } from '../editor-extensions/hooks/blockDiffEngine';
+import { stripMarkdownBlockquotes } from '../editor-extensions/hooks/editorMarkdownHelper';
 
 export type { AiChatMessage, AiChatMessagePart };
 
@@ -209,6 +210,15 @@ export default function AiPromptModal({
         } else if (proposedTitle) {
           cleanText = text.replace(/^(?:Título|Titulo|Title):\s*.+$/m, '').trim();
         }
+
+        // Strip leading quote markers (> or >>> ) to prevent redundant nested containers
+        cleanText = stripMarkdownBlockquotes(cleanText);
+
+        // If title was extracted, strip redundant title declaration line from cleanText
+        if (proposedTitle) {
+          cleanText = cleanText.replace(/^(?:Título|Titulo|Title):\s*.+\n?/im, '').trim();
+        }
+
         if (origContent && cleanText !== origContent) {
           diffHtml = generateDiffHtml(origContent, cleanText);
         }

@@ -158,6 +158,32 @@ describe('useBlockAiModal Hook', () => {
     );
   });
 
+  it('replaces content inside blockquote stripping any leading quote markers and preventing nested blockquotes', () => {
+    const { result } = renderHook(() =>
+      useBlockAiModal({
+        editor: mockEditor,
+        node: mockNode,
+        getPos: mockGetPos,
+        updateAttributes: mockUpdateAttributes,
+        blockType: 'blockquote',
+      })
+    );
+
+    act(() => {
+      result.current.handleApplyReplacement('> 🧩 **O que é POO?**\n> \n> A Programação Orientada a Objetos...');
+    });
+
+    expect(mockInsertContentAt).toHaveBeenCalledWith(
+      6,
+      expect.not.stringContaining('<blockquote>')
+    );
+    expect(mockInsertContentAt).toHaveBeenCalledWith(
+      6,
+      expect.stringContaining('<strong>O que é POO?</strong>')
+    );
+  });
+
+
   it('replaces code content inside code block atomically', () => {
     mockNode.attrs.language = 'auto';
     const { result } = renderHook(() =>

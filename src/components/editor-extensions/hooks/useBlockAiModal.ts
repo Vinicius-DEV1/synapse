@@ -6,7 +6,7 @@ import { StoreContext, getStoreState, getStoreDispatch } from '../../../store/us
 import { triggerToast } from '../../ui/ToastContext';
 import type { AiChatMessage } from '../../modals/AiPromptModal';
 import { buildCodeBlockRules, buildCodeBlockSystemInstruction } from './codeBlockSyntaxHelper';
-import { markdownToHtml } from './editorMarkdownHelper';
+import { markdownToHtml, stripMarkdownBlockquotes } from './editorMarkdownHelper';
 import { parseSearchReplaceBlocks, applySearchReplace, computeMinimalDiffRange } from './blockDiffEngine';
 
 export type BlockAiType = 'blockquoteToggle' | 'toggleBlock' | 'codeBlock' | 'blockquote';
@@ -124,7 +124,8 @@ ${bodyText}
 REGRAS E LIMITES MANDATÓRIOS:
 1. Você é o assistente de IA encarregado EXCLUSIVAMENTE deste bloco de Callout (Destaque).
 2. O seu universo de atuação e modificação é RESTRITO a este bloco específico. NUNCA tente editar, remover ou adicionar conteúdo fora deste bloco, a menos que o usuário solicite explicitamente contexto adicional.
-3. Ao sugerir alterações no conteúdo do callout, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`.`;
+3. Ao sugerir alterações no conteúdo do callout, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`.
+4. REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste bloco de Callout. NUNCA utilize prefixos de citação (como '> ') e NUNCA crie outro callout, citação ou toggle aninhado. Escreva diretamente o texto formatado (parágrafos, listas, títulos, etc.).`;
     }
 
     const isCallout = blockType === 'blockquoteToggle';
@@ -154,7 +155,8 @@ ${bodyText}
 REGRAS E LIMITES MANDATÓRIOS:
 1. Você é o assistente de IA encarregado EXCLUSIVAMENTE deste bloco de ${typeLabel}.
 2. O seu universo de atuação e modificação é RESTRITO a este bloco específico. NUNCA tente editar, remover ou adicionar conteúdo fora deste bloco, a menos que o usuário solicite explicitamente contexto adicional.
-3. Ao sugerir alterações no conteúdo do toggle, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique claramente na primeira linha: "Título: [Novo Título]".`;
+3. Ao sugerir alterações no conteúdo do toggle, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique claramente na primeira linha: "Título: [Novo Título]".
+4. REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste bloco. NUNCA utilize prefixos de citação (como '> ') e NUNCA crie outro toggle ou callout aninhado dentro dele. Escreva diretamente o texto formatado (parágrafos, listas, títulos, etc.).`;
   }, [blockType, node, editor]);
 
   const getRawBlockContent = useCallback((): string => {
@@ -193,14 +195,20 @@ Ou, se apropriado, pode emitir a versão completa revisada do bloco.`;
     }
 
     if (blockType === 'blockquote') {
-      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`.\n${surgicalGuidance}`;
+      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
+REGRA ANTI-ANINHAMENTO: Você já está DENTRO do callout. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
+Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`.\n${surgicalGuidance}`;
     }
 
     if (blockType === 'blockquoteToggle') {
-      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
+      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
+REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste toggle. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
+Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
     }
 
-    return `Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
+    return `Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
+REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste toggle. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
+Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
   }, [blockType, node.attrs.language]);
 
   // Apply replacement strictly bounded to this block node
@@ -282,12 +290,15 @@ Ou, se apropriado, pode emitir a versão completa revisada do bloco.`;
         }
       }
 
+      // Ensure blockquote markers are stripped so no nested callouts/toggles are created
+      cleanContent = stripMarkdownBlockquotes(cleanContent);
+
       if (newTitle !== undefined && newTitle !== node.attrs.title) {
         updateAttributes({ title: newTitle });
       }
 
       // Convert markdown to semantic HTML so TipTap creates rich formatted nodes (bold, lists, headings)
-      const htmlContent = markdownToHtml(cleanContent);
+      const htmlContent = markdownToHtml(cleanContent, { unwrapBlockquotes: true });
 
       // Replace inner content strictly between pos + 1 and pos + node.nodeSize - 1
       editor
@@ -342,9 +353,10 @@ Ou, se apropriado, pode emitir a versão completa revisada do bloco.`;
       if (mdMatch) {
         cleanContent = mdMatch[1].trim();
       }
+      cleanContent = stripMarkdownBlockquotes(cleanContent);
 
       const endPos = pos + node.nodeSize - 1;
-      const htmlContent = markdownToHtml(cleanContent);
+      const htmlContent = markdownToHtml(cleanContent, { unwrapBlockquotes: true });
       editor.chain().focus().insertContentAt(endPos, htmlContent).run();
       triggerToast(
         blockType === 'blockquote'
