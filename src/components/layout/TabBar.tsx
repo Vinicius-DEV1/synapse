@@ -11,6 +11,7 @@ import { triggerHaptic } from '../../services/haptics';
 import { isDesktopApp } from '../../services/platform';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { getSettings } from '../../utils/settings';
 
 interface TabItemProps {
   tab: Tab;
@@ -22,6 +23,7 @@ interface TabItemProps {
   onDropTab: (sourceIndex: number, targetIndex: number) => void;
   tabCount: number;
   onContextMenu: (e: React.MouseEvent, tab: Tab) => void;
+  compactPinnedTabs?: boolean;
 }
 
 const TabItem = memo(function TabItem({
@@ -33,6 +35,7 @@ const TabItem = memo(function TabItem({
   onClose,
   tabCount,
   onContextMenu,
+  compactPinnedTabs,
 }: TabItemProps) {
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
@@ -81,9 +84,13 @@ const TabItem = memo(function TabItem({
         e.stopPropagation();
         onContextMenu(e, tab);
       }}
-      className={`group relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-xl ${
-        tab.isPinned ? 'min-w-[90px] max-w-[160px]' : 'min-w-[120px] max-w-[200px]'
-      } h-[38px] transition-all ${
+      className={`group relative flex items-center px-3 py-2 text-xs font-medium rounded-t-xl transition-all duration-300 ease-out overflow-hidden ${
+        tab.isPinned 
+          ? compactPinnedTabs 
+            ? 'w-[42px] min-w-[42px] max-w-[42px] hover:w-[140px] hover:max-w-[160px] !px-0 justify-center hover:!px-3 hover:justify-start gap-0 hover:gap-1.5' 
+            : 'min-w-[90px] max-w-[160px] gap-1.5'
+          : 'min-w-[120px] max-w-[200px] gap-1.5'
+      } h-[38px] ${
         isOver ? 'ring-1 ring-brand-500' : ''
       } ${
         isActive
@@ -92,10 +99,12 @@ const TabItem = memo(function TabItem({
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {icon}
-      <span className="truncate flex-1 text-left">{title}</span>
+      <span className={`truncate flex-1 text-left transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 opacity-0 group-hover:w-auto group-hover:opacity-100' : ''}`}>
+        {title}
+      </span>
       {tab.isPinned ? (
         <span
-          className="p-0.5 rounded-md text-brand-400 flex-shrink-0"
+          className={`p-0.5 rounded-md text-brand-400 flex-shrink-0 transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 opacity-0 group-hover:w-auto group-hover:opacity-100' : ''}`}
           title="Aba fixada"
         >
           <Pin size={11} className="fill-brand-400/20 rotate-45" />
@@ -130,6 +139,13 @@ export default function TabBar() {
   } | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [compactPinnedTabs, setCompactPinnedTabs] = useState(() => getSettings().compactPinnedTabs);
+
+  useEffect(() => {
+    const handler = () => setCompactPinnedTabs(getSettings().compactPinnedTabs);
+    window.addEventListener('app-settings-changed', handler);
+    return () => window.removeEventListener('app-settings-changed', handler);
+  }, []);
 
   const checkScroll = useCallback(() => {
     const el = tabStripRef.current;
@@ -384,6 +400,7 @@ export default function TabBar() {
                     onDropTab={handleDropTab}
                     tabCount={state.tabs.length}
                     onContextMenu={handleTabContextMenu}
+                    compactPinnedTabs={compactPinnedTabs}
                   />
                   {isLastPinned && index < state.tabs.length - 1 && (
                     <div className="h-5 w-px bg-white/10 mx-1 mb-2 self-center flex-shrink-0" />
