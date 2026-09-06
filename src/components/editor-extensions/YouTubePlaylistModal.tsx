@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, PlayCircle, Loader2, CheckCircle2, Circle, RefreshCw } from 'lucide-react';
+import { X, PlayCircle, Loader2, CheckCircle2, Circle, RefreshCw, Lock } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { formatDuration } from '../../utils/format';
+import {
+  isMembersOnlyVideo,
+  formatVideoReleaseDate,
+  type YouTubeVideoItem,
+} from './youtube/youtubePlaylistHelper';
 
 interface YouTubePlaylistModalProps {
   url: string;
@@ -9,14 +14,33 @@ interface YouTubePlaylistModalProps {
   onClose: () => void;
 }
 
+interface YouTubePlaylistData {
+  _type?: string;
+  title?: string;
+  uploader?: string;
+  entries?: YouTubeVideoItem[];
+  _error?: string;
+  [key: string]: unknown;
+}
+
 // In-memory cache preventing duplicate fetches for loaded playlists
-const playlistCache = new Map<string, any>();
+const playlistCache = new Map<string, YouTubePlaylistData>();
 
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
   const [loading, setLoading] = useState(!playlistCache.has(url));
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [playlist, setPlaylist] = useState<any>(playlistCache.get(url) || null);
+  const [playlist, setPlaylist] = useState<YouTubePlaylistData | null>(playlistCache.get(url) || null);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     loadPlaylist();
@@ -26,18 +50,20 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
     try {
       if (!force && playlistCache.has(url)) {
         const cached = playlistCache.get(url);
-        setPlaylist(cached);
-        setLoading(false);
+        if (cached) {
+          setPlaylist(cached);
+          setLoading(false);
 
-        // Update watched status asynchronously in background
-        if (cached?.entries?.length && window.api?.youtube?.getWatched) {
-          const videoIds = cached.entries.map((e: any) => e.id).filter(Boolean);
-          if (videoIds.length > 0) {
-            const watchedIds = await window.api.youtube.getWatched(videoIds);
-            setWatchedSet(new Set(watchedIds));
+          // Update watched status asynchronously in background
+          if (cached.entries?.length && window.api?.youtube?.getWatched) {
+            const videoIds = cached.entries.map((e: YouTubeVideoItem) => e.id).filter(Boolean);
+            if (videoIds.length > 0) {
+              const watchedIds = await window.api.youtube.getWatched(videoIds);
+              setWatchedSet(new Set(watchedIds));
+            }
           }
+          return;
         }
-        return;
       }
 
       if (force) {
@@ -161,10 +187,12 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
             </div>
           ) : (
             <div className="flex flex-col gap-1.5 p-2">
-              {playlist.entries.map((video: any, idx: number) => {
+              {playlist.entries.map((video: YouTubeVideoItem, idx: number) => {
                 const isWatched = watchedSet.has(video.id);
                 const videoUrl = `https://youtube.com/watch?v=${video.id}`;
-                
+                const isMembers = isMembersOnlyVideo(video);
+                const releaseDate = formatVideoReleaseDate(video.timestamp, video.upload_date);
+
                 return (
                   <div 
                     key={video.id}
@@ -174,14 +202,31 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                       {idx + 1}
                     </div>
 
-                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="relative w-28 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 shadow-sm group-hover:shadow-md transition-all group-hover:ring-1 group-hover:ring-brand-500/30">
-                      <img src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`} className={`w-full h-full object-cover transition-all duration-500 ${isWatched ? 'opacity-40 grayscale' : 'opacity-90 group-hover:opacity-100 group-hover:scale-105'}`} alt={video.title} />
-                      {video.duration && (
+                    <a
+                      href={videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative w-28 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 shadow-sm group-hover:shadow-md transition-all group-hover:ring-1 group-hover:ring-brand-500/30"
+                    >
+                      <img
+                        src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+                        className={`w-full h-full object-cover transition-all duration-500 ${
+                          isWatched ? 'opacity-40 grayscale' : 'opacity-90 group-hover:opacity-100 group-hover:scale-105'
+                        }`}
+                        alt={video.title}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      {video.duration ? (
                         <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-sm text-white px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wider">
                           {formatDuration(video.duration)}
                         </div>
-                      )}
-                      <div className={`absolute inset-0 bg-brand-500/20 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300 ${isWatched ? 'opacity-100' : 'opacity-0'}`}>
+                      ) : null}
+                      <div
+                        className={`absolute inset-0 bg-brand-500/20 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-300 ${
+                          isWatched ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      >
                         <CheckCircle2 size={16} className="text-white drop-shadow-md" />
                       </div>
                     </a>
@@ -197,9 +242,24 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                       >
                         {video.title || 'Vídeo sem título'}
                       </a>
-                      <span className="text-[11px] text-white/40 truncate mt-1 font-medium">
-                        {video.uploader || video.channel || ''}
-                      </span>
+                      <div className="flex items-center gap-2 text-[11px] text-white/40 truncate mt-1 font-medium">
+                        <span className="truncate">{video.uploader || video.channel || ''}</span>
+                        {releaseDate ? (
+                          <>
+                            <span className="text-white/20 select-none">•</span>
+                            <span className="text-white/50 shrink-0 font-mono text-[10.5px]">{releaseDate}</span>
+                          </>
+                        ) : null}
+                        {isMembers ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[10px] font-medium shrink-0 shadow-sm"
+                            title="Vídeo exclusivo para membros"
+                          >
+                            <Lock size={10} className="stroke-[2.5]" />
+                            <span>Membros</span>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     <button 

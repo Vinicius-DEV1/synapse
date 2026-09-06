@@ -87,28 +87,44 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         throw new Error(itemsData.error?.message || 'Falha ao buscar vídeos da playlist.');
       }
       
-      const entries: { id: string; title: string; uploader: string; duration: number | null; upload_date?: string | null }[] = [];
+      const entries: {
+        id: string;
+        title: string;
+        uploader: string;
+        duration: number | null;
+        upload_date?: string | null;
+        timestamp?: number | null;
+        availability?: string | null;
+      }[] = [];
       for (const item of itemsData.items || []) {
         if (item.snippet.title === 'Private video' || item.snippet.title === 'Deleted video') continue;
+        const pubAt = item.snippet.publishedAt;
         entries.push({
           id: item.contentDetails.videoId,
           title: item.snippet.title,
           uploader: item.snippet.videoOwnerChannelTitle || '',
           duration: null,
-          upload_date: item.snippet.publishedAt ? item.snippet.publishedAt.split('T')[0].replace(/-/g, '') : null,
+          upload_date: pubAt ? pubAt.split('T')[0].replace(/-/g, '') : null,
+          timestamp: pubAt ? Math.floor(new Date(pubAt).getTime() / 1000) : null,
+          availability: null,
         });
       }
 
-      // Fetch durations in batch
+      // Fetch durations and status in batch
       if (entries.length > 0) {
         const videoIds = entries.map(e => e.id).join(',');
-        const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${apiKey}`);
+        const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,status&id=${videoIds}&key=${apiKey}`);
         if (vidRes.ok) {
           const vidData = await vidRes.json();
           for (const v of vidData.items || []) {
             const entry = entries.find(e => e.id === v.id);
             if (entry) {
-              entry.duration = parseISO8601Duration(v.contentDetails.duration);
+              if (v.contentDetails?.duration) {
+                entry.duration = parseISO8601Duration(v.contentDetails.duration);
+              }
+              if (v.status?.privacyStatus === 'private') {
+                entry.availability = 'subscriber_only';
+              }
             }
           }
         }
