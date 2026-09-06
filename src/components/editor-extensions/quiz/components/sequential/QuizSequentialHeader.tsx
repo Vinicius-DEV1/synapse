@@ -1,4 +1,5 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { MoreHorizontal, Edit2, Trash2, Sparkles, AlertCircle } from 'lucide-react';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
@@ -9,6 +10,9 @@ interface QuizSequentialHeaderProps {
   answeredCount: number;
   correctCount: number;
   onSelectIndex: (index: number) => void;
+  onDeleteQuestion?: (qId: string, index: number) => void;
+  onOpenAiAssistant?: () => void;
+  onEditQuestion?: () => void;
 }
 
 export const QuizSequentialHeader = memo(function QuizSequentialHeader({
@@ -19,9 +23,26 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   answeredCount,
   correctCount,
   onSelectIndex,
+  onDeleteQuestion,
+  onOpenAiAssistant,
+  onEditQuestion,
 }: QuizSequentialHeaderProps) {
   const activeBtnRef = useRef<HTMLButtonElement | null>(null);
   const stepperContainerRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
 
   // Purely horizontal container scroll, NEVER affecting the parent window or vertical page scroll
   // Wrapped in requestAnimationFrame to eliminate forced reflow / layout thrashing
@@ -132,6 +153,63 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
             {correctCount} {correctCount === 1 ? 'acerto' : 'acertos'}
           </span>
         )}
+
+        {/* Menu da Questão Atual */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu((prev) => !prev)}
+            className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] text-dark-subtext hover:text-white border border-white/[0.06] transition-colors flex items-center justify-center ml-1"
+            title="Opções da questão atual"
+          >
+            <MoreHorizontal size={14} />
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-fade-in text-xs">
+              <div className="px-3 py-1.5 text-[10px] font-medium text-dark-subtext uppercase tracking-wider border-b border-white/[0.04] mb-1">
+                Ações da Questão
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  if (onEditQuestion) onEditQuestion();
+                }}
+                className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <Edit2 size={13} className="text-zinc-400" />
+                <span>Editar Questão</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  if (onOpenAiAssistant) onOpenAiAssistant();
+                }}
+                className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-zinc-300 hover:text-white hover:bg-brand-500/10 transition-colors group"
+              >
+                <Sparkles size={13} className="text-brand-400 group-hover:animate-pulse" />
+                <span className="text-brand-200">Editar com IA</span>
+              </button>
+
+              <div className="h-px bg-white/[0.04] my-1" />
+
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  const currentQ = safeQuestions[activeIndex];
+                  if (currentQ && onDeleteQuestion) {
+                    onDeleteQuestion(currentQ.id, activeIndex);
+                  }
+                }}
+                className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-rose-300 hover:text-white hover:bg-rose-500/10 transition-colors"
+              >
+                <Trash2 size={13} className="text-rose-400" />
+                <span>Excluir Questão</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
