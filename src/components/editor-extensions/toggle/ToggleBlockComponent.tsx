@@ -1,10 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown, FileText, Copy, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown, FileText, Copy, Trash2, Sparkles } from 'lucide-react';
 import { DOMSerializer } from 'prosemirror-model';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { convertToggleNodeToPage } from './togglePageConverter';
+import { useBlockAiModal } from '../hooks/useBlockAiModal';
+import AiPromptModal from '../../modals/AiPromptModal';
 
 export const ToggleBlockComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;
@@ -12,6 +14,14 @@ export const ToggleBlockComponent = (props: any) => {
   const [copied, setCopied] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const aiModal = useBlockAiModal({
+    editor: props.editor,
+    node: props.node,
+    getPos: props.getPos,
+    updateAttributes: props.updateAttributes,
+    blockType: 'toggleBlock',
+  });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -207,6 +217,15 @@ export const ToggleBlockComponent = (props: any) => {
             )}
           </div>
 
+          <button
+            ref={aiModal.aiButtonRef}
+            onClick={aiModal.handleOpenAi}
+            className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+            title="Assistente de IA"
+          >
+            <Sparkles size={14} />
+          </button>
+
           <div className="relative" ref={confirmRef}>
             <button
               onClick={() => setShowConfirm(!showConfirm)}
@@ -237,6 +256,26 @@ export const ToggleBlockComponent = (props: any) => {
           </div>
         </div>
       </div>
+
+      {aiModal.isOpen && aiModal.anchorPos && (
+        <AiPromptModal
+          x={aiModal.anchorPos.x}
+          y={aiModal.anchorPos.y}
+          chatId={aiModal.chatId}
+          messages={aiModal.messages}
+          contextText={aiModal.contextText}
+          systemInstruction={aiModal.systemInstruction}
+          blockBadge={aiModal.blockBadge}
+          blockTitle={aiModal.blockTitle}
+          targetType={aiModal.targetType}
+          onMessageAdd={aiModal.handleMessageAdd}
+          onClear={aiModal.handleClearChat}
+          onClose={aiModal.handleCloseAi}
+          onApplyReplacement={aiModal.handleApplyReplacement}
+          onInsertContent={aiModal.handleInsertContent}
+          anchorRef={aiModal.aiButtonRef}
+        />
+      )}
 
       <div 
         className="flex items-center gap-1 cursor-pointer outline-none font-medium pr-16"

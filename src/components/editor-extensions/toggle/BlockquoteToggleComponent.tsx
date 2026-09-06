@@ -6,6 +6,8 @@ import BlockquoteToggleToolbar from '../BlockquoteToggleToolbar';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { convertToggleNodeToPage } from './togglePageConverter';
+import { useBlockAiModal } from '../hooks/useBlockAiModal';
+import AiPromptModal from '../../modals/AiPromptModal';
 
 export const BlockquoteToggleComponent = (props: any) => {
   const isOpen = props.node.attrs.isOpen;
@@ -15,6 +17,14 @@ export const BlockquoteToggleComponent = (props: any) => {
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const aiModal = useBlockAiModal({
+    editor: props.editor,
+    node: props.node,
+    getPos: props.getPos,
+    updateAttributes: props.updateAttributes,
+    blockType: 'blockquoteToggle',
+  });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -254,7 +264,29 @@ export const BlockquoteToggleComponent = (props: any) => {
         }}
         onDeleteNode={() => props.deleteNode()}
         onCancelDelete={() => setShowConfirm(false)}
+        onAiClick={aiModal.handleOpenAi}
+        aiButtonRef={aiModal.aiButtonRef}
       />
+
+      {aiModal.isOpen && aiModal.anchorPos && (
+        <AiPromptModal
+          x={aiModal.anchorPos.x}
+          y={aiModal.anchorPos.y}
+          chatId={aiModal.chatId}
+          messages={aiModal.messages}
+          contextText={aiModal.contextText}
+          systemInstruction={aiModal.systemInstruction}
+          blockBadge={aiModal.blockBadge}
+          blockTitle={aiModal.blockTitle}
+          targetType={aiModal.targetType}
+          onMessageAdd={aiModal.handleMessageAdd}
+          onClear={aiModal.handleClearChat}
+          onClose={aiModal.handleCloseAi}
+          onApplyReplacement={aiModal.handleApplyReplacement}
+          onInsertContent={aiModal.handleInsertContent}
+          anchorRef={aiModal.aiButtonRef}
+        />
+      )}
 
       <div
         className="flex items-center gap-1 cursor-pointer outline-none font-medium italic text-white/85 pr-16"

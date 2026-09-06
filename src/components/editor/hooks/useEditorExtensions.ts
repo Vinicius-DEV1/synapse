@@ -88,7 +88,27 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
         draggable: true,
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
-        }
+        },
+        addKeyboardShortcuts() {
+          const parentShortcuts = typeof this.parent === 'function' ? this.parent() : {};
+          return {
+            ...parentShortcuts,
+            'Shift-Enter': ({ editor }) => {
+              const { state, dispatch } = editor.view;
+              const { $head } = state.selection;
+              let isInsideCode = false;
+              for (let depth = $head.depth; depth > 0; depth--) {
+                if ($head.node(depth).type.name === this.name) {
+                  isInsideCode = true;
+                  break;
+                }
+              }
+              if (!isInsideCode) return false;
+              dispatch(state.tr.replaceSelectionWith(state.schema.text('\n')).scrollIntoView());
+              return true;
+            },
+          };
+        },
       }).configure({ lowlight: sharedLowlight }),
       Placeholder.configure({ placeholder: "Digite '/' para comandos ou comece a escrever..." }),
       Highlight.configure({ multicolor: true }),
