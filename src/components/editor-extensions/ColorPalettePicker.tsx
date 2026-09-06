@@ -86,11 +86,20 @@ export default function ColorPalettePicker({
         isPositioned || !anchorRef ? 'animate-scale-in' : ''
       }`}
       onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <div className="text-[11px] font-medium text-dark-subtext px-1">Cor do Destaque</div>
       <div className="grid grid-cols-5 gap-1.5">
         <button
-          onClick={onClearColor}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClearColor();
+          }}
+          onClick={(e) => e.preventDefault()}
           className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs transition-all ${
             currentColor === 'default' || !currentColor
               ? 'border-white bg-white/20 text-white'
@@ -105,7 +114,12 @@ export default function ColorPalettePicker({
           return (
             <button
               key={c.name}
-              onClick={() => onSelectColor(c.hex)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSelectColor(c.hex);
+              }}
+              onClick={(e) => e.preventDefault()}
               className={`w-7 h-7 rounded-lg border border-white/15 transition-transform hover:scale-110 flex items-center justify-center ${
                 isSelected ? 'ring-2 ring-white ring-offset-1 ring-offset-dark-bg scale-105' : ''
               }`}
