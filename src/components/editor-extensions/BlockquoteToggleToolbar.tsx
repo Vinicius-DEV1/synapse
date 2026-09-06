@@ -1,5 +1,5 @@
 import React from 'react';
-import { Type, FileText, Copy, Palette, Trash2 } from 'lucide-react';
+import { Type, FileText, Copy, Palette, Trash2, Sparkles } from 'lucide-react';
 import ColorPalettePicker from './ColorPalettePicker';
 
 interface BlockquoteToggleToolbarProps {
@@ -18,6 +18,8 @@ interface BlockquoteToggleToolbarProps {
   onToggleConfirm: () => void;
   onDeleteNode: () => void;
   onCancelDelete: () => void;
+  onAiClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  aiButtonRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export default function BlockquoteToggleToolbar({
@@ -36,6 +38,8 @@ export default function BlockquoteToggleToolbar({
   onToggleConfirm,
   onDeleteNode,
   onCancelDelete,
+  onAiClick,
+  aiButtonRef,
 }: BlockquoteToggleToolbarProps) {
   return (
     <div
@@ -77,6 +81,17 @@ export default function BlockquoteToggleToolbar({
             </div>
           )}
         </div>
+
+        {onAiClick && (
+          <button
+            ref={aiButtonRef}
+            onClick={onAiClick}
+            className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+            title="Assistente de IA"
+          >
+            <Sparkles size={14} />
+          </button>
+        )}
 
         <div className="relative" ref={colorMenuRef}>
           <button

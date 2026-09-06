@@ -1,8 +1,10 @@
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import { Palette, X, ListTree, Copy } from 'lucide-react';
+import { Palette, X, ListTree, Copy, Sparkles } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { DOMSerializer } from 'prosemirror-model';
 import { BG_COLORS } from '../../utils/colors';
+import { useBlockAiModal } from './hooks/useBlockAiModal';
+import AiPromptModal from '../modals/AiPromptModal';
 
 export default function ColorBlockquoteComponent(props: any) {
   const [showColors, setShowColors] = useState(false);
@@ -10,6 +12,14 @@ export default function ColorBlockquoteComponent(props: any) {
   const [copied, setCopied] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
+
+  const aiModal = useBlockAiModal({
+    editor: props.editor,
+    node: props.node,
+    getPos: props.getPos,
+    updateAttributes: props.updateAttributes,
+    blockType: 'blockquote',
+  });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -119,6 +129,14 @@ export default function ColorBlockquoteComponent(props: any) {
               </div>
             )}
           </div>
+          <button
+            ref={aiModal.aiButtonRef}
+            onClick={aiModal.handleOpenAi}
+            className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+            title="Assistente de IA"
+          >
+            <Sparkles size={14} />
+          </button>
           <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
           <button
             onClick={() => {
@@ -202,6 +220,27 @@ export default function ColorBlockquoteComponent(props: any) {
           </div>
         )}
       </div>
+
+      {aiModal.isOpen && aiModal.anchorPos && (
+        <AiPromptModal
+          x={aiModal.anchorPos.x}
+          y={aiModal.anchorPos.y}
+          chatId={aiModal.chatId}
+          messages={aiModal.messages}
+          contextText={aiModal.contextText}
+          systemInstruction={aiModal.systemInstruction}
+          blockBadge={aiModal.blockBadge}
+          blockTitle={aiModal.blockTitle}
+          targetType={aiModal.targetType}
+          onMessageAdd={aiModal.handleMessageAdd}
+          onClear={aiModal.handleClearChat}
+          onClose={aiModal.handleCloseAi}
+          onApplyReplacement={aiModal.handleApplyReplacement}
+          onInsertContent={aiModal.handleInsertContent}
+          anchorRef={aiModal.aiButtonRef}
+        />
+      )}
+
       <NodeViewContent />
     </NodeViewWrapper>
   );

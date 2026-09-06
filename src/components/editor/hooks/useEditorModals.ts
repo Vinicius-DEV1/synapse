@@ -1,7 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Node as PMNode } from '@tiptap/pm/model';
 
-export function useEditorModals() {
+export interface UseEditorModalsOptions {
+  editorRef?: React.RefObject<any>;
+  isActive?: boolean;
+}
+
+export function useEditorModals(options?: UseEditorModalsOptions) {
+  const editorRef = options?.editorRef;
+  const isActive = options?.isActive ?? true;
+  const isActiveRef = useRef(isActive);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
   const [viewerState, setViewerState] = useState<{
     isOpen: boolean;
     src: string;
@@ -66,8 +79,12 @@ export function useEditorModals() {
 
   useEffect(() => {
     const handleOpenImageViewer = (e: Event) => {
+      if (!isActiveRef.current) return;
       const detail = (e as CustomEvent).detail;
       if (detail && detail.src) {
+        if (editorRef?.current && detail.editor && detail.editor !== editorRef.current) {
+          return;
+        }
         setViewerState({
           isOpen: true,
           src: detail.src,
@@ -78,8 +95,12 @@ export function useEditorModals() {
     };
 
     const handleOpenMediaAction = (e: Event) => {
+      if (!isActiveRef.current) return;
       const detail = (e as CustomEvent).detail;
       if (detail && detail.mediaId) {
+        if (editorRef?.current && detail.editor && detail.editor !== editorRef.current) {
+          return;
+        }
         setMediaActionModal({
           isOpen: true,
           mediaId: detail.mediaId,
@@ -90,8 +111,12 @@ export function useEditorModals() {
     };
 
     const handleOpenFileAction = (e: Event) => {
+      if (!isActiveRef.current) return;
       const detail = (e as CustomEvent).detail;
       if (detail && detail.fileId) {
+        if (editorRef?.current && detail.editor && detail.editor !== editorRef.current) {
+          return;
+        }
         setFileActionModal({
           isOpen: true,
           fileId: detail.fileId,
@@ -101,8 +126,12 @@ export function useEditorModals() {
     };
 
     const handleRequestImageDelete = (e: Event) => {
+      if (!isActiveRef.current) return;
       const detail = (e as CustomEvent).detail;
       if (detail && detail.node) {
+        if (editorRef?.current && detail.editor && detail.editor !== editorRef.current) {
+          return;
+        }
         setImageToDelete({
           node: detail.node,
           pos: typeof detail.pos === 'number' ? detail.pos : null,
@@ -110,16 +139,32 @@ export function useEditorModals() {
       }
     };
 
+    const handleCloseTransientModals = () => {
+      setFileActionModal(null);
+      setMediaActionModal(null);
+      setViewerState({ isOpen: false, src: '', nodePos: null, nodeType: null });
+      setImageToDelete(null);
+      setPageSearchMenu(null);
+      setMediaSelectModal(null);
+      setFileSelectModal(false);
+      setFileUploadModal(null);
+      setCalendarEventModal(null);
+      setFocusModal(null);
+      setAlarmModal(null);
+    };
+
     window.addEventListener('open-image-viewer', handleOpenImageViewer);
     window.addEventListener('open-media-action', handleOpenMediaAction);
     window.addEventListener('open-file-action', handleOpenFileAction);
     window.addEventListener('request-image-delete', handleRequestImageDelete);
+    window.addEventListener('caderno-flush-editor', handleCloseTransientModals);
 
     return () => {
       window.removeEventListener('open-image-viewer', handleOpenImageViewer);
       window.removeEventListener('open-media-action', handleOpenMediaAction);
       window.removeEventListener('open-file-action', handleOpenFileAction);
       window.removeEventListener('request-image-delete', handleRequestImageDelete);
+      window.removeEventListener('caderno-flush-editor', handleCloseTransientModals);
     };
   }, []);
 

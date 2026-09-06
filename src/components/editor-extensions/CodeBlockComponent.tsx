@@ -1,11 +1,13 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
-import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown } from 'lucide-react';
+import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown, Sparkles } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { Portal } from '../ui/Portal';
 import { handleScrollableWheel } from '../../utils/scroll-forwarding';
+import { useBlockAiModal } from './hooks/useBlockAiModal';
+import AiPromptModal from '../modals/AiPromptModal';
 
 export default function CodeBlockComponent(props: NodeViewProps) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -15,6 +17,14 @@ export default function CodeBlockComponent(props: NodeViewProps) {
   const confirmRef = useRef<HTMLDivElement>(null);
   const floatingConfirmRef = useRef<HTMLDivElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+
+  const aiModal = useBlockAiModal({
+    editor,
+    node,
+    getPos,
+    updateAttributes,
+    blockType: 'codeBlock',
+  });
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -236,6 +246,16 @@ export default function CodeBlockComponent(props: NodeViewProps) {
               )}
             </button>
 
+            <button
+              ref={aiModal.aiButtonRef}
+              onClick={aiModal.handleOpenAi}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-brand-400 hover:text-brand-300 hover:bg-brand-500/20 border border-transparent hover:border-brand-500/30 transition-all cursor-pointer"
+              title="Assistente de IA"
+            >
+              <Sparkles size={12} />
+              <span>IA</span>
+            </button>
+
             <div className="relative" ref={confirmRef}>
               <button
                 onClick={() => setShowConfirm(!showConfirm)}
@@ -288,6 +308,26 @@ export default function CodeBlockComponent(props: NodeViewProps) {
             </div>
           </div>
         </div>
+
+        {aiModal.isOpen && aiModal.anchorPos && (
+          <AiPromptModal
+            x={aiModal.anchorPos.x}
+            y={aiModal.anchorPos.y}
+            chatId={aiModal.chatId}
+            messages={aiModal.messages}
+            contextText={aiModal.contextText}
+            systemInstruction={aiModal.systemInstruction}
+            blockBadge={aiModal.blockBadge}
+            blockTitle={aiModal.blockTitle}
+            targetType={aiModal.targetType}
+            onMessageAdd={aiModal.handleMessageAdd}
+            onClear={aiModal.handleClearChat}
+            onClose={aiModal.handleCloseAi}
+            onApplyReplacement={aiModal.handleApplyReplacement}
+            onInsertContent={aiModal.handleInsertContent}
+            anchorRef={aiModal.aiButtonRef}
+          />
+        )}
 
         {/* Área de Código */}
         <pre
