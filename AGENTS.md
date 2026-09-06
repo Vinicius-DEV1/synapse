@@ -161,3 +161,45 @@ To guarantee that Caderno operates with the responsiveness, fluidity, and elegan
 12. **Zero-Leak Lifecycle & Garbage Collection Discipline**:
     - Always clean up event listeners, timers (`clearTimeout`, `clearInterval`), Yjs CRDT observers, and abort in-flight asynchronous operations (`AbortController`) on unmount to prevent memory leaks and detached DOM node retention.
 
+---
+
+## 10. Immersive Minimalist Architecture & Zen Visual Design Standards
+
+To ensure study, reading, and review experiences achieve absolute focus without cognitive or visual fatigue (inspired by Claude, Notion, Typeform, and Anki), all focus modes, readers, and inspectors must strictly adhere to the following 6 design pillars:
+
+### 10.1. Full-Canvas Immersive Focus (Zen Canvas over Floating Boxes)
+- **Eliminate Claustrophobic Modals**: Never trap the user inside floating popup boxes with stacked backdrops, borders, and margins (`max-w-3xl`, `max-h-[92vh]`, heavy outer shadows) when entering dedicated focus activities (e.g., question batteries, text/document readers, page history inspectors, media viewers).
+- **Dedicated Viewport Canvas**: Mount immersive views directly onto a seamless, full-viewport canvas (`fixed inset-0 z-[100] bg-zinc-950 flex flex-col`). Background distraction is eliminated at the root level rather than dimmed behind a translucent overlay.
+- **Escape Hatch**: Always provide a clear, effortless exit mechanism: a prominent `Esc` keyboard binding and a subtle, minimalist close/restore button in the header.
+
+### 10.2. Refined Neutral & Monochrome Palette (Zero Visual Screaming)
+- **Neutral Dark Canvas**: Use soothing, deep neutrals (`zinc-950` backgrounds, `zinc-900` elevated surfaces, `zinc-800` subtle hover states) instead of harsh pitch black or muddy grays.
+- **Whisper-Thin Borders**: All borders must be subtle and delicate (`border-white/[0.04]` to `border-white/[0.08]`), avoiding high-contrast outlines that distract the eyes.
+- **Muted, Purposeful Accent Colors**:
+  - Prohibit screaming, high-saturation accent bars or loud purple backgrounds (`bg-brand-500` progress lines or oversized badges).
+  - Accents must be functional and subdued:
+    - **Success / Correct**: Soft esmerald (`bg-emerald-500/10 border-emerald-500/25 text-emerald-300`).
+    - **Error / Incorrect**: Muted rose/coral (`bg-rose-500/10 border-rose-500/25 text-rose-300`).
+    - **Warnings / Hints / Gabarito**: Gentle warm amber (`bg-amber-500/10 border-amber-500/25 text-amber-300`).
+    - **Active / Neutral Focus**: Subtle slate/zinc highlight (`bg-white/10 text-white` or `ring-1 ring-white/20`).
+
+### 10.3. Cognitive Load & Visual Noise Elimination
+- **Single Source of Progress Truth**: Avoid redundant progress representations. If a scrollbar or step counter (`03 / 10`) is present, do not stack competing thick progress bars, badges, and percentage chips.
+- **Suppress Inactive Metadata**: During active focus and question solving, hide non-essential tags, category pills, and duplicate counters. Reserve aggregate statistics and performance metrics for the post-completion summary screen.
+- **Quiet Transitions**: Transitions must feel natural and effortless via hardware-accelerated CSS (`transition-all duration-150 ease-out`). Avoid jarring layout shifts, flashing backgrounds, or violent screen vibrations.
+
+### 10.4. Ergonomic Typography & Generous Breathing Space
+- **Optimal Reading Column**: Content must be constrained to a comfortable reading measure (`max-w-2xl` to `max-w-3xl` mx-auto) with ample vertical breathing room.
+- **Legible Hierarchy**: Enunciados, questions, and body text should use comfortable sizing (`text-base` to `text-lg`), relaxed line heights (`leading-relaxed`), and high-contrast readable type (`text-zinc-100` / `text-white/95`).
+- **Comfortable Option Stacking**: Layout options and choices vertically with generous hit areas and ample padding, avoiding cramped multi-column grids that cause eye fatigue.
+
+### 10.5. Keyboard-First Fluidity (Zero-Mouse Fatigue)
+- **Eliminate Cursor Hunting**: Never require the user to hunt for small buttons with the mouse between successive steps.
+- **First-Class Shortcuts**:
+  - Direct selection: `A`, `B`, `C`, `D` or `1`, `2`, `3`, `4`.
+  - Action / Progression: `Enter` or `Space` to confirm or proceed to the next item.
+  - Explanation / Gabarito toggle: `G` or `Alt+G`.
+  - Navigation: `ArrowLeft` / `ArrowRight`.
+  - Exit: `Escape`.
+- **Subtle Visual Cues**: Display clean, understated shortcut badges (e.g., `[Enter]`, `[Esc]`, `A`) adjacent to actions to build muscle memory without cluttering the interface.
+

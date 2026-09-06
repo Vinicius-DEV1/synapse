@@ -19,9 +19,10 @@ Activate this skill when the user requests performance improvements, refactoring
 > 1. **DO NOT SIMPLIFY / DO NOT REMOVE FEATURES**:
 >    - Under no circumstances should you remove any features, options, shortcuts, edge-case handling, or existing user capabilities.
 >    - Observable application behavior must remain identical or superior (faster/more resilient), never degraded or stripped down.
-> 2. **DO NOT ALTER VISUAL DESIGN OR LAYOUT**:
+> 2. **DO NOT ALTER VISUAL DESIGN OR LAYOUT WITHOUT INSTRUCTION**:
 >    - Modifying UI layouts, colors, spacing, Tailwind/CSS classes, icons, or visual presentation without explicit user instruction is strictly prohibited.
->    - The focus of this skill is **strictly under the hood** (internal logic, resilience, efficiency, SOLID compliance, and clean architecture).
+>    - The default focus of this skill is **strictly under the hood** (internal logic, resilience, efficiency, SOLID compliance, and clean architecture).
+>    - When the user explicitly requests visual modernization, focus enhancement, or UI decluttering, strictly apply the **Immersive Minimalist Architecture & Zen Visual Design Standards** (Full-canvas viewports, neutral palettes, cognitive noise suppression, ergonomic typography, and keyboard-first navigation) defined in `AGENTS.md` Section 10 and the `immersive-minimalist-ux` skill.
 
 ---
 
