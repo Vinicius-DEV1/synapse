@@ -228,9 +228,9 @@ export default function EditorModalHost({
           <FileUploadModal
             isOpen={true}
             onClose={() => setFileUploadModal(null)}
-            onUploadComplete={(file) => {
-              if (editor && file) {
-                editor.chain().focus().insertContent({
+            onUploadComplete={(files) => {
+              if (editor && files && files.length > 0) {
+                const nodes = files.map(file => ({
                   type: 'fileWidget',
                   attrs: {
                     fileId: file.id,
@@ -238,7 +238,8 @@ export default function EditorModalHost({
                     fileType: file.file_type || 'other',
                     isLink: fileUploadModal.isLink || false,
                   },
-                }).run();
+                }));
+                editor.chain().focus().insertContent(nodes).run();
               }
               setFileUploadModal(null);
             }}
@@ -257,6 +258,7 @@ export default function EditorModalHost({
               setFileUploadModal(null);
             }}
             isLink={fileUploadModal.isLink}
+            initialFiles={fileUploadModal.initialFiles}
           />
         )}
 
