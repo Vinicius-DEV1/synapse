@@ -138,7 +138,7 @@ pub async fn youtube_fetch_playlist_info(
 ) -> Result<serde_json::Value, String> {
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let mut cmd = std::process::Command::new(ytdlp_path);
-    cmd.args(["-J", "--flat-playlist", &url]);
+    cmd.args(["-J", "--flat-playlist", "--extractor-args", "youtubetab:approximate_date", &url]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let output = cmd.output().map_err(|e| e.to_string())?;
