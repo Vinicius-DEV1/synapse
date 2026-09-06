@@ -147,7 +147,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     }
   };
 
-  const handlePdfClick = () => {
+  const handlePdfDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button, a, input, textarea, [role="button"]')) {
+      return;
+    }
     setShowMobileTools((prev) => {
       const nextState = !prev;
       if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
@@ -157,6 +161,12 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       return nextState;
     });
   };
+
+  useEffect(() => {
+    return () => {
+      if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !showMobileTools });
@@ -334,8 +344,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         {/* PDF Viewport */}
         <div
           ref={scrollRef}
+          data-testid="pdf-viewport"
           className="flex-1 overflow-y-auto overflow-x-hidden relative"
-          onClick={handlePdfClick}
+          onDoubleClick={handlePdfDoubleClick}
           style={{
             scrollBehavior: 'auto',
             backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)',

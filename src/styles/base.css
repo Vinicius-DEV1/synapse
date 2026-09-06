@@ -1,8 +1,12 @@
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
   body {
     @apply bg-dark-bg text-dark-text antialiased;
     font-family: 'Inter', sans-serif;
     overflow: hidden;
+    color-scheme: dark;
   }
   b, strong {
     @apply font-bold text-indigo-400;

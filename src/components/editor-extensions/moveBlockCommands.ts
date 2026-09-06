@@ -4,10 +4,38 @@
  */
 
 import type { EditorView } from '@tiptap/pm/view';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { getSpecForGroup } from './group-layout/groupSpecs';
 import { pruneGroupsInTransaction, removeGroupChildInTr } from './group-layout/groupCommands';
 import { triggerToast } from '../ui/ToastContext';
+
+const IMAGE_NODE_NAMES = new Set(['image', 'resizableImage', 'encryptedImage']);
+
+function shouldSelectAsNode(node: PMNode): boolean {
+  if (!NodeSelection.isSelectable(node)) return false;
+  return node.isAtom || node.isLeaf || node.type.spec.atom === true || IMAGE_NODE_NAMES.has(node.type.name);
+}
+
+function cloneNodeForMove(node: PMNode): PMNode {
+  return node.type.create(node.attrs, node.content, node.marks);
+}
+
+function safeSetSelection(tr: any, node: PMNode, targetPos: number) {
+  if (shouldSelectAsNode(node)) {
+    try {
+      tr.setSelection(NodeSelection.create(tr.doc, targetPos));
+      return;
+    } catch {
+      /* Fallback to text selection below */
+    }
+  }
+  try {
+    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(targetPos + 1, tr.doc.content.size))));
+  } catch {
+    /* Continue without explicit selection if boundary is invalid */
+  }
+}
 
 /**
  * Moves the block or widget at `pos` upwards (swapping with previous sibling node).
@@ -33,13 +61,12 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
         const prevChild = parent.child(index - 1);
         const prevChildPos = pos - prevChild.nodeSize;
         tr.delete(pos, pos + node.nodeSize);
-        tr.insert(prevChildPos, node);
+        const cloned = cloneNodeForMove(node);
+        tr.insert(prevChildPos, cloned);
 
-        if (node.isAtom && NodeSelection.isSelectable(node)) {
-          tr.setSelection(NodeSelection.create(tr.doc, prevChildPos));
-        }
-        view.dispatch(tr);
-        view.focus();
+        safeSetSelection(tr, cloned, prevChildPos);
+        view.dispatch(tr.scrollIntoView());
+        if (typeof view.focus === 'function') view.focus();
         return true;
       } else {
         // If first child of a group, move OUTSIDE group (immediately before the group in doc)
@@ -47,14 +74,13 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
         const groupNode = doc.nodeAt(groupPos);
         if (groupNode) {
           removeGroupChildInTr(tr, pos);
-          tr.insert(groupPos, node);
+          const cloned = cloneNodeForMove(node);
+          tr.insert(groupPos, cloned);
           pruneGroupsInTransaction(tr);
 
-          if (node.isAtom && NodeSelection.isSelectable(node)) {
-            tr.setSelection(NodeSelection.create(tr.doc, groupPos));
-          }
-          view.dispatch(tr);
-          view.focus();
+          safeSetSelection(tr, cloned, groupPos);
+          view.dispatch(tr.scrollIntoView());
+          if (typeof view.focus === 'function') view.focus();
           return true;
         }
       }
@@ -74,16 +100,13 @@ export function moveBlockUp(view: EditorView, pos: number): boolean {
     }
 
     tr.delete(pos, pos + node.nodeSize);
-    tr.insert(prevPos, node);
+    const cloned = cloneNodeForMove(node);
+    tr.insert(prevPos, cloned);
 
-    if (node.isAtom && NodeSelection.isSelectable(node)) {
-      tr.setSelection(NodeSelection.create(tr.doc, prevPos));
-    } else {
-      tr.setSelection(TextSelection.near(tr.doc.resolve(prevPos + 1)));
-    }
+    safeSetSelection(tr, cloned, prevPos);
 
-    view.dispatch(tr);
-    view.focus();
+    view.dispatch(tr.scrollIntoView());
+    if (typeof view.focus === 'function') view.focus();
     return true;
   } catch (err) {
     console.error('[moveBlockUp] Erro ao subir bloco:', err);
@@ -116,13 +139,12 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
         const nextChild = parent.child(index + 1);
         const insertPos = pos + nextChild.nodeSize;
         tr.delete(pos, pos + node.nodeSize);
-        tr.insert(insertPos, node);
+        const cloned = cloneNodeForMove(node);
+        tr.insert(insertPos, cloned);
 
-        if (node.isAtom && NodeSelection.isSelectable(node)) {
-          tr.setSelection(NodeSelection.create(tr.doc, insertPos));
-        }
-        view.dispatch(tr);
-        view.focus();
+        safeSetSelection(tr, cloned, insertPos);
+        view.dispatch(tr.scrollIntoView());
+        if (typeof view.focus === 'function') view.focus();
         return true;
       } else {
         // If last child of a group, move OUTSIDE group (immediately after the group in doc)
@@ -131,14 +153,13 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
         if (groupNode) {
           removeGroupChildInTr(tr, pos);
           const afterGroupPos = tr.mapping.map(groupPos + groupNode.nodeSize, 1);
-          tr.insert(afterGroupPos, node);
+          const cloned = cloneNodeForMove(node);
+          tr.insert(afterGroupPos, cloned);
           pruneGroupsInTransaction(tr);
 
-          if (node.isAtom && NodeSelection.isSelectable(node)) {
-            tr.setSelection(NodeSelection.create(tr.doc, afterGroupPos));
-          }
-          view.dispatch(tr);
-          view.focus();
+          safeSetSelection(tr, cloned, afterGroupPos);
+          view.dispatch(tr.scrollIntoView());
+          if (typeof view.focus === 'function') view.focus();
           return true;
         }
       }
@@ -155,16 +176,13 @@ export function moveBlockDown(view: EditorView, pos: number): boolean {
     const insertPos = pos + nextNode.nodeSize;
 
     tr.delete(pos, pos + node.nodeSize);
-    tr.insert(insertPos, node);
+    const cloned = cloneNodeForMove(node);
+    tr.insert(insertPos, cloned);
 
-    if (node.isAtom && NodeSelection.isSelectable(node)) {
-      tr.setSelection(NodeSelection.create(tr.doc, insertPos));
-    } else {
-      tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 1)));
-    }
+    safeSetSelection(tr, cloned, insertPos);
 
-    view.dispatch(tr);
-    view.focus();
+    view.dispatch(tr.scrollIntoView());
+    if (typeof view.focus === 'function') view.focus();
     return true;
   } catch (err) {
     console.error('[moveBlockDown] Erro ao descer bloco:', err);

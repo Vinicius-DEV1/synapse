@@ -64,8 +64,8 @@ export default function TabContextMenu({
       {/* Fixar / Desfixar aba */}
       <button
         onClick={() => {
-          onTogglePin(tab.id);
           onClose();
+          onTogglePin(tab.id);
         }}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
       >
@@ -87,8 +87,8 @@ export default function TabContextMenu({
       {/* Nova aba */}
       <button
         onClick={() => {
-          onNewTab();
           onClose();
+          onNewTab();
         }}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
       >
@@ -99,8 +99,8 @@ export default function TabContextMenu({
       {/* Duplicar aba */}
       <button
         onClick={() => {
-          onDuplicateTab(tab.id);
           onClose();
+          onDuplicateTab(tab.id);
         }}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
       >
@@ -113,8 +113,8 @@ export default function TabContextMenu({
       {/* Fechar aba */}
       <button
         onClick={() => {
-          onCloseTab(tab.id);
           onClose();
+          onCloseTab(tab.id);
         }}
         disabled={tabCount <= 1}
         className={`w-full flex items-center gap-2.5 px-3 py-2 transition-colors ${
@@ -131,8 +131,8 @@ export default function TabContextMenu({
       {tabCount > 1 && (
         <button
           onClick={() => {
-            onCloseOtherTabs(tab.id);
             onClose();
+            onCloseOtherTabs(tab.id);
           }}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
         >
@@ -145,8 +145,8 @@ export default function TabContextMenu({
       {hasTabsToRight && (
         <button
           onClick={() => {
-            onCloseTabsToRight(tab.id);
             onClose();
+            onCloseTabsToRight(tab.id);
           }}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
         >

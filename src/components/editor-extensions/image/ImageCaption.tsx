@@ -27,6 +27,12 @@ export default function ImageCaption({
         onFocus={onFocus}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === 'Escape') {
+            event.preventDefault();
+            (event.target as HTMLInputElement).blur();
+          }
+        }}
         placeholder="Escreva uma legenda..."
         className="w-full rounded border-none bg-transparent px-2 py-1 text-center text-sm text-dark-subtext placeholder-white/20 focus:text-white focus:outline-none focus:ring-1 focus:ring-brand-500/50"
       />

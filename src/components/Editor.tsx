@@ -28,6 +28,7 @@ interface EditorProps {
     senderInstanceId?: string
   ) => void;
   onCreateLinkedPage?: (title: string) => Promise<string | null>;
+  isActive?: boolean;
 }
 
 function EditorBlockHandleHost({
@@ -63,6 +64,7 @@ export default function Editor({
   initialCrdtState,
   onSave,
   onCreateLinkedPage,
+  isActive = true,
 }: EditorProps) {
   const [settings, setSettings] = useState(getSettings());
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -114,8 +116,9 @@ export default function Editor({
     };
   }, [pageId, cleanupSave]);
 
-  // 4. Modais
-  const modals = useEditorModals();
+  // 4. Drop & Paste Handlers & Modais
+  const editorRef = useRef<TipTapEditor | null>(null);
+  const modals = useEditorModals({ editorRef, isActive });
 
   // 5. Slash Commands
   const {
@@ -134,8 +137,6 @@ export default function Editor({
     setMediaSelectModal: modals.setMediaSelectModal,
   });
 
-  // 6. Drop & Paste Handlers
-  const editorRef = useRef<TipTapEditor | null>(null);
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
     editorRef,
     masterKey,

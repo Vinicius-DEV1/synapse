@@ -32,9 +32,11 @@ vi.mock('./hooks/usePdfDocument', () => ({
   })),
 }));
 
+const mockDispatch = vi.fn();
+
 vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
-    dispatch: vi.fn(),
+    dispatch: mockDispatch,
   })),
 }));
 
@@ -90,5 +92,35 @@ describe('PdfReader Component', () => {
     fireEvent.click(backBtn);
 
     expect(onBack).toHaveBeenCalled();
+  });
+
+  it('does not toggle fullscreen on single click, but toggles on double click', () => {
+    const onBack = vi.fn();
+    const onUpdateBook = vi.fn();
+
+    const { getByTestId } = render(
+      <PdfReader book={mockBook} onBack={onBack} onUpdateBook={onUpdateBook} />
+    );
+
+    const viewport = getByTestId('pdf-viewport');
+    expect(viewport).toBeDefined();
+
+    // Initially, reading mode fullscreen is dispatched
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'SET_READING_MODE_FULLSCREEN',
+      isFullScreen: true,
+    });
+    mockDispatch.mockClear();
+
+    // Single click should NOT trigger fullscreen toggle
+    fireEvent.click(viewport);
+    expect(mockDispatch).not.toHaveBeenCalled();
+
+    // Double click triggers fullscreen toggle (showing mobile tools / isFullScreen false)
+    fireEvent.doubleClick(viewport);
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'SET_READING_MODE_FULLSCREEN',
+      isFullScreen: false,
+    });
   });
 });

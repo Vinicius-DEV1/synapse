@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Film, BookOpen, X, ExternalLink, ArrowRight } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
@@ -12,7 +13,19 @@ interface MediaActionModalProps {
 export default function MediaActionModal({ isOpen, mediaId, mediaType, title, onClose }: MediaActionModalProps) {
   const { state, dispatch } = useStore();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleOpenSameTab = () => {
+    onClose();
     dispatch({ 
       type: 'UPDATE_TAB_MODULE', 
       tabId: state.activeTabId, 
@@ -20,11 +33,11 @@ export default function MediaActionModal({ isOpen, mediaId, mediaType, title, on
       bookId: mediaId,
       moduleState: { videoId: mediaId }
     });
-    onClose();
   };
 
   const handleOpenNewTab = () => {
-    const newTabId = crypto.randomUUID();
+    onClose();
+    const newTabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
       type: 'ADD_TAB',
       tab: {
@@ -37,13 +50,16 @@ export default function MediaActionModal({ isOpen, mediaId, mediaType, title, on
         moduleState: { videoId: mediaId }
       }
     });
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      contentEditable={false}
+      onClick={onClose}
+    >
       <div 
         className="bg-dark-card border border-white/10 rounded-xl shadow-2xl flex flex-col w-[400px] overflow-hidden" 
         onClick={e => e.stopPropagation()}

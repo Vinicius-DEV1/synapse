@@ -52,11 +52,16 @@ export function useImageResize({
   const previewRef = useRef<ImageSize | null>(null);
   const rafRef = useRef<number | null>(null);
   const cancelledRef = useRef(false);
+  const cleanupDragRef = useRef<(() => void) | null>(null);
 
   // Ensures event listeners are cleanly removed if node view unmounts during drag.
   useEffect(() => {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (cleanupDragRef.current) {
+        cleanupDragRef.current();
+        cleanupDragRef.current = null;
+      }
     };
   }, []);
 
@@ -161,7 +166,7 @@ export function useImageResize({
         if (keyEvent.key === 'Shift') compute(keyEvent, lastX, lastY);
       };
 
-      const finish = () => {
+      const detachListeners = () => {
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
         document.removeEventListener('pointercancel', onPointerCancel);
@@ -172,6 +177,11 @@ export function useImageResize({
         } catch {
           /* already released */
         }
+      };
+
+      const finish = () => {
+        cleanupDragRef.current = null;
+        detachListeners();
 
         if (rafRef.current !== null) {
           cancelAnimationFrame(rafRef.current);
@@ -196,6 +206,17 @@ export function useImageResize({
       const onPointerCancel = () => {
         cancelledRef.current = true;
         finish();
+      };
+
+      cleanupDragRef.current = () => {
+        detachListeners();
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        previewRef.current = null;
+        setPreview(null);
+        setIsResizing(false);
       };
 
       document.addEventListener('pointermove', onPointerMove);

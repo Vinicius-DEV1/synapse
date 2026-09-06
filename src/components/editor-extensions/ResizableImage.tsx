@@ -9,7 +9,7 @@ const ResizableImageNodeView = (props: any) => {
   const openViewer = () => {
     window.dispatchEvent(
       new CustomEvent('open-image-viewer', {
-        detail: { src: node.attrs.src, nodePos: safePos(getPos), nodeType: node.type.name },
+        detail: { editor, src: node.attrs.src, nodePos: safePos(getPos), nodeType: node.type.name },
       })
     );
   };
@@ -17,7 +17,7 @@ const ResizableImageNodeView = (props: any) => {
   const requestDelete = () => {
     window.dispatchEvent(
       new CustomEvent('request-image-delete', {
-        detail: { pos: safePos(getPos), node },
+        detail: { editor, pos: safePos(getPos), node },
       })
     );
   };
@@ -43,6 +43,7 @@ export const ResizableImage = TiptapImage.extend({
   // Images are block nodes: enables alignment, multi-column layouts, and block-level dragging.
   inline: false,
   group: 'block',
+  atom: true,
   draggable: true,
 
   addOptions() {
@@ -61,7 +62,16 @@ export const ResizableImage = TiptapImage.extend({
         default: null,
         parseHTML: (element) => {
           const value = element.getAttribute('width');
-          return value ? Number(value) : null;
+          if (value) {
+            const num = Number(value);
+            if (!Number.isNaN(num) && num > 0) return num;
+          }
+          const styleWidth = element.style?.width;
+          if (styleWidth) {
+            const num = parseInt(styleWidth, 10);
+            if (!Number.isNaN(num) && num > 0) return num;
+          }
+          return null;
         },
         renderHTML: (attributes) => {
           if (!attributes.width) return {};
@@ -72,7 +82,16 @@ export const ResizableImage = TiptapImage.extend({
         default: null,
         parseHTML: (element) => {
           const value = element.getAttribute('height');
-          return value ? Number(value) : null;
+          if (value) {
+            const num = Number(value);
+            if (!Number.isNaN(num) && num > 0) return num;
+          }
+          const styleHeight = element.style?.height;
+          if (styleHeight) {
+            const num = parseInt(styleHeight, 10);
+            if (!Number.isNaN(num) && num > 0) return num;
+          }
+          return null;
         },
         renderHTML: (attributes) => {
           if (!attributes.height) return {};
@@ -99,6 +118,6 @@ export const ResizableImage = TiptapImage.extend({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(ResizableImageNodeView);
+    return ReactNodeViewRenderer(ResizableImageNodeView, { trackNodeViewPosition: true });
   },
 });
