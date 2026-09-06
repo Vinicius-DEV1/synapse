@@ -135,6 +135,7 @@ export default function Editor({
     setFileSelectModal: modals.setFileSelectModal,
     setCalendarEventModal: modals.setCalendarEventModal,
     setMediaSelectModal: modals.setMediaSelectModal,
+    setQuestionCreateModal: modals.setQuestionCreateModal,
   });
 
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
