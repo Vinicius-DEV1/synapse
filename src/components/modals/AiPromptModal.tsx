@@ -5,7 +5,6 @@ import { Portal } from '../ui/Portal';
 import { AiChatMarkdown } from '../ai-sidebar/AiChatMarkdown';
 import type { AiChatMessage, AiChatMessagePart } from '../../types/store';
 import { parseSearchReplaceBlocks, applySearchReplace, generateDiffHtml } from '../editor-extensions/hooks/blockDiffEngine';
-import { stripMarkdownBlockquotes } from '../editor-extensions/hooks/editorMarkdownHelper';
 
 export type { AiChatMessage, AiChatMessagePart };
 
@@ -204,15 +203,19 @@ export default function AiPromptModal({
           }
         }
       } else {
-        const mdMatch = text.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
-        if (mdMatch) {
-          cleanText = mdMatch[1].trim();
-        } else if (proposedTitle) {
-          cleanText = text.replace(/^(?:Título|Titulo|Title):\s*.+$/m, '').trim();
-        }
+        // Extract fenced proposal if model wrapped it in an outer markdown fence
+        // 1. Check for 4+ backtick outer fence (e.g. ````markdown ... ```` containing inner 3-backtick code blocks)
+        const outer4Match = text.match(/(?:^|\n)(`{4,}|~{4,})(?:markdown|md)?\s*\n([\s\S]*?)\n\1(?:\n|$)/);
+        // 2. Check for 3-backtick outer fence explicitly tagged as markdown/md
+        const outer3Match = text.match(/(?:^|\n)(`{3}|~{3})(?:markdown|md)\s*\n([\s\S]*?)\n\1(?:\n|$)/);
 
-        // Strip leading quote markers (> or >>> ) to prevent redundant nested containers
-        cleanText = stripMarkdownBlockquotes(cleanText);
+        if (outer4Match) {
+          cleanText = outer4Match[2].trim();
+        } else if (outer3Match) {
+          cleanText = outer3Match[2].trim();
+        } else {
+          cleanText = text.trim();
+        }
 
         // If title was extracted, strip redundant title declaration line from cleanText
         if (proposedTitle) {

@@ -170,14 +170,14 @@ describe('AiPromptModal Component', () => {
     );
   });
 
-  it('strips leading blockquote markers (> ) from markdown proposals to avoid redundant nesting in callouts and toggles', () => {
+  it('preserves code blocks inside markdown proposals for toggles and callouts without barring code', () => {
     const messages: AiChatMessage[] = [
-      { role: 'user', parts: [{ text: 'explique POO' }] },
+      { role: 'user', parts: [{ text: 'gere um exemplo de código typescript' }] },
       {
         role: 'model',
         parts: [
           {
-            text: '```markdown\n> 🧩 O que é POO?\n> \n> A Programação Orientada a Objetos é um paradigma...\n> \n> 1. Encapsulamento\n```',
+            text: '````markdown\nAqui está o exemplo de código:\n\n```typescript\nclass Carro {\n  velocidade: number = 0;\n}\n```\nFim do exemplo.\n````',
           },
         ],
       },
@@ -187,11 +187,11 @@ describe('AiPromptModal Component', () => {
       <AiPromptModal
         x={100}
         y={100}
-        chatId="test-chat-anti-nest"
+        chatId="test-chat-code-in-toggle"
         messages={messages}
-        blockBadge="IA • Callout"
-        blockTitle="Destaque"
-        targetType="blockquote"
+        blockBadge="IA • Toggle"
+        blockTitle="Lista Oculta"
+        targetType="toggle"
         onMessageAdd={mockOnMessageAdd}
         onClear={mockOnClear}
         onClose={mockOnClose}
@@ -204,7 +204,7 @@ describe('AiPromptModal Component', () => {
     fireEvent.click(replaceBtn);
 
     expect(mockOnApplyReplacement).toHaveBeenCalledWith(
-      '🧩 O que é POO?\n\nA Programação Orientada a Objetos é um paradigma...\n\n1. Encapsulamento',
+      'Aqui está o exemplo de código:\n\n```typescript\nclass Carro {\n  velocidade: number = 0;\n}\n```\nFim do exemplo.',
       undefined
     );
   });
