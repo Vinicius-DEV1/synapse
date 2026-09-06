@@ -285,11 +285,13 @@
 /* Highlight Toolbar */
 @keyframes toolbar-pop {
   from {
-    transform: scale(0.9) translateY(4px);
+    scale: 0.9;
+    translate: 0 4px;
     opacity: 0;
   }
   to {
-    transform: scale(1) translateY(0);
+    scale: 1;
+    translate: 0 0;
     opacity: 1;
   }
 }

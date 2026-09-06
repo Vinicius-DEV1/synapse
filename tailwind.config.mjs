@@ -34,13 +34,13 @@ export default {
           '100%': { opacity: '1' },
         },
         'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
+          '0%': { opacity: '0', scale: '0.95' },
+          '100%': { opacity: '1', scale: '1' },
         },
         'shake': {
-          '0%, 100%': { transform: 'translateX(0)' },
-          '25%': { transform: 'translateX(-5px)' },
-          '75%': { transform: 'translateX(5px)' },
+          '0%, 100%': { translate: '0' },
+          '25%': { translate: '-5px' },
+          '75%': { translate: '5px' },
         }
       },
       animation: {
