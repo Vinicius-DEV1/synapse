@@ -10,7 +10,7 @@ import { triggerToast } from '../ui/ToastContext';
 
 interface FileUploadModalProps {
   onClose: () => void;
-  onUploadComplete?: (file: FileItem) => void;
+  onUploadComplete?: (files: FileItem[]) => void;
   onUploaded?: (fileId: string, fileName: string, fileType: string, isEncrypted?: boolean) => void;
   currentFolderId?: string | null;
   isOpen?: boolean;
@@ -95,7 +95,7 @@ export default function FileUploadModal({
       return;
     }
 
-    let lastCreated: FileItem | null = null;
+    const createdFiles: FileItem[] = [];
     let anyDriveFailed = false;
     let anyDriveSuccess = false;
     let wasDriveDisconnected = false;
@@ -162,7 +162,10 @@ export default function FileUploadModal({
           mime_type: file.type,
         };
         
-        lastCreated = await window.api.files.create(fileRecord);
+        const created = await window.api.files.create(fileRecord);
+        if (created) {
+          createdFiles.push(created);
+        }
         setProgress(100);
       }
 
@@ -174,9 +177,10 @@ export default function FileUploadModal({
         triggerToast('Arquivo(s) enviado(s) e sincronizado(s) com o Google Drive com sucesso!', 'success', 4000);
       }
 
-      if (onUploadComplete && lastCreated) {
-        onUploadComplete(lastCreated);
-      } else if (onUploaded && lastCreated) {
+      if (onUploadComplete && createdFiles.length > 0) {
+        onUploadComplete(createdFiles);
+      } else if (onUploaded && createdFiles.length > 0) {
+        const lastCreated = createdFiles[createdFiles.length - 1];
         onUploaded(lastCreated.id, lastCreated.name, lastCreated.file_type, !!masterKey);
       }
     } catch (err: unknown) {

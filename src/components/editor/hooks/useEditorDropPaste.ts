@@ -260,6 +260,19 @@ export function useEditorDropPaste({
             }
           }
 
+          const nonImageFiles = files.filter(f => f.type.indexOf('image') !== 0);
+          if (nonImageFiles.length > 0) {
+            window.dispatchEvent(new CustomEvent('caderno-drop-files', { 
+              detail: { files: nonImageFiles } 
+            }));
+            
+            // Se apenas soltou arquivos não-imagem, podemos retornar true
+            if (files.length === nonImageFiles.length) {
+              event.preventDefault();
+              return true;
+            }
+          }
+
           if (imageDropped) {
             const columnTarget = consumeGroupDropTarget(view, {
               x: event.clientX,

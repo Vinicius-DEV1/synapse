@@ -37,6 +37,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
   const [fileUploadModal, setFileUploadModal] = useState<{
     isOpen: boolean;
     isLink: boolean;
+    initialFiles?: File[];
   } | null>(null);
 
   const [fileSelectModal, setFileSelectModal] = useState(false);
@@ -139,6 +140,18 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
       }
     };
 
+    const handleDropFiles = (e: Event) => {
+      if (!isActiveRef.current) return;
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.files && detail.files.length > 0) {
+        setFileUploadModal({
+          isOpen: true,
+          isLink: false,
+          initialFiles: detail.files
+        });
+      }
+    };
+
     const handleCloseTransientModals = () => {
       setFileActionModal(null);
       setMediaActionModal(null);
@@ -157,6 +170,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
     window.addEventListener('open-media-action', handleOpenMediaAction);
     window.addEventListener('open-file-action', handleOpenFileAction);
     window.addEventListener('request-image-delete', handleRequestImageDelete);
+    window.addEventListener('caderno-drop-files', handleDropFiles);
     window.addEventListener('caderno-flush-editor', handleCloseTransientModals);
 
     return () => {
@@ -164,6 +178,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
       window.removeEventListener('open-media-action', handleOpenMediaAction);
       window.removeEventListener('open-file-action', handleOpenFileAction);
       window.removeEventListener('request-image-delete', handleRequestImageDelete);
+      window.removeEventListener('caderno-drop-files', handleDropFiles);
       window.removeEventListener('caderno-flush-editor', handleCloseTransientModals);
     };
   }, []);
