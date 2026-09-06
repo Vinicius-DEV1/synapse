@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, X, List, Layers, HelpCircle } from 'lucide-react';
+import { Plus, X, List, Layers, HelpCircle } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 
 interface QuestionCreateModalProps {

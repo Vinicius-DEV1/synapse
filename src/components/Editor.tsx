@@ -282,6 +282,8 @@ export default function Editor({
         setFileUploadModal={modals.setFileUploadModal}
         fileSelectModal={modals.fileSelectModal}
         setFileSelectModal={modals.setFileSelectModal}
+        questionCreateModal={modals.questionCreateModal}
+        setQuestionCreateModal={modals.setQuestionCreateModal}
         calendarEventModal={modals.calendarEventModal}
         setCalendarEventModal={modals.setCalendarEventModal}
         mediaSelectModal={modals.mediaSelectModal}

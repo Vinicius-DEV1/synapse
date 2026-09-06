@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, Edit2, Trash2, Sparkles, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Edit2, Trash2, Sparkles } from 'lucide-react';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
