@@ -158,28 +158,27 @@ describe('useBlockAiModal Hook', () => {
     );
   });
 
-  it('replaces content inside blockquote stripping any leading quote markers and preventing nested blockquotes', () => {
+  it('replaces content inside toggle preserving rich code blocks and formatting', () => {
     const { result } = renderHook(() =>
       useBlockAiModal({
         editor: mockEditor,
         node: mockNode,
         getPos: mockGetPos,
         updateAttributes: mockUpdateAttributes,
-        blockType: 'blockquote',
+        blockType: 'toggleBlock',
       })
     );
 
     act(() => {
-      result.current.handleApplyReplacement('> 🧩 **O que é POO?**\n> \n> A Programação Orientada a Objetos...');
+      result.current.handleApplyReplacement(
+        'Veja o exemplo abaixo:\n\n```javascript\nfunction somar(a, b) {\n  return a + b;\n}\n```'
+      );
     });
 
+    expect(mockDeleteRange).toHaveBeenCalledWith({ from: 6, to: 29 });
     expect(mockInsertContentAt).toHaveBeenCalledWith(
       6,
-      expect.not.stringContaining('<blockquote>')
-    );
-    expect(mockInsertContentAt).toHaveBeenCalledWith(
-      6,
-      expect.stringContaining('<strong>O que é POO?</strong>')
+      expect.stringContaining('<pre><code class="language-javascript">function somar')
     );
   });
 

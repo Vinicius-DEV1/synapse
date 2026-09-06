@@ -6,7 +6,7 @@ import { StoreContext, getStoreState, getStoreDispatch } from '../../../store/us
 import { triggerToast } from '../../ui/ToastContext';
 import type { AiChatMessage } from '../../modals/AiPromptModal';
 import { buildCodeBlockRules, buildCodeBlockSystemInstruction } from './codeBlockSyntaxHelper';
-import { markdownToHtml, stripMarkdownBlockquotes } from './editorMarkdownHelper';
+import { markdownToHtml } from './editorMarkdownHelper';
 import { parseSearchReplaceBlocks, applySearchReplace, computeMinimalDiffRange } from './blockDiffEngine';
 
 export type BlockAiType = 'blockquoteToggle' | 'toggleBlock' | 'codeBlock' | 'blockquote';
@@ -124,8 +124,14 @@ ${bodyText}
 REGRAS E LIMITES MANDATÓRIOS:
 1. Você é o assistente de IA encarregado EXCLUSIVAMENTE deste bloco de Callout (Destaque).
 2. O seu universo de atuação e modificação é RESTRITO a este bloco específico. NUNCA tente editar, remover ou adicionar conteúdo fora deste bloco, a menos que o usuário solicite explicitamente contexto adicional.
-3. Ao sugerir alterações no conteúdo do callout, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`.
-4. REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste bloco de Callout. NUNCA utilize prefixos de citação (como '> ') e NUNCA crie outro callout, citação ou toggle aninhado. Escreva diretamente o texto formatado (parágrafos, listas, títulos, etc.).`;
+3. CONTEXTO E ESTRUTURA: Você já está operando no interior deste Callout. Por padrão, ao responder ou editar o texto, não replique redundantemente a casca de citação externa (não prefixe todas as linhas com '> ' à toa, pois o bloco já é um callout visual).
+4. ELEMENTOS RICOS E CONTEXTO: O interior deste callout é rico e flexível. Conforme a solicitação do usuário ou a necessidade do contexto, você pode e deve utilizar livremente:
+   - Parágrafos bem estruturados, negrito, itálico e destaques;
+   - Listas numeradas, com marcadores ou tarefas;
+   - Blocos de código com destaque de sintaxe (\`\`\`linguagem ... \`\`\`) quando solicitado código, scripts ou exemplos;
+   - Citações internas (> citação) se for de fato uma citação real ou aviso desejado;
+   - Tabelas e outros elementos compatíveis com Markdown.
+5. RESPOSTA E FORMATAÇÃO: Apresente o conteúdo diretamente em Markdown. Se você incluir explicações antes da proposta final, envolva o conteúdo a ser inserido no bloco em um bloco delimitado (se o conteúdo contiver código com 3 crases, use 4 crases \`\`\`\`markdown ... \`\`\`\` para delimitá-lo perfeitamente).`;
     }
 
     const isCallout = blockType === 'blockquoteToggle';
@@ -155,8 +161,13 @@ ${bodyText}
 REGRAS E LIMITES MANDATÓRIOS:
 1. Você é o assistente de IA encarregado EXCLUSIVAMENTE deste bloco de ${typeLabel}.
 2. O seu universo de atuação e modificação é RESTRITO a este bloco específico. NUNCA tente editar, remover ou adicionar conteúdo fora deste bloco, a menos que o usuário solicite explicitamente contexto adicional.
-3. Ao sugerir alterações no conteúdo do toggle, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique claramente na primeira linha: "Título: [Novo Título]".
-4. REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste bloco. NUNCA utilize prefixos de citação (como '> ') e NUNCA crie outro toggle ou callout aninhado dentro dele. Escreva diretamente o texto formatado (parágrafos, listas, títulos, etc.).`;
+3. CONTEXTO E ESTRUTURA: Este bloco possui um Título visível e um Conteúdo interno expansível. Você já está operando no interior dele. Não replique a casca externa do próprio toggle (não recrie outro toggle idêntico englobando tudo à toa).
+4. TÍTULO DO TOGGLE: Se sugerir ou alterar o título do toggle, indique claramente no início da proposta: "Título: [Novo Título]".
+5. ELEMENTOS RICOS E CONTEXTO: O interior deste toggle é um documento rico e versátil. Conforme a demanda do usuário e do contexto, você pode e deve usar livremente:
+   - Blocos de código com destaque de sintaxe (\`\`\`linguagem ... \`\`\`) quando solicitado código, scripts ou exemplos;
+   - Callouts e destaques (> aviso) caso deseje destacar uma citação ou alerta dentro do toggle;
+   - Listas, subtítulos, negrito, itálico e tabelas.
+6. RESPOSTA E FORMATAÇÃO: Apresente o conteúdo diretamente em Markdown. Se você incluir explicações antes da proposta final, envolva o conteúdo sugerido para o corpo em um bloco delimitado (se o conteúdo contiver blocos de código com 3 crases, use 4 crases \`\`\`\`markdown ... \`\`\`\` para delimitá-lo perfeitamente).`;
   }, [blockType, node, editor]);
 
   const getRawBlockContent = useCallback((): string => {
@@ -196,19 +207,27 @@ Ou, se apropriado, pode emitir a versão completa revisada do bloco.`;
 
     if (blockType === 'blockquote') {
       return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
-REGRA ANTI-ANINHAMENTO: Você já está DENTRO do callout. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
-Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`.\n${surgicalGuidance}`;
+DIRETRIZES DE CONTEXTO E ESTRUTURA:
+1. Você já está DENTRO do callout. Não crie cascas de citação redundantes (não prefixe todas as linhas com '> ' à toa, pois o bloco já é um callout visual).
+2. O interior do bloco é livre e rico. Conforme solicitado pelo usuário ou demandado pelo contexto, utilize livremente blocos de código (\`\`\`linguagem ... \`\`\`), listas, citações internas (> citação), negrito, itálico e tabelas.
+3. Se envolver a proposta final em bloco delimitador e ela contiver blocos de código de 3 crases, use 4 crases (\`\`\`\`markdown ... \`\`\`\`) para evitar colisão de sintaxe.\n${surgicalGuidance}`;
     }
 
     if (blockType === 'blockquoteToggle') {
       return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
-REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste toggle. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
-Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
+DIRETRIZES DE CONTEXTO E ESTRUTURA:
+1. Você já está DENTRO deste toggle. Não recrie outro toggle idêntico redundante englobando tudo.
+2. O corpo interno é livre e rico: você pode e deve incluir blocos de código (\`\`\`linguagem ... \`\`\`), callouts internos (> aviso), listas, subtítulos e tabelas conforme demandado pelo contexto.
+3. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".
+4. Se envolver a proposta final em bloco delimitador e ela contiver blocos de código de 3 crases, use 4 crases (\`\`\`\`markdown ... \`\`\`\`) para evitar colisão de sintaxe.\n${surgicalGuidance}`;
     }
 
     return `Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.
-REGRA ANTI-ANINHAMENTO: Você já está DENTRO deste toggle. NUNCA use prefixos de citação (como '> ') e NUNCA crie callouts ou toggles aninhados redundantes.
-Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) diretamente e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
+DIRETRIZES DE CONTEXTO E ESTRUTURA:
+1. Você já está DENTRO deste toggle. Não recrie outro toggle idêntico redundante englobando tudo.
+2. O conteúdo interno é livre e rico: use livremente blocos de código (\`\`\`linguagem ... \`\`\`), destaques/callouts internos (> nota), listas e subtítulos conforme o contexto solicitar.
+3. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".
+4. Se envolver a proposta final em bloco delimitador e ela contiver blocos de código de 3 crases, use 4 crases (\`\`\`\`markdown ... \`\`\`\`) para evitar colisão de sintaxe.\n${surgicalGuidance}`;
   }, [blockType, node.attrs.language]);
 
   // Apply replacement strictly bounded to this block node
@@ -283,22 +302,14 @@ Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formata
           return;
         }
         cleanContent = srResult.result;
-      } else {
-        const mdMatch = replacementText.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
-        if (mdMatch) {
-          cleanContent = mdMatch[1].trim();
-        }
       }
-
-      // Ensure blockquote markers are stripped so no nested callouts/toggles are created
-      cleanContent = stripMarkdownBlockquotes(cleanContent);
 
       if (newTitle !== undefined && newTitle !== node.attrs.title) {
         updateAttributes({ title: newTitle });
       }
 
-      // Convert markdown to semantic HTML so TipTap creates rich formatted nodes (bold, lists, headings)
-      const htmlContent = markdownToHtml(cleanContent, { unwrapBlockquotes: true });
+      // Convert markdown to semantic HTML so TipTap creates rich formatted nodes (bold, lists, headings, code, quotes)
+      const htmlContent = markdownToHtml(cleanContent);
 
       // Replace inner content strictly between pos + 1 and pos + node.nodeSize - 1
       editor
@@ -349,14 +360,8 @@ Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formata
       }
 
       let cleanContent = content;
-      const mdMatch = content.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
-      if (mdMatch) {
-        cleanContent = mdMatch[1].trim();
-      }
-      cleanContent = stripMarkdownBlockquotes(cleanContent);
-
       const endPos = pos + node.nodeSize - 1;
-      const htmlContent = markdownToHtml(cleanContent, { unwrapBlockquotes: true });
+      const htmlContent = markdownToHtml(cleanContent);
       editor.chain().focus().insertContentAt(endPos, htmlContent).run();
       triggerToast(
         blockType === 'blockquote'
