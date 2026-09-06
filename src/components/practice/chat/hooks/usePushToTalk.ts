@@ -17,6 +17,8 @@ interface UsePushToTalkProps {
   saveMessage: (role: 'user' | 'model', text: string) => void;
   setLiveTranscript: (text: string) => void;
   setError: (err: string | null) => void;
+  continuousMode?: boolean;
+  isPlayingRef?: React.MutableRefObject<boolean>;
 }
 
 export function usePushToTalk({
@@ -26,12 +28,17 @@ export function usePushToTalk({
   wsRef,
   saveMessage,
   setLiveTranscript,
-  setError
+  setError,
+  continuousMode = false,
+  isPlayingRef
 }: UsePushToTalkProps) {
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
   const [micLabel, setMicLabel] = useState<string>('');
   const micButtonRef = useRef<HTMLButtonElement>(null);
+
+  const silentChunksCountRef = useRef(0);
+  const speechActiveRef = useRef(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -72,12 +79,12 @@ export function usePushToTalk({
       // Initialize STT
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.lang = 'pt-BR';
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
         
-        recognitionRef.current.onresult = (event: any) => {
+        recognition.onresult = (event: any) => {
           let interimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const chunk = event.results[i][0].transcript;
@@ -91,14 +98,133 @@ export function usePushToTalk({
           userTranscriptRef.current = fullTranscript;
           setLiveTranscript(fullTranscript);
         };
+
+        if (continuousMode) {
+          recognition.onend = () => {
+            if (isConnected && isInCall) {
+              try {
+                recognition.start();
+              } catch {
+                // ignore if already running
+              }
+            }
+          };
+          try {
+            recognition.start();
+          } catch {
+            // ignore
+          }
+        }
+
+        recognitionRef.current = recognition;
       }
       
       workletNode.port.onmessage = (e) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-        const inputData = e.data;
-        const recording = isRecordingRef.current;
-        if (!recording) return;
-        userAudioChunksRef.current.push(inputData.slice());
+        const inputData: Float32Array = e.data;
+
+        if (continuousMode) {
+          // In continuous mode, pause mic input while AI speaks to avoid speaker acoustic feedback
+          if (isPlayingRef?.current) {
+            if (speechActiveRef.current) {
+              speechActiveRef.current = false;
+              isRecordingRef.current = false;
+              setIsRecording(false);
+            }
+            return;
+          }
+
+          // Real-time Voice Activity Detection (RMS energy)
+          let sumSquares = 0;
+          for (let i = 0; i < inputData.length; i++) {
+            sumSquares += inputData[i] * inputData[i];
+          }
+          const rms = Math.sqrt(sumSquares / inputData.length);
+          const isSpeech = rms > 0.009;
+
+          if (isSpeech) {
+            silentChunksCountRef.current = 0;
+            if (!speechActiveRef.current) {
+              speechActiveRef.current = true;
+              isRecordingRef.current = true;
+              setIsRecording(true);
+            }
+          } else {
+            silentChunksCountRef.current++;
+          }
+
+          if (speechActiveRef.current) {
+            userAudioChunksRef.current.push(inputData.slice());
+
+            // Real-time streaming to Gemini Live WebSocket
+            const pcm16 = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+              let s = Math.max(-1, Math.min(1, inputData[i]));
+              pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            const buffer = new Uint8Array(pcm16.buffer);
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < buffer.length; i += chunkSize) {
+              binary += String.fromCharCode.apply(null, Array.from(buffer.slice(i, i + chunkSize)));
+            }
+            wsRef.current.send(JSON.stringify({
+              realtimeInput: {
+                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: window.btoa(binary) }]
+              }
+            }));
+
+            // Conclude turn after 5 silent chunks (~1.25s)
+            if (silentChunksCountRef.current >= 5) {
+              speechActiveRef.current = false;
+              isRecordingRef.current = false;
+              setIsRecording(false);
+
+              // Send 1.5s silence to trigger Gemini's server-side VAD model turn
+              const silenceBuffer = new Uint8Array(16000 * 1.5 * 2);
+              let silenceBinary = '';
+              for (let i = 0; i < silenceBuffer.length; i += chunkSize) {
+                silenceBinary += String.fromCharCode.apply(null, Array.from(silenceBuffer.slice(i, i + chunkSize)));
+              }
+              wsRef.current.send(JSON.stringify({
+                realtimeInput: {
+                  mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: window.btoa(silenceBinary) }]
+                }
+              }));
+
+              let text = userTranscriptRef.current.trim();
+              if (text) {
+                if (userAudioChunksRef.current.length > 0) {
+                  try {
+                    const totalLen = userAudioChunksRef.current.reduce((acc, curr) => acc + curr.length, 0);
+                    const combined = new Float32Array(totalLen);
+                    let offset = 0;
+                    for (const chunk of userAudioChunksRef.current) {
+                      combined.set(chunk, offset);
+                      offset += chunk.length;
+                    }
+                    const wavBuffer = encodeWAV(combined, 16000);
+                    const b64 = arrayBufferToBase64(wavBuffer);
+                    text += ` [audio:data:audio/wav;base64,${b64}]`;
+                  } catch (err) {
+                    console.error('Falha ao gerar audio do candidato:', err);
+                  }
+                }
+                saveMessage('user', text);
+              }
+              userTranscriptRef.current = '';
+              finalTranscriptRef.current = '';
+              userAudioChunksRef.current = [];
+              setLiveTranscript('');
+              silentChunksCountRef.current = 0;
+            }
+          }
+        } else {
+          // Push-to-talk mode
+          const recording = isRecordingRef.current;
+          if (!recording) return;
+          userAudioChunksRef.current.push(inputData.slice());
+        }
       };
       
       source.connect(workletNode);
@@ -109,7 +235,11 @@ export function usePushToTalk({
       setIsRecording(false);
     } catch (err: any) {
       console.error('Mic error:', err);
-      setError('Erro ao acessar microfone.');
+      if (err.name === 'NotAllowedError') {
+        setError('Permissão de microfone negada. Verifique as permissões de áudio do sistema.');
+      } else {
+        setError('Erro ao acessar microfone.');
+      }
     }
   }, [wsRef, setError, setLiveTranscript]);
 
@@ -138,8 +268,10 @@ export function usePushToTalk({
     }
   }, [isConnected, isInCall, startAudioCapture]);
 
-  // Handle Push-To-Talk
+  // Handle Push-To-Talk (Only in traditional mode, bypassed in continuous interview mode)
   useEffect(() => {
+    if (continuousMode) return;
+
     const stopRecordingAndSend = async () => {
       isRecordingRef.current = false;
       setIsRecording(false);
@@ -296,7 +428,7 @@ export function usePushToTalk({
         btn.removeEventListener('touchcancel', handleTouchEnd);
       }
     };
-  }, [isConnected, isInCall, isMobile, wsRef, saveMessage, setLiveTranscript]);
+  }, [continuousMode, isConnected, isInCall, isMobile, wsRef, saveMessage, setLiveTranscript]);
 
   return {
     isRecording,
@@ -304,6 +436,7 @@ export function usePushToTalk({
     analyserRef,
     micLabel,
     micButtonRef,
+    startAudioCapture,
     stopAudioCapture
   };
 }

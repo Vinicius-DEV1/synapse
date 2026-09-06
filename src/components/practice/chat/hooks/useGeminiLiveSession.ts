@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { TutorSession, TutorMemory } from '../../../../types';
+import { parseInterviewConfig } from '../../../../types';
+import { buildInterviewSystemPrompt } from '../services/interviewPromptBuilder';
 import { encodeWAV } from '../../../../utils/audio';
 import { arrayBufferToBase64 } from '../../../../utils/binary';
 import { useAudioStreamPlayer } from './useAudioStreamPlayer';
@@ -166,7 +168,10 @@ export function useGeminiLiveSession({
           setError(null);
 
           let systemPrompt = globalSystemPrompt;
-          if (session.custom_prompt && session.custom_prompt.trim().length > 0) {
+          const interviewConfig = parseInterviewConfig(session);
+          if (interviewConfig) {
+            systemPrompt = buildInterviewSystemPrompt(interviewConfig);
+          } else if (session.custom_prompt && session.custom_prompt.trim().length > 0) {
             systemPrompt = session.custom_prompt.trim();
           }
 

@@ -217,6 +217,25 @@ pub fn run() {
                 }
             });
 
+            #[cfg(target_os = "linux")]
+            {
+                for (_label, window) in app.webview_windows() {
+                    let _ = window.with_webview(|webview| {
+                        use webkit2gtk::{PermissionRequestExt, SettingsExt, WebViewExt};
+                        let wv = webview.inner();
+                        if let Some(settings) = wv.settings() {
+                            settings.set_enable_webrtc(true);
+                            settings.set_enable_media_stream(true);
+                        }
+                        wv.connect_permission_request(|_view, request| {
+                            println!("[WebKitGTK] Concedendo permissão de mídia automaticamente: {:?}", request);
+                            request.allow();
+                            true
+                        });
+                    });
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -15,6 +15,8 @@ import {
   DEFAULT_SYSTEM_INSTRUCTION,
 } from './chat/hooks/usePracticePrompts';
 import type { TutorSession } from '../../types';
+import { parseInterviewConfig } from '../../types';
+import { InterviewFeedbackModal } from './chat/InterviewFeedbackModal';
 
 interface PracticeChatProps {
   session: TutorSession;
@@ -25,6 +27,10 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSessionSettingsOpen, setIsSessionSettingsOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  const interviewConfig = parseInterviewConfig(session);
+  const isInterview = interviewConfig !== null;
 
   const {
     globalSystemPrompt,
@@ -82,13 +88,14 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     setLiveTranscript,
   });
 
-  // Hook 2: Push to Talk & Mic capture
+  // Hook 2: Push to Talk & Mic capture (continuousMode in interview)
   const {
     isRecording,
     isRecordingRef,
     analyserRef,
     micLabel,
     micButtonRef,
+    startAudioCapture,
     stopAudioCapture,
   } = usePushToTalk({
     isConnected,
@@ -98,6 +105,8 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     saveMessage,
     setLiveTranscript,
     setError,
+    continuousMode: isInterview,
+    isPlayingRef,
   });
 
   // Hook 3: Audio Visualizer
@@ -114,6 +123,8 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const startCall = () => {
     setIsInCall(true);
     setCallStartTime(Date.now());
+    // Trigger mic capture immediately on user gesture to avoid WebKit permission drop
+    startAudioCapture();
     connectWebSocket();
   };
 
@@ -143,6 +154,8 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         onOpenSessionSettings={() => setIsSessionSettingsOpen(true)}
         onOpenVoiceSettings={() => setIsSettingsOpen(true)}
         onOpenMemoryDrawer={() => setIsMemoryOpen(true)}
+        isInterview={isInterview}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
       />
 
       {/* Action Bar / Controls when not in active full modal */}
@@ -154,6 +167,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
         micButtonRef={micButtonRef as React.RefObject<HTMLButtonElement>}
         onStartCall={startCall}
         onEndCall={endCall}
+        isInterview={isInterview}
       />
 
       {/* Messages Transcript */}
@@ -171,6 +185,18 @@ export default function PracticeChat({ session }: PracticeChatProps) {
           liveTranscript={liveTranscript}
           visualizerRefs={visualizerRefs}
           onEndCall={endCall}
+          interviewConfig={interviewConfig}
+          playbackAnalyserRef={playbackAnalyserRef}
+        />
+      )}
+
+      {/* Modal de Avaliação da Entrevista */}
+      {isInterview && interviewConfig && (
+        <InterviewFeedbackModal
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
+          config={interviewConfig}
+          messages={messages}
         />
       )}
 
