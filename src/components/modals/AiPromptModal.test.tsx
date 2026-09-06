@@ -170,6 +170,46 @@ describe('AiPromptModal Component', () => {
     );
   });
 
+  it('strips leading blockquote markers (> ) from markdown proposals to avoid redundant nesting in callouts and toggles', () => {
+    const messages: AiChatMessage[] = [
+      { role: 'user', parts: [{ text: 'explique POO' }] },
+      {
+        role: 'model',
+        parts: [
+          {
+            text: '```markdown\n> 🧩 O que é POO?\n> \n> A Programação Orientada a Objetos é um paradigma...\n> \n> 1. Encapsulamento\n```',
+          },
+        ],
+      },
+    ];
+
+    const { getByText } = render(
+      <AiPromptModal
+        x={100}
+        y={100}
+        chatId="test-chat-anti-nest"
+        messages={messages}
+        blockBadge="IA • Callout"
+        blockTitle="Destaque"
+        targetType="blockquote"
+        onMessageAdd={mockOnMessageAdd}
+        onClear={mockOnClear}
+        onClose={mockOnClose}
+        onApplyReplacement={mockOnApplyReplacement}
+        onInsertContent={mockOnInsertContent}
+      />
+    );
+
+    const replaceBtn = getByText('Substituir no Bloco');
+    fireEvent.click(replaceBtn);
+
+    expect(mockOnApplyReplacement).toHaveBeenCalledWith(
+      '🧩 O que é POO?\n\nA Programação Orientada a Objetos é um paradigma...\n\n1. Encapsulamento',
+      undefined
+    );
+  });
+
+
   it('closes when Escape key is pressed', () => {
     render(
       <AiPromptModal
