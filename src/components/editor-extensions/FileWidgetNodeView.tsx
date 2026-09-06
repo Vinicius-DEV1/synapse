@@ -11,6 +11,7 @@ import ColorPalettePicker from './ColorPalettePicker';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import type { FileItem } from '../../types/files';
+import AudioPlayerModal from '../files/AudioPlayerModal';
 
 export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
@@ -24,6 +25,7 @@ export default function FileWidgetNodeView(props: any) {
   const [isLoadingFile, setIsLoadingFile] = useState(true);
   const [showViewer, setShowViewer] = useState(false);
   const [showFloatingViewer, setShowFloatingViewer] = useState(false);
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [fileItem, setFileItem] = useState<FileItem | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -329,6 +331,8 @@ export default function FileWidgetNodeView(props: any) {
             window.dispatchEvent(new CustomEvent('open-file-action', { 
               detail: { editor: props.editor, fileId, title: name || fileItem?.name } 
             }));
+          } else if ((fileType === 'audio' || name?.toLowerCase().match(/\.(mp3|wav|ogg|m4a|aac)$/)) && fileItem) {
+            setShowAudioPlayer(true);
           } else {
             if (fileItem) setShowViewer(true);
             else setShowDeletedNotice(true);
@@ -551,6 +555,13 @@ export default function FileWidgetNodeView(props: any) {
             setShowFloatingViewer(false);
             setShowViewer(true);
           }}
+        />
+      )}
+
+      {showAudioPlayer && fileItem && (
+        <AudioPlayerModal
+          item={fileItem}
+          onClose={() => setShowAudioPlayer(false)}
         />
       )}
     </NodeViewWrapper>
