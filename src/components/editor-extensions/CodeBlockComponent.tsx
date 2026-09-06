@@ -317,6 +317,7 @@ export default function CodeBlockComponent(props: NodeViewProps) {
             messages={aiModal.messages}
             contextText={aiModal.contextText}
             systemInstruction={aiModal.systemInstruction}
+            originalContent={aiModal.originalContent}
             blockBadge={aiModal.blockBadge}
             blockTitle={aiModal.blockTitle}
             targetType={aiModal.targetType}

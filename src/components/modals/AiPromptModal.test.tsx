@@ -186,4 +186,60 @@ describe('AiPromptModal Component', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(mockOnClose).toHaveBeenCalled();
   });
+
+  it('renders surgical action button and diff toggle for SEARCH/REPLACE responses', () => {
+    const originalCode = 'const count = 0;\nconsole.log(count);';
+    const surgicalDiffResponse = `Aqui está a correção solicitada:
+<<<<<<< SEARCH
+console.log(count);
+=======
+console.log("Count is:", count);
+>>>>>>>`;
+
+    const messages: AiChatMessage[] = [
+      {
+        role: 'user',
+        parts: [{ text: 'Melhore a linha do console.log' }],
+      },
+      {
+        role: 'model',
+        parts: [{ text: surgicalDiffResponse }],
+      },
+    ];
+
+    const { getByText, queryByText } = render(
+      <AiPromptModal
+        x={100}
+        y={100}
+        chatId="test-chat"
+        messages={messages}
+        originalContent={originalCode}
+        blockBadge="IA • Bloco de Código"
+        blockTitle="javascript"
+        targetType="code"
+        onMessageAdd={mockOnMessageAdd}
+        onClear={mockOnClear}
+        onClose={mockOnClose}
+        onApplyReplacement={mockOnApplyReplacement}
+        onInsertContent={mockOnInsertContent}
+      />
+    );
+
+    // Should display surgical action button with hunk count
+    const surgicalBtn = getByText('Aplicar Cirurgicamente (1)');
+    expect(surgicalBtn).toBeDefined();
+
+    // Should display "Ver Diff" button
+    const diffBtn = getByText('Ver Diff');
+    expect(diffBtn).toBeDefined();
+
+    // Clicking "Ver Diff" toggles diff view
+    fireEvent.click(diffBtn);
+    expect(getByText('Comparação de Modificações')).toBeDefined();
+    expect(getByText('Ver Texto')).toBeDefined();
+
+    // Clicking "Aplicar Cirurgicamente (1)" calls onApplyReplacement
+    fireEvent.click(surgicalBtn);
+    expect(mockOnApplyReplacement).toHaveBeenCalledWith(surgicalDiffResponse, undefined);
+  });
 });
