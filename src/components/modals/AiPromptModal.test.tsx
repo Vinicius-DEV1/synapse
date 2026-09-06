@@ -131,6 +131,45 @@ describe('AiPromptModal Component', () => {
     );
   });
 
+  it('renders blockquote replacement action and extracts clean markdown proposal from preamble', () => {
+    const messages: AiChatMessage[] = [
+      { role: 'user', parts: [{ text: 'explique POO' }] },
+      {
+        role: 'model',
+        parts: [
+          {
+            text: 'Para explicar POO mantendo o contexto, aqui está a explicação:\n```markdown\n**Conceito Rápido: O que é POO?**\n\n1. **Classes:** Moldes\n```',
+          },
+        ],
+      },
+    ];
+
+    const { getByText } = render(
+      <AiPromptModal
+        x={100}
+        y={100}
+        chatId="test-chat"
+        messages={messages}
+        blockBadge="IA • Callout"
+        blockTitle="Destaque"
+        targetType="blockquote"
+        onMessageAdd={mockOnMessageAdd}
+        onClear={mockOnClear}
+        onClose={mockOnClose}
+        onApplyReplacement={mockOnApplyReplacement}
+        onInsertContent={mockOnInsertContent}
+      />
+    );
+
+    const replaceBtn = getByText('Substituir no Bloco');
+    fireEvent.click(replaceBtn);
+
+    expect(mockOnApplyReplacement).toHaveBeenCalledWith(
+      '**Conceito Rápido: O que é POO?**\n\n1. **Classes:** Moldes',
+      undefined
+    );
+  });
+
   it('closes when Escape key is pressed', () => {
     render(
       <AiPromptModal

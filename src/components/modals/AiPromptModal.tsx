@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Image as ImageIcon, FileText, Trash2, Plus, Send, Check, Copy } from 'lucide-react';
 import { promptGemini } from '../../services/gemini';
 import { Portal } from '../ui/Portal';
+import { AiChatMarkdown } from '../ai-sidebar/AiChatMarkdown';
 import type { AiChatMessage, AiChatMessagePart } from '../../types/store';
 
 export type { AiChatMessage, AiChatMessagePart };
@@ -156,7 +157,7 @@ export default function AiPromptModal({
       } else {
         cleanText = text.replace(/^```[a-zA-Z0-9_-]*\n?/, '').replace(/\n?```$/, '').trim();
       }
-    } else if (targetType === 'toggle' || targetType === 'blockquoteToggle') {
+    } else if (targetType === 'toggle' || targetType === 'blockquoteToggle' || targetType === 'blockquote') {
       const titleMatch = text.match(/^(?:Título|Titulo|Title):\s*(.+)$/m);
       if (titleMatch) {
         proposedTitle = titleMatch[1].trim().replace(/^\*+|\*+$/g, '');
@@ -301,11 +302,17 @@ export default function AiPromptModal({
                             </div>
                           );
                         } catch {
-                          return <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>;
+                          return (
+                            <div className="text-xs text-zinc-100 leading-relaxed overflow-x-auto">
+                              <AiChatMarkdown content={textContent} />
+                            </div>
+                          );
                         }
                       })()
                     ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
+                      <div className="text-xs text-zinc-100 leading-relaxed overflow-x-auto">
+                        <AiChatMarkdown content={textContent} />
+                      </div>
                     )}
                   </div>
 

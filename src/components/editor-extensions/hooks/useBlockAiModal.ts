@@ -6,6 +6,7 @@ import { StoreContext, getStoreState, getStoreDispatch } from '../../../store/us
 import { triggerToast } from '../../ui/ToastContext';
 import type { AiChatMessage } from '../../modals/AiPromptModal';
 import { buildCodeBlockRules, buildCodeBlockSystemInstruction } from './codeBlockSyntaxHelper';
+import { markdownToHtml } from './editorMarkdownHelper';
 
 export type BlockAiType = 'blockquoteToggle' | 'toggleBlock' | 'codeBlock' | 'blockquote';
 
@@ -163,14 +164,14 @@ REGRAS E LIMITES MANDATÓRIOS:
     }
 
     if (blockType === 'blockquote') {
-      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.';
+      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```.';
     }
 
     if (blockType === 'blockquoteToggle') {
-      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.';
+      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".';
     }
 
-    return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele.';
+    return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".';
   }, [blockType, node.attrs.language]);
 
   // Apply replacement strictly bounded to this block node
@@ -203,7 +204,7 @@ REGRAS E LIMITES MANDATÓRIOS:
         return;
       }
 
-      // For toggle and toggle callout
+      // For blockquote, toggle callout, and toggle
       let cleanContent = replacementText;
       const mdMatch = replacementText.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
       if (mdMatch) {
@@ -214,12 +215,15 @@ REGRAS E LIMITES MANDATÓRIOS:
         updateAttributes({ title: newTitle });
       }
 
+      // Convert markdown to semantic HTML so TipTap creates rich formatted nodes (bold, lists, headings)
+      const htmlContent = markdownToHtml(cleanContent);
+
       // Replace inner content strictly between pos + 1 and pos + node.nodeSize - 1
       editor
         .chain()
         .focus()
         .deleteRange({ from: pos + 1, to: pos + node.nodeSize - 1 })
-        .insertContentAt(pos + 1, cleanContent)
+        .insertContentAt(pos + 1, htmlContent)
         .run();
 
       triggerToast(
@@ -267,7 +271,8 @@ REGRAS E LIMITES MANDATÓRIOS:
       }
 
       const endPos = pos + node.nodeSize - 1;
-      editor.chain().focus().insertContentAt(endPos, cleanContent).run();
+      const htmlContent = markdownToHtml(cleanContent);
+      editor.chain().focus().insertContentAt(endPos, htmlContent).run();
       triggerToast(
         blockType === 'blockquote'
           ? 'Conteúdo inserido no callout!'
