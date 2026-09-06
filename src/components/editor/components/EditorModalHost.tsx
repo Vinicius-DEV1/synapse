@@ -18,6 +18,7 @@ const MediaSelectModal = lazy(() => import('../../modals/MediaSelectModal'));
 const MediaActionModal = lazy(() => import('../../modals/MediaActionModal'));
 const FileActionModal = lazy(() => import('../../modals/FileActionModal'));
 const ImageDeleteModal = lazy(() => import('../../modals/ImageDeleteModal'));
+const QuestionCreateModal = lazy(() => import('../../editor-extensions/quiz/components/QuestionCreateModal'));
 
 interface EditorModalHostProps {
   editor: Editor | null;
@@ -84,6 +85,8 @@ interface EditorModalHostProps {
   >;
   fileSelectModal: boolean;
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
+  questionCreateModal: boolean;
+  setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
   calendarEventModal: { isOpen: boolean; initialTitle?: string } | null;
   setCalendarEventModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; initialTitle?: string } | null>
@@ -137,6 +140,8 @@ export default function EditorModalHost({
   setFileUploadModal,
   fileSelectModal,
   setFileSelectModal,
+  questionCreateModal,
+  setQuestionCreateModal,
   calendarEventModal,
   setCalendarEventModal,
   mediaSelectModal,
@@ -356,6 +361,24 @@ export default function EditorModalHost({
             setImageToDelete(null);
           }}
         />
+        
+        {questionCreateModal && (
+          <QuestionCreateModal
+            isOpen={true}
+            onClose={() => setQuestionCreateModal(false)}
+            onConfirm={(title, reuseExisting) => {
+              if (editor) {
+                editor.chain().focus().insertContent({
+                  type: 'questionBlock',
+                  attrs: {
+                    title: title
+                  }
+                }).run();
+              }
+              setQuestionCreateModal(false);
+            }}
+          />
+        )}
       </Suspense>
     </>
   );

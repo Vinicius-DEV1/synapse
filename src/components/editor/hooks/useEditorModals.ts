@@ -41,6 +41,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
   } | null>(null);
 
   const [fileSelectModal, setFileSelectModal] = useState(false);
+  const [questionCreateModal, setQuestionCreateModal] = useState(false);
 
   const [pageSearchMenu, setPageSearchMenu] = useState<{
     isOpen: boolean;
@@ -160,6 +161,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
       setPageSearchMenu(null);
       setMediaSelectModal(null);
       setFileSelectModal(false);
+      setQuestionCreateModal(false);
       setFileUploadModal(null);
       setCalendarEventModal(null);
       setFocusModal(null);
@@ -194,6 +196,8 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
     setFileUploadModal,
     fileSelectModal,
     setFileSelectModal,
+    questionCreateModal,
+    setQuestionCreateModal,
     pageSearchMenu,
     setPageSearchMenu,
     calendarEventModal,

@@ -22,6 +22,7 @@ interface UseSlashCommandProps {
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
   setCalendarEventModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTitle?: string } | null>>;
   setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
+  setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 /**
@@ -35,6 +36,7 @@ export function useSlashCommand({
   setFileSelectModal,
   setCalendarEventModal,
   setMediaSelectModal,
+  setQuestionCreateModal,
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -157,7 +159,7 @@ export function useSlashCommand({
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
-      case 'question': chain.insertContent('<div class="question-block"></div>').run(); break;
+      case 'question': chain.run(); setQuestionCreateModal(true); break;
       case 'toggle': chain.insertContent('<div class="toggle-block"><p></p></div>').run(); break;
       case 'blockquoteToggle': chain.insertContent('<div class="blockquote-toggle"><p></p></div>').run(); break;
       case 'page-create':
