@@ -10,6 +10,7 @@ interface PracticeCallBarProps {
   micButtonRef: React.RefObject<HTMLButtonElement>;
   onStartCall: () => void;
   onEndCall: () => void;
+  isInterview?: boolean;
 }
 
 export function PracticeCallBar({
@@ -20,6 +21,7 @@ export function PracticeCallBar({
   micButtonRef,
   onStartCall,
   onEndCall,
+  isInterview,
 }: PracticeCallBarProps) {
   return (
     <div className="flex items-center justify-end px-4 py-2 bg-dark-card/30 border-b border-white/5 gap-3">
@@ -37,13 +39,23 @@ export function PracticeCallBar({
           onClick={onStartCall}
           className="px-5 py-2 bg-brand-600 hover:bg-brand-500 rounded-full text-white text-xs font-semibold shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2 active:scale-95"
         >
-          <Play size={14} fill="currentColor" /> INICIAR LIGAÇÃO
+          <Play size={14} fill="currentColor" /> {isInterview ? 'INICIAR ENTREVISTA' : 'INICIAR LIGAÇÃO'}
         </button>
       )}
 
       {isInCall && (
         <>
-          {isMobile ? (
+          {isInterview ? (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                {isRecording ? 'Ouvindo...' : 'Microfone Ativo (Realtime)'}
+              </span>
+            </div>
+          ) : isMobile ? (
             <button
               ref={micButtonRef}
               className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all active:scale-95 ${
