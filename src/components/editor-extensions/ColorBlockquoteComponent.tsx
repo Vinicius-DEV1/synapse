@@ -164,18 +164,36 @@ export default function ColorBlockquoteComponent(props: any) {
         )}
 
         {showColors && (
-          <div ref={colorMenuRef} className="absolute top-full right-0 mt-1 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50 w-max">
+          <div ref={colorMenuRef} 
+               className="absolute top-full right-0 mt-1 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50 w-max"
+               onMouseDown={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+               }}
+          >
             {BG_COLORS.filter(c => c.value !== 'transparent').map(color => (
               <button 
                 key={color.name}
-                onClick={() => { setShowConfirm(false); handleSetColor(color.hex); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowConfirm(false); 
+                  handleSetColor(color.hex);
+                }}
+                onClick={(e) => e.preventDefault()}
                 className={`w-5 h-5 rounded-full border hover:scale-110 transition-transform ${currentColor === color.hex ? 'border-white' : 'border-white/20'}`}
                 style={{ backgroundColor: color.hex }}
                 title={color.name}
               />
             ))}
             <button 
-              onClick={() => { setShowConfirm(false); handleSetColor('default'); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowConfirm(false); 
+                handleSetColor('default');
+              }}
+              onClick={(e) => e.preventDefault()}
               className={`w-5 h-5 rounded-full hover:scale-110 transition-transform bg-transparent flex items-center justify-center hover:text-white ${currentColor === 'default' ? 'border border-white text-white' : 'border border-white/20 text-white/50'}`}
               title="Cor Padrão"
             >
