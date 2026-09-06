@@ -7,6 +7,8 @@ describe('useBlockAiModal Hook', () => {
   let mockNode: any;
   let mockGetPos: any;
   let mockUpdateAttributes: any;
+  let mockDeleteRange: any;
+  let mockInsertContentAt: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,6 +34,9 @@ describe('useBlockAiModal Hook', () => {
       text: vi.fn((text: string) => ({ type: 'text', text })),
     };
 
+    mockInsertContentAt = vi.fn(() => ({ run: vi.fn() }));
+    mockDeleteRange = vi.fn(() => ({ insertContentAt: mockInsertContentAt }));
+
     mockEditor = {
       state: {
         tr: mockTr,
@@ -43,14 +48,8 @@ describe('useBlockAiModal Hook', () => {
       schema: mockSchema,
       chain: vi.fn(() => ({
         focus: vi.fn(() => ({
-          deleteRange: vi.fn(() => ({
-            insertContentAt: vi.fn(() => ({
-              run: vi.fn(),
-            })),
-          })),
-          insertContentAt: vi.fn(() => ({
-            run: vi.fn(),
-          })),
+          deleteRange: mockDeleteRange,
+          insertContentAt: mockInsertContentAt,
         })),
       })),
     };
@@ -148,10 +147,15 @@ describe('useBlockAiModal Hook', () => {
     );
 
     act(() => {
-      result.current.handleApplyReplacement('Novo texto do callout');
+      result.current.handleApplyReplacement('**Conceito Rápido: O que é POO?**\n\n1. **Classes:** Moldes');
     });
 
     expect(mockEditor.chain).toHaveBeenCalled();
+    expect(mockDeleteRange).toHaveBeenCalledWith({ from: 6, to: 29 });
+    expect(mockInsertContentAt).toHaveBeenCalledWith(
+      6,
+      expect.stringContaining('<strong>Conceito Rápido: O que é POO?</strong>')
+    );
   });
 
   it('replaces code content inside code block atomically', () => {
