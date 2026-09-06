@@ -23,6 +23,7 @@ export interface AppSettings {
   videoDefaultWebQuality: 'original' | 'remux' | '1080p' | '720p' | '480p' | '360p';
   /** Auto-lock vault after N minutes of inactivity (0 = disabled) */
   autoLockMinutes?: number;
+  compactPinnedTabs?: boolean;
 }
 
 export function getSettings(): AppSettings {
@@ -45,7 +46,8 @@ export function getSettings(): AppSettings {
     enableStudy3DFlip: true,
     videoConversionPreset: 'medium',
     videoPlaybackPreference: 'auto',
-    videoDefaultWebQuality: '720p'
+    videoDefaultWebQuality: '720p',
+    compactPinnedTabs: false
   };
   
   try {
