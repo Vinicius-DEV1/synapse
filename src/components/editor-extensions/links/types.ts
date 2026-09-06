@@ -12,6 +12,12 @@ export interface LinkPreviewAttrs {
   showNotes: boolean;
   watched?: boolean;
   color?: string;
+  scrapId?: string | null;
+  scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;
+  scrapLocalPath?: string | null;
+  scrapDriveFileId?: string | null;
+  scrapFileSize?: number | null;
+  scrapCreatedAt?: string | null;
 }
 
 export interface LinkMetadata {

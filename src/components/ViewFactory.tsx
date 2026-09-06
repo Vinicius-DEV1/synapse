@@ -51,6 +51,7 @@ export interface ViewFactoryProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
   onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  isActive?: boolean;
 }
 
 export const ViewFactory = memo(function ViewFactory({
@@ -59,7 +60,8 @@ export const ViewFactory = memo(function ViewFactory({
   onUpdateContent,
   onCreatePage,
   onCreateLinkedPage,
-  onUpdatePage
+  onUpdatePage,
+  isActive = true,
 }: ViewFactoryProps) {
   const { id } = tab;
   const module = tab.module as ModuleId;
@@ -76,6 +78,7 @@ export const ViewFactory = memo(function ViewFactory({
             onCreatePage={onCreatePage}
             onCreateLinkedPage={onCreateLinkedPage}
             onUpdatePage={onUpdatePage}
+            isActive={isActive}
           />
         );
       case 'library':

@@ -24,7 +24,6 @@ import {
 import { findChildIndex, appendToGroup, createGroup } from '../group-layout/groupCommands';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { COLUMN_GROUP_SPEC } from '../group-layout/groupSpecs';
-import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import ImageToolbar from './ImageToolbar';
 import ImageResizeHandles from './ImageResizeHandles';
 import ImageCaption from './ImageCaption';
@@ -65,10 +64,19 @@ export default function ImageFrame({
   const [hovered, setHovered] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle');
   const [hasError, setHasError] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setHasError(false);
   }, [src]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const align = normalizeAlign(node.attrs.align);
   const width: number | null = node.attrs.width ? Number(node.attrs.width) : null;
@@ -169,7 +177,8 @@ export default function ImageFrame({
       console.error('[ImageFrame] Falha ao copiar imagem:', err);
       setCopyState('fail');
     }
-    setTimeout(() => setCopyState('idle'), 1600);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopyState('idle'), 1600);
   }, [src]);
 
   const handleDownload = useCallback(() => {
@@ -276,8 +285,7 @@ export default function ImageFrame({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const pos = safePos(getPos);
-                if (pos !== null && editor) moveBlockUp(editor.view, pos);
+                handleMove(-1);
               }}
               className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
               title="Subir imagem (Mover para cima)"
@@ -317,8 +325,7 @@ export default function ImageFrame({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const pos = safePos(getPos);
-                if (pos !== null && editor) moveBlockDown(editor.view, pos);
+                handleMove(1);
               }}
               className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
               title="Descer imagem (Mover para baixo)"

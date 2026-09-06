@@ -94,6 +94,7 @@ export function startExternalBlockDrag(
 export function selectNodeForDrag(view: EditorView, pos: number, node: PMNode): boolean {
   return selectNodeForDragUtil(view, pos, node, (slice, nodeSel) => {
     draggable(view).dragging = { slice, move: true, node: nodeSel };
+    armExternalDragCleanup(view);
   });
 }
 

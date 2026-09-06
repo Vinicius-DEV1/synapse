@@ -10,6 +10,7 @@ import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
 import { NodeSelection } from '@tiptap/pm/state';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 
 /** Todos os tipos de node que representam uma imagem no documento. */
 export const IMAGE_NODE_TYPES = ['image', 'resizableImage', 'encryptedImage'];
@@ -60,37 +61,51 @@ export function getSelectedImage(state: EditorState): { node: PMNode; pos: numbe
  * might be stale due to concurrent edits or sync.
  */
 export function findNodePos(doc: PMNode, node: PMNode, hintPos?: number | null): number | null {
+  const key = identityKey(node);
+
+  // 1. Direct check at hintPos: matches if exact node instance, struct eq, or same type & key
   if (typeof hintPos === 'number' && hintPos >= 0 && hintPos < doc.content.size) {
     const atHint = doc.nodeAt(hintPos);
-    if (atHint === node) return hintPos;
+    if (atHint) {
+      if (atHint === node || atHint.eq(node)) return hintPos;
+      if (atHint.type === node.type && key && identityKey(atHint) === key) {
+        return hintPos;
+      }
+    }
   }
 
-  let found: number | null = null;
+  // 2. Exact match in descendants by reference or structure
+  let exactFound: number | null = null;
   doc.descendants((candidate, pos) => {
-    if (found !== null) return false;
-    if (candidate === node) {
-      found = pos;
+    if (exactFound !== null) return false;
+    if (candidate === node || candidate.eq(node)) {
+      exactFound = pos;
       return false;
     }
     return true;
   });
+  if (exactFound !== null) return exactFound;
 
-  if (found !== null) return found;
-
-  // Fallback: same logical identity (matching node type + key attributes).
-  const key = identityKey(node);
+  // 3. Fallback: match by logical identity (type + key attributes).
+  // CRITICAL: When multiple duplicate images exist on the same page,
+  // pick the match CLOSEST to hintPos, NEVER blindly return the first duplicate at pos 0!
   if (!key) return null;
 
+  let bestPos: number | null = null;
+  let minDistance = Number.POSITIVE_INFINITY;
+
   doc.descendants((candidate, pos) => {
-    if (found !== null) return false;
     if (candidate.type === node.type && identityKey(candidate) === key) {
-      found = pos;
-      return false;
+      const dist = typeof hintPos === 'number' ? Math.abs(pos - hintPos) : pos;
+      if (dist < minDistance) {
+        minDistance = dist;
+        bestPos = pos;
+      }
     }
     return true;
   });
 
-  return found;
+  return bestPos;
 }
 
 function identityKey(node: PMNode): string | null {
@@ -105,37 +120,10 @@ function identityKey(node: PMNode): string | null {
  * its container, preserving selection on the moved node.
  */
 export function moveBlockNode(editor: Editor, pos: number, direction: -1 | 1): boolean {
-  const { state, dispatch } = editor.view;
-  const node = state.doc.nodeAt(pos);
-  if (!node) return false;
-
-  const from = pos;
-  const to = pos + node.nodeSize;
-
-  let insertPos: number;
-  if (direction === -1) {
-    const sibling = state.doc.resolve(from).nodeBefore;
-    if (!sibling) return false;
-    insertPos = from - sibling.nodeSize;
-  } else {
-    const sibling = state.doc.resolve(to).nodeAfter;
-    if (!sibling) return false;
-    insertPos = to + sibling.nodeSize;
-  }
-
-  const tr = state.tr;
-  tr.delete(from, to);
-  const mapped = tr.mapping.map(insertPos, -1);
-  tr.insert(mapped, node);
-
-  try {
-    tr.setSelection(NodeSelection.create(tr.doc, mapped));
-  } catch {
-    /* Non-selectable position — continue without explicit selection */
-  }
-
-  dispatch(tr.scrollIntoView());
-  return true;
+  if (!editor?.view) return false;
+  return direction === -1
+    ? moveBlockUp(editor.view, pos)
+    : moveBlockDown(editor.view, pos);
 }
 
 /** Removes image node at `pos` (re-validating position prior to removal). */

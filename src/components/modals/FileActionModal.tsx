@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { FileText, X, ExternalLink, ArrowRight, Maximize2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
@@ -12,7 +13,19 @@ interface FileActionModalProps {
 export default function FileActionModal({ isOpen, fileId, title, onClose, onOpenViewer }: FileActionModalProps) {
   const { state, dispatch } = useStore();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleOpenSameTab = () => {
+    onClose();
     dispatch({ 
       type: 'UPDATE_TAB_MODULE', 
       tabId: state.activeTabId, 
@@ -20,11 +33,11 @@ export default function FileActionModal({ isOpen, fileId, title, onClose, onOpen
       bookId: fileId,
       moduleState: { bookId: fileId }
     });
-    onClose();
   };
 
   const handleOpenNewTab = () => {
-    const newTabId = crypto.randomUUID();
+    onClose();
+    const newTabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     dispatch({
       type: 'ADD_TAB',
       tab: {
@@ -37,18 +50,21 @@ export default function FileActionModal({ isOpen, fileId, title, onClose, onOpen
         moduleState: { bookId: fileId }
       }
     });
-    onClose();
   };
 
   const handleOpenQuickViewer = () => {
-    onOpenViewer();
     onClose();
+    onOpenViewer();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" contentEditable={false}>
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      contentEditable={false}
+      onClick={onClose}
+    >
       <div 
         className="bg-dark-card border border-white/10 rounded-xl shadow-2xl flex flex-col w-[400px] overflow-hidden" 
         onClick={e => e.stopPropagation()}

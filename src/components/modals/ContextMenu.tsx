@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput, ExternalLink } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -17,6 +18,16 @@ interface ContextMenuProps {
 }
 
 export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Adjust position to stay within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200);
   const adjustedY = Math.min(y, window.innerHeight - 150);
@@ -30,8 +41,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
       {onOpenInNewTab && (
         <button
           onClick={() => {
-            onOpenInNewTab(pageId);
             onClose();
+            onOpenInNewTab(pageId);
           }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
@@ -42,8 +53,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
 
       <button
         onClick={() => {
-          onCreateSubPage(pageId);
           onClose();
+          onCreateSubPage(pageId);
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
       >
@@ -54,8 +65,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
       {onImportSubPage && (
         <button
           onClick={() => {
-            onImportSubPage(pageId);
             onClose();
+            onImportSubPage(pageId);
           }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
@@ -67,8 +78,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
       {onExportPage && (
         <button
           onClick={() => {
-            onExportPage(pageId);
             onClose();
+            onExportPage(pageId);
           }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
@@ -80,8 +91,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
       {onMovePage && (
         <button
           onClick={() => {
-            onMovePage(pageId);
             onClose();
+            onMovePage(pageId);
           }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
@@ -92,7 +103,10 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
 
       {onTogglePin && (
         <button
-          onClick={() => { onTogglePin(pageId); onClose(); }}
+          onClick={() => {
+            onClose();
+            onTogglePin(pageId);
+          }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
         >
           {isPinned ? (
@@ -107,8 +121,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
 
       <button
         onClick={() => {
-          onRename(pageId);
           onClose();
+          onRename(pageId);
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
       >
@@ -118,8 +132,8 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
 
       <button
         onClick={() => {
-          onDelete(pageId);
           onClose();
+          onDelete(pageId);
         }}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
       >

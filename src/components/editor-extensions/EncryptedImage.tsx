@@ -122,7 +122,7 @@ const EncryptedImageNodeView = (props: any) => {
   const openViewer = () => {
     window.dispatchEvent(
       new CustomEvent('open-image-viewer', {
-        detail: { src: blobUrl, nodePos: safePos(getPos), nodeType: node.type.name },
+        detail: { editor, src: blobUrl, nodePos: safePos(getPos), nodeType: node.type.name },
       })
     );
   };
@@ -130,7 +130,7 @@ const EncryptedImageNodeView = (props: any) => {
   const requestDelete = () => {
     window.dispatchEvent(
       new CustomEvent('request-image-delete', {
-        detail: { pos: safePos(getPos), node },
+        detail: { editor, pos: safePos(getPos), node },
       })
     );
   };
@@ -312,6 +312,6 @@ export const EncryptedImage = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(EncryptedImageNodeView);
+    return ReactNodeViewRenderer(EncryptedImageNodeView, { trackNodeViewPosition: true });
   },
 });

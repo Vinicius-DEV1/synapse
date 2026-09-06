@@ -55,8 +55,6 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
 
   const {
     scrollContainerRef,
-    progressBarRef,
-    progressPercentRef,
     showResumePrompt,
     setShowResumePrompt,
     savedProgressData,
@@ -184,34 +182,6 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         onClose={onClose}
       />
 
-      {/* Reading Progress Bar with Visual Markers */}
-      {isText && !isEditing && (
-        <div className="w-full bg-white/5 h-1 relative z-20">
-          <div
-            ref={progressBarRef}
-            className="bg-brand-500 h-full transition-all duration-150"
-            style={{ width: `${progressPercentRef.current}%` }}
-          />
-
-          {/* Bookmark Visual Pins */}
-          {scrollContainerRef.current &&
-            scrollContainerRef.current.scrollHeight - scrollContainerRef.current.clientHeight > 0 &&
-            bookmarks.map((bm) => {
-              const maxScroll =
-                scrollContainerRef.current!.scrollHeight - scrollContainerRef.current!.clientHeight;
-              const bmPercent = Math.min(100, Math.max(0, (bm.scrollTop / maxScroll) * 100));
-              return (
-                <button
-                  key={bm.id}
-                  onClick={() => handleJumpToBookmark(bm.scrollTop, bm.label)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-amber-400 hover:bg-amber-300 hover:scale-150 rounded-full border border-black shadow-md transition-all z-30 cursor-pointer"
-                  style={{ left: `${bmPercent}%` }}
-                  title={`📌 ${bm.label} (${Math.round(bmPercent)}%)`}
-                />
-              );
-            })}
-        </div>
-      )}
 
       {/* Main Content View */}
       <div className="flex-1 overflow-hidden flex flex-col relative w-full h-full">

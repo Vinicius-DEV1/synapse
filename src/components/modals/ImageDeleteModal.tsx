@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface ImageDeleteModalProps {
@@ -8,18 +8,31 @@ interface ImageDeleteModalProps {
 }
 
 export default function ImageDeleteModal({ isOpen, onClose, onConfirm }: ImageDeleteModalProps) {
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'Enter') {
+      if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      } else if (e.key === 'Enter' || e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
         onConfirm();
       }
     };
+
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
+      const raf = requestAnimationFrame(() => {
+        confirmBtnRef.current?.focus();
+      });
+      return () => {
+        cancelAnimationFrame(raf);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, onConfirm]);
 
   if (!isOpen) return null;
@@ -40,7 +53,10 @@ export default function ImageDeleteModal({ isOpen, onClose, onConfirm }: ImageDe
             Excluir Imagem
           </h2>
           <button 
+            type="button"
             onClick={onClose}
+            title="Cancelar e fechar (não excluir)"
+            aria-label="Cancelar e fechar"
             className="p-1 rounded-md hover:bg-white/10 text-dark-subtext hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -49,19 +65,22 @@ export default function ImageDeleteModal({ isOpen, onClose, onConfirm }: ImageDe
 
         <div className="p-5 text-dark-text text-sm">
           <p>Deseja realmente excluir esta imagem?</p>
-          <p className="text-dark-subtext text-xs mt-2">Esta ação removerá a imagem do documento.</p>
+          <p className="text-dark-subtext text-xs mt-2">Esta ação removerá a imagem selecionada do documento.</p>
         </div>
 
         <div className="flex justify-end gap-2 p-4 border-t border-white/5 bg-black/20">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm text-dark-subtext hover:text-white hover:bg-white/5 rounded-lg transition-colors"
           >
             Cancelar
           </button>
           <button
+            type="button"
+            ref={confirmBtnRef}
             onClick={onConfirm}
-            className="px-4 py-2 text-sm bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 hover:text-red-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 hover:text-red-200 rounded-lg transition-colors focus:ring-2 focus:ring-red-500/50 focus:outline-none"
           >
             Excluir
           </button>

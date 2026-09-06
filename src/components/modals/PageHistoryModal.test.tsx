@@ -44,7 +44,7 @@ describe('PageHistoryModal component', () => {
     expect(screen.getByText('Carregando...')).toBeDefined();
 
     await waitFor(() => {
-      expect(screen.getByText('Versão Atual')).toBeDefined();
+      expect(screen.getAllByText('Versão Atual').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByText('Revisão 1')).toBeDefined();

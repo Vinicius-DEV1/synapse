@@ -77,6 +77,12 @@ export const LinkPreviewBlock = Node.create({
         renderHTML: (attributes: Record<string, any>) =>
           attributes.color && attributes.color !== 'default' ? { 'data-color': attributes.color } : {},
       },
+      scrapId: { default: null },
+      scrapStatus: { default: null },
+      scrapLocalPath: { default: null },
+      scrapDriveFileId: { default: null },
+      scrapFileSize: numberAttr('scrapFileSize', null),
+      scrapCreatedAt: { default: null },
     };
   },
 

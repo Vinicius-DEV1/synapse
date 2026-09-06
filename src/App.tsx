@@ -234,6 +234,7 @@ function AppContent() {
                     onCreatePage={handleCreatePage}
                     onCreateLinkedPage={handleCreateLinkedPage}
                     onUpdatePage={handleUpdatePage}
+                    isActive={isActive}
                   />
                 </div>
               </div>

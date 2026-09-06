@@ -44,7 +44,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, pages: newPages, tabs: newTabs };
     }
     case 'ADD_TAB':
-      return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
+      return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id, contextMenu: null };
     case 'CLOSE_TAB': {
       if (state.tabs.length <= 1) return state;
       const newTabs = state.tabs.filter((t) => t.id !== action.tabId);
@@ -117,7 +117,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
       const newTabs = [...state.tabs];
       newTabs.splice(dupIdx + 1, 0, newTab);
-      return { ...state, tabs: newTabs, activeTabId: newTab.id };
+      return { ...state, tabs: newTabs, activeTabId: newTab.id, contextMenu: null };
     }
     case 'REORDER_TABS': {
       const newTabs = [...state.tabs];
@@ -134,7 +134,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         tabs: state.tabs.map((t) => t.id === action.tabId ? { ...t, moduleState: { ...(t.moduleState || {}), ...action.stateUpdates } } : t),
       };
     case 'SET_ACTIVE_TAB':
-      return { ...state, activeTabId: action.tabId };
+      return { ...state, activeTabId: action.tabId, contextMenu: null };
     case 'NAVIGATE_IN_TAB':
       return {
         ...state,

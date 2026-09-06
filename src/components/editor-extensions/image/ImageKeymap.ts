@@ -40,7 +40,7 @@ export const ImageKeymap = Extension.create({
       if (selected) {
         window.dispatchEvent(
           new CustomEvent('request-image-delete', {
-            detail: { pos: selected.pos, node: selected.node },
+            detail: { editor: this.editor, pos: selected.pos, node: selected.node },
           })
         );
         return true;

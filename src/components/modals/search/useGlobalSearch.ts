@@ -207,6 +207,7 @@ export function useGlobalSearch() {
 
   const handleSelect = useCallback(
     (pageId: string, openInNewTab = false) => {
+      setIsOpen(false);
       if (openInNewTab) {
         const tabId =
           'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
@@ -223,7 +224,6 @@ export function useGlobalSearch() {
       } else {
         dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
       }
-      setIsOpen(false);
     },
     [dispatch]
   );
