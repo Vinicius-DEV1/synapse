@@ -176,9 +176,57 @@ describe('useBlockAiModal Hook', () => {
 
     expect(mockUpdateAttributes).toHaveBeenCalledWith({ language: 'python' });
     expect(mockEditor.state.tr.replaceWith).toHaveBeenCalledWith(
-      6, // pos (5) + 1
-      29, // pos (5) + nodeSize (25) - 1
+      6, // pos (5) + 1 + minimalDiff.from (0)
+      27, // pos (5) + 1 + minimalDiff.to (21 = original text length)
       [{ type: 'text', text: 'print("nova versao")' }]
+    );
+    expect(mockEditor.view.dispatch).toHaveBeenCalled();
+  });
+
+  it('exposes originalContent correctly', () => {
+    const { result } = renderHook(() =>
+      useBlockAiModal({
+        editor: mockEditor,
+        node: mockNode,
+        getPos: mockGetPos,
+        updateAttributes: mockUpdateAttributes,
+        blockType: 'codeBlock',
+      })
+    );
+
+    expect(result.current.originalContent).toBe('console.log("hello");');
+  });
+
+  it('applies surgical SEARCH/REPLACE blocks in code block with minimal range', () => {
+    const { result } = renderHook(() =>
+      useBlockAiModal({
+        editor: mockEditor,
+        node: mockNode,
+        getPos: mockGetPos,
+        updateAttributes: mockUpdateAttributes,
+        blockType: 'codeBlock',
+      })
+    );
+
+    act(() => {
+      result.current.handleApplyReplacement(`
+<<<<<<< SEARCH
+console.log("hello");
+=======
+console.log("world");
+>>>>>>>
+      `);
+    });
+
+    // Minimal diff range for changing "hello" to "world":
+    // "console.log(\"" is 13 chars.
+    // pos = 5.
+    // 5 + 1 + 13 = 19 (from)
+    // 5 + 1 + 18 = 24 (to)
+    expect(mockEditor.state.tr.replaceWith).toHaveBeenCalledWith(
+      19,
+      24,
+      [{ type: 'text', text: 'world' }]
     );
     expect(mockEditor.view.dispatch).toHaveBeenCalled();
   });

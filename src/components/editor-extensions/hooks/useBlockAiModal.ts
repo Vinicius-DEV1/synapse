@@ -7,6 +7,7 @@ import { triggerToast } from '../../ui/ToastContext';
 import type { AiChatMessage } from '../../modals/AiPromptModal';
 import { buildCodeBlockRules, buildCodeBlockSystemInstruction } from './codeBlockSyntaxHelper';
 import { markdownToHtml } from './editorMarkdownHelper';
+import { parseSearchReplaceBlocks, applySearchReplace, computeMinimalDiffRange } from './blockDiffEngine';
 
 export type BlockAiType = 'blockquoteToggle' | 'toggleBlock' | 'codeBlock' | 'blockquote';
 
@@ -156,22 +157,50 @@ REGRAS E LIMITES MANDATÓRIOS:
 3. Ao sugerir alterações no conteúdo do toggle, forneça uma explicação breve e o conteúdo formatado dentro de um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique claramente na primeira linha: "Título: [Novo Título]".`;
   }, [blockType, node, editor]);
 
+  const getRawBlockContent = useCallback((): string => {
+    if (blockType === 'codeBlock') {
+      return node.textContent || '';
+    }
+
+    if (editor) {
+      try {
+        const serializer = DOMSerializer.fromSchema(editor.schema);
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(serializer.serializeFragment(node.content));
+        return tempDiv.innerText || tempDiv.textContent || node.textContent || '';
+      } catch {
+        return node.textContent || '';
+      }
+    }
+    return node.textContent || '';
+  }, [blockType, node, editor]);
+
   // Build the system instruction for Gemini
   const buildSystemInstruction = useCallback((): string => {
+    const surgicalGuidance = `
+DICA DE EDIÇÃO CIRÚRGICA (DIFF):
+Quando for solicitado alterar, melhorar ou acrescentar trechos pontuais (sem reescrever o bloco inteiro), você pode emitir um ou mais blocos no formato:
+<<<<<<< SEARCH
+[trecho exato original existente neste bloco]
+=======
+[novo trecho melhorado/corrigido]
+>>>>>>>
+Ou, se apropriado, pode emitir a versão completa revisada do bloco.`;
+
     if (blockType === 'codeBlock') {
       const lang = (node.attrs.language as string) || 'auto';
-      return buildCodeBlockSystemInstruction(lang);
+      return `${buildCodeBlockSystemInstruction(lang)}\n${surgicalGuidance}`;
     }
 
     if (blockType === 'blockquote') {
-      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```.';
+      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste callout (destaque). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do callout, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`.\n${surgicalGuidance}`;
     }
 
     if (blockType === 'blockquoteToggle') {
-      return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".';
+      return `Você é um assistente de IA encarregado EXCLUSIVAMENTE deste destaque recolhível (toggle callout). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
     }
 
-    return 'Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco ```markdown ... ```. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".';
+    return `Você é um assistente de IA encarregado EXCLUSIVAMENTE desta lista oculta (toggle). O seu universo de atuação e edição é 100% RESTRITO a este bloco. NUNCA tente editar, adicionar ou alterar nada fora dele. Ao sugerir alterações no conteúdo do toggle, estruture a resposta com formatação rica em markdown (negrito, itálico, listas, etc.) e envolva a versão sugerida final em um bloco \`\`\`markdown ... \`\`\`. Se sugerir ou alterar o título do toggle, indique na primeira linha: "Título: [Novo Título]".\n${surgicalGuidance}`;
   }, [blockType, node.attrs.language]);
 
   // Apply replacement strictly bounded to this block node
@@ -181,23 +210,55 @@ REGRAS E LIMITES MANDATÓRIOS:
       const pos = getPos();
       if (typeof pos !== 'number') return;
 
+      const currentRaw = getRawBlockContent();
+      const searchReplaceBlocks = parseSearchReplaceBlocks(replacementText);
+
       if (blockType === 'codeBlock') {
         let cleanCode = replacementText;
-        const codeBlockMatch = replacementText.match(/```([a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
-        if (codeBlockMatch) {
-          const detectedLang = codeBlockMatch[1];
-          cleanCode = codeBlockMatch[2].trimEnd();
-          if (detectedLang && (!node.attrs.language || node.attrs.language === 'auto')) {
-            updateAttributes({ language: detectedLang });
+
+        if (searchReplaceBlocks.length > 0) {
+          const srResult = applySearchReplace(currentRaw, searchReplaceBlocks);
+          if (!srResult.success) {
+            triggerToast(srResult.error || 'Falha ao aplicar alteração cirúrgica no código.', 'error');
+            return;
           }
+          cleanCode = srResult.result;
         } else {
-          cleanCode = cleanCode.replace(/^```[a-zA-Z0-9_-]*\n?/, '').replace(/\n?```$/, '').trimEnd();
+          const codeBlockMatch = replacementText.match(/```([a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
+          if (codeBlockMatch) {
+            const detectedLang = codeBlockMatch[1];
+            cleanCode = codeBlockMatch[2].trimEnd();
+            if (detectedLang && (!node.attrs.language || node.attrs.language === 'auto')) {
+              updateAttributes({ language: detectedLang });
+            }
+          } else {
+            cleanCode = cleanCode.replace(/^```[a-zA-Z0-9_-]*\n?/, '').replace(/\n?```$/, '').trimEnd();
+          }
         }
 
         const { state, view } = editor;
         const tr = state.tr;
+
+        // Try minimal surgical diff range to preserve unchanged lines and cursor stability
+        const minimalDiff = computeMinimalDiffRange(currentRaw, cleanCode);
+        if (minimalDiff) {
+          const { from, to, replacement } = minimalDiff;
+          const textNode = replacement ? state.schema.text(replacement) : null;
+          tr.replaceWith(pos + 1 + from, pos + 1 + to, textNode ? [textNode] : []);
+          view.dispatch(tr);
+          const hunkMsg =
+            searchReplaceBlocks.length > 0
+              ? `Alteração cirúrgica aplicada (${searchReplaceBlocks.length} trecho(s))!`
+              : 'Código atualizado com sucesso!';
+          triggerToast(hunkMsg, 'success');
+          return;
+        } else if (cleanCode === currentRaw) {
+          triggerToast('Nenhuma alteração necessária.', 'info');
+          return;
+        }
+
+        // Fallback: replace full code block content
         const textNode = cleanCode ? state.schema.text(cleanCode) : null;
-        // The text content of the code block is located strictly between pos + 1 and pos + node.nodeSize - 1
         tr.replaceWith(pos + 1, pos + node.nodeSize - 1, textNode ? [textNode] : []);
         view.dispatch(tr);
         triggerToast('Código atualizado com sucesso!', 'success');
@@ -206,9 +267,19 @@ REGRAS E LIMITES MANDATÓRIOS:
 
       // For blockquote, toggle callout, and toggle
       let cleanContent = replacementText;
-      const mdMatch = replacementText.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
-      if (mdMatch) {
-        cleanContent = mdMatch[1].trim();
+
+      if (searchReplaceBlocks.length > 0) {
+        const srResult = applySearchReplace(currentRaw, searchReplaceBlocks);
+        if (!srResult.success) {
+          triggerToast(srResult.error || 'Falha ao aplicar alteração cirúrgica.', 'error');
+          return;
+        }
+        cleanContent = srResult.result;
+      } else {
+        const mdMatch = replacementText.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
+        if (mdMatch) {
+          cleanContent = mdMatch[1].trim();
+        }
       }
 
       if (newTitle !== undefined && newTitle !== node.attrs.title) {
@@ -226,16 +297,18 @@ REGRAS E LIMITES MANDATÓRIOS:
         .insertContentAt(pos + 1, htmlContent)
         .run();
 
-      triggerToast(
-        blockType === 'blockquote'
+      const hunkMsg =
+        searchReplaceBlocks.length > 0
+          ? `Alteração cirúrgica aplicada (${searchReplaceBlocks.length} trecho(s))!`
+          : blockType === 'blockquote'
           ? 'Callout atualizado com sucesso!'
           : blockType === 'blockquoteToggle'
           ? 'Destaque atualizado com sucesso!'
-          : 'Toggle atualizado com sucesso!',
-        'success'
-      );
+          : 'Toggle atualizado com sucesso!';
+
+      triggerToast(hunkMsg, 'success');
     },
-    [editor, getPos, node, blockType, updateAttributes]
+    [editor, getPos, node, blockType, updateAttributes, getRawBlockContent]
   );
 
   // Insert content at the end inside this block node
@@ -316,6 +389,7 @@ REGRAS E LIMITES MANDATÓRIOS:
     messages,
     contextText: buildContextText(),
     systemInstruction: buildSystemInstruction(),
+    originalContent: getRawBlockContent(),
     blockBadge,
     blockTitle,
     targetType,

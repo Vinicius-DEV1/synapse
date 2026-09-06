@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, Image as ImageIcon, FileText, Trash2, Plus, Send, Check, Copy } from 'lucide-react';
+import { Sparkles, X, Image as ImageIcon, FileText, Trash2, Plus, Send, Check, Copy, FileDiff } from 'lucide-react';
 import { promptGemini } from '../../services/gemini';
 import { Portal } from '../ui/Portal';
 import { AiChatMarkdown } from '../ai-sidebar/AiChatMarkdown';
 import type { AiChatMessage, AiChatMessagePart } from '../../types/store';
+import { parseSearchReplaceBlocks, applySearchReplace, generateDiffHtml } from '../editor-extensions/hooks/blockDiffEngine';
 
 export type { AiChatMessage, AiChatMessagePart };
 
@@ -14,6 +15,7 @@ export interface AiPromptModalProps {
   messages: AiChatMessage[];
   contextText?: string;
   contextImage?: string; // base64
+  originalContent?: string;
   onMessageAdd: (chatId: string, msgs: AiChatMessage[]) => void;
   onClear: (chatId: string) => void;
   onClose: () => void;
@@ -34,6 +36,7 @@ export default function AiPromptModal({
   messages,
   contextText,
   contextImage,
+  originalContent,
   onMessageAdd,
   onClear,
   onClose,
@@ -50,6 +53,7 @@ export default function AiPromptModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [diffViewIndex, setDiffViewIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -146,34 +150,85 @@ export default function AiPromptModal({
       });
   };
 
-  const parseModelProposal = (text: string) => {
+  const parseModelProposal = (
+    text: string,
+    origContent?: string
+  ): {
+    cleanText: string;
+    proposedTitle?: string;
+    isSearchReplace: boolean;
+    searchReplaceCount: number;
+    diffHtml: string | null;
+  } => {
+    const searchReplaceBlocks = parseSearchReplaceBlocks(text);
+    const isSearchReplace = searchReplaceBlocks.length > 0;
+    const searchReplaceCount = searchReplaceBlocks.length;
+
     let cleanText = text;
     let proposedTitle: string | undefined;
+    let diffHtml: string | null = null;
 
     if (targetType === 'code') {
-      const codeBlockMatch = text.match(/```(?:[a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
-      if (codeBlockMatch) {
-        cleanText = codeBlockMatch[1].trim();
+      if (isSearchReplace) {
+        cleanText = text;
+        if (origContent) {
+          const srResult = applySearchReplace(origContent, searchReplaceBlocks);
+          if (srResult.success) {
+            diffHtml = generateDiffHtml(origContent, srResult.result);
+          }
+        }
       } else {
-        cleanText = text.replace(/^```[a-zA-Z0-9_-]*\n?/, '').replace(/\n?```$/, '').trim();
+        const codeBlockMatch = text.match(/```(?:[a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          cleanText = codeBlockMatch[1].trimEnd();
+        } else {
+          cleanText = text.replace(/^```[a-zA-Z0-9_-]*\n?/, '').replace(/\n?```$/, '').trimEnd();
+        }
+        if (origContent && cleanText !== origContent) {
+          diffHtml = generateDiffHtml(origContent, cleanText);
+        }
       }
     } else if (targetType === 'toggle' || targetType === 'blockquoteToggle' || targetType === 'blockquote') {
       const titleMatch = text.match(/^(?:Título|Titulo|Title):\s*(.+)$/m);
       if (titleMatch) {
         proposedTitle = titleMatch[1].trim().replace(/^\*+|\*+$/g, '');
       }
-      const mdMatch = text.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
-      if (mdMatch) {
-        cleanText = mdMatch[1].trim();
-      } else if (proposedTitle) {
-        cleanText = text.replace(/^(?:Título|Titulo|Title):\s*.+$/m, '').trim();
+
+      if (isSearchReplace) {
+        cleanText = text;
+        if (origContent) {
+          const srResult = applySearchReplace(origContent, searchReplaceBlocks);
+          if (srResult.success) {
+            diffHtml = generateDiffHtml(origContent, srResult.result);
+          }
+        }
+      } else {
+        const mdMatch = text.match(/```(?:markdown)?\s*\n([\s\S]*?)```/);
+        if (mdMatch) {
+          cleanText = mdMatch[1].trim();
+        } else if (proposedTitle) {
+          cleanText = text.replace(/^(?:Título|Titulo|Title):\s*.+$/m, '').trim();
+        }
+        if (origContent && cleanText !== origContent) {
+          diffHtml = generateDiffHtml(origContent, cleanText);
+        }
+      }
+    } else {
+      if (isSearchReplace && origContent) {
+        const srResult = applySearchReplace(origContent, searchReplaceBlocks);
+        if (srResult.success) {
+          diffHtml = generateDiffHtml(origContent, srResult.result);
+        }
+      } else if (origContent && text !== origContent) {
+        diffHtml = generateDiffHtml(origContent, text);
       }
     }
 
-    return { cleanText, proposedTitle };
+    return { cleanText, proposedTitle, isSearchReplace, searchReplaceCount, diffHtml };
   };
 
-  const adjustedX = Math.max(16, Math.min(x, window.innerWidth - 380));
+  const modalWidth = diffViewIndex !== null ? 420 : 370;
+  const adjustedX = Math.max(16, Math.min(x, window.innerWidth - (modalWidth + 10)));
   const adjustedY = Math.max(16, Math.min(y, window.innerHeight - 450));
 
   const headerTitle = blockBadge || 'Assistente de IA';
@@ -182,7 +237,9 @@ export default function AiPromptModal({
     <Portal>
       <div
         ref={modalRef}
-        className="fixed z-[100] w-[370px] max-h-[520px] flex flex-col bg-[#12141a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-scale-in select-none text-zinc-100"
+        className={`fixed z-[100] ${
+          diffViewIndex !== null ? 'w-[420px]' : 'w-[370px]'
+        } max-w-[95vw] max-h-[520px] flex flex-col bg-[#12141a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-scale-in select-none text-zinc-100 transition-[width] duration-150`}
         style={{ left: adjustedX, top: adjustedY }}
       >
         {/* Header */}
@@ -247,7 +304,9 @@ export default function AiPromptModal({
               const isUser = msg.role === 'user';
               const textContent = msg.parts.find((p) => p.text)?.text || '';
               const isQuestionJson = textContent.includes('"enunciado"') && textContent.includes('"opcoes"');
-              const { cleanText, proposedTitle } = !isUser ? parseModelProposal(textContent) : { cleanText: '', proposedTitle: undefined };
+              const { cleanText, proposedTitle, isSearchReplace, searchReplaceCount, diffHtml } = !isUser
+                ? parseModelProposal(textContent, originalContent)
+                : { cleanText: '', proposedTitle: undefined, isSearchReplace: false, searchReplaceCount: 0, diffHtml: null };
 
               // Clean up prompt text for user bubbles (remove the context injection prefix)
               let displayUserText = textContent;
@@ -267,6 +326,24 @@ export default function AiPromptModal({
                   >
                     {isUser ? (
                       <p className="whitespace-pre-wrap">{displayUserText}</p>
+                    ) : diffViewIndex === idx && diffHtml ? (
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <div className="flex items-center justify-between text-[11px] text-zinc-400 pb-1 border-b border-white/10">
+                          <span className="flex items-center gap-1 text-brand-300 font-medium">
+                            <FileDiff size={12} />
+                            <span>Comparação de Modificações</span>
+                          </span>
+                          {isSearchReplace && (
+                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                              {searchReplaceCount} cirúrgica(s)
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="diff-viewer-container text-[11.5px] font-mono p-2.5 bg-black/40 rounded-lg border border-white/5 overflow-x-auto whitespace-pre-wrap leading-relaxed select-text max-h-[220px] custom-scrollbar"
+                          dangerouslySetInnerHTML={{ __html: diffHtml }}
+                        />
+                      </div>
                     ) : isQuestionJson ? (
                       (() => {
                         try {
@@ -323,15 +400,47 @@ export default function AiPromptModal({
                         <button
                           type="button"
                           onClick={() => onApplyReplacement(cleanText || textContent, proposedTitle)}
-                          className="flex items-center gap-1 text-[11px] text-brand-300 hover:text-white font-medium px-2 py-0.5 bg-brand-500/20 hover:bg-brand-500/40 border border-brand-500/30 rounded transition-colors"
-                          title={targetType === 'code' ? 'Substituir código atual' : 'Substituir conteúdo do bloco'}
+                          className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded transition-colors ${
+                            isSearchReplace
+                              ? 'text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30'
+                              : 'text-brand-300 hover:text-white bg-brand-500/20 hover:bg-brand-500/40 border border-brand-500/30'
+                          }`}
+                          title={
+                            isSearchReplace
+                              ? `Aplicar cirurgicamente (${searchReplaceCount} alteração(ões))`
+                              : targetType === 'code'
+                              ? 'Substituir código atual'
+                              : 'Substituir conteúdo do bloco'
+                          }
                         >
-                          <Check size={11} />
-                          <span>{targetType === 'code' ? 'Substituir Código' : 'Substituir no Bloco'}</span>
+                          {isSearchReplace ? <Sparkles size={11} /> : <Check size={11} />}
+                          <span>
+                            {isSearchReplace
+                              ? `Aplicar Cirurgicamente (${searchReplaceCount})`
+                              : targetType === 'code'
+                              ? 'Substituir Código'
+                              : 'Substituir no Bloco'}
+                          </span>
                         </button>
                       )}
 
-                      {onInsertContent && (
+                      {diffHtml && (
+                        <button
+                          type="button"
+                          onClick={() => setDiffViewIndex((prev) => (prev === idx ? null : idx))}
+                          className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border transition-colors ${
+                            diffViewIndex === idx
+                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-zinc-200'
+                          }`}
+                          title="Alternar visualização de alterações (diff)"
+                        >
+                          <FileDiff size={11} />
+                          <span>{diffViewIndex === idx ? 'Ver Texto' : 'Ver Diff'}</span>
+                        </button>
+                      )}
+
+                      {onInsertContent && !isSearchReplace && (
                         <button
                           type="button"
                           onClick={() => onInsertContent(cleanText || textContent)}

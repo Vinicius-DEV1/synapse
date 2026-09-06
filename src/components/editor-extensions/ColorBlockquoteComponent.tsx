@@ -229,6 +229,7 @@ export default function ColorBlockquoteComponent(props: any) {
           messages={aiModal.messages}
           contextText={aiModal.contextText}
           systemInstruction={aiModal.systemInstruction}
+          originalContent={aiModal.originalContent}
           blockBadge={aiModal.blockBadge}
           blockTitle={aiModal.blockTitle}
           targetType={aiModal.targetType}
