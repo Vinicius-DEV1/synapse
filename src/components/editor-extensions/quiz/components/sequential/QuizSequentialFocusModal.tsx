@@ -16,6 +16,9 @@ interface QuizSequentialFocusModalProps {
   onSwitchToListLayout?: () => void;
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
+  onDeleteQuestion?: (qId: string, index: number) => void;
+  onOpenAiAssistant?: () => void;
+  onEditQuestion?: () => void;
 }
 
 export function QuizSequentialFocusModal({
@@ -30,6 +33,9 @@ export function QuizSequentialFocusModal({
   onSwitchToListLayout,
   activeIndex,
   onActiveIndexChange,
+  onDeleteQuestion,
+  onOpenAiAssistant,
+  onEditQuestion,
 }: QuizSequentialFocusModalProps) {
   const modalContainerRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +113,9 @@ export function QuizSequentialFocusModal({
               onSwitchToListLayout={onSwitchToListLayout}
               activeIndex={activeIndex}
               onActiveIndexChange={onActiveIndexChange}
+              onDeleteQuestion={onDeleteQuestion}
+              onOpenAiAssistant={onOpenAiAssistant}
+              onEditQuestion={onEditQuestion}
             />
           </div>
         </main>

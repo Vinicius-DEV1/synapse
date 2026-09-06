@@ -398,6 +398,18 @@ export default function QuestionBlockNodeView(props: NodeViewProps) {
         onSwitchToListLayout={() => props.updateAttributes({ layout: 'list' })}
         activeIndex={sequentialActiveIndex}
         onActiveIndexChange={setSequentialActiveIndex}
+        onDeleteQuestion={(id, idx) => {
+          setIsFocusModeOpen(false);
+          setDeletingQuestionInfo({ id, index: idx });
+        }}
+        onOpenAiAssistant={() => {
+          setIsFocusModeOpen(false);
+          setShowAiAssistantModal(true);
+        }}
+        onEditQuestion={() => {
+          setIsFocusModeOpen(false);
+          props.updateAttributes({ mode: 'edit' });
+        }}
       />
     </NodeViewWrapper>
   );

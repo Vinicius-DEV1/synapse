@@ -22,6 +22,9 @@ interface QuizSequentialPlayerProps {
   onSwitchToListLayout?: () => void;
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
+  onDeleteQuestion?: (qId: string, index: number) => void;
+  onOpenAiAssistant?: () => void;
+  onEditQuestion?: () => void;
 }
 
 export default function QuizSequentialPlayer({
@@ -33,6 +36,9 @@ export default function QuizSequentialPlayer({
   onSwitchToListLayout,
   activeIndex: activeIndexProp,
   onActiveIndexChange,
+  onDeleteQuestion,
+  onOpenAiAssistant,
+  onEditQuestion,
 }: QuizSequentialPlayerProps) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const total = safeQuestions.length;
@@ -372,6 +378,9 @@ export default function QuizSequentialPlayer({
         answeredCount={answeredCount}
         correctCount={correctCount}
         onSelectIndex={(idx) => goToQuestion(idx)}
+        onDeleteQuestion={onDeleteQuestion}
+        onOpenAiAssistant={onOpenAiAssistant}
+        onEditQuestion={onEditQuestion}
       />
 
       {/* Card da Questão Atual com animação direcional 60fps acelerada por GPU */}
