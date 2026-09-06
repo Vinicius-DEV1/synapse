@@ -25,12 +25,15 @@ interface YouTubePlaylistData {
 
 // In-memory cache preventing duplicate fetches for loaded playlists
 const playlistCache = new Map<string, YouTubePlaylistData>();
+const watchedCache = new Map<string, string[]>();
 
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
-  const [loading, setLoading] = useState(!playlistCache.has(url));
+  const [loading, setLoading] = useState(!playlistCache.has(url) || !watchedCache.has(url));
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [playlist, setPlaylist] = useState<YouTubePlaylistData | null>(playlistCache.get(url) || null);
-  const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
+  const [watchedSet, setWatchedSet] = useState<Set<string>>(() => {
+    return new Set(watchedCache.get(url) || []);
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,8 +61,12 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           if (cached.entries?.length && window.api?.youtube?.getWatched) {
             const videoIds = cached.entries.map((e: YouTubeVideoItem) => e.id).filter(Boolean);
             if (videoIds.length > 0) {
+              // If we don't have watchedCache for this URL, show loading while fetching
+              if (!watchedCache.has(url)) setLoading(true);
               const watchedIds = await window.api.youtube.getWatched(videoIds);
+              watchedCache.set(url, watchedIds);
               setWatchedSet(new Set(watchedIds));
+              setLoading(false);
             }
           }
           return;
@@ -82,6 +89,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           const videoIds = data.entries.map((e: any) => e.id).filter(Boolean);
           if (videoIds.length > 0 && window.api.youtube.getWatched) {
             const watchedIds = await window.api.youtube.getWatched(videoIds);
+            watchedCache.set(url, watchedIds);
             setWatchedSet(new Set(watchedIds));
           }
         } else {
@@ -104,6 +112,7 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
     if (isWatched) newSet.add(video.id);
     else newSet.delete(video.id);
     setWatchedSet(newSet);
+    watchedCache.set(url, Array.from(newSet));
     
     if (window.api && window.api.youtube) {
       await window.api.youtube.setWatched(video.id, isWatched, video.title, video.uploader || video.channel);
