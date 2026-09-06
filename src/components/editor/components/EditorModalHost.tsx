@@ -263,7 +263,6 @@ export default function EditorModalHost({
               setFileUploadModal(null);
             }}
             isLink={fileUploadModal.isLink}
-            initialFiles={fileUploadModal.initialFiles}
           />
         )}
 
@@ -366,7 +365,7 @@ export default function EditorModalHost({
           <QuestionCreateModal
             isOpen={true}
             onClose={() => setQuestionCreateModal(false)}
-            onConfirm={(title, reuseExisting) => {
+            onConfirm={(title) => {
               if (editor) {
                 editor.chain().focus().insertContent({
                   type: 'questionBlock',
