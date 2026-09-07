@@ -16,6 +16,7 @@ export interface CadernoDBSchema extends DBSchema {
   library_collections: { key: string; value: any };
   library_book_collections: { key: string; value: any; indexes: { 'book_id': string } };
   library_reading_sessions: { key: string; value: any; indexes: { 'book_id': string } };
+  library_ocr_cache: { key: string; value: any; indexes: { 'book_id': string } };
   library_book_files: { key: string; value: { id: string; data: ArrayBuffer } };
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
@@ -55,7 +56,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 20, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 21, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -96,6 +97,10 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
         }
         if (!db.objectStoreNames.contains('library_reading_sessions')) {
           const store = db.createObjectStore('library_reading_sessions', { keyPath: 'id' });
+          store.createIndex('book_id', 'book_id');
+        }
+        if (!db.objectStoreNames.contains('library_ocr_cache')) {
+          const store = db.createObjectStore('library_ocr_cache', { keyPath: 'id' });
           store.createIndex('book_id', 'book_id');
         }
         if (!db.objectStoreNames.contains('library_book_files')) {
