@@ -10,6 +10,10 @@ export const tauriNotesApi = {
   restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
   reorderPages: async () => true, // TODO
   getPageHistory: async (pageId: string) => await invoke('notes_get_page_history', { pageId }),
+  savePageHistory: async (pageId: string, content: string) => {
+    await invoke('notes_update_page', { page: { id: pageId, content } });
+    return { success: true, id: pageId };
+  },
   
   imageCache: {
     get: async (id: string) => await invoke('image_cache_get', { id }),

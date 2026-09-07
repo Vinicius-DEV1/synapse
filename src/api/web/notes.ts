@@ -86,6 +86,16 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
       updated.updated_at = new Date().toISOString();
     }
 
+    if (page.content !== undefined && page.content !== existing.content) {
+      const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
+      await db.put('page_history', {
+        id: histId,
+        page_id: page.id,
+        content: page.content,
+        created_at: new Date().toISOString(),
+      });
+    }
+
     await db.put('pages', updated);
     return 1;
   },
@@ -129,7 +139,23 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
     return true;
   },
 
-  getPageHistory: async (_pageId: string): Promise<PageHistoryEntry[]> => [],
+  getPageHistory: async (pageId: string): Promise<PageHistoryEntry[]> => {
+    const history = ((await db.getAllFromIndex('page_history', 'page_id', pageId)) || []) as PageHistoryEntry[];
+    return history.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  },
+
+  savePageHistory: async (pageId: string, content: string): Promise<{ success: boolean; id: string }> => {
+    const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
+    await db.put('page_history', {
+      id: histId,
+      page_id: pageId,
+      content,
+      created_at: new Date().toISOString(),
+    });
+    return { success: true, id: histId };
+  },
 
   exportBackup: async (): Promise<{ success: boolean; error: string }> => ({
     success: false,

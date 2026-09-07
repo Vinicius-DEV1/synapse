@@ -8,7 +8,7 @@ use tauri::State;
 pub struct CultureItem {
     pub id: String,
     pub title: String,
-    #[serde(rename = "type", alias = "item_type", default)]
+    #[serde(rename = "type", alias = "item_type", alias = "type_", default)]
     pub item_type: String,
     pub synopsis: Option<String>,
     pub cover_image: Option<String>,

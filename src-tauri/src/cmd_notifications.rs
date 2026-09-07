@@ -91,7 +91,17 @@ pub fn notifications_add(
 
     conn.execute(
         "INSERT INTO notifications (id, title, message, type, target_page_id, event_id, scheduled_for, fired_at, is_read, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            message = excluded.message,
+            type = excluded.type,
+            target_page_id = excluded.target_page_id,
+            event_id = excluded.event_id,
+            scheduled_for = excluded.scheduled_for,
+            fired_at = excluded.fired_at,
+            is_read = excluded.is_read,
+            updated_at = CURRENT_TIMESTAMP",
         params![
             id,
             notif.title,
