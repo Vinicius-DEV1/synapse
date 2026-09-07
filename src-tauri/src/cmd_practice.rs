@@ -79,7 +79,15 @@ pub fn practice_create_session(
     };
 
     conn.execute(
-        "INSERT INTO tutor_sessions (id, title, started_at, ended_at, custom_prompt, deleted_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tutor_sessions (id, title, started_at, ended_at, custom_prompt, deleted_at) 
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            started_at = excluded.started_at,
+            ended_at = excluded.ended_at,
+            custom_prompt = excluded.custom_prompt,
+            deleted_at = excluded.deleted_at,
+            updated_at = CURRENT_TIMESTAMP",
         params![id, session.title, session.started_at, session.ended_at, session.custom_prompt, session.deleted_at]
     ).map_err(|e| e.to_string())?;
 
@@ -152,7 +160,12 @@ pub fn practice_create_message(
     };
 
     conn.execute(
-        "INSERT INTO tutor_messages (id, session_id, role, text_content, created_at) VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
+        "INSERT INTO tutor_messages (id, session_id, role, text_content, created_at) 
+         VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+         ON CONFLICT(id) DO UPDATE SET
+            session_id = excluded.session_id,
+            role = excluded.role,
+            text_content = excluded.text_content",
         params![id, message.session_id, message.role, message.text_content, message.created_at]
     ).map_err(|e| e.to_string())?;
 
@@ -205,7 +218,12 @@ pub fn practice_create_memory(
     };
 
     conn.execute(
-        "INSERT INTO tutor_memories (id, category, fact, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
+        "INSERT INTO tutor_memories (id, category, fact, created_at) 
+         VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+         ON CONFLICT(id) DO UPDATE SET
+            category = excluded.category,
+            fact = excluded.fact,
+            deleted_at = NULL",
         params![id, memory.category, memory.fact, memory.created_at]
     ).map_err(|e| e.to_string())?;
 

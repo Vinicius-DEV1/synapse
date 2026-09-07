@@ -56,7 +56,7 @@ pub fn focus_get_alarms(db_state: State<'_, DbState>) -> Result<Vec<FocusAlarm>,
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
-        .prepare("SELECT id, time, label, sound, enabled, days FROM alarms")
+        .prepare("SELECT id, time, label, sound, enabled, days FROM alarms WHERE deleted_at IS NULL ORDER BY time ASC")
         .map_err(|e| e.to_string())?;
 
     let iter = stmt
@@ -89,14 +89,23 @@ pub fn focus_create_alarm(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let id = if alarm.id.is_empty() {
+    let id = if alarm.id.trim().is_empty() {
         uuid::Uuid::new_v4().to_string()
     } else {
         alarm.id.clone()
     };
 
     conn.execute(
-        "INSERT INTO alarms (id, time, label, sound, enabled, days) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO alarms (id, time, label, sound, enabled, days) 
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            time = excluded.time,
+            label = excluded.label,
+            sound = excluded.sound,
+            enabled = excluded.enabled,
+            days = excluded.days,
+            deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP",
         params![
             id,
             alarm.time,
@@ -149,7 +158,7 @@ pub fn focus_get_sessions(db_state: State<'_, DbState>) -> Result<Vec<FocusSessi
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let mut stmt = conn.prepare("SELECT id, tag, description, target_time_minutes, status, justification, summary, created_at FROM focus_sessions")
+    let mut stmt = conn.prepare("SELECT id, tag, description, target_time_minutes, status, justification, summary, created_at FROM focus_sessions WHERE deleted_at IS NULL ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
 
     let iter = stmt
@@ -187,10 +196,21 @@ pub fn focus_create_session(
     let id = session
         .id
         .clone()
+        .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     conn.execute(
-        "INSERT INTO focus_sessions (id, tag, description, target_time_minutes, status, justification, summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO focus_sessions (id, tag, description, target_time_minutes, status, justification, summary) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            tag = excluded.tag,
+            description = excluded.description,
+            target_time_minutes = excluded.target_time_minutes,
+            status = excluded.status,
+            justification = excluded.justification,
+            summary = excluded.summary,
+            deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP",
         params![id, session.tag, session.description, session.target_time_minutes, session.status, session.justification, session.summary]
     ).map_err(|e| e.to_string())?;
 
