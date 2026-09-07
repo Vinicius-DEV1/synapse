@@ -4,7 +4,8 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct AnkiDeck {
     pub id: String,
     pub name: String,
@@ -12,7 +13,8 @@ pub struct AnkiDeck {
     pub parent_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct AnkiCard {
     pub id: String,
     pub deck_id: String,
@@ -37,7 +39,8 @@ pub struct AnkiCard {
     pub created_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct AnkiDeckSettings {
     pub new_limit: i32,
     pub review_limit: i32,
