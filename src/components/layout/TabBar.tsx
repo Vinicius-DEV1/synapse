@@ -87,7 +87,7 @@ const TabItem = memo(function TabItem({
       className={`group relative flex items-center px-3 py-2 text-xs font-medium rounded-t-xl transition-all duration-300 ease-out overflow-hidden ${
         tab.isPinned 
           ? compactPinnedTabs 
-            ? 'w-[42px] min-w-[42px] max-w-[42px] hover:w-[140px] hover:max-w-[160px] !px-0 justify-center hover:!px-3 hover:justify-start gap-0 hover:gap-1.5' 
+            ? 'w-11 min-w-[44px] max-w-[44px] hover:w-36 hover:max-w-[144px] !px-0 justify-center hover:!px-3 hover:justify-start gap-0 hover:gap-1.5' 
             : 'min-w-[90px] max-w-[160px] gap-1.5'
           : 'min-w-[120px] max-w-[200px] gap-1.5'
       } h-[38px] ${
@@ -99,12 +99,12 @@ const TabItem = memo(function TabItem({
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {icon}
-      <span className={`truncate flex-1 text-left transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 opacity-0 group-hover:w-auto group-hover:opacity-100' : ''}`}>
+      <span className={`truncate flex-1 text-left transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 max-w-0 opacity-0 group-hover:w-auto group-hover:max-w-[150px] group-hover:opacity-100' : ''}`}>
         {title}
       </span>
       {tab.isPinned ? (
         <span
-          className={`p-0.5 rounded-md text-brand-400 flex-shrink-0 transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 opacity-0 group-hover:w-auto group-hover:opacity-100' : ''}`}
+          className={`p-0.5 rounded-md text-brand-400 flex-shrink-0 transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 max-w-0 opacity-0 group-hover:w-auto group-hover:max-w-full group-hover:opacity-100' : ''}`}
           title="Aba fixada"
         >
           <Pin size={11} className="fill-brand-400/20 rotate-45" />

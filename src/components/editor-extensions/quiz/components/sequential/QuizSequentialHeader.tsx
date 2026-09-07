@@ -73,12 +73,14 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   }, [activeIndex]);
 
   return (
-    <div className="relative py-2.5 px-3.5 sm:px-4.5 bg-white/[0.025] border border-white/[0.08] rounded-xl flex items-center justify-between gap-3.5 min-h-[46px] overflow-hidden shadow-xs">
+    <div className="relative py-2.5 px-3.5 sm:px-4.5 bg-white/[0.025] border border-white/[0.08] rounded-xl flex items-center justify-between gap-3.5 min-h-[46px] shadow-xs">
       {/* Absolute smooth progress line at the bottom */}
-      <div 
-        className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-brand-500/40 via-brand-400/80 to-brand-500/40 transition-all duration-500 ease-out"
-        style={{ width: `${(answeredCount / total) * 100}%` }}
-      />
+      <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+        <div 
+          className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-brand-500/40 via-brand-400/80 to-brand-500/40 transition-all duration-500 ease-out"
+          style={{ width: `${(answeredCount / total) * 100}%` }}
+        />
+      </div>
       
       {/* Left side: Index counter, Steppers with horizontal auto-scroll, and type label */}
       <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden relative z-10">
