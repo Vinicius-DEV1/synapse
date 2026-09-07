@@ -26,7 +26,7 @@ pub struct Transaction {
     #[serde(default)]
     pub amount: f64,
     pub expected_amount: Option<f64>,
-    #[serde(rename = "type", alias = "type_", default)]
+    #[serde(rename = "type", default)]
     pub type_: String,
     #[serde(default)]
     pub category: String,

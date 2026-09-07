@@ -11,7 +11,6 @@ export const tauriNotificationsApi = {
       title: notif.title || '',
       message: notif.message || '',
       type: notif.type || 'system',
-      type_: notif.type || 'system',
       target_page_id: notif.target_page_id || null,
       event_id: notif.event_id || null,
       scheduled_for: notif.scheduled_for || null,

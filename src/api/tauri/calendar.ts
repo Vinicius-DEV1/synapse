@@ -6,12 +6,13 @@ export const tauriCalendarApi = {
     return await invoke('calendar_get_events');
   },
   createEvent: async (e: Partial<CalendarEvent>): Promise<CalendarEvent> => {
+    const cleanE: Record<string, any> = { ...e };
+    delete cleanE.type_;
     const payload = {
-      ...e,
+      ...cleanE,
       id: (e.id && e.id !== '') ? e.id : crypto.randomUUID(),
       title: e.title || '',
       type: e.type || 'event',
-      type_: e.type || 'event',
       status: e.status || 'pending',
       color: e.color || '#3b82f6',
       reminders: Array.isArray(e.reminders) ? e.reminders : (e.reminders ? JSON.parse(String(e.reminders)) : []),
@@ -29,8 +30,11 @@ export const tauriCalendarApi = {
       targetEvent = { ...idOrEvent };
       targetId = targetEvent.id || null;
     }
-    if (targetEvent.type && !targetEvent.type_) {
-      targetEvent.type_ = targetEvent.type;
+    if ('type_' in targetEvent) {
+      if (!targetEvent.type) {
+        targetEvent.type = targetEvent.type_;
+      }
+      delete targetEvent.type_;
     }
     await invoke('calendar_update_event', { id: targetId, event: targetEvent });
     return { success: true };
