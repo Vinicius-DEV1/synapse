@@ -79,9 +79,9 @@ interface EditorModalHostProps {
   // Mesma assinatura de `useFocusContext().handleSaveAlarm` — o AlarmSetupModal
   // real implementation receives a single `Alarm` object, not 5 positional params.
   handleSaveAlarm: (alarm: Alarm) => Promise<void>;
-  fileUploadModal: { isOpen: boolean; isLink: boolean } | null;
+  fileUploadModal: { isOpen: boolean; isLink: boolean; initialFiles?: File[] } | null;
   setFileUploadModal: React.Dispatch<
-    React.SetStateAction<{ isOpen: boolean; isLink: boolean } | null>
+    React.SetStateAction<{ isOpen: boolean; isLink: boolean; initialFiles?: File[] } | null>
   >;
   fileSelectModal: boolean;
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
@@ -263,6 +263,7 @@ export default function EditorModalHost({
               setFileUploadModal(null);
             }}
             isLink={fileUploadModal.isLink}
+            initialFiles={fileUploadModal.initialFiles}
           />
         )}
 

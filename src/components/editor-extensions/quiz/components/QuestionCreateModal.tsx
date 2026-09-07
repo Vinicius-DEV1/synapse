@@ -34,28 +34,29 @@ export default function QuestionCreateModal({ isOpen, onClose, onConfirm }: Ques
       const results: ExistingWidget[] = [];
       const lowerQuery = query.toLowerCase();
       
-      // Regex para extrair data-title dos blocos de questão
-      const titleRegex = /<div[^>]*class="[^"]*question-block[^"]*"[^>]*data-title="([^"]+)"/gi;
+      const parser = new DOMParser();
 
       for (const page of allPages) {
         if (!page.id) continue;
         const pageData = await window.api.getPageContent(page.id).catch(() => null);
         if (!pageData?.content) continue;
         
-        let match;
-        while ((match = titleRegex.exec(pageData.content)) !== null) {
-          const widgetTitle = match[1];
-          if (widgetTitle.toLowerCase().includes(lowerQuery)) {
+        const doc = parser.parseFromString(pageData.content, 'text/html');
+        const blocks = doc.querySelectorAll('div[data-type="question-block"], div.question-block');
+        
+        blocks.forEach(block => {
+          const widgetTitle = block.getAttribute('data-title');
+          if (widgetTitle && widgetTitle.toLowerCase().includes(lowerQuery)) {
             // Evita duplicatas exatas na lista
             if (!results.find(r => r.title === widgetTitle)) {
               results.push({
                 title: widgetTitle,
-                pageId: page.id,
+                pageId: page.id!,
                 pageTitle: page.title || 'Página sem título'
               });
             }
           }
-        }
+        });
       }
       setExistingWidgets(results.slice(0, 8)); // Limita a 8 resultados
     } catch (err) {
