@@ -265,5 +265,30 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     }
     let _ = conn.execute("UPDATE transactions SET account_id = 'default-wallet' WHERE account_id IS NULL", []);
 
+    // Create strategic performance indexes for fast lookups, foreign keys, and soft deletes
+    let _ = conn.execute_batch(
+        "
+        CREATE INDEX IF NOT EXISTS idx_pages_parent_deleted ON pages (parent_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_pages_deleted_sort ON pages (deleted_at, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_page_history_page ON page_history (page_id);
+        CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events (start_date, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (is_read, deleted_at, created_at);
+        CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions (account_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_library_books_status ON library_books (reading_status, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_library_highlights_book ON library_highlights (book_id);
+        CREATE INDEX IF NOT EXISTS idx_library_bookmarks_book ON library_bookmarks (book_id);
+        CREATE INDEX IF NOT EXISTS idx_library_ocr_cache_book_page ON library_ocr_cache (book_id, page_number);
+        CREATE INDEX IF NOT EXISTS idx_anki_cards_deck ON anki_cards (deck_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_anki_srs_state_due ON anki_srs_state (due_date);
+        CREATE INDEX IF NOT EXISTS idx_anki_reviews_card ON anki_reviews (card_id);
+        CREATE INDEX IF NOT EXISTS idx_vault_items_group ON vault_items (group_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_files_folder ON files (folder_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_file_page_links_ids ON file_page_links (file_id, page_id);
+        CREATE INDEX IF NOT EXISTS idx_culture_episodes_item ON culture_episodes (item_id);
+        CREATE INDEX IF NOT EXISTS idx_activity_logs_date ON activity_logs (date, module);
+        "
+    );
+
     Ok(conn)
 }
