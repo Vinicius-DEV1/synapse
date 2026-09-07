@@ -58,11 +58,11 @@ pub fn anki_reset_deck(deck_id: String, db_state: State<'_, DbState>) -> Result<
         .map_err(|e| e.to_string())?;
 
     let _ = conn.execute(
-        "UPDATE anki_srs_state SET stability = 0.0, difficulty = 0.0, elapsed_days = 0, scheduled_days = 0, reps = 0, lapses = 0, state = '0', due_date = CURRENT_TIMESTAMP, last_review = NULL WHERE id IN (SELECT id FROM anki_cards WHERE deck_id = ?)",
+        "UPDATE anki_srs_state SET stability = 0.0, difficulty = 0.0, elapsed_days = 0, scheduled_days = 0, reps = 0, lapses = 0, state = '0', due_date = CURRENT_TIMESTAMP, last_review = NULL, updated_at = CURRENT_TIMESTAMP WHERE id IN (SELECT id FROM anki_cards WHERE deck_id = ?)",
         [&deck_id]
     );
     let _ = conn.execute(
-        "UPDATE anki_reviews SET deleted_at = CURRENT_TIMESTAMP WHERE card_id IN (SELECT id FROM anki_cards WHERE deck_id = ?)",
+        "UPDATE anki_reviews SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE card_id IN (SELECT id FROM anki_cards WHERE deck_id = ?)",
         [&deck_id]
     );
 

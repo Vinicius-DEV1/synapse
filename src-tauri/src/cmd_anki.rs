@@ -152,9 +152,28 @@ pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<St
     conn.execute("BEGIN TRANSACTION", [])
         .map_err(|e| e.to_string())?;
 
+    let tags_json = card
+        .tags
+        .as_ref()
+        .and_then(|t| serde_json::to_string(t).ok())
+        .unwrap_or_else(|| "[]".to_string());
+
     if let Err(e) = conn.execute(
-        "INSERT INTO anki_cards (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![id, card.deck_id, card.front, card.back, card.extra_note, card.source_module, card.source_id, card.media_url, card.card_type, card.validation_mode, card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()).unwrap_or_else(|| "[]".to_string())]
+        "INSERT INTO anki_cards (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode, tags, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET
+            deck_id = excluded.deck_id,
+            front = excluded.front,
+            back = excluded.back,
+            extra_note = excluded.extra_note,
+            source_module = excluded.source_module,
+            source_id = excluded.source_id,
+            media_url = excluded.media_url,
+            card_type = excluded.card_type,
+            validation_mode = excluded.validation_mode,
+            tags = excluded.tags,
+            updated_at = CURRENT_TIMESTAMP",
+        params![id, card.deck_id, card.front, card.back, card.extra_note, card.source_module, card.source_id, card.media_url, card.card_type, card.validation_mode, tags_json]
     ) {
         let _ = conn.execute("ROLLBACK", []);
         return Err(e.to_string());
@@ -162,7 +181,7 @@ pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<St
 
     let now = Utc::now().to_rfc3339();
     if let Err(e) = conn.execute(
-        "INSERT INTO anki_srs_state (id, due_date, stability, difficulty, state) VALUES (?, ?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO anki_srs_state (id, due_date, stability, difficulty, state) VALUES (?, ?, ?, ?, ?)",
         params![id, now, 0.0, 0.0, "0"]
     ) {
         let _ = conn.execute("ROLLBACK", []);
@@ -347,6 +366,7 @@ pub fn anki_delete_deck(deck_id: String, db_state: State<'_, DbState>) -> Result
         .map_err(|e| e.to_string())?;
     let _ = conn.execute("UPDATE anki_decks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&deck_id]);
     let _ = conn.execute("UPDATE anki_cards SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?", [&deck_id]);
+    let _ = conn.execute("UPDATE anki_deck_settings SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?", [&deck_id]);
     conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
 
     Ok(true)

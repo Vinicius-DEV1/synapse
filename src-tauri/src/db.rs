@@ -14,6 +14,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
          PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;
          
          CREATE TABLE IF NOT EXISTS keychain (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, library_key_enc TEXT, finance_key_enc TEXT, notes_key_enc TEXT, culture_key_enc TEXT, anki_key_enc TEXT, focus_key_enc TEXT, files_key_enc TEXT, vault_key_enc TEXT, calendar_key_enc TEXT, practice_key_enc TEXT, core_key_enc TEXT);
          CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, data TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, value TEXT);
@@ -37,15 +38,15 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          
          CREATE TABLE IF NOT EXISTS pages (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT NOT NULL, content TEXT DEFAULT '', icon TEXT DEFAULT 'file', sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL, cover_image TEXT, description TEXT, password_salt TEXT, crdt_state TEXT, encrypted_content TEXT, is_pinned INTEGER DEFAULT 0, pinned_order REAL DEFAULT 0.0, is_locked INTEGER DEFAULT 0);
          CREATE TABLE IF NOT EXISTS image_cache (id TEXT PRIMARY KEY, data BLOB NOT NULL, mimeType TEXT DEFAULT 'image/png');
-         CREATE TABLE IF NOT EXISTS page_history (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS page_history (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, content TEXT NOT NULL, encrypted_content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
          
          CREATE TABLE IF NOT EXISTS culture_items (id TEXT PRIMARY KEY, title TEXT NOT NULL, type TEXT NOT NULL, synopsis TEXT, cover_image TEXT, status TEXT DEFAULT 'backlog', progress INTEGER DEFAULT 0, total_episodes INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, myanimelist_id INTEGER, anilist_id INTEGER, access_link TEXT, total_progress INTEGER DEFAULT 0, is_goal BOOLEAN DEFAULT 0, goal_note TEXT, api_id TEXT, api_source TEXT, last_sync_at DATETIME, volumes INTEGER, chapters INTEGER, episodes_count INTEGER);
          CREATE TABLE IF NOT EXISTS culture_episodes (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, episode_number INTEGER, title TEXT, synopsis TEXT, is_watched BOOLEAN DEFAULT 0, watched_at DATETIME, season_number INTEGER, episode_in_season INTEGER, aired_at DATETIME, updated_at DATETIME);
          
-         CREATE TABLE IF NOT EXISTS anki_decks (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, parent_id TEXT, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS anki_decks (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, parent_id TEXT, color TEXT DEFAULT '#4F46E5', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS anki_cards (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, extra_note TEXT, tags TEXT DEFAULT '[]', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, card_type TEXT, validation_mode TEXT, media_url TEXT, source_module TEXT, source_id TEXT, updated_at DATETIME, deleted_at DATETIME);
-         CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME, scheduled_days INTEGER DEFAULT 0);
-         CREATE TABLE IF NOT EXISTS anki_reviews (id TEXT PRIMARY KEY, card_id TEXT NOT NULL, rating INTEGER NOT NULL, duration INTEGER DEFAULT 0, review_time DATETIME DEFAULT CURRENT_TIMESTAMP);
+         CREATE TABLE IF NOT EXISTS anki_srs_state (id TEXT PRIMARY KEY, due_date DATETIME NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days INTEGER DEFAULT 0, reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0, state TEXT DEFAULT 'new', last_review DATETIME, scheduled_days INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
+         CREATE TABLE IF NOT EXISTS anki_reviews (id TEXT PRIMARY KEY, card_id TEXT NOT NULL, rating INTEGER NOT NULL, duration INTEGER DEFAULT 0, review_time DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS anki_notes (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS anki_deck_settings (id TEXT PRIMARY KEY, deck_id TEXT NOT NULL, new_limit INTEGER DEFAULT 20, review_limit INTEGER DEFAULT 100, learning_steps TEXT, relearning_steps TEXT, fsrs_weights TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          
@@ -222,8 +223,10 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);
 
     // Migration for page_history
+    let _ = conn.execute("ALTER TABLE page_history ADD COLUMN encrypted_content TEXT", []);
 
     // Migration for anki tags
+    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'", []);
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 
