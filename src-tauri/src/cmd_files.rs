@@ -168,7 +168,18 @@ pub fn files_create(
     let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
 
     conn.execute(
-        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            file_type = excluded.file_type,
+            file_size = excluded.file_size,
+            local_path = excluded.local_path,
+            drive_file_id = excluded.drive_file_id,
+            folder_id = excluded.folder_id,
+            mime_type = excluded.mime_type,
+            deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP",
         params![file.id, file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type]
     ).map_err(|e| e.to_string())?;
 
@@ -332,7 +343,14 @@ pub fn file_folders_create(
     }
 
     conn.execute(
-        "INSERT INTO file_folders (id, name, parent_id, color) VALUES (?, ?, ?, ?)",
+        "INSERT INTO file_folders (id, name, parent_id, color) 
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            parent_id = excluded.parent_id,
+            color = excluded.color,
+            deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP",
         params![folder.id, folder.name, folder.parent_id, folder.color],
     )
     .map_err(|e| e.to_string())?;

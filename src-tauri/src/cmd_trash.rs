@@ -83,6 +83,10 @@ pub fn trash_restore(
     if item_type == "file" {
         let _ = conn.execute("UPDATE library_highlights SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
         let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+    } else if item_type == "vault" {
+        let _ = conn.execute("UPDATE vault_items SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE group_id = ?", [&id]);
+    } else if item_type == "anki_deck" {
+        let _ = conn.execute("UPDATE anki_cards SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?", [&id]);
     }
 
     Ok(true)
@@ -117,6 +121,10 @@ pub fn trash_delete_permanently(
         let _ = conn.execute("DELETE FROM library_bookmarks WHERE book_id = ?", [&id]);
         let _ = conn.execute("DELETE FROM library_reading_sessions WHERE book_id = ?", [&id]);
         let _ = conn.execute("DELETE FROM library_ocr_cache WHERE book_id = ?", [&id]);
+    } else if item_type == "vault" {
+        let _ = conn.execute("DELETE FROM vault_items WHERE group_id = ?", [&id]);
+    } else if item_type == "anki_deck" {
+        let _ = conn.execute("DELETE FROM anki_cards WHERE deck_id = ?", [&id]);
     }
 
     Ok(true)
@@ -132,10 +140,18 @@ pub fn trash_empty(db_state: tauri::State<crate::db::DbState>) -> Result<bool, S
         "anki_decks",
         "anki_cards",
         "files",
+        "file_folders",
         "vault_groups",
+        "vault_items",
         "transactions",
         "wishlist",
-        "file_folders",
+        "calendar_events",
+        "culture_items",
+        "alarms",
+        "focus_sessions",
+        "notifications",
+        "tutor_sessions",
+        "tutor_memories",
     ];
 
     for table in tables {

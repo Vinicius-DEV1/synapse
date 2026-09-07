@@ -64,10 +64,19 @@ pub fn vault_get_item(id: String, db_state: State<'_, DbState>) -> Result<VaultI
 
 /// Creates or updates a vault item, maintaining password history changes.
 #[tauri::command]
-pub fn vault_upsert_item(item: VaultItem, db_state: State<'_, DbState>) -> Result<(), String> {
+pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> Result<(), String> {
     let vault_key = get_vault_key(&db_state)?;
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    if item.id.trim().is_empty() {
+        item.id = uuid::Uuid::new_v4().to_string();
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    if item.created_at.trim().is_empty() {
+        item.created_at = now.clone();
+    }
+    item.updated_at = now;
 
     let enc_label = crate::crypto::encrypt_content(&vault_key, &item.label)?;
     let enc_user = item
@@ -112,17 +121,32 @@ pub fn vault_upsert_item(item: VaultItem, db_state: State<'_, DbState>) -> Resul
         if let Ok(Some(old)) = old_pass_enc {
             if old != *new_pass_enc && !old.is_empty() {
                 let hist_id = uuid::Uuid::new_v4().to_string();
-                let now = chrono::Utc::now().to_rfc3339();
+                let hist_now = chrono::Utc::now().to_rfc3339();
                 let _ = conn.execute(
                     "INSERT INTO vault_password_history (id, item_id, password, changed_at) VALUES (?, ?, ?, ?)",
-                    rusqlite::params![hist_id, item.id, old, now],
+                    rusqlite::params![hist_id, item.id, old, hist_now],
                 );
             }
         }
     }
 
     conn.execute(
-        "INSERT OR REPLACE INTO vault_items (id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            group_id = excluded.group_id,
+            label = excluded.label,
+            username = excluded.username,
+            email = excluded.email,
+            password = excluded.password,
+            url = excluded.url,
+            notes = excluded.notes,
+            custom_fields = excluded.custom_fields,
+            is_favorite = excluded.is_favorite,
+            password_changed_at = excluded.password_changed_at,
+            password_strength = excluded.password_strength,
+            deleted_at = excluded.deleted_at,
+            updated_at = CURRENT_TIMESTAMP",
         rusqlite::params![item.id, item.group_id, enc_label, enc_user, enc_email, enc_pass, enc_url, enc_notes, enc_custom, item.is_favorite, item.password_changed_at, item.password_strength, item.created_at, item.updated_at, item.deleted_at],
     ).map_err(|e| e.to_string())?;
 

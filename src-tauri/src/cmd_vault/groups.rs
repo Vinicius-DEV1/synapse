@@ -56,8 +56,17 @@ pub fn vault_get_groups(db_state: State<'_, DbState>) -> Result<Vec<VaultGroup>,
 
 /// Creates or updates an encrypted vault group.
 #[tauri::command]
-pub fn vault_upsert_group(group: VaultGroup, db_state: State<'_, DbState>) -> Result<(), String> {
+pub fn vault_upsert_group(mut group: VaultGroup, db_state: State<'_, DbState>) -> Result<(), String> {
     let vault_key = get_vault_key(&db_state)?;
+
+    if group.id.trim().is_empty() {
+        group.id = uuid::Uuid::new_v4().to_string();
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    if group.created_at.trim().is_empty() {
+        group.created_at = now.clone();
+    }
+    group.updated_at = now;
 
     let enc_name = crate::crypto::encrypt_content(&vault_key, &group.name)?;
     let enc_icon = if let Some(ref icon) = group.icon {
@@ -75,7 +84,15 @@ pub fn vault_upsert_group(group: VaultGroup, db_state: State<'_, DbState>) -> Re
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     conn.execute(
-        "INSERT OR REPLACE INTO vault_groups (id, name, icon, color, position, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO vault_groups (id, name, icon, color, position, created_at, updated_at, deleted_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            icon = excluded.icon,
+            color = excluded.color,
+            position = excluded.position,
+            deleted_at = excluded.deleted_at,
+            updated_at = CURRENT_TIMESTAMP",
         rusqlite::params![group.id, enc_name, enc_icon, enc_color, group.position, group.created_at, group.updated_at, group.deleted_at],
     ).map_err(|e| e.to_string())?;
 
