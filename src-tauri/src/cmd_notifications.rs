@@ -3,11 +3,17 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize, Clone)]
+fn default_notification_type() -> String {
+    "system".to_string()
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct AppNotification {
     pub id: String,
     pub title: String,
     pub message: String,
+    #[serde(rename = "type", alias = "type_", default = "default_notification_type")]
     pub type_: String,
     pub target_page_id: Option<String>,
     pub event_id: Option<String>,
@@ -76,6 +82,11 @@ pub fn notifications_add(
     } else {
         notif.fired_at.clone()
     };
+    let created_at = if notif.created_at.is_empty() {
+        now.clone()
+    } else {
+        notif.created_at.clone()
+    };
     let is_read_int = if notif.is_read { 1 } else { 0 };
 
     conn.execute(
@@ -91,14 +102,14 @@ pub fn notifications_add(
             notif.scheduled_for,
             fired_at,
             is_read_int,
-            now
+            created_at
         ]
     ).map_err(|e| e.to_string())?;
 
     let mut ret = notif;
     ret.id = id;
     ret.fired_at = fired_at;
-    ret.created_at = now;
+    ret.created_at = created_at;
     Ok(ret)
 }
 
