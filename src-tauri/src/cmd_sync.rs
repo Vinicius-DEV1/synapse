@@ -88,11 +88,23 @@ pub fn sync_upsert_row(
 
     let obj = row.as_object().ok_or("Row must be an object")?;
 
+    // Query table columns to ensure only valid columns are included in query, preventing "table has no column named X" errors
+    let pragma_query = format!("PRAGMA table_info({})", table_name);
+    let mut pragma_stmt = conn.prepare(&pragma_query).map_err(|e| e.to_string())?;
+    let valid_columns: std::collections::HashSet<String> = pragma_stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
     let mut columns = Vec::new();
     let mut placeholders = Vec::new();
     let mut params_vec: Vec<rusqlite::types::Value> = Vec::new();
 
     for (k, v) in obj {
+        if !valid_columns.contains(k) {
+            continue;
+        }
         columns.push(k.clone());
         placeholders.push("?".to_string());
 
@@ -112,6 +124,10 @@ pub fn sync_upsert_row(
             Value::Array(_) | Value::Object(_) => rusqlite::types::Value::Text(v.to_string()),
         };
         params_vec.push(sql_val);
+    }
+
+    if columns.is_empty() {
+        return Ok(true);
     }
 
     let cols_str = columns.join(", ");
