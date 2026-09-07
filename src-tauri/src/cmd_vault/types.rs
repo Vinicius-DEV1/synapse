@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct VaultGroup {
     pub id: String,
     pub name: String,
@@ -12,7 +13,8 @@ pub struct VaultGroup {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct VaultItem {
     pub id: String,
     pub group_id: String,
@@ -31,7 +33,8 @@ pub struct VaultItem {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct VaultPasswordHistoryEntry {
     pub id: String,
     pub item_id: String,
@@ -40,7 +43,8 @@ pub struct VaultPasswordHistoryEntry {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
 pub struct GroupOrderUpdate {
     pub id: String,
     pub position: i32,

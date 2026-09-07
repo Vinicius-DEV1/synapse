@@ -3,11 +3,12 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct CultureItem {
     pub id: String,
     pub title: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", alias = "item_type", default)]
     pub item_type: String,
     pub synopsis: Option<String>,
     pub cover_image: Option<String>,
@@ -27,7 +28,8 @@ pub struct CultureItem {
     pub updated_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct CultureEpisode {
     pub id: String,
     pub item_id: String,

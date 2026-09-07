@@ -3,17 +3,42 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize)]
+fn default_alarm_enabled() -> i32 {
+    1
+}
+
+fn deserialize_i32_or_bool<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrBool {
+        Int(i32),
+        Bool(bool),
+    }
+
+    match Option::<IntOrBool>::deserialize(deserializer)? {
+        Some(IntOrBool::Int(i)) => Ok(i),
+        Some(IntOrBool::Bool(b)) => Ok(if b { 1 } else { 0 }),
+        None => Ok(1),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct FocusAlarm {
     pub id: String,
     pub time: String,
     pub label: Option<String>,
     pub sound: Option<String>,
+    #[serde(default = "default_alarm_enabled", deserialize_with = "deserialize_i32_or_bool")]
     pub enabled: i32,
     pub days: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct FocusSession {
     pub id: Option<String>,
     pub tag: String,

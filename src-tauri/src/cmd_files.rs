@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct FileRecord {
     pub id: String,
     pub name: String,
@@ -21,7 +22,8 @@ pub struct FileRecord {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct FileFolder {
     pub id: String,
     pub name: String,

@@ -98,7 +98,8 @@ pub fn notes_get_page_content(
     Ok(content)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct CreatePagePayload {
     #[serde(rename = "parentId")]
     pub parent_id: Option<String>,
@@ -140,7 +141,8 @@ pub fn notes_create_page(
     })
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct UpdatePagePayload {
     pub id: String,
     pub title: Option<String>,
@@ -149,7 +151,7 @@ pub struct UpdatePagePayload {
     pub crdt_state: Option<String>,
     pub parent_id: Option<serde_json::Value>,
     pub is_pinned: Option<i32>,
-    pub pinned_order: Option<i32>,
+    pub pinned_order: Option<f64>,
 }
 
 #[tauri::command]
