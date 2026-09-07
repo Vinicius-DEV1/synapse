@@ -13,7 +13,7 @@ pub struct AppNotification {
     pub id: String,
     pub title: String,
     pub message: String,
-    #[serde(rename = "type", alias = "type_", default = "default_notification_type")]
+    #[serde(rename = "type", default = "default_notification_type")]
     pub type_: String,
     pub target_page_id: Option<String>,
     pub event_id: Option<String>,
@@ -65,29 +65,55 @@ pub fn notifications_get_all(db_state: State<'_, DbState>) -> Result<Vec<AppNoti
 
 #[tauri::command]
 pub fn notifications_add(
-    notif: AppNotification,
+    notif: serde_json::Value,
     db_state: State<'_, DbState>,
 ) -> Result<AppNotification, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let id = if notif.id.is_empty() {
+    let notif_obj = notif.as_object().ok_or("Parâmetro notif inválido")?;
+
+    let raw_id = notif_obj.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let id = if raw_id.trim().is_empty() {
         uuid::Uuid::new_v4().to_string()
     } else {
-        notif.id.clone()
+        raw_id.to_string()
     };
+    let title = notif_obj.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let message = notif_obj.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let type_ = notif_obj
+        .get("type")
+        .or_else(|| notif_obj.get("type_"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("system")
+        .to_string();
+    let target_page_id = notif_obj.get("target_page_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let event_id = notif_obj.get("event_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let scheduled_for = notif_obj.get("scheduled_for").and_then(|v| v.as_str()).map(|s| s.to_string());
+
     let now = chrono::Utc::now().to_rfc3339();
-    let fired_at = if notif.fired_at.is_empty() {
-        now.clone()
-    } else {
-        notif.fired_at.clone()
-    };
-    let created_at = if notif.created_at.is_empty() {
-        now.clone()
-    } else {
-        notif.created_at.clone()
-    };
-    let is_read_int = if notif.is_read { 1 } else { 0 };
+    let fired_at = notif_obj
+        .get("fired_at")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(&now)
+        .to_string();
+    let created_at = notif_obj
+        .get("created_at")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(&now)
+        .to_string();
+
+    let is_read = notif_obj
+        .get("is_read")
+        .map(|v| match v {
+            serde_json::Value::Bool(b) => *b,
+            serde_json::Value::Number(n) => n.as_i64().map(|i| i != 0).unwrap_or(false),
+            _ => false,
+        })
+        .unwrap_or(false);
+    let is_read_int = if is_read { 1 } else { 0 };
 
     conn.execute(
         "INSERT INTO notifications (id, title, message, type, target_page_id, event_id, scheduled_for, fired_at, is_read, created_at) 
@@ -104,22 +130,30 @@ pub fn notifications_add(
             updated_at = CURRENT_TIMESTAMP",
         params![
             id,
-            notif.title,
-            notif.message,
-            notif.type_,
-            notif.target_page_id,
-            notif.event_id,
-            notif.scheduled_for,
+            title,
+            message,
+            type_,
+            target_page_id,
+            event_id,
+            scheduled_for,
             fired_at,
             is_read_int,
             created_at
         ]
     ).map_err(|e| e.to_string())?;
 
-    let mut ret = notif;
-    ret.id = id;
-    ret.fired_at = fired_at;
-    ret.created_at = created_at;
+    let ret = AppNotification {
+        id,
+        title,
+        message,
+        type_,
+        target_page_id,
+        event_id,
+        scheduled_for,
+        fired_at,
+        is_read,
+        created_at,
+    };
     Ok(ret)
 }
 
