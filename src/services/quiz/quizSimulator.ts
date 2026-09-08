@@ -25,18 +25,13 @@ export async function generateErrorNotebook(
   const wrongAttempts = await quizApi.getWrongAttempts();
   if (wrongAttempts.length === 0) return null;
 
-  const questions: QuizQuestion[] = [];
-  const questionIdSet = new Set<string>();
-
-  for (const att of wrongAttempts) {
-    if (questionIdSet.has(att.question_id)) continue;
-    questionIdSet.add(att.question_id);
-
-    const q = await quizApi.getQuestionById(att.question_id);
-    if (q && !q.deleted_at) {
-      questions.push(q);
-    }
-  }
+  const uniqueQuestionIds = Array.from(new Set(wrongAttempts.map((att) => att.question_id)));
+  const fetchedQuestions = await Promise.all(
+    uniqueQuestionIds.map((qId) => quizApi.getQuestionById(qId))
+  );
+  const questions: QuizQuestion[] = fetchedQuestions.filter(
+    (q): q is QuizQuestion => Boolean(q && !q.deleted_at)
+  );
 
   if (questions.length === 0) return null;
 
@@ -100,22 +95,29 @@ export async function generateFilteredStudySession(
     targetBatteries = allBatteries.filter((b) => b.page_id && pageSet.has(b.page_id));
   }
 
-  // Load all questions from target batteries
-  const candidateQuestions: QuizQuestion[] = [];
-  for (const b of targetBatteries) {
-    const questions = await quizApi.getQuestionsByBattery(b.id);
-    candidateQuestions.push(...questions);
-  }
+  // Load all questions from target batteries in parallel
+  const questionArrays = await Promise.all(
+    targetBatteries.map((b) => quizApi.getQuestionsByBattery(b.id))
+  );
+  const candidateQuestions: QuizQuestion[] = questionArrays.flat();
 
   if (candidateQuestions.length === 0) return null;
 
   // Filter by tags
   let filtered = candidateQuestions;
   if (options.tags && options.tags.length > 0) {
-    const normalizedFilterTags = new Set(options.tags.map((t) => t.trim().toLowerCase()));
-    filtered = filtered.filter((q) =>
-      Array.isArray(q.tags) && q.tags.some((t) => normalizedFilterTags.has(t.trim().toLowerCase()))
+    const normalizedFilterTags = new Set(
+      options.tags
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
     );
+    if (normalizedFilterTags.size > 0) {
+      filtered = filtered.filter((q) =>
+        Array.isArray(q.tags) &&
+        q.tags.some((t) => typeof t === 'string' && normalizedFilterTags.has(t.trim().toLowerCase()))
+      );
+    }
   }
 
   // Filter by status (unanswered / incorrect / all)
