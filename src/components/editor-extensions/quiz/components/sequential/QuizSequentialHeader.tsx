@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, Edit2, Trash2, Sparkles } from 'lucide-react';
+import { MoreHorizontal, Edit2, Trash2, Sparkles, RotateCcw } from 'lucide-react';
 import { playQuizAiOpenSound } from '../../utils/quizSounds';
 import type { QuestionItem } from '../../types';
 
@@ -14,6 +14,7 @@ interface QuizSequentialHeaderProps {
   onDeleteQuestion?: (qId: string, index: number) => void;
   onOpenAiAssistant?: (q?: QuestionItem, index?: number) => void;
   onEditQuestion?: () => void;
+  onResetAll?: () => void;
 }
 
 export const QuizSequentialHeader = memo(function QuizSequentialHeader({
@@ -27,6 +28,7 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   onDeleteQuestion,
   onOpenAiAssistant,
   onEditQuestion,
+  onResetAll,
 }: QuizSequentialHeaderProps) {
   const activeBtnRef = useRef<HTMLButtonElement | null>(null);
   const stepperContainerRef = useRef<HTMLDivElement | null>(null);
@@ -199,6 +201,22 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
               </button>
 
               <div className="h-px bg-white/[0.04] my-1" />
+
+              {onResetAll && (
+                <>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      onResetAll();
+                    }}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 transition-colors"
+                  >
+                    <RotateCcw size={13} className="text-amber-400" />
+                    <span>Refazer Bateria</span>
+                  </button>
+                  <div className="h-px bg-white/[0.04] my-1" />
+                </>
+              )}
 
               <button
                 onClick={() => {
