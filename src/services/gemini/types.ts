@@ -4,6 +4,7 @@ export interface GeminiKeyEntry {
   status: 'active' | 'exhausted' | 'error';
   disabledUntil?: number;
   addedAt: number;
+  errorMessage?: string;
 }
 
 export interface GeminiModel {

@@ -1,34 +1,70 @@
 import { getSettings } from '../../utils/settings';
 import { NetworkResilience } from '../../utils/network-resilience';
-import { getGeminiKeys, saveGeminiKeys } from './keys';
+import {
+  getGeminiKeys,
+  updateGeminiKeyStatus,
+  getRotatedActiveKeys,
+} from './keys';
 import type { GeminiModel } from './types';
 
 export async function fetchGeminiModels(): Promise<GeminiModel[]> {
-  try {
-    const keys = await getGeminiKeys();
-    const activeKey = keys.find(k => k.status === 'active');
-    if (!activeKey) {
-      throw new Error('Nenhuma chave da API Gemini ativa encontrada.');
-    }
+  const keys = await getGeminiKeys();
+  const activeKeys = getRotatedActiveKeys(keys);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${activeKey.key}`);
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'Erro ao buscar modelos do Gemini');
-    }
-    // Filter only valid models for our use case (e.g. ones that start with 'models/gemini' and support text/vision)
-    return (data.models as any[])
-      .filter(m => m.name.startsWith('models/gemini'))
-      .map(m => ({
-        name: m.name,
-        version: m.version,
-        displayName: m.displayName,
-        description: m.description,
-      }));
-  } catch (error) {
-    console.error('fetchGeminiModels error:', error);
-    throw error;
+  if (activeKeys.length === 0) {
+    throw new Error('Nenhuma chave da API Gemini ativa encontrada.');
   }
+
+  let lastError: Error | null = null;
+
+  // Failover loop across active keys
+  for (const currentKeyEntry of activeKeys) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${currentKeyEntry.key}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          await updateGeminiKeyStatus(
+            currentKeyEntry.id,
+            'exhausted',
+            Date.now() + 5 * 60 * 1000,
+            'Limite de cota temporário'
+          );
+          continue;
+        } else if (response.status === 400 || response.status === 403) {
+          await updateGeminiKeyStatus(
+            currentKeyEntry.id,
+            'error',
+            undefined,
+            data.error?.message || 'Chave inválida ou revogada'
+          );
+          continue;
+        }
+        throw new Error(data.error?.message || 'Erro ao buscar modelos do Gemini');
+      }
+
+      // Filter only valid models for our use case
+      return (data.models as any[])
+        .filter((m: any) => m.name && m.name.startsWith('models/gemini'))
+        .map((m: any) => ({
+          name: m.name,
+          version: m.version || '',
+          displayName: m.displayName || m.name,
+          description: m.description || '',
+        }));
+    } catch (error: any) {
+      lastError = error;
+      console.warn(
+        `[fetchGeminiModels] Falha na chave ${currentKeyEntry.key.slice(0, 4)}...:`,
+        error.message
+      );
+    }
+  }
+
+  throw lastError || new Error('Nenhuma chave ativa conseguiu listar os modelos disponíveis.');
 }
 
 export async function promptGemini(
@@ -40,7 +76,7 @@ export async function promptGemini(
   timeoutMs = 45000
 ): Promise<{ text: string; usage?: any }> {
   const keys = await getGeminiKeys();
-  const activeKeys = keys.filter(k => k.status === 'active');
+  const activeKeys = getRotatedActiveKeys(keys);
 
   if (activeKeys.length === 0) {
     throw new Error('Todas as chaves da API estão esgotadas ou bloqueadas. Tente novamente mais tarde ou adicione novas chaves nas Configurações.');
@@ -93,11 +129,16 @@ export async function promptGemini(
     requestBody.system_instruction = { parts: { text: customSystemInstruction } };
   }
 
-  // Failover loop
+  let allServerErrors = true;
+  let allQuotaErrors = true;
+  let allAuthErrors = true;
+  let lastErrorMsg = '';
+
+  // Failover loop across rotated active keys
   for (const currentKeyEntry of activeKeys) {
     const url = `https://generativelanguage.googleapis.com/v1beta/${fullModelId}:generateContent?key=${currentKeyEntry.key}`;
 
-    console.warn(`[DEBUG IA] Iniciando requisição com a chave: ${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)} | Modelo: ${fullModelId}`);
+    console.warn(`[GeminiPool] Requisição com a chave: ${currentKeyEntry.key.slice(0,4)}...${currentKeyEntry.key.slice(-4)} | Modelo: ${fullModelId}`);
 
     try {
       const response = await NetworkResilience.fetchWithBackoff(
@@ -109,23 +150,47 @@ export async function promptGemini(
             signal
           });
         },
-        4, // 4 retries
-        1500, // base 1.5s delay
-        timeoutMs // configurable timeout
+        3, // 3 retries
+        1000, // 1s base delay
+        timeoutMs
       );
 
       const data = await response.json();
       if (!response.ok) {
         if (response.status === 429) {
-          throw new Error('RATE_LIMIT');
+          const errorMsg = data.error?.message || '';
+          const isDaily =
+            errorMsg.toLowerCase().includes('per-day') ||
+            errorMsg.toLowerCase().includes('daily');
+          const blockDuration = isDaily ? 23 * 60 * 60 * 1000 : 5 * 60 * 1000;
+          const reason = isDaily ? 'Cota diária esgotada (23h)' : 'Limite por minuto excedido (5min)';
+
+          console.warn(`[GeminiPool] Chave 429: ${reason}. Rotacionando para próxima chave...`);
+          await updateGeminiKeyStatus(currentKeyEntry.id, 'exhausted', Date.now() + blockDuration, reason);
+
+          allServerErrors = false;
+          allAuthErrors = false;
+          lastErrorMsg = errorMsg || 'Limite de cota excedido (429)';
+          continue;
+        } else if (response.status === 400 || response.status === 403) {
+          const errorMsg = data.error?.message || `Chave rejeitada (${response.status}).`;
+          console.warn(`[GeminiPool] Chave inválida ou revogada (${response.status}): ${errorMsg}. Rotacionando para próxima chave...`);
+          await updateGeminiKeyStatus(currentKeyEntry.id, 'error', undefined, errorMsg);
+
+          allServerErrors = false;
+          allQuotaErrors = false;
+          lastErrorMsg = errorMsg;
+          continue;
         } else if (response.status >= 500) {
-          throw new Error('SERVER_ERROR');
-        } else if (response.status === 400 || response.status === 403 || response.status === 404) {
-          console.error(`[DEBUG IA] Fatal Error for Model: ${fullModelId}`, data.error);
-          throw new Error(`Erro fatal da API (${response.status}): ${data.error?.message || 'Requisição inválida ou chave incorreta.'}`);
+          console.warn(`[GeminiPool] Servidor do Google indisponível (${response.status}). Tentando próxima chave sem penalizar a atual...`);
+          allQuotaErrors = false;
+          allAuthErrors = false;
+          lastErrorMsg = `Servidor do Google indisponível (${response.status})`;
+          continue;
         }
-        console.error(`[DEBUG IA] Unknown API Error:`, data);
-        throw new Error(data.error?.message || 'Erro ao chamar a API do Gemini');
+
+        console.error(`[GeminiPool] Erro de API para modelo: ${fullModelId}`, data.error);
+        throw new Error(`Erro fatal da API (${response.status}): ${data.error?.message || 'Requisição inválida.'}`);
       }
 
       if (data.candidates && data.candidates.length > 0) {
@@ -135,26 +200,32 @@ export async function promptGemini(
       }
       return { text: '' };
     } catch (error: any) {
-      if (error.message === 'RATE_LIMIT') {
-        console.warn(`Chave Gemini esgotada (429). Desativando por 23h e rotacionando...`);
-        // Update key in database
-        const allKeys = await getGeminiKeys();
-        const target = allKeys.find(k => k.id === currentKeyEntry.id);
-        if (target) {
-          target.status = 'exhausted';
-          target.disabledUntil = Date.now() + 23 * 60 * 60 * 1000;
-          await saveGeminiKeys(allKeys);
-        }
-        continue; // Try next key in loop
-      } else if (error.message === 'SERVER_ERROR') {
-        console.warn(`Servidor do Google indisponível (5xx). Tentando próxima chave sem bloquear a atual...`);
+      if (
+        error.message?.includes('Tempo limite') ||
+        error.message?.includes('Failed to fetch') ||
+        error.name === 'AbortError'
+      ) {
+        console.warn(`[GeminiPool] Erro de rede ou timeout na chave. Tentando próxima chave...`, error.message);
+        allServerErrors = false;
+        lastErrorMsg = error.message;
         continue;
       }
-      
+
       console.error('promptGemini error:', error);
       throw error;
     }
   }
 
-  throw new Error('Todas as chaves ativas falharam ao processar o pedido. Limite de cota excedido.');
+  if (allServerErrors && lastErrorMsg) {
+    throw new Error('Os servidores da IA do Google estão temporariamente instáveis (5xx). Tente novamente em instantes.');
+  }
+  if (allAuthErrors && lastErrorMsg) {
+    throw new Error('Todas as chaves da API configuradas são inválidas ou foram revogadas. Por favor, atualize suas chaves nas Configurações.');
+  }
+  if (allQuotaErrors && lastErrorMsg) {
+    throw new Error('Todas as chaves da API estão com limites de cota excedidos no momento. Tente novamente mais tarde.');
+  }
+
+  throw new Error(lastErrorMsg || 'Todas as chaves da API falharam ao processar o pedido.');
 }
+
