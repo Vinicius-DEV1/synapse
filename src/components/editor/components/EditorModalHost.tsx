@@ -366,12 +366,28 @@ export default function EditorModalHost({
           <QuestionCreateModal
             isOpen={true}
             onClose={() => setQuestionCreateModal(false)}
-            onConfirm={(title) => {
+            onConfirm={async (title) => {
               if (editor) {
+                let batteryId: string | null = null;
+                if (window.api?.quiz) {
+                  try {
+                    const battery = await window.api.quiz.saveBattery({
+                      title,
+                      layout: 'sequential',
+                    });
+                    batteryId = battery.id;
+                  } catch (err) {
+                    console.warn('[EditorModalHost] Falha ao criar bateria no banco:', err);
+                  }
+                }
+
                 editor.chain().focus().insertContent({
                   type: 'questionBlock',
                   attrs: {
-                    title: title
+                    batteryId,
+                    cachedTitle: title,
+                    cachedCount: 0,
+                    title: title,
                   }
                 }).run();
               }
