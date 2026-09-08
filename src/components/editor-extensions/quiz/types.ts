@@ -22,6 +22,8 @@ export interface SuggestedAction {
     explanation?: string;
   };
   reason?: string;
+  factCheckVerdict?: 'approved' | 'corrected';
+  validatedByModel?: string;
 }
 
 export interface QuizChatMessage {
@@ -29,6 +31,7 @@ export interface QuizChatMessage {
   role: 'user' | 'assistant';
   text: string;
   suggestedActions?: SuggestedAction[];
+  validationSummary?: string;
 }
 
 export interface AttemptItem {

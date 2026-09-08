@@ -9,6 +9,7 @@ import {
   ListOrdered,
   FileText,
   CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 import { markdownComponents, preprocessMarkdownCode } from '../../utils/markdownPreprocess';
 import type { QuestionItem, SuggestedAction } from '../../types';
@@ -81,6 +82,17 @@ export function QuizAiActionCard({
             <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20 flex items-center gap-1">
               {isOpen ? <FileText size={10} /> : <ListOrdered size={10} />}
               <span>{isOpen ? 'Questão Aberta' : 'Múltipla Escolha'}</span>
+            </span>
+          )}
+
+          {/* Badge de Validação Cruzada (2ª IA) */}
+          {isCreate && action.validatedByModel && (
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1 font-mono"
+              title={`Veracidade factual e gabarito validados pela 2ª IA (${action.validatedByModel})`}
+            >
+              <ShieldCheck size={11} className="text-emerald-400" />
+              <span>✓ Fatos validados • {action.validatedByModel}</span>
             </span>
           )}
 

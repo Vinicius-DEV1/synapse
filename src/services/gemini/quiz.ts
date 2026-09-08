@@ -15,8 +15,18 @@ import {
   buildRefineImportedQuestionsPrompt,
   getCadernoQuizJsonSchemaPrompt,
 } from './quiz-prompts';
+import {
+  validateCandidateQuizQuestions,
+  type CandidateQuestionAction,
+  type QuizValidationResult,
+} from './quiz-validator';
 
-export { sanitizeExpectedAnswer, getCadernoQuizJsonSchemaPrompt };
+export {
+  sanitizeExpectedAnswer,
+  getCadernoQuizJsonSchemaPrompt,
+  validateCandidateQuizQuestions,
+};
+export type { CandidateQuestionAction, QuizValidationResult };
 
 
 // Creates a study question automatically via JSON
@@ -201,28 +211,24 @@ export async function promptGeminiQuizAssistant(
     pageTitle?: string;
     questionCount?: number;
     questions: any[];
-  }>
+  }>,
+  onProgress?: (step: 'generating' | 'validating', model: string) => void
 ): Promise<{
   message: string;
-  suggestedActions?: Array<{
-    actionType: 'create' | 'edit' | 'delete';
-    type?: 'multiple_choice' | 'open';
-    question?: string;
-    options?: string[];
-    correctIndex?: number;
-    expectedAnswer?: string;
-    explanation?: string;
-    targetQuestionIndex?: number;
-    changes?: {
-      question?: string;
-      options?: string[];
-      correctIndex?: number;
-      expectedAnswer?: string;
-      explanation?: string;
-    };
-    reason?: string;
-  }>;
+  suggestedActions?: CandidateQuestionAction[];
+  validationSummary?: string;
 }> {
+  const settings = getSettings();
+  const generatorModel =
+    settings.geminiModelQuizGenerator ||
+    settings.geminiModelChat ||
+    settings.geminiModel;
+  const cleanGeneratorModel = (generatorModel || 'gemini').replace(/^models\//, '');
+
+  if (onProgress) {
+    onProgress('generating', cleanGeneratorModel);
+  }
+
   const customPrompt = buildQuizAssistantPrompt(
     chatHistory,
     currentQuestions,
@@ -233,7 +239,12 @@ export async function promptGeminiQuizAssistant(
     referencedBatteries
   );
 
-  const response = await promptGemini(customPrompt);
+  const response = await promptGemini(
+    customPrompt,
+    undefined,
+    [],
+    generatorModel || undefined
+  );
   const responseText = response.text;
 
   try {
@@ -260,6 +271,41 @@ export async function promptGeminiQuizAssistant(
     ) {
       const msgMatch = /"message":\s*"([^"]+)"/.exec(parsed.message);
       if (msgMatch) parsed.message = msgMatch[1];
+    }
+
+    // Dual AI Validation: only run for newly created questions if enabled in settings
+    const isDualAiEnabled = settings.quizDualAiValidation !== false;
+    const hasCreateActions =
+      Array.isArray(parsed.suggestedActions) &&
+      parsed.suggestedActions.some(
+        (act: CandidateQuestionAction) => act.actionType === 'create'
+      );
+
+    if (isDualAiEnabled && hasCreateActions) {
+      const validatorModel =
+        settings.geminiModelQuizValidator ||
+        settings.geminiModelChat ||
+        settings.geminiModel;
+      const cleanValidatorModel = (validatorModel || 'gemini').replace(
+        /^models\//,
+        ''
+      );
+
+      if (onProgress) {
+        onProgress('validating', cleanValidatorModel);
+      }
+
+      const valResult = await validateCandidateQuizQuestions(
+        parsed.suggestedActions,
+        userMessage,
+        contextText,
+        validatorModel
+      );
+
+      parsed.suggestedActions = valResult.actions;
+      if (valResult.validationSummary) {
+        parsed.validationSummary = valResult.validationSummary;
+      }
     }
 
     return parsed;
