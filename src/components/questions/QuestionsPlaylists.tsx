@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Sparkles, Shuffle, Play, Tag, Filter, Check } from 'lucide-react';
+import { triggerToast } from '../ui/ToastContext';
 import type { StudyFilterOptions, GeneratedStudySession } from '../../services/quiz/quizSimulator';
 import { generateErrorNotebook, generateFilteredStudySession } from '../../services/quiz/quizSimulator';
 
@@ -33,6 +34,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       const session = await generateErrorNotebook(window.api.quiz);
       if (session) {
         onStartSession(session);
+      } else {
+        triggerToast('Nenhuma questão pendente de revisão no momento.', 'info');
       }
     } catch (err) {
       console.error('[QuestionsPlaylists] Falha ao gerar caderno de erros:', err);
@@ -55,6 +58,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       const session = await generateFilteredStudySession(window.api.quiz, options);
       if (session) {
         onStartSession(session);
+      } else {
+        triggerToast('Nenhuma questão encontrada para os filtros selecionados.', 'info');
       }
     } catch (err) {
       console.error('[QuestionsPlaylists] Falha ao gerar simulado:', err);
