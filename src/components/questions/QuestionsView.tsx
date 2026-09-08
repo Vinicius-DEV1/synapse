@@ -85,11 +85,38 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     loadData(Boolean(cachedBatteries));
   }, [loadData]);
 
-  // Check if a specific batteryId was passed via tab moduleState
+  // Check if a specific batteryId or creation mode was passed via tab moduleState
   useEffect(() => {
-    const selectedId = activeTab?.moduleState?.selectedBatteryId;
-    if (selectedId && typeof selectedId === 'string' && batteries.length > 0) {
-      const target = batteries.find((b) => b.id === selectedId);
+    const moduleState = activeTab?.moduleState;
+    if (!moduleState) return;
+
+    const editingId = moduleState.editingBatteryId;
+    if (editingId && typeof editingId === 'string') {
+      if (batteries.length > 0) {
+        const target = batteries.find((b) => b.id === editingId);
+        if (target) {
+          setEditingBattery(target);
+          if (moduleState.initialShowAi) {
+            setEditorInitialAi(true);
+          }
+        }
+      } else if (window.api?.quiz) {
+        window.api.quiz
+          .getBatteryWithQuestions(editingId)
+          .then((b) => {
+            if (b) {
+              setEditingBattery(b);
+              if (moduleState.initialShowAi) {
+                setEditorInitialAi(true);
+              }
+            }
+          })
+          .catch(console.error);
+      }
+    } else if (moduleState.isCreatingNew) {
+      setIsCreatingNew(true);
+    } else if (moduleState.selectedBatteryId && typeof moduleState.selectedBatteryId === 'string' && batteries.length > 0) {
+      const target = batteries.find((b) => b.id === moduleState.selectedBatteryId);
       if (target) {
         setActiveTabSection('explorer');
       }
@@ -260,6 +287,35 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     [state.pages]
   );
 
+  // Close Question Editor page and return to Explorer or origin Note
+  const handleCloseEditor = useCallback(() => {
+    const returnPageId = activeTab?.moduleState?.returnPageId;
+    setEditingBattery(null);
+    setIsCreatingNew(false);
+    setEditorInitialAi(false);
+
+    if (returnPageId && typeof returnPageId === 'string') {
+      const targetTabId = tabId || activeTab.id;
+      dispatch({
+        type: 'UPDATE_TAB_MODULE',
+        tabId: targetTabId,
+        module: 'notes',
+      });
+      dispatch({
+        type: 'NAVIGATE_IN_TAB',
+        pageId: returnPageId,
+      });
+    } else if (activeTab?.moduleState?.editingBatteryId || activeTab?.moduleState?.isCreatingNew) {
+      const targetTabId = tabId || activeTab.id;
+      dispatch({
+        type: 'UPDATE_TAB_MODULE',
+        tabId: targetTabId,
+        module: 'quiz',
+        moduleState: undefined,
+      });
+    }
+  }, [activeTab, tabId, dispatch]);
+
   // Save edited / newly created battery
   const handleSaveBatteryModal = useCallback(
     async (newTitle: string, newDesc: string, newQuestions: QuestionItem[]) => {
@@ -308,11 +364,43 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
 
       await window.api.quiz.saveQuestionsBatch(records);
       await loadData();
-      setEditingBattery(null);
-      setIsCreatingNew(false);
+      handleCloseEditor();
     },
-    [editingBattery, loadData]
+    [editingBattery, loadData, handleCloseEditor]
   );
+
+  // Full-Page Question Editor View (Preserving Caderno's TabBar and Sidebar)
+  if (editingBattery || isCreatingNew) {
+    return (
+      <QuizEditorModal
+        isOpen={true}
+        onClose={handleCloseEditor}
+        initialShowAiAssistant={editorInitialAi}
+        batteryTitle={editingBattery?.title || ''}
+        batteryDescription={editingBattery?.description || ''}
+        initialQuestions={
+          editingBattery
+            ? editingBattery.questions.map((q) => ({
+                id: q.id,
+                type: q.type,
+                question: q.question,
+                options: q.options || [],
+                correctIndex: q.correct_index,
+                tags: q.tags || [],
+                selectedIndex: null,
+                userTypedAnswer: '',
+                aiFeedback: null,
+                expectedAnswer: q.expected_answer || '',
+                explanation: q.explanation || '',
+                showExplanation: false,
+                answered: false,
+              }))
+            : []
+        }
+        onSave={handleSaveBatteryModal}
+      />
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none">
@@ -487,40 +575,6 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         />
       )}
 
-      {/* Editor Screen for Creating or Editing Batteries */}
-      {(editingBattery || isCreatingNew) && (
-        <QuizEditorModal
-          isOpen={Boolean(editingBattery || isCreatingNew)}
-          onClose={() => {
-            setEditingBattery(null);
-            setIsCreatingNew(false);
-            setEditorInitialAi(false);
-          }}
-          initialShowAiAssistant={editorInitialAi}
-          batteryTitle={editingBattery?.title || ''}
-          batteryDescription={editingBattery?.description || ''}
-          initialQuestions={
-            editingBattery
-              ? editingBattery.questions.map((q) => ({
-                  id: q.id,
-                  type: q.type,
-                  question: q.question,
-                  options: q.options || [],
-                  correctIndex: q.correct_index,
-                  tags: q.tags || [],
-                  selectedIndex: null,
-                  userTypedAnswer: '',
-                  aiFeedback: null,
-                  expectedAnswer: q.expected_answer || '',
-                  explanation: q.explanation || '',
-                  showExplanation: false,
-                  answered: false,
-                }))
-              : []
-          }
-          onSave={handleSaveBatteryModal}
-        />
-      )}
     </div>
   );
 }
