@@ -11,7 +11,14 @@ vi.mock('@tiptap/react', () => ({
   ),
 }));
 
-describe('QuestionBlockNodeView Component', () => {
+vi.mock('../../../store/useStore', () => ({
+  useStore: () => ({
+    state: { tabs: [{ id: 'tab-1' }], activeTabId: 'tab-1' },
+    dispatch: vi.fn(),
+  }),
+}));
+
+describe('QuestionBlockNodeView (Embed Card)', () => {
   let mockProps: NodeViewProps;
 
   beforeEach(() => {
@@ -20,203 +27,51 @@ describe('QuestionBlockNodeView Component', () => {
     mockProps = {
       node: {
         attrs: {
+          batteryId: 'bat-123',
+          cachedTitle: 'Bateria de Exercícios de Redes',
+          cachedCount: 5,
+          cachedTags: ['redes', 'tcp'],
           title: 'Bateria de Exercícios de Redes',
           description: 'Teste seus conhecimentos sobre TCP/IP e DNS',
-          isCollapsed: false,
-          mode: 'practice',
-          questions: [
-            {
-              id: 'q1',
-              type: 'multiple_choice',
-              question: 'Qual a porta padrão do HTTPS?',
-              options: ['80', '443', '22', '8080'],
-              correctIndex: 1,
-              tags: ['redes'],
-              selectedIndex: null,
-              expectedAnswer: '',
-              userTypedAnswer: '',
-              aiFeedback: null,
-              explanation: 'HTTPS usa a porta 443 com TLS/SSL.',
-              showExplanation: false,
-              answered: false,
-            },
-          ],
-          aiChatHistory: [],
         },
-      },
+      } as any,
       updateAttributes: vi.fn(),
-    };
+      deleteNode: vi.fn(),
+    } as any;
   });
 
-  it('renders battery title input, questions and switches between practice and edit modes', () => {
-    const { getByDisplayValue, getByText, getByTitle } = render(<QuestionBlockNodeView {...mockProps} />);
+  it('renders embed card with title, question count, tags and description', () => {
+    const { getByText } = render(<QuestionBlockNodeView {...mockProps} />);
 
-    expect(getByDisplayValue('Bateria de Exercícios de Redes')).toBeDefined();
-    expect(getByText('Qual a porta padrão do HTTPS?')).toBeDefined();
-
-    // Open options menu and toggle mode to edit
-    const moreOptionsBtn = getByTitle('Mais opções da bateria');
-    fireEvent.click(moreOptionsBtn);
-
-    const editModeBtn = getByText('Editar');
-    fireEvent.click(editModeBtn);
-
-    expect(mockProps.updateAttributes).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: 'edit' })
-    );
+    expect(getByText('Bateria de Exercícios de Redes')).toBeDefined();
+    expect(getByText('5 questões')).toBeDefined();
+    expect(getByText('redes')).toBeDefined();
+    expect(getByText('tcp')).toBeDefined();
+    expect(getByText('Teste seus conhecimentos sobre TCP/IP e DNS')).toBeDefined();
+    expect(getByText('Iniciar no Modo Foco')).toBeDefined();
   });
 
-  it('does not render "Voltar ao topo da bateria" in sequential layout even with multiple questions', () => {
-    const multiQuestionProps: NodeViewProps = {
-      ...mockProps,
-      node: {
-        ...mockProps.node,
-        attrs: {
-          ...mockProps.node.attrs,
-          layout: 'sequential',
-          questions: [
-            mockProps.node.attrs.questions[0],
-            {
-              id: 'q2',
-              type: 'multiple_choice',
-              question: 'Qual a porta padrão do SSH?',
-              options: ['21', '22', '23', '25'],
-              correctIndex: 1,
-              tags: ['redes'],
-              selectedIndex: null,
-              expectedAnswer: '',
-              userTypedAnswer: '',
-              aiFeedback: null,
-              explanation: 'SSH usa a porta 22.',
-              showExplanation: false,
-              answered: false,
-            },
-          ],
-        },
-      },
-    };
+  it('opens focus mode modal upon clicking "Iniciar no Modo Foco"', () => {
+    const { getByText } = render(<QuestionBlockNodeView {...mockProps} />);
 
-    const { queryByText } = render(<QuestionBlockNodeView {...multiQuestionProps} />);
-    expect(queryByText('Voltar ao topo da bateria')).toBeNull();
-  });
+    const launchButton = getByText('Iniciar no Modo Foco');
+    fireEvent.click(launchButton);
 
-  it('renders focus mode maximize button and opens focus modal when clicked in sequential layout', () => {
-    const sequentialProps: NodeViewProps = {
-      ...mockProps,
-      node: {
-        ...mockProps.node,
-        attrs: {
-          ...mockProps.node.attrs,
-          layout: 'sequential',
-          mode: 'practice',
-        },
-      },
-    };
-
-    const { getByTitle, getByText, queryByText } = render(<QuestionBlockNodeView {...sequentialProps} />);
-    const focusBtn = getByTitle('Modo Foco / Maximizar');
-    expect(focusBtn).toBeDefined();
-
-    fireEvent.click(focusBtn);
+    // Modal opens and shows focus mode banner
     expect(getByText('Modo Foco')).toBeDefined();
-
-    // Close focus mode via close/restore button
-    const closeBtn = getByTitle('Fechar (Esc)');
-    fireEvent.click(closeBtn);
-    expect(queryByText('Modo Foco')).toBeNull();
   });
 
-  it('applies overflow-visible on container when isCollapsed is true to prevent menu clipping', () => {
-    const collapsedProps: NodeViewProps = {
-      ...mockProps,
-      node: {
-        ...mockProps.node,
-        attrs: {
-          ...mockProps.node.attrs,
-          isCollapsed: true,
-        },
-      },
-    };
+  it('opens delete confirmation dialog and calls deleteNode when confirmed', () => {
+    const { getByTitle, getByText } = render(<QuestionBlockNodeView {...mockProps} />);
 
-    const { getByTitle, container } = render(<QuestionBlockNodeView {...collapsedProps} />);
-    const blockContainer = container.querySelector('.rounded-2xl.border');
-    expect(blockContainer?.className).toContain('overflow-visible');
-    expect(blockContainer?.className).not.toContain('overflow-hidden');
+    const deleteBtn = getByTitle('Remover bloco da nota');
+    fireEvent.click(deleteBtn);
 
-    const moreOptionsBtn = getByTitle('Mais opções da bateria');
-    fireEvent.click(moreOptionsBtn);
-    expect(container.querySelector('.absolute.right-0.top-full')).toBeDefined();
-  });
+    expect(getByText('Remover Bloco de Questões?')).toBeDefined();
 
-  it('renders selection ring and border glow when props.selected is true', () => {
-    const selectedProps: NodeViewProps = {
-      ...mockProps,
-      selected: true,
-    };
+    const confirmBtn = getByText('Remover da Nota');
+    fireEvent.click(confirmBtn);
 
-    const { container } = render(<QuestionBlockNodeView {...selectedProps} />);
-    const blockContainer = container.querySelector('.rounded-2xl.border');
-    expect(blockContainer?.className).toContain('ring-2 ring-brand-400/70');
-    expect(blockContainer?.className).toContain('border-brand-400/90');
-  });
-
-  it('synchronizes active question index between focus modal and inline player', () => {
-    const multiQuestionSequentialProps: NodeViewProps = {
-      ...mockProps,
-      node: {
-        ...mockProps.node,
-        attrs: {
-          ...mockProps.node.attrs,
-          layout: 'sequential',
-          mode: 'practice',
-          questions: [
-            mockProps.node.attrs.questions[0],
-            {
-              id: 'q2',
-              type: 'multiple_choice',
-              question: 'Qual a porta padrão do DNS?',
-              options: ['53', '80', '443', '21'],
-              correctIndex: 0,
-              tags: ['redes'],
-              selectedIndex: null,
-              expectedAnswer: '',
-              userTypedAnswer: '',
-              aiFeedback: null,
-              explanation: 'DNS usa a porta 53 UDP/TCP.',
-              showExplanation: false,
-              answered: false,
-            },
-          ],
-        },
-      },
-    };
-
-    const { getByTitle, getAllByText, queryByText } = render(
-      <QuestionBlockNodeView {...multiQuestionSequentialProps} />
-    );
-
-    // Initially on question 1: "Qual a porta padrão do HTTPS?"
-    expect(getAllByText('Qual a porta padrão do HTTPS?').length).toBeGreaterThan(0);
-
-    // Open focus mode
-    const focusBtn = getByTitle('Modo Foco / Maximizar');
-    fireEvent.click(focusBtn);
-
-    // In focus mode, advance to next question
-    const nextButtons = getAllByText('Próxima Questão');
-    fireEvent.click(nextButtons[nextButtons.length - 1]);
-
-    // Question 2 should now be displayed
-    expect(getAllByText('Qual a porta padrão do DNS?').length).toBeGreaterThan(0);
-
-    // Close focus mode
-    const closeBtn = getByTitle('Fechar (Esc)');
-    fireEvent.click(closeBtn);
-    expect(queryByText('Modo Foco')).toBeNull();
-
-    // Inline player must now be synchronized on Question 2!
-    expect(getAllByText('Qual a porta padrão do DNS?').length).toBeGreaterThan(0);
-    expect(queryByText('Qual a porta padrão do HTTPS?')).toBeNull();
+    expect(mockProps.deleteNode).toHaveBeenCalled();
   });
 });
-

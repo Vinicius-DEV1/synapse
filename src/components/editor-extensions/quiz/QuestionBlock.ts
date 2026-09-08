@@ -13,6 +13,32 @@ export const QuestionBlock = Node.create({
 
   addAttributes() {
     return {
+      batteryId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-battery-id') || null,
+        renderHTML: (attributes) => (attributes.batteryId ? { 'data-battery-id': attributes.batteryId } : {}),
+      },
+      cachedTitle: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-cached-title') || element.getAttribute('data-title') || '',
+        renderHTML: (attributes) => ({ 'data-cached-title': attributes.cachedTitle || attributes.title || '' }),
+      },
+      cachedCount: {
+        default: 0,
+        parseHTML: (element) => parseInt(element.getAttribute('data-cached-count') || '0', 10),
+        renderHTML: (attributes) => ({ 'data-cached-count': String(attributes.cachedCount || 0) }),
+      },
+      cachedTags: {
+        default: [],
+        parseHTML: (element) => {
+          try {
+            return JSON.parse(element.getAttribute('data-cached-tags') || '[]');
+          } catch {
+            return [];
+          }
+        },
+        renderHTML: (attributes) => ({ 'data-cached-tags': JSON.stringify(attributes.cachedTags || []) }),
+      },
       title: {
         default: 'Bateria de Exercícios',
         parseHTML: (element) => element.getAttribute('data-title') || 'Bateria de Exercícios',
@@ -29,14 +55,14 @@ export const QuestionBlock = Node.create({
         renderHTML: (attributes) => ({ 'data-collapsed': attributes.isCollapsed ? 'true' : 'false' }),
       },
       mode: {
-        default: 'edit',
-        parseHTML: (element) => (element.getAttribute('data-mode') === 'practice' ? 'practice' : 'edit'),
-        renderHTML: (attributes) => ({ 'data-mode': attributes.mode || 'edit' }),
+        default: 'practice',
+        parseHTML: (element) => (element.getAttribute('data-mode') === 'edit' ? 'edit' : 'practice'),
+        renderHTML: (attributes) => ({ 'data-mode': attributes.mode || 'practice' }),
       },
       layout: {
-        default: 'list',
-        parseHTML: (element) => (element.getAttribute('data-layout') === 'sequential' ? 'sequential' : 'list'),
-        renderHTML: (attributes) => ({ 'data-layout': attributes.layout || 'list' }),
+        default: 'sequential',
+        parseHTML: (element) => (element.getAttribute('data-layout') === 'list' ? 'list' : 'sequential'),
+        renderHTML: (attributes) => ({ 'data-layout': attributes.layout || 'sequential' }),
       },
       questions: {
         default: [createDefaultQuestion(1)],
@@ -45,6 +71,9 @@ export const QuestionBlock = Node.create({
           return normalizeQuizQuestions(raw);
         },
         renderHTML: (attributes) => {
+          if (attributes.batteryId) {
+            return {};
+          }
           try {
             return {
               'data-questions': encodeURIComponent(JSON.stringify(attributes.questions || [])),
@@ -61,6 +90,9 @@ export const QuestionBlock = Node.create({
           return normalizeChatHistory(raw);
         },
         renderHTML: (attributes) => {
+          if (attributes.batteryId) {
+            return {};
+          }
           try {
             return {
               'data-chat-history': encodeURIComponent(JSON.stringify(attributes.aiChatHistory || [])),
