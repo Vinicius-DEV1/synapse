@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect } from 'react';
+import { memo, useRef, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   Tag,
@@ -14,6 +14,7 @@ import { FastMarkdown } from '../utils/markdownPreprocess';
 import QuizHistorySection from './QuizHistorySection';
 import { QuizOptionList } from './player/QuizOptionList';
 import { QuizExplanationPanel } from './player/QuizExplanationPanel';
+import { getSettings } from '../../../../utils/settings';
 import type { QuestionItem } from '../types';
 
 interface QuizPlayerCardProps {
@@ -39,6 +40,18 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
 }: QuizPlayerCardProps) {
   const isOpen = q.type === 'open';
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const modelName = useMemo(() => {
+    if (q.aiFeedback?.model) {
+      return q.aiFeedback.model.replace(/^models\//, '');
+    }
+    try {
+      const s = getSettings();
+      return (s.geminiModel || 'gemini').replace(/^models\//, '');
+    } catch {
+      return 'gemini';
+    }
+  }, [q.aiFeedback]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -223,13 +236,29 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
                   {isLoss && <XCircle size={15} className="text-rose-400" />}
                   <span>Parecer da IA: {q.aiFeedback.verdict}</span>
                 </span>
-                <button
-                  onClick={() => onDiscussInChat(q, qIndex)}
-                  className="text-[11px] font-medium text-dark-subtext hover:text-white flex items-center gap-1 px-2 py-0.5 rounded hover:bg-white/5 transition-colors"
-                >
-                  <MessageSquare size={12} />
-                  <span>Discutir no Chat</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-[10px] text-zinc-400 font-normal flex items-center gap-1 select-none"
+                    title={`Modelo IA: ${modelName}`}
+                  >
+                    <span>Gemini AI</span>
+                    {modelName && (
+                      <>
+                        <span className="opacity-30">•</span>
+                        <span className="font-mono text-[9px] text-zinc-400/80 bg-white/[0.04] px-1 py-0.5 rounded border border-white/[0.06]">
+                          {modelName}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => onDiscussInChat(q, qIndex)}
+                    className="text-[11px] font-medium text-dark-subtext hover:text-white flex items-center gap-1 px-2 py-0.5 rounded hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <MessageSquare size={12} />
+                    <span>Discutir no Chat</span>
+                  </button>
+                </div>
               </div>
               <p className="opacity-90">{q.aiFeedback.feedback}</p>
             </div>

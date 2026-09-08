@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { Portal } from '../../../../ui/Portal';
 import QuizSequentialPlayer from '../QuizSequentialPlayer';
-import type { QuestionItem } from '../../types';
+import QuizAIAssistant from '../QuizAIAssistant';
+import { useQuizAiChat } from '../../hooks/useQuizAiChat';
+import type { QuestionItem, QuizChatMessage } from '../../types';
 
 interface QuizSequentialFocusModalProps {
   isOpen: boolean;
@@ -12,7 +14,7 @@ interface QuizSequentialFocusModalProps {
   onUpdateSingleQuestion: (qId: string, partial: Partial<QuestionItem>, immediate?: boolean) => void;
   onEvaluateOpenAnswer: (q: QuestionItem, index: number) => Promise<void> | void;
   evaluatingIds: Record<string, boolean>;
-  onDiscussInChat: (q: QuestionItem, index: number) => void;
+  onDiscussInChat?: (q: QuestionItem, index: number) => void;
   onSwitchToListLayout?: () => void;
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
@@ -38,6 +40,63 @@ export function QuizSequentialFocusModal({
   onEditQuestion,
 }: QuizSequentialFocusModalProps) {
   const modalContainerRef = useRef<HTMLDivElement>(null);
+  const [showAiAssistantModal, setShowAiAssistantModal] = useState(false);
+  const [chatHistory, setChatHistory] = useState<QuizChatMessage[]>([]);
+
+  const {
+    chatInput,
+    setChatInput,
+    isSendingChat,
+    handleSendChatMessage,
+    handleAcceptAction,
+    handleRejectAction,
+    handleAcceptAllInMessage,
+    handleRejectAllInMessage,
+    handleClearChatHistory,
+  } = useQuizAiChat({
+    chatHistory,
+    updateChatHistory: setChatHistory,
+    questions,
+    updateQuestions: () => {},
+    updateSingleQuestion: onUpdateSingleQuestion,
+    handleRemoveQuestion: (id) => {
+      if (onDeleteQuestion) {
+        const idx = questions.findIndex((q) => q.id === id);
+        onDeleteQuestion(id, idx);
+      }
+    },
+    title,
+  });
+
+  const handleInternalDiscussInChat = useCallback(
+    (q: QuestionItem, index: number) => {
+      setShowAiAssistantModal(true);
+
+      const questionTag = `Questão ${index + 1}`;
+      const alreadySent = chatHistory.some((m) => m.text.includes(questionTag));
+
+      if (!alreadySent) {
+        const promptMessage = `Olá! Gostaria de tirar dúvidas e aprofundar meu entendimento sobre a ${questionTag}:
+"${q.question}"
+
+Minha resposta:
+"${q.userTypedAnswer || (q.selectedIndex !== null && q.options[q.selectedIndex] !== undefined ? q.options[q.selectedIndex] : '')}"
+
+Avaliação da IA (${q.aiFeedback?.verdict || 'Resultado'}):
+"${q.aiFeedback?.feedback || ''}"
+${q.expectedAnswer ? `\nGabarito de referência: "${q.expectedAnswer}"` : ''}
+
+Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar e me dar dicas práticas para fixar o aprendizado?`;
+
+        handleSendChatMessage(promptMessage);
+      }
+
+      if (onDiscussInChat) {
+        onDiscussInChat(q, index);
+      }
+    },
+    [chatHistory, handleSendChatMessage, onDiscussInChat]
+  );
 
   // Auto-focus the player on open so all keyboard shortcuts work instantly
   useEffect(() => {
@@ -54,18 +113,21 @@ export function QuizSequentialFocusModal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Tecla Esc para fechar o modo foco
+  // Tecla Esc para fechar o modo foco (se o assistente não estiver aberto)
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (showAiAssistantModal) {
+          return;
+        }
         e.preventDefault();
         onCloseRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, showAiAssistantModal]);
 
   if (!isOpen) return null;
 
@@ -112,17 +174,36 @@ export function QuizSequentialFocusModal({
               onUpdateSingleQuestion={onUpdateSingleQuestion}
               onEvaluateOpenAnswer={onEvaluateOpenAnswer}
               evaluatingIds={evaluatingIds}
-              onDiscussInChat={onDiscussInChat}
+              onDiscussInChat={handleInternalDiscussInChat}
               onSwitchToListLayout={onSwitchToListLayout}
               activeIndex={activeIndex}
               onActiveIndexChange={onActiveIndexChange}
               onDeleteQuestion={onDeleteQuestion}
-              onOpenAiAssistant={onOpenAiAssistant}
+              onOpenAiAssistant={onOpenAiAssistant || (() => setShowAiAssistantModal(true))}
               onEditQuestion={onEditQuestion}
             />
           </div>
         </main>
+
+        {/* Assistente de IA para Discussão de Questões no Modo Foco */}
+        <QuizAIAssistant
+          isOpen={showAiAssistantModal}
+          onClose={() => setShowAiAssistantModal(false)}
+          chatHistory={chatHistory}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          isSendingChat={isSendingChat}
+          onSendMessage={handleSendChatMessage}
+          onClearHistory={handleClearChatHistory}
+          onAcceptAction={handleAcceptAction}
+          onRejectAction={handleRejectAction}
+          onAcceptAllInMessage={handleAcceptAllInMessage}
+          onRejectAllInMessage={handleRejectAllInMessage}
+          questions={questions}
+          currentBatteryTitle={title}
+        />
       </div>
     </Portal>
   );
 }
+

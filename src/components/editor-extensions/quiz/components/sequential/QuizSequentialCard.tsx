@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect } from 'react';
+import { memo, useRef, useEffect, useMemo } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { FastMarkdown } from '../../utils/markdownPreprocess';
 import { playQuizTickSound } from '../../utils/quizSounds';
+import { getSettings } from '../../../../../utils/settings';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialCardProps {
@@ -35,6 +36,18 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
   onDiscussInChat,
 }: QuizSequentialCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const modelName = useMemo(() => {
+    if (currentQ.aiFeedback?.model) {
+      return currentQ.aiFeedback.model.replace(/^models\//, '');
+    }
+    try {
+      const s = getSettings();
+      return (s.geminiModel || 'gemini').replace(/^models\//, '');
+    } catch {
+      return 'gemini';
+    }
+  }, [currentQ.aiFeedback]);
 
   // Auto-expand textarea height based on content
   useEffect(() => {
@@ -281,7 +294,20 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                   <Sparkles size={14} />
                   <span>Avaliação: {currentQ.aiFeedback.verdict}</span>
                 </span>
-                <span className="text-[11px] opacity-70 font-normal">Gemini AI</span>
+                <span
+                  className="text-[11px] text-zinc-400 font-normal flex items-center gap-1.5 select-none"
+                  title={`Modelo IA: ${modelName}`}
+                >
+                  <span>Gemini AI</span>
+                  {modelName && (
+                    <>
+                      <span className="opacity-30">•</span>
+                      <span className="font-mono text-[10px] text-zinc-400/90 bg-white/[0.05] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                        {modelName}
+                      </span>
+                    </>
+                  )}
+                </span>
               </div>
               <p className="leading-relaxed opacity-95 text-xs sm:text-sm">{currentQ.aiFeedback.feedback}</p>
               <div className="pt-2 border-t border-white/[0.06] flex justify-end">
