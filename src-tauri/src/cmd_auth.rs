@@ -155,20 +155,17 @@ pub async fn auth_login(
 
     let mut is_valid = false;
 
-    if row_data.0 == auth_hash {
-        is_valid = true;
-    } else {
-        // Fallback: testa se a senha descriptografa as chaves
-        let test_enc = row_data.1.as_ref().or(row_data.3.as_ref());
-        if let Some(enc) = test_enc {
-            if decrypt_module_key_with_key(enc, &modern_key).is_ok() {
-                is_valid = true;
-                let _ = conn.execute(
-                    "UPDATE keychain SET auth_hash = ?",
-                    rusqlite::params![&auth_hash],
-                );
-            }
+    // Primary verification: Authenticated AES-256-GCM decryption check using 600,000-round PBKDF2 key
+    let test_enc = row_data.1.as_ref().or(row_data.3.as_ref());
+    if let Some(enc) = test_enc {
+        if decrypt_module_key_with_key(enc, &modern_key).is_ok() {
+            is_valid = true;
         }
+    }
+
+    // Secondary fallback for legacy keychain records
+    if !is_valid && row_data.0 == auth_hash {
+        is_valid = true;
     }
 
     if !is_valid {
@@ -356,5 +353,12 @@ pub async fn auth_force_update_keychain(
         ],
     ).map_err(|e| e.to_string())?;
 
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn auth_lock(db_state: State<'_, DbState>) -> Result<bool, String> {
+    let mut keys_guard = db_state.keys.lock().unwrap();
+    *keys_guard = None;
     Ok(true)
 }

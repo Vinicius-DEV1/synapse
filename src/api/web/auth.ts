@@ -1,3 +1,5 @@
+import { clearWebVaultKey } from './vault';
+
 async function hashLocalPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + "caderno-local-auth-salt");
@@ -48,6 +50,8 @@ export const webAuthApi = (db: any) => ({
   createVisitor: async () => ({ success: false, error: "Not implemented in Web yet" }),
   deleteVisitor: async () => ({ success: false, error: "Not implemented in Web yet" }),
   onLock: () => () => {},
-  lock: async () => {},
+  lock: async () => {
+    clearWebVaultKey();
+  },
   setPreferences: async () => {}
 });

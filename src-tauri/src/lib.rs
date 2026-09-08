@@ -246,6 +246,7 @@ pub fn run() {
             cmd_auth::get_base_dir,
             cmd_auth::auth_status,
             cmd_auth::auth_login,
+            cmd_auth::auth_lock,
             cmd_auth::auth_setup,
             cmd_auth::auth_wipe_local_data,
             cmd_auth::auth_force_update_keychain,
