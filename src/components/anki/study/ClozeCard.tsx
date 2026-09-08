@@ -60,7 +60,7 @@ export function ClozeCard({ card, showingAnswer, onAnswerSubmit, evaluating, exa
           return <span key={i} className="text-indigo-300 font-medium">{word}</span>;
         }
       }
-      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+      return <HtmlRenderer key={i} html={part} />;
     });
   };
 

@@ -10,13 +10,17 @@ import type {
 } from '../../types/vault';
 import type { IVaultApi } from '../tauri/vault';
 
-declare global {
-  interface Window {
-    __cadernoVaultKey?: string;
-  }
+let activeVaultKey: string | undefined = undefined;
+
+export function setWebVaultKey(key?: string): void {
+  activeVaultKey = key;
 }
 
-const getVaultKey = (): string | undefined => window.__cadernoVaultKey;
+export function clearWebVaultKey(): void {
+  activeVaultKey = undefined;
+}
+
+const getVaultKey = (): string | undefined => activeVaultKey;
 
 async function decryptItemFields(item: VaultItem, key?: string): Promise<VaultItem> {
   if (!key) return { ...item };

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getWebDb } from '../../services/db-web';
-import { webVaultApi } from './vault';
+import { webVaultApi, setWebVaultKey } from './vault';
 import { getVaultKeyHash } from '../../services/vault-crypto';
 import type { VaultGroup, VaultItem } from '../../types/vault';
 
@@ -13,7 +13,7 @@ describe('webVaultApi', () => {
     await db.clear('vault_groups');
     await db.clear('vault_items');
     await db.clear('vault_password_history');
-    window.__cadernoVaultKey = await getVaultKeyHash('test-master-password');
+    setWebVaultKey(await getVaultKeyHash('test-master-password'));
   });
 
   it('performs CRUD operations on groups without mutating state', async () => {
