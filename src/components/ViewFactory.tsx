@@ -43,6 +43,7 @@ const PracticeView = lazyWithRetry(() => import('./practice/PracticeView'));
 const TrashView = lazyWithRetry(() => import('./trash/TrashView'));
 const SettingsModule = lazyWithRetry(() => import('./settings/SettingsModule'));
 const DiagramsModule = lazyWithRetry(() => import('./diagrams/DiagramsModule'));
+const QuestionsView = lazyWithRetry(() => import('./questions/QuestionsView'));
 
 export interface ViewFactoryProps {
   tab: Tab;
@@ -105,6 +106,8 @@ export const ViewFactory = memo(function ViewFactory({
         return <SettingsModule tab={tab} />;
       case 'diagrams':
         return <DiagramsModule />;
+      case 'quiz':
+        return <QuestionsView tabId={id} />;
       case 'finance':
       default:
         return <FinanceView />;

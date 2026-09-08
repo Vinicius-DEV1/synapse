@@ -45,5 +45,6 @@ export function webQuizApi(db: IDBPDatabase<CadernoDBSchema>, generateId: () => 
     // Stats & Aggregates
     getStats: stats.getStats.bind(stats),
     getBatteryWithQuestions: stats.getBatteryWithQuestions.bind(stats),
+    getAllBatteriesEnriched: stats.getAllBatteriesEnriched.bind(stats),
   };
 }

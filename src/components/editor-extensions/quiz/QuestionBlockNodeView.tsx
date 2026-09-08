@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { GripVertical, Play, Edit3, ExternalLink, Trash2, HelpCircle, CheckCircle2, Sparkles, Tag } from 'lucide-react';
+import { GripVertical, Play, Edit3, ExternalLink, Trash2, CheckCircle2, Tag } from 'lucide-react';
 import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
 import { QuizEditorModal } from './components/QuizEditorModal';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeQuizQuestions } from './utils/quizNormalizer';
 import { useStore } from '../../../store/useStore';
 import type { QuestionItem } from './types';
-import type { QuizQuestion, BatteryWithQuestions } from '../../../types/quiz';
+import type { QuizQuestion } from '../../../types/quiz';
 
 function QuestionBlockNodeViewInner(props: NodeViewProps) {
   const {
@@ -34,7 +34,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     return [];
   });
 
-  const [activeBatteryData, setActiveBatteryData] = useState<BatteryWithQuestions | null>(null);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -49,13 +48,21 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         const normalized = normalizeQuizQuestions(rawQuestions);
         const tags = Array.from(new Set(normalized.flatMap((q) => q.tags || [])));
 
+        const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+        const currentPageId = activeTab?.pageId;
+
         try {
           const savedBattery = await window.api.quiz.saveBattery({
             title,
             description,
+            page_id: currentPageId || undefined,
             layout: 'sequential',
             tags,
           });
+
+          if (currentPageId) {
+            await window.api.quiz.linkBatteryToPage(savedBattery.id, currentPageId);
+          }
 
           const questionsToBatch = normalized.map((q, idx) => ({
             id: q.id,
@@ -103,8 +110,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     try {
       const data = await window.api.quiz.getBatteryWithQuestions(idToFetch);
       if (data) {
-        setActiveBatteryData(data);
-
         // Map DB questions to QuestionItem view model
         const mappedQuestions: QuestionItem[] = data.questions.map((q: QuizQuestion) => {
           const latestAttempt = data.latestAttempts?.[q.id];
@@ -129,7 +134,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
         // Optimistically keep cached attributes updated
         const tagSet = new Set<string>();
-        data.questions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t)));
+        data.questions.forEach((q) => (q.tags || []).forEach((t: string) => tagSet.add(t)));
         const tags = Array.from(tagSet);
 
         if (
@@ -210,7 +215,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
       dispatch({
         type: 'UPDATE_TAB_MODULE',
         tabId: activeTab.id,
-        module: 'quiz' as any,
+        module: 'quiz',
         moduleState: { selectedBatteryId: batteryId || rawBatteryId },
       });
     }
@@ -447,8 +452,17 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
                 Cancelar
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowDeleteConfirm(false);
+                  const bId = batteryId || rawBatteryId;
+                  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+                  if (bId && activeTab?.pageId && window.api?.quiz) {
+                    try {
+                      await window.api.quiz.unlinkBatteryFromPage(bId, activeTab.pageId);
+                    } catch (err) {
+                      console.warn('[QuestionBlockNodeView] Falha ao desvincular página:', err);
+                    }
+                  }
                   props.deleteNode();
                 }}
                 className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium cursor-pointer"

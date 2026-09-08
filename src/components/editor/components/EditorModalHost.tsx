@@ -373,9 +373,13 @@ export default function EditorModalHost({
                   try {
                     const battery = await window.api.quiz.saveBattery({
                       title,
+                      page_id: pageId || undefined,
                       layout: 'sequential',
                     });
                     batteryId = battery.id;
+                    if (pageId) {
+                      await window.api.quiz.linkBatteryToPage(battery.id, pageId);
+                    }
                   } catch (err) {
                     console.warn('[EditorModalHost] Falha ao criar bateria no banco:', err);
                   }

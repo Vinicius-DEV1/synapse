@@ -2,7 +2,7 @@ import type { Page } from './notes';
 
 export interface Tab {
   id: string;
-  module: 'home' | 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams' | 'settings';
+  module: 'home' | 'notes' | 'library' | 'finance' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'trash' | 'diagrams' | 'settings' | 'quiz';
   pageId: string | null;
   bookId?: string | null;
   bookTitle?: string;
@@ -60,7 +60,7 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'diagrams'; bookId?: string | null; moduleState?: Record<string, unknown> }
+  | { type: 'UPDATE_TAB_MODULE'; tabId: string; module: 'notes' | 'finance' | 'library' | 'culture' | 'video' | 'anki' | 'focus' | 'calendar' | 'files' | 'vault' | 'practice' | 'diagrams' | 'quiz'; bookId?: string | null; moduleState?: Record<string, unknown> }
   | { type: 'OPEN_LIBRARY_BOOK'; bookId: string; title: string }
   | { type: 'CLOSE_LIBRARY_BOOK'; tabId: string }
   | { type: 'SET_PAGES'; pages: Page[] }

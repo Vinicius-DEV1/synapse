@@ -20,6 +20,7 @@ import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry, PasswordGenOptio
 import type { TutorSession, TutorMessage, TutorMemory } from '../types/practice';
 import type { DiagramMeta, DiagramContent } from '../types/diagrams';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
+import type { IQuizApi } from './contracts/quiz';
 
 export interface FilesApi {
   getAll: () => Promise<FileItem[]>;
@@ -157,6 +158,7 @@ export interface ICadernoAPI {
   culture: CultureApi;
   library: LibraryApi;
   sync: SyncApi;
+  quiz?: IQuizApi;
 
   config?: {
     get: (key: string) => Promise<any>;
