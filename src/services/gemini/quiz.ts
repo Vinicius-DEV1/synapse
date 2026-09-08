@@ -1,4 +1,5 @@
 import { promptGemini } from './client';
+import { getSettings } from '../../utils/settings';
 import {
   sanitizeExpectedAnswer,
   cleanJsonBlock,
@@ -56,6 +57,7 @@ export async function promptGeminiForOpenQuestionEvaluation(
 ): Promise<{
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
+  model?: string;
 }> {
   const customPrompt = buildOpenQuestionEvaluationPrompt(
     question,
@@ -70,11 +72,14 @@ export async function promptGeminiForOpenQuestionEvaluation(
     const parsed = JSON.parse(cleanJson);
 
     const verdict = parseEvaluationVerdict(parsed.verdict);
+    const settings = getSettings();
+    const model = (settings.geminiModel || 'gemini').replace(/^models\//, '');
 
     return {
       verdict,
       feedback:
         parsed.feedback || parsed.feedbackText || parsed.justification || '',
+      model,
     };
   } catch (err) {
     console.error(

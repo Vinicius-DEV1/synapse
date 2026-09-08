@@ -36,7 +36,7 @@ export interface AttemptItem {
   timestamp: number;
   type: 'multiple_choice' | 'open';
   userTypedAnswer?: string;
-  aiFeedback?: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string } | null;
+  aiFeedback?: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string; model?: string } | null;
   selectedIndex?: number | null;
   isCorrect?: boolean;
 }
@@ -51,7 +51,7 @@ export interface QuestionItem {
   selectedIndex: number | null;
   expectedAnswer: string;
   userTypedAnswer: string;
-  aiFeedback: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string } | null;
+  aiFeedback: { verdict: 'Correto' | 'Parcial' | 'Incorreto'; feedback: string; model?: string } | null;
   explanation: string;
   showExplanation: boolean;
   answered: boolean;

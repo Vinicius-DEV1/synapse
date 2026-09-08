@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   X,
@@ -9,6 +9,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
+import { getSettings } from '../../../../utils/settings';
 import { useQuizBatteryMentions } from '../hooks/useQuizBatteryMentions';
 import { QuizAiQuickShortcuts } from './ai/QuizAiQuickShortcuts';
 import { QuizAiMessageItem } from './ai/QuizAiMessageItem';
@@ -78,12 +79,35 @@ export default function QuizAIAssistant({
     }
   }, [chatInput]);
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const modelName = useMemo(() => {
+    try {
+      const s = getSettings();
+      return (s.geminiModel || 'gemini').replace(/^models\//, '');
+    } catch {
+      return 'gemini';
+    }
+  }, []);
+
   if (!isOpen) return null;
 
   return (
     <Portal>
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
         onClick={onClose}
       >
         <div
@@ -99,8 +123,17 @@ export default function QuizAIAssistant({
               <div>
                 <h3 className="text-base font-bold text-white leading-tight flex items-center gap-2">
                   <span>Assistente de IA para Exercícios</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-full font-semibold">
-                    Gemini AI
+                  <span
+                    className="text-[10px] font-mono px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-full font-semibold flex items-center gap-1"
+                    title={`Modelo IA: ${modelName}`}
+                  >
+                    <span>Gemini AI</span>
+                    {modelName && (
+                      <>
+                        <span className="opacity-40">•</span>
+                        <span>{modelName}</span>
+                      </>
+                    )}
                   </span>
                 </h3>
                 <p className="text-xs text-purple-200/70">

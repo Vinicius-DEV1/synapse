@@ -32,6 +32,7 @@ export interface QuizQuestion {
 export interface QuizAttemptFeedback {
   verdict: 'Correto' | 'Parcial' | 'Incorreto';
   feedback: string;
+  model?: string;
 }
 
 export interface QuizAttempt {

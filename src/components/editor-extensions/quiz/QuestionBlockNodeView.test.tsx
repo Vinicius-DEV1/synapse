@@ -11,12 +11,16 @@ vi.mock('@tiptap/react', () => ({
   ),
 }));
 
-vi.mock('../../../store/useStore', () => ({
-  useStore: () => ({
-    state: { tabs: [{ id: 'tab-1' }], activeTabId: 'tab-1' },
-    dispatch: vi.fn(),
-  }),
-}));
+vi.mock('../../../store/useStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../store/useStore')>();
+  return {
+    ...actual,
+    useStore: () => ({
+      state: { tabs: [{ id: 'tab-1' }], activeTabId: 'tab-1', pages: [] },
+      dispatch: vi.fn(),
+    }),
+  };
+});
 
 describe('QuestionBlockNodeView (Embed Card)', () => {
   let mockProps: NodeViewProps;
