@@ -109,8 +109,17 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 
 ---
 
-## 7. Testing Standards
+## 7. Testing Standards & Execution Performance
 
+- **Targeted Test Execution First (Sub-Second Feedback)**:
+  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 237 files takes over 2 minutes and severely halts productivity.
+  - **Always use Targeted Testing**:
+    - Specific module directory: `npx vitest run src/path/to/module/` (~1-3s).
+    - Or related dependency runner: `npx vitest related --run <modified_files>` (~2-3s).
+- **Type Checking over Full Test Sweeps**:
+  - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npx tsc -b --noEmit`.
+- **Full Regression Suite (`npm test`) Reservation**:
+  - Run the global suite (`npm test`, all 237 test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
 - **Meaningful and Well-Elaborated Tests**: All tests must validate actual business logic, state changes, UI interactions, error recovery, and component integrations using Vitest and React Testing Library.
 - **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially asserting a static `div` renders without validating behavior). Tests must provide genuine confidence in application resilience.
 - **Mocking Platform Boundaries**: Mock external boundaries (Tauri IPC, IndexedDB, Firebase, FFmpeg, Tesseract) cleanly at the adapter interface level without polluting tests with brittle DOM implementation details.
@@ -124,8 +133,10 @@ Every module, class, hook, and function must embody the **SOLID** software engin
    - Trace how consumer modules interact with target code.
 2. **Dual-Pass Analysis Loop**:
    - For bug audits and mitigation plans, always perform a thorough primary scan followed by a cross-review pass before concluding.
-3. **Non-Regression Verification**:
-   - Validate types and run automated test suites (`npm test` / `vitest`) after making changes.
+3. **Non-Regression Verification (Targeted & Fast)**:
+   - Run targeted tests for the changed module (`npx vitest run <target_path>` or `npx vitest related --run <files>`) for sub-3-second verification.
+   - Run `npx tsc -b --noEmit` if type contracts across multiple layers were modified.
+   - Do NOT run full `npm test` during iterative turns unless explicitly requested by the user.
 4. **Atomic & Well-Commented Commits**:
    - **Atomic Scope**: Whenever committing modifications, split changes into self-contained, atomic commits representing a single logical change (e.g., isolating a bug fix, refactoring a single helper, or updating a type interface). Avoid giant, monolithic multi-purpose commits.
    - **Descriptive Messages (English Only)**: Write clear, meaningful commit messages (following conventional commits: `fix(...)`, `feat(...)`, `refactor(...)`, `perf(...)`, `test(...)`), including a concise summary title and a well-elaborated body detailing the *why* and *what* whenever necessary.

@@ -104,7 +104,7 @@ Activate this skill when the user requests performance improvements, refactoring
 - Verify that all public API contracts, component props, and visual Tailwind tokens remain 100% identical.
 
 ### Step 4: Verification & Type Checking
-- Run `npm test` / `vitest` to ensure non-regression.
+- Run targeted tests (`npx vitest run <target_path>` or `npx vitest related --run <files>`) to ensure non-regression in sub-seconds. Avoid full `npm test` sweeps unless explicitly requested.
 - Confirm zero TypeScript type errors.
 
 ---

@@ -157,8 +157,8 @@ When writing platform adapters (Tauri Desktop vs Web Browser / IndexedDB / Cloud
 - Re-export the main component from the original path or update barrel exports.
 
 ### Step 4: Verification & Automated Tests
-- Run `npm test` / `vitest` to verify that all existing tests pass.
-- Run typecheck to verify zero TypeScript errors.
+- Run targeted tests (`npx vitest run <target_path>` or `npx vitest related --run <files>`) to verify non-regression in sub-seconds.
+- Run typecheck (`npx tsc -b --noEmit`) to verify zero TypeScript errors.
 
 ---
 
