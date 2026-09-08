@@ -80,6 +80,59 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
              deleted_at DATETIME DEFAULT NULL
          );
+         
+         CREATE TABLE IF NOT EXISTS quiz_batteries (
+             id TEXT PRIMARY KEY,
+             page_id TEXT,
+             title TEXT NOT NULL,
+             description TEXT,
+             layout TEXT DEFAULT 'sequential',
+             tags TEXT DEFAULT '[]',
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             deleted_at DATETIME DEFAULT NULL
+         );
+         CREATE TABLE IF NOT EXISTS quiz_questions (
+             id TEXT PRIMARY KEY,
+             battery_id TEXT NOT NULL,
+             type TEXT DEFAULT 'multiple_choice',
+             question TEXT NOT NULL,
+             options TEXT DEFAULT '[]',
+             correct_index INTEGER DEFAULT 0,
+             expected_answer TEXT,
+             explanation TEXT,
+             tags TEXT DEFAULT '[]',
+             sort_order INTEGER DEFAULT 0,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             deleted_at DATETIME DEFAULT NULL
+         );
+         CREATE TABLE IF NOT EXISTS quiz_attempts (
+             id TEXT PRIMARY KEY,
+             question_id TEXT NOT NULL,
+             battery_id TEXT NOT NULL,
+             type TEXT DEFAULT 'multiple_choice',
+             selected_index INTEGER,
+             user_typed_answer TEXT,
+             is_correct BOOLEAN,
+             ai_feedback TEXT,
+             duration_ms INTEGER DEFAULT 0,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+         );
+         CREATE TABLE IF NOT EXISTS quiz_page_links (
+             id TEXT PRIMARY KEY,
+             battery_id TEXT NOT NULL,
+             page_id TEXT NOT NULL,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             deleted_at DATETIME DEFAULT NULL
+         );
+         CREATE INDEX IF NOT EXISTS idx_quiz_batteries_page ON quiz_batteries(page_id);
+         CREATE INDEX IF NOT EXISTS idx_quiz_batteries_deleted ON quiz_batteries(deleted_at);
+         CREATE INDEX IF NOT EXISTS idx_quiz_questions_battery ON quiz_questions(battery_id, sort_order);
+         CREATE INDEX IF NOT EXISTS idx_quiz_attempts_question ON quiz_attempts(question_id);
+         CREATE INDEX IF NOT EXISTS idx_quiz_attempts_battery ON quiz_attempts(battery_id);
+         CREATE INDEX IF NOT EXISTS idx_quiz_page_links_battery ON quiz_page_links(battery_id);
+         CREATE INDEX IF NOT EXISTS idx_quiz_page_links_page ON quiz_page_links(page_id);
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
 
