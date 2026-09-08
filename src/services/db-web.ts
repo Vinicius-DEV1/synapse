@@ -49,6 +49,10 @@ export interface CadernoDBSchema extends DBSchema {
   ai_logs: { key: string; value: any; indexes: { 'module': string } };
   ai_prompts: { key: string; value: any; indexes: { 'module': string } };
   diagrams: { key: string; value: any };
+  quiz_batteries: { key: string; value: any; indexes: { 'page_id': string } };
+  quiz_questions: { key: string; value: any; indexes: { 'battery_id': string } };
+  quiz_attempts: { key: string; value: any; indexes: { 'question_id': string; 'battery_id': string } };
+  quiz_page_links: { key: string; value: any; indexes: { 'battery_id': string; 'page_id': string } };
   
 }
 
@@ -56,7 +60,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 21, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 22, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -230,6 +234,25 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
           db.createObjectStore('diagrams', { keyPath: 'id' });
         }
 
+        // Quiz
+        if (!db.objectStoreNames.contains('quiz_batteries')) {
+          const store = db.createObjectStore('quiz_batteries', { keyPath: 'id' });
+          store.createIndex('page_id', 'page_id');
+        }
+        if (!db.objectStoreNames.contains('quiz_questions')) {
+          const store = db.createObjectStore('quiz_questions', { keyPath: 'id' });
+          store.createIndex('battery_id', 'battery_id');
+        }
+        if (!db.objectStoreNames.contains('quiz_attempts')) {
+          const store = db.createObjectStore('quiz_attempts', { keyPath: 'id' });
+          store.createIndex('question_id', 'question_id');
+          store.createIndex('battery_id', 'battery_id');
+        }
+        if (!db.objectStoreNames.contains('quiz_page_links')) {
+          const store = db.createObjectStore('quiz_page_links', { keyPath: 'id' });
+          store.createIndex('battery_id', 'battery_id');
+          store.createIndex('page_id', 'page_id');
+        }
 
       },
     });

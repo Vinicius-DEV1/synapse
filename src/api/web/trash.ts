@@ -10,7 +10,8 @@ export const webTrashApi = (db: any) => ({
       vault_groups: { type: 'vault', titleKey: 'name' },
       transactions: { type: 'finance', titleKey: 'description' },
       wishlist: { type: 'wishlist', titleKey: 'title' },
-      culture_items: { type: 'culture', titleKey: 'title' }
+      culture_items: { type: 'culture', titleKey: 'title' },
+      quiz_batteries: { type: 'quiz_battery', titleKey: 'title' }
     };
     
     for (const [table, meta] of Object.entries(tables)) {
@@ -41,7 +42,8 @@ export const webTrashApi = (db: any) => ({
       'vault': 'vault_groups',
       'finance': 'transactions',
       'wishlist': 'wishlist',
-      'culture': 'culture_items'
+      'culture': 'culture_items',
+      'quiz_battery': 'quiz_batteries'
     };
     const table = tableMap[itemType];
     if (!table) throw new Error('Tipo não suportado');
@@ -56,7 +58,7 @@ export const webTrashApi = (db: any) => ({
     return false;
   },
   empty: async () => {
-    const tables = ['pages', 'anki_decks', 'anki_cards', 'files', 'vault_groups', 'transactions', 'wishlist', 'culture_items', 'file_folders'];
+    const tables = ['pages', 'anki_decks', 'anki_cards', 'files', 'vault_groups', 'transactions', 'wishlist', 'culture_items', 'file_folders', 'quiz_batteries'];
     for (const table of tables) {
       try {
         const all = await db.getAll(table) || [];

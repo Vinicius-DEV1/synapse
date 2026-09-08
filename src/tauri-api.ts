@@ -17,6 +17,7 @@ import { tauriFilesApi } from './api/tauri/files';
 import { tauriTrashApi } from './api/tauri/trash';
 import { tauriDiagramsApi } from './api/tauri/diagrams';
 import { tauriNotificationsApi } from './api/tauri/notifications';
+import { tauriQuizApi } from './api/tauri/quiz';
 
 export const createTauriApi = async () => {
   let syncCallbacks: (() => void)[] = [];
@@ -95,6 +96,9 @@ export const createTauriApi = async () => {
     diagrams: tauriDiagramsApi,
     
     // --- NOTIFICATIONS ---
-    notifications: tauriNotificationsApi
+    notifications: tauriNotificationsApi,
+
+    // --- QUIZ ---
+    quiz: tauriQuizApi,
   };
 };

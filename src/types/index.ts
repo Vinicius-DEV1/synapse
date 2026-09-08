@@ -5,3 +5,4 @@ export * from './vault';
 export * from './video';
 export * from './dictionary';
 export * from './stats';
+export * from './quiz';

@@ -19,6 +19,7 @@ import { webDiagramsApi } from '../api/web/diagrams';
 import { webNotificationsApi } from '../api/web/notifications';
 import { createWebConfigApi } from '../api/web/config';
 import { createWebNotesApi } from '../api/web/notes';
+import { webQuizApi } from '../api/web/quiz';
 
 // Helper function for ID generation
 const generateId = () => crypto.randomUUID();
@@ -104,5 +105,8 @@ export const createWebApiMock = async () => {
     
     // --- DIAGRAMS ---
     diagrams: webDiagramsApi(db, generateId, () => _masterKey),
+
+    // --- QUIZ ---
+    quiz: webQuizApi(db, generateId),
   };
 };
