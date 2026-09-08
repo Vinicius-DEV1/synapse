@@ -35,7 +35,7 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or pressing Escape
   useEffect(() => {
     if (!showMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -43,8 +43,20 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
         setShowMenu(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowMenu(false);
+      }
+    };
+
     window.addEventListener('mousedown', handleClickOutside);
-    return () => window.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
   }, [showMenu]);
 
   // Purely horizontal container scroll, NEVER affecting the parent window or vertical page scroll

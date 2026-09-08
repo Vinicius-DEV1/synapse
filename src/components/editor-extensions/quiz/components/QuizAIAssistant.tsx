@@ -97,11 +97,17 @@ export default function QuizAIAssistant({
     }
   }, [chatInput]);
 
-  // Handle Escape key to close modal
+  // Handle Escape key to close modal or mention menu
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (showMentionMenu) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowMentionMenu(false);
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         onClose();
@@ -109,7 +115,7 @@ export default function QuizAIAssistant({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showMentionMenu, setShowMentionMenu]);
 
   const modelName = useMemo(() => {
     try {
