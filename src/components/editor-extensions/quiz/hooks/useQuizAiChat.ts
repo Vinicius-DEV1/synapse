@@ -14,6 +14,11 @@ interface UseQuizAiChatOptions {
   description?: string;
 }
 
+export interface ChatProgressStatus {
+  step: 'generating' | 'validating';
+  model?: string;
+}
+
 export function useQuizAiChat({
   chatHistory,
   updateChatHistory,
@@ -27,6 +32,7 @@ export function useQuizAiChat({
   const [showAiAssistantModal, setShowAiAssistantModal] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [chatProgressStatus, setChatProgressStatus] = useState<ChatProgressStatus | null>(null);
 
   const handleSendChatMessage = useCallback(
     async (
@@ -47,6 +53,7 @@ export function useQuizAiChat({
       updateChatHistory(updatedHistoryWithUser);
       setChatInput('');
       setIsSendingChat(true);
+      setChatProgressStatus({ step: 'generating' });
 
       try {
         const response = await promptGeminiQuizAssistant(
@@ -56,7 +63,10 @@ export function useQuizAiChat({
           undefined,
           title,
           description,
-          referencedBatteries
+          referencedBatteries,
+          (step, model) => {
+            setChatProgressStatus({ step, model });
+          }
         );
 
         const assistantMsgId = `assistant_${Date.now()}`;
@@ -99,6 +109,15 @@ export function useQuizAiChat({
               targetQuestionIndex: typeof a.targetQuestionIndex === 'number' ? a.targetQuestionIndex : undefined,
               changes,
               reason: typeof a.reason === 'string' ? a.reason : undefined,
+              factCheckVerdict: (a.factCheckVerdict === 'corrected'
+                ? 'corrected'
+                : a.factCheckVerdict === 'approved'
+                ? 'approved'
+                : undefined) as 'approved' | 'corrected' | undefined,
+              validatedByModel:
+                typeof a.validatedByModel === 'string'
+                  ? a.validatedByModel
+                  : undefined,
             };
           }
         );
@@ -116,6 +135,7 @@ export function useQuizAiChat({
           role: 'assistant',
           text: messageText,
           suggestedActions: actions,
+          validationSummary: response.validationSummary,
         };
 
         updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
@@ -135,6 +155,7 @@ export function useQuizAiChat({
         updateChatHistory([...updatedHistoryWithUser, assistantErrorMsg]);
       } finally {
         setIsSendingChat(false);
+        setChatProgressStatus(null);
       }
     },
     [chatInput, isSendingChat, chatHistory, updateChatHistory, questions, title, description]
@@ -302,6 +323,7 @@ export function useQuizAiChat({
     chatInput,
     setChatInput,
     isSendingChat,
+    chatProgressStatus,
     handleSendChatMessage,
     handleAcceptAction,
     handleRejectAction,

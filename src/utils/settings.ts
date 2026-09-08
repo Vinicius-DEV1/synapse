@@ -10,6 +10,12 @@ export interface AppSettings {
   geminiModelChat?: string;
   geminiModelFlashcards?: string;
   geminiModelDictionary?: string;
+  /** Whether to run a 2nd AI review pass to validate facts and eliminate hallucinations during question generation */
+  quizDualAiValidation?: boolean;
+  /** Specific model for generating quiz questions (IA 1). Falls back to geminiModelChat or geminiModel */
+  geminiModelQuizGenerator?: string;
+  /** Specific model for validating quiz questions (IA 2). Falls back to geminiModelChat or geminiModel */
+  geminiModelQuizValidator?: string;
   aiChatHighlight: 'glow' | 'underline' | 'none';
   dictionaryMode: 'offline' | 'online';
   hasOfflineDictionary: boolean;
@@ -36,6 +42,9 @@ export function getSettings(): AppSettings {
     fontSize: 'text-base',
     spellcheck: true,
     geminiModel: 'gemini-2.5-pro',
+    quizDualAiValidation: true,
+    geminiModelQuizGenerator: '',
+    geminiModelQuizValidator: '',
     aiChatHighlight: 'glow',
     dictionaryMode: 'offline',
     hasOfflineDictionary: false,

@@ -293,6 +293,109 @@ describe('Quiz Service & Prompt Unit Tests', () => {
         promptGeminiQuizAssistant([], [], 'Gere questões')
       ).rejects.toThrow('Network connection failure');
     });
+
+    it('orchestrates Dual-AI pipeline with onProgress and applies 2nd AI verification', async () => {
+      const progressSteps: Array<{ step: string; model: string }> = [];
+      const onProgress = (step: 'generating' | 'validating', model: string) => {
+        progressSteps.push({ step, model });
+      };
+
+      // Call 1: IA 1 generates
+      vi.spyOn(clientModule, 'promptGemini')
+        .mockResolvedValueOnce({
+          text: JSON.stringify({
+            message: 'Aqui está sua questão de React:',
+            suggestedActions: [
+              {
+                actionType: 'create',
+                type: 'multiple_choice',
+                question: 'Pergunta da IA 1',
+                options: ['A', 'B', 'C', 'D'],
+                correctIndex: 0,
+                explanation: 'Explicação IA 1',
+              },
+            ],
+          }),
+        } as any)
+        // Call 2: IA 2 validates & corrects
+        .mockResolvedValueOnce({
+          text: JSON.stringify({
+            validatedQuestions: [
+              {
+                type: 'multiple_choice',
+                question: 'Pergunta revisada pela IA 2 (sem alucinações)',
+                options: ['A1', 'B1', 'C1', 'D1'],
+                correctIndex: 1,
+                explanation: 'Explicação revisada e didática',
+                factCheckVerdict: 'corrected',
+                improvements: 'Corrigido gabarito e enunciado',
+              },
+            ],
+            validationSummary: 'Fatos verificados e corrigidos com sucesso.',
+          }),
+        } as any);
+
+      const result = await promptGeminiQuizAssistant(
+        [],
+        [],
+        'Gere 1 questão',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        onProgress
+      );
+
+      expect(progressSteps).toHaveLength(2);
+      expect(progressSteps[0].step).toBe('generating');
+      expect(progressSteps[1].step).toBe('validating');
+
+      expect(result.suggestedActions?.[0].question).toBe(
+        'Pergunta revisada pela IA 2 (sem alucinações)'
+      );
+      expect(result.suggestedActions?.[0].correctIndex).toBe(1);
+      expect(result.suggestedActions?.[0].factCheckVerdict).toBe('corrected');
+      expect(result.validationSummary).toBe('Fatos verificados e corrigidos com sucesso.');
+    });
+
+    it('skips Dual-AI validation when quizDualAiValidation is disabled in settings', async () => {
+      const settingsModule = await import('../../utils/settings');
+      vi.spyOn(settingsModule, 'getSettings').mockReturnValueOnce({
+        ...settingsModule.getSettings(),
+        quizDualAiValidation: false,
+      });
+
+      const promptSpy = vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
+        text: JSON.stringify({
+          message: 'Questão gerada por IA única:',
+          suggestedActions: [
+            {
+              actionType: 'create',
+              type: 'open',
+              question: 'Explique herança em OOP.',
+              expectedAnswer: 'Mecanismo de reutilização de código.',
+            },
+          ],
+        }),
+      } as any);
+
+      const progressSteps: string[] = [];
+      const result = await promptGeminiQuizAssistant(
+        [],
+        [],
+        'Gere questão',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        (step) => progressSteps.push(step)
+      );
+
+      // Only called once because 2nd AI is disabled!
+      expect(promptSpy).toHaveBeenCalledTimes(1);
+      expect(progressSteps).toEqual(['generating']);
+      expect(result.suggestedActions?.[0].question).toBe('Explique herança em OOP.');
+    });
   });
 
   describe('Error handling across quiz functions', () => {

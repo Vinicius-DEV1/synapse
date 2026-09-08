@@ -105,6 +105,7 @@ export function QuizEditorModal({
     chatInput,
     setChatInput,
     isSendingChat,
+    chatProgressStatus,
     handleSendChatMessage,
     handleAcceptAction,
     handleRejectAction,
@@ -232,6 +233,7 @@ export function QuizEditorModal({
         chatInput={chatInput}
         setChatInput={setChatInput}
         isSendingChat={isSendingChat}
+        chatProgressStatus={chatProgressStatus}
         onSendMessage={handleSendChatMessage}
         onClearHistory={handleClearChatHistory}
         onAcceptAction={handleAcceptAction}

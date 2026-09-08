@@ -47,6 +47,7 @@ export function QuizSequentialFocusModal({
     chatInput,
     setChatInput,
     isSendingChat,
+    chatProgressStatus,
     handleSendChatMessage,
     handleAcceptAction,
     handleRejectAction,
@@ -193,6 +194,7 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
           chatInput={chatInput}
           setChatInput={setChatInput}
           isSendingChat={isSendingChat}
+          chatProgressStatus={chatProgressStatus}
           onSendMessage={handleSendChatMessage}
           onClearHistory={handleClearChatHistory}
           onAcceptAction={handleAcceptAction}

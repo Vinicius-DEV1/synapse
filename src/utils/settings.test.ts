@@ -12,6 +12,7 @@ describe('settings utils', () => {
     expect(s.fontSize).toBe('text-base');
     expect(s.spellcheck).toBe(true);
     expect(s.geminiModel).toBe('gemini-2.5-pro');
+    expect(s.quizDualAiValidation).toBe(true);
     expect(s.restoreTabsOnStartup).toBe(true);
   });
 
@@ -22,6 +23,9 @@ describe('settings utils', () => {
       fontSize: 'text-lg',
       spellcheck: false,
       geminiModel: 'gemini-1.5-flash',
+      quizDualAiValidation: false,
+      geminiModelQuizGenerator: 'gemini-2.5-pro',
+      geminiModelQuizValidator: 'gemini-2.5-flash',
     };
 
     saveSettings(updated);
@@ -30,6 +34,9 @@ describe('settings utils', () => {
     expect(retrieved.fontSize).toBe('text-lg');
     expect(retrieved.spellcheck).toBe(false);
     expect(retrieved.geminiModel).toBe('gemini-1.5-flash');
+    expect(retrieved.quizDualAiValidation).toBe(false);
+    expect(retrieved.geminiModelQuizGenerator).toBe('gemini-2.5-pro');
+    expect(retrieved.geminiModelQuizValidator).toBe('gemini-2.5-flash');
   });
 
   it('handles corrupted JSON in localStorage gracefully with fallback to defaults', () => {

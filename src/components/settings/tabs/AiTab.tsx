@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, DatabaseBackup } from 'lucide-react';
+import { RefreshCw, DatabaseBackup, ShieldCheck } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
 import { fetchGeminiModels, getGeminiKeys, saveGeminiKeys } from '../../../services/gemini';
 import type { GeminiModel, GeminiKeyEntry } from '../../../services/gemini';
@@ -186,6 +186,100 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
               <option className="bg-dark-bg text-white" key={m.name} value={m.name}>{m.displayName} ({m.version})</option>
             ))}
           </select>
+        </div>
+
+        <div className="p-3.5 bg-purple-950/20 border border-purple-500/20 rounded-2xl space-y-3.5 mt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-purple-400" />
+              <label className="text-sm font-semibold text-white">
+                Validação Cruzada de Questões (Dupla IA)
+              </label>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={appSettings.quizDualAiValidation !== false}
+                onChange={(e) =>
+                  setAppSettings({
+                    ...appSettings,
+                    quizDualAiValidation: e.target.checked,
+                  })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+          <p className="text-[11px] text-dark-subtext leading-relaxed">
+            Ao gerar questões no assistente, uma 2ª IA analisa a veracidade factual dos conceitos e a consistência do gabarito, eliminando alucinações antes da entrega.
+          </p>
+
+          {appSettings.quizDualAiValidation !== false && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-purple-500/10">
+              <div>
+                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                  IA 1: Geradora de Questões
+                </label>
+                <select
+                  value={
+                    appSettings.geminiModelQuizGenerator
+                      ? appSettings.geminiModelQuizGenerator.startsWith('models/')
+                        ? appSettings.geminiModelQuizGenerator
+                        : `models/${appSettings.geminiModelQuizGenerator}`
+                      : ''
+                  }
+                  onChange={(e) =>
+                    setAppSettings({
+                      ...appSettings,
+                      geminiModelQuizGenerator: e.target.value,
+                    })
+                  }
+                  className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                >
+                  <option className="bg-dark-bg text-white" value="">
+                    (Usar Modelo Chat / Padrão)
+                  </option>
+                  {models.map((m) => (
+                    <option className="bg-dark-bg text-white" key={m.name} value={m.name}>
+                      {m.displayName} ({m.version})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                  IA 2: Revisora / Fact-Checker
+                </label>
+                <select
+                  value={
+                    appSettings.geminiModelQuizValidator
+                      ? appSettings.geminiModelQuizValidator.startsWith('models/')
+                        ? appSettings.geminiModelQuizValidator
+                        : `models/${appSettings.geminiModelQuizValidator}`
+                      : ''
+                  }
+                  onChange={(e) =>
+                    setAppSettings({
+                      ...appSettings,
+                      geminiModelQuizValidator: e.target.value,
+                    })
+                  }
+                  className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                >
+                  <option className="bg-dark-bg text-white" value="">
+                    (Usar Modelo Chat / Padrão)
+                  </option>
+                  {models.map((m) => (
+                    <option className="bg-dark-bg text-white" key={m.name} value={m.name}>
+                      {m.displayName} ({m.version})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
         
         {modelsError && <p className="text-xs text-red-400 mt-2">{modelsError}</p>}

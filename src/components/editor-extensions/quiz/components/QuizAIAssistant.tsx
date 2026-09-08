@@ -7,6 +7,7 @@ import {
   Trash2,
   AtSign,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import { getSettings } from '../../../../utils/settings';
@@ -14,6 +15,7 @@ import { useQuizBatteryMentions } from '../hooks/useQuizBatteryMentions';
 import { QuizAiQuickShortcuts } from './ai/QuizAiQuickShortcuts';
 import { QuizAiMessageItem } from './ai/QuizAiMessageItem';
 import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery } from '../types';
+import type { ChatProgressStatus } from '../hooks/useQuizAiChat';
 
 interface QuizAIAssistantProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ interface QuizAIAssistantProps {
   chatInput: string;
   setChatInput: (input: string) => void;
   isSendingChat: boolean;
+  chatProgressStatus?: ChatProgressStatus | null;
   onSendMessage: (override?: string, referencedBatteries?: ReferencedBattery[]) => Promise<void>;
   onClearHistory: () => void;
   onAcceptAction: (action: SuggestedAction) => void;
@@ -39,6 +42,7 @@ export default function QuizAIAssistant({
   chatInput,
   setChatInput,
   isSendingChat,
+  chatProgressStatus,
   onSendMessage,
   onClearHistory,
   onAcceptAction,
@@ -198,9 +202,32 @@ export default function QuizAIAssistant({
             )}
 
             {isSendingChat && (
-              <div className="flex items-center gap-2.5 text-purple-300 text-xs p-3.5 bg-purple-950/40 border border-purple-500/30 rounded-2xl w-fit shadow-lg shadow-purple-950/30">
-                <Loader2 size={16} className="animate-spin text-purple-400" />
-                <span className="font-medium">O Gemini está gerando as sugestões para a sua bateria...</span>
+              <div className="flex items-center gap-3 text-xs p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl w-fit shadow-lg shadow-purple-950/30 animate-fade-in">
+                {chatProgressStatus?.step === 'validating' ? (
+                  <>
+                    <ShieldCheck size={16} className="text-emerald-400 animate-pulse shrink-0" />
+                    <span className="font-medium text-emerald-200">
+                      Revisando precisão e validando fatos com 2ª IA...
+                    </span>
+                    {chatProgressStatus.model && (
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded">
+                        {chatProgressStatus.model}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-purple-400 shrink-0" />
+                    <span className="font-medium text-purple-200">
+                      Gerando questões com IA...
+                    </span>
+                    {chatProgressStatus?.model && (
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded">
+                        {chatProgressStatus.model}
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
