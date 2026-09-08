@@ -34,14 +34,43 @@ pub struct StreamDriveParams {
     pub module: String, // module name, e.g. culture
 }
 
+fn get_stream_cors_origin(headers: &axum::http::HeaderMap) -> String {
+    if let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) {
+        if origin.starts_with("tauri://")
+            || origin.starts_with("http://localhost")
+            || origin.starts_with("http://127.0.0.1")
+            || origin.starts_with("http://tauri.localhost")
+        {
+            return origin.to_string();
+        }
+    }
+    "tauri://localhost".to_string()
+}
+
 pub async fn start_stream_server(app: AppHandle) -> Result<u16, String> {
     let state = StreamState { app_handle: app };
+
+    let allowed_origins = [
+        "tauri://localhost".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://tauri.localhost".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://localhost:35174".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://localhost:1420".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://127.0.0.1:35174".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
+        "http://127.0.0.1:1420".parse::<axum::http::HeaderValue>().unwrap(),
+    ];
+
+    let cors = CorsLayer::new()
+        .allow_origin(allowed_origins)
+        .allow_methods([axum::http::Method::GET, axum::http::Method::OPTIONS])
+        .allow_headers([header::RANGE, header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     let app_router = Router::new()
         .route("/stream", get(stream_handler))
         .route("/stream-drive", get(stream_drive_handler))
         .with_state(state)
-        .layer(CorsLayer::permissive());
+        .layer(cors);
 
     // bind to 127.0.0.1:0 to let OS choose an open port
     let listener = TcpListener::bind("127.0.0.1:0")
@@ -107,6 +136,30 @@ async fn stream_handler(
             }
         }
     }
+
+    let canonical_base = match app_data_dir.canonicalize() {
+        Ok(b) => b,
+        Err(_) => app_data_dir.clone(),
+    };
+
+    let canon_path = match abs_path.canonicalize() {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::NOT_FOUND, "File not found").into_response(),
+    };
+
+    let is_allowed = canon_path.starts_with(&canonical_base) || {
+        app_data_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|gp| gp.join("release").join("data"))
+            .and_then(|r| r.canonicalize().ok())
+            .map_or(false, |r| canon_path.starts_with(&r))
+    };
+
+    if !is_allowed || !canon_path.is_file() {
+        return (StatusCode::FORBIDDEN, "Access denied").into_response();
+    }
+    abs_path = canon_path;
 
     // Pega a chave mestre do App State
     let db_state = state.app_handle.state::<DbState>();
@@ -249,7 +302,7 @@ async fn stream_handler(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
         .body(axum::body::Body::from_stream(stream))
         .unwrap()
 }
@@ -383,7 +436,7 @@ async fn stream_drive_handler(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
         .body(axum::body::Body::from_stream(stream))
         .unwrap()
 }

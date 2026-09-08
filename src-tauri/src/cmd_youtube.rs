@@ -25,7 +25,7 @@ pub async fn youtube_fetch_info(url: String, _app: AppHandle) -> Result<Value, S
 
     // spawning yt-dlp -j to get JSON info
     let mut cmd = Command::new(ytdlp_path);
-    cmd.args(["-j", &url]);
+    cmd.args(["-j", "--", &url]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let output = cmd.output().map_err(|e| e.to_string())?;
@@ -55,11 +55,14 @@ pub async fn youtube_download(
         .to_path_buf();
     let videos_dir = get_videos_dir(&app)?;
 
-    let temp_filename = format!("temp_{}_{}", uuid::Uuid::new_v4(), filename);
+    let safe_filename = std::path::Path::new(&filename)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| "video.mp4".into());
+    let temp_filename = format!("temp_{}_{}", uuid::Uuid::new_v4(), safe_filename);
     let temp_path = videos_dir.join(&temp_filename);
 
     let mut args = vec![
-        url.clone(),
         "-f".to_string(),
         quality,
         "-o".to_string(),
@@ -80,6 +83,9 @@ pub async fn youtube_download(
             args.push("no-keep-subs".to_string());
         }
     }
+
+    args.push("--".to_string());
+    args.push(url.clone());
 
     let mut child = Command::new(ytdlp_path);
     child.args(&args).stdout(Stdio::piped());
@@ -138,7 +144,7 @@ pub async fn youtube_fetch_playlist_info(
 ) -> Result<serde_json::Value, String> {
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let mut cmd = std::process::Command::new(ytdlp_path);
-    cmd.args(["-J", "--flat-playlist", "--extractor-args", "youtubetab:approximate_date", &url]);
+    cmd.args(["-J", "--flat-playlist", "--extractor-args", "youtubetab:approximate_date", "--", &url]);
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let output = cmd.output().map_err(|e| e.to_string())?;
