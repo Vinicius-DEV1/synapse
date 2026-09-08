@@ -231,6 +231,7 @@ export default function QuizSequentialPlayer({
   }, [currentQ, onUpdateSingleQuestion]);
 
   const handleResetAll = useCallback(() => {
+    playQuizSlideSound();
     celebratedRef.current = false;
     prevAnsweredRef.current = 0;
     safeQuestions.forEach((q) => {
@@ -391,6 +392,7 @@ export default function QuizSequentialPlayer({
         onDeleteQuestion={onDeleteQuestion}
         onOpenAiAssistant={onOpenAiAssistant}
         onEditQuestion={onEditQuestion}
+        onResetAll={handleResetAll}
       />
 
       {/* Card da Questão Atual com animação direcional 60fps acelerada por GPU */}

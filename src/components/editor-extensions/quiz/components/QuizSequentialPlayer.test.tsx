@@ -437,5 +437,67 @@ describe('QuizSequentialPlayer Unit Tests', () => {
       );
     }
   });
+
+  it('allows restarting the battery mid-session via Refazer Bateria in the ... menu', () => {
+    const onUpdate = vi.fn();
+    const answeredQuestions: QuestionItem[] = [
+      {
+        ...mockQuestions[0],
+        answered: true,
+        selectedIndex: 0,
+        showExplanation: true,
+      },
+      {
+        ...mockQuestions[1],
+        answered: true,
+        userTypedAnswer: 'Polimorfismo',
+        showExplanation: true,
+      },
+    ];
+
+    render(
+      <QuizSequentialPlayer
+        questions={answeredQuestions}
+        activeIndex={1}
+        onUpdateSingleQuestion={onUpdate}
+        onEvaluateOpenAnswer={vi.fn()}
+        evaluatingIds={{}}
+        onDiscussInChat={vi.fn()}
+      />
+    );
+
+    // Open the ... menu
+    const moreBtn = screen.getByTitle('Opções da questão atual');
+    fireEvent.click(moreBtn);
+
+    // Find and click 'Refazer Bateria'
+    const resetBtn = screen.getByText('Refazer Bateria');
+    expect(resetBtn).toBeInTheDocument();
+    fireEvent.click(resetBtn);
+
+    // Should call onUpdateSingleQuestion for both questions to reset state
+    expect(onUpdate).toHaveBeenCalledWith(
+      'q1',
+      expect.objectContaining({
+        answered: false,
+        selectedIndex: null,
+        userTypedAnswer: '',
+        aiFeedback: null,
+        showExplanation: false,
+      }),
+      true
+    );
+    expect(onUpdate).toHaveBeenCalledWith(
+      'q2',
+      expect.objectContaining({
+        answered: false,
+        selectedIndex: null,
+        userTypedAnswer: '',
+        aiFeedback: null,
+        showExplanation: false,
+      }),
+      true
+    );
+  });
 });
 
