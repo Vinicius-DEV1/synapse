@@ -15,6 +15,31 @@ fn get_mime_type(path: &std::path::Path) -> String {
         .to_string()
 }
 
+fn is_path_confined(path: &std::path::Path, base_dir: &std::path::Path) -> bool {
+    let canonical_base = match base_dir.canonicalize() {
+        Ok(b) => b,
+        Err(_) => base_dir.to_path_buf(),
+    };
+
+    if let Ok(canon) = path.canonicalize() {
+        if canon.starts_with(&canonical_base) && canon.is_file() {
+            return true;
+        }
+        // Fallback for debug/release local folder during development
+        if let Some(parent) = base_dir.parent() {
+            if let Some(grandparent) = parent.parent() {
+                let release_dir = grandparent.join("release").join("data");
+                if let Ok(canon_release) = release_dir.canonicalize() {
+                    if canon.starts_with(&canon_release) && canon.is_file() {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 fn find_file(module_name: &str, decoded_path: &str) -> Option<std::path::PathBuf> {
     let dir_name = match module_name {
         "culture" => "videos",
@@ -27,16 +52,17 @@ fn find_file(module_name: &str, decoded_path: &str) -> Option<std::path::PathBuf
     let base_dir = crate::get_app_data_dir();
     let module_dir = base_dir.join(dir_name);
 
-    // Direct absolute path check (if passed)
+    // Direct absolute path check (if passed): strictly confined within application data directory
     let direct_path = std::path::PathBuf::from(decoded_path);
     if direct_path.is_absolute() {
-        if direct_path.exists() && direct_path.is_file() {
-            return Some(direct_path);
+        if is_path_confined(&direct_path, &base_dir) {
+            return direct_path.canonicalize().ok();
         }
         let direct_with_enc = std::path::PathBuf::from(format!("{}.enc", decoded_path));
-        if direct_with_enc.exists() && direct_with_enc.is_file() {
-            return Some(direct_with_enc);
+        if is_path_confined(&direct_with_enc, &base_dir) {
+            return direct_with_enc.canonicalize().ok();
         }
+        return None;
     }
 
     let clean_relative = if decoded_path.starts_with(&format!("{}/", dir_name)) {
@@ -52,23 +78,37 @@ fn find_file(module_name: &str, decoded_path: &str) -> Option<std::path::PathBuf
     };
 
     let target_path = module_dir.join(clean_relative);
-    if target_path.exists() && target_path.is_file() {
-        return Some(target_path);
+    if is_path_confined(&target_path, &base_dir) {
+        return target_path.canonicalize().ok();
     }
 
     // Try with .enc suffix if not present
     if !clean_relative.ends_with(".enc") {
         let target_enc = module_dir.join(format!("{}.enc", clean_relative));
-        if target_enc.exists() && target_enc.is_file() {
-            return Some(target_enc);
+        if is_path_confined(&target_enc, &base_dir) {
+            return target_enc.canonicalize().ok();
         }
     }
 
     None
 }
 
+fn get_safe_cors_origin(request: &Request<Vec<u8>>) -> String {
+    if let Some(origin) = request.headers().get("origin").and_then(|v| v.to_str().ok()) {
+        if origin.starts_with("tauri://")
+            || origin.starts_with("http://localhost")
+            || origin.starts_with("http://127.0.0.1")
+            || origin.starts_with("http://tauri.localhost")
+        {
+            return origin.to_string();
+        }
+    }
+    "tauri://localhost".to_string()
+}
+
 pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> Response<Vec<u8>> {
     let db_state = app.state::<DbState>();
+    let cors_origin = get_safe_cors_origin(&request);
 
     // As URI can be like "encrypted://localhost/module_name/file.enc" or "http://encrypted.localhost/module_name/file.enc"
     let uri = request.uri().to_string();
@@ -80,7 +120,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     } else {
         return Response::builder()
             .status(StatusCode::BAD_REQUEST)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
             .body(Vec::new())
             .unwrap();
     };
@@ -90,7 +130,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
     if parts.len() != 2 {
         return Response::builder()
             .status(StatusCode::BAD_REQUEST)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
             .body(Vec::new())
             .unwrap();
     }
@@ -106,7 +146,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         None => {
             return Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(format!("File not found: {:?}", decoded_path).into_bytes())
                 .unwrap();
         }
@@ -119,7 +159,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         None => {
             return Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(Vec::new())
                 .unwrap();
         }
@@ -141,7 +181,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         None => {
             return Response::builder()
                 .status(StatusCode::FORBIDDEN)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(Vec::new())
                 .unwrap();
         }
@@ -167,7 +207,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime_type)
                 .header(header::CONTENT_LENGTH, raw_data.len().to_string())
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(raw_data)
                 .unwrap();
         }
@@ -179,7 +219,7 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         Err(e) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(e.into_bytes())
                 .unwrap();
         }
@@ -211,14 +251,14 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                             format!("bytes {}-{}/{}", start, actual_end, total_size),
                         )
                         .header(header::CONTENT_LENGTH, data.len().to_string())
-                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                         .body(data)
                         .unwrap();
                 }
                 Err(e) => {
                     return Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*") // B25
+                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                         .body(e.into_bytes())
                         .unwrap();
                 }
@@ -234,14 +274,59 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime_type)
                 .header(header::CONTENT_LENGTH, data.len().to_string())
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
                 .body(data)
                 .unwrap()
         }
         Err(e) => Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin)
             .body(e.into_bytes())
             .unwrap(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_path_confined_rejects_external_paths() {
+        let temp_dir = std::env::temp_dir();
+        let base_dir = temp_dir.join("caderno_safe_base");
+        let _ = std::fs::create_dir_all(&base_dir);
+
+        let outside_file = temp_dir.join("outside_secret.txt");
+        let _ = std::fs::write(&outside_file, b"secret");
+
+        assert!(!is_path_confined(&outside_file, &base_dir));
+
+        let _ = std::fs::remove_file(outside_file);
+        let _ = std::fs::remove_dir_all(base_dir);
+    }
+
+    #[test]
+    fn test_is_path_confined_accepts_confined_file() {
+        let temp_dir = std::env::temp_dir();
+        let base_dir = temp_dir.join("caderno_safe_base_2");
+        let _ = std::fs::create_dir_all(&base_dir);
+
+        let inside_file = base_dir.join("safe.txt");
+        let _ = std::fs::write(&inside_file, b"content");
+
+        assert!(is_path_confined(&inside_file, &base_dir));
+
+        let _ = std::fs::remove_file(inside_file);
+        let _ = std::fs::remove_dir_all(base_dir);
+    }
+
+    #[test]
+    fn test_find_file_rejects_arbitrary_absolute_path() {
+        let res = find_file("culture", "/etc/passwd");
+        assert!(res.is_none());
+
+        let res2 = find_file("notes", "../../../../etc/shadow");
+        assert!(res2.is_none());
+    }
+}
+

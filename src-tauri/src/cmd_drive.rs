@@ -1,24 +1,16 @@
 use crate::db::DbState;
 use serde_json::Value;
-use std::process::Command;
-use tauri::State;
-
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
+use tauri::{AppHandle, State};
+use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
-pub fn drive_open_url(url: String) -> Result<(), String> {
-    // Escape URL for Windows cmd to prevent '&' interpretation as command separator
-    let safe_url = url.replace("&", "^&");
-    let mut cmd = Command::new("cmd");
-    cmd.args(["/C", "start", "", &safe_url]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    cmd.spawn()
-        .map_err(|e| format!("Falha ao abrir navegador: {}", e))?;
-    Ok(())
+pub fn drive_open_url(app: AppHandle, url: String) -> Result<(), String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Apenas URLs HTTP e HTTPS são permitidas".into());
+    }
+    app.shell()
+        .open(&url, None)
+        .map_err(|e| format!("Falha ao abrir navegador: {}", e))
 }
 
 #[tauri::command]
