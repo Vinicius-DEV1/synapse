@@ -71,6 +71,20 @@ export default function QuizAIAssistant({
   useEffect(() => {
     if (isOpen && chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      const rafId = requestAnimationFrame(() => {
+        if (chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+      });
+      const timerId = setTimeout(() => {
+        if (chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+      }, 80);
+      return () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(timerId);
+      };
     }
   }, [isOpen, chatHistory, isSendingChat]);
 

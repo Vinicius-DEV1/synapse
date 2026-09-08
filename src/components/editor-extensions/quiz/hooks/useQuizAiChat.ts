@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { promptGeminiQuizAssistant } from '../../../../services/gemini';
+import { normalizeCandidateAction } from '../../../../services/gemini/quiz-parser';
 import { triggerToast } from '../../../ui/ToastContext';
 import type { QuestionItem, QuizChatMessage, SuggestedAction, ReferencedBattery } from '../types';
 
@@ -34,6 +35,12 @@ export function useQuizAiChat({
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [chatProgressStatus, setChatProgressStatus] = useState<ChatProgressStatus | null>(null);
 
+  const questionsRef = useRef(questions);
+  questionsRef.current = questions;
+
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
+
   const handleSendChatMessage = useCallback(
     async (
       overrideMessage?: string,
@@ -49,7 +56,7 @@ export function useQuizAiChat({
         text: messageToSend,
       };
 
-      const updatedHistoryWithUser = [...chatHistory, userMessageObj];
+      const updatedHistoryWithUser = [...chatHistoryRef.current, userMessageObj];
       updateChatHistory(updatedHistoryWithUser);
       setChatInput('');
       setIsSendingChat(true);
@@ -58,7 +65,7 @@ export function useQuizAiChat({
       try {
         const response = await promptGeminiQuizAssistant(
           updatedHistoryWithUser.map((m) => ({ role: m.role, text: m.text })),
-          questions,
+          questionsRef.current,
           messageToSend,
           undefined,
           title,
@@ -72,52 +79,23 @@ export function useQuizAiChat({
         const assistantMsgId = `assistant_${Date.now()}`;
         const actions: SuggestedAction[] | undefined = response.suggestedActions?.map(
           (rawAction: unknown, idx: number) => {
-            const a = (rawAction && typeof rawAction === 'object' ? rawAction : {}) as Record<string, unknown>;
-            const rawChanges = (a.changes && typeof a.changes === 'object' ? a.changes : {}) as Record<string, unknown>;
-            const changes: Record<string, unknown> = { ...rawChanges };
-            const rawType = a.actionType;
-            const actionType: 'create' | 'edit' | 'delete' =
-              rawType === 'edit' || rawType === 'delete' ? rawType : 'create';
-
-            if (actionType === 'edit') {
-              if (a.question && !changes.question) changes.question = a.question;
-              if (a.options && !changes.options) changes.options = a.options;
-              if (typeof a.correctIndex === 'number' && changes.correctIndex === undefined)
-                changes.correctIndex = a.correctIndex;
-              if (a.expectedAnswer && !changes.expectedAnswer)
-                changes.expectedAnswer = a.expectedAnswer;
-              if (a.explanation && !changes.explanation) changes.explanation = a.explanation;
-              if (a.type && !changes.type) changes.type = a.type;
-            }
-
-            const rawOpts = a.options;
-            const options =
-              Array.isArray(rawOpts) && rawOpts.length >= 2
-                ? rawOpts.map((o) => String(o))
-                : ['', '', '', ''];
-
+            const norm = normalizeCandidateAction(rawAction, questionsRef.current.length);
             return {
               id: `action_${Date.now()}_${idx}`,
-              actionType,
+              actionType: norm.actionType,
               status: 'pending' as const,
-              type: (a.type === 'open' ? 'open' : 'multiple_choice') as 'multiple_choice' | 'open',
-              question: String(a.question || ''),
-              options,
-              correctIndex: typeof a.correctIndex === 'number' ? a.correctIndex : 0,
-              expectedAnswer: String(a.expectedAnswer || ''),
-              explanation: String(a.explanation || ''),
-              targetQuestionIndex: typeof a.targetQuestionIndex === 'number' ? a.targetQuestionIndex : undefined,
-              changes,
-              reason: typeof a.reason === 'string' ? a.reason : undefined,
-              factCheckVerdict: (a.factCheckVerdict === 'corrected'
-                ? 'corrected'
-                : a.factCheckVerdict === 'approved'
-                ? 'approved'
-                : undefined) as 'approved' | 'corrected' | undefined,
-              validatedByModel:
-                typeof a.validatedByModel === 'string'
-                  ? a.validatedByModel
-                  : undefined,
+              type: norm.type || 'multiple_choice',
+              question: norm.question || '',
+              options: norm.options && norm.options.length >= 2 ? norm.options : ['', '', '', ''],
+              correctIndex: typeof norm.correctIndex === 'number' ? norm.correctIndex : 0,
+              expectedAnswer: norm.expectedAnswer || '',
+              explanation: norm.explanation || '',
+              targetQuestionIndex: norm.targetQuestionIndex,
+              order: norm.order,
+              changes: norm.changes,
+              reason: norm.reason,
+              factCheckVerdict: norm.factCheckVerdict,
+              validatedByModel: norm.validatedByModel,
             };
           }
         );
@@ -158,11 +136,13 @@ export function useQuizAiChat({
         setChatProgressStatus(null);
       }
     },
-    [chatInput, isSendingChat, chatHistory, updateChatHistory, questions, title, description]
+    [chatInput, isSendingChat, updateChatHistory, title, description]
   );
 
   const handleAcceptAction = useCallback(
     (action: SuggestedAction) => {
+      const currentList = [...questionsRef.current];
+
       if (action.actionType === 'create') {
         const newQ: QuestionItem = {
           id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -179,20 +159,43 @@ export function useQuizAiChat({
           showExplanation: false,
           answered: false,
         };
-        updateQuestions([...questions, newQ]);
+        updateQuestions([...currentList, newQ]);
       } else if (action.actionType === 'edit' && typeof action.targetQuestionIndex === 'number') {
-        const targetQ = questions[action.targetQuestionIndex];
+        const targetQ = currentList[action.targetQuestionIndex];
         if (targetQ && action.changes) {
           updateSingleQuestion(targetQ.id, action.changes);
         }
       } else if (action.actionType === 'delete' && typeof action.targetQuestionIndex === 'number') {
-        const targetQ = questions[action.targetQuestionIndex];
+        const targetQ = currentList[action.targetQuestionIndex];
         if (targetQ) {
           handleRemoveQuestion(targetQ.id);
         }
+      } else if (action.actionType === 'reorder' && Array.isArray(action.order) && action.order.length > 0) {
+        const reorderedList: QuestionItem[] = [];
+        const addedIds = new Set<string>();
+
+        // Add questions following the suggested sequence
+        for (const idx of action.order) {
+          const q = currentList[idx];
+          if (q && !addedIds.has(q.id)) {
+            reorderedList.push(q);
+            addedIds.add(q.id);
+          }
+        }
+
+        // Append any questions omitted in action.order
+        for (const q of currentList) {
+          if (!addedIds.has(q.id)) {
+            reorderedList.push(q);
+          }
+        }
+
+        if (reorderedList.length > 0) {
+          updateQuestions(reorderedList);
+        }
       }
 
-      const updatedChat = chatHistory.map((m) => {
+      const updatedChat = chatHistoryRef.current.map((m) => {
         if (!m.suggestedActions) return m;
         return {
           ...m,
@@ -203,12 +206,12 @@ export function useQuizAiChat({
       });
       updateChatHistory(updatedChat);
     },
-    [questions, updateQuestions, updateSingleQuestion, handleRemoveQuestion, chatHistory, updateChatHistory]
+    [updateQuestions, updateSingleQuestion, handleRemoveQuestion, updateChatHistory]
   );
 
   const handleRejectAction = useCallback(
     (action: SuggestedAction) => {
-      const updatedChat = chatHistory.map((m) => {
+      const updatedChat = chatHistoryRef.current.map((m) => {
         if (!m.suggestedActions) return m;
         return {
           ...m,
@@ -219,18 +222,22 @@ export function useQuizAiChat({
       });
       updateChatHistory(updatedChat);
     },
-    [chatHistory, updateChatHistory]
+    [updateChatHistory]
   );
 
   const handleAcceptAllInMessage = useCallback(
     (msgId: string) => {
-      const targetMsg = chatHistory.find((m) => m.id === msgId);
+      const targetMsg = chatHistoryRef.current.find((m) => m.id === msgId);
       if (!targetMsg || !targetMsg.suggestedActions) return;
 
       const pendingActions = targetMsg.suggestedActions.filter((a) => a.status === 'pending');
       if (pendingActions.length === 0) return;
 
-      let currentQuestionsList = [...questions];
+      const initialQuestions = [...questionsRef.current];
+      const deletedIds = new Set<string>();
+      const editsById = new Map<string, Record<string, unknown>>();
+      const newQuestionsToAdd: QuestionItem[] = [];
+      let pendingReorder: number[] | undefined;
 
       pendingActions.forEach((action, idx) => {
         if (action.actionType === 'create') {
@@ -249,26 +256,65 @@ export function useQuizAiChat({
             showExplanation: false,
             answered: false,
           };
-          currentQuestionsList.push(newQ);
+          newQuestionsToAdd.push(newQ);
         } else if (action.actionType === 'edit' && typeof action.targetQuestionIndex === 'number') {
-          const targetQ = currentQuestionsList[action.targetQuestionIndex];
+          const targetQ = initialQuestions[action.targetQuestionIndex];
           if (targetQ && action.changes) {
-            currentQuestionsList[action.targetQuestionIndex] = {
-              ...targetQ,
-              ...action.changes,
-            };
+            const existingChanges = editsById.get(targetQ.id) || {};
+            editsById.set(targetQ.id, { ...existingChanges, ...action.changes });
           }
         } else if (action.actionType === 'delete' && typeof action.targetQuestionIndex === 'number') {
-          const targetQ = currentQuestionsList[action.targetQuestionIndex];
+          const targetQ = initialQuestions[action.targetQuestionIndex];
           if (targetQ) {
-            currentQuestionsList = currentQuestionsList.filter((q) => q.id !== targetQ.id);
+            deletedIds.add(targetQ.id);
           }
+        } else if (action.actionType === 'reorder' && Array.isArray(action.order) && action.order.length > 0) {
+          pendingReorder = action.order;
         }
       });
 
-      updateQuestions(currentQuestionsList);
+      const resultingList: QuestionItem[] = [];
+      for (const q of initialQuestions) {
+        if (deletedIds.has(q.id)) {
+          continue;
+        }
+        const editChanges = editsById.get(q.id);
+        if (editChanges) {
+          resultingList.push({
+            ...q,
+            ...editChanges,
+          });
+        } else {
+          resultingList.push(q);
+        }
+      }
 
-      const updatedChat = chatHistory.map((m) => {
+      resultingList.push(...newQuestionsToAdd);
+
+      if (pendingReorder && pendingReorder.length > 0) {
+        const reorderedList: QuestionItem[] = [];
+        const addedIds = new Set<string>();
+
+        for (const idx of pendingReorder) {
+          const q = resultingList[idx];
+          if (q && !addedIds.has(q.id)) {
+            reorderedList.push(q);
+            addedIds.add(q.id);
+          }
+        }
+
+        for (const q of resultingList) {
+          if (!addedIds.has(q.id)) {
+            reorderedList.push(q);
+          }
+        }
+
+        updateQuestions(reorderedList);
+      } else {
+        updateQuestions(resultingList);
+      }
+
+      const updatedChat = chatHistoryRef.current.map((m) => {
         if (m.id !== msgId || !m.suggestedActions) return m;
         return {
           ...m,
@@ -279,12 +325,12 @@ export function useQuizAiChat({
       });
       updateChatHistory(updatedChat);
     },
-    [chatHistory, questions, updateQuestions, updateChatHistory]
+    [updateQuestions, updateChatHistory]
   );
 
   const handleRejectAllInMessage = useCallback(
     (msgId: string) => {
-      const updatedChat = chatHistory.map((m) => {
+      const updatedChat = chatHistoryRef.current.map((m) => {
         if (m.id !== msgId || !m.suggestedActions) return m;
         return {
           ...m,
@@ -295,7 +341,7 @@ export function useQuizAiChat({
       });
       updateChatHistory(updatedChat);
     },
-    [chatHistory, updateChatHistory]
+    [updateChatHistory]
   );
 
   const handleClearChatHistory = useCallback(() => {

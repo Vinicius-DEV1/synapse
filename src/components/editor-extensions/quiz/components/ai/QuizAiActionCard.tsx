@@ -10,6 +10,7 @@ import {
   FileText,
   CheckCircle2,
   ShieldCheck,
+  ArrowUpDown,
 } from 'lucide-react';
 import { markdownComponents, preprocessMarkdownCode } from '../../utils/markdownPreprocess';
 import type { QuestionItem, SuggestedAction } from '../../types';
@@ -36,6 +37,7 @@ export function QuizAiActionCard({
   const isCreate = action.actionType === 'create';
   const isEdit = action.actionType === 'edit';
   const isDelete = action.actionType === 'delete';
+  const isReorder = action.actionType === 'reorder';
 
   const isOpen = action.type === 'open' || action.changes?.type === 'open';
 
@@ -64,16 +66,20 @@ export function QuizAiActionCard({
                 ? 'bg-green-500/20 text-green-300 border-green-500/30'
                 : isEdit
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                  : 'bg-red-500/20 text-red-300 border-red-500/30'
+                  : isDelete
+                    ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
             }`}
           >
             {isCreate && <PlusCircle size={13} className="text-green-400" />}
             {isEdit && <Edit3 size={13} className="text-amber-400" />}
             {isDelete && <Trash2 size={13} className="text-red-400" />}
+            {isReorder && <ArrowUpDown size={13} className="text-cyan-400" />}
             <span>
               {isCreate && 'Criar Nova Questão'}
               {isEdit && `Editar Questão #${(action.targetQuestionIndex ?? 0) + 1}`}
               {isDelete && `Excluir Questão #${(action.targetQuestionIndex ?? 0) + 1}`}
+              {isReorder && 'Reordenar Bateria Didaticamente'}
             </span>
           </span>
 
@@ -316,6 +322,36 @@ export function QuizAiActionCard({
           <p className="font-semibold text-red-200 leading-snug">
             "{targetQ?.question || 'Questão não encontrada'}"
           </p>
+        </div>
+      )}
+
+      {/* CONTENT: REORDER QUESTIONS */}
+      {isReorder && (
+        <div className="space-y-2 pt-1">
+          <div className="p-3 bg-cyan-950/30 border border-cyan-500/30 rounded-xl space-y-2 text-xs">
+            <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider block">
+              Sequência Pedagógica Proposta:
+            </span>
+            <div className="space-y-1.5">
+              {Array.isArray(action.order) &&
+                action.order.map((qIdx, step) => {
+                  const qItem = questions[qIdx];
+                  return (
+                    <div
+                      key={step}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-black/30 border border-white/5 text-cyan-100"
+                    >
+                      <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold font-mono text-[10px] flex items-center justify-center shrink-0">
+                        {step + 1}
+                      </span>
+                      <span className="font-medium text-zinc-200 truncate flex-1">
+                        {qItem ? `Questão ${qIdx + 1}: ${qItem.question}` : `Questão #${qIdx + 1}`}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
       )}
 

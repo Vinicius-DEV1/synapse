@@ -4,6 +4,9 @@ import {
   sanitizeExpectedAnswer,
   cleanJsonBlock,
   parseEvaluationVerdict,
+  repairMalformedJson,
+  normalizeCandidateAction,
+  extractPartialSuggestedActions,
 } from './quiz-parser';
 import {
   buildSingleQuestionPrompt,
@@ -247,54 +250,92 @@ export async function promptGeminiQuizAssistant(
   );
   const responseText = response.text;
 
+  let parsed: {
+    message?: string;
+    suggestedActions?: CandidateQuestionAction[];
+    validationSummary?: string;
+  } = {};
+
+  const cleanText = cleanJsonBlock(responseText);
+
   try {
-    const cleanText = cleanJsonBlock(responseText);
-    const parsed = JSON.parse(cleanText);
+    parsed = JSON.parse(cleanText);
+  } catch {
+    try {
+      const repaired = repairMalformedJson(cleanText);
+      parsed = JSON.parse(repaired);
+    } catch {
+      console.warn(
+        '[QuizAssistant] Standard and repaired JSON.parse failed. Engaging resilient fallback question extraction.'
+      );
+      const extractedActions = extractPartialSuggestedActions(
+        responseText,
+        currentQuestions.length
+      );
+      const msgMatch = /"message":\s*"([^"]+)"/.exec(responseText);
+      const extractedMsg = msgMatch
+        ? msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+        : 'Aqui estão as sugestões para a sua bateria:';
 
-    // Ensure expectedAnswer in suggestedActions is sanitized
-    if (Array.isArray(parsed.suggestedActions)) {
-      parsed.suggestedActions = parsed.suggestedActions.map((act: any) => {
-        if (act.expectedAnswer)
-          act.expectedAnswer = sanitizeExpectedAnswer(act.expectedAnswer);
-        if (act.changes?.expectedAnswer)
-          act.changes.expectedAnswer = sanitizeExpectedAnswer(
-            act.changes.expectedAnswer
-          );
-        return act;
-      });
+      parsed = {
+        message: extractedMsg,
+        suggestedActions: extractedActions,
+      };
+    }
+  }
+
+  // Ensure suggestedActions is an array and normalize all candidate actions
+  if (Array.isArray(parsed.suggestedActions) && parsed.suggestedActions.length > 0) {
+    parsed.suggestedActions = parsed.suggestedActions.map((act: unknown) =>
+      normalizeCandidateAction(act, currentQuestions.length)
+    );
+  } else {
+    // If suggestedActions was missing or empty in parsed object, attempt fallback extraction
+    const fallbackActions = extractPartialSuggestedActions(
+      responseText,
+      currentQuestions.length
+    );
+    if (fallbackActions.length > 0) {
+      parsed.suggestedActions = fallbackActions;
+    }
+  }
+
+  // Clean up message if it somehow contained raw JSON
+  if (
+    typeof parsed.message === 'string' &&
+    parsed.message.trim().startsWith('{')
+  ) {
+    const msgMatch = /"message":\s*"([^"]+)"/.exec(parsed.message);
+    if (msgMatch) parsed.message = msgMatch[1];
+  }
+
+  if (!parsed.message || typeof parsed.message !== 'string') {
+    parsed.message = 'Aqui estão as sugestões para a sua bateria:';
+  }
+
+  // Dual AI Validation: only run for newly created questions if enabled in settings
+  const isDualAiEnabled = settings.quizDualAiValidation !== false;
+  const hasCreateActions =
+    Array.isArray(parsed.suggestedActions) &&
+    parsed.suggestedActions.some(
+      (act: CandidateQuestionAction) => act.actionType === 'create'
+    );
+
+  if (isDualAiEnabled && hasCreateActions && parsed.suggestedActions) {
+    const validatorModel =
+      settings.geminiModelQuizValidator ||
+      settings.geminiModelChat ||
+      settings.geminiModel;
+    const cleanValidatorModel = (validatorModel || 'gemini').replace(
+      /^models\//,
+      ''
+    );
+
+    if (onProgress) {
+      onProgress('validating', cleanValidatorModel);
     }
 
-    // Clean up message if it somehow contained raw JSON
-    if (
-      typeof parsed.message === 'string' &&
-      parsed.message.trim().startsWith('{')
-    ) {
-      const msgMatch = /"message":\s*"([^"]+)"/.exec(parsed.message);
-      if (msgMatch) parsed.message = msgMatch[1];
-    }
-
-    // Dual AI Validation: only run for newly created questions if enabled in settings
-    const isDualAiEnabled = settings.quizDualAiValidation !== false;
-    const hasCreateActions =
-      Array.isArray(parsed.suggestedActions) &&
-      parsed.suggestedActions.some(
-        (act: CandidateQuestionAction) => act.actionType === 'create'
-      );
-
-    if (isDualAiEnabled && hasCreateActions) {
-      const validatorModel =
-        settings.geminiModelQuizValidator ||
-        settings.geminiModelChat ||
-        settings.geminiModel;
-      const cleanValidatorModel = (validatorModel || 'gemini').replace(
-        /^models\//,
-        ''
-      );
-
-      if (onProgress) {
-        onProgress('validating', cleanValidatorModel);
-      }
-
+    try {
       const valResult = await validateCandidateQuizQuestions(
         parsed.suggestedActions,
         userMessage,
@@ -306,25 +347,16 @@ export async function promptGeminiQuizAssistant(
       if (valResult.validationSummary) {
         parsed.validationSummary = valResult.validationSummary;
       }
+    } catch (valErr) {
+      console.warn('[QuizAssistant] Dual-AI validation error, continuing with generator questions:', valErr);
     }
-
-    return parsed;
-  } catch (err) {
-    console.error(
-      'Failed to parse Gemini JSON for quiz assistant:',
-      responseText,
-      err
-    );
-
-    const msgMatch = /"message":\s*"([^"]+)"/.exec(responseText);
-    const extractedMsg = msgMatch
-      ? msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
-      : 'Aqui estão as sugestões para a sua bateria:';
-
-    return {
-      message: extractedMsg,
-    };
   }
+
+  return {
+    message: parsed.message,
+    suggestedActions: parsed.suggestedActions,
+    validationSummary: parsed.validationSummary,
+  };
 }
 
 export interface ParsedQuizQuestion {
