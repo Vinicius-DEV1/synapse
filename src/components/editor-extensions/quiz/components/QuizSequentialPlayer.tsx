@@ -6,7 +6,13 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { triggerFireworksAnimation } from '../utils/fireworks';
-import { playQuizSuccessSound, playQuizFailureSound } from '../utils/quizSounds';
+import {
+  playQuizSuccessSound,
+  playQuizFailureSound,
+  playQuizSlideSound,
+  playQuizGabaritoSound,
+  playQuizCompletionSound,
+} from '../utils/quizSounds';
 import { QuizSummaryView } from './sequential/QuizSummaryView';
 import { QuizSequentialHeader } from './sequential/QuizSequentialHeader';
 import { QuizSequentialCard } from './sequential/QuizSequentialCard';
@@ -23,7 +29,7 @@ interface QuizSequentialPlayerProps {
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
   onDeleteQuestion?: (qId: string, index: number) => void;
-  onOpenAiAssistant?: () => void;
+  onOpenAiAssistant?: (q?: QuestionItem, index?: number) => void;
   onEditQuestion?: () => void;
 }
 
@@ -119,6 +125,8 @@ export default function QuizSequentialPlayer({
       const bounded = Math.min(Math.max(0, targetIndex), Math.max(0, total - 1));
       if (bounded === activeIndex) return;
 
+      playQuizSlideSound();
+
       // Track slide animation direction based on target vs current index
       setNavDirection(bounded >= activeIndex ? 'forward' : 'backward');
 
@@ -198,6 +206,7 @@ export default function QuizSequentialPlayer({
 
   const handleConfirmFinish = useCallback(() => {
     setShowFinishConfirmModal(false);
+    playQuizCompletionSound();
     setShowSummaryView(true);
   }, []);
 
@@ -280,6 +289,7 @@ export default function QuizSequentialPlayer({
       if ((isGKey && (e.altKey || e.ctrlKey)) || (isGKey && !isInput && !hasOptionG)) {
         e.preventDefault();
         e.stopPropagation();
+        playQuizGabaritoSound();
         onUpdateSingleQuestion(
           currentQ.id,
           { showExplanation: !currentQ.showExplanation },

@@ -3,6 +3,11 @@ import {
   playQuizSuccessSound,
   playQuizFailureSound,
   playQuizSubmitSound,
+  playQuizTickSound,
+  playQuizSlideSound,
+  playQuizGabaritoSound,
+  playQuizAiOpenSound,
+  playQuizCompletionSound,
   isQuizSoundEnabled,
   setQuizSoundEnabled,
 } from './quizSounds';
@@ -33,12 +38,25 @@ describe('quizSounds utility', () => {
     expect(() => playQuizSubmitSound()).not.toThrow();
   });
 
+  it('plays tick, slide, gabarito, ai open, and completion sounds without throwing', () => {
+    expect(() => playQuizTickSound()).not.toThrow();
+    expect(() => playQuizSlideSound()).not.toThrow();
+    expect(() => playQuizGabaritoSound()).not.toThrow();
+    expect(() => playQuizAiOpenSound()).not.toThrow();
+    expect(() => playQuizCompletionSound()).not.toThrow();
+  });
+
   it('suppresses sounds when sound is disabled', () => {
     setQuizSoundEnabled(false);
     expect(() => {
       playQuizSuccessSound();
       playQuizFailureSound();
       playQuizSubmitSound();
+      playQuizTickSound();
+      playQuizSlideSound();
+      playQuizGabaritoSound();
+      playQuizAiOpenSound();
+      playQuizCompletionSound();
     }).not.toThrow();
   });
 });

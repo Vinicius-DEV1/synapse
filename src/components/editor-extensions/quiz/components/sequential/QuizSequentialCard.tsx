@@ -10,7 +10,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { FastMarkdown } from '../../utils/markdownPreprocess';
-import { playQuizTickSound } from '../../utils/quizSounds';
+import { playQuizTickSound, playQuizGabaritoSound, playQuizAiOpenSound } from '../../utils/quizSounds';
 import { getSettings } from '../../../../../utils/settings';
 import type { QuestionItem } from '../../types';
 
@@ -123,13 +123,14 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
             {/* Botão Ver Gabarito */}
             {(currentQ.explanation || (currentQ.type === 'open' && currentQ.expectedAnswer)) && (
               <button
-                onClick={() =>
+                onClick={() => {
+                  playQuizGabaritoSound();
                   onUpdateSingleQuestion(
                     currentQ.id,
                     { showExplanation: !currentQ.showExplanation },
                     true
-                  )
-                }
+                  );
+                }}
                 className={`px-2.5 py-1 rounded-lg border text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                   currentQ.showExplanation
                     ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
@@ -236,6 +237,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                 if ((e.key === 'g' || e.key === 'G') && (e.altKey || e.ctrlKey)) {
                   e.preventDefault();
                   e.stopPropagation();
+                  playQuizGabaritoSound();
                   onUpdateSingleQuestion(
                     currentQ.id,
                     { showExplanation: !currentQ.showExplanation },
@@ -312,7 +314,10 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
               <p className="leading-relaxed opacity-95 text-xs sm:text-sm">{currentQ.aiFeedback.feedback}</p>
               <div className="pt-2 border-t border-white/[0.06] flex justify-end">
                 <button
-                  onClick={() => onDiscussInChat(currentQ, activeIndex)}
+                  onClick={() => {
+                    playQuizAiOpenSound();
+                    onDiscussInChat(currentQ, activeIndex);
+                  }}
                   className="text-xs font-medium text-zinc-300 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <MessageSquare size={12} />
