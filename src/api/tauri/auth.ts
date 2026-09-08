@@ -18,6 +18,8 @@ export const tauriAuthApi = {
   createVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
   deleteVisitor: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
   onLock: () => () => {},
-  lock: async () => {},
+  lock: async () => {
+    await invoke('auth_lock');
+  },
   setPreferences: async () => {}
 };
