@@ -5,7 +5,6 @@ import { GripVertical, Play, Edit3, ExternalLink, Trash2, CheckCircle2, Tag, Arr
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
-import { QuizEditorModal } from './components/QuizEditorModal';
 import { Portal } from '../../ui/Portal';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeQuizQuestions } from './utils/quizNormalizer';
@@ -39,8 +38,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
   });
 
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
-  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
-  const [editorInitialAi, setEditorInitialAi] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const isMigratingRef = useRef(false);
@@ -176,9 +173,14 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     }
   }, [batteryId, rawBatteryId]);
 
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+  const activeModule = activeTab?.module;
+
   useEffect(() => {
-    loadBatteryData();
-  }, [loadBatteryData]);
+    if (activeModule === 'notes') {
+      loadBatteryData();
+    }
+  }, [activeModule, loadBatteryData]);
 
   // Stable buffers to prevent stale closures and TipTap re-render thrashing
   const questionsRef = useRef(questions);
@@ -275,79 +277,47 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     }
   }, [state.tabs, state.activeTabId, dispatch, batteryId, rawBatteryId]);
 
-  // Handle Save in Editor Modal
-  const handleSaveEditor = useCallback(
-    async (newTitle: string, newDescription: string, newQuestions: QuestionItem[]) => {
+  // Navigate to Question Editor page in Quiz Module (preserving TabBar and Sidebar)
+  const handleOpenEditorPage = useCallback(
+    async (initialShowAi = false) => {
       let bId = batteryId || rawBatteryId;
-      if (!window.api?.quiz) return;
+      const currentTab = state.tabs.find((t) => t.id === state.activeTabId);
 
-      const tagSet = new Set<string>();
-      newQuestions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t)));
-      const tags = Array.from(tagSet);
-
-      if (!bId) {
-        const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
-        const currentPageId = activeTab?.pageId;
-        const saved = await window.api.quiz.saveBattery({
-          title: newTitle,
-          description: newDescription,
-          page_id: currentPageId || undefined,
-          layout: 'sequential',
-          tags,
-        });
-        bId = saved.id;
-        setBatteryId(bId);
-        updateAttributesRef.current({ batteryId: bId });
-        if (currentPageId) {
-          await window.api.quiz.linkBatteryToPage(saved.id, currentPageId);
-        }
-      } else {
-        await window.api.quiz.saveBattery({
-          id: bId,
-          title: newTitle,
-          description: newDescription,
-          tags,
-        });
-      }
-
-      // Reconcile and soft-delete questions removed during editing
-      try {
-        const existingInDb = await window.api.quiz.getQuestionsByBattery(bId);
-        const incomingIds = new Set(newQuestions.map((q) => q.id));
-        for (const eq of existingInDb) {
-          if (!incomingIds.has(eq.id)) {
-            await window.api.quiz.deleteQuestion(eq.id);
+      // If not yet persisted to database, create battery first
+      if (!bId && window.api?.quiz) {
+        try {
+          const saved = await window.api.quiz.saveBattery({
+            title,
+            description,
+            page_id: currentTab?.pageId || undefined,
+            layout: 'sequential',
+            tags: cachedTags || [],
+          });
+          bId = saved.id;
+          setBatteryId(bId);
+          updateAttributesRef.current({ batteryId: bId });
+          if (currentTab?.pageId) {
+            await window.api.quiz.linkBatteryToPage(bId, currentTab.pageId);
           }
+        } catch (err) {
+          console.error('[QuestionBlockNodeView] Falha ao criar bateria antes de editar:', err);
         }
-      } catch (err) {
-        console.warn('[QuestionBlockNodeView] Falha ao conciliar questões excluídas:', err);
       }
 
-      const questionRecords = newQuestions.map((q, idx) => ({
-        id: q.id,
-        battery_id: bId,
-        type: q.type,
-        question: q.question,
-        options: q.options,
-        correct_index: q.correctIndex,
-        expected_answer: q.expectedAnswer,
-        explanation: q.explanation,
-        tags: q.tags || [],
-        sort_order: idx + 1,
-      }));
-
-      await window.api.quiz.saveQuestionsBatch(questionRecords);
-
-      updateAttributesRef.current({
-        cachedTitle: newTitle,
-        cachedCount: newQuestions.length,
-        cachedTags: tags,
-      });
-
-      setQuestions(newQuestions);
-      await loadBatteryData();
+      if (currentTab && bId) {
+        dispatch({
+          type: 'UPDATE_TAB_MODULE',
+          tabId: currentTab.id,
+          module: 'quiz',
+          moduleState: {
+            editingBatteryId: bId,
+            returnPageId: currentTab.pageId,
+            initialShowAi,
+          },
+        });
+      }
     },
-    [batteryId, rawBatteryId, loadBatteryData]
+    [batteryId, rawBatteryId, state.tabs, state.activeTabId, title, description, cachedTags, dispatch]
   );
 
   // Stats computation for the embed card
@@ -540,7 +510,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setIsEditorModalOpen(true);
+              handleOpenEditorPage(false);
             }}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Editar questões"
@@ -578,13 +548,11 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         onActiveIndexChange={setActiveIndex}
         onEditQuestion={() => {
           setIsFocusModeOpen(false);
-          setEditorInitialAi(false);
-          setIsEditorModalOpen(true);
+          handleOpenEditorPage(false);
         }}
         onOpenAiAssistant={() => {
           setIsFocusModeOpen(false);
-          setEditorInitialAi(true);
-          setIsEditorModalOpen(true);
+          handleOpenEditorPage(true);
         }}
         onDeleteQuestion={async (qId) => {
           setQuestions((prev) => prev.filter((q) => q.id !== qId));
@@ -598,20 +566,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             }
           }
         }}
-      />
-
-      {/* Editor Screen */}
-      <QuizEditorModal
-        isOpen={isEditorModalOpen}
-        onClose={() => {
-          setIsEditorModalOpen(false);
-          setEditorInitialAi(false);
-        }}
-        batteryTitle={title}
-        batteryDescription={description}
-        initialQuestions={questions}
-        onSave={handleSaveEditor}
-        initialShowAiAssistant={editorInitialAi}
       />
 
       {/* Delete Confirmation Dialog */}

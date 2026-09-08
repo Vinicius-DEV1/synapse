@@ -124,12 +124,23 @@ describe('QuestionsView Component', () => {
     });
   });
 
-  it('opens creation modal upon clicking "Nova Bateria"', async () => {
-    const { getByText, getByPlaceholderText } = render(<QuestionsView />);
+  it('opens full-page editor upon clicking "Nova Bateria" and returns to explorer on Voltar click', async () => {
+    const { getByText, getByPlaceholderText, getByTitle } = render(<QuestionsView />);
 
     const newBtn = getByText('Nova Bateria');
     fireEvent.click(newBtn);
 
     expect(getByPlaceholderText('Título da Bateria...')).toBeDefined();
+    expect(getByTitle('Voltar')).toBeDefined();
+
+    // Clicking Voltar closes the full-page editor and returns to Explorer
+    const backBtn = getByTitle('Voltar');
+    fireEvent.click(backBtn);
+
+    await waitFor(() => {
+      expect(getByText('Central de Questões')).toBeDefined();
+      expect(getByText('Explorador')).toBeDefined();
+    });
   });
 });
+
