@@ -3,6 +3,7 @@ import { X, Clock, AlertCircle } from 'lucide-react';
 import type { PageHistoryEntry } from '../../types';
 // @ts-ignore
 import HtmlDiff from 'htmldiff-js';
+import DOMPurify from 'dompurify';
 import { Portal } from '../ui/Portal';
 
 import { formatDateTimeWithSeconds } from '../../utils/date-utils';
@@ -53,7 +54,11 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
     if (!currentEntry) return '';
     const oldHtml = previousEntry ? previousEntry.content : '';
     const newHtml = currentEntry.content;
-    return HtmlDiff.execute(oldHtml, newHtml);
+    const rawDiff = HtmlDiff.execute(oldHtml, newHtml);
+    return DOMPurify.sanitize(rawDiff, {
+      ADD_TAGS: ['ins', 'del'],
+      FORBID_TAGS: ['script', 'iframe', 'object'],
+    });
   }, [currentEntry, previousEntry]);
 
   return (

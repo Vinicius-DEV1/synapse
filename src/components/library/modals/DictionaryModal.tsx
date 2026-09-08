@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit } from 'lucide-react';
 import { getSettings } from '../../../utils/settings';
+import DOMPurify from 'dompurify';
 import CardEditor from '../../anki/CardEditor';
 import type { CardDraft } from '../../anki/types';
 
@@ -233,13 +234,16 @@ export default function DictionaryModal({
             <div className="prose prose-invert prose-sm max-w-none prose-headings:text-brand-400 prose-headings:text-sm prose-headings:font-semibold prose-headings:mb-2 prose-p:text-dark-text/90 prose-p:leading-relaxed">
               <div
                 dangerouslySetInnerHTML={{
-                  __html: result
-                    .replace(/### (.*)/g, '<h5>$1</h5>')
-                    .replace(/## (.*)/g, '<h4>$1</h4>')
-                    .replace(/# (.*)/g, '<h3>$1</h3>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                    .replace(/\n/g, '<br/>'),
+                  __html: DOMPurify.sanitize(
+                    result
+                      .replace(/### (.*)/g, '<h5>$1</h5>')
+                      .replace(/## (.*)/g, '<h4>$1</h4>')
+                      .replace(/# (.*)/g, '<h3>$1</h3>')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                      .replace(/\n/g, '<br/>'),
+                    { FORBID_TAGS: ['script', 'iframe', 'object'] }
+                  ),
                 }}
               />
             </div>

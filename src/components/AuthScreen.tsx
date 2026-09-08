@@ -6,6 +6,7 @@ import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypt
 import { getVaultKeyHash } from '../services/vault-crypto';
 import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud, getSecurityLock, recordFailedAttempt, clearFailedAttempts } from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
+import { setWebVaultKey } from '../api/web/vault';
 import { platform } from '../services/platform';
 import { getRandomIntimidatingPhrase } from './auth/AuthSecurityPhrases';
 import { AuthLockoutView } from './auth/AuthLockoutView';
@@ -163,7 +164,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           }
           
           const vaultKeyHash = await getVaultKeyHash(password);
-          (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
+          setWebVaultKey((rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash);
           
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           if (window.api._setMasterKey) {
@@ -219,7 +220,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           // BUGFIX: If vault key exists in rawKeys (cloud), use it for backward compatibility
           // with older vaults that used original password instead of new one (if changed).
           const vaultKeyHash = await getVaultKeyHash(password);
-          (window as any).__cadernoVaultKey = (rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash;
+          setWebVaultKey((rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash);
 
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
           if (window.api._setMasterKey) {
