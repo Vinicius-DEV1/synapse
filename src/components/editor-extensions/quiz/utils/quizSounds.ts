@@ -217,3 +217,153 @@ export function playQuizSubmitSound(): void {
     console.debug('[QuizSounds] Submit sound error:', err);
   }
 }
+
+/**
+ * Plays a soft, velvet-like slide click when navigating between questions
+ * (<, >, arrow keys, or number stepper pills). Ultra-short and subtle to prevent fatigue.
+ */
+export function playQuizSlideSound(): void {
+  if (!isQuizSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const t = ctx.currentTime;
+
+    osc.type = 'sine';
+    // Gentle downward pitch sweep (420Hz -> 260Hz) simulating a smooth page turn
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(260, t + 0.02);
+
+    gainNode.gain.setValueAtTime(0, t);
+    gainNode.gain.linearRampToValueAtTime(0.025, t + 0.004);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.onended = () => {
+      try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+    };
+
+    osc.start(t);
+    osc.stop(t + 0.03);
+  } catch (err) {
+    console.debug('[QuizSounds] Slide sound error:', err);
+  }
+}
+
+/**
+ * Plays a warm, subtle two-tone unfold chime when toggling the gabarito/explanation.
+ */
+export function playQuizGabaritoSound(): void {
+  if (!isQuizSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const playNote = (freq: number, delay: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const t = ctx.currentTime + delay;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.035, t + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.onended = () => {
+        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+      };
+
+      osc.start(t);
+      osc.stop(t + dur);
+    };
+
+    playNote(392.0, 0, 0.08);    // G4
+    playNote(523.25, 0.04, 0.1); // C5
+  } catch (err) {
+    console.debug('[QuizSounds] Gabarito sound error:', err);
+  }
+}
+
+/**
+ * Plays a calm harmonic presence tone (432Hz) when opening the AI assistant discussion.
+ */
+export function playQuizAiOpenSound(): void {
+  if (!isQuizSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const t = ctx.currentTime;
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(432, t);
+
+    gainNode.gain.setValueAtTime(0, t);
+    gainNode.gain.linearRampToValueAtTime(0.035, t + 0.015);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.onended = () => {
+      try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+    };
+
+    osc.start(t);
+    osc.stop(t + 0.08);
+  } catch (err) {
+    console.debug('[QuizSounds] AI open sound error:', err);
+  }
+}
+
+/**
+ * Plays a tranquil ascending pentatonic chime when completing the quiz session or viewing summary.
+ */
+export function playQuizCompletionSound(): void {
+  if (!isQuizSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const playNote = (freq: number, delay: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const t = ctx.currentTime + delay;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.04, t + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.onended = () => {
+        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+      };
+
+      osc.start(t);
+      osc.stop(t + dur);
+    };
+
+    playNote(523.25, 0, 0.25);    // C5
+    playNote(659.25, 0.06, 0.3);  // E5
+    playNote(880.0, 0.12, 0.35);  // A5
+  } catch (err) {
+    console.debug('[QuizSounds] Completion sound error:', err);
+  }
+}
