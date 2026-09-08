@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { GripVertical, Play, Edit3, ExternalLink, Trash2, CheckCircle2, Tag } from 'lucide-react';
+import { NodeSelection } from '@tiptap/pm/state';
+import { GripVertical, Play, Edit3, ExternalLink, Trash2, CheckCircle2, Tag, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { selectNodeForDrag } from '../group-layout/DragToGroup';
+import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
 import { QuizEditorModal } from './components/QuizEditorModal';
 import { Portal } from '../../ui/Portal';
@@ -37,6 +40,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+  const [editorInitialAi, setEditorInitialAi] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const isMigratingRef = useRef(false);
@@ -194,6 +198,34 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
       const bId = batteryIdRef.current;
 
       if (bId && targetQuestion && window.api?.quiz) {
+        // Persist question content edits (e.g. from AI assistant or manual edit)
+        const isContentUpdate =
+          partial.question !== undefined ||
+          partial.options !== undefined ||
+          partial.correctIndex !== undefined ||
+          partial.expectedAnswer !== undefined ||
+          partial.explanation !== undefined ||
+          partial.type !== undefined ||
+          partial.tags !== undefined;
+
+        if (isContentUpdate) {
+          try {
+            await window.api.quiz.saveQuestion({
+              id: qId,
+              battery_id: bId,
+              question: partial.question ?? targetQuestion.question,
+              options: partial.options ?? targetQuestion.options,
+              correct_index: partial.correctIndex ?? targetQuestion.correctIndex,
+              expected_answer: partial.expectedAnswer ?? targetQuestion.expectedAnswer,
+              explanation: partial.explanation ?? targetQuestion.explanation,
+              type: partial.type ?? targetQuestion.type,
+              tags: partial.tags ?? targetQuestion.tags,
+            });
+          } catch (err) {
+            console.error('[QuestionBlockNodeView] Falha ao salvar edição de questão no banco:', err);
+          }
+        }
+
         const updatedType = targetQuestion.type;
         const isAttemptUpdate =
           (updatedType === 'multiple_choice' && partial.selectedIndex !== undefined && partial.selectedIndex !== null) ||
@@ -334,125 +366,197 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     ? cachedTags
     : Array.from(new Set(questions.flatMap((q) => q.tags || [])));
 
+  const pos = typeof props.getPos === 'function' ? props.getPos() : null;
+  const isNodeSelected = !!(
+    props.selected &&
+    props.editor?.state?.selection instanceof NodeSelection &&
+    typeof pos === 'number' &&
+    props.editor.state.selection.from === pos
+  );
+
+  const handleDragHandleMouseDown = () => {
+    if (typeof props.getPos === 'function' && props.editor?.view) {
+      const p = props.getPos();
+      if (typeof p === 'number') {
+        selectNodeForDrag(props.editor.view, p, props.node);
+      }
+    }
+  };
+
   return (
-    <NodeViewWrapper className="question-block-embed-wrapper my-4">
-      {/* High-Performance Embed Card */}
+    <NodeViewWrapper className="quiz-block-wrapper relative group/quiz my-2">
+      {/* Alça e controles verticais no gutter esquerdo */}
       <div
-        className="w-full bg-zinc-900/60 hover:bg-zinc-900/80 border border-white/[0.08] hover:border-white/[0.14] rounded-2xl p-4 md:p-5 transition-all duration-150 relative group shadow-sm select-none"
+        contentEditable={false}
+        className="absolute -left-7 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/quiz:opacity-100"
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function' && props.editor) {
+              const p = props.getPos();
+              if (typeof p === 'number') moveBlockUp(props.editor.view, p);
+            }
+          }}
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+          title="Subir bloco de questões (Mover para cima)"
+        >
+          <ArrowUp size={11} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function' && props.editor) {
+              const p = props.getPos();
+              if (typeof p === 'number') {
+                props.editor.chain().focus().insertContentAt(p + props.node.nodeSize, { type: 'paragraph' }).run();
+              }
+            }
+          }}
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+          title="Adicionar linha abaixo (+)"
+        >
+          <Plus size={11} />
+        </button>
+        <div
+          data-drag-handle
+          onMouseDown={handleDragHandleMouseDown}
+          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+          title="Arrastar bloco de questões"
+        >
+          <GripVertical size={13} />
+        </div>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof props.getPos === 'function' && props.editor) {
+              const p = props.getPos();
+              if (typeof p === 'number') moveBlockDown(props.editor.view, p);
+            }
+          }}
+          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+          title="Descer bloco de questões (Mover para baixo)"
+        >
+          <ArrowDown size={11} />
+        </button>
+      </div>
+
+      {/* Card compacto em linha única */}
+      <div
+        onMouseDown={() => {
+          if (typeof props.getPos === 'function' && props.editor) {
+            const p = props.getPos();
+            if (typeof p === 'number') {
+              props.editor.commands.setNodeSelection(p);
+            }
+          }
+        }}
+        className={`w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-xl border select-none transition-all duration-150 ${
+          props.selected || isNodeSelected
+            ? 'bg-zinc-900/90 border-brand-400 ring-1 ring-brand-400/50 shadow-sm'
+            : 'bg-zinc-900/60 hover:bg-zinc-900/80 border-white/[0.08] hover:border-white/[0.14]'
+        }`}
         style={{ contain: 'layout style' }}
       >
-        {/* Card Header */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Drag Handle */}
-            <div
-              data-drag-handle
-              className="p-1 rounded text-zinc-600 hover:text-zinc-300 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
-              title="Arrastar bloco"
-            >
-              <GripVertical size={16} />
-            </div>
+        {/* Left Side: Icon, Title, Badges */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
+            <CheckCircle2 size={15} />
+          </div>
 
-            {/* Icon */}
-            <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
-              <CheckCircle2 size={18} />
-            </div>
+          <span
+            className="text-xs sm:text-sm font-semibold text-zinc-100 truncate max-w-[180px] sm:max-w-xs md:max-w-sm"
+            title={title}
+          >
+            {title}
+          </span>
 
-            {/* Title & Badge */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm md:text-base font-semibold text-zinc-100 truncate">
-                  {title}
-                </h4>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                  {stats.total} {stats.total === 1 ? 'questão' : 'questões'}
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
+            {stats.total} {stats.total === 1 ? 'questão' : 'questões'}
+          </span>
+
+          {stats.answered > 0 && (
+            <span className="text-[11px] font-mono text-emerald-400 font-medium shrink-0 flex items-center gap-1">
+              <span>{stats.accuracy}% acertos</span>
+              <span className="text-zinc-600 text-[10px] hidden md:inline">({stats.answered}/{stats.total})</span>
+            </span>
+          )}
+
+          {displayTags.length > 0 && (
+            <div className="hidden lg:flex items-center gap-1 shrink-0">
+              {displayTags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-0.5"
+                >
+                  <Tag size={9} className="text-zinc-500" />
+                  <span>{tag}</span>
                 </span>
-              </div>
-              {description && (
-                <p className="text-xs text-zinc-400 truncate mt-0.5">{description}</p>
+              ))}
+              {displayTags.length > 2 && (
+                <span className="text-[10px] text-zinc-500 font-mono">+{displayTags.length - 2}</span>
               )}
             </div>
-          </div>
+          )}
 
-          {/* Quick Actions (Right Header) */}
-          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleNavigateToQuestionsModule}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-              title="Abrir no Módulo de Questões"
-            >
-              <ExternalLink size={15} />
-            </button>
-
-            <button
-              onClick={() => setIsEditorModalOpen(true)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-              title="Editar questões"
-            >
-              <Edit3 size={15} />
-            </button>
-
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-              title="Remover bloco da nota"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Tags & Progress Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/[0.05]">
-          {/* Tags */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {displayTags.slice(0, 4).map((tag) => (
-              <span
-                key={tag}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-1"
-              >
-                <Tag size={10} className="text-zinc-500" />
-                {tag}
-              </span>
-            ))}
-            {displayTags.length > 4 && (
-              <span className="text-[10px] text-zinc-500 font-mono">
-                +{displayTags.length - 4}
-              </span>
-            )}
-          </div>
-
-          {/* Progress / Score Badge */}
-          {stats.answered > 0 && (
-            <div className="flex items-center gap-2 text-xs font-medium text-zinc-300">
-              <span className="text-emerald-400 font-mono">{stats.accuracy}% acertos</span>
-              <span className="text-zinc-600">•</span>
-              <span className="text-zinc-400 font-mono">
-                {stats.answered}/{stats.total} respondidas
-              </span>
-            </div>
+          {description && (
+            <span className="hidden 2xl:inline text-xs text-zinc-500 truncate max-w-xs" title={description}>
+              <span className="opacity-50 mr-1">•</span>
+              {description}
+            </span>
           )}
         </div>
 
-        {/* Primary Launch Button */}
-        <div className="mt-4 pt-3 border-t border-white/[0.05] flex items-center justify-between gap-2">
+        {/* Right Side: Quick Actions & Launch Button */}
+        <div className="flex items-center gap-1 shrink-0">
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setActiveIndex(0);
               setIsFocusModeOpen(true);
             }}
-            className="flex-1 py-2 px-4 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+            className="px-2.5 py-1 rounded-lg bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Iniciar no Modo Foco"
           >
-            <Play size={14} className="fill-brand-300" />
-            <span>Iniciar no Modo Foco</span>
+            <Play size={11} className="fill-brand-300 shrink-0" />
+            <span className="hidden sm:inline">Iniciar no Modo Foco</span>
+            <span className="sm:hidden">Foco</span>
           </button>
 
           <button
-            onClick={() => setIsEditorModalOpen(true)}
-            className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium transition-all cursor-pointer"
-            title="Gerenciar questões desta bateria"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNavigateToQuestionsModule();
+            }}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+            title="Abrir no Módulo de Questões"
           >
-            Editar
+            <ExternalLink size={14} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditorModalOpen(true);
+            }}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+            title="Editar questões"
+          >
+            <Edit3 size={14} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(true);
+            }}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            title="Remover bloco da nota"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -474,18 +578,40 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         onActiveIndexChange={setActiveIndex}
         onEditQuestion={() => {
           setIsFocusModeOpen(false);
+          setEditorInitialAi(false);
           setIsEditorModalOpen(true);
+        }}
+        onOpenAiAssistant={() => {
+          setIsFocusModeOpen(false);
+          setEditorInitialAi(true);
+          setIsEditorModalOpen(true);
+        }}
+        onDeleteQuestion={async (qId) => {
+          setQuestions((prev) => prev.filter((q) => q.id !== qId));
+          const bId = batteryId || rawBatteryId;
+          if (bId && window.api?.quiz) {
+            try {
+              await window.api.quiz.deleteQuestion(qId);
+              await loadBatteryData();
+            } catch (err) {
+              console.error('[QuestionBlockNodeView] Falha ao excluir questão no banco:', err);
+            }
+          }
         }}
       />
 
-      {/* Editor Modal */}
+      {/* Editor Screen */}
       <QuizEditorModal
         isOpen={isEditorModalOpen}
-        onClose={() => setIsEditorModalOpen(false)}
+        onClose={() => {
+          setIsEditorModalOpen(false);
+          setEditorInitialAi(false);
+        }}
         batteryTitle={title}
         batteryDescription={description}
         initialQuestions={questions}
         onSave={handleSaveEditor}
+        initialShowAiAssistant={editorInitialAi}
       />
 
       {/* Delete Confirmation Dialog */}

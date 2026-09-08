@@ -10,6 +10,7 @@ interface QuestionsExplorerProps {
   onDeleteBattery: (batteryId: string) => void;
   onNavigateToPage: (pageId: string) => void;
   allAvailableTags: string[];
+  getPageTitle?: (pageId: string) => string | null;
   highlightedBatteryId?: string;
 }
 
@@ -20,6 +21,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   onDeleteBattery,
   onNavigateToPage,
   allAvailableTags,
+  getPageTitle,
   highlightedBatteryId,
 }: QuestionsExplorerProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,12 +107,16 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             (q.explanation || '').toLowerCase().includes(term) ||
             (q.tags || []).some((t) => typeof t === 'string' && t.toLowerCase().includes(term))
         );
-        if (!matchesTitle && !matchesDesc && !matchesTag && !matchesQuestions) return false;
+        const matchesOriginPage =
+          Boolean(b.page_id && getPageTitle?.(b.page_id)?.toLowerCase().includes(term)) ||
+          Boolean(b.linkedPages && b.linkedPages.some((p) => (getPageTitle?.(p.id) || p.title || '').toLowerCase().includes(term)));
+
+        if (!matchesTitle && !matchesDesc && !matchesTag && !matchesQuestions && !matchesOriginPage) return false;
       }
 
       return true;
     });
-  }, [batteries, searchTerm, selectedOrigin, selectedTag, selectedStatus]);
+  }, [batteries, searchTerm, selectedOrigin, selectedTag, selectedStatus, getPageTitle]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -281,26 +287,30 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         {/* Page Link */}
                         {b.linkedPages && b.linkedPages.length > 0 ? (
-                          b.linkedPages.map((p) => (
-                            <button
-                              key={p.id}
-                              onClick={() => onNavigateToPage(p.id)}
-                              className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
-                              title={`Abrir página "${p.title}" no Caderno`}
-                            >
-                              <FileText size={11} />
-                              <span className="truncate max-w-xs">{p.title}</span>
-                              <ExternalLink size={10} className="opacity-70" />
-                            </button>
-                          ))
+                          b.linkedPages.map((p) => {
+                            const pageTitle = getPageTitle?.(p.id) || p.title || 'Caderno';
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => onNavigateToPage(p.id)}
+                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                                title={`Abrir página "${pageTitle}" no Caderno`}
+                              >
+                                <FileText size={11} />
+                                <span className="truncate max-w-xs">{pageTitle}</span>
+                                <ExternalLink size={10} className="opacity-70" />
+                              </button>
+                            );
+                          })
                         ) : b.page_id ? (
                           <button
                             onClick={() => onNavigateToPage(b.page_id!)}
                             className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                            title={`Abrir página "${getPageTitle?.(b.page_id) || 'Caderno'}" no Caderno`}
                           >
                             <FileText size={11} />
-                            <span>Ver no Caderno</span>
-                            <ExternalLink size={10} />
+                            <span className="truncate max-w-xs">{getPageTitle?.(b.page_id) || 'Caderno'}</span>
+                            <ExternalLink size={10} className="opacity-70" />
                           </button>
                         ) : (
                           <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400 flex items-center gap-1">
