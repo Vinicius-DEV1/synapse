@@ -31,28 +31,50 @@ export const FastMarkdown = memo(function FastMarkdown({
 
 export const preprocessMarkdownCode = (text: string): string => {
   if (!text) return '';
-  const validLangs = [
-    'js',
-    'javascript',
-    'ts',
-    'typescript',
-    'python',
-    'py',
-    'sql',
-    'html',
-    'css',
-    'json',
-    'bash',
-    'sh',
-    'c',
-    'cpp',
-    'java',
-  ];
+  const validLangs: Record<string, string> = {
+    js: 'javascript',
+    javascript: 'javascript',
+    ts: 'typescript',
+    typescript: 'typescript',
+    python: 'python',
+    py: 'python',
+    sql: 'sql',
+    html: 'html',
+    css: 'css',
+    json: 'json',
+    bash: 'bash',
+    sh: 'bash',
+    c: 'c',
+    cpp: 'cpp',
+    'c++': 'cpp',
+    csharp: 'csharp',
+    cs: 'csharp',
+    'c#': 'csharp',
+    dotnet: 'csharp',
+    java: 'java',
+    rust: 'rust',
+    rs: 'rust',
+    go: 'go',
+    golang: 'go',
+    kotlin: 'kotlin',
+    kt: 'kotlin',
+    swift: 'swift',
+    php: 'php',
+    ruby: 'ruby',
+    rb: 'ruby',
+    dart: 'dart',
+    yaml: 'yaml',
+    yml: 'yaml',
+    xml: 'xml',
+    r: 'r',
+    scala: 'scala',
+  };
 
-  return text.replace(/`([a-z]{2,10})\s+([^`\n]{12,})`/gi, (match, lang, codeBody) => {
-    if (validLangs.includes(lang.toLowerCase())) {
+  return text.replace(/`([a-z0-9#+]{1,10})\s+([^`\n]{12,})`/gi, (match, lang, codeBody) => {
+    const normalizedLang = validLangs[lang.toLowerCase()];
+    if (normalizedLang) {
       const formattedCode = codeBody.trim().replace(/;\s*/g, ';\n');
-      return `\n\`\`\`${lang.toLowerCase()}\n${formattedCode}\n\`\`\`\n`;
+      return `\n\`\`\`${normalizedLang}\n${formattedCode}\n\`\`\`\n`;
     }
     return match;
   });

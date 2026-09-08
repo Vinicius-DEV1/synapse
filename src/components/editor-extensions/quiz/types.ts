@@ -1,6 +1,6 @@
 export interface SuggestedAction {
   id: string;
-  actionType: 'create' | 'edit' | 'delete';
+  actionType: 'create' | 'edit' | 'delete' | 'reorder';
   status: 'pending' | 'accepted' | 'rejected';
   // create
   type?: 'multiple_choice' | 'open';
@@ -12,6 +12,8 @@ export interface SuggestedAction {
   explanation?: string;
   // edit / delete
   targetQuestionIndex?: number;
+  // reorder
+  order?: number[];
   changes?: {
     type?: 'multiple_choice' | 'open';
     question?: string;

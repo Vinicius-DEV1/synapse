@@ -1,21 +1,13 @@
 import { promptGemini } from './client';
-import { cleanJsonBlock, sanitizeExpectedAnswer } from './quiz-parser';
+import {
+  cleanJsonBlock,
+  repairMalformedJson,
+  normalizeCandidateAction,
+  type CandidateQuestionAction,
+} from './quiz-parser';
 import { buildQuizValidationPrompt } from './quiz-prompts';
 
-export interface CandidateQuestionAction {
-  actionType: 'create' | 'edit' | 'delete';
-  type?: 'multiple_choice' | 'open';
-  question?: string;
-  options?: string[];
-  correctIndex?: number;
-  expectedAnswer?: string;
-  explanation?: string;
-  targetQuestionIndex?: number;
-  changes?: Record<string, unknown>;
-  reason?: string;
-  factCheckVerdict?: 'approved' | 'corrected';
-  validatedByModel?: string;
-}
+export type { CandidateQuestionAction };
 
 export interface QuizValidationResult {
   actions: CandidateQuestionAction[];
@@ -72,7 +64,17 @@ export async function validateCandidateQuizQuestions(
       modelId || undefined
     );
     const cleanText = cleanJsonBlock(response.text);
-    const parsed = JSON.parse(cleanText);
+    let parsed: Record<string, unknown> = {};
+
+    try {
+      parsed = JSON.parse(cleanText);
+    } catch {
+      try {
+        parsed = JSON.parse(repairMalformedJson(cleanText));
+      } catch {
+        parsed = {};
+      }
+    }
 
     const validatedList: unknown[] = Array.isArray(parsed.validatedQuestions)
       ? parsed.validatedQuestions
@@ -105,7 +107,10 @@ export async function validateCandidateQuizQuestions(
         };
       }
 
+      const normVItem = normalizeCandidateAction(vItem);
+
       const isCorrected =
+        normVItem.factCheckVerdict === 'corrected' ||
         vItem.factCheckVerdict === 'corrected' ||
         Boolean(
           vItem.improvements &&
@@ -116,38 +121,23 @@ export async function validateCandidateQuizQuestions(
         hasCorrections = true;
       }
 
-      const rawOpts = vItem.options;
       const options =
-        Array.isArray(rawOpts) && rawOpts.length >= 2
-          ? rawOpts.map((o) => String(o))
+        normVItem.options && normVItem.options.length >= 2
+          ? normVItem.options
           : act.options;
 
       return {
         ...act,
-        type:
-          vItem.type === 'open'
-            ? ('open' as const)
-            : ('multiple_choice' as const),
-        question:
-          typeof vItem.question === 'string' && vItem.question.trim()
-            ? vItem.question
-            : act.question,
+        type: normVItem.type || act.type,
+        question: normVItem.question || act.question,
         options,
         correctIndex:
-          typeof vItem.correctIndex === 'number'
-            ? vItem.correctIndex
+          typeof normVItem.correctIndex === 'number'
+            ? normVItem.correctIndex
             : act.correctIndex,
-        expectedAnswer:
-          typeof vItem.expectedAnswer === 'string'
-            ? sanitizeExpectedAnswer(vItem.expectedAnswer)
-            : act.expectedAnswer,
-        explanation:
-          typeof vItem.explanation === 'string' && vItem.explanation.trim()
-            ? vItem.explanation
-            : act.explanation,
-        factCheckVerdict: (vItem.factCheckVerdict === 'corrected'
-          ? 'corrected'
-          : 'approved') as 'approved' | 'corrected',
+        expectedAnswer: normVItem.expectedAnswer || act.expectedAnswer,
+        explanation: normVItem.explanation || act.explanation,
+        factCheckVerdict: (isCorrected ? 'corrected' : 'approved') as 'approved' | 'corrected',
         validatedByModel: cleanModelName,
       };
     });

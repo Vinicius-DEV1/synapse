@@ -214,6 +214,7 @@ export function buildQuizAssistantPrompt(
    - If the user asks to CREATE new questions, use actionType "create" for each proposed question.
    - If the user asks to EDIT an existing question (improve question text, fix options, strengthen explanation), use actionType "edit" with "targetQuestionIndex" (1-based index) and "changes" containing ONLY the changed fields.
    - If the user asks to DELETE/REMOVE a question, use actionType "delete" with "targetQuestionIndex" and "reason" explaining why.
+   - If the user asks to REORDER / REORGANIZE the questions for sequential study progression, use actionType "reorder" with "order" (an array of all current question indices 1-based in their recommended sequence, e.g. [3, 1, 4, 2]) and "reason" detailing the pedagogical learning progression.
    - You can combine multiple actions in a single response when appropriate.
 4. CODE FORMATTING GUIDELINES:
    - Whenever a question, option, or explanation contains code (JavaScript, Python, SQL, HTML, etc.):
@@ -231,6 +232,12 @@ export function buildQuizAssistantPrompt(
    - It is STRICTLY FORBIDDEN to duplicate, rephrase, or overlap with questions, concepts, code snippets, or scenarios that already exist in either the current battery or any referenced battery.
    - The user's goal with @ references is to create NEW exercises on the same subject/domain WITHOUT seeing repeated questions.
    - Every new question MUST explore NEW subtopics, complementary angles, deeper edge cases, advanced mechanics, or alternate principles to expand the user's coverage and learning depth.
+8. MANDATORY PEDAGOGICAL SEQUENCING & COGNITIVE PROGRESSION:
+   - Whenever generating multiple NEW questions (actionType "create"), ALWAYS order them in a natural, progressive didactic sequence:
+     - 1º: Foundational definitions, basic syntax, core concepts, and fundamental building blocks.
+     - 2º: Intermediate mechanics, practical operations, logic branches, and common usage patterns.
+     - 3º: Advanced edge cases, architectural trade-offs, performance nuances, and deeper mastery.
+   - Never output questions in arbitrary or chaotic order. The generated sequence must serve as a complete, step-by-step learning ladder.
 
 Respond STRICTLY in raw JSON format matching this schema:
 {
@@ -267,6 +274,11 @@ Respond STRICTLY in raw JSON format matching this schema:
       "actionType": "delete",
       "targetQuestionIndex": 3,
       "reason": "Ambiguous wording with weak distractors"
+    },
+    {
+      "actionType": "reorder",
+      "order": [3, 1, 4, 2],
+      "reason": "Sequência pedagógica: Fundamentos -> Controle de fluxo -> POO -> Tópicos avançados"
     }
   ]
 }
