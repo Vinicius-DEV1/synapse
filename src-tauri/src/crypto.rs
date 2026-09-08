@@ -166,3 +166,71 @@ pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String,
 
     Err("Invalid IV length".into())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_derive_key_from_password_deterministic() {
+        let key1 = derive_key_from_password("mypassword123");
+        let key2 = derive_key_from_password("mypassword123");
+        assert_eq!(key1, key2);
+        assert_eq!(key1.len(), 32);
+
+        let key3 = derive_key_from_password("different_password");
+        assert_ne!(key1, key3);
+    }
+
+    #[test]
+    fn test_module_key_generation_and_encryption_roundtrip() {
+        let master_key = derive_key_from_password("master_password_vault");
+        let module_key = generate_module_key();
+        assert_eq!(module_key.len(), 64); // 32 bytes in hex
+
+        let encrypted = encrypt_module_key_with_key(&module_key, &master_key)
+            .expect("Failed to encrypt module key");
+        let decrypted = decrypt_module_key_with_key(&encrypted, &master_key)
+            .expect("Failed to decrypt module key");
+        assert_eq!(module_key, decrypted);
+    }
+
+    #[test]
+    fn test_content_encryption_roundtrip() {
+        let key_hex = generate_module_key();
+        let message = "Nota Secreta: 🔑 Caderno E2EE 2026 com emojis e acentuação: áéíóú çãõ";
+
+        let encrypted = encrypt_content(&key_hex, message).expect("Encryption failed");
+        let decrypted = decrypt_content(&key_hex, &encrypted).expect("Decryption failed");
+        assert_eq!(message, decrypted);
+    }
+
+    #[test]
+    fn test_ciphertext_randomness() {
+        let key_hex = generate_module_key();
+        let message = "Deterministic message";
+
+        let enc1 = encrypt_content(&key_hex, message).unwrap();
+        let enc2 = encrypt_content(&key_hex, message).unwrap();
+
+        // Must produce different IVs and ciphertexts due to fresh nonces
+        assert_ne!(enc1, enc2);
+        assert_eq!(decrypt_content(&key_hex, &enc1).unwrap(), message);
+        assert_eq!(decrypt_content(&key_hex, &enc2).unwrap(), message);
+    }
+
+    #[test]
+    fn test_tampered_ciphertext_rejection() {
+        let key_hex = generate_module_key();
+        let message = "Confidential data";
+
+        let encrypted = encrypt_content(&key_hex, message).unwrap();
+        let parts: Vec<&str> = encrypted.split(':').collect();
+        assert_eq!(parts.len(), 3);
+
+        // Tamper with ciphertext by altering last byte
+        let tampered_payload = format!("{}:{}:{}00", parts[0], parts[1], &parts[2][..parts[2].len() - 2]);
+        let result = decrypt_content(&key_hex, &tampered_payload);
+        assert!(result.is_err(), "Tampered ciphertext should fail authentication");
+    }
+}
