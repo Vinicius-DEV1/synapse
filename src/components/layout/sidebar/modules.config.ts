@@ -12,7 +12,8 @@ import {
   Shield,
   Mic,
   Trash2,
-  PenTool
+  PenTool,
+  CheckSquare
 } from 'lucide-react';
 
 export interface ModuleConfig {
@@ -26,6 +27,7 @@ export interface ModuleConfig {
 export const MAIN_MODULES: ModuleConfig[] = [
   { id: 'home', label: 'Início', icon: Home },
   { id: 'notes', label: 'Caderno', icon: BookOpen },
+  { id: 'quiz', label: 'Questões', icon: CheckSquare },
   { id: 'library', label: 'Biblioteca', icon: Library },
   { id: 'finance', label: 'Finanças', icon: Wallet },
   { id: 'culture', label: 'Cultura', icon: Film },

@@ -38,4 +38,5 @@ export interface IQuizApi {
   // Stats & Compositions
   getStats(): Promise<QuizStats>;
   getBatteryWithQuestions(batteryId: string): Promise<BatteryWithQuestions | null>;
+  getAllBatteriesEnriched(): Promise<BatteryWithQuestions[]>;
 }

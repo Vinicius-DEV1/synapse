@@ -1,6 +1,6 @@
 import type { IDBPDatabase } from 'idb';
 import type { CadernoDBSchema } from '../../../services/db-web';
-import type { QuizStats, BatteryWithQuestions, QuizBattery, QuizQuestion } from '../../../types/quiz';
+import type { QuizStats, BatteryWithQuestions, QuizQuestion, QuizPageLink, QuizAttempt } from '../../../types/quiz';
 import type { createQuizBatteriesApi } from './quiz-batteries';
 import type { createQuizQuestionsApi } from './quiz-questions';
 import type { createQuizAttemptsApi } from './quiz-attempts';
@@ -106,6 +106,72 @@ export function createQuizStatsApi(
         latestAttempts,
         linkedPages,
       };
+    },
+
+    async getAllBatteriesEnriched(): Promise<BatteryWithQuestions[]> {
+      const [allBatteries, allQuestionsRaw, latestAttempts, allLinks, allPages] = await Promise.all([
+        batteriesApi.getAll(),
+        db.getAll('quiz_questions'),
+        attemptsApi.getLatestAttempts(),
+        db.getAll('quiz_page_links').catch(() => []),
+        db.getAll('pages').catch(() => []),
+      ]);
+
+      const pageMap = new Map<string, { id: string; title: string; icon?: string }>();
+      ((allPages || []) as Array<{ id: string; title?: string; icon?: string; deleted_at?: string | null }>).forEach((p) => {
+        if (!p.deleted_at) {
+          pageMap.set(p.id, { id: p.id, title: p.title || 'Sem título', icon: p.icon || 'file' });
+        }
+      });
+
+      // Group links by battery_id
+      const linksByBattery = new Map<string, Set<string>>();
+      ((allLinks || []) as QuizPageLink[]).forEach((l) => {
+        if (!l.deleted_at) {
+          if (!linksByBattery.has(l.battery_id)) linksByBattery.set(l.battery_id, new Set());
+          linksByBattery.get(l.battery_id)!.add(l.page_id);
+        }
+      });
+
+      // Group questions by battery_id
+      const questionsByBattery = new Map<string, QuizQuestion[]>();
+      (allQuestionsRaw || []).forEach((q: QuizQuestion) => {
+        if (!q.deleted_at) {
+          if (!questionsByBattery.has(q.battery_id)) questionsByBattery.set(q.battery_id, []);
+          questionsByBattery.get(q.battery_id)!.push(q);
+        }
+      });
+
+      // Sort questions by sort_order
+      questionsByBattery.forEach((list) => {
+        list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      });
+
+      return allBatteries.map((b) => {
+        const bQuestions = questionsByBattery.get(b.id) || [];
+        const pageIds = new Set<string>();
+        if (b.page_id) pageIds.add(b.page_id);
+        const extraLinks = linksByBattery.get(b.id);
+        if (extraLinks) extraLinks.forEach((pId) => pageIds.add(pId));
+
+        const linkedPages: { id: string; title: string; icon?: string }[] = [];
+        pageIds.forEach((pId) => {
+          const page = pageMap.get(pId);
+          if (page) linkedPages.push(page);
+        });
+
+        const bAttempts: Record<string, QuizAttempt> = {};
+        bQuestions.forEach((q) => {
+          if (latestAttempts[q.id]) bAttempts[q.id] = latestAttempts[q.id];
+        });
+
+        return {
+          ...b,
+          questions: bQuestions,
+          latestAttempts: bAttempts,
+          linkedPages,
+        };
+      });
     },
   };
 }

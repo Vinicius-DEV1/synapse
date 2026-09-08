@@ -1,0 +1,467 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus } from 'lucide-react';
+import { QuestionsDashboard } from './QuestionsDashboard';
+import { QuestionsExplorer } from './QuestionsExplorer';
+import { QuestionsPlaylists } from './QuestionsPlaylists';
+import { QuizSequentialFocusModal } from '../editor-extensions/quiz/components/sequential/QuizSequentialFocusModal';
+import { QuizEditorModal } from '../editor-extensions/quiz/components/QuizEditorModal';
+import { useQuizEvaluation } from '../editor-extensions/quiz/hooks/useQuizEvaluation';
+import { useStore } from '../../store/useStore';
+import type { BatteryWithQuestions, QuizStats } from '../../types/quiz';
+import type { QuestionItem } from '../editor-extensions/quiz/types';
+import type { GeneratedStudySession } from '../../services/quiz/quizSimulator';
+
+interface QuestionsViewProps {
+  tabId?: string;
+}
+
+// In-memory module cache for instant SWR transitions (0ms perceived latency)
+let cachedBatteries: BatteryWithQuestions[] | null = null;
+let cachedStats: QuizStats | null = null;
+
+export function resetQuestionsViewCache() {
+  cachedBatteries = null;
+  cachedStats = null;
+}
+
+export default function QuestionsView({ tabId }: QuestionsViewProps) {
+  const { dispatch, state } = useStore();
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+
+  const [activeTabSection, setActiveTabSection] = useState<'explorer' | 'dashboard' | 'playlists'>('explorer');
+  const [batteries, setBatteries] = useState<BatteryWithQuestions[]>(() => cachedBatteries || []);
+  const [stats, setStats] = useState<QuizStats>(
+    () =>
+      cachedStats || {
+        totalBatteries: 0,
+        totalQuestions: 0,
+        answeredQuestions: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        accuracyRate: 0,
+        tagStats: {},
+      }
+  );
+  const [isLoading, setIsLoading] = useState(() => !cachedBatteries);
+
+  // Playing session state (Focus Mode)
+  const [activePlayingSession, setActivePlayingSession] = useState<{
+    title: string;
+    batteryId?: string;
+    questions: QuestionItem[];
+  } | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Editing / Creation state
+  const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // Load all batteries, questions and stats in parallel with single-tick queries
+  const loadData = useCallback(async (silent = false) => {
+    if (!window.api?.quiz) return;
+    if (!silent && !cachedBatteries) {
+      setIsLoading(true);
+    }
+    try {
+      const [enrichedBatteries, globalStats] = await Promise.all([
+        window.api.quiz.getAllBatteriesEnriched(),
+        window.api.quiz.getStats(),
+      ]);
+
+      cachedBatteries = enrichedBatteries;
+      cachedStats = globalStats;
+
+      setBatteries(enrichedBatteries);
+      setStats(globalStats);
+    } catch (err) {
+      console.error('[QuestionsView] Falha ao carregar dados do módulo de questões:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData(Boolean(cachedBatteries));
+  }, [loadData]);
+
+  // Check if a specific batteryId was passed via tab moduleState
+  useEffect(() => {
+    const selectedId = activeTab?.moduleState?.selectedBatteryId;
+    if (selectedId && typeof selectedId === 'string' && batteries.length > 0) {
+      const target = batteries.find((b) => b.id === selectedId);
+      if (target) {
+        setActiveTabSection('explorer');
+      }
+    }
+  }, [activeTab?.moduleState, batteries]);
+
+  // Aggregate all tags
+  const allAvailableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    batteries.forEach((b) => {
+      (b.tags || []).forEach((t) => tagSet.add(t.trim()));
+      b.questions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t.trim())));
+    });
+    return Array.from(tagSet).filter(Boolean);
+  }, [batteries]);
+
+  // Launch battery in Focus Mode
+  const handlePlayBattery = useCallback((battery: BatteryWithQuestions) => {
+    const mapped: QuestionItem[] = battery.questions.map((q) => {
+      const attempt = battery.latestAttempts?.[q.id];
+      return {
+        id: q.id,
+        type: q.type,
+        question: q.question,
+        options: q.options || [],
+        correctIndex: q.correct_index,
+        tags: q.tags || [],
+        selectedIndex: attempt?.selected_index !== undefined ? attempt.selected_index : null,
+        userTypedAnswer: attempt?.user_typed_answer || '',
+        aiFeedback: attempt?.ai_feedback || null,
+        expectedAnswer: q.expected_answer || '',
+        explanation: q.explanation || '',
+        showExplanation: Boolean(attempt),
+        answered: Boolean(attempt),
+      };
+    });
+
+    setActiveIndex(0);
+    setActivePlayingSession({
+      title: battery.title,
+      batteryId: battery.id,
+      questions: mapped,
+    });
+  }, []);
+
+  // Launch generated study session (Caderno de Erros or Simulado)
+  const handleStartGeneratedSession = useCallback((session: GeneratedStudySession) => {
+    const mapped: QuestionItem[] = session.questions.map((q) => ({
+      id: q.id,
+      type: q.type,
+      question: q.question,
+      options: q.options || [],
+      correctIndex: q.correct_index,
+      tags: q.tags || [],
+      selectedIndex: null,
+      userTypedAnswer: '',
+      aiFeedback: null,
+      expectedAnswer: q.expected_answer || '',
+      explanation: q.explanation || '',
+      showExplanation: false,
+      answered: false,
+    }));
+
+    setActiveIndex(0);
+    setActivePlayingSession({
+      title: session.battery.title,
+      batteryId: session.battery.id,
+      questions: mapped,
+    });
+  }, []);
+
+  // Update single question answer in focus mode (with atomic database attempt save)
+  const updateSingleQuestionInFocus = useCallback(
+    async (qId: string, partial: Partial<QuestionItem>) => {
+      if (!activePlayingSession) return;
+
+      setActivePlayingSession((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          questions: prev.questions.map((q) => (q.id === qId ? { ...q, ...partial } : q)),
+        };
+      });
+
+      // Save attempt directly to database
+      const q = activePlayingSession.questions.find((x) => x.id === qId);
+      if (q && window.api?.quiz) {
+        const isAttemptUpdate =
+          partial.answered !== undefined ||
+          partial.selectedIndex !== undefined ||
+          partial.userTypedAnswer !== undefined ||
+          partial.aiFeedback !== undefined;
+
+        if (isAttemptUpdate) {
+          const updatedType = q.type;
+          const updatedIndex = partial.selectedIndex !== undefined ? partial.selectedIndex : q.selectedIndex;
+          const updatedTyped = partial.userTypedAnswer !== undefined ? partial.userTypedAnswer : q.userTypedAnswer;
+          const updatedFeedback = partial.aiFeedback !== undefined ? partial.aiFeedback : q.aiFeedback;
+
+          const isCorrect =
+            updatedType === 'multiple_choice'
+              ? updatedIndex === q.correctIndex
+              : updatedFeedback?.verdict === 'Correto';
+
+          try {
+            await window.api.quiz.saveAttempt({
+              question_id: qId,
+              battery_id: activePlayingSession.batteryId || 'generated',
+              type: updatedType,
+              selected_index: updatedIndex,
+              user_typed_answer: updatedTyped,
+              is_correct: isCorrect,
+              ai_feedback: updatedFeedback,
+            });
+          } catch (err) {
+            console.error('[QuestionsView] Falha ao gravar tentativa no banco:', err);
+          }
+        }
+      }
+    },
+    [activePlayingSession]
+  );
+
+  const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestionInFocus);
+
+  // Navigate directly to note in Caderno
+  const handleNavigateToPage = useCallback(
+    (pageId: string) => {
+      const targetTabId = tabId || activeTab.id;
+      dispatch({
+        type: 'UPDATE_TAB_MODULE',
+        tabId: targetTabId,
+        module: 'notes',
+      });
+      dispatch({
+        type: 'NAVIGATE_IN_TAB',
+        pageId,
+      });
+    },
+    [dispatch, tabId, activeTab]
+  );
+
+  // Delete battery handler
+  const handleDeleteBattery = useCallback(
+    async (batteryId: string) => {
+      if (!window.api?.quiz) return;
+      try {
+        await window.api.quiz.deleteBattery(batteryId);
+        await loadData();
+      } catch (err) {
+        console.error('[QuestionsView] Falha ao mover bateria para lixeira:', err);
+      }
+    },
+    [loadData]
+  );
+
+  // Save edited / newly created battery
+  const handleSaveBatteryModal = useCallback(
+    async (newTitle: string, newDesc: string, newQuestions: QuestionItem[]) => {
+      if (!window.api?.quiz) return;
+
+      const tagSet = new Set<string>();
+      newQuestions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t)));
+      const tags = Array.from(tagSet);
+
+      const targetId = editingBattery?.id || undefined;
+
+      const saved = await window.api.quiz.saveBattery({
+        id: targetId,
+        title: newTitle,
+        description: newDesc,
+        tags,
+      });
+
+      const records = newQuestions.map((q, idx) => ({
+        id: q.id,
+        battery_id: saved.id,
+        type: q.type,
+        question: q.question,
+        options: q.options,
+        correct_index: q.correctIndex,
+        expected_answer: q.expectedAnswer,
+        explanation: q.explanation,
+        tags: q.tags || [],
+        sort_order: idx + 1,
+      }));
+
+      await window.api.quiz.saveQuestionsBatch(records);
+      await loadData();
+      setEditingBattery(null);
+      setIsCreatingNew(false);
+    },
+    [editingBattery, loadData]
+  );
+
+  return (
+    <div className="w-full h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none">
+      {/* Top Header */}
+      <header className="px-6 py-4 border-b border-white/[0.08] bg-zinc-950/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
+            <CheckSquare size={22} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
+                {stats.totalQuestions} questões
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Pratique exercícios, acompanhe sua taxa de acerto e monte simulados sob medida.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5">
+          {/* Section Switcher Tabs */}
+          <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-white/[0.06] text-xs">
+            <button
+              onClick={() => setActiveTabSection('explorer')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTabSection === 'explorer'
+                  ? 'bg-white/10 text-white font-medium shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Compass size={14} />
+              <span>Explorador</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTabSection('dashboard')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTabSection === 'dashboard'
+                  ? 'bg-white/10 text-white font-medium shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <LayoutDashboard size={14} />
+              <span>Métricas</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTabSection('playlists')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTabSection === 'playlists'
+                  ? 'bg-white/10 text-white font-medium shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Sparkles size={14} />
+              <span>Simulados & Erros</span>
+            </button>
+          </div>
+
+          {/* New Battery Button */}
+          <button
+            onClick={() => setIsCreatingNew(true)}
+            className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <Plus size={15} />
+            <span>Nova Bateria</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Viewport */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar p-5 md:p-8">
+        <div className="max-w-5xl mx-auto">
+          {isLoading && batteries.length === 0 ? (
+            <div className="py-24 flex flex-col items-center justify-center gap-3 text-zinc-500">
+              <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-400 rounded-full animate-spin" />
+              <p className="text-xs font-medium">Carregando questões...</p>
+            </div>
+          ) : (
+            <>
+              {activeTabSection === 'explorer' && (
+                <QuestionsExplorer
+                  batteries={batteries}
+                  onPlayBattery={handlePlayBattery}
+                  onEditBattery={(b) => setEditingBattery(b)}
+                  onDeleteBattery={handleDeleteBattery}
+                  onNavigateToPage={handleNavigateToPage}
+                  allAvailableTags={allAvailableTags}
+                  highlightedBatteryId={
+                    typeof activeTab?.moduleState?.selectedBatteryId === 'string'
+                      ? activeTab.moduleState.selectedBatteryId
+                      : undefined
+                  }
+                />
+              )}
+
+              {activeTabSection === 'dashboard' && (
+                <QuestionsDashboard
+                  stats={stats}
+                  onLaunchErrorNotebook={() => setActiveTabSection('playlists')}
+                  onLaunchQuickSimulation={() => setActiveTabSection('playlists')}
+                  onCreateBattery={() => setIsCreatingNew(true)}
+                />
+              )}
+
+              {activeTabSection === 'playlists' && (
+                <QuestionsPlaylists
+                  onStartSession={handleStartGeneratedSession}
+                  availableTags={allAvailableTags}
+                  errorCount={stats.incorrectAnswers}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Zen Focus Mode Player (Mounted via Portal) */}
+      {activePlayingSession && (
+        <QuizSequentialFocusModal
+          isOpen={Boolean(activePlayingSession)}
+          onClose={() => {
+            setActivePlayingSession(null);
+            loadData(true);
+          }}
+          title={activePlayingSession.title}
+          questions={activePlayingSession.questions}
+          onUpdateSingleQuestion={updateSingleQuestionInFocus}
+          onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+          evaluatingIds={evaluatingIds}
+          onDiscussInChat={() => {}}
+          activeIndex={activeIndex}
+          onActiveIndexChange={setActiveIndex}
+          onEditQuestion={() => {
+            const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
+            if (b) {
+              setActivePlayingSession(null);
+              setEditingBattery(b);
+            }
+          }}
+        />
+      )}
+
+      {/* Editor Modal for Creating or Editing Batteries */}
+      {(editingBattery || isCreatingNew) && (
+        <QuizEditorModal
+          isOpen={Boolean(editingBattery || isCreatingNew)}
+          onClose={() => {
+            setEditingBattery(null);
+            setIsCreatingNew(false);
+          }}
+          batteryTitle={editingBattery?.title || ''}
+          batteryDescription={editingBattery?.description || ''}
+          initialQuestions={
+            editingBattery
+              ? editingBattery.questions.map((q) => ({
+                  id: q.id,
+                  type: q.type,
+                  question: q.question,
+                  options: q.options || [],
+                  correctIndex: q.correct_index,
+                  tags: q.tags || [],
+                  selectedIndex: null,
+                  userTypedAnswer: '',
+                  aiFeedback: null,
+                  expectedAnswer: q.expected_answer || '',
+                  explanation: q.explanation || '',
+                  showExplanation: false,
+                  answered: false,
+                }))
+              : []
+          }
+          onSave={handleSaveBatteryModal}
+        />
+      )}
+    </div>
+  );
+}

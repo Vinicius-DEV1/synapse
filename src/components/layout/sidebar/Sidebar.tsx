@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video, CheckSquare } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import type { Tab } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
@@ -94,6 +94,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       case 'files': return <FolderOpen size={20} className="text-brand-400" />;
       case 'vault': return <Shield size={20} className="text-brand-400" />;
       case 'practice': return <Mic size={20} className="text-brand-400" />;
+      case 'quiz': return <CheckSquare size={20} className="text-brand-400" />;
       case 'settings': return <Settings size={20} className="text-brand-400" />;
       case 'trash': return <Trash2 size={20} className="text-brand-400" />;
       case 'diagrams': return <Network size={20} className="text-brand-400" />;
@@ -106,6 +107,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     switch (activeModule) {
       case 'home': return 'Início';
       case 'notes': return 'Caderno';
+      case 'quiz': return 'Questões';
       case 'library': return 'Biblioteca';
       case 'culture': return 'Cultura';
       case 'video': return 'Vídeos';

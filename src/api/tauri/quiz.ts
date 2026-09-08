@@ -214,4 +214,13 @@ export const tauriQuizApi: IQuizApi = {
       return fallback.getBatteryWithQuestions(batteryId);
     }
   },
+
+  async getAllBatteriesEnriched(): Promise<BatteryWithQuestions[]> {
+    try {
+      return await invoke('quiz_get_all_batteries_enriched');
+    } catch {
+      const fallback = await getFallbackApi();
+      return fallback.getAllBatteriesEnriched();
+    }
+  },
 };

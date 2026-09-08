@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, Sparkles, Upload, Plus, Check } from 'lucide-react';
+import { X, Sparkles, Upload, Check } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import QuizEditor from './QuizEditor';
 import QuizAIAssistant from './QuizAIAssistant';
@@ -128,6 +128,13 @@ export function QuizEditorModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Título da Bateria..."
                 className="text-base sm:text-lg font-semibold text-zinc-100 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 transition-colors"
+              />
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descrição opcional..."
+                className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 mt-0.5 transition-colors"
               />
             </div>
 
