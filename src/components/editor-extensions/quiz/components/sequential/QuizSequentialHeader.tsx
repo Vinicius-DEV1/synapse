@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { MoreHorizontal, Edit2, Trash2, Sparkles } from 'lucide-react';
+import { playQuizAiOpenSound } from '../../utils/quizSounds';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
@@ -11,7 +12,7 @@ interface QuizSequentialHeaderProps {
   correctCount: number;
   onSelectIndex: (index: number) => void;
   onDeleteQuestion?: (qId: string, index: number) => void;
-  onOpenAiAssistant?: () => void;
+  onOpenAiAssistant?: (q?: QuestionItem, index?: number) => void;
   onEditQuestion?: () => void;
 }
 
@@ -186,7 +187,10 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
               <button
                 onClick={() => {
                   setShowMenu(false);
-                  if (onOpenAiAssistant) onOpenAiAssistant();
+                  playQuizAiOpenSound();
+                  if (onOpenAiAssistant) {
+                    onOpenAiAssistant(safeQuestions[activeIndex], activeIndex);
+                  }
                 }}
                 className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-zinc-300 hover:text-white hover:bg-brand-500/10 transition-colors group"
               >

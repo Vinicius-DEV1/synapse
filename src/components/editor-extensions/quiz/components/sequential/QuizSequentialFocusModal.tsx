@@ -11,6 +11,7 @@ interface QuizSequentialFocusModalProps {
   onClose: () => void;
   title: string;
   questions: QuestionItem[];
+  onUpdateQuestions?: (questions: QuestionItem[]) => void;
   onUpdateSingleQuestion: (qId: string, partial: Partial<QuestionItem>, immediate?: boolean) => void;
   onEvaluateOpenAnswer: (q: QuestionItem, index: number) => Promise<void> | void;
   evaluatingIds: Record<string, boolean>;
@@ -19,7 +20,7 @@ interface QuizSequentialFocusModalProps {
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
   onDeleteQuestion?: (qId: string, index: number) => void;
-  onOpenAiAssistant?: () => void;
+  onOpenAiAssistant?: (q?: QuestionItem, index?: number) => void;
   onEditQuestion?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function QuizSequentialFocusModal({
   onClose,
   title,
   questions,
+  onUpdateQuestions,
   onUpdateSingleQuestion,
   onEvaluateOpenAnswer,
   evaluatingIds,
@@ -58,7 +60,7 @@ export function QuizSequentialFocusModal({
     chatHistory,
     updateChatHistory: setChatHistory,
     questions,
-    updateQuestions: () => {},
+    updateQuestions: onUpdateQuestions || (() => {}),
     updateSingleQuestion: onUpdateSingleQuestion,
     handleRemoveQuestion: (id) => {
       if (onDeleteQuestion) {
@@ -97,6 +99,41 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
       }
     },
     [chatHistory, handleSendChatMessage, onDiscussInChat]
+  );
+
+  const handleInternalEditWithAi = useCallback(
+    (q?: QuestionItem, index?: number) => {
+      setShowAiAssistantModal(true);
+
+      const targetIdx = typeof index === 'number' ? index : (activeIndex ?? 0);
+      const targetQ = q || questions[targetIdx];
+      const questionNumber = targetIdx + 1;
+
+      const questionSnippet = targetQ?.question?.trim()
+        ? targetQ.question.length > 90
+          ? `${targetQ.question.slice(0, 87)}...`
+          : targetQ.question
+        : `Questão ${questionNumber}`;
+
+      const promptText = `Como você gostaria de ajustar a **Questão ${questionNumber}**?\n\n> *"${questionSnippet}"*\n\nDeseja alterar o enunciado, melhorar as alternativas ou aprofundar a explicação?`;
+
+      const lastMsg = chatHistory[chatHistory.length - 1];
+      const alreadyHasPrompt = lastMsg?.role === 'assistant' && lastMsg.text === promptText;
+
+      if (!alreadyHasPrompt) {
+        const assistantGreeting: QuizChatMessage = {
+          id: `assistant_edit_prompt_${Date.now()}`,
+          role: 'assistant',
+          text: promptText,
+        };
+        setChatHistory((prev) => [...prev, assistantGreeting]);
+      }
+
+      if (onOpenAiAssistant) {
+        onOpenAiAssistant(q, index);
+      }
+    },
+    [activeIndex, questions, chatHistory, onOpenAiAssistant]
   );
 
   // Auto-focus the player on open so all keyboard shortcuts work instantly
@@ -168,8 +205,8 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
         </header>
 
         {/* Central Reading Measure (Zen Focus Canvas) */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-center py-6 md:py-10 px-4">
-          <div className="w-full max-w-3xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-center pt-2.5 sm:pt-3 pb-6 md:pb-8 px-3 sm:px-4">
+          <div className="w-full max-w-3xl mx-auto">
             <QuizSequentialPlayer
               questions={questions}
               onUpdateSingleQuestion={onUpdateSingleQuestion}
@@ -180,7 +217,7 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
               activeIndex={activeIndex}
               onActiveIndexChange={onActiveIndexChange}
               onDeleteQuestion={onDeleteQuestion}
-              onOpenAiAssistant={onOpenAiAssistant || (() => setShowAiAssistantModal(true))}
+              onOpenAiAssistant={handleInternalEditWithAi}
               onEditQuestion={onEditQuestion}
             />
           </div>

@@ -540,6 +540,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         }}
         title={title}
         questions={questions}
+        onUpdateQuestions={setQuestions}
         onUpdateSingleQuestion={updateSingleQuestion}
         onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
         evaluatingIds={evaluatingIds}
@@ -549,10 +550,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         onEditQuestion={() => {
           setIsFocusModeOpen(false);
           handleOpenEditorPage(false);
-        }}
-        onOpenAiAssistant={() => {
-          setIsFocusModeOpen(false);
-          handleOpenEditorPage(true);
         }}
         onDeleteQuestion={async (qId) => {
           setQuestions((prev) => prev.filter((q) => q.id !== qId));
