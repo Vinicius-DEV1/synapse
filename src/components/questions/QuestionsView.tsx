@@ -55,6 +55,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   // Editing / Creation state
   const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [editorInitialAi, setEditorInitialAi] = useState(false);
 
   // Load all batteries, questions and stats in parallel with single-tick queries
   const loadData = useCallback(async (silent = false) => {
@@ -250,6 +251,15 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     [loadData]
   );
 
+  // Resolve live page title from store
+  const getPageTitle = useCallback(
+    (pageId: string) => {
+      const page = state.pages.find((p) => p.id === pageId);
+      return page?.title || null;
+    },
+    [state.pages]
+  );
+
   // Save edited / newly created battery
   const handleSaveBatteryModal = useCallback(
     async (newTitle: string, newDesc: string, newQuestions: QuestionItem[]) => {
@@ -395,6 +405,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
                   onDeleteBattery={handleDeleteBattery}
                   onNavigateToPage={handleNavigateToPage}
                   allAvailableTags={allAvailableTags}
+                  getPageTitle={getPageTitle}
                   highlightedBatteryId={
                     typeof activeTab?.moduleState?.selectedBatteryId === 'string'
                       ? activeTab.moduleState.selectedBatteryId
@@ -444,20 +455,48 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
             const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
             if (b) {
               setActivePlayingSession(null);
+              setEditorInitialAi(false);
               setEditingBattery(b);
+            }
+          }}
+          onOpenAiAssistant={() => {
+            const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
+            if (b) {
+              setActivePlayingSession(null);
+              setEditorInitialAi(true);
+              setEditingBattery(b);
+            }
+          }}
+          onDeleteQuestion={async (qId) => {
+            if (activePlayingSession) {
+              const updated = activePlayingSession.questions.filter((q) => q.id !== qId);
+              setActivePlayingSession({
+                ...activePlayingSession,
+                questions: updated,
+              });
+              if (activePlayingSession.batteryId && window.api?.quiz) {
+                try {
+                  await window.api.quiz.deleteQuestion(qId);
+                  await loadData(true);
+                } catch (err) {
+                  console.error('[QuestionsView] Falha ao excluir questão:', err);
+                }
+              }
             }
           }}
         />
       )}
 
-      {/* Editor Modal for Creating or Editing Batteries */}
+      {/* Editor Screen for Creating or Editing Batteries */}
       {(editingBattery || isCreatingNew) && (
         <QuizEditorModal
           isOpen={Boolean(editingBattery || isCreatingNew)}
           onClose={() => {
             setEditingBattery(null);
             setIsCreatingNew(false);
+            setEditorInitialAi(false);
           }}
+          initialShowAiAssistant={editorInitialAi}
           batteryTitle={editingBattery?.title || ''}
           batteryDescription={editingBattery?.description || ''}
           initialQuestions={

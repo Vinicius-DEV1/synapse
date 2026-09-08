@@ -218,5 +218,40 @@ describe('QuestionsExplorer Component', () => {
 
     expect(onDelete).toHaveBeenCalledWith('bat-1');
   });
+
+  it('renders resolved page title using getPageTitle when available', () => {
+    const batteryWithPageId: BatteryWithQuestions[] = [
+      {
+        id: 'bat-page',
+        title: 'Bateria de Direito Constitucional',
+        description: 'Artigo 5º',
+        layout: 'sequential',
+        tags: ['direito'],
+        page_id: 'page-direito',
+        created_at: '2026-09-08T00:00:00.000Z',
+        updated_at: '2026-09-08T00:00:00.000Z',
+        questions: [],
+        latestAttempts: {},
+        linkedPages: [],
+      },
+    ];
+
+    const getPageTitle = vi.fn((id: string) => (id === 'page-direito' ? 'Direito Constitucional I' : null));
+
+    const { getByText, queryByText } = render(
+      <QuestionsExplorer
+        batteries={batteryWithPageId}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={vi.fn()}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['direito']}
+        getPageTitle={getPageTitle}
+      />
+    );
+
+    expect(getByText('Direito Constitucional I')).toBeDefined();
+    expect(queryByText('Ver no Caderno')).toBeNull();
+  });
 });
 

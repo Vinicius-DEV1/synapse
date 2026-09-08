@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Sparkles, Upload, Check } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import QuizEditor from './QuizEditor';
@@ -16,6 +16,7 @@ interface QuizEditorModalProps {
   batteryDescription?: string;
   initialQuestions: QuestionItem[];
   onSave: (title: string, description: string, questions: QuestionItem[]) => Promise<void>;
+  initialShowAiAssistant?: boolean;
 }
 
 export function QuizEditorModal({
@@ -25,6 +26,7 @@ export function QuizEditorModal({
   batteryDescription = '',
   initialQuestions,
   onSave,
+  initialShowAiAssistant = false,
 }: QuizEditorModalProps) {
   const [title, setTitle] = useState(batteryTitle);
   const [description, setDescription] = useState(batteryDescription);
@@ -35,8 +37,28 @@ export function QuizEditorModal({
 
   // Modals inside editor
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showAiAssistantModal, setShowAiAssistantModal] = useState(false);
+  const [showAiAssistantModal, setShowAiAssistantModal] = useState(() => Boolean(initialShowAiAssistant));
   const [deletingQuestionInfo, setDeletingQuestionInfo] = useState<{ id: string; index: number } | null>(null);
+
+  // Sync if initialShowAiAssistant changes when opening
+  useEffect(() => {
+    if (isOpen && initialShowAiAssistant) {
+      setShowAiAssistantModal(true);
+    }
+  }, [isOpen, initialShowAiAssistant]);
+
+  // Tecla Esc para fechar o editor em tela cheia com segurança
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showAiAssistantModal && !showImportModal && !deletingQuestionInfo) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, showAiAssistantModal, showImportModal, deletingQuestionInfo]);
 
   // AI chat state
   const [chatHistory, setChatHistory] = useState<QuizChatMessage[]>([]);
@@ -117,79 +139,81 @@ export function QuizEditorModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in select-none">
-        <div className="w-full max-w-4xl h-[90vh] bg-zinc-900 border border-white/10 rounded-2xl flex flex-col shadow-2xl overflow-hidden">
-          {/* Header */}
-          <header className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-zinc-900/90">
-            <div className="flex-1 mr-4">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Título da Bateria..."
-                className="text-base sm:text-lg font-semibold text-zinc-100 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 transition-colors"
-              />
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descrição opcional..."
-                className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 mt-0.5 transition-colors"
-              />
-            </div>
+      <div className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col animate-fade-in select-none text-zinc-100">
+        {/* Full-Canvas Header */}
+        <header className="h-14 px-5 sm:px-6 border-b border-white/[0.08] bg-zinc-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
+          <div className="flex-1 max-w-xl mr-4 min-w-0">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Título da Bateria..."
+              className="text-base sm:text-lg font-semibold text-zinc-100 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 transition-colors truncate"
+            />
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descrição opcional..."
+              className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-500/50 outline-none w-full px-1 py-0.5 mt-0.5 transition-colors truncate"
+            />
+          </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAiAssistantModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-brand-500/10 text-zinc-300 hover:text-brand-300 border border-white/10 hover:border-brand-500/20 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Assistente de IA"
-              >
-                <Sparkles size={14} className="text-brand-400" />
-                <span className="hidden sm:inline">Assistente IA</span>
-              </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowAiAssistantModal(true)}
+              className="px-3 py-1.5 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              title="Assistente de IA"
+            >
+              <Sparkles size={14} className="text-brand-400" />
+              <span className="hidden sm:inline">Assistente IA</span>
+            </button>
 
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Importar questões (JSON / Markdown / PDF)"
-              >
-                <Upload size={14} />
-                <span className="hidden sm:inline">Importar</span>
-              </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Importar questões (JSON / Markdown / PDF)"
+            >
+              <Upload size={14} />
+              <span className="hidden sm:inline">Importar</span>
+            </button>
 
-              <button
-                onClick={handleConfirmSave}
-                disabled={isSaving}
-                className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Check size={14} />
-                <span>{isSaving ? 'Salvando...' : 'Salvar'}</span>
-              </button>
+            <button
+              onClick={handleConfirmSave}
+              disabled={isSaving}
+              className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+            >
+              <Check size={14} />
+              <span>{isSaving ? 'Salvando...' : 'Salvar Alterações'}</span>
+            </button>
 
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors ml-1 cursor-pointer"
-                title="Fechar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </header>
+            <button
+              onClick={onClose}
+              className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/[0.06] transition-colors flex items-center gap-1.5 text-xs cursor-pointer ml-1"
+              title="Fechar (Esc)"
+            >
+              <kbd className="px-1 py-0.5 text-[10px] font-mono bg-black/40 border border-white/10 rounded text-zinc-400">
+                Esc
+              </kbd>
+              <span className="hidden sm:inline">Sair</span>
+              <X size={14} />
+            </button>
+          </div>
+        </header>
 
-          {/* Body with question cards */}
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-            <div className="max-w-3xl mx-auto space-y-6">
-              <QuizEditor
-                questions={questions}
-                onUpdateQuestion={updateSingleQuestion}
-                onToggleQuestionType={handleToggleQuestionType}
-                onMoveQuestion={handleMoveQuestion}
-                onDeleteQuestion={(id, idx) => setDeletingQuestionInfo({ id, index: idx })}
-                onAddQuestion={handleAddQuestion}
-              />
-            </div>
-          </main>
-        </div>
+        {/* Full-Canvas Body */}
+        <main className="flex-1 overflow-y-auto custom-scrollbar py-6 sm:py-8 px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            <QuizEditor
+              questions={questions}
+              onUpdateQuestion={updateSingleQuestion}
+              onToggleQuestionType={handleToggleQuestionType}
+              onMoveQuestion={handleMoveQuestion}
+              onDeleteQuestion={(id, idx) => setDeletingQuestionInfo({ id, index: idx })}
+              onAddQuestion={handleAddQuestion}
+            />
+          </div>
+        </main>
 
         {/* AI Assistant Modal */}
         <QuizAIAssistant
