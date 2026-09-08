@@ -51,18 +51,21 @@ export function QuizSequentialFocusModal({
     return () => clearTimeout(timer);
   }, [isOpen]);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   // Tecla Esc para fechar o modo foco
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

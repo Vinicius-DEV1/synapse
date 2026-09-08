@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { GripVertical, Play, Edit3, ExternalLink, Trash2, CheckCircle2, Tag } from 'lucide-react';
 import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
 import { QuizEditorModal } from './components/QuizEditorModal';
+import { Portal } from '../../ui/Portal';
 import { useQuizEvaluation } from './hooks/useQuizEvaluation';
 import { normalizeQuizQuestions } from './utils/quizNormalizer';
 import { useStore } from '../../../store/useStore';
@@ -38,13 +39,22 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const isMigratingRef = useRef(false);
+  const updateAttributesRef = useRef(props.updateAttributes);
+  updateAttributesRef.current = props.updateAttributes;
 
   // Auto-migration on mount for legacy unmigrated nodes
   useEffect(() => {
+    if (rawBatteryId || isMigratingRef.current) return;
+
+    const legacyQuestions = props.node.attrs.questions;
+    if (!Array.isArray(legacyQuestions) || legacyQuestions.length === 0) return;
+
+    isMigratingRef.current = true;
     let isMounted = true;
 
     async function handleAutoMigration() {
-      if (!rawBatteryId && window.api?.quiz) {
+      if (window.api?.quiz) {
         const normalized = normalizeQuizQuestions(rawQuestions);
         const tags = Array.from(new Set(normalized.flatMap((q) => q.tags || [])));
 
@@ -81,7 +91,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
           if (isMounted) {
             setBatteryId(savedBattery.id);
-            props.updateAttributes({
+            updateAttributesRef.current({
               batteryId: savedBattery.id,
               cachedTitle: savedBattery.title,
               cachedCount: questionsToBatch.length,
@@ -91,6 +101,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             });
           }
         } catch (err) {
+          isMigratingRef.current = false;
           console.warn('[QuestionBlockNodeView] Falha na migração automática de nó legado:', err);
         }
       }
@@ -100,9 +111,16 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     return () => {
       isMounted = false;
     };
-  }, [rawBatteryId, rawQuestions, title, description, props]);
+  }, [rawBatteryId, rawQuestions, title, description, state.tabs, state.activeTabId]);
 
   // SWR: Load fresh battery & questions from DB silently in background
+  const cachedTitleRef = useRef(cachedTitle);
+  cachedTitleRef.current = cachedTitle;
+  const cachedCountRef = useRef(cachedCount);
+  cachedCountRef.current = cachedCount;
+  const cachedTagsRef = useRef(cachedTags);
+  cachedTagsRef.current = cachedTags;
+
   const loadBatteryData = useCallback(async () => {
     const idToFetch = batteryId || rawBatteryId;
     if (!idToFetch || !window.api?.quiz) return;
@@ -138,11 +156,11 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         const tags = Array.from(tagSet);
 
         if (
-          data.title !== cachedTitle ||
-          data.questions.length !== cachedCount ||
-          tags.length !== (cachedTags?.length || 0)
+          data.title !== cachedTitleRef.current ||
+          data.questions.length !== cachedCountRef.current ||
+          tags.length !== (cachedTagsRef.current?.length || 0)
         ) {
-          props.updateAttributes({
+          updateAttributesRef.current({
             cachedTitle: data.title,
             cachedCount: data.questions.length,
             cachedTags: tags,
@@ -152,11 +170,17 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     } catch (err) {
       console.warn('[QuestionBlockNodeView] Falha ao sincronizar dados da bateria com banco:', err);
     }
-  }, [batteryId, rawBatteryId, cachedTitle, cachedCount, cachedTags, props]);
+  }, [batteryId, rawBatteryId]);
 
   useEffect(() => {
     loadBatteryData();
   }, [loadBatteryData]);
+
+  // Stable buffers to prevent stale closures and TipTap re-render thrashing
+  const questionsRef = useRef(questions);
+  questionsRef.current = questions;
+  const batteryIdRef = useRef(batteryId || rawBatteryId);
+  batteryIdRef.current = batteryId || rawBatteryId;
 
   // Update single question handler (used in Focus Mode)
   const updateSingleQuestion = useCallback(
@@ -165,19 +189,17 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         prev.map((q) => (q.id === qId ? { ...q, ...partial } : q))
       );
 
-      // Persist attempt atomically to DB if answered
-      const targetQuestion = questions.find((q) => q.id === qId);
-      const bId = batteryId || rawBatteryId;
+      // Persist attempt atomically to DB only upon genuine completion (prevent keystroke spam on open questions)
+      const targetQuestion = questionsRef.current.find((q) => q.id === qId);
+      const bId = batteryIdRef.current;
 
       if (bId && targetQuestion && window.api?.quiz) {
+        const updatedType = targetQuestion.type;
         const isAttemptUpdate =
-          partial.answered !== undefined ||
-          partial.selectedIndex !== undefined ||
-          partial.userTypedAnswer !== undefined ||
-          partial.aiFeedback !== undefined;
+          (updatedType === 'multiple_choice' && partial.selectedIndex !== undefined && partial.selectedIndex !== null) ||
+          (updatedType === 'open' && ((partial.aiFeedback !== undefined && partial.aiFeedback !== null) || partial.answered === true));
 
         if (isAttemptUpdate) {
-          const updatedType = targetQuestion.type;
           const updatedIndex = partial.selectedIndex !== undefined ? partial.selectedIndex : targetQuestion.selectedIndex;
           const updatedTyped = partial.userTypedAnswer !== undefined ? partial.userTypedAnswer : targetQuestion.userTypedAnswer;
           const updatedFeedback = partial.aiFeedback !== undefined ? partial.aiFeedback : targetQuestion.aiFeedback;
@@ -203,7 +225,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         }
       }
     },
-    [questions, batteryId, rawBatteryId]
+    []
   );
 
   const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestion);
@@ -224,19 +246,50 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
   // Handle Save in Editor Modal
   const handleSaveEditor = useCallback(
     async (newTitle: string, newDescription: string, newQuestions: QuestionItem[]) => {
-      const bId = batteryId || rawBatteryId;
-      if (!bId || !window.api?.quiz) return;
+      let bId = batteryId || rawBatteryId;
+      if (!window.api?.quiz) return;
 
       const tagSet = new Set<string>();
       newQuestions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t)));
       const tags = Array.from(tagSet);
 
-      await window.api.quiz.saveBattery({
-        id: bId,
-        title: newTitle,
-        description: newDescription,
-        tags,
-      });
+      if (!bId) {
+        const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+        const currentPageId = activeTab?.pageId;
+        const saved = await window.api.quiz.saveBattery({
+          title: newTitle,
+          description: newDescription,
+          page_id: currentPageId || undefined,
+          layout: 'sequential',
+          tags,
+        });
+        bId = saved.id;
+        setBatteryId(bId);
+        updateAttributesRef.current({ batteryId: bId });
+        if (currentPageId) {
+          await window.api.quiz.linkBatteryToPage(saved.id, currentPageId);
+        }
+      } else {
+        await window.api.quiz.saveBattery({
+          id: bId,
+          title: newTitle,
+          description: newDescription,
+          tags,
+        });
+      }
+
+      // Reconcile and soft-delete questions removed during editing
+      try {
+        const existingInDb = await window.api.quiz.getQuestionsByBattery(bId);
+        const incomingIds = new Set(newQuestions.map((q) => q.id));
+        for (const eq of existingInDb) {
+          if (!incomingIds.has(eq.id)) {
+            await window.api.quiz.deleteQuestion(eq.id);
+          }
+        }
+      } catch (err) {
+        console.warn('[QuestionBlockNodeView] Falha ao conciliar questões excluídas:', err);
+      }
 
       const questionRecords = newQuestions.map((q, idx) => ({
         id: q.id,
@@ -253,7 +306,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
       await window.api.quiz.saveQuestionsBatch(questionRecords);
 
-      props.updateAttributes({
+      updateAttributesRef.current({
         cachedTitle: newTitle,
         cachedCount: newQuestions.length,
         cachedTags: tags,
@@ -262,7 +315,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
       setQuestions(newQuestions);
       await loadBatteryData();
     },
-    [batteryId, rawBatteryId, props, loadBatteryData]
+    [batteryId, rawBatteryId, loadBatteryData]
   );
 
   // Stats computation for the embed card
@@ -437,41 +490,43 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in">
-            <h4 className="text-sm font-semibold text-zinc-100">Remover Bloco de Questões?</h4>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              O card será removido desta nota. A bateria e suas questões{' '}
-              <strong className="text-zinc-200">continuarão salvas no banco de dados</strong> e acessíveis no Módulo de Questões.
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  setShowDeleteConfirm(false);
-                  const bId = batteryId || rawBatteryId;
-                  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
-                  if (bId && activeTab?.pageId && window.api?.quiz) {
-                    try {
-                      await window.api.quiz.unlinkBatteryFromPage(bId, activeTab.pageId);
-                    } catch (err) {
-                      console.warn('[QuestionBlockNodeView] Falha ao desvincular página:', err);
+        <Portal>
+          <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in">
+              <h4 className="text-sm font-semibold text-zinc-100">Remover Bloco de Questões?</h4>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                O card será removido desta nota. A bateria e suas questões{' '}
+                <strong className="text-zinc-200">continuarão salvas no banco de dados</strong> e acessíveis no Módulo de Questões.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowDeleteConfirm(false);
+                    const bId = batteryId || rawBatteryId;
+                    const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+                    if (bId && activeTab?.pageId && window.api?.quiz) {
+                      try {
+                        await window.api.quiz.unlinkBatteryFromPage(bId, activeTab.pageId);
+                      } catch (err) {
+                        console.warn('[QuestionBlockNodeView] Falha ao desvincular página:', err);
+                      }
                     }
-                  }
-                  props.deleteNode();
-                }}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium cursor-pointer"
-              >
-                Remover da Nota
-              </button>
+                    props.deleteNode();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium cursor-pointer"
+                >
+                  Remover da Nota
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </NodeViewWrapper>
   );

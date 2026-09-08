@@ -56,6 +56,7 @@ export interface QuestionItem {
   showExplanation: boolean;
   answered: boolean;
   attemptsHistory?: AttemptItem[];
+  batteryId?: string;
 }
 
 export interface ReferencedBattery {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { QuestionItem, AttemptItem } from '../types';
 import { promptGeminiForOpenQuestionEvaluation } from '../../../../services/gemini';
 import { triggerToast } from '../../../../components/ui/ToastContext';
@@ -13,19 +13,39 @@ export function useQuizEvaluation(
 ) {
   const [evaluatingIds, setEvaluatingIds] = useState<Record<string, boolean>>({});
 
+  // Lifecycle guard to cancel state updates if component unmounts during async AI evaluation
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const updateSingleQuestionRef = useRef(updateSingleQuestion);
+  updateSingleQuestionRef.current = updateSingleQuestion;
+
+  const evaluatingIdsRef = useRef(evaluatingIds);
+  evaluatingIdsRef.current = evaluatingIds;
+
   const handleEvaluateOpenAnswer = useCallback(
     async (q: QuestionItem) => {
       const typed = q.userTypedAnswer?.trim();
-      if (!typed || evaluatingIds[q.id]) return;
+      if (!typed || evaluatingIdsRef.current[q.id]) return;
 
       playQuizSubmitSound();
-      setEvaluatingIds((prev) => ({ ...prev, [q.id]: true }));
+      if (isMountedRef.current) {
+        setEvaluatingIds((prev) => ({ ...prev, [q.id]: true }));
+      }
+
       try {
         const evaluation = await promptGeminiForOpenQuestionEvaluation(
           q.question || 'Questão sem enunciado',
           q.expectedAnswer || 'Gabarito não cadastrado',
           typed
         );
+
+        if (!isMountedRef.current) return;
 
         if (evaluation.verdict === 'Correto' || evaluation.verdict === 'Parcial') {
           playQuizSuccessSound();
@@ -41,24 +61,29 @@ export function useQuizEvaluation(
           aiFeedback: evaluation,
         };
 
-        updateSingleQuestion(q.id, {
+        updateSingleQuestionRef.current(q.id, {
           answered: true,
+          userTypedAnswer: typed,
           aiFeedback: evaluation,
           showExplanation: true,
           attemptsHistory: [newAttempt, ...(q.attemptsHistory || [])],
         });
       } catch (err: unknown) {
-        console.error('[QuestionBlock] Falha ao avaliar resposta aberta:', err);
+        if (!isMountedRef.current) return;
+
+        console.error('[useQuizEvaluation] Falha ao avaliar resposta aberta:', err);
         const errMsg =
           err instanceof Error
             ? err.message
             : 'Falha na comunicação com a IA ao avaliar a resposta.';
         triggerToast(`Erro na avaliação: ${errMsg}`, 'error', 4500);
       } finally {
-        setEvaluatingIds((prev) => ({ ...prev, [q.id]: false }));
+        if (isMountedRef.current) {
+          setEvaluatingIds((prev) => ({ ...prev, [q.id]: false }));
+        }
       }
     },
-    [evaluatingIds, updateSingleQuestion]
+    []
   );
 
   return {
