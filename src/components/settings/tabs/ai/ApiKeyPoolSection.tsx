@@ -1,4 +1,4 @@
-import { Sparkles, Trash2, Plus, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Sparkles, Trash2, Plus, Clock, CheckCircle2, RefreshCw, AlertCircle } from 'lucide-react';
 import type { GeminiKeyEntry } from '../../../../services/gemini';
 
 interface ApiKeyPoolSectionProps {
@@ -48,16 +48,23 @@ export function ApiKeyPoolSection({
                 <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400">
                   <CheckCircle2 size={12} /> Ativa
                 </span>
-              ) : (
+              ) : k.status === 'exhausted' ? (
                 <span
-                  className="flex items-center gap-1 text-[10px] font-medium text-red-400"
+                  className="flex items-center gap-1 text-[10px] font-medium text-amber-400"
                   title={
                     k.disabledUntil
                       ? `Bloqueada até ${new Date(k.disabledUntil).toLocaleTimeString()}`
-                      : ''
+                      : 'Cota temporariamente esgotada'
                   }
                 >
-                  <Clock size={12} /> Cota Esgotada (23h)
+                  <Clock size={12} /> Cota Esgotada
+                </span>
+              ) : (
+                <span
+                  className="flex items-center gap-1 text-[10px] font-medium text-red-400"
+                  title={k.errorMessage || 'Chave inválida, expirada ou sem permissão'}
+                >
+                  <AlertCircle size={12} /> Inválida / Erro
                 </span>
               )}
             </div>
