@@ -1,6 +1,6 @@
 import type { IDBPDatabase } from 'idb';
 import type { CadernoDBSchema } from '../../../services/db-web';
-import type { QuizBattery } from '../../../types/quiz';
+import type { QuizBattery, QuizQuestion } from '../../../types/quiz';
 
 export function createQuizBatteriesApi(db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) {
   return {
@@ -34,7 +34,7 @@ export function createQuizBatteriesApi(db: IDBPDatabase<CadernoDBSchema>, genera
       const record: QuizBattery = {
         id: battery.id || existing?.id || generateId(),
         page_id: battery.page_id !== undefined ? battery.page_id : (existing?.page_id ?? null),
-        title: battery.title.trim() || 'Bateria de Exercícios',
+        title: (battery.title || '').trim() || 'Bateria de Exercícios',
         description: battery.description !== undefined ? battery.description : (existing?.description || ''),
         layout: battery.layout || existing?.layout || 'sequential',
         tags: Array.isArray(battery.tags) ? battery.tags : (existing?.tags || []),
@@ -57,6 +57,29 @@ export function createQuizBatteriesApi(db: IDBPDatabase<CadernoDBSchema>, genera
         deleted_at: now,
         updated_at: now,
       });
+
+      // Cascade soft-delete all questions belonging to this battery to prevent ghost data
+      try {
+        let questions: QuizQuestion[] = [];
+        try {
+          questions = (await db.getAllFromIndex('quiz_questions', 'battery_id', id)) || [];
+        } catch {
+          const all = (await db.getAll('quiz_questions')) || [];
+          questions = all.filter((q: QuizQuestion) => q.battery_id === id);
+        }
+        for (const q of questions) {
+          if (!q.deleted_at) {
+            await db.put('quiz_questions', {
+              ...q,
+              deleted_at: now,
+              updated_at: now,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[quiz-batteries] Falha ao excluir questões em cascata:', err);
+      }
+
       return true;
     },
 
@@ -70,6 +93,27 @@ export function createQuizBatteriesApi(db: IDBPDatabase<CadernoDBSchema>, genera
         deleted_at: null,
         updated_at: now,
       });
+
+      // Cascade restore all questions belonging to this battery
+      try {
+        let questions: QuizQuestion[] = [];
+        try {
+          questions = (await db.getAllFromIndex('quiz_questions', 'battery_id', id)) || [];
+        } catch {
+          const all = (await db.getAll('quiz_questions')) || [];
+          questions = all.filter((q: QuizQuestion) => q.battery_id === id);
+        }
+        for (const q of questions) {
+          await db.put('quiz_questions', {
+            ...q,
+            deleted_at: null,
+            updated_at: now,
+          });
+        }
+      } catch (err) {
+        console.warn('[quiz-batteries] Falha ao restaurar questões em cascata:', err);
+      }
+
       return true;
     },
   };

@@ -16,8 +16,11 @@ export function createQuizStatsApi(
   return {
     async getStats(): Promise<QuizStats> {
       const batteries = await batteriesApi.getAll();
+      const activeBatteryIds = new Set(batteries.map((b) => b.id));
       const allQuestionsRaw = (await db.getAll('quiz_questions')) || [];
-      const questions: QuizQuestion[] = allQuestionsRaw.filter((q: QuizQuestion) => !q.deleted_at);
+      const questions: QuizQuestion[] = allQuestionsRaw.filter(
+        (q: QuizQuestion) => !q.deleted_at && activeBatteryIds.has(q.battery_id)
+      );
 
       const latestAttempts = await attemptsApi.getLatestAttempts();
 
@@ -76,7 +79,13 @@ export function createQuizStatsApi(
       if (!battery) return null;
 
       const questions = await questionsApi.getByBattery(batteryId);
-      const latestAttempts = await attemptsApi.getLatestAttempts(batteryId);
+      const allLatestAttempts = await attemptsApi.getLatestAttempts();
+      const latestAttempts: Record<string, QuizAttempt> = {};
+      for (const q of questions) {
+        if (allLatestAttempts[q.id]) {
+          latestAttempts[q.id] = allLatestAttempts[q.id];
+        }
+      }
       const links = await linksApi.getLinksByBattery(batteryId);
 
       // Collect unique page IDs from direct page_id and link table
@@ -84,21 +93,27 @@ export function createQuizStatsApi(
       if (battery.page_id) pageIdSet.add(battery.page_id);
       links.forEach((l) => pageIdSet.add(l.page_id));
 
-      const linkedPages: { id: string; title: string; icon?: string }[] = [];
-      for (const pId of pageIdSet) {
-        try {
-          const page = await db.get('pages', pId);
-          if (page && !page.deleted_at) {
-            linkedPages.push({
-              id: page.id,
-              title: page.title || 'Sem título',
-              icon: page.icon || 'file',
-            });
+      const pageIdArray = Array.from(pageIdSet);
+      const pageResults = await Promise.all(
+        pageIdArray.map(async (pId) => {
+          try {
+            const page = await db.get('pages', pId);
+            if (page && !page.deleted_at) {
+              return {
+                id: page.id,
+                title: page.title || 'Sem título',
+                icon: page.icon || 'file',
+              };
+            }
+          } catch {
+            // Ignore lookup failures for orphaned pages
           }
-        } catch {
-          // Ignore lookup failures for orphaned pages
-        }
-      }
+          return null;
+        })
+      );
+      const linkedPages = pageResults.filter(
+        (p): p is { id: string; title: string; icon: string } => p !== null
+      );
 
       return {
         ...battery,
