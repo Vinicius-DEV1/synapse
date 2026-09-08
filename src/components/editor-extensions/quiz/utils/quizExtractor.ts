@@ -26,15 +26,26 @@ export function extractBatteriesFromContent(
     const traverse = (node: TipTapNodeLike | null | undefined, indexRef: { count: number }) => {
       if (!node) return;
       if (node.type === 'questionBlock' && node.attrs) {
-        const questions: QuestionItem[] = normalizeQuizQuestions(node.attrs.questions);
-        const rawTitle = typeof node.attrs.title === 'string' ? node.attrs.title : 'Bateria de Exercícios';
-        const title = rawTitle.trim();
+        const rawTitle =
+          (typeof node.attrs.cachedTitle === 'string' && node.attrs.cachedTitle.trim()) ||
+          (typeof node.attrs.title === 'string' && node.attrs.title.trim()) ||
+          'Bateria de Exercícios';
+
+        const hasLegacyQuestions = Array.isArray(node.attrs.questions) && node.attrs.questions.length > 0;
+        const questions: QuestionItem[] = hasLegacyQuestions
+          ? normalizeQuizQuestions(node.attrs.questions)
+          : [];
+
+        const cachedCount = typeof node.attrs.cachedCount === 'number' ? node.attrs.cachedCount : 0;
+        const questionCount = cachedCount > 0 ? cachedCount : questions.length;
+        const batteryId = typeof node.attrs.batteryId === 'string' && node.attrs.batteryId ? node.attrs.batteryId : null;
+
         batteries.push({
-          id: `${pageId}_battery_${indexRef.count++}`,
-          title: title || 'Bateria de Exercícios',
+          id: batteryId || `${pageId}_battery_${indexRef.count++}`,
+          title: rawTitle,
           pageId,
           pageTitle,
-          questionCount: questions.length,
+          questionCount,
           questions,
         });
       }
@@ -65,16 +76,25 @@ export function extractBatteriesFromContent(
       const elements = container.querySelectorAll('div[data-type="question-block"], div.question-block');
 
       elements.forEach((el, index) => {
-        const title = el.getAttribute('data-title') || 'Bateria de Exercícios';
+        const cachedTitle = el.getAttribute('data-cached-title');
+        const legacyTitle = el.getAttribute('data-title');
+        const title = (cachedTitle || legacyTitle || 'Bateria de Exercícios').trim();
+
+        const rawCount = el.getAttribute('data-cached-count');
+        const cachedCount = rawCount ? parseInt(rawCount, 10) : 0;
+
         const rawQuestions = el.getAttribute('data-questions');
-        const questions = normalizeQuizQuestions(rawQuestions);
+        const questions = rawQuestions ? normalizeQuizQuestions(rawQuestions) : [];
+
+        const questionCount = cachedCount > 0 ? cachedCount : questions.length;
+        const batteryId = el.getAttribute('data-battery-id');
 
         batteries.push({
-          id: `${pageId}_battery_${index}`,
-          title: title.trim() || 'Bateria de Exercícios',
+          id: batteryId || `${pageId}_battery_${index}`,
+          title: title || 'Bateria de Exercícios',
           pageId,
           pageTitle,
-          questionCount: questions.length,
+          questionCount,
           questions,
         });
       });

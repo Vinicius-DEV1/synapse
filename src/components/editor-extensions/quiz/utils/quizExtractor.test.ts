@@ -62,6 +62,29 @@ describe('quizExtractor Unit Tests', () => {
     expect(extracted[0].questions[0].type).toBe('open');
   });
 
+  it('extracts migrated batteries with cachedTitle and cachedCount correctly', () => {
+    const jsonContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'questionBlock',
+          attrs: {
+            batteryId: 'bat_db_123',
+            cachedTitle: 'Bateria Persistida no SQLite',
+            cachedCount: 15,
+            cachedTags: ['sql', 'banco'],
+          },
+        },
+      ],
+    };
+
+    const extracted = extractBatteriesFromContent('page_4', 'Banco de Dados', jsonContent);
+    expect(extracted).toHaveLength(1);
+    expect(extracted[0].id).toBe('bat_db_123');
+    expect(extracted[0].title).toBe('Bateria Persistida no SQLite');
+    expect(extracted[0].questionCount).toBe(15);
+  });
+
   it('returns empty array when content has no quiz blocks', () => {
     const extracted = extractBatteriesFromContent('page_3', 'Página Vazia', '<p>Apenas texto</p>');
     expect(extracted).toEqual([]);

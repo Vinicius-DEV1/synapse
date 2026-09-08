@@ -69,4 +69,15 @@ describe('quizNormalizer utils', () => {
     expect(chat[0].role).toBe('user');
     expect(chat[1].role).toBe('assistant');
   });
+
+  it('handles malformed URI strings without throwing unhandled exceptions', () => {
+    // Malformed percent-encoding that causes decodeURIComponent to throw URIError
+    const malformedUri = '%E0%A4%9';
+    const fallbackQuestions = normalizeQuizQuestions(malformedUri);
+    expect(fallbackQuestions).toHaveLength(1);
+    expect(fallbackQuestions[0].id).toBeDefined();
+
+    const fallbackChat = normalizeChatHistory(malformedUri);
+    expect(fallbackChat).toEqual([]);
+  });
 });
