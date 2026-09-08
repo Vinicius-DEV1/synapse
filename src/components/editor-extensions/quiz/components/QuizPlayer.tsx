@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { triggerFireworksAnimation } from '../utils/fireworks';
 import { QuizPlayerCard } from './QuizPlayerCard';
@@ -20,12 +20,24 @@ export default function QuizPlayer({
   onDiscussInChat,
 }: QuizPlayerProps) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
-  const answeredCount = safeQuestions.filter((q) => q.answered).length;
-  const correctCount = safeQuestions.filter((q) => {
-    if (!q.answered) return false;
-    if (q.type === 'multiple_choice') return q.selectedIndex === q.correctIndex;
-    return q.aiFeedback?.verdict === 'Correto';
-  }).length;
+
+  // Single-pass O(N) calculation of quiz metrics to prevent multiple array allocations on each render
+  const { answeredCount, correctCount } = useMemo(() => {
+    let answered = 0;
+    let correct = 0;
+    for (let i = 0; i < safeQuestions.length; i++) {
+      const q = safeQuestions[i];
+      if (q.answered) {
+        answered++;
+        if (q.type === 'multiple_choice') {
+          if (q.selectedIndex === q.correctIndex) correct++;
+        } else if (q.aiFeedback?.verdict === 'Correto') {
+          correct++;
+        }
+      }
+    }
+    return { answeredCount: answered, correctCount: correct };
+  }, [safeQuestions]);
 
   const prevAnsweredRef = useRef(0);
   const celebratedRef = useRef(false);
