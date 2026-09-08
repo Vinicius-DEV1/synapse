@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { X, Sparkles, Upload, Check, ArrowLeft } from 'lucide-react';
+import { triggerToast } from '../../../ui/ToastContext';
 import QuizEditor from './QuizEditor';
 import QuizAIAssistant from './QuizAIAssistant';
 import QuizImportModal from './QuizImportModal';
@@ -130,6 +131,7 @@ export function QuizEditorModal({
       onClose();
     } catch (err) {
       console.error('[QuizEditorModal] Falha ao salvar alterações:', err);
+      triggerToast('Falha ao salvar alterações da bateria de questões.', 'error', 3500);
     } finally {
       setIsSaving(false);
     }

@@ -95,21 +95,38 @@ export function normalizeSingleQuestion(raw: unknown, fallbackIndex: number = 1)
 }
 
 /**
+ * Safely parses a string that might be plain JSON or URI-encoded JSON,
+ * resilient against malformed URI components or non-prefixed encoded data.
+ */
+function safeJsonOrUriParse(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  try {
+    if (trimmed.startsWith('%')) {
+      return JSON.parse(decodeURIComponent(trimmed));
+    }
+    return JSON.parse(trimmed);
+  } catch {
+    if (trimmed.includes('%')) {
+      try {
+        return JSON.parse(decodeURIComponent(trimmed));
+      } catch {
+        // Fallback safely
+      }
+    }
+    return null;
+  }
+}
+
+/**
  * Normalizes an arbitrary questions payload (raw array, JSON string, or URI-encoded string).
  */
 export function normalizeQuizQuestions(rawQuestions: unknown): QuestionItem[] {
   let parsed: unknown = rawQuestions;
 
   if (typeof rawQuestions === 'string') {
-    try {
-      if (rawQuestions.startsWith('%')) {
-        parsed = JSON.parse(decodeURIComponent(rawQuestions));
-      } else {
-        parsed = JSON.parse(rawQuestions);
-      }
-    } catch {
-      parsed = null;
-    }
+    parsed = safeJsonOrUriParse(rawQuestions);
   }
 
   if (!Array.isArray(parsed) || parsed.length === 0) {
@@ -126,15 +143,7 @@ export function normalizeChatHistory(rawHistory: unknown): QuizChatMessage[] {
   let parsed: unknown = rawHistory;
 
   if (typeof rawHistory === 'string') {
-    try {
-      if (rawHistory.startsWith('%')) {
-        parsed = JSON.parse(decodeURIComponent(rawHistory));
-      } else {
-        parsed = JSON.parse(rawHistory);
-      }
-    } catch {
-      parsed = [];
-    }
+    parsed = safeJsonOrUriParse(rawHistory);
   }
 
   if (!Array.isArray(parsed)) {
