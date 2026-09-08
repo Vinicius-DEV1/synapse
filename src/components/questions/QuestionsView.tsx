@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus } from 'lucide-react';
 import { QuestionsDashboard } from './QuestionsDashboard';
 import { QuestionsExplorer } from './QuestionsExplorer';
@@ -123,6 +123,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         explanation: q.explanation || '',
         showExplanation: Boolean(attempt),
         answered: Boolean(attempt),
+        batteryId: battery.id,
       };
     });
 
@@ -150,6 +151,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       explanation: q.explanation || '',
       showExplanation: false,
       answered: false,
+      batteryId: q.battery_id,
     }));
 
     setActiveIndex(0);
@@ -160,10 +162,15 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     });
   }, []);
 
+  // Stable reference buffer to avoid stale closures & unnecessary re-render thrashing
+  const activePlayingSessionRef = useRef(activePlayingSession);
+  activePlayingSessionRef.current = activePlayingSession;
+
   // Update single question answer in focus mode (with atomic database attempt save)
   const updateSingleQuestionInFocus = useCallback(
     async (qId: string, partial: Partial<QuestionItem>) => {
-      if (!activePlayingSession) return;
+      const currentSession = activePlayingSessionRef.current;
+      if (!currentSession) return;
 
       setActivePlayingSession((prev) => {
         if (!prev) return null;
@@ -173,17 +180,15 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         };
       });
 
-      // Save attempt directly to database
-      const q = activePlayingSession.questions.find((x) => x.id === qId);
+      // Save attempt directly to database only upon genuine completion (prevent keystroke spam on open questions)
+      const q = currentSession.questions.find((x) => x.id === qId);
       if (q && window.api?.quiz) {
+        const updatedType = q.type;
         const isAttemptUpdate =
-          partial.answered !== undefined ||
-          partial.selectedIndex !== undefined ||
-          partial.userTypedAnswer !== undefined ||
-          partial.aiFeedback !== undefined;
+          (updatedType === 'multiple_choice' && partial.selectedIndex !== undefined && partial.selectedIndex !== null) ||
+          (updatedType === 'open' && ((partial.aiFeedback !== undefined && partial.aiFeedback !== null) || partial.answered === true));
 
         if (isAttemptUpdate) {
-          const updatedType = q.type;
           const updatedIndex = partial.selectedIndex !== undefined ? partial.selectedIndex : q.selectedIndex;
           const updatedTyped = partial.userTypedAnswer !== undefined ? partial.userTypedAnswer : q.userTypedAnswer;
           const updatedFeedback = partial.aiFeedback !== undefined ? partial.aiFeedback : q.aiFeedback;
@@ -196,7 +201,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
           try {
             await window.api.quiz.saveAttempt({
               question_id: qId,
-              battery_id: activePlayingSession.batteryId || 'generated',
+              battery_id: q.batteryId || currentSession.batteryId || 'generated',
               type: updatedType,
               selected_index: updatedIndex,
               user_typed_answer: updatedTyped,
@@ -209,7 +214,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         }
       }
     },
-    [activePlayingSession]
+    []
   );
 
   const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestionInFocus);
@@ -262,6 +267,21 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         description: newDesc,
         tags,
       });
+
+      // Reconcile and soft-delete questions removed during editing
+      if (targetId) {
+        try {
+          const existingInDb = await window.api.quiz.getQuestionsByBattery(targetId);
+          const incomingIds = new Set(newQuestions.map((q) => q.id));
+          for (const eq of existingInDb) {
+            if (!incomingIds.has(eq.id)) {
+              await window.api.quiz.deleteQuestion(eq.id);
+            }
+          }
+        } catch (err) {
+          console.warn('[QuestionsView] Falha ao conciliar questões excluídas:', err);
+        }
+      }
 
       const records = newQuestions.map((q, idx) => ({
         id: q.id,

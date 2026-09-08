@@ -167,4 +167,56 @@ describe('QuestionsExplorer Component', () => {
 
     expect(getByText('Qual a porta do DNS?')).toBeDefined();
   });
+
+  it('shows confirmation modal before deleting battery and cancels properly', () => {
+    const onDelete = vi.fn();
+    const { getAllByTitle, getByText, queryByText } = render(
+      <QuestionsExplorer
+        batteries={mockBatteries}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={onDelete}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['redes', 'tcp', 'algoritmos']}
+      />
+    );
+
+    const deleteBtn = getAllByTitle('Mover para lixeira')[0];
+    fireEvent.click(deleteBtn);
+
+    // Modal should be open
+    expect(getByText(/Deseja realmente mover a bateria/i)).toBeDefined();
+    expect(onDelete).not.toHaveBeenCalled();
+
+    // Click cancel
+    const cancelBtn = getByText('Cancelar');
+    fireEvent.click(cancelBtn);
+
+    expect(queryByText(/Deseja realmente mover a bateria/i)).toBeNull();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('confirms deletion in modal and calls onDeleteBattery', () => {
+    const onDelete = vi.fn();
+    const { getAllByTitle, getByRole } = render(
+      <QuestionsExplorer
+        batteries={mockBatteries}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={onDelete}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['redes', 'tcp', 'algoritmos']}
+      />
+    );
+
+    const deleteBtn = getAllByTitle('Mover para lixeira')[0];
+    fireEvent.click(deleteBtn);
+
+    // Confirm button inside modal
+    const confirmDeleteBtn = getByRole('button', { name: 'Excluir Bateria' });
+    fireEvent.click(confirmDeleteBtn);
+
+    expect(onDelete).toHaveBeenCalledWith('bat-1');
+  });
 });
+

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Tag, Play, Edit3, Trash2, FileText, ChevronDown, ChevronRight, CheckCircle2, XCircle, HelpCircle, ExternalLink, Zap } from 'lucide-react';
+import { Portal } from '../ui/Portal';
 import type { BatteryWithQuestions } from '../../types/quiz';
 
 interface QuestionsExplorerProps {
@@ -26,6 +27,20 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'errors'>('all');
   const [expandedBatteryIds, setExpandedBatteryIds] = useState<Set<string>>(new Set());
+  const [batteryPendingDelete, setBatteryPendingDelete] = useState<BatteryWithQuestions | null>(null);
+
+  // Tecla Esc para fechar o modal de exclusão
+  useEffect(() => {
+    if (!batteryPendingDelete) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setBatteryPendingDelete(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [batteryPendingDelete]);
 
   useEffect(() => {
     if (highlightedBatteryId) {
@@ -61,8 +76,12 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
       // 2. Tag filter
       if (selectedTag) {
-        const hasTag = (b.tags || []).some((t) => t.toLowerCase() === selectedTag.toLowerCase()) ||
-          b.questions.some((q) => (q.tags || []).some((t) => t.toLowerCase() === selectedTag.toLowerCase()));
+        const normSelectedTag = selectedTag.toLowerCase();
+        const hasTag =
+          (b.tags || []).some((t) => typeof t === 'string' && t.toLowerCase() === normSelectedTag) ||
+          b.questions.some((q) =>
+            (q.tags || []).some((t) => typeof t === 'string' && t.toLowerCase() === normSelectedTag)
+          );
         if (!hasTag) return false;
       }
 
@@ -77,11 +96,14 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
       // 4. Search query
       if (term) {
-        const matchesTitle = b.title.toLowerCase().includes(term);
+        const matchesTitle = (b.title || '').toLowerCase().includes(term);
         const matchesDesc = (b.description || '').toLowerCase().includes(term);
-        const matchesTag = (b.tags || []).some((t) => t.toLowerCase().includes(term));
+        const matchesTag = (b.tags || []).some((t) => typeof t === 'string' && t.toLowerCase().includes(term));
         const matchesQuestions = b.questions.some(
-          (q) => q.question.toLowerCase().includes(term) || (q.explanation || '').toLowerCase().includes(term)
+          (q) =>
+            (q.question || '').toLowerCase().includes(term) ||
+            (q.explanation || '').toLowerCase().includes(term) ||
+            (q.tags || []).some((t) => typeof t === 'string' && t.toLowerCase().includes(term))
         );
         if (!matchesTitle && !matchesDesc && !matchesTag && !matchesQuestions) return false;
       }
@@ -320,7 +342,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                     </button>
 
                     <button
-                      onClick={() => onDeleteBattery(b.id)}
+                      onClick={() => setBatteryPendingDelete(b)}
                       className="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
                       title="Mover para lixeira"
                     >
@@ -364,7 +386,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                             </span>
                             <div className="min-w-0">
                               <p className="text-zinc-200 leading-relaxed font-medium">
-                                {q.question}
+                                {q.question || 'Questão sem enunciado cadastrado'}
                               </p>
                               <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] text-zinc-400">
                                 <span className="font-mono uppercase bg-white/5 px-1.5 py-0.5 rounded">
@@ -409,6 +431,53 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {batteryPendingDelete && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4"
+            onClick={() => setBatteryPendingDelete(null)}
+          >
+            <div
+              className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-rose-500/10 text-rose-400 shrink-0">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">Excluir Bateria</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    Deseja realmente mover a bateria <strong className="text-zinc-200">"{batteryPendingDelete.title || 'Sem título'}"</strong> ({batteryPendingDelete.questions.length} questões) para a lixeira?
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setBatteryPendingDelete(null)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = batteryPendingDelete.id;
+                    setBatteryPendingDelete(null);
+                    onDeleteBattery(id);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
+                >
+                  Excluir Bateria
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 });
