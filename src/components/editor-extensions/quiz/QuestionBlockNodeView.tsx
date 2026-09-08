@@ -44,6 +44,14 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
   const updateAttributesRef = useRef(props.updateAttributes);
   updateAttributesRef.current = props.updateAttributes;
 
+  const nodeViewMountedRef = useRef(true);
+  useEffect(() => {
+    nodeViewMountedRef.current = true;
+    return () => {
+      nodeViewMountedRef.current = false;
+    };
+  }, []);
+
   // Auto-migration on mount for legacy unmigrated nodes
   useEffect(() => {
     if (rawBatteryId || isMigratingRef.current) return;
@@ -128,6 +136,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
     try {
       const data = await window.api.quiz.getBatteryWithQuestions(idToFetch);
+      if (!nodeViewMountedRef.current) return;
       if (data) {
         // Map DB questions to QuestionItem view model
         const mappedQuestions: QuestionItem[] = data.questions.map((q: QuizQuestion) => {
@@ -149,6 +158,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           };
         });
 
+        if (!nodeViewMountedRef.current) return;
         setQuestions(mappedQuestions);
 
         // Optimistically keep cached attributes updated
@@ -161,15 +171,19 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           data.questions.length !== cachedCountRef.current ||
           tags.length !== (cachedTagsRef.current?.length || 0)
         ) {
-          updateAttributesRef.current({
-            cachedTitle: data.title,
-            cachedCount: data.questions.length,
-            cachedTags: tags,
-          });
+          if (nodeViewMountedRef.current) {
+            updateAttributesRef.current({
+              cachedTitle: data.title,
+              cachedCount: data.questions.length,
+              cachedTags: tags,
+            });
+          }
         }
       }
     } catch (err) {
-      console.warn('[QuestionBlockNodeView] Falha ao sincronizar dados da bateria com banco:', err);
+      if (nodeViewMountedRef.current) {
+        console.warn('[QuestionBlockNodeView] Falha ao sincronizar dados da bateria com banco:', err);
+      }
     }
   }, [batteryId, rawBatteryId]);
 

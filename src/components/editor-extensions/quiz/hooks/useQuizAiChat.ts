@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { promptGeminiQuizAssistant } from '../../../../services/gemini';
 import { normalizeCandidateAction } from '../../../../services/gemini/quiz-parser';
 import { triggerToast } from '../../../ui/ToastContext';
@@ -34,6 +34,14 @@ export function useQuizAiChat({
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [chatProgressStatus, setChatProgressStatus] = useState<ChatProgressStatus | null>(null);
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const questionsRef = useRef(questions);
   questionsRef.current = questions;
@@ -72,7 +80,9 @@ export function useQuizAiChat({
           description,
           referencedBatteries,
           (step, model) => {
-            setChatProgressStatus({ step, model });
+            if (isMountedRef.current) {
+              setChatProgressStatus({ step, model });
+            }
           }
         );
 
@@ -116,7 +126,9 @@ export function useQuizAiChat({
           validationSummary: response.validationSummary,
         };
 
-        updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
+        if (isMountedRef.current) {
+          updateChatHistory([...updatedHistoryWithUser, assistantMessageObj]);
+        }
       } catch (err: unknown) {
         console.error('[QuestionBlock] Falha ao comunicar com assistente de IA:', err);
         const errorMessage =
@@ -130,10 +142,14 @@ export function useQuizAiChat({
           role: 'assistant',
           text: `⚠️ **Erro de Comunicação com a IA**\n\nNão foi possível processar sua solicitação no momento.\n\n*Detalhes:* ${errorMessage}\n\nPor favor, verifique suas configurações de API ou conexão e tente novamente.`,
         };
-        updateChatHistory([...updatedHistoryWithUser, assistantErrorMsg]);
+        if (isMountedRef.current) {
+          updateChatHistory([...updatedHistoryWithUser, assistantErrorMsg]);
+        }
       } finally {
-        setIsSendingChat(false);
-        setChatProgressStatus(null);
+        if (isMountedRef.current) {
+          setIsSendingChat(false);
+          setChatProgressStatus(null);
+        }
       }
     },
     [chatInput, isSendingChat, updateChatHistory, title, description]
