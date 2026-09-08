@@ -245,6 +245,16 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     []
   );
 
+  const updateQuestionsInFocus = useCallback((newQuestions: QuestionItem[]) => {
+    setActivePlayingSession((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        questions: newQuestions,
+      };
+    });
+  }, []);
+
   const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestionInFocus);
 
   // Navigate directly to note in Caderno
@@ -533,6 +543,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
           }}
           title={activePlayingSession.title}
           questions={activePlayingSession.questions}
+          onUpdateQuestions={updateQuestionsInFocus}
           onUpdateSingleQuestion={updateSingleQuestionInFocus}
           onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
           evaluatingIds={evaluatingIds}
@@ -544,14 +555,6 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
             if (b) {
               setActivePlayingSession(null);
               setEditorInitialAi(false);
-              setEditingBattery(b);
-            }
-          }}
-          onOpenAiAssistant={() => {
-            const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
-            if (b) {
-              setActivePlayingSession(null);
-              setEditorInitialAi(true);
               setEditingBattery(b);
             }
           }}
