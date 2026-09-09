@@ -71,7 +71,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
       {/* Caderno de Erros Card */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-rose-500/[0.04] border border-rose-500/20 hover:border-rose-500/30 transition-all space-y-4 shadow-sm">
+      <div className="p-5 sm:p-6 rounded-2xl bg-rose-500/[0.03] border border-rose-500/15 hover:border-rose-500/25 transition-all space-y-4 shadow-sm">
         <div className="flex items-start gap-3.5">
           <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
             <AlertTriangle size={22} />
@@ -101,9 +101,9 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       </div>
 
       {/* Custom Simulado Builder */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/60 border border-white/[0.08] space-y-5 shadow-sm">
+      <div className="p-5 sm:p-6 rounded-2xl bg-dark-card/60 border border-white/5 space-y-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
+          <div className="p-2.5 rounded-xl bg-white/[0.04] text-zinc-300 border border-white/[0.06] shrink-0">
             <Sparkles size={20} />
           </div>
           <div>
@@ -115,9 +115,9 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         </div>
 
         {/* Tag Selector */}
-        <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+        <div className="space-y-2 pt-2 border-t border-white/5">
           <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-            <Tag size={13} className="text-brand-400" />
+            <Tag size={13} className="text-zinc-400" />
             <span>Filtrar por Matérias / Tags:</span>
           </label>
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar p-1">
@@ -132,8 +132,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                     onClick={() => toggleTag(tag)}
                     className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
                       isSelected
-                        ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-medium'
-                        : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-zinc-400 hover:text-white'
+                        ? 'bg-zinc-800 border-white/20 text-zinc-100 font-medium shadow-sm'
+                        : 'bg-dark-bg/50 hover:bg-white/[0.06] border-white/5 text-zinc-400 hover:text-white'
                     }`}
                   >
                     {isSelected && <Check size={12} />}
@@ -146,7 +146,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         </div>
 
         {/* Quantity and Filter Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/[0.06]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
           {/* Question Count */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-300">Quantidade de Questões:</label>
@@ -157,8 +157,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                   onClick={() => setQuestionLimit(num)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
                     questionLimit === num
-                      ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-semibold'
-                      : 'bg-zinc-900 border-white/[0.06] text-zinc-400 hover:text-white'
+                      ? 'bg-zinc-800 border-white/20 text-zinc-100 font-semibold shadow-sm'
+                      : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                 >
                   {num}
@@ -178,8 +178,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                 onClick={() => setSelectedStatus('all')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
                   selectedStatus === 'all'
-                    ? 'bg-white/15 border-white/20 text-white font-medium'
-                    : 'bg-zinc-900 border-white/[0.06] text-zinc-400 hover:text-white'
+                    ? 'bg-zinc-800 border-white/20 text-white font-medium shadow-sm'
+                    : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
                 Todas
@@ -188,8 +188,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                 onClick={() => setSelectedStatus('unanswered')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
                   selectedStatus === 'unanswered'
-                    ? 'bg-white/15 border-white/20 text-white font-medium'
-                    : 'bg-zinc-900 border-white/[0.06] text-zinc-400 hover:text-white'
+                    ? 'bg-zinc-800 border-white/20 text-white font-medium shadow-sm'
+                    : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
                 Não Respondidas
@@ -198,8 +198,8 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                 onClick={() => setSelectedStatus('incorrect')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
                   selectedStatus === 'incorrect'
-                    ? 'bg-rose-500/20 border-rose-500/30 text-rose-300 font-medium'
-                    : 'bg-zinc-900 border-white/[0.06] text-zinc-400 hover:text-white'
+                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-300 font-medium'
+                    : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
                 Apenas Erros
@@ -209,7 +209,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         </div>
 
         {/* Shuffle and Submit */}
-        <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+        <div className="pt-3 border-t border-white/5 flex items-center justify-between">
           <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400 hover:text-zinc-200">
             <input
               type="checkbox"
@@ -224,7 +224,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
           <button
             onClick={handleLaunchCustomSimulado}
             disabled={isGenerating}
-            className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+            className="px-5 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
           >
             <Play size={13} className="fill-white" />
             <span>Iniciar Simulado</span>
