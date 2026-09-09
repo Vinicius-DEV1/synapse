@@ -54,10 +54,23 @@ export function usePushToTalk({
     try {
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
       } catch (err) {
         console.warn('Overconstrained audio request failed, falling back to basic audio', err);
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
       }
       mediaStreamRef.current = stream;
       
@@ -140,7 +153,7 @@ export function usePushToTalk({
             sumSquares += inputData[i] * inputData[i];
           }
           const rms = Math.sqrt(sumSquares / inputData.length);
-          const isSpeech = rms > 0.009;
+          const isSpeech = rms > 0.015;
 
           if (isSpeech) {
             silentChunksCountRef.current = 0;

@@ -11,7 +11,10 @@ export function AudioMessagePlayer({ src }: { src: string }) {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch((err) => {
+          console.warn('Audio playback interrupted or failed:', err);
+          setIsPlaying(false);
+        });
         setIsPlaying(true);
       }
     }
@@ -29,6 +32,7 @@ export function AudioMessagePlayer({ src }: { src: string }) {
         onEnded={() => setIsPlaying(false)} 
         onPause={() => setIsPlaying(false)} 
         onPlay={() => setIsPlaying(true)} 
+        onError={() => setIsPlaying(false)}
         className="hidden" 
       />
     </div>

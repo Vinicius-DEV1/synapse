@@ -43,6 +43,7 @@ export function useGeminiLiveSession({
     nextAudioTimeRef,
     isPlayingRef,
     playAudioData,
+    initPlayback,
     closePlayback,
   } = useAudioStreamPlayer();
 
@@ -123,6 +124,12 @@ export function useGeminiLiveSession({
             aiTurnAudioChunksRef.current = [];
             setLiveTranscript('');
           }
+        }
+
+        if (response.serverContent?.interrupted) {
+          console.warn('Gemini Live: Turn interrupted by client audio.');
+          aiTurnTextRef.current = '';
+          aiTurnAudioChunksRef.current = [];
         }
 
         // Handle Tool Calls
@@ -285,5 +292,6 @@ export function useGeminiLiveSession({
     previewingVoice,
     previewVoice,
     aiVoice,
+    initPlayback,
   };
 }
