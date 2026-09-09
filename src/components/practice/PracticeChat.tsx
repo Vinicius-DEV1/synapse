@@ -78,6 +78,7 @@ export default function PracticeChat({ session }: PracticeChatProps) {
     disconnectWebSocket,
     previewingVoice,
     previewVoice,
+    initPlayback,
   } = useGeminiLiveSession({
     session,
     globalSystemPrompt,
@@ -123,7 +124,8 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const startCall = () => {
     setIsInCall(true);
     setCallStartTime(Date.now());
-    // Trigger mic capture immediately on user gesture to avoid WebKit permission drop
+    // Trigger mic capture & playback context immediately on user gesture to avoid WebKit permission drop
+    initPlayback?.();
     startAudioCapture();
     connectWebSocket();
   };

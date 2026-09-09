@@ -41,11 +41,29 @@ export function useAudioStreamPlayer() {
       playbackAnalyserRef.current.connect(ctx.destination);
     }
 
+    isPlayingRef.current = true;
+
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(playbackAnalyserRef.current);
     source.start(nextAudioTimeRef.current);
     nextAudioTimeRef.current += buffer.duration;
+
+    source.onended = () => {
+      if (playbackContextRef.current && nextAudioTimeRef.current <= playbackContextRef.current.currentTime + 0.08) {
+        isPlayingRef.current = false;
+      }
+    };
+  }, []);
+
+  const initPlayback = useCallback(() => {
+    if (!playbackContextRef.current || playbackContextRef.current.state === 'closed') {
+      playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+    }
+    if (playbackContextRef.current.state === 'suspended') {
+      playbackContextRef.current.resume().catch(() => {});
+    }
+    nextAudioTimeRef.current = playbackContextRef.current.currentTime;
   }, []);
 
   const closePlayback = useCallback(() => {
@@ -56,6 +74,8 @@ export function useAudioStreamPlayer() {
     }
     playbackContextRef.current = null;
     playbackAnalyserRef.current = null;
+    isPlayingRef.current = false;
+    nextAudioTimeRef.current = 0;
   }, []);
 
   return {
@@ -64,6 +84,7 @@ export function useAudioStreamPlayer() {
     nextAudioTimeRef,
     isPlayingRef,
     playAudioData,
+    initPlayback,
     closePlayback,
   };
 }

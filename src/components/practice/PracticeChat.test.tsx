@@ -29,6 +29,7 @@ vi.mock('./chat/hooks/useGeminiLiveSession', () => ({
     disconnectWebSocket: vi.fn(),
     previewingVoice: null,
     previewVoice: vi.fn(),
+    initPlayback: vi.fn(),
   })),
 }));
 
