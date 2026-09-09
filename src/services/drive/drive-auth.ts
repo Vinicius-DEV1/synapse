@@ -11,7 +11,7 @@ export const resilientFetch = async (input: RequestInfo | URL, init?: RequestIni
 };
 
 export const DRIVE_CLIENT_ID = '380707248992-fj03dp8cdeajh25b2til4954j2h3nn1m.apps.googleusercontent.com';
-export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || 'REDACTED_DRIVE_CLIENT_SECRET';
+export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || '';
 
 // Extended drive auth helper for OAuth token storage
 // tauriDriveApi (src/api/tauri/drive.ts) also implements getCredentials/saveCredentials

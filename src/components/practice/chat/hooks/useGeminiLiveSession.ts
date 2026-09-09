@@ -6,9 +6,9 @@ import { encodeWAV } from '../../../../utils/audio';
 import { arrayBufferToBase64 } from '../../../../utils/binary';
 import { useAudioStreamPlayer } from './useAudioStreamPlayer';
 import { useVoicePreview } from './useVoicePreview';
+import { getGeminiKeys, getRotatedActiveKeys } from '../../../../services/gemini/keys';
 
 const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
-const API_KEY = 'REDACTED_GEMINI_API_KEY';
 const HOST = 'generativelanguage.googleapis.com';
 
 interface UseGeminiLiveSessionProps {
@@ -160,7 +160,14 @@ export function useGeminiLiveSession({
   const connectWebSocket = useCallback(
     async (_overrideVoice?: string) => {
       try {
-        const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
+        const keys = await getGeminiKeys();
+        const activeKey = getRotatedActiveKeys(keys)[0]?.key || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+        if (!activeKey) {
+          setError('Nenhuma chave da API Gemini ativa configurada. Configure em Configurações > IA.');
+          return;
+        }
+
+        const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${activeKey}`;
         const ws = new WebSocket(url);
 
         ws.onopen = async () => {

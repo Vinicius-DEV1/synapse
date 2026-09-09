@@ -1,5 +1,20 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+dist-web/
+dist-electron/
+dist-app/
+dist-ssr/
+build/
+target/
+src-tauri/target/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,30 +22,47 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-web
-dist-electron
-dist-app
-dist-ssr
-.firebase
+# Environment & Sensitive Credentials
+.env
+.env.*
+*.env
+!.env.example
 *.local
+client_secret*.json
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
 
-# Editor directories and files
+# Tauri Binaries & Temporary Media
+src-tauri/data/bin/*.exe
+src-tauri/data/bin/*.bin
+*.epub
+*.mp4
+*.mkv
+*.avi
+
+# Cloud & Cache
+.firebase/
+.vite/
+.vitest/
+coverage/
+
+# Editor & System Files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Sensitive Credentials & Temporary Media
-client_secret*.json
-*.epub
-*.mp4
-*.mkv
-*.avi
-target/
+*.bak
+*.tmp

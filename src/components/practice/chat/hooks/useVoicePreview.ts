@@ -1,18 +1,26 @@
 import { useState, useCallback } from 'react';
+import { getGeminiKeys, getRotatedActiveKeys } from '../../../../services/gemini/keys';
 
 const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
-const API_KEY = 'REDACTED_GEMINI_API_KEY';
 const HOST = 'generativelanguage.googleapis.com';
 
 export function useVoicePreview() {
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
 
-  const previewVoice = useCallback((voiceName: string) => {
+  const previewVoice = useCallback(async (voiceName: string) => {
     if (previewingVoice) return;
     setPreviewingVoice(voiceName);
 
     try {
-      const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
+      const keys = await getGeminiKeys();
+      const activeKey = getRotatedActiveKeys(keys)[0]?.key || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+      if (!activeKey) {
+        console.warn('Nenhuma chave da API Gemini ativa configurada para prévia de voz.');
+        setPreviewingVoice(null);
+        return;
+      }
+
+      const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${activeKey}`;
       const ws = new WebSocket(url);
 
       const audioCtx = new AudioContext({ sampleRate: 24000 });

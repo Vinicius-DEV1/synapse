@@ -1,0 +1,1 @@
+# Keeps src-tauri/data/bin directory tracked while ignoring heavy .exe binaries
