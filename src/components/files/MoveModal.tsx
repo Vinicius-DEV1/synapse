@@ -4,6 +4,8 @@ import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 
+import { getDescendantFolderIds } from './utils/filesHierarchy';
+
 interface MoveModalProps {
   item?: FileItem | FileFolder;
   isFolder?: boolean;
@@ -25,10 +27,19 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter valid target folders (a folder cannot be moved inside itself)
-  const validFolders = folders.filter(f => {
-    return !list.some(entry => entry.isFolder && entry.item.id === f.id);
-  });
+  // Filter valid target folders (a folder cannot be moved into itself or its descendants)
+  const invalidTargetIds = new Set<string>();
+  for (const entry of list) {
+    if (entry.isFolder) {
+      invalidTargetIds.add(entry.item.id);
+      const descendants = getDescendantFolderIds(entry.item.id, folders);
+      for (const descId of descendants) {
+        invalidTargetIds.add(descId);
+      }
+    }
+  }
+
+  const validFolders = folders.filter(f => !invalidTargetIds.has(f.id));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
