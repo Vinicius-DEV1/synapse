@@ -20,6 +20,7 @@ interface FilesModalsHostProps {
   onCloseFolderUploadModal: () => void;
   onUploadComplete: () => void;
   showFolderModal: boolean;
+  newFolderParentId?: string | null;
   onCloseFolderModal: () => void;
   editingFolder: FileFolder | undefined;
   onFolderSaved: () => void;
@@ -62,6 +63,7 @@ export function FilesModalsHost({
   onCloseFolderUploadModal,
   onUploadComplete,
   showFolderModal,
+  newFolderParentId,
   onCloseFolderModal,
   editingFolder,
   onFolderSaved,
@@ -117,6 +119,7 @@ export function FilesModalsHost({
           onClose={onCloseFolderModal}
           onSave={onFolderSaved}
           existingFolder={editingFolder}
+          parentId={editingFolder ? undefined : newFolderParentId}
         />
       )}
       
