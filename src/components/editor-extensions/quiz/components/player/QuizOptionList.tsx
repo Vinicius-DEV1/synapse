@@ -46,7 +46,7 @@ export function QuizOptionList({
 
   const handleHover = () => {
     if (!q.answered) {
-      playQuizTickSound();
+      playQuizTickSound(true);
     }
   };
 

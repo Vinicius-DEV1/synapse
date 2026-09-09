@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, Edit2, Trash2, Sparkles, RotateCcw } from 'lucide-react';
-import { playQuizAiOpenSound } from '../../utils/quizSounds';
+import { MoreHorizontal, Edit2, Trash2, Sparkles, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { playQuizAiOpenSound, isQuizSoundEnabled, setQuizSoundEnabled, playQuizGabaritoSound } from '../../utils/quizSounds';
 import type { QuestionItem } from '../../types';
 
 interface QuizSequentialHeaderProps {
@@ -34,6 +34,16 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
   const stepperContainerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => isQuizSoundEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setQuizSoundEnabled(next);
+    if (next) {
+      playQuizGabaritoSound();
+    }
+  };
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -170,6 +180,19 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
             {correctCount} {correctCount === 1 ? 'acerto' : 'acertos'}
           </span>
         )}
+
+        {/* Sound Volume Toggle */}
+        <button
+          onClick={handleToggleSound}
+          className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center cursor-pointer ${
+            soundEnabled
+              ? 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border-white/[0.08]'
+              : 'bg-white/[0.02] hover:bg-white/[0.05] text-zinc-500 hover:text-zinc-400 border-white/[0.04]'
+          }`}
+          title={soundEnabled ? 'Silenciar sons do quiz' : 'Ativar sons do quiz'}
+        >
+          {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+        </button>
 
         {/* Menu da Questão Atual */}
         <div className="relative" ref={menuRef}>

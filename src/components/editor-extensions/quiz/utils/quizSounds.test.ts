@@ -26,6 +26,15 @@ describe('quizSounds utility', () => {
     expect(isQuizSoundEnabled()).toBe(true);
   });
 
+  it('falls back to global soundEnabled when quiz sound key is not explicitly set', () => {
+    localStorage.clear();
+    expect(isQuizSoundEnabled()).toBe(true);
+    localStorage.setItem('soundEnabled', 'false');
+    expect(isQuizSoundEnabled()).toBe(false);
+    localStorage.setItem('soundEnabled', 'true');
+    expect(isQuizSoundEnabled()).toBe(true);
+  });
+
   it('plays success sound without throwing', () => {
     expect(() => playQuizSuccessSound()).not.toThrow();
   });
@@ -36,6 +45,11 @@ describe('quizSounds utility', () => {
 
   it('plays submit sound without throwing', () => {
     expect(() => playQuizSubmitSound()).not.toThrow();
+  });
+
+  it('plays tick sound with onlyIfRunning true without throwing', () => {
+    expect(() => playQuizTickSound(true)).not.toThrow();
+    expect(() => playQuizTickSound(false)).not.toThrow();
   });
 
   it('plays tick, slide, gabarito, ai open, and completion sounds without throwing', () => {
