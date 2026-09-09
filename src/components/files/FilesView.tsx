@@ -80,6 +80,8 @@ export default function FilesView() {
 
   // Empty canvas context menu state
   const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(true);
 
   // Ordered list of visible IDs for range multi-selection
   const allVisibleIds = useMemo(() => {
@@ -219,6 +221,7 @@ export default function FilesView() {
           modals.setContextMenu({ x: e.clientX, y: e.clientY, item: folder, isFolder: true });
         }}
         onDropOnFolder={handleDropOnFolder}
+        isOpen={isSidebarOpen}
       />
 
       {/* Main Content Area */}
@@ -257,13 +260,20 @@ export default function FilesView() {
           onOpenFolderUpload={() => modals.setShowFolderUploadModal(true)}
           onOpenFileUpload={() => modals.setShowUploadModal(true)}
           onNewFolder={() => modals.openNewFolderModal(currentFolderId)}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          showCategoryFilter={showCategoryFilter}
+          onToggleCategoryFilter={() => setShowCategoryFilter((prev) => !prev)}
+          onReload={loadData}
         />
 
-        <FilesCategoryFilter
-          activeCategory={categoryFilter}
-          onSelectCategory={setCategoryFilter}
-          files={files}
-        />
+        {showCategoryFilter && (
+          <FilesCategoryFilter
+            activeCategory={categoryFilter}
+            onSelectCategory={setCategoryFilter}
+            files={files}
+          />
+        )}
 
         <div
           className="flex-1 flex overflow-hidden min-w-0 relative"

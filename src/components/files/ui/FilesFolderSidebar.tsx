@@ -25,6 +25,7 @@ interface FilesFolderSidebarProps {
   onNewFolder: (parentId?: string | null) => void;
   onContextMenu: (e: React.MouseEvent, folder: FileFolder) => void;
   onDropOnFolder: (targetFolderId: string | null, payload?: { id: string; isFolder: boolean } | null) => void;
+  isOpen?: boolean;
 }
 
 export const FilesFolderSidebar: React.FC<FilesFolderSidebarProps> = ({
@@ -38,6 +39,7 @@ export const FilesFolderSidebar: React.FC<FilesFolderSidebarProps> = ({
   onNewFolder,
   onContextMenu,
   onDropOnFolder,
+  isOpen = true,
 }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set());
   const [dragOverFolderId, setDragOverFolderId] = useState<string | 'root' | null>(null);
@@ -168,6 +170,10 @@ export const FilesFolderSidebar: React.FC<FilesFolderSidebarProps> = ({
       </div>
     );
   };
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className="w-56 md:w-60 shrink-0 border-r border-white/[0.06] bg-zinc-950/60 flex flex-col h-full select-none">

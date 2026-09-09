@@ -12,6 +12,14 @@ import {
   PanelRight,
   X,
   FolderPlus,
+  ChevronDown,
+  MoreVertical,
+  Cloud,
+  Upload,
+  Filter,
+  RefreshCw,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import type { FileViewMode, FileSortColumn, FileSortOrder, FileSearchScope } from '../hooks/useFilesExplorer';
 import { FilesBreadcrumbs } from './FilesBreadcrumbs';
@@ -43,6 +51,11 @@ interface FilesHeaderProps {
   onOpenFolderUpload: () => void;
   onOpenFileUpload: () => void;
   onNewFolder: () => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+  showCategoryFilter?: boolean;
+  onToggleCategoryFilter?: () => void;
+  onReload?: () => void;
 }
 
 const SORT_LABELS: Record<FileSortColumn, string> = {
@@ -78,30 +91,61 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
   onOpenFolderUpload,
   onOpenFileUpload,
   onNewFolder,
+  isSidebarOpen = true,
+  onToggleSidebar,
+  showCategoryFilter = true,
+  onToggleCategoryFilter,
+  onReload,
 }) => {
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (sortMenuRef.current && !sortMenuRef.current.contains(target)) {
         setShowSortMenu(false);
       }
+      if (addMenuRef.current && !addMenuRef.current.contains(target)) {
+        setShowAddMenu(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(target)) {
+        setShowMoreMenu(false);
+      }
     };
-    if (showSortMenu) {
+
+    if (showSortMenu || showAddMenu || showMoreMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showSortMenu]);
+  }, [showSortMenu, showAddMenu, showMoreMenu]);
 
   return (
     <header className="border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md flex flex-col select-none">
       {/* Top Toolbar */}
-      <div className="px-4 py-2.5 flex items-center justify-between gap-3 min-w-0 flex-wrap sm:flex-nowrap">
-        {/* Left: Navigation Buttons & Breadcrumbs */}
+      <div className="px-3.5 py-2 flex items-center justify-between gap-3 min-w-0 flex-wrap sm:flex-nowrap">
+        {/* Left: Sidebar Toggle, Navigation Buttons & Breadcrumbs */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
+              title={isSidebarOpen ? 'Ocultar barra de pastas' : 'Exibir barra de pastas'}
+              aria-label={isSidebarOpen ? 'Ocultar barra de pastas' : 'Exibir barra de pastas'}
+            >
+              {isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
+            </button>
+          )}
+
           <div className="flex items-center gap-0.5 shrink-0 bg-white/[0.03] p-0.5 rounded-lg border border-white/[0.04]">
             <button
               type="button"
@@ -110,7 +154,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Voltar (Alt + Esquerda)"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft size={13} />
             </button>
             <button
               type="button"
@@ -119,7 +163,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Avançar (Alt + Direita)"
             >
-              <ArrowRight size={14} />
+              <ArrowRight size={13} />
             </button>
             <button
               type="button"
@@ -128,7 +172,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Subir um nível (Alt + Cima)"
             >
-              <ArrowUp size={14} />
+              <ArrowUp size={13} />
             </button>
           </div>
 
@@ -142,18 +186,18 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
           />
         </div>
 
-        {/* Right: Search, View Controls & Actions */}
+        {/* Right: Search, View Mode, Sort, Add Dropdown & Options Menu */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Search Input & Scope Toggle */}
           <div className="flex items-center gap-1.5">
-            <div className="relative w-40 sm:w-52">
+            <div className="relative w-36 sm:w-48 lg:w-56">
               <Search
                 size={13}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
               />
               <input
                 type="text"
-                placeholder="Buscar arquivos... (Ctrl+F)"
+                placeholder="Buscar... (Ctrl+F)"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg pl-8 pr-7 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-brand-500/50 focus:bg-white/[0.05] transition-colors"
@@ -190,7 +234,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             )}
           </div>
 
-          {/* View Mode Toggle */}
+          {/* View Mode Toggle: Grid / Table */}
           <div className="flex items-center bg-white/[0.03] p-0.5 rounded-lg border border-white/[0.04]">
             <button
               type="button"
@@ -259,7 +303,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             )}
           </div>
 
-          {/* Inspector Toggle Button */}
+          {/* Inspector Panel Toggle Button */}
           <button
             type="button"
             onClick={onToggleInspector}
@@ -269,62 +313,183 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
                 : 'bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 border-white/[0.04]'
             }`}
             title="Alternar Painel de Detalhes (I)"
+            aria-label="Alternar Painel de Detalhes"
           >
             <PanelRight size={14} />
           </button>
 
           <div className="h-4 w-px bg-white/[0.06]" />
 
-          {/* Actions */}
-          <div className="flex items-center gap-1.5">
+          {/* Unified "+ Adicionar" Action Dropdown */}
+          <div className="relative" ref={addMenuRef}>
             <button
               type="button"
-              onClick={onOpenDriveAuth}
-              className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors"
-              title="Status do Google Drive"
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-medium transition-all shadow-sm shadow-brand-500/20 active:scale-95"
+              title="Adicionar arquivos ou pastas"
             >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  driveStatus === 'connected'
-                    ? 'bg-emerald-500'
-                    : driveStatus === 'disconnected'
-                    ? 'bg-red-500'
-                    : 'bg-amber-500'
-                }`}
-              />
-              <span className="text-[11px]">
-                {driveStatus === 'connected' ? 'Drive' : 'Conectar'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onNewFolder}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.06] rounded-lg text-xs font-medium transition-colors"
-              title="Criar nova pasta"
-            >
-              <FolderPlus size={13} />
-              <span className="hidden sm:inline">Nova Pasta</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenFolderUpload}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/25 rounded-lg text-xs font-medium transition-colors"
-              title="Importar pasta completa"
-            >
-              <FolderUp size={13} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenFileUpload}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-medium transition-colors shadow-sm shadow-brand-500/20 active:scale-95"
-              title="Adicionar arquivos"
-            >
-              <Plus size={14} />
+              <Plus size={13} strokeWidth={2.5} />
               <span className="hidden sm:inline">Adicionar</span>
+              <ChevronDown
+                size={11}
+                className={`transition-transform duration-150 ${showAddMenu ? 'rotate-180' : ''}`}
+              />
             </button>
+
+            {showAddMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddMenu(false);
+                    onOpenFileUpload();
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                >
+                  <Upload size={14} className="text-brand-400 shrink-0" />
+                  <span>Adicionar Arquivo(s)...</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddMenu(false);
+                    onOpenFolderUpload();
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                >
+                  <FolderUp size={14} className="text-emerald-400 shrink-0" />
+                  <span>Enviar Pasta Completa</span>
+                </button>
+
+                <div className="h-px bg-white/[0.06] my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddMenu(false);
+                    onNewFolder();
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                >
+                  <FolderPlus size={14} className="text-yellow-400 shrink-0" />
+                  <span>Criar Nova Pasta</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Secondary Options Menu ("...") */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className={`p-1.5 rounded-lg border transition-colors ${
+                showMoreMenu
+                  ? 'bg-white/[0.08] text-white border-white/[0.1]'
+                  : 'bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 border-white/[0.04]'
+              }`}
+              title="Mais opções"
+              aria-label="Mais opções"
+            >
+              <MoreVertical size={14} />
+            </button>
+
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                {/* Google Drive Status & Connection */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    onOpenDriveAuth();
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Cloud
+                      size={14}
+                      className={driveStatus === 'connected' ? 'text-emerald-400' : 'text-zinc-400'}
+                    />
+                    <span>Google Drive</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        driveStatus === 'connected'
+                          ? 'bg-emerald-500'
+                          : driveStatus === 'disconnected'
+                          ? 'bg-rose-500'
+                          : 'bg-amber-500'
+                      }`}
+                    />
+                    <span className={driveStatus === 'connected' ? 'text-emerald-400' : 'text-zinc-400'}>
+                      {driveStatus === 'connected' ? 'Conectado' : 'Conectar'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Inspector toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    onToggleInspector();
+                  }}
+                  className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <PanelRight
+                      size={14}
+                      className={isInspectorOpen ? 'text-brand-400' : 'text-zinc-400'}
+                    />
+                    <span>Painel de Detalhes</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 font-mono">I</span>
+                </button>
+
+                {/* Category Filter Bar Toggle */}
+                {onToggleCategoryFilter && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      onToggleCategoryFilter();
+                    }}
+                    className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Filter
+                        size={14}
+                        className={showCategoryFilter ? 'text-brand-400' : 'text-zinc-400'}
+                      />
+                      <span>Barra de Filtros</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {showCategoryFilter ? 'Visível' : 'Oculto'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Reload action */}
+                {onReload && (
+                  <>
+                    <div className="h-px bg-white/[0.06] my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        onReload();
+                      }}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/[0.06] text-zinc-200 hover:text-white transition-colors"
+                    >
+                      <RefreshCw size={14} className="text-zinc-400" />
+                      <span>Recarregar Arquivos</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
