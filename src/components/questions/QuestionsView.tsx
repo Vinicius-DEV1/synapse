@@ -415,15 +415,15 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   return (
     <div className="w-full h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none">
       {/* Top Header */}
-      <header className="px-6 py-4 border-b border-white/[0.08] bg-zinc-950/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <header className="px-6 py-4 border-b border-white/5 bg-zinc-950/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
+          <div className="p-2.5 rounded-2xl bg-white/[0.04] text-zinc-300 border border-white/[0.06] shadow-xs">
             <CheckSquare size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400">
                 {stats.totalQuestions} questões
               </span>
             </div>
@@ -436,7 +436,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         {/* Action Controls */}
         <div className="flex items-center gap-2.5">
           {/* Section Switcher Tabs */}
-          <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-white/[0.06] text-xs">
+          <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/5 text-xs">
             <button
               onClick={() => setActiveTabSection('explorer')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -477,7 +477,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
           {/* New Battery Button */}
           <button
             onClick={() => setIsCreatingNew(true)}
-            className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
           >
             <Plus size={15} />
             <span>Nova Bateria</span>

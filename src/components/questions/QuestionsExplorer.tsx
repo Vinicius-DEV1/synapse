@@ -121,7 +121,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Search and Filters Bar */}
-      <div className="bg-zinc-900/60 border border-white/[0.08] rounded-2xl p-4 space-y-3">
+      <div className="bg-dark-card/50 border border-white/5 rounded-2xl p-4 space-y-3">
         {/* Search Input */}
         <div className="relative">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -130,14 +130,14 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por título, enunciado, tag ou comentário..."
-            className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-white/[0.06] focus:border-brand-500/50 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-dark-bg/60 border border-white/5 focus:border-brand-500/40 focus:ring-1 focus:ring-brand-500/20 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
           />
         </div>
 
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           {/* Origin Filter */}
-          <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-white/[0.06] text-xs">
+          <div className="flex items-center gap-1 bg-dark-bg/50 p-1 rounded-xl border border-white/5 text-xs">
             <button
               onClick={() => setSelectedOrigin('all')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
@@ -167,7 +167,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-white/[0.06] text-xs">
+          <div className="flex items-center gap-1 bg-dark-bg/50 p-1 rounded-xl border border-white/5 text-xs">
             <button
               onClick={() => setSelectedStatus('all')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
@@ -187,7 +187,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             <button
               onClick={() => setSelectedStatus('errors')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-rose-300 ${
-                selectedStatus === 'errors' ? 'bg-rose-500/20 text-rose-200 font-medium' : 'hover:text-rose-200'
+                selectedStatus === 'errors' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20 font-medium' : 'hover:text-rose-200'
               }`}
             >
               Com Erros
@@ -197,7 +197,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
         {/* Tag Pills */}
         {allAvailableTags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/[0.04]">
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
             <span className="text-[11px] text-zinc-500 mr-1 flex items-center gap-1">
               <Tag size={12} />
               <span>Tags:</span>
@@ -205,7 +205,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             {selectedTag && (
               <button
                 onClick={() => setSelectedTag(null)}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 border border-brand-500/30 cursor-pointer"
+                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/15 text-zinc-200 border border-white/15 cursor-pointer transition-colors"
               >
                 Limpar ({selectedTag}) ✕
               </button>
@@ -216,8 +216,8 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                 onClick={() => setSelectedTag(selectedTag === t ? null : t)}
                 className={`text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
                   selectedTag === t
-                    ? 'bg-brand-500/30 text-brand-200 border border-brand-500/40'
-                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.06]'
+                    ? 'bg-zinc-800 text-zinc-100 border border-white/20 shadow-sm'
+                    : 'bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5'
                 }`}
               >
                 #{t}
@@ -230,7 +230,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
       {/* Batteries List */}
       <div className="space-y-3">
         {filteredBatteries.length === 0 ? (
-          <div className="bg-zinc-900/40 border border-dashed border-white/[0.08] rounded-2xl p-10 text-center space-y-2">
+          <div className="bg-dark-card/30 border border-dashed border-white/5 rounded-2xl p-10 text-center space-y-2">
             <HelpCircle size={24} className="mx-auto text-zinc-500" />
             <h4 className="text-sm font-medium text-zinc-300">Nenhuma bateria de questões encontrada</h4>
             <p className="text-xs text-zinc-500">
@@ -251,10 +251,10 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
               <div
                 key={b.id}
                 id={`battery-card-${b.id}`}
-                className={`rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
+                className={`group rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
                   isHighlighted
-                    ? 'bg-zinc-900/90 border border-brand-500/50 ring-1 ring-brand-500/40'
-                    : 'bg-zinc-900/60 hover:bg-zinc-900/80 border border-white/[0.08] hover:border-white/[0.14]'
+                    ? 'bg-dark-card border border-brand-500/40 ring-1 ring-brand-500/20'
+                    : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-white/10'
                 }`}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '160px' }}
               >
@@ -293,7 +293,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                               <button
                                 key={p.id}
                                 onClick={() => onNavigateToPage(p.id)}
-                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.06] flex items-center gap-1 transition-colors cursor-pointer"
                                 title={`Abrir página "${pageTitle}" no Caderno`}
                               >
                                 <FileText size={11} />
@@ -305,7 +305,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                         ) : b.page_id ? (
                           <button
                             onClick={() => onNavigateToPage(b.page_id!)}
-                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.06] flex items-center gap-1 transition-colors cursor-pointer"
                             title={`Abrir página "${getPageTitle?.(b.page_id) || 'Caderno'}" no Caderno`}
                           >
                             <FileText size={11} />
@@ -313,7 +313,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                             <ExternalLink size={10} className="opacity-70" />
                           </button>
                         ) : (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400 flex items-center gap-1">
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-1">
                             <Zap size={10} className="text-amber-400" />
                             <span>Bateria Avulsa</span>
                           </span>
@@ -336,16 +336,16 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => onPlayBattery(b)}
-                      className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 hover:text-white border border-white/[0.08] hover:border-white/15 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                       title="Praticar no Modo Foco"
                     >
-                      <Play size={13} className="fill-brand-300" />
+                      <Play size={13} className="fill-zinc-300" />
                       <span className="hidden sm:inline">Praticar</span>
                     </button>
 
                     <button
                       onClick={() => onEditBattery(b)}
-                      className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
                       title="Editar bateria"
                     >
                       <Edit3 size={15} />
@@ -353,7 +353,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
                     <button
                       onClick={() => setBatteryPendingDelete(b)}
-                      className="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
                       title="Mover para lixeira"
                     >
                       <Trash2 size={15} />
@@ -388,7 +388,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                       return (
                         <div
                           key={q.id}
-                          className="p-3 rounded-xl bg-zinc-950/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs"
+                          className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs"
                         >
                           <div className="flex items-start gap-2.5 min-w-0">
                             <span className="font-mono text-zinc-500 text-[11px] shrink-0 mt-0.5">
@@ -450,7 +450,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             onClick={() => setBatteryPendingDelete(null)}
           >
             <div
-              className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
+              className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start gap-3 mb-4">

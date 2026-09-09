@@ -438,17 +438,17 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             }
           }
         }}
-        className={`w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-xl border select-none transition-all duration-150 ${
+        className={`group w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-xl border select-none transition-all duration-150 ${
           props.selected || isNodeSelected
-            ? 'bg-zinc-900/90 border-brand-400 ring-1 ring-brand-400/50 shadow-sm'
-            : 'bg-zinc-900/60 hover:bg-zinc-900/80 border-white/[0.08] hover:border-white/[0.14]'
+            ? 'bg-dark-card/90 border-brand-500/50 ring-1 ring-brand-500/30 shadow-sm'
+            : 'bg-dark-card/50 hover:bg-white/[0.04] border-white/5 hover:border-white/10'
         }`}
         style={{ contain: 'layout style' }}
       >
         {/* Left Side: Icon, Title, Badges */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
-            <CheckCircle2 size={15} />
+          <div className="p-1.5 rounded-lg bg-white/[0.03] text-zinc-400 border border-white/[0.05] shrink-0">
+            <CheckCircle2 size={14} className="text-zinc-400" />
           </div>
 
           <span
@@ -458,12 +458,12 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             {title}
           </span>
 
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-zinc-400 shrink-0">
             {stats.total} {stats.total === 1 ? 'questão' : 'questões'}
           </span>
 
           {stats.answered > 0 && (
-            <span className="text-[11px] font-mono text-emerald-400 font-medium shrink-0 flex items-center gap-1">
+            <span className="text-[11px] font-mono text-emerald-400/90 font-medium shrink-0 flex items-center gap-1">
               <span>{stats.accuracy}% acertos</span>
               <span className="text-zinc-600 text-[10px] hidden md:inline">({stats.answered}/{stats.total})</span>
             </span>
@@ -502,46 +502,48 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
               setActiveIndex(0);
               setIsFocusModeOpen(true);
             }}
-            className="px-2.5 py-1 rounded-lg bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.06] hover:border-white/15 text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
             title="Iniciar no Modo Foco"
           >
-            <Play size={11} className="fill-brand-300 shrink-0" />
+            <Play size={10} className="fill-zinc-400 text-zinc-400 shrink-0" />
             <span className="hidden sm:inline">Iniciar no Modo Foco</span>
             <span className="sm:hidden">Foco</span>
           </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNavigateToQuestionsModule();
-            }}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-            title="Abrir no Módulo de Questões"
-          >
-            <ExternalLink size={14} />
-          </button>
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNavigateToQuestionsModule();
+              }}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Abrir no Módulo de Questões"
+            >
+              <ExternalLink size={13} />
+            </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenEditorPage(false);
-            }}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-            title="Editar questões"
-          >
-            <Edit3 size={14} />
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEditorPage(false);
+              }}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Editar questões"
+            >
+              <Edit3 size={13} />
+            </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteConfirm(true);
-            }}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-            title="Remover bloco da nota"
-          >
-            <Trash2 size={14} />
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+              title="Remover bloco da nota"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
       </div>
 
