@@ -11,23 +11,38 @@ const SOUND_STORAGE_KEY = 'caderno_quiz_sound_enabled';
  */
 let sharedAudioContext: AudioContext | null = null;
 
-// Global user-gesture audio unlocker for WebKitGTK / Chromium
+// Multi-gesture user audio unlocker for WebKitGTK, Chromium and Safari
 if (typeof window !== 'undefined') {
   const unlockAudio = () => {
     try {
-      const ctx = getAudioContext();
+      const ctx = getAudioContext(false);
       if (ctx && ctx.state !== 'running') {
-        ctx.resume().catch(() => {});
+        ctx
+          .resume()
+          .then(() => {
+            if (ctx.state === 'running') {
+              window.removeEventListener('click', unlockAudio);
+              window.removeEventListener('mouseup', unlockAudio);
+              window.removeEventListener('keydown', unlockAudio);
+              window.removeEventListener('touchend', unlockAudio);
+              window.removeEventListener('pointerdown', unlockAudio);
+            }
+          })
+          .catch(() => {});
       }
     } catch {
       // safe
     }
   };
-  window.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+  window.addEventListener('click', unlockAudio, { passive: true });
+  window.addEventListener('mouseup', unlockAudio, { passive: true });
   window.addEventListener('keydown', unlockAudio, { passive: true });
+  window.addEventListener('touchend', unlockAudio, { passive: true });
+  window.addEventListener('pointerdown', unlockAudio, { passive: true });
 }
 
-function getAudioContext(): AudioContext | null {
+function getAudioContext(onlyIfRunning?: boolean): AudioContext | null {
   if (typeof window === 'undefined') return null;
   try {
     const AudioContextClass =
@@ -40,11 +55,15 @@ function getAudioContext(): AudioContext | null {
     }
 
     if (!sharedAudioContext) {
+      // Prevent creating AudioContext during non-gesture events like hover
+      if (onlyIfRunning) {
+        return null;
+      }
       sharedAudioContext = new AudioContextClass();
     }
 
-    // Always attempt resume — covers 'suspended', 'interrupted' on Linux
-    if (sharedAudioContext.state !== 'running') {
+    // Always attempt resume if not running and not in onlyIfRunning mode
+    if (!onlyIfRunning && sharedAudioContext.state !== 'running') {
       sharedAudioContext.resume().catch(() => {});
     }
 
@@ -55,12 +74,92 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
+/**
+ * Executes an audio synthesis callback against an active, running AudioContext.
+ * 
+ * On Linux (WebKitGTK / PipeWire / PulseAudio), AudioContext can be suspended on
+ * initial load or after idle timeout (PipeWire module-suspend-on-idle).
+ * 
+ * If the context is currently 'running', callback(ctx) executes immediately (0ms latency).
+ * If the context is 'suspended' or 'interrupted', ctx.resume() is awaited first, and then
+ * callback(ctx) reads the fresh hardware ctx.currentTime to prevent scheduling in the past.
+ * If onlyIfRunning is true (e.g. for mouse hover ticks), it skips execution if the context
+ * has not yet been unlocked by a legitimate user gesture, preventing autoplay policy blocks.
+ */
+function withAudioContext(
+  callback: (ctx: AudioContext) => void,
+  options?: { onlyIfRunning?: boolean }
+): void {
+  if (!isQuizSoundEnabled() || typeof window === 'undefined') return;
+
+  const ctx = getAudioContext(options?.onlyIfRunning);
+  if (!ctx) return;
+
+  if (ctx.state === 'running') {
+    try {
+      callback(ctx);
+    } catch (err) {
+      console.debug('[QuizSounds] Callback execution error on running context:', err);
+    }
+    return;
+  }
+
+  // If onlyIfRunning requested, do not force-resume on non-gesture events (e.g. pointerenter)
+  if (options?.onlyIfRunning) {
+    return;
+  }
+
+  // Context is suspended or interrupted: wake up before scheduling
+  ctx
+    .resume()
+    .then(() => {
+      if (ctx.state === 'running') {
+        callback(ctx);
+      } else {
+        recoverAndPlay(callback);
+      }
+    })
+    .catch((err) => {
+      console.debug('[QuizSounds] AudioContext resume failed, attempting recovery:', err);
+      recoverAndPlay(callback);
+    });
+}
+
+function recoverAndPlay(callback: (ctx: AudioContext) => void): void {
+  try {
+    if (sharedAudioContext) {
+      try {
+        sharedAudioContext.close().catch(() => {});
+      } catch {
+        // safe
+      }
+      sharedAudioContext = null;
+    }
+    const freshCtx = getAudioContext(false);
+    if (!freshCtx) return;
+    freshCtx
+      .resume()
+      .then(() => {
+        if (freshCtx.state === 'running') {
+          callback(freshCtx);
+        }
+      })
+      .catch(() => {});
+  } catch (err) {
+    console.debug('[QuizSounds] Recovery failed:', err);
+  }
+}
+
 export function isQuizSoundEnabled(): boolean {
   if (typeof window === 'undefined') return true;
   try {
     const saved = localStorage.getItem(SOUND_STORAGE_KEY);
-    // Explicit: only disabled if specifically 'false'
-    return saved !== 'false';
+    if (saved !== null) {
+      return saved !== 'false';
+    }
+    // Fallback to global sound preference if specific quiz sound key is unset
+    const globalSound = localStorage.getItem('soundEnabled');
+    return globalSound !== 'false';
   } catch {
     return true;
   }
@@ -77,16 +176,11 @@ export function setQuizSoundEnabled(enabled: boolean): void {
 
 /**
  * Plays a warm, bright harmonic chime for a correct answer.
- * Uses the same proven pattern as the Anki module: reads ctx.currentTime
- * inline at each scheduling call to stay in sync with the hardware clock.
+ * Uses inline ctx.currentTime after hardware confirmation to ensure 100% audibility.
  */
 export function playQuizSuccessSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const baseTime = Math.max(ctx.currentTime, 0.001);
+  withAudioContext((ctx) => {
+    const baseTime = ctx.currentTime;
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -104,7 +198,12 @@ export function playQuizSuccessSound(): void {
       gainNode.connect(ctx.destination);
 
       osc.onended = () => {
-        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
       };
 
       osc.start(t);
@@ -114,21 +213,15 @@ export function playQuizSuccessSound(): void {
     playNote(523.25, 0, 0.35);    // C5
     playNote(659.25, 0.08, 0.35); // E5
     playNote(783.99, 0.15, 0.40); // G5
-  } catch (err) {
-    console.debug('[QuizSounds] Success sound error:', err);
-  }
+  });
 }
 
 /**
  * Plays a soft, gentle descending tone for an incorrect answer.
  */
 export function playQuizFailureSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const baseTime = Math.max(ctx.currentTime, 0.001);
+  withAudioContext((ctx) => {
+    const baseTime = ctx.currentTime;
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -139,14 +232,19 @@ export function playQuizFailureSound(): void {
       osc.frequency.setValueAtTime(freq, t);
 
       gainNode.gain.setValueAtTime(0.0001, t);
-      gainNode.gain.linearRampToValueAtTime(0.28, t + 0.02);
+      gainNode.gain.linearRampToValueAtTime(0.30, t + 0.02);
       gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
 
       osc.onended = () => {
-        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
       };
 
       osc.start(t);
@@ -155,57 +253,54 @@ export function playQuizFailureSound(): void {
 
     playNote(261.63, 0, 0.22);   // C4
     playNote(220.0, 0.09, 0.26); // A3
-  } catch (err) {
-    console.debug('[QuizSounds] Failure sound error:', err);
-  }
+  });
 }
 
 /**
- * Plays a subtle, ultra-short "tick" sound for UI interactions.
+ * Plays a subtle "tick" sound for UI interactions.
+ * If onlyIfRunning is true, skips when AudioContext is suspended to avoid autoplay blocks.
  */
-export function playQuizTickSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+export function playQuizTickSound(onlyIfRunning: boolean = false): void {
+  withAudioContext(
+    (ctx) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const t = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    const t = Math.max(ctx.currentTime, 0.001);
+      osc.type = 'sine';
+      // Fast transient simulating a tactile click
+      osc.frequency.setValueAtTime(600, t);
+      osc.frequency.exponentialRampToValueAtTime(140, t + 0.03);
 
-    osc.type = 'sine';
-    // Start high, drop fast to simulate a "click" transient
-    osc.frequency.setValueAtTime(600, t);
-    osc.frequency.exponentialRampToValueAtTime(120, t + 0.025);
+      gainNode.gain.setValueAtTime(0.0001, t);
+      gainNode.gain.linearRampToValueAtTime(0.18, t + 0.008);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
 
-    gainNode.gain.setValueAtTime(0.0001, t);
-    gainNode.gain.linearRampToValueAtTime(0.10, t + 0.006);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
+      };
 
-    osc.onended = () => {
-      try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
-    };
-
-    osc.start(t);
-    osc.stop(t + 0.045);
-  } catch (err) {
-    console.debug('[QuizSounds] Failed to play tick sound:', err);
-  }
+      osc.start(t);
+      osc.stop(t + 0.06);
+    },
+    { onlyIfRunning }
+  );
 }
 
 /**
  * Plays a delicate, affirmative chime when submitting an open answer for AI evaluation.
  */
 export function playQuizSubmitSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const baseTime = Math.max(ctx.currentTime, 0.001);
+  withAudioContext((ctx) => {
+    const baseTime = ctx.currentTime;
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -223,7 +318,12 @@ export function playQuizSubmitSound(): void {
       gainNode.connect(ctx.destination);
 
       osc.onended = () => {
-        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
       };
 
       osc.start(t);
@@ -232,9 +332,7 @@ export function playQuizSubmitSound(): void {
 
     playNote(440.0, 0, 0.22);     // A4
     playNote(659.25, 0.08, 0.26); // E5
-  } catch (err) {
-    console.debug('[QuizSounds] Submit sound error:', err);
-  }
+  });
 }
 
 /**
@@ -242,48 +340,43 @@ export function playQuizSubmitSound(): void {
  * (<, >, arrow keys, or number stepper pills). Perfectly audible yet subtle.
  */
 export function playQuizSlideSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
+  withAudioContext((ctx) => {
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    const t = Math.max(ctx.currentTime, 0.001);
+    const t = ctx.currentTime;
 
     osc.type = 'sine';
-    // Gentle downward pitch sweep (480Hz -> 300Hz) simulating a smooth page turn
+    // Gentle downward pitch sweep (480Hz -> 280Hz) simulating a smooth page transition
     osc.frequency.setValueAtTime(480, t);
-    osc.frequency.exponentialRampToValueAtTime(300, t + 0.045);
+    osc.frequency.exponentialRampToValueAtTime(280, t + 0.05);
 
     gainNode.gain.setValueAtTime(0.0001, t);
-    gainNode.gain.linearRampToValueAtTime(0.14, t + 0.012);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, t + 0.065);
+    gainNode.gain.linearRampToValueAtTime(0.20, t + 0.015);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
 
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
 
     osc.onended = () => {
-      try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+      try {
+        osc.disconnect();
+        gainNode.disconnect();
+      } catch {
+        // safe
+      }
     };
 
     osc.start(t);
-    osc.stop(t + 0.07);
-  } catch (err) {
-    console.debug('[QuizSounds] Slide sound error:', err);
-  }
+    osc.stop(t + 0.085);
+  });
 }
 
 /**
  * Plays a warm, subtle two-tone unfold chime when toggling the gabarito/explanation.
  */
 export function playQuizGabaritoSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const baseTime = Math.max(ctx.currentTime, 0.001);
+  withAudioContext((ctx) => {
+    const baseTime = ctx.currentTime;
 
     const playNote = (freq: number, delay: number, dur: number, gainLevel: number) => {
       const osc = ctx.createOscillator();
@@ -301,64 +394,62 @@ export function playQuizGabaritoSound(): void {
       gainNode.connect(ctx.destination);
 
       osc.onended = () => {
-        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
       };
 
       osc.start(t);
       osc.stop(t + dur);
     };
 
-    playNote(392.0, 0, 0.10, 0.16);    // G4
-    playNote(523.25, 0.045, 0.14, 0.18); // C5
-  } catch (err) {
-    console.debug('[QuizSounds] Gabarito sound error:', err);
-  }
+    playNote(392.0, 0, 0.12, 0.22);    // G4
+    playNote(523.25, 0.05, 0.16, 0.26); // C5
+  });
 }
 
 /**
  * Plays a calm harmonic presence tone (432Hz) when opening the AI assistant discussion.
  */
 export function playQuizAiOpenSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
+  withAudioContext((ctx) => {
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    const t = Math.max(ctx.currentTime, 0.001);
+    const t = ctx.currentTime;
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(432, t);
 
     gainNode.gain.setValueAtTime(0.0001, t);
-    gainNode.gain.linearRampToValueAtTime(0.18, t + 0.015);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+    gainNode.gain.linearRampToValueAtTime(0.24, t + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
 
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
 
     osc.onended = () => {
-      try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+      try {
+        osc.disconnect();
+        gainNode.disconnect();
+      } catch {
+        // safe
+      }
     };
 
     osc.start(t);
-    osc.stop(t + 0.12);
-  } catch (err) {
-    console.debug('[QuizSounds] AI open sound error:', err);
-  }
+    osc.stop(t + 0.15);
+  });
 }
 
 /**
  * Plays a tranquil ascending pentatonic chime when completing the quiz session or viewing summary.
  */
 export function playQuizCompletionSound(): void {
-  if (!isQuizSoundEnabled()) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const baseTime = Math.max(ctx.currentTime, 0.001);
+  withAudioContext((ctx) => {
+    const baseTime = ctx.currentTime;
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -369,14 +460,19 @@ export function playQuizCompletionSound(): void {
       osc.frequency.setValueAtTime(freq, t);
 
       gainNode.gain.setValueAtTime(0.0001, t);
-      gainNode.gain.linearRampToValueAtTime(0.24, t + 0.02);
+      gainNode.gain.linearRampToValueAtTime(0.28, t + 0.02);
       gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
 
       osc.onended = () => {
-        try { osc.disconnect(); gainNode.disconnect(); } catch { /* safe */ }
+        try {
+          osc.disconnect();
+          gainNode.disconnect();
+        } catch {
+          // safe
+        }
       };
 
       osc.start(t);
@@ -386,7 +482,5 @@ export function playQuizCompletionSound(): void {
     playNote(523.25, 0, 0.28);    // C5
     playNote(659.25, 0.07, 0.32); // E5
     playNote(880.0, 0.14, 0.38);  // A5
-  } catch (err) {
-    console.debug('[QuizSounds] Completion sound error:', err);
-  }
+  });
 }

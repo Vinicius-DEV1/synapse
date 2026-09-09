@@ -192,7 +192,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
                 key={optIndex}
                 onClick={() => onSelectOption(optIndex)}
                 onPointerEnter={() => {
-                  if (!currentQ.answered) playQuizTickSound();
+                  if (!currentQ.answered) playQuizTickSound(true);
                 }}
                 disabled={currentQ.answered}
                 className={`group py-3 px-3.5 sm:py-3.5 sm:px-4.5 rounded-xl border text-sm sm:text-base text-left flex items-start gap-3.5 transition-all duration-150 ease-out cursor-pointer disabled:cursor-default ${style}`}
