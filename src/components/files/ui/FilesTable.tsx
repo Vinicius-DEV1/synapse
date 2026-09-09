@@ -12,6 +12,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   BookOpen,
+  Cloud,
 } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../../types';
 import type { FileSortColumn, FileSortOrder } from '../hooks/useFilesExplorer';
@@ -56,7 +57,8 @@ export const FilesTable: React.FC<FilesTableProps> = ({
   onItemClick,
 }) => {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-  const allSelected = files.length > 0 && selectedIds.size === files.length;
+  const totalCount = subfolders.length + files.length;
+  const allSelected = totalCount > 0 && selectedIds.size >= totalCount;
 
   const getFileIcon = (file: FileItem) => {
     const type = file.file_type || detectFileType(file.name);
@@ -155,8 +157,10 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                   type="checkbox"
                   checked={allSelected}
                   onChange={onToggleSelectAll}
-                  className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer"
-                  title="Selecionar todos os arquivos"
+                  className={`rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer transition-opacity ${
+                    selectedIds.size > 0 ? 'opacity-100' : 'opacity-40 hover:opacity-100'
+                  }`}
+                  title="Selecionar todos os arquivos e pastas"
                 />
               </th>
 
@@ -192,14 +196,17 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                 {renderSortIndicator('updated_at')}
               </th>
 
-              <th className="px-3 py-2.5 font-medium w-24 text-center">Origem</th>
-              <th className="px-3 py-2.5 font-medium w-12 text-center">Ações</th>
+              <th className="px-3 py-2.5 font-medium w-20 text-center">Origem</th>
+              <th className="px-3 py-2.5 font-medium w-10 text-center">
+                <span className="sr-only">Ações</span>
+              </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-white/[0.04]">
             {/* Subfolders rows */}
             {subfolders.map((folder) => {
+              const isSelected = selectedIds.has(folder.id);
               const isFocused = focusedItemId === folder.id;
               const isDragTarget = dragOverFolderId === folder.id;
 
@@ -228,16 +235,20 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                   className={`hover:bg-white/[0.04] transition-colors group cursor-pointer ${
                     isDragTarget
                       ? 'bg-brand-500/20 ring-1 ring-brand-500'
-                      : isFocused
+                      : isSelected || isFocused
                       ? 'bg-brand-500/10'
                       : ''
                   }`}
                 >
-                  <td className="px-3 py-2 text-center text-zinc-600">
-                    <Folder
-                      size={14}
-                      style={{ color: folder.color || '#6366f1' }}
-                      className="mx-auto"
+                  <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onToggleSelect(folder.id)}
+                      className={`rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                      }`}
+                      title={`Selecionar pasta ${folder.name}`}
                     />
                   </td>
 
@@ -255,9 +266,7 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                   </td>
 
                   <td className="px-3 py-2">
-                    <span className="px-1.5 py-0.5 rounded bg-white/[0.04] text-[10px] uppercase font-mono text-zinc-400 border border-white/[0.04]">
-                      Pasta
-                    </span>
+                    <span className="text-zinc-500 text-xs">Pasta</span>
                   </td>
 
                   <td className="px-3 py-2 text-zinc-500 text-[11px] font-mono">—</td>
@@ -275,7 +284,7 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                         e.stopPropagation();
                         onContextMenu(e, folder, true);
                       }}
-                      className="p-1 text-zinc-500 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-70 group-hover:opacity-100"
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-md transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="Mais opções"
                     >
                       <MoreVertical size={14} />
@@ -318,7 +327,10 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelect(file.id)}
-                      className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer"
+                      className={`rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500 cursor-pointer transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                      }`}
+                      title={`Selecionar ${file.name}`}
                     />
                   </td>
 
@@ -335,7 +347,7 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                   </td>
 
                   <td className="px-3 py-2">
-                    <span className="px-1.5 py-0.5 rounded bg-white/[0.04] text-[10px] font-mono uppercase text-zinc-400 border border-white/[0.04]">
+                    <span className="text-zinc-400 text-xs capitalize">
                       {file.file_type || detectFileType(file.name)}
                     </span>
                   </td>
@@ -350,12 +362,19 @@ export const FilesTable: React.FC<FilesTableProps> = ({
 
                   <td className="px-3 py-2 text-center">
                     {file.drive_file_id ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
-                        ☁️ Drive
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-emerald-400/90 whitespace-nowrap font-medium"
+                        title="Sincronizado no Google Drive"
+                      >
+                        <Cloud size={12} className="text-emerald-400 shrink-0" />
+                        <span>Drive</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.03] text-[10px] text-zinc-400 border border-white/[0.04] whitespace-nowrap">
-                        💾 Local
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-zinc-500 whitespace-nowrap"
+                        title="Armazenamento local"
+                      >
+                        Local
                       </span>
                     )}
                   </td>
@@ -367,7 +386,7 @@ export const FilesTable: React.FC<FilesTableProps> = ({
                         e.stopPropagation();
                         onContextMenu(e, file, false);
                       }}
-                      className="p-1 text-zinc-500 hover:text-white hover:bg-white/10 rounded-md transition-colors opacity-70 group-hover:opacity-100"
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-md transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="Mais opções"
                     >
                       <MoreVertical size={14} />
