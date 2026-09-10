@@ -267,27 +267,43 @@ pub fn os_show_in_folder(path: String, app: AppHandle) -> Result<bool, String> {
 /// Reads a local video or subtitle file into memory with a 50MB safety limit to avoid WebView IPC OOM.
 #[tauri::command]
 pub fn video_read_file(path: String, app: AppHandle) -> Result<Vec<u8>, String> {
+    let videos_dir = get_videos_dir(&app)?;
+    let app_data_dir = crate::get_app_data_dir();
+
     let mut file_path = std::path::PathBuf::from(&path);
     if !file_path.exists() {
-        if let Ok(videos_dir) = get_videos_dir(&app) {
-            let direct = videos_dir.join(&path);
-            let enc = videos_dir.join(format!("{}.enc", path));
-            if direct.exists() {
-                file_path = direct;
-            } else if enc.exists() {
-                file_path = enc;
-            }
+        let direct = videos_dir.join(&path);
+        let enc = videos_dir.join(format!("{}.enc", path));
+        if direct.exists() {
+            file_path = direct;
+        } else if enc.exists() {
+            file_path = enc;
         }
     }
 
+    let canonical = file_path
+        .canonicalize()
+        .map_err(|e| format!("Arquivo não encontrado ({:?}): {}", file_path, e))?;
+
+    let canonical_videos = videos_dir.canonicalize().unwrap_or(videos_dir);
+    let canonical_app_data = app_data_dir.canonicalize().unwrap_or(app_data_dir);
+
+    if !canonical.starts_with(&canonical_videos) && !canonical.starts_with(&canonical_app_data) {
+        return Err("Acesso negado: o arquivo está fora dos diretórios autorizados".into());
+    }
+
+    if !canonical.is_file() {
+        return Err("O caminho especificado não é um arquivo válido".into());
+    }
+
     // Safety: limit to 50 MB to prevent OOM crash via IPC for large video files
-    let metadata = fs::metadata(&file_path).map_err(|e| format!("Arquivo não encontrado ({:?}): {}", file_path, e))?;
+    let metadata = fs::metadata(&canonical).map_err(|e| e.to_string())?;
     if metadata.len() > 50 * 1024 * 1024 {
         return Err(
             "File too large to read via IPC. Use video_upload_file_to_drive instead.".into(),
         );
     }
-    fs::read(&file_path).map_err(|e| e.to_string())
+    fs::read(&canonical).map_err(|e| e.to_string())
 }
 
 /// Deletes a local video file from the application's video storage directory.

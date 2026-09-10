@@ -181,6 +181,9 @@ pub fn decrypt_database_copy(
     // Remove the keychain table from decrypted backup (no longer needed, and sensitive)
     let _ = conn.execute("DELETE FROM keychain", []);
 
+    // Vacuum database copy to wipe freed pages and prevent residual key recovery from SQLite slack space
+    let _ = conn.execute("VACUUM", []);
+
     Ok(total_decrypted)
 }
 

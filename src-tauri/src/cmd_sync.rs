@@ -2,18 +2,69 @@ use crate::db::DbState;
 use serde_json::Value;
 use tauri::State;
 
+const ALLOWED_SYNC_TABLES: &[&str] = &[
+    "config",
+    "ai_prompts",
+    "pages",
+    "page_history",
+    "transactions",
+    "wishlist",
+    "finance_accounts",
+    "library_books",
+    "library_highlights",
+    "library_bookmarks",
+    "library_collections",
+    "library_book_collections",
+    "library_reading_sessions",
+    "culture_items",
+    "culture_episodes",
+    "videos",
+    "video_words",
+    "youtube_watched",
+    "calendar_events",
+    "vault_groups",
+    "vault_items",
+    "vault_password_history",
+    "tutor_sessions",
+    "tutor_messages",
+    "tutor_memories",
+    "focus_sessions",
+    "alarms",
+    "lofis",
+    "activity_logs",
+    "anki_decks",
+    "anki_notes",
+    "anki_cards",
+    "anki_srs_state",
+    "anki_reviews",
+    "anki_deck_settings",
+    "files",
+    "file_folders",
+    "file_page_links",
+    "diagrams",
+    "quiz_batteries",
+    "quiz_questions",
+    "quiz_attempts",
+    "quiz_page_links",
+    "notifications",
+];
+
+fn validate_sync_table(table_name: &str) -> Result<(), String> {
+    if !ALLOWED_SYNC_TABLES.contains(&table_name) {
+        return Err(format!("Unauthorized or invalid sync table: {}", table_name));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn sync_get_table(
     table_name: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<Value>, String> {
+    validate_sync_table(&table_name)?;
+
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    // Validate table name against whitelist to prevent SQL injection (table identifiers cannot be parameterized)
-    if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err("Invalid table name".into());
-    }
 
     let query = format!("SELECT * FROM {}", table_name);
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
@@ -57,12 +108,10 @@ pub fn sync_delete_row(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
+    validate_sync_table(&table_name)?;
+
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err("Invalid table name".into());
-    }
 
     let query = format!(
         "UPDATE {} SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -79,12 +128,10 @@ pub fn sync_upsert_row(
     row: Value,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
+    validate_sync_table(&table_name)?;
+
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err("Invalid table name".into());
-    }
 
     let obj = row.as_object().ok_or("Row must be an object")?;
 
