@@ -74,6 +74,7 @@ class AudioContextMock {
     frequency: {
       value: 440,
       setValueAtTime: vi.fn(),
+      linearRampToValueAtTime: vi.fn(),
       exponentialRampToValueAtTime: vi.fn(),
     },
     connect: vi.fn(),

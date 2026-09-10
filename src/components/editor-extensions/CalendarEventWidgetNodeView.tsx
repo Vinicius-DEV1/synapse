@@ -9,7 +9,7 @@ import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { CalendarEventPopover } from './calendar/CalendarEventPopover';
 import { CalendarEventDeleteModal } from './calendar/CalendarEventDeleteModal';
 import { Portal } from '../ui/Portal';
-
+import { playUiClickSound, playUiToggleSound, playUiDeleteSound } from '../../utils/uiSounds';
 let cachedEventsPromise: Promise<CalendarEvent[]> | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 2000;
@@ -123,6 +123,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
       return;
     }
     const newStatus = isCompleted ? 'pending' : 'completed';
+    playUiToggleSound(!isCompleted);
     setIsCompleted(!isCompleted);
     props.updateAttributes({ status: newStatus });
 
@@ -171,6 +172,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
         console.error('Erro ao excluir evento da agenda ao remover widget:', err);
       }
     }
+    playUiDeleteSound();
     props.deleteNode();
   };
 
@@ -260,6 +262,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
       <span
         ref={widgetRef}
         onClick={() => {
+          playUiClickSound();
           if (isNotFound) {
             setShowDeletedNotice(true);
           } else {
@@ -322,6 +325,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && props.editor) {
                 moveBlockUp(props.editor.view, pos);
               }
@@ -334,6 +338,7 @@ export default function CalendarEventWidgetNodeView(props: any) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && props.editor) {
                 moveBlockDown(props.editor.view, pos);
               }
@@ -372,7 +377,11 @@ export default function CalendarEventWidgetNodeView(props: any) {
                   Manter
                 </button>
                 <button
-                  onClick={() => { setShowDeletedNotice(false); props.deleteNode(); }}
+                  onClick={() => {
+                    playUiClickSound();
+                    setShowDeletedNotice(false);
+                    props.deleteNode();
+                  }}
                   className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
                 >
                   Remover Widget

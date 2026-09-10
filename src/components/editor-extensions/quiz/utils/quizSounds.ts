@@ -4,150 +4,50 @@ interface WindowWithWebkitAudio extends Window {
 
 const SOUND_STORAGE_KEY = 'caderno_quiz_sound_enabled';
 
-/**
- * Persistent AudioContext singleton.
- * Keeping a single shared AudioContext open avoids hardware driver renegotiation
- * on Linux (PipeWire/PulseAudio) and maintains 0ms latency with 0% idle CPU usage.
- */
-let sharedAudioContext: AudioContext | null = null;
-
-// Multi-gesture user audio unlocker for WebKitGTK, Chromium and Safari
-if (typeof window !== 'undefined') {
-  const unlockAudio = () => {
-    try {
-      const ctx = getAudioContext(false);
-      if (ctx && ctx.state !== 'running') {
-        ctx
-          .resume()
-          .then(() => {
-            if (ctx.state === 'running') {
-              window.removeEventListener('click', unlockAudio);
-              window.removeEventListener('mouseup', unlockAudio);
-              window.removeEventListener('keydown', unlockAudio);
-              window.removeEventListener('touchend', unlockAudio);
-              window.removeEventListener('pointerdown', unlockAudio);
-            }
-          })
-          .catch(() => {});
-      }
-    } catch {
-      // safe
-    }
-  };
-
-  window.addEventListener('click', unlockAudio, { passive: true });
-  window.addEventListener('mouseup', unlockAudio, { passive: true });
-  window.addEventListener('keydown', unlockAudio, { passive: true });
-  window.addEventListener('touchend', unlockAudio, { passive: true });
-  window.addEventListener('pointerdown', unlockAudio, { passive: true });
-}
-
-function getAudioContext(onlyIfRunning?: boolean): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const AudioContextClass =
-      window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
-    if (!AudioContextClass) return null;
-
-    // If the context was closed (terminal state), recreate
-    if (sharedAudioContext && (sharedAudioContext.state as string) === 'closed') {
-      sharedAudioContext = null;
-    }
-
-    if (!sharedAudioContext) {
-      // Prevent creating AudioContext during non-gesture events like hover
-      if (onlyIfRunning) {
-        return null;
-      }
-      sharedAudioContext = new AudioContextClass();
-    }
-
-    // Always attempt resume if not running and not in onlyIfRunning mode
-    if (!onlyIfRunning && sharedAudioContext.state !== 'running') {
-      sharedAudioContext.resume().catch(() => {});
-    }
-
-    return sharedAudioContext;
-  } catch (err) {
-    console.debug('[QuizSounds] Failed to get AudioContext:', err);
-    return null;
-  }
-}
-
-/**
- * Executes an audio synthesis callback against an active, running AudioContext.
- * 
- * On Linux (WebKitGTK / PipeWire / PulseAudio), AudioContext can be suspended on
- * initial load or after idle timeout (PipeWire module-suspend-on-idle).
- * 
- * If the context is currently 'running', callback(ctx) executes immediately (0ms latency).
- * If the context is 'suspended' or 'interrupted', ctx.resume() is awaited first, and then
- * callback(ctx) reads the fresh hardware ctx.currentTime to prevent scheduling in the past.
- * If onlyIfRunning is true (e.g. for mouse hover ticks), it skips execution if the context
- * has not yet been unlocked by a legitimate user gesture, preventing autoplay policy blocks.
- */
 function withAudioContext(
   callback: (ctx: AudioContext) => void,
   options?: { onlyIfRunning?: boolean }
 ): void {
   if (!isQuizSoundEnabled() || typeof window === 'undefined') return;
 
-  const ctx = getAudioContext(options?.onlyIfRunning);
-  if (!ctx) return;
+  // Drop hover ticks (onlyIfRunning) to guarantee AudioContext hardware stability
+  // and prevent autoplay policy console spam outside of user gestures.
+  if (options?.onlyIfRunning) return;
 
-  if (ctx.state === 'running') {
-    try {
-      callback(ctx);
-    } catch (err) {
-      console.debug('[QuizSounds] Callback execution error on running context:', err);
-    }
-    return;
-  }
-
-  // If onlyIfRunning requested, do not force-resume on non-gesture events (e.g. pointerenter)
-  if (options?.onlyIfRunning) {
-    return;
-  }
-
-  // Context is suspended or interrupted: wake up before scheduling
-  ctx
-    .resume()
-    .then(() => {
-      if (ctx.state === 'running') {
-        callback(ctx);
-      } else {
-        recoverAndPlay(callback);
-      }
-    })
-    .catch((err) => {
-      console.debug('[QuizSounds] AudioContext resume failed, attempting recovery:', err);
-      recoverAndPlay(callback);
-    });
-}
-
-function recoverAndPlay(callback: (ctx: AudioContext) => void): void {
   try {
-    if (sharedAudioContext) {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    // Create a fresh AudioContext every time (identical to focus-sound.ts)
+    // This forces Linux PipeWire to wake up the sink, bypassing WebKitGTK's
+    // bug where ctx.state says 'running' but the hardware sink is sleeping.
+    const ctx = new AudioContextClass();
+    
+    callback(ctx);
+
+    // Safely close the context after 2 seconds to prevent hitting the 
+    // browser's maximum active AudioContexts limit (usually 6).
+    setTimeout(() => {
       try {
-        sharedAudioContext.close().catch(() => {});
+        if (ctx.state !== 'closed') {
+          ctx.close().catch(() => {});
+        }
       } catch {
         // safe
       }
-      sharedAudioContext = null;
-    }
-    const freshCtx = getAudioContext(false);
-    if (!freshCtx) return;
-    freshCtx
-      .resume()
-      .then(() => {
-        if (freshCtx.state === 'running') {
-          callback(freshCtx);
-        }
-      })
-      .catch(() => {});
+    }, 2000);
   } catch (err) {
-    console.debug('[QuizSounds] Recovery failed:', err);
+    console.debug('[QuizSounds] Execution error:', err);
   }
+}
+
+/**
+ * Get the current time slightly in the future to prevent dropped notes 
+ * due to immediate/past scheduling in WebKit.
+ */
+function getSafeBaseTime(ctx: AudioContext): number {
+  return ctx.currentTime + 0.015; // 15ms is optimal for eliminating pops without noticeable UI lag
 }
 
 export function isQuizSoundEnabled(): boolean {
@@ -157,9 +57,9 @@ export function isQuizSoundEnabled(): boolean {
     if (saved !== null) {
       return saved !== 'false';
     }
-    // Fallback to global sound preference if specific quiz sound key is unset
-    const globalSound = localStorage.getItem('soundEnabled');
-    return globalSound !== 'false';
+    // Bootstrap: default to true for the quiz explicitly, independent of global Focus settings
+    localStorage.setItem(SOUND_STORAGE_KEY, 'true');
+    return true;
   } catch {
     return true;
   }
@@ -180,7 +80,7 @@ export function setQuizSoundEnabled(enabled: boolean): void {
  */
 export function playQuizSuccessSound(): void {
   withAudioContext((ctx) => {
-    const baseTime = ctx.currentTime;
+    const baseTime = getSafeBaseTime(ctx);
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -192,7 +92,7 @@ export function playQuizSuccessSound(): void {
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(0.35, t + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      gainNode.gain.linearRampToValueAtTime(0.001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -221,7 +121,7 @@ export function playQuizSuccessSound(): void {
  */
 export function playQuizFailureSound(): void {
   withAudioContext((ctx) => {
-    const baseTime = ctx.currentTime;
+    const baseTime = getSafeBaseTime(ctx);
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -233,7 +133,7 @@ export function playQuizFailureSound(): void {
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(0.30, t + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      gainNode.gain.linearRampToValueAtTime(0.0001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -248,7 +148,7 @@ export function playQuizFailureSound(): void {
       };
 
       osc.start(t);
-      osc.stop(t + dur);
+      osc.stop(t + dur + 0.05); // Pad stop by 50ms to let zero-gain stabilize without clipping
     };
 
     playNote(261.63, 0, 0.22);   // C4
@@ -265,16 +165,16 @@ export function playQuizTickSound(onlyIfRunning: boolean = false): void {
     (ctx) => {
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
-      const t = ctx.currentTime;
+      const t = getSafeBaseTime(ctx);
 
       osc.type = 'sine';
       // Fast transient simulating a tactile click
       osc.frequency.setValueAtTime(600, t);
-      osc.frequency.exponentialRampToValueAtTime(140, t + 0.03);
+      osc.frequency.linearRampToValueAtTime(140, t + 0.03);
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(0.18, t + 0.008);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+      gainNode.gain.linearRampToValueAtTime(0.0001, t + 0.055);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -289,7 +189,7 @@ export function playQuizTickSound(onlyIfRunning: boolean = false): void {
       };
 
       osc.start(t);
-      osc.stop(t + 0.06);
+      osc.stop(t + 0.1); // Pad stop by 50ms (0.055 + ~0.05)
     },
     { onlyIfRunning }
   );
@@ -300,7 +200,7 @@ export function playQuizTickSound(onlyIfRunning: boolean = false): void {
  */
 export function playQuizSubmitSound(): void {
   withAudioContext((ctx) => {
-    const baseTime = ctx.currentTime;
+    const baseTime = getSafeBaseTime(ctx);
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -312,7 +212,7 @@ export function playQuizSubmitSound(): void {
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(0.28, t + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      gainNode.gain.linearRampToValueAtTime(0.0001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -327,7 +227,7 @@ export function playQuizSubmitSound(): void {
       };
 
       osc.start(t);
-      osc.stop(t + dur);
+      osc.stop(t + dur + 0.05); // Pad stop by 50ms to let zero-gain stabilize without clipping
     };
 
     playNote(440.0, 0, 0.22);     // A4
@@ -343,16 +243,16 @@ export function playQuizSlideSound(): void {
   withAudioContext((ctx) => {
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    const t = ctx.currentTime;
+    const t = getSafeBaseTime(ctx);
 
     osc.type = 'sine';
     // Gentle downward pitch sweep (480Hz -> 280Hz) simulating a smooth page transition
     osc.frequency.setValueAtTime(480, t);
-    osc.frequency.exponentialRampToValueAtTime(280, t + 0.05);
+    osc.frequency.linearRampToValueAtTime(280, t + 0.05);
 
     gainNode.gain.setValueAtTime(0.0001, t);
     gainNode.gain.linearRampToValueAtTime(0.20, t + 0.015);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    gainNode.gain.linearRampToValueAtTime(0.0001, t + 0.08);
 
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
@@ -367,7 +267,7 @@ export function playQuizSlideSound(): void {
     };
 
     osc.start(t);
-    osc.stop(t + 0.085);
+    osc.stop(t + 0.13); // Pad stop by 50ms
   });
 }
 
@@ -376,7 +276,7 @@ export function playQuizSlideSound(): void {
  */
 export function playQuizGabaritoSound(): void {
   withAudioContext((ctx) => {
-    const baseTime = ctx.currentTime;
+    const baseTime = getSafeBaseTime(ctx);
 
     const playNote = (freq: number, delay: number, dur: number, gainLevel: number) => {
       const osc = ctx.createOscillator();
@@ -388,7 +288,7 @@ export function playQuizGabaritoSound(): void {
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(gainLevel, t + 0.015);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      gainNode.gain.linearRampToValueAtTime(0.0001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -403,7 +303,7 @@ export function playQuizGabaritoSound(): void {
       };
 
       osc.start(t);
-      osc.stop(t + dur);
+      osc.stop(t + dur + 0.05);
     };
 
     playNote(392.0, 0, 0.12, 0.22);    // G4
@@ -418,14 +318,14 @@ export function playQuizAiOpenSound(): void {
   withAudioContext((ctx) => {
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    const t = ctx.currentTime;
+    const t = getSafeBaseTime(ctx);
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(432, t);
 
     gainNode.gain.setValueAtTime(0.0001, t);
     gainNode.gain.linearRampToValueAtTime(0.24, t + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    gainNode.gain.linearRampToValueAtTime(0.0001, t + 0.14);
 
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
@@ -440,7 +340,7 @@ export function playQuizAiOpenSound(): void {
     };
 
     osc.start(t);
-    osc.stop(t + 0.15);
+    osc.stop(t + 0.2); // Pad stop by 50ms
   });
 }
 
@@ -449,7 +349,7 @@ export function playQuizAiOpenSound(): void {
  */
 export function playQuizCompletionSound(): void {
   withAudioContext((ctx) => {
-    const baseTime = ctx.currentTime;
+    const baseTime = getSafeBaseTime(ctx);
 
     const playNote = (freq: number, delay: number, dur: number) => {
       const osc = ctx.createOscillator();
@@ -461,7 +361,7 @@ export function playQuizCompletionSound(): void {
 
       gainNode.gain.setValueAtTime(0.0001, t);
       gainNode.gain.linearRampToValueAtTime(0.28, t + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      gainNode.gain.linearRampToValueAtTime(0.0001, t + dur);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -476,7 +376,7 @@ export function playQuizCompletionSound(): void {
       };
 
       osc.start(t);
-      osc.stop(t + dur);
+      osc.stop(t + dur + 0.05); // Pad stop by 50ms to let zero-gain stabilize without clipping
     };
 
     playNote(523.25, 0, 0.28);    // C5

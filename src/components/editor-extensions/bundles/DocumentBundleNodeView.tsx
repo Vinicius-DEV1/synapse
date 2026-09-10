@@ -19,6 +19,7 @@ import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
 import { getValidAccessToken, deleteFromDrive } from '../../../services/drive';
 import type { BundledFileItem } from './types';
+import { playUiClickSound, playUiToggleSound, playUiDeleteSound } from '../../../utils/uiSounds';
 
 export default function DocumentBundleNodeView(props: any) {
   const { node, deleteNode, updateAttributes, editor } = props;
@@ -94,6 +95,7 @@ export default function DocumentBundleNodeView(props: any) {
           console.warn('[DocumentBundleNodeView] Erro ao deletar do Drive:', driveErr);
         }
       }
+      playUiDeleteSound();
       deleteNode?.();
       setShowDeleteConfirm(false);
       triggerToast('Agrupamento e todos os seus arquivos foram excluídos com sucesso.', 'info');
@@ -159,7 +161,7 @@ export default function DocumentBundleNodeView(props: any) {
   ).slice(0, 3);
 
   return (
-    <NodeViewWrapper as="span" className="inline-block relative group align-middle mx-1 my-1">
+    <NodeViewWrapper as="div" className="flex w-full relative group align-middle my-1">
       <div
         onMouseDown={() => {
           if (typeof pos === 'number' && editor) {
@@ -176,10 +178,11 @@ export default function DocumentBundleNodeView(props: any) {
         }}
         onClick={() => {
           if (isRenaming) return;
+          playUiClickSound();
           setIsModalOpen(true);
         }}
         style={customWidgetStyle}
-        className={`inline-flex items-center gap-2 pr-2.5 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-all ${
+        className={`flex w-full items-center gap-2 pr-2.5 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-all ${
           isDragOver
             ? 'ring-2 ring-brand-400 border-brand-400 bg-brand-500/20'
             : isNodeSelected
@@ -235,11 +238,10 @@ export default function DocumentBundleNodeView(props: any) {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 min-w-0">
             <span
-              onDoubleClick={handleStartRename}
-              title="Clique duplo para renomear"
-              className="font-medium text-xs text-zinc-100 group-hover:text-white transition-colors cursor-text"
+              title={title || 'Documentos'}
+              className="flex-1 truncate font-medium text-xs text-zinc-100 group-hover:text-white transition-colors"
             >
               {title || 'Documentos'}
             </span>
@@ -268,7 +270,10 @@ export default function DocumentBundleNodeView(props: any) {
           {!isRenaming && (
             <button
               type="button"
-              onClick={handleStartRename}
+              onClick={(e) => {
+                playUiClickSound();
+                handleStartRename(e);
+              }}
               className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
               title="Renomear agrupamento"
             >
@@ -282,6 +287,7 @@ export default function DocumentBundleNodeView(props: any) {
               ref={paletteButtonRef}
               onClick={(e) => {
                 e.stopPropagation();
+                playUiClickSound();
                 setShowColorPicker(!showColorPicker);
               }}
               className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
@@ -311,6 +317,7 @@ export default function DocumentBundleNodeView(props: any) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && editor) {
                 moveBlockUp(editor.view, pos);
               }
@@ -324,6 +331,7 @@ export default function DocumentBundleNodeView(props: any) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && editor) {
                 moveBlockDown(editor.view, pos);
               }
@@ -339,6 +347,7 @@ export default function DocumentBundleNodeView(props: any) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               setShowDeleteConfirm(true);
             }}
             className="p-1 rounded hover:bg-rose-500/20 hover:text-rose-400 text-dark-subtext transition-colors"
@@ -402,6 +411,7 @@ export default function DocumentBundleNodeView(props: any) {
                   type="button"
                   disabled={isDeleting}
                   onClick={() => {
+                    playUiToggleSound(false);
                     if (typeof pos === 'number' && editor) {
                       editor.commands.ungroupDocumentBundle(pos);
                       triggerToast('Arquivos desagrupados na página.', 'info');
@@ -421,6 +431,7 @@ export default function DocumentBundleNodeView(props: any) {
                   type="button"
                   disabled={isDeleting}
                   onClick={() => {
+                    playUiClickSound();
                     deleteNode?.();
                     setShowDeleteConfirm(false);
                     triggerToast('Agrupamento desvinculado da página.', 'info');
