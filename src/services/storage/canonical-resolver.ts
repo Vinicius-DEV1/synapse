@@ -156,9 +156,10 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
       const res = await window.api.library.getBookFile(id);
       if (res) {
         console.log(`[CanonicalResolver] Fallback getBookFile retornou dados!`);
-        if ((res as unknown) instanceof ArrayBuffer) {
-          arrayBuffer = res as any;
-          console.log(`[CanonicalResolver] Fallback getBookFile arrayBuffer (Tamanho: ${arrayBuffer?.byteLength})`);
+        const rawRes: unknown = res;
+        if (rawRes instanceof ArrayBuffer) {
+          arrayBuffer = rawRes;
+          console.log(`[CanonicalResolver] Fallback getBookFile arrayBuffer (Tamanho: ${arrayBuffer.byteLength})`);
         } else if (typeof res === 'string') {
           const binaryString = atob(res);
           const bytes = new Uint8Array(binaryString.length);
@@ -239,7 +240,8 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
         console.warn('Chunked decryption failed, trying legacy', err);
         try {
           arrayBuffer = await decryptFile(encryptedData, masterKey);
-        } catch {
+        } catch (legacyErr) {
+          console.warn('[CanonicalResolver] Decryption fallback failed; assuming plaintext payload:', legacyErr);
           arrayBuffer = encryptedData;
         }
       }
