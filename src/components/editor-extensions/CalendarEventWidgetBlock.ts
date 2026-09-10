@@ -138,6 +138,20 @@ export const CalendarEventWidgetBlock = Node.create<CalendarEventWidgetOptions>(
                     return true;
                   }
                 }
+              } else {
+                // 3. TextSelection that exactly wraps the node
+                const { $from, $to } = selection;
+                if ($from.nodeAfter && $from.nodeAfter.type.name === 'calendarEventWidget' && $to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+                  const nodeDOM = view.nodeDOM($from.pos);
+                  if (nodeDOM instanceof HTMLElement) {
+                    const eventWidget = nodeDOM.querySelector('[contenteditable="false"]');
+                    if (eventWidget) {
+                      const customEv = new CustomEvent('trigger-widget-delete-confirm');
+                      eventWidget.dispatchEvent(customEv);
+                      return true;
+                    }
+                  }
+                }
               }
             }
             return false;
