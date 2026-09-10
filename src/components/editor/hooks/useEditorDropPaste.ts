@@ -66,7 +66,7 @@ export function useEditorDropPaste({
 
         // 2. Se o usuário colou com Shift pressionado (Ctrl+Shift+V / Shift+Paste),
         // permitir a colagem de texto puro nativo sem criar widget
-        const isShiftPaste = !!(event as any)?.shiftKey;
+        const isShiftPaste = !!(event as unknown as { shiftKey?: boolean })?.shiftKey;
 
         if (isInsideCodeBlock || isShiftPaste) {
           return false;
@@ -191,7 +191,7 @@ export function useEditorDropPaste({
   );
 
   const handleDrop = useCallback(
-    (view: EditorView, event: DragEvent, _slice: any, moved: boolean) => {
+    (view: EditorView, event: DragEvent, _slice: unknown, moved: boolean) => {
       try {
         const currentEditor = getEditor();
         if (
