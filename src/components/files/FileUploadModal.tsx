@@ -10,7 +10,7 @@ import { triggerToast } from '../ui/ToastContext';
 
 interface FileUploadModalProps {
   onClose: () => void;
-  onUploadComplete?: (files: FileItem[]) => void;
+  onUploadComplete?: (files: FileItem[], groupAsBundle?: boolean) => void;
   onUploaded?: (fileId: string, fileName: string, fileType: string, isEncrypted?: boolean) => void;
   currentFolderId?: string | null;
   isOpen?: boolean;
@@ -29,6 +29,7 @@ export default function FileUploadModal({
   const masterKey = state.moduleKeys['files'];
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>(initialFiles);
+  const [groupAsBundle, setGroupAsBundle] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState<string>('');
@@ -178,7 +179,7 @@ export default function FileUploadModal({
       }
 
       if (onUploadComplete && createdFiles.length > 0) {
-        onUploadComplete(createdFiles);
+        onUploadComplete(createdFiles, groupAsBundle);
       } else if (onUploaded && createdFiles.length > 0) {
         const lastCreated = createdFiles[createdFiles.length - 1];
         onUploaded(lastCreated.id, lastCreated.name, lastCreated.file_type, !!masterKey);
@@ -320,6 +321,20 @@ export default function FileUploadModal({
                   />
                   <UploadCloud size={14} />
                   <span>+ Adicionar mais arquivos (ou arraste aqui)</span>
+                </div>
+              )}
+
+              {selectedFiles.length > 1 && !isUploading && (
+                <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-2">
+                  <label className="flex items-center gap-2 text-xs text-zinc-300 hover:text-white cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={groupAsBundle}
+                      onChange={(e) => setGroupAsBundle(e.target.checked)}
+                      className="rounded bg-black/40 border-white/20 text-brand-500 focus:ring-brand-400 focus:ring-offset-0 cursor-pointer"
+                    />
+                    <span>Agrupar arquivos em um único widget</span>
+                  </label>
                 </div>
               )}
             </div>
