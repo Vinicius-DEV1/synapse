@@ -23,6 +23,7 @@ interface UseSlashCommandProps {
   setCalendarEventModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTitle?: string } | null>>;
   setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
   setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setGroupBundleModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 /**
@@ -37,6 +38,7 @@ export function useSlashCommand({
   setCalendarEventModal,
   setMediaSelectModal,
   setQuestionCreateModal,
+  setGroupBundleModal,
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -386,6 +388,31 @@ export function useSlashCommand({
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
+      case 'agrupar': {
+        // Insert an empty documentBundle, then open the loose-files picker automatically.
+        // The bundle ID is generated here so the event targets the exact new node.
+        const bundleId = 'bundle_' + crypto.randomUUID();
+        chain.insertContent({
+          type: 'documentBundle',
+          attrs: {
+            id: bundleId,
+            title: 'Documentos',
+            items: [],
+            color: 'default',
+          },
+        }).run();
+        // Double-RAF ensures React has painted the NodeView and registered its
+        // 'document-bundle-open-picker' listener before we dispatch the event.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.dispatchEvent(
+              new CustomEvent('document-bundle-open-picker', { detail: { bundleId } })
+            );
+          });
+        });
+        setGroupBundleModal(true);
+        break;
+      }
     }
     } catch (err) {
       console.error('[SlashCommand] Erro ao executar comando do menu rápido:', err);
@@ -400,6 +427,7 @@ export function useSlashCommand({
     setFileSelectModal,
     setCalendarEventModal,
     setMediaSelectModal,
+    setGroupBundleModal,
   ]);
 
   return { slashMenu, setSlashMenu, handleSlashKeyDown, updateSlashMenuOnUpdate, executeSlashCommand };

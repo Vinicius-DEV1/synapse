@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus, Layers } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SlashCommandItem {
@@ -34,7 +34,8 @@ const SLASH_COMMANDS: SlashCommandItem[] = [
   { id: 'divider', title: 'Divisor', subtitle: 'Separe blocos visualmente.', icon: Minus, keywords: ['divisor', 'linha', 'hr'] },
   { id: 'foco', title: 'Foco (Timer)', subtitle: 'Ex: /foco 25 #Tag Descrição', icon: Clock, keywords: ['foco', 'timer', 'pomodoro'] },
   { id: 'alarme', title: 'Alarme', subtitle: 'Ex: /alarme 15:30', icon: Clock, keywords: ['alarme', 'despertador'] },
-  { id: 'documento', title: 'Documento', subtitle: 'Enviar um novo arquivo para esta página.', icon: FileArchive, keywords: ['documento', 'arquivo', 'upload'] },
+  { id: 'documento', title: 'Documento(s)', subtitle: 'Enviar arquivo(s) avulsos ou agrupados para esta página.', icon: FileArchive, keywords: ['documento', 'documentos', 'arquivo', 'arquivos', 'upload', 'grupo', 'pacote', 'bundle'] },
+  { id: 'agrupar', title: 'Agrupar Documentos', subtitle: 'Criar um widget que agrupa arquivos soltos da página.', icon: Layers, keywords: ['agrupar', 'bundle', 'grupo', 'agrupamento', 'juntar', 'pacote'] },
   { id: 'scrap', title: 'Snapshot Web (Scrap)', subtitle: 'Capturar página 100% offline (HTML, CSS e imagens). Ex: /scrap https://site.com', icon: FileArchive, keywords: ['scrap', 'snapshot', 'web', 'capturar', 'pagina', 'offline', 'copia'] },
   { id: 'video', title: 'Vincular Vídeo', subtitle: 'Vincular um vídeo da sua galeria.', icon: Film, keywords: ['video', 'midia'] },
   { id: 'livro', title: 'Vincular Livro', subtitle: 'Vincular um livro da sua biblioteca.', icon: BookOpen, keywords: ['livro', 'epub', 'pdf'] },

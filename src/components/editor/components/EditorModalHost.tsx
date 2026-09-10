@@ -87,6 +87,8 @@ interface EditorModalHostProps {
   setFileSelectModal: React.Dispatch<React.SetStateAction<boolean>>;
   questionCreateModal: boolean;
   setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
+  groupBundleModal: boolean;
+  setGroupBundleModal: React.Dispatch<React.SetStateAction<boolean>>;
   calendarEventModal: { isOpen: boolean; initialTitle?: string } | null;
   setCalendarEventModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; initialTitle?: string } | null>
@@ -142,6 +144,8 @@ export default function EditorModalHost({
   setFileSelectModal,
   questionCreateModal,
   setQuestionCreateModal,
+  groupBundleModal: _groupBundleModal,
+  setGroupBundleModal: _setGroupBundleModal,
   calendarEventModal,
   setCalendarEventModal,
   mediaSelectModal,
@@ -233,18 +237,42 @@ export default function EditorModalHost({
           <FileUploadModal
             isOpen={true}
             onClose={() => setFileUploadModal(null)}
-            onUploadComplete={(files) => {
+            onUploadComplete={(files, groupAsBundle) => {
               if (editor && files && files.length > 0) {
-                const nodes = files.map(file => ({
-                  type: 'fileWidget',
-                  attrs: {
+                if (groupAsBundle && files.length > 1) {
+                  const items = files.map((file) => ({
                     fileId: file.id,
                     name: file.name,
                     fileType: file.file_type || 'other',
+                    fileSize: file.file_size,
                     isLink: fileUploadModal.isLink || false,
-                  },
-                }));
-                editor.chain().focus().insertContent(nodes).run();
+                    addedAt: Date.now(),
+                  }));
+                  editor
+                    .chain()
+                    .focus()
+                    .insertContent({
+                      type: 'documentBundle',
+                      attrs: {
+                        id: crypto.randomUUID(),
+                        title: 'Documentos',
+                        color: 'default',
+                        items,
+                      },
+                    })
+                    .run();
+                } else {
+                  const nodes = files.map((file) => ({
+                    type: 'fileWidget',
+                    attrs: {
+                      fileId: file.id,
+                      name: file.name,
+                      fileType: file.file_type || 'other',
+                      isLink: fileUploadModal.isLink || false,
+                    },
+                  }));
+                  editor.chain().focus().insertContent(nodes).run();
+                }
               }
               setFileUploadModal(null);
             }}
