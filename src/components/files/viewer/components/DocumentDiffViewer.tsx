@@ -38,7 +38,8 @@ export function DocumentDiffViewer({
   }, [originalText, proposedText]);
 
   function safeNewHtmlFallback(_oldText: string, newText: string): string {
-    return `<div class="p-4 text-dark-subtext">Não foi possível calcular o diff linha a linha. Exibindo nova versão proposta.</div><pre class="p-4 text-white">${newText}</pre>`;
+    const escaped = newText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="p-4 text-dark-subtext">Não foi possível calcular o diff linha a linha. Exibindo nova versão proposta.</div><pre class="p-4 text-white">${escaped}</pre>`;
   }
 
   return (

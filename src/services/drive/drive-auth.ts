@@ -1,6 +1,7 @@
 import { getWebDb } from '../db-web';
 import { encryptText, decryptText } from '../crypto';
 import { NetworkResilience } from '../../utils/network-resilience';
+import { getErrorMessage } from '../../utils/error';
 import type { DriveToken } from './drive-types';
 
 export const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -155,7 +156,7 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
   if (window.api?.sync) {
     try {
       const rows = await window.api.sync.getTable('config');
-      const row = rows.find((r: any) => r.id === 'drive_credentials');
+      const row = rows.find((r: { id?: string; data?: string; value?: string }) => r.id === 'drive_credentials');
       if (row) {
         const val = row.data || row.value;
         if (val) {
@@ -173,8 +174,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
           return parsed ? parsed : { token: null };
         }
       }
-    } catch (e) {
-      console.warn("Failed to read drive_credentials from SQLite", e);
+    } catch (e: unknown) {
+      console.warn("Failed to read drive_credentials from SQLite:", getErrorMessage(e));
     }
     // Fallback to local file for backwards compatibility
     const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
@@ -204,7 +205,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
           }
         }
         return parsed ? parsed : { token: null };
-      } catch (e) {
+      } catch (e: unknown) {
+        console.warn("[Drive Auth] Error parsing web drive credentials:", getErrorMessage(e));
         return { token: null };
       }
     }
@@ -229,9 +231,12 @@ export async function saveDriveCredentials(token: DriveToken | null): Promise<vo
       data: valToSave,
       updated_at: new Date().toISOString()
     });
-    const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
-    if (driveApi?.saveCredentials) {
-      await driveApi.saveCredentials(dataPayload);
+    // Never overwrite encrypted SQLite data with plaintext payload
+    if (!_inMemoryMasterKey) {
+      const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
+      if (driveApi?.saveCredentials) {
+        await driveApi.saveCredentials(dataPayload);
+      }
     }
     return;
   }
