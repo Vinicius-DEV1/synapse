@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown, FileText, Copy, Trash2, Sparkles } from 'lucide-react';
 import { DOMSerializer } from 'prosemirror-model';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
@@ -8,7 +8,7 @@ import { convertToggleNodeToPage } from './togglePageConverter';
 import { useBlockAiModal } from '../hooks/useBlockAiModal';
 import AiPromptModal from '../../modals/AiPromptModal';
 
-export const ToggleBlockComponent = (props: any) => {
+export const ToggleBlockComponent = (props: NodeViewProps) => {
   const isOpen = props.node.attrs.isOpen;
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -77,7 +77,10 @@ export const ToggleBlockComponent = (props: any) => {
         ])
         .then(doToast)
         .catch(() => {
-          editor.chain().setNodeSelection(getPos()).run();
+          const currentPos = getPos();
+          if (typeof currentPos === 'number') {
+            editor.chain().setNodeSelection(currentPos).run();
+          }
           document.execCommand('copy');
           doToast();
         });
@@ -91,29 +94,36 @@ export const ToggleBlockComponent = (props: any) => {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         const pos = props.getPos();
-        const firstChild = props.node.firstChild;
-        if (firstChild) {
-          if (firstChild.isTextblock) {
-            props.editor.commands.focus(pos + 2);
-          } else {
-            props.editor.commands.setNodeSelection(pos + 1);
+        if (typeof pos === 'number') {
+          const firstChild = props.node.firstChild;
+          if (firstChild) {
+            if (firstChild.isTextblock) {
+              props.editor.commands.focus(pos + 2);
+            } else {
+              props.editor.commands.setNodeSelection(pos + 1);
+            }
           }
         }
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
-        props.editor.commands.focus(Math.max(0, props.getPos() - 1));
+        const pos = props.getPos();
+        if (typeof pos === 'number') {
+          props.editor.commands.focus(Math.max(0, pos - 1));
+        }
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         const pos = props.getPos();
-        props.editor
-          .chain()
-          .focus()
-          .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
-          .run();
+        if (typeof pos === 'number') {
+          props.editor
+            .chain()
+            .focus()
+            .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+            .run();
+        }
       }
     }
   };
@@ -152,9 +162,11 @@ export const ToggleBlockComponent = (props: any) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof props.getPos === 'function') {
+            if (typeof props.getPos === 'function' && props.editor) {
               const pos = props.getPos();
-              props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              if (typeof pos === 'number') {
+                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              }
             }
           }}
           className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"

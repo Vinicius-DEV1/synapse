@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { Film, BookOpen, X, ArrowUp, ArrowDown, Palette, AlertCircle } from 'lucide-react';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import ColorPalettePicker from './ColorPalettePicker';
 import { Portal } from '../ui/Portal';
 
-let cachedVideosPromise: Promise<any[]> | null = null;
+let cachedVideosPromise: Promise<BaseMediaEntity[]> | null = null;
 let videosCacheTimestamp = 0;
-let cachedBooksPromise: Promise<any[]> | null = null;
+let cachedBooksPromise: Promise<BaseMediaEntity[]> | null = null;
 let booksCacheTimestamp = 0;
 const MEDIA_CACHE_TTL_MS = 2000;
 
-async function fetchVideosCached(): Promise<any[]> {
+interface BaseMediaEntity {
+  id: string;
+  title?: string;
+  deleted_at?: string | null;
+}
+
+async function fetchVideosCached(): Promise<BaseMediaEntity[]> {
   const now = Date.now();
   if (cachedVideosPromise && now - videosCacheTimestamp < MEDIA_CACHE_TTL_MS) {
     return cachedVideosPromise;
@@ -31,7 +37,7 @@ async function fetchVideosCached(): Promise<any[]> {
   return cachedVideosPromise;
 }
 
-async function fetchBooksCached(): Promise<any[]> {
+async function fetchBooksCached(): Promise<BaseMediaEntity[]> {
   const now = Date.now();
   if (cachedBooksPromise && now - booksCacheTimestamp < MEDIA_CACHE_TTL_MS) {
     return cachedBooksPromise;
@@ -57,14 +63,14 @@ function invalidateMediaCache() {
   booksCacheTimestamp = 0;
 }
 
-export default function MediaWidgetNodeView(props: any) {
+export default function MediaWidgetNodeView(props: NodeViewProps) {
   const { node, deleteNode, updateAttributes } = props;
   const { mediaId, mediaType, title, color: rawColor } = node.attrs;
   const color = rawColor || 'default';
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
-  const [mediaItem, setMediaItem] = useState<any>(null);
+  const [mediaItem, setMediaItem] = useState<BaseMediaEntity | null>(null);
   const [showDeletedNotice, setShowDeletedNotice] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const paletteButtonRef = useRef<HTMLButtonElement>(null);
@@ -97,7 +103,7 @@ export default function MediaWidgetNodeView(props: any) {
       if (mediaType === 'video') {
         if (window.api?.sync) {
           const rows = await fetchVideosCached();
-          const found = rows.find((v: any) => v.id === mediaId && !v.deleted_at);
+          const found = rows.find((v: BaseMediaEntity) => v.id === mediaId && !v.deleted_at);
           if (mountedRef.current && currentReqId === reqIdRef.current) {
             setMediaItem(found || null);
           }
@@ -109,7 +115,7 @@ export default function MediaWidgetNodeView(props: any) {
       } else if (mediaType === 'book') {
         if (window.api?.library) {
           const books = await fetchBooksCached();
-          const found = books.find((b: any) => b.id === mediaId && !b.deleted_at);
+          const found = books.find((b: BaseMediaEntity) => b.id === mediaId && !b.deleted_at);
           if (mountedRef.current && currentReqId === reqIdRef.current) {
             setMediaItem(found || null);
           }

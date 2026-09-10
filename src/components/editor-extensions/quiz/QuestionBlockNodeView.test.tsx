@@ -45,10 +45,11 @@ describe('QuestionBlockNodeView (Embed Card)', () => {
   });
 
   it('renders embed card with title, question count, tags and description', () => {
-    const { getByText } = render(<QuestionBlockNodeView {...mockProps} />);
+    const { getByText, getByTitle } = render(<QuestionBlockNodeView {...mockProps} />);
 
     expect(getByText('Bateria de Exercícios de Redes')).toBeDefined();
-    expect(getByText('5 questões')).toBeDefined();
+    expect(getByTitle('5 questões')).toBeDefined();
+    expect(getByText('5 qs')).toBeDefined();
     expect(getByText('redes')).toBeDefined();
     expect(getByText('tcp')).toBeDefined();
     expect(getByText('Teste seus conhecimentos sobre TCP/IP e DNS')).toBeDefined();

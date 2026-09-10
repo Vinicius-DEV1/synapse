@@ -458,7 +458,10 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             {title}
           </span>
 
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-dark-subtext shrink-0 w-[80px] text-center">
+          <span
+            title={`${stats.total} ${stats.total === 1 ? 'questão' : 'questões'}`}
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-dark-subtext shrink-0 w-[80px] text-center"
+          >
             {stats.total} {stats.total === 1 ? 'q' : 'qs'}
           </span>
 
