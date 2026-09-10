@@ -166,6 +166,12 @@ pub fn vault_delete_item(id: String, db_state: State<'_, DbState>) -> Result<(),
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
+        "UPDATE vault_password_history SET deleted_at = ? WHERE item_id = ? AND deleted_at IS NULL",
+        rusqlite::params![now, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.execute(
         "UPDATE vault_items SET deleted_at = ?, updated_at = ? WHERE id = ?",
         rusqlite::params![now, now, id],
     )

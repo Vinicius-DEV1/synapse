@@ -35,7 +35,7 @@ export function calculateAccountBalance(acc: Account, transactions: Transaction[
     }
   }
 
-  return bal;
+  return Math.round(bal * 100) / 100;
 }
 
 export function AccountCards({

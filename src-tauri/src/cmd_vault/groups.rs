@@ -113,6 +113,13 @@ pub fn vault_delete_group(id: String, db_state: State<'_, DbState>) -> Result<()
     )
     .map_err(|e| e.to_string())?;
 
+    // Delete associated password history in cascade
+    conn.execute(
+        "UPDATE vault_password_history SET deleted_at = ? WHERE item_id IN (SELECT id FROM vault_items WHERE group_id = ?) AND deleted_at IS NULL",
+        rusqlite::params![now, id],
+    )
+    .map_err(|e| e.to_string())?;
+
     // Delete associated credentials in cascade
     conn.execute(
         "UPDATE vault_items SET deleted_at = ?, updated_at = ? WHERE group_id = ?",
