@@ -1,4 +1,4 @@
-import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import { Palette, X, ListTree, Copy, Sparkles } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { DOMSerializer } from 'prosemirror-model';
@@ -6,7 +6,7 @@ import { BG_COLORS } from '../../utils/colors';
 import { useBlockAiModal } from './hooks/useBlockAiModal';
 import AiPromptModal from '../modals/AiPromptModal';
 
-export default function ColorBlockquoteComponent(props: any) {
+export default function ColorBlockquoteComponent(props: NodeViewProps) {
   const [showColors, setShowColors] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -46,6 +46,7 @@ export default function ColorBlockquoteComponent(props: any) {
     const { editor, node, getPos } = props;
     const currentColor = node.attrs.color || 'default';
     const pos = getPos();
+    if (typeof pos !== 'number') return;
     const content = node.content.toJSON();
 
     editor
@@ -80,7 +81,10 @@ export default function ColorBlockquoteComponent(props: any) {
         })
       ]).then(doToast).catch(() => {
         // Fallback: select node + execCommand
-        editor.chain().setNodeSelection(getPos()).run();
+        const currentPos = getPos();
+        if (typeof currentPos === 'number') {
+          editor.chain().setNodeSelection(currentPos).run();
+        }
         document.execCommand('copy');
         doToast();
       });

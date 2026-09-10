@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { 
   Globe, 
   Cloud, 
@@ -25,7 +26,7 @@ function formatBytes(bytes?: number | null): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export function ScrapWidgetNodeView(props: any) {
+export function ScrapWidgetNodeView(props: NodeViewProps) {
   const { node, updateAttributes, deleteNode, selected } = props;
   const { id, url, title, favicon, drive_file_id, local_path, file_size, status, error_reason, created_at } = node.attrs;
   const { state } = useStore();
@@ -120,7 +121,7 @@ export function ScrapWidgetNodeView(props: any) {
     // Contar quantas ocorrências deste mesmo scrapId existem no documento (caso tenha sido duplicado)
     let occurrences = 0;
     if (props.editor?.state?.doc) {
-      props.editor.state.doc.descendants((n: any) => {
+      props.editor.state.doc.descendants((n: PMNode) => {
         if (n.type.name === 'scrapWidget' && n.attrs.id === id) {
           occurrences++;
         }

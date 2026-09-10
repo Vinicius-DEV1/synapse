@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { DOMSerializer } from 'prosemirror-model';
 import BlockquoteToggleToolbar from '../BlockquoteToggleToolbar';
@@ -9,7 +9,7 @@ import { convertToggleNodeToPage } from './togglePageConverter';
 import { useBlockAiModal } from '../hooks/useBlockAiModal';
 import AiPromptModal from '../../modals/AiPromptModal';
 
-export const BlockquoteToggleComponent = (props: any) => {
+export const BlockquoteToggleComponent = (props: NodeViewProps) => {
   const isOpen = props.node.attrs.isOpen;
   const [showColors, setShowColors] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -69,6 +69,7 @@ export const BlockquoteToggleComponent = (props: any) => {
     const { editor, node, getPos } = props;
     const currentColor = node.attrs.color || 'default';
     const pos = getPos();
+    if (typeof pos !== 'number') return;
     const content = node.content.toJSON();
 
     editor
@@ -111,7 +112,10 @@ export const BlockquoteToggleComponent = (props: any) => {
         ])
         .then(doToast)
         .catch(() => {
-          editor.chain().setNodeSelection(getPos()).run();
+          const currentPos = getPos();
+          if (typeof currentPos === 'number') {
+            editor.chain().setNodeSelection(currentPos).run();
+          }
           document.execCommand('copy');
           doToast();
         });
@@ -140,29 +144,36 @@ export const BlockquoteToggleComponent = (props: any) => {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         const pos = props.getPos();
-        const firstChild = props.node.firstChild;
-        if (firstChild) {
-          if (firstChild.isTextblock) {
-            props.editor.commands.focus(pos + 2);
-          } else {
-            props.editor.commands.setNodeSelection(pos + 1);
+        if (typeof pos === 'number') {
+          const firstChild = props.node.firstChild;
+          if (firstChild) {
+            if (firstChild.isTextblock) {
+              props.editor.commands.focus(pos + 2);
+            } else {
+              props.editor.commands.setNodeSelection(pos + 1);
+            }
           }
         }
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
-        props.editor.commands.focus(Math.max(0, props.getPos() - 1));
+        const pos = props.getPos();
+        if (typeof pos === 'number') {
+          props.editor.commands.focus(Math.max(0, pos - 1));
+        }
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         const pos = props.getPos();
-        props.editor
-          .chain()
-          .focus()
-          .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
-          .run();
+        if (typeof pos === 'number') {
+          props.editor
+            .chain()
+            .focus()
+            .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+            .run();
+        }
       }
     }
   };
@@ -206,11 +217,13 @@ export const BlockquoteToggleComponent = (props: any) => {
             e.stopPropagation();
             if (typeof props.getPos === 'function') {
               const pos = props.getPos();
-              props.editor
-                .chain()
-                .focus()
-                .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
-                .run();
+              if (typeof pos === 'number') {
+                props.editor
+                  .chain()
+                  .focus()
+                  .insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' })
+                  .run();
+              }
             }
           }}
           className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"

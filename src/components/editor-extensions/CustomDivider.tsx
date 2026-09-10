@@ -1,10 +1,10 @@
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
-import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Plus, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 
-const DividerComponent = (props: any) => {
+const DividerComponent = (props: NodeViewProps) => {
   const handleDragMouseDown = () => {
     if (typeof props.getPos === 'function' && props.editor?.view) {
       const pos = props.getPos();
@@ -38,9 +38,11 @@ const DividerComponent = (props: any) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof props.getPos === 'function') {
+            if (typeof props.getPos === 'function' && props.editor) {
               const pos = props.getPos();
-              props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              if (typeof pos === 'number') {
+                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+              }
             }
           }}
           className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"

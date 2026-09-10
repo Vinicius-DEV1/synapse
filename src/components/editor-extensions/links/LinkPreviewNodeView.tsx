@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { Copy, Check, FileArchive, ExternalLink, Eye } from 'lucide-react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Portal } from '../../ui/Portal';
 import { LINK_GROUP_SPEC } from '../group-layout/groupSpecs';
 import { selectNodeForDrag } from '../group-layout/DragToGroup';
@@ -20,7 +20,7 @@ import { useLinkDuplicates } from './hooks/useLinkDuplicates';
 import LinkDuplicatesModal from './components/LinkDuplicatesModal';
 import { playUiClickSound, playUiToggleSound, playUiActionSound, playUiDeleteSound } from '../../../utils/uiSounds';
 
-export const LinkPreviewComponent = (props: any) => {
+export const LinkPreviewComponent = (props: NodeViewProps) => {
   const {
     url,
     title,

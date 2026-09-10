@@ -1,10 +1,10 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import GroupShell from './group-layout/GroupShell';
 import { LINK_GROUP_SPEC } from './group-layout/groupSpecs';
 
 /** Cards de link lado a lado — mesmo mecanismo das colunas, via `group-layout`. */
-const LinkGroupNodeView = (props: any) => (
+const LinkGroupNodeView = (props: NodeViewProps) => (
   <GroupShell
     spec={LINK_GROUP_SPEC}
     node={props.node}
