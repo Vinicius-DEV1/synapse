@@ -104,6 +104,13 @@ export const MediaWidgetBlock = Node.create<MediaWidgetOptions>({
           return true;
         }
 
+        // Case 3: TextSelection that exactly wraps the node
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+          const mediaId = $from.nodeAfter.attrs.mediaId;
+          window.dispatchEvent(new CustomEvent('media-widget-delete-request', { detail: { mediaId } }));
+          return true;
+        }
+
         return false;
       },
       Delete: ({ editor }) => {
@@ -118,6 +125,13 @@ export const MediaWidgetBlock = Node.create<MediaWidgetOptions>({
 
         const { $from } = selection;
         if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
+          const mediaId = $from.nodeAfter.attrs.mediaId;
+          window.dispatchEvent(new CustomEvent('media-widget-delete-request', { detail: { mediaId } }));
+          return true;
+        }
+
+        // Case 3: TextSelection exactly wrapping the node
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
           const mediaId = $from.nodeAfter.attrs.mediaId;
           window.dispatchEvent(new CustomEvent('media-widget-delete-request', { detail: { mediaId } }));
           return true;

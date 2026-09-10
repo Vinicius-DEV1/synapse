@@ -17,8 +17,7 @@ declare module '@tiptap/core' {
 
 export const FileWidgetBlock = Node.create<FileWidgetOptions>({
   name: 'fileWidget',
-  group: 'inline',
-  inline: true,
+  group: 'block',
   atom: true,
   draggable: true,
 
@@ -64,13 +63,16 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
   parseHTML() {
     return [
       {
+        tag: 'div[data-type="file-widget"]',
+      },
+      {
         tag: 'span[data-type="file-widget"]',
       },
     ]
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-type': 'file-widget' })];
+    return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-type': 'file-widget' })];
   },
 
   addNodeView() {
@@ -119,6 +121,13 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
           return true;
         }
 
+        // Case 3: TextSelection that exactly wraps the node (happens on focus restore)
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+          const fileId = $from.nodeAfter.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
         return false;
       },
       Delete: ({ editor }) => {
@@ -135,6 +144,13 @@ export const FileWidgetBlock = Node.create<FileWidgetOptions>({
         // Case 2: Cursor directly before inline atom — prevent unhandled delete
         const { $from } = selection;
         if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
+          const fileId = $from.nodeAfter.attrs.fileId;
+          window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
+          return true;
+        }
+
+        // Case 3: TextSelection exactly wrapping the node
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
           const fileId = $from.nodeAfter.attrs.fileId;
           window.dispatchEvent(new CustomEvent('file-widget-delete-request', { detail: { fileId } }));
           return true;

@@ -20,6 +20,12 @@ export const LinkPreviewBlock = Node.create({
           window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
           return true;
         }
+        const { $from } = selection;
+        if (!selection.empty && $from.nodeAfter?.type.name === this.name && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+          const url = $from.nodeAfter.attrs.url;
+          window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
+          return true;
+        }
         return false;
       },
       Delete: ({ editor }) => {
@@ -27,6 +33,12 @@ export const LinkPreviewBlock = Node.create({
         const { selection } = state;
         if (selection instanceof NodeSelection && selection.node.type.name === this.name) {
           const url = selection.node.attrs.url;
+          window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
+          return true;
+        }
+        const { $from } = selection;
+        if (!selection.empty && $from.nodeAfter?.type.name === this.name && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+          const url = $from.nodeAfter.attrs.url;
           window.dispatchEvent(new CustomEvent('link-widget-delete-request', { detail: { url } }));
           return true;
         }

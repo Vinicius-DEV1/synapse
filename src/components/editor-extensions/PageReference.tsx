@@ -244,6 +244,14 @@ export const PageReference = Node.create({
           return true;
         }
 
+        // Case 3: TextSelection that exactly wraps the node
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
+          const pageId = $from.nodeAfter.attrs.pageId;
+          const pos = $from.pos;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
+          return true;
+        }
+
         return false;
       },
       Delete: ({ editor }) => {
@@ -259,6 +267,14 @@ export const PageReference = Node.create({
 
         const { $from } = selection;
         if (selection.empty && $from.nodeAfter?.type.name === nodeName) {
+          const pageId = $from.nodeAfter.attrs.pageId;
+          const pos = $from.pos;
+          window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
+          return true;
+        }
+
+        // Case 3: TextSelection exactly wrapping the node
+        if (!selection.empty && $from.nodeAfter?.type.name === nodeName && selection.$to.pos === $from.pos + $from.nodeAfter.nodeSize) {
           const pageId = $from.nodeAfter.attrs.pageId;
           const pos = $from.pos;
           window.dispatchEvent(new CustomEvent('page-reference-delete-request', { detail: { pageId, pos } }));
