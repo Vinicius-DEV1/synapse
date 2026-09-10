@@ -35,6 +35,7 @@ import CodeBlockComponent from '../../editor-extensions/CodeBlockComponent';
 import { FocusWidgetBlock } from '../../editor-extensions/FocusWidgetBlock';
 import { AlarmWidgetBlock } from '../../editor-extensions/AlarmWidgetBlock';
 import { FileWidgetBlock } from '../../editor-extensions/FileWidgetBlock';
+import { DocumentBundleBlock } from '../../editor-extensions/bundles/DocumentBundleBlock';
 import { CalendarEventWidgetBlock } from '../../editor-extensions/CalendarEventWidgetBlock';
 import { MediaWidgetBlock } from '../../editor-extensions/MediaWidgetBlock';
 import { CustomDivider } from '../../editor-extensions/CustomDivider';
@@ -130,6 +131,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       FocusWidgetBlock,
       AlarmWidgetBlock,
       FileWidgetBlock,
+      DocumentBundleBlock,
       CalendarEventWidgetBlock,
       MediaWidgetBlock,
       CustomDivider,
