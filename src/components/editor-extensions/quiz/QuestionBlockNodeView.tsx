@@ -452,21 +452,22 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           </div>
 
           <span
-            className="text-xs sm:text-sm font-semibold text-dark-text truncate max-w-[180px] sm:max-w-xs md:max-w-sm"
+            className="text-xs sm:text-sm font-semibold text-dark-text truncate w-40 sm:w-60 md:w-72 shrink-0"
             title={title}
           >
             {title}
           </span>
 
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-dark-subtext shrink-0">
-            {stats.total} {stats.total === 1 ? 'questão' : 'questões'}
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-dark-subtext shrink-0 w-[80px] text-center">
+            {stats.total} {stats.total === 1 ? 'q' : 'qs'}
           </span>
 
-          {stats.answered > 0 && (
-            <span className="text-[11px] font-mono text-emerald-400/90 font-medium shrink-0 flex items-center gap-1">
+          {stats.answered > 0 ? (
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[11px] font-mono text-emerald-400/90 font-medium shrink-0 flex items-center justify-center gap-1 w-[90px]">
               <span>{stats.accuracy}% acertos</span>
-              <span className="text-dark-subtext/60 text-[10px] hidden md:inline">({stats.answered}/{stats.total})</span>
             </span>
+          ) : (
+            <span className="w-[90px] shrink-0" />
           )}
 
           {displayTags.length > 0 && (
