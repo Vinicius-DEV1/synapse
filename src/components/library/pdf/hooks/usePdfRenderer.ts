@@ -40,10 +40,15 @@ export function usePdfRenderer({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasRestoredInitialPosition = useRef(false);
   const currentPageRef = useRef(currentPage);
+  const onUpdateBookRef = useRef(onUpdateBook);
 
   useEffect(() => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
+
+  useEffect(() => {
+    onUpdateBookRef.current = onUpdateBook;
+  }, [onUpdateBook]);
 
   // Pre-warm dimension cache from page 1 when PDF is loaded
   useEffect(() => {
@@ -175,7 +180,8 @@ export function usePdfRenderer({
         setCurrentPage(firstVisible);
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
-          onUpdateBook({
+          saveTimeoutRef.current = null;
+          onUpdateBookRef.current({
             id: book.id,
             last_read_page: firstVisible,
             last_read_at: new Date().toISOString(),
@@ -201,9 +207,17 @@ export function usePdfRenderer({
     container.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       container.removeEventListener('scroll', onScroll);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        onUpdateBookRef.current({
+          id: book.id,
+          last_read_page: currentPageRef.current,
+          last_read_at: new Date().toISOString(),
+        });
+      }
     };
-  }, [totalPages, loading, book.id, zoom, onUpdateBook]);
+  }, [totalPages, loading, book.id, zoom]);
 
   // Restore initial scroll position ONCE when document is ready
   useEffect(() => {
