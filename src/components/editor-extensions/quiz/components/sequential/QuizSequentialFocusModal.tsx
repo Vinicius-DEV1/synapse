@@ -173,10 +173,10 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
     <Portal>
       <div
         ref={modalContainerRef}
-        className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col animate-fade-in select-none text-zinc-100"
+        className="fixed inset-0 z-[100] bg-dark-bg flex flex-col animate-fade-in select-none text-zinc-100"
       >
         {/* Minimalist Zen Header */}
-        <header className="h-13 px-5 sm:px-6 border-b border-white/[0.06] bg-zinc-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
+        <header className="h-13 px-5 sm:px-6 border-b border-white/[0.06] bg-dark-bg/90 backdrop-blur-md flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-300 shrink-0">
               <HelpCircle size={16} />

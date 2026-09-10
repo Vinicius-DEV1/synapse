@@ -205,7 +205,7 @@ export const QuizSequentialHeader = memo(function QuizSequentialHeader({
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-fade-in text-xs">
+            <div className="absolute right-0 top-full mt-2 w-52 bg-dark-card border border-white/[0.08] rounded-xl shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-fade-in text-xs">
               <div className="px-3 py-1.5 text-[10px] font-medium text-dark-subtext uppercase tracking-wider border-b border-white/[0.04] mb-1">
                 Ações da Questão
               </div>

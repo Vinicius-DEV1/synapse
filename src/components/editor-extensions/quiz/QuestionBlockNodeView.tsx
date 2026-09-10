@@ -585,7 +585,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
       {showDeleteConfirm && (
         <Portal>
           <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in">
+            <div className="bg-dark-card border border-white/10 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in">
               <h4 className="text-sm font-semibold text-zinc-100">Remover Bloco de Questões?</h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 O card será removido desta nota. A bateria e suas questões{' '}
