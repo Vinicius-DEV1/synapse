@@ -354,7 +354,8 @@ pub async fn video_import_and_encrypt(
     app_handle: AppHandle,
 ) -> Result<String, String> {
     let videos_dir = get_videos_dir(&app_handle)?;
-    let dest_filename_enc = format!("{}.enc", dest_filename);
+    let safe_dest_filename = sanitize_filename(&dest_filename);
+    let dest_filename_enc = format!("{}.enc", safe_dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
 
     let keys_guard = db_state.keys.lock().unwrap();
@@ -412,8 +413,9 @@ pub async fn video_process_upload(
     VIDEO_CANCEL_FLAG.store(false, Ordering::SeqCst);
 
     let videos_dir = get_videos_dir(&app_handle)?;
-    let norm_filename = normalize_to_mp4_name(&dest_filename);
-    let dest_filename_enc = format!("{}.enc", dest_filename);
+    let safe_dest_filename = sanitize_filename(&dest_filename);
+    let norm_filename = normalize_to_mp4_name(&safe_dest_filename);
+    let dest_filename_enc = format!("{}.enc", safe_dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
 
     let master_key = {

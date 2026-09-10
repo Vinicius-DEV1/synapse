@@ -108,7 +108,7 @@ pub fn file_links_delete(id: String, db_state: State<'_, DbState>) -> Result<boo
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     conn.execute(
-        "UPDATE file_page_links SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE file_page_links SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         [&id],
     )
     .map_err(|e| e.to_string())?;

@@ -5,7 +5,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::AsyncBufReadExt;
 use crate::cmd_video::types::GenerateWebResult;
 use crate::video_probe::{
-    get_videos_dir, is_file_encrypted, normalize_to_mp4_name, video_probe_codec,
+    get_videos_dir, is_file_encrypted, normalize_to_mp4_name, sanitize_filename,
+    video_probe_codec,
 };
 #[cfg(target_os = "windows")]
 use crate::video_probe::CREATE_NO_WINDOW;
@@ -61,9 +62,8 @@ pub async fn video_generate_web(
         let port = app_handle.state::<crate::cmd_stream::StreamPortState>().0;
         let filename = std::path::Path::new(&source_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid source filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,
@@ -220,7 +220,8 @@ pub async fn video_convert_mp4(
 
     let temp_dest = videos_dir.join(format!("temp_mp4_{}.mp4", uuid::Uuid::new_v4()));
 
-    let mut final_dest = videos_dir.join(&filename);
+    let safe_filename = sanitize_filename(&filename);
+    let mut final_dest = videos_dir.join(&safe_filename);
     final_dest.set_extension("mp4.enc");
     let dest_path_str = final_dest.to_string_lossy().to_string();
 
@@ -232,9 +233,8 @@ pub async fn video_convert_mp4(
         let port = app.state::<crate::cmd_stream::StreamPortState>().0;
         let fname = std::path::Path::new(&source_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid source filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,

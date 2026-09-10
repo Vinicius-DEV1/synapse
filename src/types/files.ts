@@ -31,5 +31,7 @@ export interface FilePageLink {
   link_type: 'upload' | 'link';
   widget_id: string | null;
   created_at?: string;
+  updated_at?: string;
   deleted_at?: string | null;
 }
+
