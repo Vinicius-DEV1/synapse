@@ -90,7 +90,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
           audioBase64,
           modelToUse
         );
-        setAiFeedback(res as any);
+        setAiFeedback(res);
       } catch (err) {
         console.error(`[Flashcards] Failed AI evaluation:`, err);
         setAiFeedback({ verdict: 'Incorreto', feedback: 'Erro de IA. Avalie manualmente.' });

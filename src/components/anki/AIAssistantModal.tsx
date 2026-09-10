@@ -58,7 +58,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
     
     const currentDeck = decks?.find((d: any) => d.id === deckId);
     const subdecks = decks?.filter((d: any) => d.parent_id === deckId) || [];
-    const cards = resCards?.cards || [];
+    const cards = Array.isArray(resCards) ? resCards : (resCards?.cards || []);
     
     return {
       deck_name: currentDeck?.name || 'Desconhecido',
