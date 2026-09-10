@@ -34,6 +34,7 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'DELETE_PAGE': {
       const toDelete = new Set<string>();
       const collectIds = (parentId: string) => {
+        if (toDelete.has(parentId)) return;
         toDelete.add(parentId);
         state.pages.filter((p) => p.parent_id === parentId).forEach((p) => collectIds(p.id));
       };
@@ -41,7 +42,8 @@ export function appReducer(state: AppState, action: Action): AppState {
 
       const newPages = state.pages.filter((p) => !toDelete.has(p.id));
       const newTabs = state.tabs.map((t) => t.pageId && toDelete.has(t.pageId) ? { ...t, pageId: null, unsavedContent: null } : t);
-      return { ...state, pages: newPages, tabs: newTabs };
+      const confirmDelete = state.confirmDelete && toDelete.has(state.confirmDelete) ? null : state.confirmDelete;
+      return { ...state, pages: newPages, tabs: newTabs, confirmDelete };
     }
     case 'ADD_TAB':
       return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id, contextMenu: null };

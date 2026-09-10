@@ -65,6 +65,20 @@ describe('appReducer (store/commands)', () => {
       // tab with pageId 'child' must have pageId reset to null
       expect(state.tabs.find(t => t.id === 'tab-child')?.pageId).toBeNull();
     });
+
+    it('handles cyclic parent_id safely without stack overflow and clears confirmDelete', () => {
+      let state = createBaseState();
+      state.confirmDelete = 'node-a';
+      const nodeA: Page = { id: 'node-a', title: 'A', parent_id: 'node-b' } as Page;
+      const nodeB: Page = { id: 'node-b', title: 'B', parent_id: 'node-a' } as Page;
+
+      state = appReducer(state, { type: 'SET_PAGES', pages: [nodeA, nodeB] });
+      // Deleting node-a should not throw RangeError: Maximum call stack size exceeded
+      state = appReducer(state, { type: 'DELETE_PAGE', id: 'node-a' });
+
+      expect(state.pages).toHaveLength(0);
+      expect(state.confirmDelete).toBeNull();
+    });
   });
 
   describe('Tabs management', () => {

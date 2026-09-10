@@ -32,7 +32,8 @@ function getChannel(): BroadcastChannel | null {
     channel = new BroadcastChannel(CHANNEL_NAME);
     channel.onmessage = (event: MessageEvent<PageSavedMessage>) => {
       if (event.data?.type === 'PAGE_SAVED') {
-        listeners.forEach((cb) => {
+        const activeListeners = Array.from(listeners);
+        activeListeners.forEach((cb) => {
           try {
             cb(event.data);
           } catch (err) {
@@ -74,7 +75,8 @@ export function broadcastPageSaved(
   }
 
   // Also notify listeners in same window (for internal tab sync)
-  listeners.forEach((cb) => {
+  const localListeners = Array.from(listeners);
+  localListeners.forEach((cb) => {
     try {
       cb(msg);
     } catch (err) {

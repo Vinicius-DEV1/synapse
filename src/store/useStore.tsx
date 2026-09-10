@@ -100,6 +100,10 @@ export function getNotesKey(): CryptoKey | undefined {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   
+  // Keep imperative ref immediately updated during render
+  _storeStateRef = state;
+  _storeDispatchRef = dispatch;
+
   useEffect(() => {
     _storeStateRef = state;
     _storeDispatchRef = dispatch;
@@ -117,13 +121,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       aiSidebarWidth: state.aiSidebarWidth,
     };
     
-    const stringified = JSON.stringify(stateToSave);
-    if (lastSavedRef.current === stringified) {
-      return; // Skip save if state hasn't actually changed
+    try {
+      const stringified = JSON.stringify(stateToSave);
+      if (lastSavedRef.current === stringified) {
+        return; // Skip save if state hasn't actually changed
+      }
+      lastSavedRef.current = stringified;
+      
+      localStorage.setItem('appLayoutState', stringified);
+    } catch (e) {
+      console.warn('Failed to save layout state to localStorage:', e);
     }
-    lastSavedRef.current = stringified;
-    
-    localStorage.setItem('appLayoutState', stringified);
     
     if (window.api?.config) {
       const dbState = {
