@@ -15,6 +15,14 @@ vi.mock('../../store/useStore', () => ({
 
 vi.mock('../../utils/file-fetcher', () => ({
   getDecryptedFileUrl: vi.fn(),
+  fetchTextFromUrl: vi.fn().mockImplementation(async (url: string) => {
+    const res = await fetch(url);
+    return await res.text();
+  }),
+  getBlobFromUrlOrFetch: vi.fn().mockImplementation(async (url: string) => {
+    const res = await fetch(url);
+    return await res.blob();
+  }),
 }));
 
 vi.mock('./viewer/utils/documentDownloadUtils', () => ({

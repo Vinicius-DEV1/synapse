@@ -1,4 +1,5 @@
 import { triggerToast } from '../../../ui/ToastContext';
+import { getBlobFromUrlOrFetch } from '../../../../utils/file-fetcher';
 
 export interface DownloadResult {
   success: boolean;
@@ -34,12 +35,8 @@ export async function downloadDocumentFile(
         return { success: false, error: 'cancelled' };
       }
 
-      const res = await fetch(objectUrl);
-      if (!res.ok) {
-        throw new Error(`Falha ao ler dados do arquivo: status ${res.status}`);
-      }
-
-      const buffer = await res.arrayBuffer();
+      const blob = await getBlobFromUrlOrFetch(objectUrl);
+      const buffer = await blob.arrayBuffer();
       await writeFile(targetPath, new Uint8Array(buffer));
 
       triggerToast('Download concluído com sucesso!', 'success');
@@ -51,12 +48,7 @@ export async function downloadDocumentFile(
 
   // 2. Web Browser & Fallback Environment
   try {
-    const res = await fetch(objectUrl);
-    if (!res.ok) {
-      throw new Error(`Erro de rede ao baixar o arquivo: status ${res.status}`);
-    }
-
-    const blob = await res.blob();
+    const blob = await getBlobFromUrlOrFetch(objectUrl);
     const blobUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = blobUrl;

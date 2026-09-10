@@ -3,7 +3,7 @@ import { Download, File, Bookmark, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
-import { getDecryptedFileUrl } from '../../utils/file-fetcher';
+import { getDecryptedFileUrl, fetchTextFromUrl } from '../../utils/file-fetcher';
 import { useFileReadingProgress } from './hooks/useFileReadingProgress';
 import { TextPreviewer } from './viewer/TextPreviewer';
 import { FileViewerHeader } from './viewer/FileViewerHeader';
@@ -106,8 +106,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             currentLoadedKeyRef.current = fileKey;
             if (isText) {
               try {
-                const res = await fetch(resolvedUrl);
-                const txt = await res.text();
+                const txt = await fetchTextFromUrl(resolvedUrl);
                 if (!isCancelled) setTextContent(txt);
               } catch (e) {
                 console.error('[FileViewer] Failed to fetch text', e);
@@ -148,7 +147,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   }, [fileKey, filesMasterKey, isPdf, isText, item, itemDriveId, itemFileType, objectUrl]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f0f11] flex flex-col animate-fade-in select-text">
+    <div className="fixed inset-0 z-[200] bg-[#0f0f11] flex flex-col animate-fade-in select-text">
       {/* Header */}
       <FileViewerHeader
         item={item}
