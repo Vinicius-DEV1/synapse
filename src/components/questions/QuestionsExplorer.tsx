@@ -130,7 +130,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por título, enunciado, tag ou comentário..."
-            className="w-full pl-10 pr-4 py-2 bg-dark-bg/60 border border-white/5 focus:border-brand-500/40 focus:ring-1 focus:ring-brand-500/20 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-dark-bg/60 border border-white/5 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
           />
         </div>
 
@@ -149,7 +149,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             <button
               onClick={() => setSelectedOrigin('linked')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
-                selectedOrigin === 'linked' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
+                selectedOrigin === 'linked' ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-medium' : 'text-zinc-400 hover:text-white'
               }`}
             >
               <FileText size={12} />
@@ -158,7 +158,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             <button
               onClick={() => setSelectedOrigin('standalone')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
-                selectedOrigin === 'standalone' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
+                selectedOrigin === 'standalone' ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-medium' : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Zap size={12} />
@@ -205,7 +205,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             {selectedTag && (
               <button
                 onClick={() => setSelectedTag(null)}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/15 text-zinc-200 border border-white/15 cursor-pointer transition-colors"
+                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 cursor-pointer transition-colors"
               >
                 Limpar ({selectedTag}) ✕
               </button>
@@ -216,7 +216,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                 onClick={() => setSelectedTag(selectedTag === t ? null : t)}
                 className={`text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
                   selectedTag === t
-                    ? 'bg-zinc-800 text-zinc-100 border border-white/20 shadow-sm'
+                    ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40 shadow-sm'
                     : 'bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5'
                 }`}
               >
@@ -253,8 +253,8 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                 id={`battery-card-${b.id}`}
                 className={`group rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
                   isHighlighted
-                    ? 'bg-dark-card border border-brand-500/40 ring-1 ring-brand-500/20'
-                    : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-white/10'
+                    ? 'bg-dark-card border border-indigo-500/50 ring-1 ring-indigo-500/30'
+                    : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-indigo-500/30'
                 }`}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: '160px' }}
               >
@@ -293,7 +293,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                               <button
                                 key={p.id}
                                 onClick={() => onNavigateToPage(p.id)}
-                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.06] flex items-center gap-1 transition-colors cursor-pointer"
+                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 flex items-center gap-1 transition-colors cursor-pointer"
                                 title={`Abrir página "${pageTitle}" no Caderno`}
                               >
                                 <FileText size={11} />
@@ -305,7 +305,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                         ) : b.page_id ? (
                           <button
                             onClick={() => onNavigateToPage(b.page_id!)}
-                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.06] flex items-center gap-1 transition-colors cursor-pointer"
+                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 flex items-center gap-1 transition-colors cursor-pointer"
                             title={`Abrir página "${getPageTitle?.(b.page_id) || 'Caderno'}" no Caderno`}
                           >
                             <FileText size={11} />
@@ -336,10 +336,10 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => onPlayBattery(b)}
-                      className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 hover:text-white border border-white/[0.08] hover:border-white/15 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                       title="Praticar no Modo Foco"
                     >
-                      <Play size={13} className="fill-zinc-300" />
+                      <Play size={13} className="fill-white text-white" />
                       <span className="hidden sm:inline">Praticar</span>
                     </button>
 
