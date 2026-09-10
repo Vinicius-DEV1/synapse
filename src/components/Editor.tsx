@@ -179,8 +179,11 @@ export default function Editor({
         }
         const link = targetElement.closest('a');
         if (link && link.href) {
-          window.open(link.href, '_blank', 'noopener,noreferrer');
-          return true;
+          const href = link.href.trim();
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+            window.open(href, '_blank', 'noopener,noreferrer');
+            return true;
+          }
         }
         return false;
       },

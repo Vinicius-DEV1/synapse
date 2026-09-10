@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getNotesKey } from '../../store/useStore';
 import { getDecryptedImageUrl, uploadEncryptedImage, getCachedImage } from '../../services/image-drive';
@@ -13,7 +13,7 @@ type LoadingState = 'loading' | 'loaded' | 'error';
 /** Default placeholder width for images without pre-existing dimensions. */
 const PLACEHOLDER_WIDTH = 320;
 
-const EncryptedImageNodeView = (props: any) => {
+const EncryptedImageNodeView = (props: NodeViewProps) => {
   const { node, updateAttributes, selected, editor, getPos } = props;
   const { driveFileId, width, height, caption, alt } = node.attrs;
   const align = normalizeAlign(node.attrs.align);

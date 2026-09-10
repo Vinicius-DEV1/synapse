@@ -1,9 +1,9 @@
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import ImageFrame from './image/ImageFrame';
 import { safePos } from './image/imageUtils';
 
-const ResizableImageNodeView = (props: any) => {
+const ResizableImageNodeView = (props: NodeViewProps) => {
   const { node, updateAttributes, selected, editor, getPos } = props;
 
   const openViewer = () => {
