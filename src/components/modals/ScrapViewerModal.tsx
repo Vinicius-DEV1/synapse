@@ -277,7 +277,7 @@ export function ScrapViewerModal({
               ref={iframeRef}
               srcDoc={htmlContent}
               title={scrapData.title || 'Web Snapshot'}
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              sandbox="allow-scripts allow-forms allow-popups"
               className="border-none bg-white transition-all duration-300 shadow-2xl"
               style={{
                 width: viewportMode === 'mobile' ? '390px' : viewportMode === 'tablet' ? '768px' : '100%',

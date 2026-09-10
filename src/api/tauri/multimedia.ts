@@ -145,6 +145,11 @@ export const tauriTranscribeApi = {
 };
 
 export const tauriOsApi = {
-  openInBrowser: async (url: string) => await openBrowser(url),
+  openInBrowser: async (url: string) => {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      throw new Error('Only HTTP and HTTPS URLs are permitted');
+    }
+    await openBrowser(url);
+  },
   showInFolder: async (path: string) => await invoke('os_show_in_folder', { path })
 };

@@ -14,7 +14,7 @@ export const HtmlRenderer: React.FC<HtmlRendererProps> = ({
 }) => {
   const sanitizedHtml = DOMPurify.sanitize(html, {
     ADD_ATTR: ['target'],
-    FORBID_TAGS: ['script', 'iframe'],
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form'],
   });
 
   return (
