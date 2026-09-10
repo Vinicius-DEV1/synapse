@@ -413,11 +413,11 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none">
+    <div className="w-full h-full flex flex-col bg-dark-bg text-zinc-100 overflow-hidden select-none">
       {/* Top Header */}
-      <header className="px-6 py-4 border-b border-white/5 bg-zinc-950/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <header className="px-6 py-4 border-b border-white/5 bg-dark-bg/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-xs">
+          <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
             <CheckSquare size={22} />
           </div>
           <div>
@@ -441,7 +441,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               onClick={() => setActiveTabSection('explorer')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTabSection === 'explorer'
-                  ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-medium shadow-xs'
+                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -453,7 +453,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               onClick={() => setActiveTabSection('dashboard')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTabSection === 'dashboard'
-                  ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-medium shadow-xs'
+                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -465,7 +465,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               onClick={() => setActiveTabSection('playlists')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTabSection === 'playlists'
-                  ? 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-medium shadow-xs'
+                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -477,7 +477,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
           {/* New Battery Button */}
           <button
             onClick={() => setIsCreatingNew(true)}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
           >
             <Plus size={15} />
             <span>Nova Bateria</span>

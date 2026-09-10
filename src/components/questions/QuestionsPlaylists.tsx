@@ -103,7 +103,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       {/* Custom Simulado Builder */}
       <div className="p-5 sm:p-6 rounded-2xl bg-dark-card/60 border border-white/5 space-y-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+          <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
             <Sparkles size={20} />
           </div>
           <div>
@@ -117,7 +117,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         {/* Tag Selector */}
         <div className="space-y-2 pt-2 border-t border-white/5">
           <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-            <Tag size={13} className="text-indigo-400" />
+            <Tag size={13} className="text-brand-400" />
             <span>Filtrar por Matérias / Tags:</span>
           </label>
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar p-1">
@@ -132,7 +132,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                     onClick={() => toggleTag(tag)}
                     className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
                       isSelected
-                        ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 font-medium shadow-sm'
+                        ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-medium shadow-sm'
                         : 'bg-dark-bg/50 hover:bg-white/[0.06] border-white/5 text-zinc-400 hover:text-white'
                     }`}
                   >
@@ -157,7 +157,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                   onClick={() => setQuestionLimit(num)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
                     questionLimit === num
-                      ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 font-semibold shadow-sm'
+                      ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-semibold shadow-sm'
                       : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -178,17 +178,17 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                 onClick={() => setSelectedStatus('all')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
                   selectedStatus === 'all'
-                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 font-medium shadow-sm'
+                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-medium shadow-sm'
                     : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
-                Todas
+                Todas as Questões
               </button>
               <button
                 onClick={() => setSelectedStatus('unanswered')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   selectedStatus === 'unanswered'
-                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200 font-medium shadow-sm'
+                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300 font-medium shadow-sm'
                     : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
@@ -215,20 +215,22 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
               type="checkbox"
               checked={shuffle}
               onChange={(e) => setShuffle(e.target.checked)}
-              className="accent-indigo-500 rounded"
+              className="accent-brand-500 rounded"
             />
             <Shuffle size={13} />
             <span>Embaralhar ordem das questões</span>
           </label>
 
-          <button
-            onClick={handleLaunchCustomSimulado}
-            disabled={isGenerating}
-            className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
-          >
-            <Play size={13} className="fill-white" />
-            <span>Iniciar Simulado</span>
-          </button>
+          <div className="flex items-center justify-end pt-2">
+            <button
+              onClick={handleLaunchCustomSimulado}
+              disabled={isGenerating}
+              className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              <Play size={13} className="fill-white" />
+              <span>Iniciar Simulado</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
