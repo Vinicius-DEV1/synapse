@@ -1,8 +1,9 @@
 import { db } from '../firebase';
-import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc } from 'firebase/firestore';
-import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe } from './sync-utils';
+import { onSnapshot, query, where, collection, doc, getDoc, getDocs, limit, startAfter, orderBy, deleteDoc, type Query, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, type SyncRow } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { decryptCloudBatch, type CloudData } from './sync-decrypt-batch';
+import { getErrorMessage } from '../../utils/error';
 
 /** Parallel decryption batch size */
 const DECRYPT_BATCH_SIZE = 20;
@@ -36,8 +37,9 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
       if (manifestSnap.exists()) {
         manifest = manifestSnap.data() as Record<string, string>;
       }
-    } catch {
-      // Manifest read falhou — fallback: query todas as tabelas (sem risco de perda)
+    } catch (manifestErr: unknown) {
+      // Manifest read failed — fallback: query all tables safely
+      console.debug('[Sync PULL] Could not read sync_manifest, querying tables normally:', getErrorMessage(manifestErr));
     }
   }
 
@@ -69,18 +71,18 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           }
         }
 
-        let qBase = collection(db, table) as any;
+        let qBase: Query<DocumentData> = collection(db, table);
         if (lastPull > 0) {
           const lastPullIso = new Date(lastPull).toISOString();
           qBase = query(collection(db, table), where('updatedAt', '>', lastPullIso), orderBy('updatedAt'));
         }
 
         let hasMore = true;
-        let lastDocSnap: any = null;
+        let lastDocSnap: QueryDocumentSnapshot<DocumentData> | null = null;
         const CHUNK_SIZE = 100;
         
         // #3: Lazy-load local map - populated on demand
-        let localMap: Map<string, any> | null = null;
+        let localMap: Map<string, SyncRow> | null = null;
 
         while (hasMore) {
           let q = qBase;
@@ -114,15 +116,15 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                 .filter(d => (d.data() as CloudData).encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys')
                 .map(d => d.id);
               if (cloudIds.length > 0) {
-                const localRows = await window.api.sync.getRowsByIds(table, cloudIds);
-                localMap = new Map(localRows.map((r: any) => [r.id, r]));
+                const localRows = (await window.api.sync.getRowsByIds(table, cloudIds)) as SyncRow[];
+                localMap = new Map(localRows.map((r: SyncRow) => [r.id, r]));
               } else {
                 localMap = new Map();
               }
             } else {
               // Fallback: if getRowsByIds is not available, load entire table (compatibility)
-              const localRows = await window.api.sync.getTable(table);
-              localMap = new Map(localRows.map((r: any) => [r.id, r]));
+              const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
+              localMap = new Map(localRows.map((r: SyncRow) => [r.id, r]));
             }
           } else if (window.api.sync.getRowsByIds) {
             // For subsequent chunks, fetch only newly encountered IDs
@@ -130,7 +132,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               .filter(d => (d.data() as CloudData).encryptedData && d.id !== 'auth_validator' && d.id !== 'module_keys' && !localMap!.has(d.id))
               .map(d => d.id);
             if (newIds.length > 0) {
-              const newRows = await window.api.sync.getRowsByIds(table, newIds);
+              const newRows = (await window.api.sync.getRowsByIds(table, newIds)) as SyncRow[];
               for (const r of newRows) {
                 localMap.set(r.id, r);
               }
@@ -211,7 +213,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               }
 
               // CRDT merge for pages (Yjs)
-              if (table === 'pages' && localRow?.crdt_state && parsed.crdt_state) {
+              if (table === 'pages' && typeof localRow?.crdt_state === 'string' && typeof parsed.crdt_state === 'string') {
                 try {
                   // #4: Import Yjs once (lazy, outside loop)
                   if (!Y) {

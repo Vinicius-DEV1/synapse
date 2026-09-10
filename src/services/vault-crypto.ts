@@ -5,6 +5,7 @@
  */
 
 import { hexToArrayBuffer, arrayBufferToHex } from '../utils/binary';
+import { getErrorMessage } from '../utils/error';
 
 // Computes SHA-256 hash used as key by Rust (cmd_vault.rs / hash_auth_password)
 export async function getVaultKeyHash(password: string): Promise<string> {
@@ -58,8 +59,8 @@ export async function encryptVaultField(text: string, keyHex: string): Promise<s
     const cipherTextHex = arrayBufferToHex(cipherTextBytes.buffer);
 
     return `${ivHex}:${authTagHex}:${cipherTextHex}`;
-  } catch (e) {
-    console.error('[Vault Crypto] Encryption error:', e);
+  } catch (e: unknown) {
+    console.error('[Vault Crypto] Encryption error:', getErrorMessage(e));
     throw new Error('Failed to encrypt vault field');
   }
 }
@@ -119,8 +120,8 @@ export async function decryptVaultField(payload: string, keyHex: string): Promis
 
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
-  } catch (e) {
-    console.warn('[Vault Crypto] Failed to decrypt vault field, returning as plaintext fallback:', e);
+  } catch (e: unknown) {
+    console.warn('[Vault Crypto] Failed to decrypt vault field, returning as plaintext fallback:', getErrorMessage(e));
     return payload; // Fallback returning original text on decryption failure
   }
 }

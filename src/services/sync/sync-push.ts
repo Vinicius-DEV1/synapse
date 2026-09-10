@@ -1,8 +1,9 @@
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId } from './sync-utils';
+import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId, type SyncRow } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
+import { getErrorMessage } from '../../utils/error';
 
 /** Max Firestore batch size is 500; 400 is used as safety threshold */
 const BATCH_SIZE = 400;
@@ -25,14 +26,15 @@ interface PreparedDoc {
  * Returns ready documents and logs warnings for skipped rows exceeding payload thresholds.
  */
 async function prepareRowsForPush(
-  rows: any[],
+  rows: SyncRow[],
   key: CryptoKey,
   table: string
 ): Promise<{ prepared: PreparedDoc[]; skippedLarge: string[] }> {
   const skippedLarge: string[] = [];
 
   const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
-    const { id, updated_at, created_at, ...sensitiveData } = row;
+    const { id, updated_at, created_at, deleted_at, ...sensitiveData } = row;
+    const docId = String(id);
     const jsonString = JSON.stringify(sensitiveData);
 
     let payloadString = jsonString;
@@ -55,15 +57,15 @@ async function prepareRowsForPush(
         if (b64.length < MAX_PAYLOAD_BYTES) {
           payloadString = b64;
           isCompressed = true;
-          console.log(`[Sync Compress] Doc ${id} comprimido de ${jsonString.length} para ${b64.length} bytes.`);
+          console.log(`[Sync Compress] Doc ${docId} comprimido de ${jsonString.length} para ${b64.length} bytes.`);
         } else {
-          const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande mesmo após compressão (${(b64.length / 1024).toFixed(0)}KB).`;
+          const msg = `[PUSH SKIP] Doc ${docId} (${table}) pulado: conteúdo muito grande mesmo após compressão (${(b64.length / 1024).toFixed(0)}KB).`;
           skippedLarge.push(msg);
           return null;
         }
       } catch (err) {
-        console.warn(`Erro ao comprimir doc ${id}`, err);
-        const msg = `[PUSH SKIP] Doc ${id} (${table}) pulado: conteúdo muito grande e falha na compressão.`;
+        console.warn(`Erro ao comprimir doc ${docId}`, err);
+        const msg = `[PUSH SKIP] Doc ${docId} (${table}) pulado: conteúdo muito grande e falha na compressão.`;
         skippedLarge.push(msg);
         return null;
       }
@@ -72,9 +74,9 @@ async function prepareRowsForPush(
     const encryptedData = await encryptText(payloadString, key);
     const safeUpdatedAt = updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null;
     const safeCreatedAt = created_at ? new Date(parseDateSafe(created_at)).toISOString() : null;
-    const localTime = Math.max(parseDateSafe(updated_at || created_at || 0), parseDateSafe(row.deleted_at || 0));
+    const localTime = Math.max(parseDateSafe(updated_at || created_at || 0), parseDateSafe(deleted_at || 0));
 
-    return { id, encryptedData, isCompressed, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
+    return { id: docId, encryptedData, isCompressed, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
   });
 
   const results = await Promise.all(promises);
@@ -110,11 +112,11 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
     
     for (const table of tables) {
       try {
-        const localRows = await window.api.sync.getTable(table);
+        const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
         if (localRows.length === 0) continue;
 
-        const rowsToPush = lastPush > 0 
-          ? localRows.filter((r: any) => {
+        const rowsToPush: SyncRow[] = lastPush > 0 
+          ? localRows.filter((r: SyncRow) => {
               const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
               const pushIt = rTime > lastPush;
               return pushIt;
@@ -184,20 +186,22 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
             if (chunkHighest > currentManifestTime) {
               manifestUpdate[table] = new Date(chunkHighest).toISOString();
             }
-          } catch (err: any) {
+          } catch (err: unknown) {
             // If batch fails, record error for each document in chunk
+            const errMsg = getErrorMessage(err);
             for (const item of chunk) {
-              const msg = `PUSH erro doc ${item.id} (${table}): ${err?.message}`;
+              const msg = `PUSH erro doc ${item.id} (${table}): ${errMsg}`;
               console.warn(msg);
               errors.push(msg);
             }
           }
         }
-      } catch (err: any) {
-        const msg = `PUSH erro tabela ${table}: ${err?.message}`;
+      } catch (err: unknown) {
+        const errMsg = getErrorMessage(err);
+        const msg = `PUSH erro tabela ${table}: ${errMsg}`;
         console.error(msg);
         errors.push(msg);
-        logSyncEvent('error', `Falha ao enviar para nuvem (${table}): ${err?.message}`);
+        logSyncEvent('error', `Falha ao enviar para nuvem (${table}): ${errMsg}`);
       }
     }
   }
@@ -227,8 +231,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
           deviceId: getDeviceId()
         }, { merge: true });
         logFirebaseOp('write', 1);
-      } catch (e) {
-        console.warn("Falha ao enviar sinal de sync", e);
+      } catch (e: unknown) {
+        console.warn("Falha ao enviar sinal de sync", getErrorMessage(e));
       }
 
       // Manifest: update config/sync_manifest with timestamps of changed tables.
@@ -238,8 +242,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         try {
           await setDoc(doc(db, 'config', 'sync_manifest'), manifestUpdate, { merge: true });
           logFirebaseOp('write', 1);
-        } catch (e) {
-          console.warn("Falha ao atualizar sync manifest", e);
+        } catch (e: unknown) {
+          console.warn("Falha ao atualizar sync manifest", getErrorMessage(e));
         }
       }
     }

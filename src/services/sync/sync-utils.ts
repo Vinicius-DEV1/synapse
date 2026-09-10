@@ -106,8 +106,16 @@ export async function hardResetCloud(): Promise<void> {
     configBatch.delete(doc(db, 'config', 'sync_manifest'));
     await configBatch.commit();
     logFirebaseOp('delete', 4);
-  } catch (err) {}
+  } catch (err: unknown) {
+    console.debug('[SyncUtils] Error cleaning fixed config docs during wipe:', err);
+  }
 }
 
-// Export removed from window global for security (B14)
-// se precisar debugar, exporte localmente apenas no ambiente de dev.
+export interface SyncRow {
+  id: string;
+  updated_at?: string | number | null;
+  created_at?: string | number | null;
+  deleted_at?: string | number | null;
+  crdt_state?: string | null;
+  [key: string]: unknown;
+}

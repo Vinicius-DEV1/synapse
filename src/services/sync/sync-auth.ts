@@ -2,6 +2,7 @@ import { db } from '../firebase';
 import { encryptText, decryptText, deriveMasterKey } from '../crypto';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { logFirebaseOp } from './sync-monitor';
+import { getErrorMessage } from '../../utils/error';
 
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean; error?: 'offline' | 'timeout' | 'invalid' }> {
   try {
@@ -36,13 +37,14 @@ export async function verifyCloudMasterPassword(password: string): Promise<{ isV
       if (parsed.validator === 'CADERNO_VALIDO') {
         return { isValid: true, isNew: false };
       }
-    } catch {
-      // Falha ao descriptografar
+    } catch (decryptErr) {
+      console.warn('[SyncAuth] Failed to decrypt cloud auth validator with master key:', getErrorMessage(decryptErr));
     }
 
     return { isValid: false, isNew: false, error: 'invalid' };
-  } catch {
+  } catch (netErr) {
     // Firebase connection failure (e.g. CORS on tauri://localhost) — treat as timeout, not invalid password
+    console.warn('[SyncAuth] Cloud auth verification connection failure:', getErrorMessage(netErr));
     return { isValid: false, isNew: false, error: 'timeout' };
   }
 }
@@ -75,8 +77,8 @@ export async function getSecurityLock(): Promise<SecurityLock> {
           lastFailedAt = data.lastFailedAt || 0;
         }
       }
-    } catch {
-      // Ignore read errors
+    } catch (lockReadErr) {
+      console.debug('[SyncAuth] Failed to read cloud security lock:', getErrorMessage(lockReadErr));
     }
   }
 
@@ -91,7 +93,9 @@ export async function getSecurityLock(): Promise<SecurityLock> {
         lastFailedAt = localLock.lastFailedAt;
       }
     }
-  } catch {}
+  } catch (localLockErr) {
+    console.debug('[SyncAuth] Failed to parse local security lock:', getErrorMessage(localLockErr));
+  }
 
   return { failedAttempts, lastFailedAt };
 }
@@ -114,8 +118,8 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
       ]);
       logFirebaseOp('write', 1);
-    } catch {
-      // Ignore cloud write errors (offline/transient)
+    } catch (cloudWriteErr) {
+      console.debug('[SyncAuth] Failed to persist security lock to cloud:', getErrorMessage(cloudWriteErr));
     }
   }
 
@@ -131,7 +135,9 @@ export async function clearFailedAttempts(): Promise<void> {
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
       ]);
       logFirebaseOp('write', 1);
-    } catch {}
+    } catch (clearCloudErr) {
+      console.debug('[SyncAuth] Failed to clear cloud security lock:', getErrorMessage(clearCloudErr));
+    }
   }
 }
 
@@ -213,9 +219,10 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Re
         return null;
       }
     }
-  } catch (err: any) {
-    console.error("Erro ao baixar chaves modulares", err);
-    if (err.message === "FIREBASE_TIMEOUT") {
+  } catch (err: unknown) {
+    const errMsg = getErrorMessage(err);
+    console.error("Erro ao baixar chaves modulares", errMsg);
+    if (errMsg === "FIREBASE_TIMEOUT") {
       throw err;
     }
   }

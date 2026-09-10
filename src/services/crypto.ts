@@ -21,7 +21,7 @@ const IV_LENGTH = 12; // Standard AES-GCM IV length
 export async function deriveMasterKey(password: string, customSalt?: Uint8Array | string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const passwordBuffer = encoder.encode(password);
-  const activeSalt = typeof customSalt === 'string'
+  const activeSalt: Uint8Array = typeof customSalt === 'string'
     ? encoder.encode(customSalt)
     : (customSalt || SALT);
 
@@ -36,6 +36,7 @@ export async function deriveMasterKey(password: string, customSalt?: Uint8Array 
   return await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
+      // TS DOM lib compatibility: WebCrypto BufferSource requires non-shared ArrayBufferView (TS #57888)
       salt: activeSalt as unknown as BufferSource,
       iterations: ITERATIONS,
       hash: HASH_ALGORITHM
