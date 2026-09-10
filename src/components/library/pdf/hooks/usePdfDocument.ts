@@ -27,6 +27,8 @@ export function usePdfDocument(
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState<LoadProgressState | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const startPageRef = useRef<number>(1);
+  const loadingTaskRef = useRef<pdfjsLib.PDFDocumentLoadingTask | null>(null);
 
   const currentPageRef = useRef(currentPage);
   useEffect(() => {
@@ -69,6 +71,7 @@ export function usePdfDocument(
 
         if (active) setLoadProgress({ percent: 100, stage: 'rendering' });
         const loadingTask = pdfjsLib.getDocument({ data: fileData });
+        loadingTaskRef.current = loadingTask;
         const pdf = await loadingTask.promise;
 
         if (!active) return;
@@ -131,6 +134,7 @@ export function usePdfDocument(
             typeof book.last_read_page === 'number'
               ? book.last_read_page
               : parseInt(String(book.last_read_page || 1), 10) || 1;
+          startPageRef.current = startPageNum;
 
           const session = await window.api.library.startReadingSession({
             book_id: book.id,
@@ -151,6 +155,8 @@ export function usePdfDocument(
     loadPdf();
     return () => {
       active = false;
+      loadingTaskRef.current?.destroy();
+      loadingTaskRef.current = null;
     };
   }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys, reloadCounter]);
 
@@ -161,7 +167,7 @@ export function usePdfDocument(
         window.api.library.endReadingSession({
           id: sessionIdRef.current,
           end_page: currentPageRef.current,
-          pages_read: 1,
+          pages_read: Math.max(1, Math.abs(currentPageRef.current - startPageRef.current) + 1),
         });
         sessionIdRef.current = null;
       }
