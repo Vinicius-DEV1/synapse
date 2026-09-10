@@ -83,10 +83,10 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
   }
 
   for (const tableConfig of tablesToCheck) {
-    let rows: any[] = [];
+    let rows: Record<string, unknown>[] = [];
     if (isDesktopApp()) {
       try {
-        rows = await window.api.sync.getTable(tableConfig.name);
+        rows = (await window.api.sync.getTable(tableConfig.name)) as Record<string, unknown>[];
       } catch (e) {
         console.warn(`[GC] Falha ao ler tabela ${tableConfig.name} no Desktop`, e);
       }
@@ -102,7 +102,8 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
       for (const col of tableConfig.cols) {
         const val = row[col];
         if (typeof val === 'string' && val) {
-          // Extract HTML image tags
+          // Extract HTML image tags (reset regex.lastIndex to prevent state leak across items)
+          regex.lastIndex = 0;
           let match;
           while ((match = regex.exec(val)) !== null) {
             usedIds.add(match[1]);

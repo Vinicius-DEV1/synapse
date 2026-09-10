@@ -104,8 +104,8 @@ export async function decryptLofiBufferToPlainAudio(
         try {
           const { decryptFile } = await import('./storage');
           return await decryptFile(buffer, primaryKey);
-        } catch {
-          console.warn("Decryption failed on non-ENC1 buffer, falling back to raw bytes", primaryErr);
+        } catch (decryptErr) {
+          console.warn("Decryption failed on non-ENC1 buffer, falling back to raw bytes", decryptErr);
           return buffer;
         }
       }

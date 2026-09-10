@@ -169,25 +169,18 @@ export async function decryptFileChunked(encryptedBlob: Blob, masterKey: CryptoK
  */
 export async function uploadEncryptedPdf(bookId: string, fileBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<string> {
   const encrypted = await encryptFile(fileBuffer, masterKey);
-  
-  try {
-    const token = await getValidAccessToken();
-    if (token) {
-      const driveFileId = await uploadToDrive(token, `library_${bookId}.enc`, encrypted);
-      return `drive://${driveFileId}`;
-    }
-    throw new Error('Google Drive não autenticado');
-  } catch (err) {
-    throw err;
+  const token = await getValidAccessToken();
+  if (token) {
+    const driveFileId = await uploadToDrive(token, `library_${bookId}.enc`, encrypted);
+    return `drive://${driveFileId}`;
   }
+  throw new Error('Google Drive não autenticado');
 }
 
 /**
  * Downloads and decrypts an encrypted PDF file from Google Drive for pdf.js.
  */
 export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey): Promise<ArrayBuffer> {
-  let encryptedBuffer: ArrayBuffer;
-
   const fileId = remotePath.startsWith('drive://') ? remotePath.replace('drive://', '') : remotePath;
   if (!fileId || fileId.includes('/') || fileId.includes('\\')) {
     throw new Error('Caminho remoto inválido ou legado');
@@ -195,12 +188,18 @@ export async function getDecryptedPdf(remotePath: string, masterKey: CryptoKey):
 
   const token = await getValidAccessToken();
   if (!token) throw new Error('Google Drive não autenticado');
-  encryptedBuffer = await downloadFromDrive(token, fileId);
+  const encryptedBuffer = await downloadFromDrive(token, fileId);
 
   try {
     return await decryptFile(encryptedBuffer, masterKey);
-  } catch {
-    // If already decrypted or in another format
-    return encryptedBuffer;
+  } catch (decryptErr) {
+    // If already decrypted or stored in plaintext format, verify PDF magic header (%PDF-)
+    const header = new Uint8Array(encryptedBuffer.slice(0, 4));
+    const isPlaintextPdf = header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46;
+    if (isPlaintextPdf) {
+      return encryptedBuffer;
+    }
+    console.warn('[Storage] Decryption failed and buffer is not a valid plaintext PDF:', decryptErr);
+    throw decryptErr;
   }
 }

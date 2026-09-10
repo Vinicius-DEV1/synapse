@@ -44,7 +44,9 @@ export async function processVideoWeb(
     onAbort = () => {
       try {
         ffmpegInstance.terminate();
-      } catch (e) {}
+      } catch (e: unknown) {
+        console.debug('[FFmpeg] Error terminating instance on abort:', e);
+      }
       ffmpeg = null; // force recreate next time
     };
     signal.addEventListener('abort', onAbort);
@@ -55,8 +57,11 @@ export async function processVideoWeb(
     onProgress(progress * 100);
   });
 
-  // @ts-ignore
-  const inputName = 'input' + (file.name ? file.name.substring(file.name.lastIndexOf('.')) : '.mp4');
+  const fileName = 'name' in file && typeof (file as { name: unknown }).name === 'string'
+    ? (file as { name: string }).name
+    : '';
+  const ext = fileName && fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')) : '.mp4';
+  const inputName = 'input' + ext;
   const outputName = 'output.mp4';
 
   try {
@@ -87,8 +92,12 @@ export async function processVideoWeb(
     return new Blob([blobPart], { type: 'video/mp4' });
   } finally {
     // Cleanup memory in finally block to avoid MEMFS leaks (OOM)
-    try { await ffmpegInstance.deleteFile(inputName); } catch(e) {}
-    try { await ffmpegInstance.deleteFile(outputName); } catch(e) {}
+    try { await ffmpegInstance.deleteFile(inputName); } catch (e: unknown) {
+      console.debug('[FFmpeg] Error deleting input file from MEMFS:', e);
+    }
+    try { await ffmpegInstance.deleteFile(outputName); } catch (e: unknown) {
+      console.debug('[FFmpeg] Error deleting output file from MEMFS:', e);
+    }
     if (signal && onAbort) {
       signal.removeEventListener('abort', onAbort);
     }
