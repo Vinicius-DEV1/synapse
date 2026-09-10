@@ -109,7 +109,9 @@ export function useTrash() {
               await hardDeleteLofiPermanently(lofi).catch(() => {});
             }
           }
-        } catch (err) {}
+        } catch (err: unknown) {
+          console.warn('[useTrash] Failed to cleanup trashed lofis during empty trash:', err);
+        }
       }
 
       if (window.api?.trash?.empty) {

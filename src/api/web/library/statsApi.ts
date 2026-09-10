@@ -37,7 +37,9 @@ export const createStatsApi = (db: any, generateId: () => string) => ({
           try {
             const day = new Date(s.started_at).toISOString().split('T')[0];
             uniqueDays.add(day);
-          } catch {}
+          } catch (err: unknown) {
+            console.debug('[statsApi] Invalid started_at date in reading session:', s.started_at, err);
+          }
         }
       }
 

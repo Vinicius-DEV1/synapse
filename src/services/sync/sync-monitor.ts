@@ -122,7 +122,9 @@ export function getSyncEvents(): SyncEventLog[] {
   try {
     const raw = localStorage.getItem('caderno_sync_events');
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (err: unknown) {
+    console.debug('[sync-monitor] Failed to parse cuaderno_sync_events:', err);
+  }
   return [];
 }
 
@@ -158,7 +160,9 @@ export function getTodayStats(): SyncStats {
   try {
     const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (err: unknown) {
+    console.debug('[sync-monitor] Failed to parse today sync stats:', err);
+  }
   return { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
 }
 

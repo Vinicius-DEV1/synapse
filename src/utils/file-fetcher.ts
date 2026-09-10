@@ -17,7 +17,9 @@ export function revokeCachedBlobUrl(url: string): void {
     blobCache.delete(url);
     try {
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch (err: unknown) {
+      console.debug('[file-fetcher] Failed to revoke blob URL:', err);
+    }
   }
 }
 

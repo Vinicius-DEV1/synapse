@@ -27,7 +27,9 @@ export function EpubHighlightNoteEditor({
     let parsedData: any = null;
     try {
       parsedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-    } catch {}
+    } catch (err: unknown) {
+      console.debug('[EpubHighlightNoteEditor] Failed to parse AI_DICT payload:', err);
+    }
 
     const wc = parsedData?.english?.word_class || parsedData?.portuguese?.word_class;
 

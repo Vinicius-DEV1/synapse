@@ -53,7 +53,9 @@ function loadSectionOrder(): string[] {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  } catch {}
+  } catch (err: unknown) {
+    console.debug('[useCulture] Failed to parse culture_section_order from localStorage:', err);
+  }
   return [...DEFAULT_TYPE_ORDER];
 }
 

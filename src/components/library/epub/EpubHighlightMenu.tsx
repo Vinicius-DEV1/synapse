@@ -150,7 +150,9 @@ export default function EpubHighlightMenu() {
     if (noteText.startsWith('<!-- AI_DICT -->')) {
       try {
         preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-      } catch {}
+      } catch (err: unknown) {
+        console.debug('[EpubHighlightMenu] Failed to parse AI_DICT payload:', err);
+      }
     }
     setDictionaryTarget({ word: selection!.text, context: getPageContext(), selection: { ...selection! }, preloadedData });
     setSelection(null);
@@ -161,7 +163,9 @@ export default function EpubHighlightMenu() {
     let preloadedData = null;
     try {
       preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
-    } catch {}
+    } catch (err: unknown) {
+      console.debug('[EpubHighlightMenu] Failed to parse full AI_DICT payload:', err);
+    }
     setDictionaryTarget({ word: selection!.text, context: getPageContext(), selection: { ...selection! }, preloadedData });
     setSelection(null);
     setNoteMode(null);

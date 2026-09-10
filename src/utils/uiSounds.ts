@@ -80,7 +80,9 @@ export function playUiClickSound(): void {
       try {
         osc.disconnect();
         gainNode.disconnect();
-      } catch {}
+      } catch (err: unknown) {
+        console.debug('[uiSounds] Disconnect cleanup ignored:', err);
+      }
     };
 
     osc.start(t);
@@ -119,7 +121,9 @@ export function playUiToggleSound(isOn: boolean): void {
       try {
         osc.disconnect();
         gainNode.disconnect();
-      } catch {}
+      } catch (err: unknown) {
+        console.debug('[uiSounds] Disconnect cleanup ignored:', err);
+      }
     };
 
     osc.start(t);
@@ -153,7 +157,9 @@ export function playUiActionSound(): void {
         try {
           osc.disconnect();
           gainNode.disconnect();
-        } catch {}
+        } catch (err: unknown) {
+          console.debug('[uiSounds] Disconnect cleanup ignored:', err);
+        }
       };
 
       osc.start(startTime);
@@ -197,7 +203,9 @@ export function playUiDeleteSound(): void {
         osc.disconnect();
         filter.disconnect();
         gainNode.disconnect();
-      } catch {}
+      } catch (err: unknown) {
+        console.debug('[uiSounds] Disconnect cleanup ignored:', err);
+      }
     };
 
     osc.start(t);
