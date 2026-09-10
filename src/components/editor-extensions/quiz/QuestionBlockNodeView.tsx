@@ -452,20 +452,20 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           </div>
 
           <span
-            className="text-xs sm:text-sm font-semibold text-zinc-100 truncate max-w-[180px] sm:max-w-xs md:max-w-sm"
+            className="text-xs sm:text-sm font-semibold text-dark-text truncate max-w-[180px] sm:max-w-xs md:max-w-sm"
             title={title}
           >
             {title}
           </span>
 
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-zinc-400 shrink-0">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-dark-subtext shrink-0">
             {stats.total} {stats.total === 1 ? 'questão' : 'questões'}
           </span>
 
           {stats.answered > 0 && (
             <span className="text-[11px] font-mono text-emerald-400/90 font-medium shrink-0 flex items-center gap-1">
               <span>{stats.accuracy}% acertos</span>
-              <span className="text-zinc-600 text-[10px] hidden md:inline">({stats.answered}/{stats.total})</span>
+              <span className="text-dark-subtext/60 text-[10px] hidden md:inline">({stats.answered}/{stats.total})</span>
             </span>
           )}
 
@@ -474,20 +474,20 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
               {displayTags.slice(0, 2).map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-0.5"
+                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-dark-subtext flex items-center gap-0.5"
                 >
-                  <Tag size={9} className="text-zinc-500" />
+                  <Tag size={9} className="text-dark-subtext/70" />
                   <span>{tag}</span>
                 </span>
               ))}
               {displayTags.length > 2 && (
-                <span className="text-[10px] text-zinc-500 font-mono">+{displayTags.length - 2}</span>
+                <span className="text-[10px] text-dark-subtext/70 font-mono">+{displayTags.length - 2}</span>
               )}
             </div>
           )}
 
           {description && (
-            <span className="hidden 2xl:inline text-xs text-zinc-500 truncate max-w-xs" title={description}>
+            <span className="hidden 2xl:inline text-xs text-dark-subtext truncate max-w-xs" title={description}>
               <span className="opacity-50 mr-1">•</span>
               {description}
             </span>
