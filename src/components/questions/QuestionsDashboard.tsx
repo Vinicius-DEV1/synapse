@@ -27,7 +27,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
         <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-xs font-medium uppercase tracking-wider">Total Questões</span>
-            <HelpCircle size={16} className="text-indigo-400" />
+            <HelpCircle size={16} className="text-brand-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-semibold text-zinc-100 font-mono">
@@ -110,23 +110,23 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
         </div>
 
         {/* Simulado Rápido Card */}
-        <div className="p-5 rounded-2xl bg-indigo-500/[0.04] border border-indigo-500/20 hover:border-indigo-500/35 transition-all flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-brand-500/[0.04] border border-brand-500/20 hover:border-brand-500/35 transition-all flex flex-col justify-between">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+            <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shrink-0">
               <Sparkles size={20} />
             </div>
             <div>
               <h4 className="text-sm font-semibold text-zinc-100">Simulado Dinâmico</h4>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Gere um simulado aleatório de 10 a 20 questões para manter sua retenção ativa no Modo Foco Zen.
+                Gere uma sessão rápida com questões aleatórias ou focadas para manter seu ritmo de estudos diário.
               </p>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2">
+          <div className="mt-4 flex items-center justify-end">
             <button
               onClick={onLaunchQuickSimulation}
               disabled={stats.totalQuestions === 0}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shadow-sm"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shadow-sm"
             >
               <CheckCircle2 size={14} />
               <span>Simulado Rápido</span>
@@ -139,18 +139,20 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
       <div className="bg-dark-card/50 border border-white/5 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-            <BookOpen size={16} className="text-indigo-400" />
+            <BookOpen size={16} className="text-brand-400" />
             <span>Desempenho por Matéria / Tags</span>
           </h4>
           <span className="text-xs text-zinc-500">{sortedTags.length} tags registradas</span>
         </div>
 
         {sortedTags.length === 0 ? (
-          <div className="py-8 text-center text-zinc-500 text-xs space-y-3">
-            <p>Nenhuma questão com tags catalogada ainda.</p>
+          <div className="p-6 text-center space-y-3">
+            <p className="text-xs text-zinc-400">
+              Você ainda não respondeu a nenhuma questão para gerar estatísticas detalhadas por matéria.
+            </p>
             <button
               onClick={onCreateBattery}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 text-xs font-medium transition-colors cursor-pointer"
             >
               Criar Bateria de Questões
             </button>
