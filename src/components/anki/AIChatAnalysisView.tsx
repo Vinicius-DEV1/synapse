@@ -3,6 +3,7 @@ import { Sparkles, RefreshCw } from 'lucide-react';
 import { promptGeminiForChatAnalysis } from '../../services/gemini';
 import { useAIActions } from '../../hooks/useAIActions';
 import type { ChatMessage } from '../../hooks/useAIActions';
+import { getErrorMessage } from '../../utils/error';
 import { ChatSetupForm } from './ai-chat/ChatSetupForm';
 import { ChatSuggestionsReview } from './ai-chat/ChatSuggestionsReview';
 import { AIChatMessageItem } from './ai-chat/AIChatMessageItem';
@@ -49,29 +50,41 @@ export default function AIChatAnalysisView({
   const { actionStatus, setActionStatus, handleExecuteAction } = useAIActions(deckId);
 
   useEffect(() => {
+    let active = true;
     if (window.api?.anki) {
       window.api.anki.getAllCards(deckId).then(res => {
-        setDeckCards(res?.cards || []);
-      }).catch(() => {});
+        if (active) {
+          setDeckCards(res?.cards || []);
+        }
+      }).catch((err) => {
+        console.error('[AIChatAnalysisView] Failed to load deck cards:', err);
+      });
     }
+    return () => {
+      active = false;
+    };
   }, [deckId]);
 
   useEffect(() => {
     const savedSessions = localStorage.getItem(`ai_chat_sessions_${deckId}`);
     let loadedSessions: ChatSession[] = [];
     if (savedSessions) {
-      try { loadedSessions = JSON.parse(savedSessions); } catch(e) {}
+      try { loadedSessions = JSON.parse(savedSessions); } catch(e) {
+        console.warn('[AIChatAnalysisView] Failed to parse saved sessions:', e);
+      }
     } else {
       // Migrate old format
       const oldChat = localStorage.getItem(`ai_chat_${deckId}`);
       if (oldChat) {
         try {
            const history = JSON.parse(oldChat);
-           if (history.length > 0) {
+           if (Array.isArray(history) && history.length > 0) {
               loadedSessions = [{ id: Date.now().toString(), date: new Date().toISOString(), history }];
               localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(loadedSessions));
            }
-        } catch(e) {}
+        } catch(e) {
+          console.warn('[AIChatAnalysisView] Failed to parse old chat history:', e);
+        }
       }
     }
     setSessions(loadedSessions);
@@ -132,12 +145,12 @@ export default function AIChatAnalysisView({
       setChatHistory(newHistory);
       setPrompt('');
       
-      const formattedHistory: any[] = [];
+      const formattedHistory: Array<{ role: string; parts: Array<{ text: string }> }> = [];
       const result = await promptGeminiForChatAnalysis(prompt, formattedHistory, contextData, selectedModel);
       
       setChatHistory([...newHistory, { role: 'model', content: result.message, actions: result.actions }]);
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Ocorreu um erro.');
     } finally {
       setLoading(false);
       isGeneratingRef.current = false;
@@ -171,8 +184,8 @@ export default function AIChatAnalysisView({
         actions: result.actions,
         tokens: result._usage
       }]);
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro no chat.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Ocorreu um erro no chat.');
     } finally {
       setLoading(false);
       isGeneratingRef.current = false;
