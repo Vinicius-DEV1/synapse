@@ -9,8 +9,9 @@
  * This plugin guarantees automatic conversion across all platforms.
  */
 
-import { Extension } from '@tiptap/core';
+import { Extension, type Editor } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { setCachedImage } from '../../services/image-drive';
 
 const blobInterceptorKey = new PluginKey('blobImageInterceptor');
@@ -67,10 +68,10 @@ export const BlobImageInterceptor = Extension.create({
  * Fetches blob buffer, saves to local cache, and replaces editor image node.
  */
 async function convertBlobToEncryptedImage(
-  editor: any,
+  editor: Editor,
   blobUrl: string,
   _originalPos: number,
-  attrs: Record<string, any>
+  attrs: Record<string, unknown>
 ) {
   try {
     // 1. Fetch blob while active in memory
@@ -94,7 +95,7 @@ async function convertBlobToEncryptedImage(
     // 4. Search for ALL image nodes with this blob URL in current document.
     // Replace all occurrences to prevent orphaned revoked blob URLs.
     const foundPositions: number[] = [];
-    editor.state.doc.descendants((node: any, pos: number) => {
+    editor.state.doc.descendants((node: ProseMirrorNode, pos: number) => {
       if (node.type.name === 'image' && node.attrs.src === blobUrl) {
         foundPositions.push(pos);
       }
@@ -132,8 +133,14 @@ async function convertBlobToEncryptedImage(
     if (replaced > 0) {
       editor.view.dispatch(tr);
       console.log(`[BlobInterceptor] ${replaced} node(s) substituído(s) com sucesso! encryptedImage com tempId="${tempId}"`);
+      // Free object URL immediately to release browser memory
+      try {
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        // Ignore revoke errors on external blob URLs
+      }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('[BlobInterceptor] Erro ao converter blob:', err);
   }
 }

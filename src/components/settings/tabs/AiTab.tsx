@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, DatabaseBackup, ShieldCheck } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
 import { fetchGeminiModels, getGeminiKeys, saveGeminiKeys } from '../../../services/gemini';
@@ -19,9 +19,16 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
   const [dictProgress, setDictProgress] = useState(0);
   const [keys, setKeys] = useState<GeminiKeyEntry[]>([]);
   const [newKey, setNewKey] = useState('');
+  const dictIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     loadKeys();
+    return () => {
+      if (dictIntervalRef.current) {
+        clearInterval(dictIntervalRef.current);
+        dictIntervalRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,12 +95,18 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
   };
 
   const handleDownloadDict = () => {
+    if (dictIntervalRef.current) {
+      clearInterval(dictIntervalRef.current);
+    }
     setDictDownloading(true);
     setDictProgress(0);
-    const interval = setInterval(() => {
+    dictIntervalRef.current = setInterval(() => {
       setDictProgress(p => {
         if (p >= 100) {
-          clearInterval(interval);
+          if (dictIntervalRef.current) {
+            clearInterval(dictIntervalRef.current);
+            dictIntervalRef.current = null;
+          }
           setAppSettings({ ...appSettings, hasOfflineDictionary: true });
           setDictDownloading(false);
           return 100;

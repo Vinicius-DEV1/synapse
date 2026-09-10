@@ -119,58 +119,71 @@ export function useEpubLoader(
 
             if (active) {
               setLoading(false);
-            }
-
-           window.api.library.getHighlights(book.id).then((hls: LibraryHighlight[]) => {
-              setHighlights(hls);
-           });
-           
-           window.api.library.getBookmarks(book.id).then((bms: LibraryBookmark[]) => {
-              setBookmarks(bms);
-           });
-
-           newEpubBook.ready.then(() => {
-              newEpubBook.loaded.navigation.then(nav => setToc(nav.toc));
-              
-              if (book.epub_locations) {
-                try {
-                  newEpubBook.locations.load(book.epub_locations);
-                  return newEpubBook.locations as unknown as string[];
-                } catch (e) {
-                  console.error('Failed to load cached locations:', e);
-                  return newEpubBook.locations.generate(1600);
-                }
-              } else {
-                return newEpubBook.locations.generate(1600).then((locations) => {
+              if (window.api?.library?.getHighlights) {
+                window.api.library.getHighlights(book.id).then((hls: LibraryHighlight[]) => {
                   if (active) {
-                    try {
-                      const serialized = newEpubBook.locations.save();
-                      onUpdateBook({ epub_locations: serialized });
-                    } catch (err) {
-                      console.error('Failed to save generated locations:', err);
-                    }
+                    setHighlights(hls);
                   }
-                  return locations;
-                });
+                }).catch((err) => console.error('[EpubLoader] Failed to load highlights:', err));
               }
-            }).then((locations: any) => {
-               if (!active) return;
-               const total = (newEpubBook.locations as any).total ? (newEpubBook.locations as any).total : (locations.length || 0);
-               setTotalPages(total);
-               setLocationsReady(true);
-               
-               const updates: Partial<LibraryBook> = { total_pages: total };
-               
-               if (newRendition.location && newRendition.location.start) {
-                 const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
-                 setProgress(percentage);
-                 const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
-                 setCurrentPage(current as unknown as number);
-                 (updates as any).current_page = current;
-               }
-               
-               onUpdateBook(updates);
-            }).catch(console.error);
+              
+              if (window.api?.library?.getBookmarks) {
+                window.api.library.getBookmarks(book.id).then((bms: LibraryBookmark[]) => {
+                  if (active) {
+                    setBookmarks(bms);
+                  }
+                }).catch((err) => console.error('[EpubLoader] Failed to load bookmarks:', err));
+              }
+
+              newEpubBook.ready.then(() => {
+                newEpubBook.loaded.navigation.then(nav => setToc(nav.toc));
+                
+                if (book.epub_locations) {
+                  try {
+                    newEpubBook.locations.load(book.epub_locations);
+                    return newEpubBook.locations as unknown as string[];
+                  } catch (e) {
+                    console.error('Failed to load cached locations:', e);
+                    return newEpubBook.locations.generate(1600);
+                  }
+                } else {
+                  return newEpubBook.locations.generate(1600).then((locations) => {
+                    if (active) {
+                      try {
+                        if (typeof newEpubBook.locations?.save === 'function') {
+                          const serialized = newEpubBook.locations.save();
+                          onUpdateBook({ epub_locations: serialized });
+                        }
+                      } catch (err) {
+                        console.error('Failed to save generated locations:', err);
+                      }
+                    }
+                    return locations;
+                  });
+                }
+              }).then((locations: unknown) => {
+                if (!active) return;
+                const locsArray = Array.isArray(locations) ? locations : [];
+                const locationsObj = newEpubBook.locations as { total?: number };
+                const total = typeof locationsObj?.total === 'number' && locationsObj.total > 0 ? locationsObj.total : locsArray.length;
+                setTotalPages(total);
+                setLocationsReady(true);
+                
+                const updates: Partial<LibraryBook> = { total_pages: total };
+                
+                if (newRendition.location && newRendition.location.start) {
+                  const percentage = newEpubBook.locations.percentageFromCfi(newRendition.location.start.cfi);
+                  setProgress(percentage);
+                  const current = newEpubBook.locations.locationFromCfi(newRendition.location.start.cfi);
+                  if (typeof current === 'number') {
+                    setCurrentPage(current);
+                    updates.current_page = current;
+                  }
+                }
+                
+                onUpdateBook(updates);
+              }).catch(console.error);
+            }
 
            newRendition.on('selected', (cfiRange: string, contents: unknown) => {
               const cont = contents as { window: Window, document: Document, cfiBase: string };
