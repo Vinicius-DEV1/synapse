@@ -110,8 +110,8 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
         .map(|s| crate::crypto::encrypt_content(&vault_key, s))
         .transpose()?;
 
-    // Check whether password changed to record history entry
-    if let Some(ref new_pass_enc) = enc_pass {
+    // Check whether password actually changed to record history entry
+    if let Some(ref _new_pass_enc) = enc_pass {
         let old_pass_enc: Result<Option<String>, _> = conn.query_row(
             "SELECT password FROM vault_items WHERE id = ?",
             rusqlite::params![item.id],
@@ -119,13 +119,18 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
         );
 
         if let Ok(Some(old)) = old_pass_enc {
-            if old != *new_pass_enc && !old.is_empty() {
-                let hist_id = uuid::Uuid::new_v4().to_string();
-                let hist_now = chrono::Utc::now().to_rfc3339();
-                let _ = conn.execute(
-                    "INSERT INTO vault_password_history (id, item_id, password, changed_at) VALUES (?, ?, ?, ?)",
-                    rusqlite::params![hist_id, item.id, old, hist_now],
-                );
+            // Decrypt old password to compare plaintext, since AES-GCM generates a new random IV per call
+            let old_plain = crate::crypto::decrypt_content(&vault_key, &old).ok();
+            let new_plain = item.password.as_deref();
+            if let (Some(old_p), Some(new_p)) = (old_plain, new_plain) {
+                if old_p != new_p && !old.is_empty() {
+                    let hist_id = uuid::Uuid::new_v4().to_string();
+                    let hist_now = chrono::Utc::now().to_rfc3339();
+                    let _ = conn.execute(
+                        "INSERT INTO vault_password_history (id, item_id, password, changed_at) VALUES (?, ?, ?, ?)",
+                        rusqlite::params![hist_id, item.id, old, hist_now],
+                    );
+                }
             }
         }
     }

@@ -224,6 +224,9 @@ pub async fn audio_extract_clip(
     }
 
     let duration_ms = end_time_ms - start_time_ms;
+    if start_time_ms < 0 || duration_ms <= 0 {
+        return Err("Invalid clip timestamps: start time must be non-negative and end time greater than start time".into());
+    }
 
     let start_sec = start_time_ms as f64 / 1000.0;
     let duration_sec = duration_ms as f64 / 1000.0;
@@ -236,9 +239,9 @@ pub async fn audio_extract_clip(
         let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
         let fname = std::path::Path::new(&video_path)
             .file_name()
-            .unwrap()
+            .ok_or("Invalid video path")?
             .to_str()
-            .unwrap();
+            .ok_or("Invalid filename encoding")?;
         // Assume video is from culture module
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
@@ -246,6 +249,10 @@ pub async fn audio_extract_clip(
             urlencoding::encode(fname)
         )
     } else {
+        let p = std::path::Path::new(&video_path);
+        if !p.exists() || !p.is_file() {
+            return Err("Input video file does not exist or is not a file".into());
+        }
         video_path.clone()
     };
 

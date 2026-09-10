@@ -21,6 +21,10 @@ fn get_videos_dir(_app: &AppHandle) -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub async fn youtube_fetch_info(url: String, _app: AppHandle) -> Result<Value, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid YouTube URL: must start with http:// or https://".into());
+    }
+
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
 
     // spawning yt-dlp -j to get JSON info
@@ -48,6 +52,19 @@ pub async fn youtube_download(
     db_state: tauri::State<'_, crate::db::DbState>,
     app: AppHandle,
 ) -> Result<String, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid YouTube URL: must start with http:// or https://".into());
+    }
+
+    // Validate quality format string to prevent CLI argument injection
+    if !quality.is_empty()
+        && !quality
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '+' | ',' | '/' | '.' | '-'))
+    {
+        return Err("Invalid video quality parameter".into());
+    }
+
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let ffmpeg_dir = crate::cmd_binaries::get_bin_path("ffmpeg")
         .parent()
@@ -72,8 +89,12 @@ pub async fn youtube_download(
     ];
 
     if let Some(sub_langs) = subs {
-        if !sub_langs.is_empty() {
-            let langs = sub_langs.join(",");
+        let valid_langs: Vec<String> = sub_langs
+            .into_iter()
+            .filter(|l| l.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'))
+            .collect();
+        if !valid_langs.is_empty() {
+            let langs = valid_langs.join(",");
             args.push("--write-subs".to_string());
             args.push("--write-auto-subs".to_string());
             args.push("--sub-langs".to_string());
@@ -126,7 +147,8 @@ pub async fn youtube_download(
             return Err("Keys not unlocked".into());
         };
 
-        let enc_dest_path = videos_dir.join(format!("{}.enc", filename));
+        // Securely use sanitized filename to prevent path traversal outside videos directory
+        let enc_dest_path = videos_dir.join(format!("{}.enc", safe_filename));
         crate::crypto_stream::encrypt_file_chunked(&temp_path, &enc_dest_path, &master_key)?;
         let _ = fs::remove_file(&temp_path);
 
@@ -142,6 +164,10 @@ pub async fn youtube_fetch_playlist_info(
     url: String,
     _app: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid YouTube URL: must start with http:// or https://".into());
+    }
+
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let mut cmd = std::process::Command::new(ytdlp_path);
     cmd.args(["-J", "--flat-playlist", "--extractor-args", "youtubetab:approximate_date", "--", &url]);

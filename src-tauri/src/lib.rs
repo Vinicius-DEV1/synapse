@@ -227,9 +227,18 @@ pub fn run() {
                             settings.set_enable_webrtc(true);
                             settings.set_enable_media_stream(true);
                         }
-                        wv.connect_permission_request(|_view, request| {
-                            println!("[WebKitGTK] Concedendo permissão de mídia automaticamente: {:?}", request);
-                            request.allow();
+                        wv.connect_permission_request(|view, request| {
+                            let uri = view.uri().map(|u| u.to_string()).unwrap_or_default();
+                            let is_trusted_origin = uri.starts_with("tauri://")
+                                || uri.starts_with("http://localhost")
+                                || uri.starts_with("http://127.0.0.1");
+
+                            if is_trusted_origin {
+                                request.allow();
+                            } else {
+                                println!("[WebKitGTK] Bloqueando permissão de mídia para origem não confiável: {:?}", uri);
+                                request.deny();
+                            }
                             true
                         });
                     });
