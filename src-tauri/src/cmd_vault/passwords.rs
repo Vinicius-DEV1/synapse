@@ -69,8 +69,9 @@ pub fn vault_generate_password(options: PasswordGenOptions) -> Result<String, St
     let mut rng = rand::thread_rng();
     let chars_bytes = chars.as_bytes();
     let mut password = String::new();
+    let length = options.length.clamp(4, 128);
 
-    for _ in 0..options.length {
+    for _ in 0..length {
         let idx = rng.gen_range(0..chars_bytes.len());
         password.push(chars_bytes[idx] as char);
     }

@@ -68,9 +68,9 @@ export function useFinanceMetrics({
     const regulars = transactions.filter((t) => t.type === 'income' || t.type === 'expense' || t.type === 'transfer');
 
     return {
-      totalIncome: inc,
-      totalExpense: exp,
-      balance: calculatedBalance,
+      totalIncome: Math.round(inc * 100) / 100,
+      totalExpense: Math.round(exp * 100) / 100,
+      balance: Math.round(calculatedBalance * 100) / 100,
       loansList: loans,
       regularTransactions: regulars,
     };
