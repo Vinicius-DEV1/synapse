@@ -330,13 +330,12 @@ export default function DocumentBundleModal({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 group/title">
-                    <h3
-                      onDoubleClick={() => setIsEditingTitle(true)}
+                    <span
                       className="text-white font-medium text-base truncate cursor-pointer hover:text-brand-300 transition-colors"
-                      title="Clique duplo para renomear"
+                      title={title}
                     >
                       {title}
-                    </h3>
+                    </span>
                     <span className="text-[11px] text-zinc-500 font-mono">({items.length} {items.length === 1 ? 'arquivo' : 'arquivos'})</span>
                   </div>
                 )}

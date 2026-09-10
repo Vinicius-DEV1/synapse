@@ -33,6 +33,7 @@ export function EditorBubbleMenus({ editor }: EditorBubbleMenusProps) {
             activeEditor.isActive('customDivider') ||
             activeEditor.isActive('codeBlock') ||
             activeEditor.isActive('fileWidget') ||
+            activeEditor.isActive('documentBundle') ||
             activeEditor.isActive('alarmWidget') ||
             activeEditor.isActive('calendarEventWidget') ||
             activeEditor.isActive('focusWidget') ||
