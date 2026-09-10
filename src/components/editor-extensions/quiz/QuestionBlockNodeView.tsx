@@ -440,15 +440,15 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         }}
         className={`group w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-xl border select-none transition-all duration-150 ${
           props.selected || isNodeSelected
-            ? 'bg-dark-card/90 border-brand-500/50 ring-1 ring-brand-500/30 shadow-sm'
-            : 'bg-dark-card/50 hover:bg-white/[0.04] border-white/5 hover:border-white/10'
+            ? 'bg-dark-card/90 border-indigo-500/50 ring-1 ring-indigo-500/30 shadow-sm'
+            : 'bg-dark-card/50 hover:bg-white/[0.04] border-white/5 hover:border-indigo-500/30'
         }`}
         style={{ contain: 'layout style' }}
       >
         {/* Left Side: Icon, Title, Badges */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="p-1.5 rounded-lg bg-white/[0.03] text-zinc-400 border border-white/[0.05] shrink-0">
-            <CheckCircle2 size={14} className="text-zinc-400" />
+          <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+            <CheckCircle2 size={14} className="text-indigo-400" />
           </div>
 
           <span
@@ -502,10 +502,10 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
               setActiveIndex(0);
               setIsFocusModeOpen(true);
             }}
-            className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.06] hover:border-white/15 text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
             title="Iniciar no Modo Foco"
           >
-            <Play size={10} className="fill-zinc-400 text-zinc-400 shrink-0" />
+            <Play size={10} className="fill-white text-white shrink-0" />
             <span className="hidden sm:inline">Iniciar no Modo Foco</span>
             <span className="sm:hidden">Foco</span>
           </button>
