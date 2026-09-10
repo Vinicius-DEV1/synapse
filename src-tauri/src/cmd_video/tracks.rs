@@ -2,7 +2,7 @@ use serde_json::Value;
 use std::fs;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
-use crate::video_probe::{get_videos_dir, is_file_encrypted};
+use crate::video_probe::{get_videos_dir, is_file_encrypted, sanitize_filename};
 #[cfg(target_os = "windows")]
 use crate::video_probe::CREATE_NO_WINDOW;
 
@@ -16,9 +16,8 @@ pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Val
         let port = app.state::<crate::cmd_stream::StreamPortState>().0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid video filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,
@@ -76,9 +75,8 @@ pub async fn video_extract_subtitles(
         let port = app.state::<crate::cmd_stream::StreamPortState>().0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid video filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,
@@ -145,9 +143,8 @@ pub async fn video_extract_audio(
         let port = app.state::<crate::cmd_stream::StreamPortState>().0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid video filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,
@@ -218,16 +215,16 @@ pub async fn video_remux_default_track(
 ) -> Result<String, String> {
     let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
     let videos_dir = get_videos_dir(&app)?;
-    let temp_dest = videos_dir.join(format!("temp_remux_{}", filename));
-    let final_dest = videos_dir.join(format!("{}.enc", filename));
+    let safe_filename = sanitize_filename(&filename);
+    let temp_dest = videos_dir.join(format!("temp_remux_{}", safe_filename));
+    let final_dest = videos_dir.join(format!("{}.enc", safe_filename));
 
     let input_path = if is_file_encrypted(&videos_dir.join(&source_path)) {
         let port = app.state::<crate::cmd_stream::StreamPortState>().0;
         let fname = std::path::Path::new(&source_path)
             .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid source filename")?;
         format!(
             "http://127.0.0.1:{}/stream?file=culture/{}",
             port,

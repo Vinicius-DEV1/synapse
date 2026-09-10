@@ -390,5 +390,12 @@ pub fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<b
     )
     .map_err(|e| e.to_string())?;
 
+    // move subfolders to root (parent_id = NULL)
+    conn.execute(
+        "UPDATE file_folders SET parent_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE parent_id = ?",
+        [&id],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(true)
 }

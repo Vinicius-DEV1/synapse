@@ -387,8 +387,14 @@ pub async fn lofi_copy_local(
     db_state: tauri::State<'_, crate::db::DbState>,
     app: AppHandle,
 ) -> Result<String, String> {
+    let source = std::path::Path::new(&source_path);
+    if !source.exists() || !source.is_file() {
+        return Err("Source file does not exist or is not a valid file".into());
+    }
+
     let lofi_dir = get_lofi_dir(&app)?;
-    let filename_enc = format!("{}.enc", filename);
+    let safe_filename = sanitize_filename(&filename);
+    let filename_enc = format!("{}.enc", safe_filename);
     let dest_path = lofi_dir.join(&filename_enc);
 
     let keys_guard = db_state.keys.lock().unwrap();
