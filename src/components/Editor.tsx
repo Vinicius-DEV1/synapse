@@ -136,6 +136,7 @@ export default function Editor({
     setCalendarEventModal: modals.setCalendarEventModal,
     setMediaSelectModal: modals.setMediaSelectModal,
     setQuestionCreateModal: modals.setQuestionCreateModal,
+    setGroupBundleModal: modals.setGroupBundleModal,
   });
 
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
@@ -287,6 +288,8 @@ export default function Editor({
         setFileSelectModal={modals.setFileSelectModal}
         questionCreateModal={modals.questionCreateModal}
         setQuestionCreateModal={modals.setQuestionCreateModal}
+        groupBundleModal={modals.groupBundleModal}
+        setGroupBundleModal={modals.setGroupBundleModal}
         calendarEventModal={modals.calendarEventModal}
         setCalendarEventModal={modals.setCalendarEventModal}
         mediaSelectModal={modals.mediaSelectModal}
