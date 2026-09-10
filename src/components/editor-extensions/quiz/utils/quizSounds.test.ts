@@ -26,13 +26,11 @@ describe('quizSounds utility', () => {
     expect(isQuizSoundEnabled()).toBe(true);
   });
 
-  it('falls back to global soundEnabled when quiz sound key is not explicitly set', () => {
+  it('bootstraps to true when quiz sound key is not explicitly set, independent of global soundEnabled', () => {
     localStorage.clear();
-    expect(isQuizSoundEnabled()).toBe(true);
-    localStorage.setItem('soundEnabled', 'false');
-    expect(isQuizSoundEnabled()).toBe(false);
-    localStorage.setItem('soundEnabled', 'true');
-    expect(isQuizSoundEnabled()).toBe(true);
+    localStorage.setItem('soundEnabled', 'false'); // Global sound disabled
+    expect(isQuizSoundEnabled()).toBe(true); // Should still be true
+    expect(localStorage.getItem('caderno_quiz_sound_enabled')).toBe('true'); // Should have bootstrapped
   });
 
   it('plays success sound without throwing', () => {

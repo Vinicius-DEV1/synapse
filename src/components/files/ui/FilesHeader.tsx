@@ -8,7 +8,6 @@ import {
   ArrowUp,
   LayoutGrid,
   List,
-  ArrowUpDown,
   PanelRight,
   X,
   FolderPlus,
@@ -24,6 +23,7 @@ import {
 import type { FileViewMode, FileSortColumn, FileSortOrder, FileSearchScope } from '../hooks/useFilesExplorer';
 import { FilesBreadcrumbs } from './FilesBreadcrumbs';
 import type { BreadcrumbItem } from '../utils/filesHierarchy';
+import { playUiClickSound, playUiToggleSound, playUiActionSound } from '../../../utils/uiSounds';
 
 interface FilesHeaderProps {
   breadcrumbs: BreadcrumbItem[];
@@ -97,11 +97,9 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
   onToggleCategoryFilter,
   onReload,
 }) => {
-  const [showSortMenu, setShowSortMenu] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
-  const sortMenuRef = useRef<HTMLDivElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -109,9 +107,6 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (sortMenuRef.current && !sortMenuRef.current.contains(target)) {
-        setShowSortMenu(false);
-      }
       if (addMenuRef.current && !addMenuRef.current.contains(target)) {
         setShowAddMenu(false);
       }
@@ -120,13 +115,13 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
       }
     };
 
-    if (showSortMenu || showAddMenu || showMoreMenu) {
+    if (showAddMenu || showMoreMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showSortMenu, showAddMenu, showMoreMenu]);
+  }, [showAddMenu, showMoreMenu]);
 
   return (
     <header className="border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md flex flex-col select-none">
@@ -137,7 +132,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
           {onToggleSidebar && (
             <button
               type="button"
-              onClick={onToggleSidebar}
+              onClick={() => {
+                onToggleSidebar();
+                playUiToggleSound(!isSidebarOpen);
+              }}
               className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
               title={isSidebarOpen ? 'Ocultar barra de pastas' : 'Exibir barra de pastas'}
               aria-label={isSidebarOpen ? 'Ocultar barra de pastas' : 'Exibir barra de pastas'}
@@ -149,7 +147,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
           <div className="flex items-center gap-0.5 shrink-0 bg-white/[0.03] p-0.5 rounded-lg border border-white/[0.04]">
             <button
               type="button"
-              onClick={onGoBack}
+              onClick={() => {
+                playUiClickSound();
+                onGoBack();
+              }}
               disabled={!canGoBack}
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Voltar (Alt + Esquerda)"
@@ -158,7 +159,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             </button>
             <button
               type="button"
-              onClick={onGoForward}
+              onClick={() => {
+                playUiClickSound();
+                onGoForward();
+              }}
               disabled={!canGoForward}
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Avançar (Alt + Direita)"
@@ -167,7 +171,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             </button>
             <button
               type="button"
-              onClick={onGoUp}
+              onClick={() => {
+                playUiClickSound();
+                onGoUp();
+              }}
               disabled={!canGoUp}
               className="p-1 rounded text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition-colors"
               title="Subir um nível (Alt + Cima)"
@@ -217,7 +224,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             {onToggleSearchScope && searchQuery.trim().length > 0 && (
               <button
                 type="button"
-                onClick={onToggleSearchScope}
+                onClick={() => {
+                  playUiClickSound();
+                  onToggleSearchScope();
+                }}
                 className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-medium border transition-all flex items-center gap-1 ${
                   searchScope === 'all'
                     ? 'bg-brand-500/15 border-brand-500/30 text-brand-300 hover:bg-brand-500/25 shadow-sm'
@@ -234,97 +244,16 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             )}
           </div>
 
-          {/* View Mode Toggle: Grid / Table */}
-          <div className="flex items-center bg-white/[0.03] p-0.5 rounded-lg border border-white/[0.04]">
-            <button
-              type="button"
-              onClick={() => onChangeViewMode('grid')}
-              className={`p-1 rounded transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="Visualização em Grade"
-            >
-              <LayoutGrid size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeViewMode('table')}
-              className={`p-1 rounded transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="Visualização em Lista / Tabela"
-            >
-              <List size={13} />
-            </button>
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative" ref={sortMenuRef}>
-            <button
-              type="button"
-              onClick={() => setShowSortMenu(!showSortMenu)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-white/[0.04] text-xs transition-colors"
-              title="Ordenar arquivos"
-            >
-              <ArrowUpDown size={12} className="text-zinc-400" />
-              <span className="hidden md:inline">{SORT_LABELS[sortBy]}</span>
-            </button>
-
-            {showSortMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-40 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-                  Ordenar por
-                </div>
-                {(['name', 'size', 'updated_at', 'type'] as FileSortColumn[]).map((col) => (
-                  <button
-                    key={col}
-                    type="button"
-                    onClick={() => {
-                      onToggleSort(col);
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/[0.06] transition-colors ${
-                      sortBy === col ? 'text-brand-400 font-medium' : 'text-zinc-300'
-                    }`}
-                  >
-                    <span>{SORT_LABELS[col]}</span>
-                    {sortBy === col && (
-                      <span className="text-[10px] text-zinc-500 font-mono uppercase">
-                        {sortOrder === 'asc' ? 'Cresc.' : 'Decresc.'}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Inspector Panel Toggle Button */}
-          <button
-            type="button"
-            onClick={onToggleInspector}
-            className={`p-1.5 rounded-lg border transition-colors ${
-              isInspectorOpen
-                ? 'bg-brand-500/20 text-brand-300 border-brand-500/30'
-                : 'bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 border-white/[0.04]'
-            }`}
-            title="Alternar Painel de Detalhes (I)"
-            aria-label="Alternar Painel de Detalhes"
-          >
-            <PanelRight size={14} />
-          </button>
-
           <div className="h-4 w-px bg-white/[0.06]" />
 
           {/* Unified "+ Adicionar" Action Dropdown */}
           <div className="relative" ref={addMenuRef}>
             <button
               type="button"
-              onClick={() => setShowAddMenu(!showAddMenu)}
+              onClick={() => {
+                playUiClickSound();
+                setShowAddMenu(!showAddMenu);
+              }}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-medium transition-all shadow-sm shadow-brand-500/20 active:scale-95"
               title="Adicionar arquivos ou pastas"
             >
@@ -341,6 +270,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    playUiClickSound();
                     setShowAddMenu(false);
                     onOpenFileUpload();
                   }}
@@ -353,6 +283,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    playUiClickSound();
                     setShowAddMenu(false);
                     onOpenFolderUpload();
                   }}
@@ -367,6 +298,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    playUiActionSound();
                     setShowAddMenu(false);
                     onNewFolder();
                   }}
@@ -383,7 +315,10 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
           <div className="relative" ref={moreMenuRef}>
             <button
               type="button"
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              onClick={() => {
+                playUiClickSound();
+                setShowMoreMenu(!showMoreMenu);
+              }}
               className={`p-1.5 rounded-lg border transition-colors ${
                 showMoreMenu
                   ? 'bg-white/[0.08] text-white border-white/[0.1]'
@@ -396,7 +331,70 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
             </button>
 
             {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-52 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-56 bg-zinc-900 border border-white/[0.08] rounded-xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                {/* View Mode */}
+                <div className="px-3 py-1.5 flex items-center justify-between">
+                  <span className="text-zinc-400">Exibição</span>
+                  <div className="flex items-center gap-1 bg-white/[0.03] p-0.5 rounded-md border border-white/[0.04]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playUiClickSound();
+                        onChangeViewMode('grid');
+                      }}
+                      className={`p-1 rounded transition-colors ${
+                        viewMode === 'grid' ? 'bg-white/[0.1] text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      title="Grade"
+                    >
+                      <LayoutGrid size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playUiClickSound();
+                        onChangeViewMode('table');
+                      }}
+                      className={`p-1 rounded transition-colors ${
+                        viewMode === 'table' ? 'bg-white/[0.1] text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      title="Lista"
+                    >
+                      <List size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/[0.06] my-1" />
+
+                {/* Sort By */}
+                <div className="px-3 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                  Ordenar por
+                </div>
+                {(['name', 'size', 'updated_at', 'type'] as FileSortColumn[]).map((col) => (
+                  <button
+                    key={col}
+                    type="button"
+                    onClick={() => {
+                      playUiClickSound();
+                      onToggleSort(col);
+                      setShowMoreMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-white/[0.06] transition-colors ${
+                      sortBy === col ? 'text-brand-400 font-medium' : 'text-zinc-300'
+                    }`}
+                  >
+                    <span>{SORT_LABELS[col]}</span>
+                    {sortBy === col && (
+                      <span className="text-[10px] text-zinc-500 font-mono uppercase">
+                        {sortOrder === 'asc' ? 'Cresc.' : 'Decresc.'}
+                      </span>
+                    )}
+                  </button>
+                ))}
+
+                <div className="h-px bg-white/[0.06] my-1" />
+
                 {/* Google Drive Status & Connection */}
                 <button
                   type="button"
@@ -433,6 +431,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    playUiToggleSound(!isInspectorOpen);
                     setShowMoreMenu(false);
                     onToggleInspector();
                   }}

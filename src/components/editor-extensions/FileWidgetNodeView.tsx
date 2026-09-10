@@ -12,6 +12,7 @@ import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import type { FileItem } from '../../types/files';
 import AudioPlayerModal from '../files/AudioPlayerModal';
+import { playUiClickSound, playUiActionSound, playUiDeleteSound } from '../../utils/uiSounds';
 
 export default function FileWidgetNodeView(props: any) {
   const { node, deleteNode, updateAttributes } = props;
@@ -236,6 +237,7 @@ export default function FileWidgetNodeView(props: any) {
   };
 
   const handleDelete = () => {
+    playUiClickSound();
     setShowDeleteConfirm(true);
   };
 
@@ -259,6 +261,7 @@ export default function FileWidgetNodeView(props: any) {
           }
         }
       }
+      playUiDeleteSound();
       deleteNode();
       triggerToast('Arquivo excluído com sucesso.', 'info');
     } catch (e: unknown) {
@@ -293,7 +296,7 @@ export default function FileWidgetNodeView(props: any) {
     : {};
 
   return (
-    <NodeViewWrapper as="span" className="inline-block relative group align-middle mx-1 my-1">
+    <NodeViewWrapper as="div" className="flex w-full relative group align-middle my-1">
       <div 
         onMouseDown={() => {
           if (typeof props.getPos === 'function') {
@@ -305,7 +308,7 @@ export default function FileWidgetNodeView(props: any) {
         }}
         style={customWidgetStyle}
         title={isNotFound ? 'Arquivo excluído ou movido para a lixeira. Clique para opções.' : undefined}
-        className={`inline-flex items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
+        className={`flex w-full items-center gap-2 pr-2 pl-3 py-1.5 rounded-lg border cursor-pointer select-none transition-colors ${
           isNotFound
             ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:border-red-500/70 hover:bg-red-500/20'
             : isCustomColor
@@ -318,6 +321,7 @@ export default function FileWidgetNodeView(props: any) {
         }`}
         onClick={() => {
           if (isRenaming) return;
+          playUiClickSound();
           if (isNotFound) {
             setShowDeletedNotice(true);
             return;
@@ -386,9 +390,8 @@ export default function FileWidgetNodeView(props: any) {
           </div>
         ) : (
           <span
-            onDoubleClick={handleStartRename}
-            title="Clique duplo para renomear"
-            className="flex-1 break-words leading-tight group-hover:text-white transition-colors cursor-text"
+            title={name || fileItem?.name || 'Arquivo'}
+            className="flex-1 break-words leading-tight group-hover:text-white transition-colors"
           >
             {name || fileItem?.name || 'Arquivo'}{isNotFound ? ' (Excluído)' : ''}
           </span>
@@ -397,7 +400,10 @@ export default function FileWidgetNodeView(props: any) {
           {!isRenaming && !isNotFound && (
             <button
               type="button"
-              onClick={handleStartRename}
+              onClick={(e) => {
+                playUiClickSound();
+                handleStartRename(e);
+              }}
               className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
               title="Renomear arquivo"
             >
@@ -409,6 +415,7 @@ export default function FileWidgetNodeView(props: any) {
               ref={paletteButtonRef}
               onClick={(e) => {
                 e.stopPropagation();
+                playUiClickSound();
                 setShowColorPicker(!showColorPicker);
               }}
               className="p-1 rounded hover:bg-black/30 hover:text-white text-dark-subtext transition-colors"
@@ -435,6 +442,7 @@ export default function FileWidgetNodeView(props: any) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && props.editor) {
                 moveBlockUp(props.editor.view, pos);
               }
@@ -447,6 +455,7 @@ export default function FileWidgetNodeView(props: any) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              playUiClickSound();
               if (typeof pos === 'number' && props.editor) {
                 moveBlockDown(props.editor.view, pos);
               }
@@ -492,7 +501,11 @@ export default function FileWidgetNodeView(props: any) {
                   Manter
                 </button>
                 <button
-                  onClick={() => { setShowDeletedNotice(false); deleteNode(); }}
+                  onClick={() => {
+                    playUiClickSound();
+                    setShowDeletedNotice(false);
+                    deleteNode();
+                  }}
                   className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-red-500/20"
                 >
                   Remover Widget
@@ -521,7 +534,10 @@ export default function FileWidgetNodeView(props: any) {
                   Cancelar
                 </button>
                 <button 
-                  onClick={() => deleteNode()}
+                  onClick={() => {
+                    playUiClickSound();
+                    deleteNode();
+                  }}
                   disabled={isDeleting}
                   className="flex-1 py-2 bg-dark-bg border border-white/10 hover:bg-white/5 text-white rounded-lg font-medium transition-colors text-sm"
                 >

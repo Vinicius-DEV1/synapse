@@ -18,6 +18,7 @@ import { captureWebScrap } from '../../../services/scrap/scrap-service';
 import { platform } from '../../../services/platform';
 import { useLinkDuplicates } from './hooks/useLinkDuplicates';
 import LinkDuplicatesModal from './components/LinkDuplicatesModal';
+import { playUiClickSound, playUiToggleSound, playUiActionSound, playUiDeleteSound } from '../../../utils/uiSounds';
 
 export const LinkPreviewComponent = (props: any) => {
   const {
@@ -89,6 +90,7 @@ export const LinkPreviewComponent = (props: any) => {
   }, []);
 
   const handleCloseLinkConfirm = useCallback(() => {
+    playUiClickSound();
     setShowLinkConfirm(false);
     setCopiedModalUrl(false);
     if (copyModalTimeoutRef.current) {
@@ -101,6 +103,7 @@ export const LinkPreviewComponent = (props: any) => {
       e.preventDefault();
       e.stopPropagation();
     }
+    playUiActionSound();
     if (!url) return;
 
     try {
@@ -151,6 +154,7 @@ export const LinkPreviewComponent = (props: any) => {
   const handleUngroupSelf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiToggleSound(false);
     try {
       if (!groupInfo || !props.editor) return;
       removeChild(props.editor.view, groupInfo.groupPos, groupInfo.index);
@@ -163,6 +167,7 @@ export const LinkPreviewComponent = (props: any) => {
   const handleGroupWithNext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiToggleSound(true);
     try {
       const pos = currentPos();
       if (pos === null || !props.editor) return;
@@ -176,18 +181,21 @@ export const LinkPreviewComponent = (props: any) => {
   const handleToggleNotes = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiToggleSound(!showNotes);
     props.updateAttributes({ showNotes: !showNotes });
   };
 
   const handleToggleWatched = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiToggleSound(!watched);
     props.updateAttributes({ watched: !watched });
   };
 
   const handleConvertToText = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiClickSound();
     const pos = currentPos();
     if (pos === null || !props.editor) return;
     const urlToInsert = url;
@@ -296,6 +304,7 @@ export const LinkPreviewComponent = (props: any) => {
   };
 
   const handleCaptureScrap = useCallback(async () => {
+    playUiClickSound();
     if (!url) return;
     props.updateAttributes({ scrapStatus: 'capturing' });
 
@@ -351,6 +360,7 @@ export const LinkPreviewComponent = (props: any) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    playUiClickSound();
     setShowDeleteConfirm(true);
   };
 
@@ -385,8 +395,14 @@ export const LinkPreviewComponent = (props: any) => {
           )
         }
         isInsideGroup={isInsideGroup}
-        onChangeColor={(newColor: string) => props.updateAttributes({ color: newColor })}
-        onOpenConfirm={() => setShowLinkConfirm(true)}
+        onChangeColor={(newColor: string) => {
+          playUiClickSound();
+          props.updateAttributes({ color: newColor })
+        }}
+        onOpenConfirm={() => {
+          playUiClickSound();
+          setShowLinkConfirm(true);
+        }}
         onToggleNotes={handleToggleNotes}
         onToggleWatched={handleToggleWatched}
         onConvertToText={handleConvertToText}
@@ -397,20 +413,26 @@ export const LinkPreviewComponent = (props: any) => {
         onGroupWithNext={handleGroupWithNext}
         onDragStartHandle={handleSelectSelf}
         duplicatePages={duplicatePages}
-        onOpenDuplicates={() => setShowDuplicatesModal(true)}
+        onOpenDuplicates={() => {
+          playUiClickSound();
+          setShowDuplicatesModal(true);
+        }}
         scrapId={scrapId}
         scrapStatus={scrapStatus}
         onCaptureScrap={handleCaptureScrap}
         onOpenScrap={handleOpenScrap}
         onMoveUp={() => {
+          playUiClickSound();
           const pos = currentPos();
           if (pos !== null && props.editor) moveBlockUp(props.editor.view, pos);
         }}
         onMoveDown={() => {
+          playUiClickSound();
           const pos = currentPos();
           if (pos !== null && props.editor) moveBlockDown(props.editor.view, pos);
         }}
         onAddLineBelow={() => {
+          playUiClickSound();
           const pos = currentPos();
           if (pos !== null && props.editor && props.node) {
             props.editor
@@ -490,6 +512,7 @@ export const LinkPreviewComponent = (props: any) => {
                     <button
                       type="button"
                       onClick={() => {
+                        playUiClickSound();
                         handleCloseLinkConfirm();
                         handleOpenScrap();
                       }}
@@ -501,6 +524,7 @@ export const LinkPreviewComponent = (props: any) => {
                     <button
                       type="button"
                       onClick={() => {
+                        playUiClickSound();
                         handleCloseLinkConfirm();
                         if (window.api?.os?.openInBrowser) {
                           window.api.os.openInBrowser(url);
@@ -518,6 +542,7 @@ export const LinkPreviewComponent = (props: any) => {
                   <button
                     type="button"
                     onClick={() => {
+                      playUiClickSound();
                       handleCloseLinkConfirm();
                       if (window.api?.os?.openInBrowser) {
                         window.api.os.openInBrowser(url);
@@ -553,13 +578,17 @@ export const LinkPreviewComponent = (props: any) => {
               </p>
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    playUiClickSound();
+                    setShowDeleteConfirm(false);
+                  }}
                   className="flex-1 py-2 rounded-lg text-sm font-medium text-dark-subtext hover:bg-white/5 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={() => {
+                    playUiDeleteSound();
                     setShowDeleteConfirm(false);
                     props.deleteNode();
                   }}
