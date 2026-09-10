@@ -28,10 +28,13 @@ export function useStudySession(deckId: string) {
   const [flipState, setFlipState] = useState<'front' | 'flipping-out' | 'flipping-in' | 'back'>('front');
 
   const isMountedRef = useRef(true);
+  const flipTimersRef = useRef<number[]>([]);
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      flipTimersRef.current.forEach((t) => clearTimeout(t));
+      flipTimersRef.current = [];
     };
   }, []);
 
@@ -92,9 +95,18 @@ export function useStudySession(deckId: string) {
       if (window.api?.anki) {
         window.api.anki
           .getCardIntervals?.(targetCard.id)
-          .then((res: any) => {
-            if (isCurrent && isMountedRef.current && res?.success && res.intervals) {
-              setIntervals(res.intervals);
+          .then((res: { success?: boolean; intervals?: string[] } | unknown) => {
+            if (
+              isCurrent &&
+              isMountedRef.current &&
+              res &&
+              typeof res === 'object' &&
+              'success' in res &&
+              res.success &&
+              'intervals' in res &&
+              Array.isArray(res.intervals)
+            ) {
+              setIntervals(res.intervals as string[]);
             }
           })
           .catch((err) => {
@@ -162,16 +174,20 @@ export function useStudySession(deckId: string) {
     if (appSettings?.enableStudySfx) playFlipSound();
 
     if (appSettings?.enableStudy3DFlip) {
+      flipTimersRef.current.forEach((t) => clearTimeout(t));
+      flipTimersRef.current = [];
       setFlipState('flipping-out');
-      setTimeout(() => {
+      const t1 = window.setTimeout(() => {
         if (!isMountedRef.current) return;
         setShowingAnswer(true);
         setFlipState('flipping-in');
-        setTimeout(() => {
+        const t2 = window.setTimeout(() => {
           if (!isMountedRef.current) return;
           setFlipState('back');
         }, 50);
+        flipTimersRef.current.push(t2);
       }, 200);
+      flipTimersRef.current.push(t1);
     } else {
       setShowingAnswer(true);
       setFlipState('back');

@@ -54,7 +54,8 @@ export default function AIChatAnalysisView({
     if (window.api?.anki) {
       window.api.anki.getAllCards(deckId).then(res => {
         if (active) {
-          setDeckCards(res?.cards || []);
+          const cards = Array.isArray(res) ? res : (res?.cards || []);
+          setDeckCards(cards);
         }
       }).catch((err) => {
         console.error('[AIChatAnalysisView] Failed to load deck cards:', err);

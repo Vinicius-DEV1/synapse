@@ -35,11 +35,15 @@ export const getFSRS = (customWeights?: string | null) => {
   if (customWeights) {
     try {
       const weights = JSON.parse(customWeights);
-      if (Array.isArray(weights) && (weights.length === 17 || weights.length === 19 || weights.length === 21)) {
+      if (
+        Array.isArray(weights) &&
+        (weights.length === 17 || weights.length === 19 || weights.length === 21) &&
+        weights.every((w) => typeof w === 'number' && Number.isFinite(w))
+      ) {
         return fsrs(generatorParameters({ ...defaultParams, w: weights }));
       }
-    } catch {
-      console.warn('Failed to parse FSRS weights, falling back to default');
+    } catch (err) {
+      console.warn('Failed to parse FSRS weights, falling back to default:', err);
     }
   }
   return fsrs(defaultParams);
@@ -154,6 +158,7 @@ export const processReview = (
 };
 
 export const formatAnkiInterval = (diffMs: number): string => {
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return '<1m';
   const mins = Math.round(diffMs / 60000);
   if (mins < 60) return `<${Math.max(1, mins)}m`;
   const hours = Math.round(mins / 60);

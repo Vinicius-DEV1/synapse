@@ -97,7 +97,16 @@ export const tauriAnkiApi = {
     }
   },
 
-  getAllCards: async (deckId?: string) => await invoke('anki_get_all_cards', { deckId }),
+  getAllCards: async (deckId?: string) => {
+    try {
+      const cards: any = await invoke('anki_get_all_cards', { deckId });
+      return { success: true, cards: Array.isArray(cards) ? cards : [] };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Tauri SRS] Failed to get all cards:', err);
+      return { success: false, error: message, cards: [] };
+    }
+  },
   deleteCard: async (cardId: string) => await invoke('anki_delete_card', { cardId }),
   deleteNote: async (noteId: string) => {
     try {
