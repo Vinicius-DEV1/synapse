@@ -61,7 +61,7 @@ export function TrashTable({
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col bg-dark-card border border-white/5 rounded-2xl shadow-xl">
+    <div className="bg-dark-card border border-white/5 rounded-2xl shadow-xl">
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center text-dark-subtext">
           <Loader2 size={32} className="animate-spin mb-4 text-brand-500" />
@@ -74,9 +74,9 @@ export function TrashTable({
           <p className="text-sm mt-1">Nenhum item apagado encontrado aqui.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-dark-card/95 backdrop-blur-md z-10 border-b border-white/10">
+            <thead className="border-b border-white/10">
               <tr>
                 <th className="py-4 px-6 text-xs font-semibold text-dark-subtext uppercase tracking-wider">Item</th>
                 <th className="py-4 px-6 text-xs font-semibold text-dark-subtext uppercase tracking-wider w-32">Tipo</th>

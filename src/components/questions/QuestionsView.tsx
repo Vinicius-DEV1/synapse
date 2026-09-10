@@ -56,10 +56,12 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [editorInitialAi, setEditorInitialAi] = useState(false);
+  const isFetchingRef = useRef(false);
 
   // Load all batteries, questions and stats in parallel with single-tick queries
   const loadData = useCallback(async (silent = false) => {
-    if (!window.api?.quiz) return;
+    if (!window.api?.quiz || isFetchingRef.current) return;
+    isFetchingRef.current = true;
     if (!silent && !cachedBatteries) {
       setIsLoading(true);
     }
@@ -78,6 +80,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       console.error('[QuestionsView] Falha ao carregar dados do módulo de questões:', err);
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
@@ -413,28 +416,30 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-dark-bg text-zinc-100 overflow-hidden select-none">
-      {/* Top Header */}
-      <header className="px-6 py-4 border-b border-white/5 bg-dark-bg/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
-            <CheckSquare size={22} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400">
-                {stats.totalQuestions} questões
-              </span>
+    <div className="w-full h-full bg-dark-bg text-zinc-100 overflow-y-auto custom-scrollbar select-none relative">
+      <div className="max-w-5xl mx-auto flex flex-col min-h-full">
+        {/* Top Header (Scrolls away) */}
+        <header className="px-5 md:px-8 pt-8 pb-6 flex flex-wrap items-end justify-between gap-6 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
+              <CheckSquare size={28} />
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Pratique exercícios, acompanhe sua taxa de acerto e monte simulados sob medida.
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400">
+                  {stats.totalQuestions} questões
+                </span>
+              </div>
+              <p className="text-sm text-zinc-400 mt-1">
+                Pratique exercícios, acompanhe sua taxa de acerto e monte simulados sob medida.
+              </p>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        {/* Action Controls (Sticky) */}
+        <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
           {/* Section Switcher Tabs */}
           <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/5 text-xs">
             <button
@@ -483,11 +488,10 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
             <span>Nova Bateria</span>
           </button>
         </div>
-      </header>
 
-      {/* Main Content Viewport */}
-      <main className="flex-1 overflow-y-auto custom-scrollbar p-5 md:p-8">
-        <div className="max-w-5xl mx-auto">
+        {/* Main Content Viewport */}
+        <main className="flex-1 p-5 md:p-8">
+          <div className="max-w-full">
           {isLoading && batteries.length === 0 ? (
             <div className="py-24 flex flex-col items-center justify-center gap-3 text-zinc-500">
               <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-400 rounded-full animate-spin" />
@@ -530,8 +534,9 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               )}
             </>
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
 
       {/* Zen Focus Mode Player (Mounted via Portal) */}
       {activePlayingSession && (

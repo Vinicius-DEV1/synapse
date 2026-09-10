@@ -21,14 +21,16 @@ export default function TrashView() {
   } = useTrash();
 
   return (
-    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto relative" style={{ height: '100dvh' }}>
-      <div className="max-w-6xl mx-auto w-full space-y-8 flex flex-col h-full">
+    <div className="w-full h-full bg-dark-bg text-dark-text overflow-y-auto custom-scrollbar relative">
+      <div className="max-w-6xl mx-auto flex flex-col min-h-full">
         
-        {/* Header */}
-        <TrashHeader
-          totalItems={items.length}
-          onOpenEmptyConfirm={() => setShowEmptyConfirm(true)}
-        />
+        {/* Header (Scrolls away) */}
+        <div className="px-5 md:px-8 pt-8 pb-6 shrink-0">
+          <TrashHeader
+            totalItems={items.length}
+            onOpenEmptyConfirm={() => setShowEmptyConfirm(true)}
+          />
+        </div>
 
         {/* Empty Trash Confirmation */}
         <TrashEmptyConfirmModal
@@ -39,21 +41,25 @@ export default function TrashView() {
           onConfirm={handleEmptyTrash}
         />
 
-        {/* Filter Tabs */}
-        <TrashFilterTabs
-          currentFilter={filter}
-          onSelectFilter={setFilter}
-        />
+        {/* Sticky Filter Tabs */}
+        <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/5">
+          <TrashFilterTabs
+            currentFilter={filter}
+            onSelectFilter={setFilter}
+          />
+        </div>
 
-        {/* Trashed Items Table */}
-        <TrashTable
-          loading={loading}
-          items={filteredItems}
-          processingId={processingId}
-          isEmptying={isEmptying}
-          onRestore={handleRestore}
-          onHardDelete={handleHardDelete}
-        />
+        {/* Trashed Items Table Content */}
+        <div className="flex-1 px-5 md:px-8 pb-8 mt-4">
+          <TrashTable
+            loading={loading}
+            items={filteredItems}
+            processingId={processingId}
+            isEmptying={isEmptying}
+            onRestore={handleRestore}
+            onHardDelete={handleHardDelete}
+          />
+        </div>
         
       </div>
     </div>
