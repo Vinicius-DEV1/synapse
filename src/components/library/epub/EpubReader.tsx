@@ -188,7 +188,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         ((rendition.getContents() as unknown) as Array<{ window?: { getSelection: () => { removeAllRanges: () => void } } }>).forEach((content) => {
           content.window?.getSelection()?.removeAllRanges();
         });
-      } catch (e) {}
+      } catch (e: unknown) {
+        console.debug('[EpubReader] Failed to remove window selection ranges:', e);
+      }
     }
   }, [selection, rendition]);
 

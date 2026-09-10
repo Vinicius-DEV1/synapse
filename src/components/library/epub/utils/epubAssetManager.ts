@@ -150,7 +150,9 @@ export const createAssetEmbedder = (epubBook: any) => {
         try {
           const parsed = new URL(originalPath);
           if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1' && !parsed.hostname.endsWith('.localhost')) continue;
-        } catch {}
+        } catch (err: unknown) {
+          console.debug('[epubAssetManager] Invalid image URL encountered:', originalPath, err);
+        }
       }
 
       if (assetBase64Cache.has(originalPath)) {
@@ -173,7 +175,9 @@ export const createAssetEmbedder = (epubBook: any) => {
           try {
             cleanPath = new URL(cleanPath).pathname;
             if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
-          } catch {}
+          } catch (err: unknown) {
+            console.debug('[epubAssetManager] Failed to extract pathname from cleanPath:', cleanPath, err);
+          }
         }
 
         const zipEntry = getZipEntry(epubBook, cleanPath, sectionUrl);

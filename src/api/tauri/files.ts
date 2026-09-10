@@ -36,7 +36,9 @@ export const tauriFilesApi: FilesApi = {
             foundPath = c;
             break;
           }
-        } catch {}
+        } catch (err: unknown) {
+          console.debug('[TauriFilesApi] Candidate path does not exist:', c, err);
+        }
       }
 
       if (!foundPath) return null;
@@ -44,7 +46,8 @@ export const tauriFilesApi: FilesApi = {
       const isWindows = navigator.userAgent.includes('Windows');
       const baseUrl = isWindows ? 'http://encrypted.localhost' : 'encrypted://localhost';
       return `${baseUrl}/files/${encodeURIComponent(foundPath)}`;
-    } catch {
+    } catch (err: unknown) {
+      console.warn('[TauriFilesApi] Failed to resolve encrypted file path:', idOrPath, err);
       return null;
     }
   },

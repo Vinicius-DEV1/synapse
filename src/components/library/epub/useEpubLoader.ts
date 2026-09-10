@@ -204,7 +204,9 @@ export function useEpubLoader(
                         try {
                            range.setEnd(range.endContainer, range.endOffset - 1);
                            cfiRange = new (ePub as unknown as { CFI: any }).CFI(range, cont.cfiBase).toString();
-                        } catch (e) {}
+                         } catch (e: unknown) {
+                            console.debug('[useEpubLoader] Failed to adjust trimmed range for CFI:', e);
+                         }
                     }
                  }
                  

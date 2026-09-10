@@ -70,7 +70,9 @@ export function useAudioStreamPlayer() {
     if (playbackContextRef.current && playbackContextRef.current.state !== 'closed') {
       try {
         playbackContextRef.current.close();
-      } catch (e) {}
+      } catch (e: unknown) {
+        console.debug('[useAudioStreamPlayer] Error closing AudioContext:', e);
+      }
     }
     playbackContextRef.current = null;
     playbackAnalyserRef.current = null;

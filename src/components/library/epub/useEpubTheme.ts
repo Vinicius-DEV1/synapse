@@ -275,13 +275,17 @@ export function useEpubTheme(
           if (h.rects) {
             try {
               rendition.annotations.remove(h.rects, "highlight");
-            } catch (e) {}
+            } catch (e: unknown) {
+              console.debug('[useEpubTheme] Failed to remove annotation:', h.rects, e);
+            }
           }
         });
 
         try {
           (rendition.annotations as unknown as { clear: () => void }).clear();
-        } catch (e) {}
+        } catch (e: unknown) {
+          console.debug('[useEpubTheme] rendition.annotations.clear() not available or threw:', e);
+        }
         
         try {
           const contents = rendition.getContents();
@@ -293,7 +297,9 @@ export function useEpubTheme(
               orphanedHighlights.forEach((node: Element) => node.remove());
             }
           });
-        } catch (e) {}
+        } catch (e: unknown) {
+          console.debug('[useEpubTheme] Failed to query or remove orphaned SVG highlights:', e);
+        }
         
         highlights.forEach(h => {
           if (h.rects) {

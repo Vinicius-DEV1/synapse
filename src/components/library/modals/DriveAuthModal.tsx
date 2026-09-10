@@ -176,7 +176,9 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
                             setCode(extracted);
                             return;
                           }
-                        } catch {}
+                        } catch (err: unknown) {
+                          console.debug('[DriveAuthModal] Input is not a parseable URL:', err);
+                        }
                       }
                       setCode(val);
                     }}
