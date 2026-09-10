@@ -94,4 +94,31 @@ describe('FileUploadModal Component', () => {
     fireEvent.click(screen.getByText('Cancelar'));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
+
+  it('renders grouping checkbox when multiple files are present and passes flag on upload', async () => {
+    const file1 = new File(['content 1'], 'file1.pdf', { type: 'application/pdf' });
+    const file2 = new File(['content 2'], 'file2.md', { type: 'text/markdown' });
+    const onUploadCompleteMock = vi.fn();
+
+    render(
+      <FileUploadModal
+        onClose={vi.fn()}
+        onUploadComplete={onUploadCompleteMock}
+        initialFiles={[file1, file2]}
+      />
+    );
+
+    expect(screen.getByText('Agrupar arquivos em um único widget')).toBeInTheDocument();
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeChecked();
+
+    fireEvent.click(screen.getByText('Fazer Upload (2)'));
+
+    await waitFor(() => {
+      expect(onUploadCompleteMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        true
+      );
+    });
+  });
 });
