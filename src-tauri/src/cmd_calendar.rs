@@ -176,10 +176,12 @@ pub fn calendar_update_event(
     let color = event_obj.get("color").and_then(|v| v.as_str()).unwrap_or("");
     let page_id = event_obj.get("page_id").and_then(|v| v.as_str());
 
-    let reminders_val = event_obj.get("reminders").cloned();
-    let reminders_str = value_to_string_or_default(&reminders_val, "[]");
-    let notified_val = event_obj.get("notified_reminders").cloned();
-    let notified_str = value_to_string_or_default(&notified_val, "[]");
+    let reminders_opt = event_obj
+        .get("reminders")
+        .map(|r| value_to_string_or_default(&Some(r.clone()), "[]"));
+    let notified_opt = event_obj
+        .get("notified_reminders")
+        .map(|n| value_to_string_or_default(&Some(n.clone()), "[]"));
 
     let count = conn.execute(
         "UPDATE calendar_events SET 
@@ -191,8 +193,8 @@ pub fn calendar_update_event(
             status = CASE WHEN ? != '' THEN ? ELSE status END, 
             color = CASE WHEN ? != '' THEN ? ELSE color END, 
             page_id = COALESCE(?, page_id), 
-            reminders = ?, 
-            notified_reminders = ?, 
+            reminders = COALESCE(?, reminders), 
+            notified_reminders = COALESCE(?, notified_reminders), 
             updated_at = CURRENT_TIMESTAMP 
          WHERE id = ?",
         params![
@@ -204,8 +206,8 @@ pub fn calendar_update_event(
             status, status,
             color, color,
             page_id,
-            reminders_str,
-            notified_str,
+            reminders_opt,
+            notified_opt,
             event_id
         ]
     ).map_err(|e| e.to_string())?;

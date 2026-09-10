@@ -17,9 +17,10 @@ export default function CalendarView() {
       try {
         const data = await window.api.calendar.getEvents();
         setEvents(data || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to load events:', err);
-        triggerToast(err.message || 'Erro ao carregar eventos do calendário', 'error');
+        const msg = err instanceof Error ? err.message : 'Erro ao carregar eventos do calendário';
+        triggerToast(msg, 'error');
       }
     }
   };
@@ -44,9 +45,11 @@ export default function CalendarView() {
           if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
             const groupId = `group_${crypto.randomUUID()}`;
             const copies: any[] = [];
-            const start = new Date(eventData.start_date!);
-            const end = new Date(eventData.end_date!);
-            const duration = end.getTime() - start.getTime();
+            const start = eventData.start_date ? new Date(eventData.start_date) : new Date();
+            const end = eventData.end_date ? new Date(eventData.end_date) : new Date(start.getTime() + 60 * 60 * 1000);
+            const duration = !isNaN(end.getTime()) && !isNaN(start.getTime()) && end.getTime() >= start.getTime()
+              ? end.getTime() - start.getTime()
+              : 60 * 60 * 1000;
             
             let count = 0;
             if (recRule === 'daily') count = 90;
@@ -85,9 +88,10 @@ export default function CalendarView() {
         setIsModalOpen(false);
         setEditingEvent(null);
         loadEvents();
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Erro ao salvar eventos:", e);
-        triggerToast(e.message || 'Erro ao salvar evento.', 'error');
+        const msg = e instanceof Error ? e.message : 'Erro ao salvar evento.';
+        triggerToast(msg, 'error');
       }
     }
   };
