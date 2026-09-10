@@ -68,8 +68,8 @@ The app's visual architecture is established in `tailwind.config.mjs` and must n
 ### 2.2. Embedded Note Widgets (e.g., QuestionBlockNodeView)
 - Container: `bg-dark-card/50 hover:bg-white/[0.04] border border-white/5 hover:border-brand-500/30 rounded-xl`
 - Icon: `p-1.5 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20`
-- Launch button: `bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50` with `<Play size={11} className="fill-brand-300" />`
-- Secondary actions: `opacity-0 group-hover:opacity-100`
+- Launch button & actions group: Revealed on hover (`opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150`)
+- Launch button styling: `bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50` with `<Play size={11} className="fill-brand-300" />`
 
 ---
 

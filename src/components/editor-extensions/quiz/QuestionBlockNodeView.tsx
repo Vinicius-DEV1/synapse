@@ -494,8 +494,8 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
           )}
         </div>
 
-        {/* Right Side: Quick Actions & Launch Button */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Right Side: Quick Actions & Launch Button (Revealed on Hover) */}
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -510,7 +510,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             <span className="sm:hidden">Foco</span>
           </button>
 
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={(e) => {
                 e.stopPropagation();
