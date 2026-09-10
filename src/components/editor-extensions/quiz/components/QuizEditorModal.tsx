@@ -140,9 +140,9 @@ export function QuizEditorModal({
   if (!isOpen) return null;
 
   return (
-    <div className="w-full h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden select-none animate-fade-in">
+    <div className="w-full h-full flex flex-col bg-dark-bg text-zinc-100 overflow-hidden select-none animate-fade-in">
       {/* Page Header */}
-      <header className="h-14 px-4 sm:px-6 border-b border-white/[0.08] bg-zinc-950/90 backdrop-blur-md flex items-center justify-between shrink-0 gap-4">
+      <header className="h-14 px-4 sm:px-6 border-b border-white/[0.08] bg-dark-bg/90 backdrop-blur-md flex items-center justify-between shrink-0 gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0 mr-2">
           <button
             onClick={onClose}
