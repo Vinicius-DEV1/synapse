@@ -19,17 +19,30 @@ import { tauriDiagramsApi } from './api/tauri/diagrams';
 import { tauriNotificationsApi } from './api/tauri/notifications';
 import { tauriQuizApi } from './api/tauri/quiz';
 
+const syncCallbacks = new Set<() => void>();
+let isGlobalSyncTriggerAttached = false;
+
+function ensureGlobalSyncTriggerListener(): void {
+  if (typeof window === 'undefined' || isGlobalSyncTriggerAttached) return;
+  window.addEventListener('app-sync-trigger', () => {
+    syncCallbacks.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error('[TauriApi] Error executing sync callback:', err);
+      }
+    });
+  });
+  isGlobalSyncTriggerAttached = true;
+}
+
 export const createTauriApi = async () => {
-  let syncCallbacks: (() => void)[] = [];
-  const triggerSync = () => syncCallbacks.forEach(cb => cb());
-
-  window.addEventListener('app-sync-trigger', triggerSync);
-
   return {
     onSyncTrigger: (callback: () => void) => {
-      syncCallbacks.push(callback);
+      ensureGlobalSyncTriggerListener();
+      syncCallbacks.add(callback);
       return () => {
-        syncCallbacks = syncCallbacks.filter(cb => cb !== callback);
+        syncCallbacks.delete(callback);
       };
     },
 
