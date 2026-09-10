@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import {
   Layers,
@@ -21,7 +21,7 @@ import { getValidAccessToken, deleteFromDrive } from '../../../services/drive';
 import type { BundledFileItem } from './types';
 import { playUiClickSound, playUiToggleSound, playUiDeleteSound } from '../../../utils/uiSounds';
 
-export default function DocumentBundleNodeView(props: any) {
+export default function DocumentBundleNodeView(props: NodeViewProps) {
   const { node, deleteNode, updateAttributes, editor } = props;
   const { id: bundleId, title, color: rawColor, items: rawItems } = node.attrs;
   const color = rawColor || 'default';
@@ -241,6 +241,7 @@ export default function DocumentBundleNodeView(props: any) {
           <div className="flex-1 flex items-center gap-2 min-w-0">
             <span
               title={title || 'Documentos'}
+              onDoubleClick={handleStartRename}
               className="flex-1 truncate font-medium text-xs text-zinc-100 group-hover:text-white transition-colors"
             >
               {title || 'Documentos'}
@@ -368,7 +369,7 @@ export default function DocumentBundleNodeView(props: any) {
             setOpenPickerOnMount(false);
           }}
           editor={editor}
-          getPos={pos}
+          getPos={props.getPos}
           bundleId={bundleId}
           initialTitle={title}
           initialItems={items}
