@@ -11,6 +11,8 @@ import {
   Layers,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
+import YouTubeSummaryModal from '../youtube/YouTubeSummaryModal';
+import YouTubeWatchModal from '../youtube/YouTubeWatchModal';
 import { formatDuration, formatDate, isYouTubeUrl } from './youtubeUtils';
 import LinkNotesDrawer from './LinkNotesDrawer';
 import LinkDragControls from './components/LinkDragControls';
@@ -97,6 +99,8 @@ export default function LinkPreviewCard({
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showWatchModal, setShowWatchModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -370,6 +374,9 @@ export default function LinkPreviewCard({
         onGroupWithNext={onGroupWithNext}
         onReload={onReload}
         onDelete={onDelete}
+        isYouTube={isYouTube && !isPlaylist}
+        onWatch={() => setShowWatchModal(true)}
+        onOpenSummary={() => setShowSummaryModal(true)}
         duplicateCount={duplicatePages?.length || 0}
         onOpenDuplicates={onOpenDuplicates}
         scrapId={scrapId}
@@ -383,6 +390,24 @@ export default function LinkPreviewCard({
           url={url}
           title={title || 'Playlist'}
           onClose={() => setShowPlaylistModal(false)}
+        />
+      )}
+
+      {showSummaryModal && (
+        <YouTubeSummaryModal
+          url={url}
+          title={title || 'Vídeo do YouTube'}
+          channel={channel || ''}
+          onClose={() => setShowSummaryModal(false)}
+        />
+      )}
+
+      {showWatchModal && (
+        <YouTubeWatchModal
+          url={url}
+          title={title || 'Vídeo do YouTube'}
+          channel={channel || ''}
+          onClose={() => setShowWatchModal(false)}
         />
       )}
     </div>

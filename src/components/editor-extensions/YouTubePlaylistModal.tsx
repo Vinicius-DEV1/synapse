@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
-import { X, PlayCircle, Loader2, CheckCircle2, Circle, RefreshCw, Lock } from 'lucide-react';
+import { X, PlayCircle, Loader2, CheckCircle2, RefreshCw, Lock } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { formatDuration } from '../../utils/format';
 import {
   isMembersOnlyVideo,
   formatVideoReleaseDate,
+  playlistCache,
+  watchedCache,
   type YouTubeVideoItem,
+  type YouTubePlaylistData,
 } from './youtube/youtubePlaylistHelper';
+import YouTubePlaylistItemActions from './youtube/YouTubePlaylistItemActions';
+import YouTubeSummaryModal from './youtube/YouTubeSummaryModal';
+import YouTubeWatchModal from './youtube/YouTubeWatchModal';
 
 interface YouTubePlaylistModalProps {
   url: string;
@@ -14,26 +20,24 @@ interface YouTubePlaylistModalProps {
   onClose: () => void;
 }
 
-interface YouTubePlaylistData {
-  _type?: string;
-  title?: string;
-  uploader?: string;
-  entries?: YouTubeVideoItem[];
-  _error?: string;
-  [key: string]: unknown;
-}
-
-// In-memory cache preventing duplicate fetches for loaded playlists
-const playlistCache = new Map<string, YouTubePlaylistData>();
-const watchedCache = new Map<string, string[]>();
-
 export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePlaylistModalProps) {
-  const [loading, setLoading] = useState(!playlistCache.has(url) || !watchedCache.has(url));
+  // Stage 1 (0ms Perceived UX): Render immediately if cached, never block on watched status
+  const [loading, setLoading] = useState(!playlistCache.has(url));
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [playlist, setPlaylist] = useState<YouTubePlaylistData | null>(playlistCache.get(url) || null);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(() => {
     return new Set(watchedCache.get(url) || []);
   });
+  const [summaryVideo, setSummaryVideo] = useState<{
+    url: string;
+    title: string;
+    channel?: string;
+  } | null>(null);
+  const [watchVideo, setWatchVideo] = useState<{
+    url: string;
+    title: string;
+    channel?: string;
+  } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,16 +61,17 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
           setPlaylist(cached);
           setLoading(false);
 
-          // Update watched status asynchronously in background
+          // Stage 2: Update watched status asynchronously in background without blocking
           if (cached.entries?.length && window.api?.youtube?.getWatched) {
             const videoIds = cached.entries.map((e: YouTubeVideoItem) => e.id).filter(Boolean);
             if (videoIds.length > 0) {
-              // If we don't have watchedCache for this URL, show loading while fetching
-              if (!watchedCache.has(url)) setLoading(true);
-              const watchedIds = await window.api.youtube.getWatched(videoIds);
-              watchedCache.set(url, watchedIds);
-              setWatchedSet(new Set(watchedIds));
-              setLoading(false);
+              window.api.youtube
+                .getWatched(videoIds)
+                .then((watchedIds: string[]) => {
+                  watchedCache.set(url, watchedIds);
+                  setWatchedSet(new Set(watchedIds));
+                })
+                .catch(() => {});
             }
           }
           return;
@@ -79,15 +84,17 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
         setLoading(true);
       }
 
-      if (window.api && window.api.youtube && window.api.youtube.fetchPlaylistInfo) {
+      if (window.api?.youtube?.fetchPlaylistInfo) {
+        // Stage 1 (Leve & Instantânea): Flat playlist fetch
         const data = await window.api.youtube.fetchPlaylistInfo(url);
         if (data && data.entries) {
           playlistCache.set(url, data);
           setPlaylist(data);
-          
-          // Query watched status
-          const videoIds = data.entries.map((e: any) => e.id).filter(Boolean);
-          if (videoIds.length > 0 && window.api.youtube.getWatched) {
+          setLoading(false); // Display videos immediately without waiting for watched queries!
+
+          // Stage 2 (Mais detalhada em background): Fetch watched statuses asynchronously
+          const videoIds = data.entries.map((e: YouTubeVideoItem) => e.id).filter(Boolean);
+          if (videoIds.length > 0 && window.api?.youtube?.getWatched) {
             const watchedIds = await window.api.youtube.getWatched(videoIds);
             watchedCache.set(url, watchedIds);
             setWatchedSet(new Set(watchedIds));
@@ -271,21 +278,25 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
                       </div>
                     </div>
 
-                    <button 
-                      onClick={() => toggleWatched(video)}
-                      className={`flex-shrink-0 p-2.5 rounded-xl ml-2 transition-all duration-200 ${
-                        isWatched 
-                          ? 'text-brand-400 bg-brand-500/10 hover:bg-brand-500/20' 
-                          : 'text-white/20 hover:text-brand-400 hover:bg-white/5'
-                      }`}
-                      title={isWatched ? "Marcar como não assistido" : "Marcar como assistido"}
-                    >
-                      {isWatched ? (
-                        <CheckCircle2 size={20} className="drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" />
-                      ) : (
-                        <Circle size={20} />
-                      )}
-                    </button>
+                    <YouTubePlaylistItemActions
+                      video={video}
+                      isWatched={isWatched}
+                      onToggleWatched={() => toggleWatched(video)}
+                      onWatch={() =>
+                        setWatchVideo({
+                          url: videoUrl,
+                          title: video.title || 'Vídeo sem título',
+                          channel: video.uploader || video.channel || undefined,
+                        })
+                      }
+                      onOpenSummary={() =>
+                        setSummaryVideo({
+                          url: videoUrl,
+                          title: video.title || 'Vídeo sem título',
+                          channel: video.uploader || video.channel || undefined,
+                        })
+                      }
+                    />
                   </div>
                 );
               })}
@@ -294,6 +305,24 @@ export default function YouTubePlaylistModal({ url, title, onClose }: YouTubePla
         </div>
       </div>
     </div>
+
+    {summaryVideo && (
+      <YouTubeSummaryModal
+        url={summaryVideo.url}
+        title={summaryVideo.title}
+        channel={summaryVideo.channel}
+        onClose={() => setSummaryVideo(null)}
+      />
+    )}
+
+    {watchVideo && (
+      <YouTubeWatchModal
+        url={watchVideo.url}
+        title={watchVideo.title}
+        channel={watchVideo.channel}
+        onClose={() => setWatchVideo(null)}
+      />
+    )}
     </Portal>
   );
 }

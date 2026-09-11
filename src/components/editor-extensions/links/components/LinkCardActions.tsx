@@ -27,6 +27,10 @@ interface LinkCardActionsProps {
   onGroupWithNext: (e: React.MouseEvent) => void;
   onReload: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
+  // YouTube actions integration
+  isYouTube?: boolean;
+  onWatch?: () => void;
+  onOpenSummary?: () => void;
   // Duplicate links integration
   duplicateCount?: number;
   onOpenDuplicates?: () => void;
@@ -57,6 +61,9 @@ export default function LinkCardActions({
   onGroupWithNext,
   onReload,
   onDelete,
+  isYouTube,
+  onWatch,
+  onOpenSummary,
   duplicateCount,
   onOpenDuplicates,
   scrapId,
@@ -162,6 +169,9 @@ export default function LinkCardActions({
           isOpen={showMoreMenu}
           onClose={() => setShowMoreMenu(false)}
           anchorRef={moreButtonRef}
+          isYouTube={isYouTube}
+          onWatch={onWatch}
+          onOpenSummary={onOpenSummary}
           duplicateCount={duplicateCount}
           onOpenDuplicates={onOpenDuplicates}
           scrapId={scrapId}

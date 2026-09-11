@@ -12,6 +12,13 @@ describe('YouTubePlaylistModal', () => {
     // Mock window.api
     window.api = {
       youtube: {
+        getSummary: vi.fn().mockResolvedValue({
+          id: 'vid1',
+          video_id: 'vid1',
+          summary: '## Resumo Didático da Aula',
+          created_at: '2026-01-01',
+          updated_at: '2026-01-01',
+        }),
         fetchPlaylistInfo: vi.fn().mockResolvedValue({
           _type: 'playlist',
           title: 'Orientação a objetos com C# - 2024',
@@ -108,5 +115,61 @@ describe('YouTubePlaylistModal', () => {
       'C# Aula 02 - Membros Only',
       'Canal Dev'
     );
+  });
+
+  it('opens 3-dots menu and launches video summary modal on click', async () => {
+    render(
+      <YouTubePlaylistModal
+        url={sampleUrl}
+        title="Orientação a objetos com C# - 2024"
+        onClose={mockOnClose}
+      />
+    );
+
+    await screen.findByText('C# Aula 01 - Introdução');
+
+    const moreButtons = screen.getAllByTitle('Mais opções do vídeo');
+    expect(moreButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(moreButtons[0]);
+
+    // Menu options should be visible
+    const summaryBtn = await screen.findByText('Resumo do Vídeo');
+    expect(summaryBtn).toBeDefined();
+    expect(screen.getByText('Copiar Link do Vídeo')).toBeDefined();
+    expect(screen.getByText('Assistir no YouTube')).toBeDefined();
+
+    // Clicking summary opens the summary modal
+    fireEvent.click(summaryBtn);
+    expect(await screen.findByText('IA Didática')).toBeDefined();
+    expect(await screen.findByText('Resumo Didático da Aula')).toBeDefined();
+  });
+
+  it('opens 3-dots menu and launches watch modal on click', async () => {
+    (window as any).api.youtube.getStream = vi.fn().mockResolvedValue({
+      title: 'C# Aula 01 - Introdução',
+      resolution: '1280x720',
+      duration: 300,
+      video_url: 'https://googlevideo.com/vid1.mp4',
+    });
+
+    render(
+      <YouTubePlaylistModal
+        url={sampleUrl}
+        title="Orientação a objetos com C# - 2024"
+        onClose={mockOnClose}
+      />
+    );
+
+    await screen.findByText('C# Aula 01 - Introdução');
+
+    const moreButtons = screen.getAllByTitle('Mais opções do vídeo');
+    fireEvent.click(moreButtons[0]);
+
+    const watchBtn = await screen.findByText('Assistir Aqui');
+    expect(watchBtn).toBeDefined();
+
+    fireEvent.click(watchBtn);
+    expect(await screen.findByText('yt-dlp stream')).toBeDefined();
   });
 });

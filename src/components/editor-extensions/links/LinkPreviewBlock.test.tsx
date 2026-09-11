@@ -243,5 +243,81 @@ describe('LinkPreviewBlock Component', () => {
     expect(getByText('Anotações de IA')).toBeDefined();
     expect(getByText('OK, Entendido')).toBeDefined();
   });
+
+  it('opens summary modal from ••• menu for YouTube video links', async () => {
+    const ytProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          url: 'https://www.youtube.com/watch?v=react123',
+          title: 'Aprenda React em 10 Minutos',
+          channel: 'Canal Dev',
+          duration: 600,
+          isPlaylist: false,
+          notes: '',
+          showNotes: false,
+        },
+      },
+    };
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle, findByText } = render(<Component {...ytProps} />);
+
+    // Open ••• menu
+    const moreButton = getByTitle('Mais opções do link (•••)');
+    fireEvent.click(moreButton);
+
+    const summaryButton = await findByText('Resumo do Vídeo');
+    expect(summaryButton).toBeDefined();
+
+    fireEvent.click(summaryButton);
+
+    // YouTubeSummaryModal should be rendered
+    expect(await findByText('IA Didática')).toBeDefined();
+  });
+
+  it('displays "Assistir Aqui" button for YouTube video links and opens watch modal on click', async () => {
+    const ytProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          url: 'https://www.youtube.com/watch?v=react123',
+          title: 'Aprenda React em 10 Minutos',
+          channel: 'Canal Dev',
+          duration: 600,
+          isPlaylist: false,
+          notes: '',
+          showNotes: false,
+        },
+      },
+    };
+
+    (window as any).api = {
+      youtube: {
+        getStream: vi.fn().mockResolvedValue({
+          title: 'Aprenda React em 10 Minutos',
+          resolution: '1280x720',
+          duration: 600,
+          video_url: 'https://googlevideo.com/video_720p.mp4',
+        }),
+      },
+    };
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle, findByText, getByText } = render(<Component {...ytProps} />);
+
+    // Open the ••• menu
+    const moreButton = getByTitle('Mais opções do link (•••)');
+    fireEvent.click(moreButton);
+
+    const watchButton = await findByText('Assistir Aqui');
+    expect(watchButton).toBeDefined();
+
+    fireEvent.click(watchButton);
+
+    // YouTubeWatchModal should be rendered with 720p badge
+    expect(await findByText('yt-dlp stream')).toBeDefined();
+    expect(getByText('1280x720')).toBeDefined();
+  });
 });
 

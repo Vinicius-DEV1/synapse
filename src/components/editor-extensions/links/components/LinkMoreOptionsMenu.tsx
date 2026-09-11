@@ -13,6 +13,8 @@ import {
   Trash2,
   Loader2,
   Layers,
+  Sparkles,
+  Play,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 
@@ -20,6 +22,10 @@ interface LinkMoreOptionsMenuProps {
   isOpen: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;
+  // YouTube actions props
+  isYouTube?: boolean;
+  onWatch?: () => void;
+  onOpenSummary?: () => void;
   // Duplicate pages props
   duplicateCount?: number;
   onOpenDuplicates?: () => void;
@@ -46,6 +52,9 @@ export default function LinkMoreOptionsMenu({
   isOpen,
   onClose,
   anchorRef,
+  isYouTube,
+  onWatch,
+  onOpenSummary,
   duplicateCount,
   onOpenDuplicates,
   scrapId,
@@ -79,7 +88,7 @@ export default function LinkMoreOptionsMenu({
     }
   }, [anchorRef, refs]);
 
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -117,7 +126,7 @@ export default function LinkMoreOptionsMenu({
       <div
         ref={(node) => {
           refs.setFloating(node);
-          (menuRef as any).current = node;
+          menuRef.current = node;
         }}
         style={{
           ...floatingStyles,
@@ -130,6 +139,43 @@ export default function LinkMoreOptionsMenu({
         } select-none space-y-1`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Seção YouTube: Assistir Aqui + Resumo do Vídeo */}
+        {isYouTube && (onWatch || onOpenSummary) && (
+          <>
+            <div className="space-y-0.5">
+              {onWatch && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                    onWatch();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-red-500/15 text-red-300 hover:text-red-200 transition-colors text-left font-medium cursor-pointer"
+                >
+                  <Play size={14} className="shrink-0 text-red-400 fill-red-400" />
+                  <span>Assistir Aqui</span>
+                </button>
+              )}
+              {onOpenSummary && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                    onOpenSummary();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-brand-500/15 text-brand-300 hover:text-brand-200 transition-colors text-left font-medium cursor-pointer"
+                >
+                  <Sparkles size={14} className="shrink-0 text-brand-400" />
+                  <span>Resumo do Vídeo</span>
+                </button>
+              )}
+            </div>
+            <div className="h-[1px] bg-white/[0.06] my-1" />
+          </>
+        )}
+
         {/* Seção 1: Scrap / Snapshot Offline */}
         <div className="space-y-0.5">
           {hasScrap ? (
