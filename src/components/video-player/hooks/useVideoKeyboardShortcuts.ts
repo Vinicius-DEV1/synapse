@@ -150,7 +150,6 @@ export function useVideoKeyboardShortcuts({
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
     };
   }, [
     dictState, isFullscreen, audioTracks, subtitleTracks, togglePlay, toggleFullscreen, seekBy,

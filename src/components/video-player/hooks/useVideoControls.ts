@@ -20,7 +20,7 @@ export function useVideoControls(
     const startTimer = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        if (isPlaying && !isDictOpen && !isHoveringControls) {
+        if (isPlaying && !isDictOpen) {
           setShowControls(false);
         }
       }, 3500);

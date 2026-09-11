@@ -253,7 +253,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
       if (videoRef.current && !videoRef.current.paused) {
         setIsBuffering(true);
       }
-    }, 250);
+    }, 750);
   }, [setIsBuffering]);
 
   const handleCanPlay = useCallback(() => {
