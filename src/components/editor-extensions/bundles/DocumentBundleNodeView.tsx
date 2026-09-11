@@ -463,7 +463,10 @@ export default function DocumentBundleNodeView(props: NodeViewProps) {
               <div className="flex justify-end pt-2 border-t border-white/5">
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    if (props.editor) props.editor.commands.focus();
+                  }}
                   disabled={isDeleting}
                   className="px-4 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
                 >

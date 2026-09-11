@@ -63,7 +63,18 @@ const PageReferenceComponent = (props: NodeViewProps) => {
   };
 
   return (
-    <NodeViewWrapper as="span" className="inline-block relative group mx-1 align-middle">
+    <NodeViewWrapper 
+      as="span" 
+      className="inline-block relative group mx-1 align-middle"
+      onMouseDown={() => {
+        if (typeof props.getPos === 'function') {
+          const pos = props.getPos();
+          if (typeof pos === 'number' && props.editor) {
+            props.editor.commands.setNodeSelection(pos);
+          }
+        }
+      }}
+    >
       <span
         onClick={handleClick}
         contentEditable={false}
@@ -167,7 +178,10 @@ const PageReferenceComponent = (props: NodeViewProps) => {
               </p>
               <div className="flex gap-2 mt-1">
                 <button
-                  onClick={() => setShowConfirm(false)}
+                  onClick={() => {
+                    setShowConfirm(false);
+                    if (props.editor) props.editor.commands.focus();
+                  }}
                   className="flex-1 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
                 >
                   Cancelar
