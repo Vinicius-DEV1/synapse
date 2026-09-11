@@ -17,6 +17,19 @@ export interface YouTubeVideoItem {
   [key: string]: unknown;
 }
 
+export interface YouTubePlaylistData {
+  title?: string;
+  entries?: YouTubeVideoItem[];
+  _error?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Shared in-memory caches preventing duplicate fetches across cards and modals (0ms perceived latency).
+ */
+export const playlistCache = new Map<string, YouTubePlaylistData>();
+export const watchedCache = new Map<string, string[]>();
+
 /**
  * Determines whether a YouTube video is exclusive to channel members.
  */

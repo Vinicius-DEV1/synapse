@@ -1,5 +1,6 @@
 import type { LinkMetadata } from './types';
 import { isYouTubeUrl } from './youtubeUtils';
+import { playlistCache } from '../youtube/youtubePlaylistHelper';
 
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   const isYouTube = isYouTubeUrl(url);
@@ -117,6 +118,7 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
         finalIsPlaylist = ytInfo._type === 'playlist' || url.includes('list=');
 
         if (finalIsPlaylist) {
+          playlistCache.set(url, ytInfo);
           finalPlaylistCount = ytInfo.playlist_count ?? (Array.isArray(ytInfo.entries) ? ytInfo.entries.length : null);
 
           if (Array.isArray(ytInfo.entries) && ytInfo.entries.length > 0) {
