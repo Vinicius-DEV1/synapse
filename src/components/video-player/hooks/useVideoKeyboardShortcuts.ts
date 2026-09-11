@@ -44,6 +44,7 @@ export function useVideoKeyboardShortcuts({
 }: UseVideoKeyboardShortcutsProps) {
   const seekAccumulatorRef = useRef(0);
   const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSeekTimeRef = useRef(0);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -120,6 +121,12 @@ export function useVideoKeyboardShortcuts({
         }
         seekBy(-5);
         
+        const now = Date.now();
+        if (now - lastSeekTimeRef.current > 800) {
+          seekAccumulatorRef.current = 0;
+        }
+        lastSeekTimeRef.current = now;
+        
         seekAccumulatorRef.current -= 5;
         const sign = seekAccumulatorRef.current > 0 ? '+' : '';
         if (triggerFeedback) triggerFeedback(`${sign}${seekAccumulatorRef.current}s`, seekAccumulatorRef.current > 0 ? 'forward' : 'rewind');
@@ -135,6 +142,12 @@ export function useVideoKeyboardShortcuts({
           document.activeElement.blur();
         }
         seekBy(5);
+        
+        const now = Date.now();
+        if (now - lastSeekTimeRef.current > 800) {
+          seekAccumulatorRef.current = 0;
+        }
+        lastSeekTimeRef.current = now;
         
         seekAccumulatorRef.current += 5;
         const sign = seekAccumulatorRef.current > 0 ? '+' : '';

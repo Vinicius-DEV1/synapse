@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit } from 'lucide-react';
+import { X, BookType, Globe, Database, Sparkles, RefreshCw, BrainCircuit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getSettings } from '../../../utils/settings';
 import DOMPurify from 'dompurify';
 import CardEditor from '../../anki/CardEditor';
@@ -37,6 +37,11 @@ export default function DictionaryModal({
   const [savedLocally, setSavedLocally] = useState(!!preloadedData);
   const [showAnkiEditor, setShowAnkiEditor] = useState(false);
 
+  const [history, setHistory] = useState<{word: string, data?: DictionaryData | null, context?: string}[]>([
+    { word: text, data: preloadedData, context: pageContext }
+  ]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
   const {
     loading,
     result,
@@ -48,14 +53,41 @@ export default function DictionaryModal({
     fetchDefinition,
   } = useDictionaryQuery(settings, sourceType);
 
+  // Sync fetched dictionary data back to the history stack
   useEffect(() => {
-    if (preloadedData) {
-      setDictionaryData(preloadedData);
-      setLanguageTab(preloadedData.detected_language === 'en' ? 'en' : 'pt');
-    } else {
-      fetchDefinition(text, pageContext, mode);
+    if (dictionaryData && !loading) {
+      setHistory(prev => {
+        const newHistory = [...prev];
+        if (!newHistory[historyIndex].data) {
+          newHistory[historyIndex] = { ...newHistory[historyIndex], data: dictionaryData };
+          return newHistory;
+        }
+        return prev;
+      });
     }
-  }, [text, mode, preloadedData, fetchDefinition, setDictionaryData, setLanguageTab, pageContext]);
+  }, [dictionaryData, loading, historyIndex]);
+
+  useEffect(() => {
+    const currentItem = history[historyIndex];
+    if (currentItem.data) {
+      setDictionaryData(currentItem.data);
+      setLanguageTab(currentItem.data.detected_language === 'en' ? 'en' : 'pt');
+    } else {
+      fetchDefinition(currentItem.word, currentItem.context, mode);
+    }
+  }, [historyIndex, mode, fetchDefinition, setDictionaryData, setLanguageTab]); // Don't include history to avoid loop
+
+  const handleWordClick = (clickedWord: string) => {
+    const cleanWord = clickedWord.replace(/[.,!?()[\]{}"':;]/g, '').trim();
+    if (!cleanWord || cleanWord.toLowerCase() === history[historyIndex].word.toLowerCase()) return;
+    
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({ word: cleanWord, context: undefined });
+      return newHistory;
+    });
+    setHistoryIndex(prev => prev + 1);
+  };
 
   return (
     <Modal
@@ -71,6 +103,27 @@ export default function DictionaryModal({
           <div className="flex items-center gap-2 text-brand-400">
             <BookType size={18} />
             <span className="font-semibold text-sm text-white">Dicionário</span>
+            
+            {history.length > 1 && (
+              <div className="flex items-center gap-1 ml-3 pl-3 border-l border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setHistoryIndex(prev => Math.max(0, prev - 1))}
+                  disabled={historyIndex === 0}
+                  className={`p-1 rounded-md transition-colors ${historyIndex === 0 ? 'text-white/20 cursor-not-allowed' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryIndex(prev => Math.min(history.length - 1, prev + 1))}
+                  disabled={historyIndex === history.length - 1}
+                  className={`p-1 rounded-md transition-colors ${historyIndex === history.length - 1 ? 'text-white/20 cursor-not-allowed' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -115,7 +168,7 @@ export default function DictionaryModal({
         {/* Selected Word & Tabs */}
         <div className="px-5 py-4 border-b border-white/5">
           <div className="flex items-center gap-3 mb-0.5">
-            <p className="text-lg font-bold text-white">"{dictionaryData?.analyzed_word || text}"</p>
+            <p className="text-lg font-bold text-white">"{dictionaryData?.analyzed_word || history[historyIndex].word}"</p>
             {dictionaryData &&
               (languageTab === 'en' ? dictionaryData.english : dictionaryData.portuguese)
                 ?.is_rare_or_complex && (
@@ -229,6 +282,7 @@ export default function DictionaryModal({
               dictionaryData={dictionaryData}
               languageTab={languageTab}
               setSelectedColloc={setSelectedColloc}
+              onWordClick={handleWordClick}
             />
           ) : result ? (
             <div className="prose prose-invert prose-sm max-w-none prose-headings:text-brand-400 prose-headings:text-sm prose-headings:font-semibold prose-headings:mb-2 prose-p:text-dark-text/90 prose-p:leading-relaxed">

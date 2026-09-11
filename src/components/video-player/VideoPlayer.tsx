@@ -316,6 +316,7 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
         onPlay={() => {
           handleCanPlay();
           setIsPlaying(true);
+          setShowResumePrompt(false);
           if (audioRef.current && activeAudioUrl) {
             const vidTime = videoRef.current?.currentTime || 0;
             if (Math.abs(audioRef.current.currentTime - vidTime) > 0.05) {
