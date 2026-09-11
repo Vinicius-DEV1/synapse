@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAppAuth } from './useAppAuth';
 
 describe('useAppAuth hook', () => {
@@ -52,4 +52,34 @@ describe('useAppAuth hook', () => {
       keys: {},
     });
   });
+
+  it('triggers lock and resets module keys when system suspend time drift occurs', async () => {
+    vi.useFakeTimers();
+    const lockMock = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.auth.lock = lockMock;
+
+    const { result } = renderHook(() => useAppAuth(mockDispatch));
+
+    // Simulate user being authenticated
+    act(() => {
+      result.current.setIsAuth(true);
+    });
+
+    // Simulate OS suspend: system clock jumps forward by 15s
+    vi.setSystemTime(Date.now() + 15000);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(lockMock).toHaveBeenCalled();
+    expect(result.current.isAuth).toBe(false);
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'SET_MODULE_KEYS',
+      keys: {},
+    });
+
+    vi.useRealTimers();
+  });
 });
+
+
