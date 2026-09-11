@@ -492,7 +492,10 @@ export default function FileWidgetNodeView(props: NodeViewProps) {
       {showDeleteConfirm && (
         <FileWidgetDeleteConfirmModal
           isDeleting={isDeleting}
-          onCancel={() => setShowDeleteConfirm(false)}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            if (props.editor) props.editor.commands.focus();
+          }}
           onUnlink={() => {
             setShowDeleteConfirm(false);
             deleteNode();
