@@ -1,30 +1,23 @@
 ---
 name: type-safety-hardening
 description: >-
-  Systematically eliminates any, unsafe type assertions, and untyped payloads,
-  building rock-solid TypeScript type architectures with discriminated unions,
-  type guards, and strict contract validation.
+  Actionable patterns, code recipes, and audit workflow for eliminating any, unsafe
+  type assertions, and untyped payloads, building rock-solid TypeScript type architectures
+  with discriminated unions, type guards, runtime validation, and strict IPC contracts.
 ---
 
 # Skill: Strict TypeScript & Type Safety Hardening
 
 Activate this skill when eliminating `any`, fixing unsafe type assertions (`as any`, `as unknown as T`), creating strict data models, typing IPC/storage boundaries, or hardening TypeScript interfaces in the **Caderno** project.
 
----
-
-## 1. Zero `any` Golden Rules
-
-> [!CAUTION]
-> ### STRICT PROHIBITIONS
-> 1. **No `any` Declarations**: Never declare variables, parameters, or return types as `any`.
-> 2. **No Blind Type Casting**: Do not use `as any` or `as unknown as T` to silence compiler errors. Fix the underlying type signature or use a runtime type guard.
-> 3. **No Untyped Error Catches**: Never assume caught errors in `catch (e)` have properties like `e.message` without type narrowing (`e instanceof Error`).
+> [!IMPORTANT]
+> The foundational zero-`any` rules are defined in `AGENTS.md` §4.1 and are always loaded. This skill provides **practical recipes, patterns, and workflow** for implementing those rules — it does not repeat them.
 
 ---
 
-## 2. Advanced Type Safety Patterns & Recipes
+## 1. Advanced Type Safety Patterns & Recipes
 
-### 2.1. Discriminated Unions for State & Action Payloads
+### 1.1. Discriminated Unions for State & Action Payloads
 
 Replace loose objects with discriminated unions that guarantee type safety across all states:
 
@@ -51,7 +44,7 @@ export function assertNever(x: never, message = 'Unexpected unreachable branch')
   throw new Error(`${message}: ${JSON.stringify(x)}`);
 }
 
-function handleState(state: AsyncState<Note[]>) {
+function handleState(state: AsyncState<Note[]>): React.ReactNode {
   switch (state.status) {
     case 'idle':
       return null;
@@ -69,7 +62,7 @@ function handleState(state: AsyncState<Note[]>) {
 
 ---
 
-### 2.2. Custom Type Guards for Dynamic & External Data
+### 1.2. Custom Type Guards for Dynamic & External Data
 
 When receiving data from IndexedDB, Tauri IPC, Web APIs, or JSON parsing, type it initially as `unknown` and narrow it with Type Guards:
 
@@ -94,11 +87,37 @@ export function isBookMetadata(value: unknown): value is BookMetadata {
 }
 ```
 
+**For complex or deeply nested structures**, consider using a runtime schema validation library (e.g., Zod, Valibot) instead of hand-written type guards:
+
+```typescript
+import { z } from 'zod';
+
+const BookMetadataSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  pageCount: z.number().int().nonnegative(),
+  tags: z.array(z.string()),
+});
+
+export type BookMetadata = z.infer<typeof BookMetadataSchema>;
+
+// Usage: validates AND narrows in one step
+const parsed = BookMetadataSchema.safeParse(unknownData);
+if (parsed.success) {
+  const book: BookMetadata = parsed.data; // fully typed
+}
+```
+
+> [!TIP]
+> **When to use manual Type Guards vs schema validators:**
+> - **Manual guards**: Simple, flat structures with < 5 fields. Zero bundle size cost.
+> - **Schema validators (Zod/Valibot)**: Complex nested structures, API responses, IPC payloads with many fields, or when you need detailed error messages for debugging.
+
 ---
 
-### 2.3. Safe Error Handling & Narrowing
+### 1.3. Safe Error Handling & Narrowing
 
-In TypeScript, caught errors are typed as `unknown`. Safely extract error messages and types:
+In TypeScript, caught errors are typed as `unknown`. Safely extract error messages:
 
 ```typescript
 export function getErrorMessage(error: unknown): string {
@@ -126,13 +145,13 @@ try {
 
 ---
 
-### 2.4. Generic Constraints & Mapped Types
+### 1.4. Generic Constraints & Mapped Types
 
 Use generics with strict constraints instead of loose types:
 
 ```typescript
 // BAD
-function updateRecord(obj: any, key: string, val: any): any { ... }
+function updateRecord(obj: any, key: string, val: any): any { /* ... */ }
 
 // GOOD
 function updateRecord<T extends Record<string, unknown>, K extends keyof T>(
@@ -146,7 +165,7 @@ function updateRecord<T extends Record<string, unknown>, K extends keyof T>(
 
 ---
 
-### 2.5. Typing Multiplatform & IPC Boundaries
+### 1.5. Typing Multiplatform & IPC Boundaries
 
 Wrap native Tauri invocations in strictly typed helper functions:
 
@@ -170,30 +189,55 @@ export async function safeInvoke<K extends keyof TauriIpcMap>(
 
 ---
 
-## 3. Type Safety Audit Workflow
+### 1.6. Utility Types for Common Patterns
+
+```typescript
+/** Make specific keys required while keeping others optional */
+export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+/** Create a strictly typed event map for custom event emitters */
+export type EventMap = Record<string, (...args: never[]) => void>;
+
+/** Extract the resolved type from a Promise */
+export type Awaited<T> = T extends Promise<infer U> ? U : T;
+
+/** Branded types for IDs to prevent accidental mixing */
+export type NoteId = string & { readonly __brand: 'NoteId' };
+export type DeckId = string & { readonly __brand: 'DeckId' };
+
+// Prevents accidentally passing a NoteId where DeckId is expected
+function getDeck(id: DeckId): Promise<Deck> { /* ... */ }
+```
+
+---
+
+## 2. Type Safety Audit Workflow
 
 ### Step 1: Scan for Loose Types
 1. Search for instances of `: any`, `as any`, `as unknown as`, and unchecked index signatures (`[key: string]: any`).
 2. Identify all missing function return types and unhandled optional chaining properties.
+3. **Quick scan command**: `grep -rn ': any\|as any\|as unknown as' src/ --include='*.ts' --include='*.tsx'`
 
 ### Step 2: Formulate Strict Interface Definitions
-1. Define the exact shapes, discriminated unions, and generic parameters in the appropriate `types/` file.
+1. Define exact shapes, discriminated unions, and generic parameters in the appropriate `types/` file.
 2. Provide type guards or validation helpers for untrusted boundaries.
 
 ### Step 3: Incremental Replacement
 1. Replace `any` annotations one file or module at a time.
 2. Fix all resulting type errors at the root cause rather than applying casts.
+3. Use `// @ts-expect-error [REASON]` only as a temporary bridge with a tracked TODO, never as a permanent workaround.
 
 ### Step 4: Verification
 1. Run `npx tsc --noEmit` to verify complete type correctness.
-2. Run automated test suites to ensure zero runtime regressions.
+2. Run targeted tests to ensure zero runtime regressions.
 
 ---
 
-## 4. Delivery Checklist
+## 3. Delivery Checklist
 
-- [ ] Are all `any` and `as any` occurrences eliminated in the target files?
-- [ ] Are dynamic states modeled with Discriminated Unions and exhaustiveness checks?
-- [ ] Are all external/IPC payloads validated with Type Guards (`is`)?
-- [ ] Are errors caught as `unknown` and safely narrowed?
-- [ ] Does `npx tsc --noEmit` pass with zero type errors?
+- [ ] All `any` and `as any` occurrences eliminated in the target files?
+- [ ] Dynamic states modeled with Discriminated Unions and exhaustiveness checks?
+- [ ] External/IPC payloads validated with Type Guards or schema validators?
+- [ ] Errors caught as `unknown` and safely narrowed?
+- [ ] Branded types used for distinct ID domains where mixing is risky?
+- [ ] `npx tsc --noEmit` passes with zero type errors?

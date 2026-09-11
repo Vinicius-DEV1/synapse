@@ -1,9 +1,10 @@
 ---
 name: caderno-cryptography-vault
 description: >-
-  Comprehensive guide and engineering protocol for Caderno's End-to-End Encryption (E2EE),
-  Vault & Keychain architecture, PBKDF2/AES-GCM key derivation, encrypted video streaming,
-  and Zero-Knowledge cloud storage.
+  Canonical reference for Caderno's End-to-End Encryption (E2EE), Two-Tier Keychain
+  architecture, PBKDF2/AES-GCM key derivation, encrypted video streaming, Master Password
+  management, and Zero-Knowledge cloud storage. Activate when implementing, auditing, or
+  modifying any cryptographic operation or vault management flow.
 ---
 
 # Skill: Caderno Cryptography, Vault & Zero-Knowledge Security Architecture
@@ -145,7 +146,41 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 
 ---
 
-## 7. Cryptographic Testing & Verification
+## 7. Master Password Change Flow
+
+When the user changes their Master Password, the system must:
+
+1. **Derive Old Master Key**: `PBKDF2(old_password, salt, 600000)` → `old_master_key`.
+2. **Derive New Master Key**: `PBKDF2(new_password, salt, 600000)` → `new_master_key`.
+3. **Decrypt All Module Keys**: Using `old_master_key`, decrypt every `*_key_enc` column in the `keychain` table to recover the plaintext module keys.
+4. **Re-Encrypt All Module Keys**: Using `new_master_key`, re-encrypt each plaintext module key with fresh IVs and store the new ciphertexts back into the `keychain` table.
+5. **Update Auth Hash**: Replace the stored authentication hash with `hash_auth_password(new_password)`.
+6. **Zero Old Key Material**: Clear `old_master_key` and all intermediate plaintext keys from memory immediately after re-wrapping.
+
+> [!CAUTION]
+> - The **module keys themselves do not change** — only their wrapping envelope changes. This means all existing encrypted content remains valid without re-encryption.
+> - If the process is interrupted mid-re-wrap (crash, power loss), the keychain may be left in a partially updated state. Implement atomic transaction wrapping (`BEGIN IMMEDIATE` / `COMMIT`) to ensure all-or-nothing consistency.
+> - Never store both old and new master keys simultaneously in persistent storage.
+
+---
+
+## 8. Implementation File Map
+
+Quick reference for locating cryptographic implementations:
+
+| File | Layer | Responsibility |
+|------|-------|---------------|
+| `src-tauri/src/crypto.rs` | Rust Backend | AES-256-GCM encrypt/decrypt, PBKDF2 key derivation, module key generation |
+| `src-tauri/src/crypto_stream.rs` | Rust Backend | Chunked AES-GCM streaming for large files (video) |
+| `src-tauri/src/protocol_encrypted.rs` | Rust Backend | Custom `encrypted://` URI protocol, HTTP 206 partial content |
+| `src-tauri/src/cmd_vault.rs` | Rust Backend | Vault CRUD with field-level encryption/decryption |
+| `src-tauri/src/cmd_notes.rs` | Rust Backend | Note content encryption/decryption on read/write |
+| `src/services/crypto.ts` | Web Frontend | Web Crypto API: deriveMasterKey, encryptText/File, decryptText/File |
+| `src/services/storage/` | Web Frontend | IndexedDB/Firestore encrypted sync adapters |
+
+---
+
+## 9. Cryptographic Testing & Verification
 
 When adding or modifying encryption code:
 1. **Run Cryptography Unit Tests**:
@@ -155,3 +190,5 @@ When adding or modifying encryption code:
    - Ensure `decrypt(encrypt(text)) === text` for empty strings, multi-byte UTF-8, emojis, and large 10MB+ buffers.
 3. **Verify Ciphertext Randomness**:
    - Encrypting the exact same plaintext twice must produce different IVs and completely different ciphertexts.
+4. **Verify Password Change Integrity**:
+   - After changing password: all module keys must decrypt successfully with new master key, all encrypted content must remain accessible.
