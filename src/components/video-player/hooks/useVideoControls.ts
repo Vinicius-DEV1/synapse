@@ -55,17 +55,12 @@ export function useVideoControls(
         container.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
-  }, [isPlaying, isDictOpen, containerRef, isHoveringControls]);
+  }, [isPlaying, isDictOpen, containerRef]);
 
-  // If the user rests the mouse on controls while it was hiding, keep it shown
-  useEffect(() => {
-    if (isHoveringControls) {
-      setShowControls(true);
-    }
-  }, [isHoveringControls]);
+  const visible = showControls || isHoveringControls;
 
   return { 
-    showControls, 
+    showControls: visible, 
     setShowControls, 
     setIsHoveringControls, 
     resetControls: resetControlsTimeout 

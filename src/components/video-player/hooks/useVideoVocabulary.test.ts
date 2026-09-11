@@ -14,14 +14,17 @@ describe('useVideoVocabulary Hook', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).api = {
-      sync: {
-        getTable: vi.fn().mockResolvedValue([
-          { id: 'w1', video_id: 'vid_voc_1', word: 'posture', timestamp: 12 },
-          { id: 'w2', video_id: 'vid_other', word: 'other', timestamp: 50 },
-        ]),
+    Object.defineProperty(window, 'api', {
+      writable: true,
+      value: {
+        sync: {
+          getTable: vi.fn().mockResolvedValue([
+            { id: 'w1', video_id: 'vid_voc_1', word: 'posture', timestamp: 12 },
+            { id: 'w2', video_id: 'vid_other', word: 'other', timestamp: 50 },
+          ]),
+        },
       },
-    };
+    });
   });
 
   it('loads video words associated with the video from sync table', async () => {
