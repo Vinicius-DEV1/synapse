@@ -4,16 +4,6 @@ import type { VideoItem } from '../../../types';
 export function useVideoFolders(videos: VideoItem[], onRefreshVideos: () => Promise<void>) {
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
 
-  const loadFolders = useCallback(async () => {
-    try {
-      if (window.api?.config) {
-        const data = await window.api.config.get('videoFolders');
-        if (Array.isArray(data)) setFolders(data);
-      }
-    } catch (e) {
-      console.error('Failed to load folders:', e);
-    }
-  }, []);
 
   const saveFolders = useCallback(async (newFoldersOrFn: { id: string; name: string }[] | ((prev: { id: string; name: string }[]) => { id: string; name: string }[])) => {
     let nextFolders: { id: string; name: string }[] = [];
@@ -27,8 +17,22 @@ export function useVideoFolders(videos: VideoItem[], onRefreshVideos: () => Prom
   }, []);
 
   useEffect(() => {
-    loadFolders();
-  }, [loadFolders]);
+    let isMounted = true;
+    const fetchInitialFolders = async () => {
+      try {
+        if (window.api?.config) {
+          const data = await window.api.config.get('videoFolders');
+          if (isMounted && Array.isArray(data)) setFolders(data);
+        }
+      } catch (e) {
+        console.error('Failed to load folders:', e);
+      }
+    };
+    fetchInitialFolders();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleCreateFolder = useCallback((name: string) => {
     const newFolder = { id: crypto.randomUUID(), name };

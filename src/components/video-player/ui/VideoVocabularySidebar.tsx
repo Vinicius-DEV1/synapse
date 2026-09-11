@@ -13,7 +13,7 @@ interface VideoVocabularySidebarProps {
 }
 
 export function VideoVocabularySidebar({
-  video: _video, videoWords, setShowVocabDrawer, videoRef, loadVideoWords, setDictState
+  videoWords, setShowVocabDrawer, videoRef, loadVideoWords, setDictState
 }: VideoVocabularySidebarProps) {
   return (
     <div className="absolute inset-y-0 right-0 w-96 max-w-full bg-dark-card border-l border-white/10 shadow-2xl z-50 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
@@ -109,7 +109,7 @@ export function VideoVocabularySidebar({
                         <div className="line-clamp-2 opacity-90">{textToShow}</div>
                       </button>
                     );
-                  } catch (e) {
+                  } catch {
                     return <p className="text-sm text-brand-300 mt-1">{vw.note}</p>;
                   }
                 })()

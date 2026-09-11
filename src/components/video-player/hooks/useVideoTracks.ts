@@ -1,6 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import type { VideoItem, TrackItem } from '../../../types';
 
+function parseAudioTracks(json?: string | null): TrackItem[] {
+  if (json) {
+    try {
+      return JSON.parse(json);
+    } catch (e) {
+      console.error('Failed to parse audio tracks', e);
+    }
+  }
+  return [];
+}
+
+function parseSubtitleTracks(json?: string | null): TrackItem[] {
+  const tracks: TrackItem[] = [{ id: 'none', label: 'Sem Legenda' }];
+  if (json) {
+    try {
+      const parsedSubs = JSON.parse(json);
+      tracks.push(...parsedSubs);
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+  return tracks;
+}
+
 export function useVideoTracks(
   video: VideoItem,
   isPlaying: boolean,
@@ -8,48 +32,36 @@ export function useVideoTracks(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   audioRef: React.RefObject<HTMLAudioElement | null>
 ) {
-  const [audioTracks, setAudioTracks] = useState<TrackItem[]>([]);
-  const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>([]);
+  const [prevVideoId, setPrevVideoId] = useState(video.id);
+  const [audioTracks, setAudioTracks] = useState<TrackItem[]>(() => parseAudioTracks(video.audio_tracks_json));
+  const [subtitleTracks, setSubtitleTracks] = useState<TrackItem[]>(() => parseSubtitleTracks(video.subtitles_json));
   const [activeAudioIndex, setActiveAudioIndex] = useState<number>(-1);
-  const [activeSubtitleIndex, setActiveSubtitleIndex] = useState<number>(0);
+  const [activeSubtitleIndex, setActiveSubtitleIndex] = useState<number>(() => {
+    const subs = parseSubtitleTracks(video.subtitles_json);
+    return subs.length > 1 ? 1 : 0;
+  });
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
+
+  if (video.id !== prevVideoId) {
+    setPrevVideoId(video.id);
+    const newAudio = parseAudioTracks(video.audio_tracks_json);
+    const newSubs = parseSubtitleTracks(video.subtitles_json);
+    setAudioTracks(newAudio);
+    setSubtitleTracks(newSubs);
+    setActiveSubtitleIndex(newSubs.length > 1 ? 1 : 0);
+    setActiveAudioIndex(-1);
+    setActiveAudioUrl(null);
+  }
   
   const syncLoopRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    try {
-      if (video.audio_tracks_json) {
-        setAudioTracks(JSON.parse(video.audio_tracks_json));
-      }
-      
-      const tracks: TrackItem[] = [{ id: 'none', label: 'Sem Legenda' }];
-      
-
-      // Adiciona as legendas extras
-      if (video.subtitles_json) {
-        try {
-          const parsedSubs = JSON.parse(video.subtitles_json);
-          tracks.push(...parsedSubs);
-        } catch (e) { console.warn(e); }
-      }
-      
-      setSubtitleTracks(tracks);
-      
-      if (tracks.length > 1) {
-        setActiveSubtitleIndex(1); // Auto-seleciona a primeira legenda real
-      } else {
-        setActiveSubtitleIndex(0); // Sem legenda
-      }
-    } catch (e) {
-      console.error("Failed to parse tracks", e);
-    }
-  }, [video]);
-
-  useEffect(() => {
     let isMounted = true;
     if (activeAudioIndex === -1) {
-      setActiveAudioUrl(null);
       if (videoRef.current) videoRef.current.muted = isMuted;
+      Promise.resolve().then(() => {
+        if (isMounted) setActiveAudioUrl(null);
+      });
       return;
     }
     

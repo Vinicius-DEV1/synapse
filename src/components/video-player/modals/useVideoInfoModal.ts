@@ -23,7 +23,8 @@ interface UseVideoInfoModalProps {
 }
 
 export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalProps) {
-  const [currentVideo, setCurrentVideo] = useState(video);
+  const [videoOverride, setVideoOverride] = useState<{ id: string; data: VideoItem } | null>(null);
+  const currentVideo = (videoOverride && videoOverride.id === video.id) ? videoOverride.data : video;
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [stats, setStats] = useState<StorageStats | null>(null);
@@ -33,10 +34,6 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const [editLabelValue, setEditLabelValue] = useState('');
   const subFileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setCurrentVideo(video);
-  }, [video]);
 
   // Load exact file storage stats from native backend
   useEffect(() => {
@@ -125,7 +122,7 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
     try {
       setIsProcessingSub(true);
       const { updatedVideo, newTrack } = await attachSubtitleToVideo(currentVideo, file, undefined, getCultureKey());
-      setCurrentVideo(updatedVideo);
+      setVideoOverride({ id: updatedVideo.id, data: updatedVideo });
       if (onVideoUpdated) onVideoUpdated(updatedVideo);
       triggerToast(`Legenda "${newTrack.label}" anexada com sucesso!`, 'success');
     } catch (err: unknown) {
@@ -144,7 +141,7 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
     try {
       setIsProcessingSub(true);
       const updatedVideo = await removeSubtitleFromVideo(currentVideo, trackId);
-      setCurrentVideo(updatedVideo);
+      setVideoOverride({ id: updatedVideo.id, data: updatedVideo });
       if (onVideoUpdated) onVideoUpdated(updatedVideo);
       triggerToast(`Legenda "${label}" removida.`, 'info');
     } catch (err: unknown) {
@@ -165,7 +162,7 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
     try {
       setIsProcessingSub(true);
       const updatedVideo = await renameSubtitleInVideo(currentVideo, trackId, editLabelValue.trim());
-      setCurrentVideo(updatedVideo);
+      setVideoOverride({ id: updatedVideo.id, data: updatedVideo });
       if (onVideoUpdated) onVideoUpdated(updatedVideo);
       triggerToast('Nome da legenda atualizado!', 'success');
     } catch (err: unknown) {

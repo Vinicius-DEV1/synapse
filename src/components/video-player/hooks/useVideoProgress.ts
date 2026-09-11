@@ -7,17 +7,14 @@ export function useVideoProgress(
   videoRef: React.RefObject<HTMLVideoElement>
 ) {
   const [duration, setDuration] = useState(video.duration || 0);
-  const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedProgress] = useState(video.progress || 0);
+  const [showResumePrompt, setShowResumePrompt] = useState(() => (video.progress || 0) > 5);
   const lastSavedTime = useRef(video.progress || 0);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (savedProgress > 5) {
-      setShowResumePrompt(true);
-      if (videoRef.current) {
-        videoRef.current.pause();
-      }
+    if (savedProgress > 5 && videoRef.current) {
+      videoRef.current.pause();
     }
   }, [savedProgress, videoRef]);
 

@@ -32,7 +32,7 @@ interface VideoPlayerProps {
   onDurationLoaded?: (duration: number) => void;
 }
 
-export default function VideoPlayer({ src, video, subtitleContent: _subtitleContent, title, onClose, onDurationLoaded }: VideoPlayerProps) {
+export default function VideoPlayer({ src, video, title, onClose, onDurationLoaded }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,12 +45,6 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
     preloadedData?: DictionaryData | null;
     video_clip?: { path: string; startMs: number; endMs: number };
   } | null>(null);
-
-  const [currentSrc, setCurrentSrc] = useState(src);
-
-  useEffect(() => {
-    setCurrentSrc(src);
-  }, [src]);
 
   const videoExtension = React.useMemo(() => {
     if (src.includes('_web.mp4') || (video.drive_web_file_id && !video.is_local && !src.includes(video.original_name))) {
@@ -69,7 +63,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
   // Ref wrappers for video sub-hooks
   const { duration, setDuration, showResumePrompt, setShowResumePrompt, savedProgress, saveProgress } = useVideoProgress(video, isPlaying, videoRef as React.RefObject<HTMLVideoElement>);
   const { audioTracks, subtitleTracks, addSubtitleTrack, activeAudioIndex, setActiveAudioIndex, activeSubtitleIndex, setActiveSubtitleIndex, activeAudioUrl } = useVideoTracks(video, isPlaying, isMuted, videoRef, audioRef);
-  const { videoWords, showVocabDrawer, setShowVocabDrawer, loadVideoWords } = useVideoVocabulary(video, cues, '');
+  const { videoWords, showVocabDrawer, setShowVocabDrawer, loadVideoWords, saveVideoWord } = useVideoVocabulary(video, cues, '');
   const { showControls, setIsHoveringControls, resetControls } = useVideoControls(isPlaying, containerRef as React.RefObject<HTMLDivElement>, !!dictState);
 
   const handleAttachSubtitle = async (file: File) => {
@@ -302,7 +296,7 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
 
       <video
         ref={videoRef}
-        src={currentSrc}
+        src={src}
         autoPlay
         className="w-full h-full object-contain"
         onClick={togglePlay}
@@ -445,19 +439,13 @@ export default function VideoPlayer({ src, video, subtitleContent: _subtitleCont
           onClose={() => setDictState(null)}
           sourceType="video"
           onSaveHighlight={async (color: string, note?: string) => {
-            if (window.api?.sync) {
-              const newWord = {
-                id: crypto.randomUUID(),
-                video_id: video.id,
-                word: dictState.word,
-                context: dictState.context,
-                timestamp: videoRef.current?.currentTime || 0,
-                color,
-                note,
-              };
-              await window.api.sync.upsertRow('video_words', newWord);
-              loadVideoWords();
-            }
+            await saveVideoWord({
+              word: dictState.word,
+              context: dictState.context,
+              timestamp: videoRef.current?.currentTime || 0,
+              color,
+              note,
+            });
           }}
         />
       )}

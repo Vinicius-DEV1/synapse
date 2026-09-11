@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { promptGemini } from '../../../services/gemini';
 import type { DictionaryData } from '../../../types/dictionary';
+import type { AppSettings } from '../../../utils/settings';
 
 export function useDictionaryQuery(
-  settings: any,
+  settings: Partial<AppSettings>,
   sourceType: 'book' | 'video' = 'book'
 ) {
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,11 @@ Identifique o idioma da palavra. Siga ESTAS REGRAS RÍGIDAS:
 0. MÁXIMA IMPORTÂNCIA: Se a palavra clicada fizer parte de um phrasal verb, expressão idiomática ou palavra composta presente no contexto (ex: o usuário selecionou 'up' e no contexto a frase era 'give up', ou 'fork' em 'breakfast fork'), você DEVE analisar a EXPRESSÃO COMPLETA e retornar todo o JSON sobre essa expressão, não apenas a palavra isolada.
 1. Lexicografia: Retorne as definições separadas e numeradas (1. ..., 2. ...) baseadas em dicionários oficiais (Oxford/Cambridge/Michaelis). NUNCA resuma em um único texto se houver mais de um significado.
 2. Pedagogia: Na explicação de contexto, explique por que a palavra foi usada neste contexto, e sugira collocations (combinações comuns de palavras nativas).
-${isEnglishOnly ? '3. IMERSÃO TOTAL: Retorne TODAS as explicações exclusivamente em inglês. NUNCA traduza para o português.' : ''}
+3. SEPARAÇÃO RIGOROSA DE IDIOMAS (REGRA ABSOLUTA):
+   - No nó "english": ABSOLUTAMENTE TODOS OS TEXTOS E EXPLICAÇÕES (definitions, synonyms, collocations, context_explanation, etymology, nuance_explanation, contextual_synonyms, progressive_examples) DEVEM SER ESCRITOS 100% EM INGLÊS.
+     * ATENÇÃO CRÍTICA: "english.context_explanation" DEVE SER REDIGIDO INTEGRALMENTE EM INGLÊS NATURAL (NUNCA EM PORTUGUÊS). Explique a cena, o enredo e o uso da palavra em inglês.
+   - No nó "portuguese": Todos os textos (translation, definitions, synonyms, collocations, context_explanation, etymology, nuance_explanation) DEVEM SER ESCRITOS EM PORTUGUÊS. O campo "portuguese.context_explanation" DEVE ser a explicação da cena em português.
+${isEnglishOnly ? '4. IMERSÃO TOTAL: Retorne TODAS as explicações exclusivamente em inglês. NUNCA retorne o nó "portuguese".' : ''}
 
 Se a palavra for em INGLÊS:
 Retorne estritamente um objeto JSON com a seguinte estrutura:
@@ -61,30 +66,26 @@ Retorne estritamente um objeto JSON com a seguinte estrutura:
   "english": {
     "is_rare_or_complex": true/false (true if C1/C2, archaic, highly formal, or rare),
     "nuance_tag": "short tag like [Poetic] or [Formal] if rare, otherwise null",
-    "word_class": "adjective/noun/verb/etc (em inglês)",
-    "phonetic": "transcrição fonética IPA exata",
-    "definitions": ["1. Primeiro significado estrito.", "2. Segundo significado estrito (se aplicável)."],
-    "synonyms": ["sinônimo 1", "sinônimo 2", "sinônimo 3", "sinônimo 4", "sinônimo 5"],
+    "word_class": "adjective/noun/verb/etc (in English)",
+    "phonetic": "exact IPA phonetic transcription",
+    "definitions": ["1. First strict English definition.", "2. Second strict English definition (if applicable)."],
+    "synonyms": ["synonym 1 in English", "synonym 2 in English", "synonym 3 in English", "synonym 4 in English", "synonym 5 in English"],
     "collocations": [
-      {"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1", "example 2", "example 3", "example 4", "example 5"]}
+      {"expression": "collocation or idiom", "meaning": "explanation of the meaning in English", "examples": ["example 1 in English", "example 2 in English"]}
     ],
-    "context_explanation": "Do NOT give a grammar lesson. Explain what is happening in the scene/story based on the provided context. You MUST explicitly mention the analyzed word/expression and explain why it was used in this specific situation and how it contributes to the plot/character's action.",
+    "context_explanation": "CRITICAL: MUST BE 100% IN NATURAL ENGLISH (NO PORTUGUESE). Do NOT give a grammar lesson. Explain in English what is happening in the scene/story based on the provided context. You MUST explicitly mention the analyzed word/expression and explain why it was used in this specific situation and how it contributes to the plot/character's action.",
     "examples": ["Example 1 in English", "Example 2 in English", "Example 3 in English", "Example 4 in English", "Example 5 in English"],
     "deep_dive": {
-      "etymology": "historical roots of the word",
-      "nuance_explanation": "details about the exact tone, connotation and when NOT to use it",
+      "etymology": "historical roots of the word in English",
+      "nuance_explanation": "details in English about the exact tone, connotation and when NOT to use it",
       "contextual_synonyms": [
-        {"word": "synonym 1", "nuance": "when to use this vs the original word"},
-        {"word": "synonym 2", "nuance": "when to use this vs the original word"},
-        {"word": "synonym 3", "nuance": "when to use this vs the original word"},
-        {"word": "synonym 4", "nuance": "when to use this vs the original word"},
-        {"word": "synonym 5", "nuance": "when to use this vs the original word"}
+        {"word": "synonym 1 in English", "nuance": "when to use this vs the original word"}
       ],
       "progressive_examples": ["1. basic everyday", "2. basic everyday", "3. intermediate", "4. intermediate", "5. intermediate", "6. advanced/literary", "7. advanced/literary", "8. advanced/literary"]
     },
     "anki_card": {
-      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Frase de contexto com a palavra-alvo em <b>negrito</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
-      "back": "Tradução/Significado em inglês (se EnglishOnly) ou português + transcrição fonética IPA (Ex: meaning... /brɪliənt/)",
+      "front": "${pageContext ? 'Junte as legendas do Contexto fornecido para formar APENAS UMA ÚNICA FRASE completa (lógica e coesa) que contém a palavra. Ignore trechos soltos ou fragmentos da próxima frase. Coloque a palavra em <b>negrito</b>. NÃO INVENTE OUTRA FRASE.' : 'Context sentence with the target word in <b>bold</b>. (Ex: She is a <b>brilliant</b> scientist.)'}",
+      "back": "English definition / meaning + IPA phonetic transcription",
       ${sourceType === 'video' ? '"video_clip": { "startMs": 10500, "endMs": 16000 } // REQUIRED: Identify the first and last subtitle making up the full sentence and return exact start/end times.' : ''}
     }
   }${isEnglishOnly ? '' : `,
@@ -156,17 +157,18 @@ Retorne APENAS o JSON válido, sem formatação markdown (sem \`\`\`json) e sem 
           const parsed = JSON.parse(cleaned) as DictionaryData;
           setDictionaryData(parsed);
           setLanguageTab(parsed.detected_language === 'en' ? 'en' : 'pt');
-        } catch (e) {
+        } catch {
           // Fallback if AI fails to return valid JSON
           setResult(response.text);
         }
         setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao buscar definição.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao buscar definição.';
+      setError(msg);
       setLoading(false);
     }
-  }, [settings.hasOfflineDictionary, settings.aiDictionaryLanguage, sourceType]);
+  }, [settings.hasOfflineDictionary, settings.aiDictionaryLanguage, settings.geminiModelDictionary, settings.geminiModel, sourceType]);
 
   return {
     loading,

@@ -3,7 +3,7 @@ import type { SubtitleCue } from '../../utils/vtt-parser';
 
 const wordSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null;
 
-export const HIGHLIGHT_COLOR_MAP: Record<string, { bg: string; text: string }> = {
+const HIGHLIGHT_COLOR_MAP: Record<string, { bg: string; text: string }> = {
   yellow: { bg: 'rgba(234, 179, 8, 0.3)', text: '#facc15' },
   green: { bg: 'rgba(34, 197, 94, 0.3)', text: '#4ade80' },
   blue: { bg: 'rgba(59, 130, 246, 0.3)', text: '#60a5fa' },
