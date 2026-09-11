@@ -23,6 +23,7 @@ export interface CadernoDBSchema extends DBSchema {
   videos: { key: string; value: any };
   video_words: { key: string; value: any; indexes: { 'video_id': string } };
   youtube_watched: { key: string; value: any; indexes: { 'video_id': string } };
+  youtube_summaries: { key: string; value: any; indexes: { 'video_id': string } };
   lofis: { key: string; value: any };
   culture_items: { key: string; value: any };
   culture_episodes: { key: string; value: any; indexes: { 'item_id': string } };
@@ -125,6 +126,10 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
         }
         if (!db.objectStoreNames.contains('youtube_watched')) {
           const store = db.createObjectStore('youtube_watched', { keyPath: 'id' });
+          store.createIndex('video_id', 'video_id');
+        }
+        if (!db.objectStoreNames.contains('youtube_summaries')) {
+          const store = db.createObjectStore('youtube_summaries', { keyPath: 'id' });
           store.createIndex('video_id', 'video_id');
         }
         if (!db.objectStoreNames.contains('lofis')) {

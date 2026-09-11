@@ -58,13 +58,16 @@ async function init() {
                 
                 const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
                 
-                // Dispatch global event for ToastProvider to capture
-                const errorEvent = new CustomEvent('app-api-error', { 
-                  detail: { 
-                    message: `Error in operation '${String(prop)}': ${errorMessage}`
-                  } 
-                });
-                window.dispatchEvent(errorEvent);
+                // Only dispatch global toast for mutation operations; queries/fetches handle errors in their local UI
+                const isQueryOperation = typeof prop === 'string' && (prop.startsWith('fetch') || prop.startsWith('get') || prop.startsWith('search'));
+                if (!isQueryOperation) {
+                  const errorEvent = new CustomEvent('app-api-error', { 
+                    detail: { 
+                      message: `Error in operation '${String(prop)}': ${errorMessage}`
+                    } 
+                  });
+                  window.dispatchEvent(errorEvent);
+                }
                 
                 // Re-throw error for original caller to handle (e.g. stop loading state)
                 throw error;

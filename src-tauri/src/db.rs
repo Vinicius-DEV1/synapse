@@ -133,10 +133,36 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE INDEX IF NOT EXISTS idx_quiz_attempts_battery ON quiz_attempts(battery_id);
          CREATE INDEX IF NOT EXISTS idx_quiz_page_links_battery ON quiz_page_links(battery_id);
          CREATE INDEX IF NOT EXISTS idx_quiz_page_links_page ON quiz_page_links(page_id);
+         
+         CREATE TABLE IF NOT EXISTS youtube_summaries (
+             id TEXT PRIMARY KEY,
+             video_id TEXT UNIQUE NOT NULL,
+             title TEXT,
+             channel_name TEXT,
+             summary TEXT NOT NULL,
+             raw_transcript TEXT,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+         );
+         CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id);
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
 
     // Migrations for existing databases
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS youtube_summaries (
+            id TEXT PRIMARY KEY,
+            video_id TEXT UNIQUE NOT NULL,
+            title TEXT,
+            channel_name TEXT,
+            summary TEXT NOT NULL,
+            raw_transcript TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id)", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN files_key_enc TEXT", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN vault_key_enc TEXT", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN calendar_key_enc TEXT", []);
