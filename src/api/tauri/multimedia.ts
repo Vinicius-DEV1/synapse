@@ -104,7 +104,9 @@ export const tauriLofiApi = {
   },
 };
 
-export const tauriYoutubeApi = {
+import type { IYouTubeAPI, YouTubeTranscriptResult, YouTubeSummaryRecord, YouTubeStreamInfo } from '../types';
+
+export const tauriYoutubeApi: IYouTubeAPI = {
   fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
   fetchPlaylistInfo: async (url: string) => await invoke('youtube_fetch_playlist_info', { url }),
   download: async (url: string, filename: string, quality: string, subs?: string[]) => await invoke('youtube_download', { url, filename, quality, subs }),
@@ -117,7 +119,12 @@ export const tauriYoutubeApi = {
     };
   },
   getWatched: async (videoIds: string[]) => await invoke<string[]>('youtube_get_watched', { videoIds }),
-  setWatched: async (videoId: string, isWatched: boolean, title?: string, channel?: string) => await invoke('youtube_set_watched', { videoId, isWatched, title, channel })
+  setWatched: async (videoId: string, isWatched: boolean, title?: string, channel?: string) => await invoke('youtube_set_watched', { videoId, isWatched, title, channel }),
+  fetchTranscript: async (url: string) => await invoke<YouTubeTranscriptResult>('youtube_fetch_transcript', { url }),
+  getSummary: async (videoId: string) => await invoke<YouTubeSummaryRecord | null>('youtube_get_summary', { videoId }),
+  saveSummary: async (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) =>
+    await invoke<boolean>('youtube_save_summary', { videoId, title, channel, summary, rawTranscript }),
+  getStream: async (url: string) => await invoke<YouTubeStreamInfo>('youtube_get_stream', { url }),
 };
 
 export const tauriAudioApi = {

@@ -343,6 +343,50 @@ export interface ICadernoAPI {
     openInBrowser: (url: string) => void;
   };
 
-  youtube?: any;
+  youtube?: IYouTubeAPI;
   trash?: any;
 }
+
+export interface YouTubeTranscriptResult {
+  video_id: string;
+  title: string;
+  channel: string;
+  duration?: number;
+  language: string;
+  transcript: string;
+  raw_vtt?: string;
+}
+
+export interface YouTubeSummaryRecord {
+  id: string;
+  video_id: string;
+  title?: string | null;
+  channel_name?: string | null;
+  summary: string;
+  raw_transcript?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YouTubeStreamInfo {
+  title: string;
+  resolution: string;
+  duration: number;
+  video_url: string;
+  audio_url?: string | null;
+}
+
+export interface IYouTubeAPI {
+  fetchInfo: (url: string) => Promise<any>;
+  fetchPlaylistInfo: (url: string) => Promise<any>;
+  download: (url: string, filename: string, quality: string, subs?: string[]) => Promise<string>;
+  onProgress: (callback: (percent: number) => void) => () => void;
+  getWatched: (videoIds: string[]) => Promise<string[]>;
+  setWatched: (videoId: string, isWatched: boolean, title?: string, channel?: string) => Promise<boolean>;
+  fetchTranscript?: (url: string) => Promise<YouTubeTranscriptResult>;
+  getSummary?: (videoId: string) => Promise<YouTubeSummaryRecord | null>;
+  saveSummary?: (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) => Promise<boolean>;
+  getStream?: (url: string) => Promise<YouTubeStreamInfo>;
+  [key: string]: any;
+}
+

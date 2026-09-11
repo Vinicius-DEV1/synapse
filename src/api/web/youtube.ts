@@ -60,6 +60,45 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
     }
     return true;
   },
+  getSummary: async (videoId: string) => {
+    try {
+      const all = (await db.getAllFromIndex('youtube_summaries', 'video_id', videoId)) || [];
+      return all[0] || null;
+    } catch {
+      return null;
+    }
+  },
+  saveSummary: async (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) => {
+    try {
+      const all = (await db.getAllFromIndex('youtube_summaries', 'video_id', videoId)) || [];
+      const existing = all[0];
+      if (existing) {
+        existing.title = title || existing.title;
+        existing.channel_name = channel || existing.channel_name;
+        existing.summary = summary || existing.summary;
+        existing.raw_transcript = rawTranscript || existing.raw_transcript;
+        existing.updated_at = new Date().toISOString();
+        await db.put('youtube_summaries', existing);
+      } else {
+        await db.put('youtube_summaries', {
+          id: generateId(),
+          video_id: videoId,
+          title: title || '',
+          channel_name: channel || '',
+          summary: summary || '',
+          raw_transcript: rawTranscript || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  fetchTranscript: async (_url: string) => {
+    throw new Error('A extração de legendas do YouTube é um recurso nativo exclusivo da versão Desktop.');
+  },
   fetchPlaylistInfo: async (url: string) => {
     // In Vite, import.meta.env might not be fully available in this context if it's outside components,
     // but assuming it is injected globally by Vite:
@@ -159,5 +198,8 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
     }
 
     throw new Error('URL inválida');
+  },
+  getStream: async (_url: string) => {
+    throw new Error('Streaming nativo via yt-dlp disponível apenas na versão Desktop (Tauri).');
   }
 });
