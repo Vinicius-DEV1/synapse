@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import { Image as ImageIcon, X, Upload, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, X, Upload, Sparkles, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import type { Page } from '../../types';
@@ -24,9 +24,33 @@ function getStableCoverUrl(url?: string | null, pageId?: string): string | undef
   return url;
 }
 
+function convertImageToCoverDataUrl(img: HTMLImageElement): string | null {
+  const canvas = document.createElement('canvas');
+  let width = img.width;
+  let height = img.height;
+
+  // Max width 1600px for cover to avoid huge base64 strings
+  if (width > 1600) {
+    height = Math.round((height * 1600) / width);
+    width = 1600;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.error('[PageCover] Não foi possível obter contexto 2D do canvas para redimensionar capa');
+    return null;
+  }
+  ctx.drawImage(img, 0, 0, width, height);
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
 export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCoverProps) {
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [coverUrlInput, setCoverUrlInput] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,35 +78,63 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
         triggerToast('Falha ao processar imagem da capa.', 'error');
       };
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // Max width 1600px for cover to avoid huge base64 strings
-        if (width > 1600) {
-          height = Math.round((height * 1600) / width);
-          width = 1600;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          console.error('[PageCover] Não foi possível obter contexto 2D do canvas para redimensionar capa');
+        const dataUrl = convertImageToCoverDataUrl(img);
+        if (dataUrl) {
+          onUpdatePage(page.id, { cover_image: dataUrl });
+          setShowCoverModal(false);
+        } else {
           triggerToast('Não foi possível processar a imagem da capa.', 'error');
-          return;
         }
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        onUpdatePage(page.id, { cover_image: dataUrl });
-        setShowCoverModal(false);
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRandomCover = async () => {
+    try {
+      setIsGenerating(true);
+      const randomSeed = Math.random().toString(36).substring(2, 10);
+      const randomUrl = `https://picsum.photos/seed/${randomSeed}/1600/400`;
+
+      // Fetch image as blob to circumvent CORS/canvas taint issues cleanly
+      const response = await fetch(randomUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const blob = await response.blob();
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = async () => {
+          const dataUrl = convertImageToCoverDataUrl(img);
+          if (dataUrl) {
+            await onUpdatePage(page.id, { cover_image: dataUrl });
+          } else {
+            await onUpdatePage(page.id, { cover_image: randomUrl });
+          }
+          setIsGenerating(false);
+          setShowCoverModal(false);
+        };
+        img.onerror = () => {
+          triggerToast('Falha ao processar a imagem gerada.', 'error');
+          setIsGenerating(false);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => {
+        triggerToast('Falha ao ler dados da imagem.', 'error');
+        setIsGenerating(false);
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('[PageCover] Failed to generate random cover:', err);
+      triggerToast('Falha ao gerar capa aleatória. Verifique sua conexão.', 'error');
+      setIsGenerating(false);
     }
   };
 
@@ -180,15 +232,19 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
 
               <div className="pt-2">
                 <button 
-                  onClick={() => {
-                    const randomSeed = Math.random().toString(36).substring(2, 10);
-                    const randomUrl = `https://picsum.photos/seed/${randomSeed}/1600/400`;
-                    onUpdatePage(page.id, { cover_image: randomUrl });
-                    setShowCoverModal(false);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors py-2"
+                  onClick={handleRandomCover}
+                  disabled={isGenerating}
+                  className="w-full flex items-center justify-center gap-2 text-brand-400 hover:text-brand-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors py-2"
                 >
-                  <Sparkles size={16} /> Gerar Capa Aleatória
+                  {isGenerating ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Baixando e gerando capa...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} /> Gerar Capa Aleatória
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -199,3 +255,4 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
     </>
   );
 });
+
