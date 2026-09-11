@@ -1,13 +1,15 @@
 import { Sparkles } from 'lucide-react';
 import type { DictionaryData, Collocation } from '../../../types/dictionary';
+import { InteractiveDictText } from './InteractiveDictText';
 
 interface DictionaryContentProps {
   dictionaryData: DictionaryData;
   languageTab: 'en' | 'pt';
   setSelectedColloc: (colloc: Collocation) => void;
+  onWordClick?: (word: string) => void;
 }
 
-export function DictionaryContent({ dictionaryData, languageTab, setSelectedColloc }: DictionaryContentProps) {
+export function DictionaryContent({ dictionaryData, languageTab, setSelectedColloc, onWordClick }: DictionaryContentProps) {
   return (
     <div className="flex flex-col gap-6 text-sm text-dark-text/90">
       {languageTab === 'en' && dictionaryData.english ? (
@@ -16,7 +18,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
             <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Definition</h4>
             <div className="flex flex-col gap-1.5">
               {dictionaryData.english.definitions.map((def, i) => (
-                <p key={i} className="leading-relaxed text-[15px] text-white/90">{def}</p>
+                <p key={i} className="leading-relaxed text-[15px] text-white/90">
+                  <InteractiveDictText text={def} onWordClick={onWordClick} />
+                </p>
               ))}
             </div>
           </div>
@@ -25,12 +29,16 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
             <>
               <div>
                 <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Etymology & Roots</h4>
-                <p className="leading-relaxed text-sm text-white/90">{dictionaryData.english.deep_dive.etymology}</p>
+                <p className="leading-relaxed text-sm text-white/90">
+                  <InteractiveDictText text={dictionaryData.english.deep_dive.etymology} onWordClick={onWordClick} />
+                </p>
               </div>
               
               <div>
                 <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Nuance & Connotation</h4>
-                <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{dictionaryData.english.deep_dive.nuance_explanation}</p>
+                <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">
+                  <InteractiveDictText text={dictionaryData.english.deep_dive.nuance_explanation} onWordClick={onWordClick} />
+                </p>
               </div>
             </>
           )}
@@ -42,7 +50,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
                 {dictionaryData.english.deep_dive.contextual_synonyms.map((syn, i) => (
                   <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
                     <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
-                    <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
+                    <span className="text-xs text-dark-subtext italic">
+                      <InteractiveDictText text={syn.nuance} onWordClick={onWordClick} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -83,7 +93,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
           {dictionaryData.english.context_explanation && (
             <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
               <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">In Context</h4>
-              <p className="leading-relaxed text-sm">{dictionaryData.english.context_explanation}</p>
+              <p className="leading-relaxed text-sm">
+                <InteractiveDictText text={dictionaryData.english.context_explanation} onWordClick={onWordClick} />
+              </p>
             </div>
           )}
 
@@ -92,7 +104,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
               <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Progressive Examples</h4>
               <ul className="space-y-3">
                 {dictionaryData.english.deep_dive.progressive_examples.map((ex, i) => (
-                  <li key={i} className="text-sm italic text-white/80 border-l-2 border-brand-500/50 pl-3">"{ex}"</li>
+                  <li key={i} className="text-sm italic text-white/80 border-l-2 border-brand-500/50 pl-3">
+                    "<InteractiveDictText text={ex} onWordClick={onWordClick} />"
+                  </li>
                 ))}
               </ul>
             </div>
@@ -101,7 +115,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
               <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Examples</h4>
               <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
                 {dictionaryData.english.examples.map((ex, i) => (
-                  <li key={i}>{ex}</li>
+                  <li key={i}>
+                    <InteractiveDictText text={ex} onWordClick={onWordClick} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -119,7 +135,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
             <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Significado</h4>
             <div className="flex flex-col gap-1.5">
               {dictionaryData.portuguese.definitions.map((def, i) => (
-                <p key={i} className="leading-relaxed text-[15px] text-white/90">{def}</p>
+                <p key={i} className="leading-relaxed text-[15px] text-white/90">
+                  <InteractiveDictText text={def} onWordClick={onWordClick} />
+                </p>
               ))}
             </div>
           </div>
@@ -128,12 +146,16 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
             <>
               <div>
                 <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Etimologia e Raízes</h4>
-                <p className="leading-relaxed text-sm text-white/90">{dictionaryData.portuguese.deep_dive.etymology}</p>
+                <p className="leading-relaxed text-sm text-white/90">
+                  <InteractiveDictText text={dictionaryData.portuguese.deep_dive.etymology} onWordClick={onWordClick} />
+                </p>
               </div>
               
               <div>
                 <h4 className="text-purple-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Nuances</h4>
-                <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">{dictionaryData.portuguese.deep_dive.nuance_explanation}</p>
+                <p className="text-sm text-white/90 leading-relaxed bg-brand-500/10 p-3 rounded-lg border border-brand-500/20">
+                  <InteractiveDictText text={dictionaryData.portuguese.deep_dive.nuance_explanation} onWordClick={onWordClick} />
+                </p>
               </div>
             </>
           )}
@@ -145,7 +167,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
                 {dictionaryData.portuguese.deep_dive.contextual_synonyms.map((syn, i) => (
                   <div key={i} className="bg-white/5 p-2 rounded border border-white/5">
                     <span className="font-semibold text-brand-200 text-sm mr-2">{syn.word}</span>
-                    <span className="text-xs text-dark-subtext italic">{syn.nuance}</span>
+                    <span className="text-xs text-dark-subtext italic">
+                      <InteractiveDictText text={syn.nuance} onWordClick={onWordClick} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -186,7 +210,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
           {dictionaryData.portuguese.context_explanation && (
             <div className="bg-brand-500/5 border-l-2 border-brand-500 pl-3 py-1">
               <h4 className="text-brand-400 font-semibold mb-1 text-[11px] uppercase tracking-wider">No Contexto</h4>
-              <p className="leading-relaxed text-sm">{dictionaryData.portuguese.context_explanation}</p>
+              <p className="leading-relaxed text-sm">
+                <InteractiveDictText text={dictionaryData.portuguese.context_explanation} onWordClick={onWordClick} />
+              </p>
             </div>
           )}
 
@@ -194,7 +220,9 @@ export function DictionaryContent({ dictionaryData, languageTab, setSelectedColl
             <h4 className="text-brand-400 font-semibold mb-1.5 text-[11px] uppercase tracking-wider">Exemplos</h4>
             <ul className="list-disc pl-4 space-y-1.5 opacity-90 italic">
               {dictionaryData.portuguese.examples.map((ex, i) => (
-                <li key={i}>{ex}</li>
+                <li key={i}>
+                  <InteractiveDictText text={ex} onWordClick={onWordClick} />
+                </li>
               ))}
             </ul>
           </div>
