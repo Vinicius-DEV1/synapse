@@ -84,7 +84,7 @@ export const FilesHeader: React.FC<FilesHeaderProps> = ({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   return (
-    <header className="border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md flex flex-col select-none">
+    <header className="relative z-30 border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md flex flex-col select-none">
       {/* Top Toolbar */}
       <div className="px-3.5 py-2 flex items-center justify-between gap-3 min-w-0 flex-wrap sm:flex-nowrap">
         {/* Left: Sidebar Toggle, Navigation Buttons & Breadcrumbs */}
