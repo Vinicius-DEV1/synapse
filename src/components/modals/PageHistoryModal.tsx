@@ -13,6 +13,41 @@ interface PageHistoryModalProps {
   onClose: () => void;
 }
 
+type DiffExecutor = (oldHtml: string, newHtml: string) => string;
+
+function resolveHtmlDiffExecutor(moduleRef: unknown): DiffExecutor | null {
+  if (!moduleRef) return null;
+
+  if (typeof moduleRef === 'object' || typeof moduleRef === 'function') {
+    const candidate = moduleRef as Record<string, unknown>;
+
+    // Case 1: direct .execute method on module (e.g. { execute: fn })
+    if (typeof candidate.execute === 'function') {
+      return candidate.execute as DiffExecutor;
+    }
+
+    // Case 2: default export object containing .execute (e.g. { default: { execute: fn } })
+    if (
+      candidate.default &&
+      typeof candidate.default === 'object' &&
+      typeof (candidate.default as Record<string, unknown>).execute === 'function'
+    ) {
+      return (candidate.default as Record<string, unknown>).execute as DiffExecutor;
+    }
+
+    // Case 3: default export function with attached .execute (e.g. function with v.execute)
+    if (
+      typeof candidate.default === 'function' &&
+      'execute' in candidate.default &&
+      typeof (candidate.default as unknown as { execute: unknown }).execute === 'function'
+    ) {
+      return (candidate.default as unknown as { execute: DiffExecutor }).execute;
+    }
+  }
+
+  return null;
+}
+
 export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalProps) {
   const [history, setHistory] = useState<PageHistoryEntry[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -54,12 +89,23 @@ export default function PageHistoryModal({ pageId, onClose }: PageHistoryModalPr
     if (!currentEntry) return '';
     const oldHtml = previousEntry ? previousEntry.content : '';
     const newHtml = currentEntry.content;
-    const rawDiff = HtmlDiff.execute(oldHtml, newHtml);
-    return DOMPurify.sanitize(rawDiff, {
-      ADD_TAGS: ['ins', 'del'],
-      FORBID_TAGS: ['script', 'iframe', 'object'],
-    });
+
+    try {
+      const executeDiff = resolveHtmlDiffExecutor(HtmlDiff);
+      const rawDiff = executeDiff ? executeDiff(oldHtml, newHtml) : newHtml;
+      return DOMPurify.sanitize(rawDiff, {
+        ADD_TAGS: ['ins', 'del'],
+        FORBID_TAGS: ['script', 'iframe', 'object'],
+      });
+    } catch (diffErr) {
+      console.error('[PageHistoryModal] Error computing HTML diff:', diffErr);
+      return DOMPurify.sanitize(newHtml, {
+        ADD_TAGS: ['ins', 'del'],
+        FORBID_TAGS: ['script', 'iframe', 'object'],
+      });
+    }
   }, [currentEntry, previousEntry]);
+
 
   return (
     <Portal>
