@@ -5,8 +5,7 @@ import type { Tab } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
 import { isDesktopApp } from '../../../services/platform';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { windowService } from '../../../services/windowService';
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
@@ -43,11 +42,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
     if (e.buttons === 1) {
-      try {
-        getCurrentWindow().startDragging();
-      } catch {
-        invoke('app_window_start_dragging').catch(() => {});
-      }
+      windowService.startDragging();
     }
   };
 
@@ -55,11 +50,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     if (!isDesktopApp()) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, a, select, [role="button"], [data-no-drag]')) return;
-    try {
-      getCurrentWindow().toggleMaximize();
-    } catch {
-      invoke('app_window_toggle_maximize').catch(() => {});
-    }
+    windowService.toggleMaximize();
   };
 
   if (state.sidebarCollapsed) {

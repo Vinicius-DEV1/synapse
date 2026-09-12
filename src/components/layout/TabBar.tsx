@@ -9,8 +9,7 @@ import WindowControls from './WindowControls';
 import TabContextMenu from './TabContextMenu';
 import { triggerHaptic } from '../../services/haptics';
 import { isDesktopApp } from '../../services/platform';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { windowService } from '../../services/windowService';
 import { getSettings } from '../../utils/settings';
 
 interface TabItemProps {
@@ -314,11 +313,7 @@ export default function TabBar() {
       return;
     }
     if (e.buttons === 1) {
-      try {
-        getCurrentWindow().startDragging();
-      } catch {
-        invoke('app_window_start_dragging').catch(() => {});
-      }
+      windowService.startDragging();
     }
   }, []);
 
@@ -332,11 +327,7 @@ export default function TabBar() {
     ) {
       return;
     }
-    try {
-      getCurrentWindow().toggleMaximize();
-    } catch {
-      invoke('app_window_toggle_maximize').catch(() => {});
-    }
+    windowService.toggleMaximize();
   }, []);
 
   return (
