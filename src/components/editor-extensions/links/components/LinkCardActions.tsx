@@ -12,6 +12,7 @@ interface LinkCardActionsProps {
   color?: string;
   isCustomColor: boolean;
   watched?: boolean;
+  watching?: boolean;
   notes: string;
   showNotes: boolean;
   isInsideGroup: boolean;
@@ -21,6 +22,7 @@ interface LinkCardActionsProps {
   setShowColorPicker: (show: boolean) => void;
   onChangeColor?: (color: string) => void;
   onToggleWatched?: (e: React.MouseEvent) => void;
+  onToggleWatching?: (e: React.MouseEvent) => void;
   onConvertToText?: (e: React.MouseEvent) => void;
   onToggleNotes: (e: React.MouseEvent) => void;
   onUngroup: (e: React.MouseEvent) => void;
@@ -46,6 +48,7 @@ export default function LinkCardActions({
   color,
   isCustomColor: _isCustomColor,
   watched,
+  watching,
   notes,
   showNotes,
   isInsideGroup,
@@ -55,6 +58,7 @@ export default function LinkCardActions({
   setShowColorPicker,
   onChangeColor,
   onToggleWatched,
+  onToggleWatching,
   onConvertToText,
   onToggleNotes,
   onUngroup,
@@ -179,7 +183,9 @@ export default function LinkCardActions({
           onCaptureScrap={onCaptureScrap}
           onOpenScrap={onOpenScrap}
           watched={watched}
+          watching={watching}
           onToggleWatched={onToggleWatched}
+          onToggleWatching={onToggleWatching}
           onOpenPalette={() => setShowColorPicker(true)}
           onCopyLink={handleCopyLink}
           isReloading={isReloading}

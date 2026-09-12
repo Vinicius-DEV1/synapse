@@ -83,6 +83,7 @@ export const LinkPreviewBlock = Node.create({
       playlistCount: numberAttr('playlistCount', null),
       showNotes: booleanAttr('showNotes', false),
       watched: booleanAttr('watched', false),
+      watching: booleanAttr('watching', false),
       color: {
         default: 'default',
         parseHTML: (element: HTMLElement) => element.getAttribute('data-color') || 'default',

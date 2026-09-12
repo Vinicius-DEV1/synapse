@@ -50,6 +50,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
     y: number;
     query: string;
     mode?: 'link' | 'create';
+    targetPos?: number;
   } | null>(null);
 
   const [calendarEventModal, setCalendarEventModal] = useState<{

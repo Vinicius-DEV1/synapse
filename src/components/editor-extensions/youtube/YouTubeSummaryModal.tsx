@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import MermaidViewer from './MermaidViewer';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
 import {
@@ -316,6 +318,7 @@ export default function YouTubeSummaryModal({
                 <div className="prose prose-invert max-w-none text-zinc-200 text-sm sm:text-base leading-relaxed space-y-4">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
                     components={{
                       h1: ({ children }) => (
                         <h1 className="text-xl sm:text-2xl font-bold text-white mb-4 mt-2 pb-3 border-b border-white/10 tracking-tight">
@@ -342,8 +345,32 @@ export default function YouTubeSummaryModal({
                           {children}
                         </blockquote>
                       ),
+                      details: ({ children, ...props }) => (
+                        <details
+                          {...props}
+                          className="group/details my-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.035] transition-all duration-200 overflow-hidden open:border-brand-500/30 open:bg-brand-500/[0.02] open:shadow-md"
+                        >
+                          {children}
+                        </details>
+                      ),
+                      summary: ({ children, ...props }) => (
+                        <summary
+                          {...props}
+                          className="px-4 py-3 cursor-pointer text-xs sm:text-sm font-medium text-white/90 select-none flex items-center justify-between list-none [&::-webkit-details-marker]:hidden hover:text-white transition-colors"
+                        >
+                          <span className="flex items-center gap-2 flex-1">{children}</span>
+                          <ChevronDown
+                            size={15}
+                            className="text-zinc-400 group-open/details:rotate-180 transition-transform duration-200 shrink-0 ml-2"
+                          />
+                        </summary>
+                      ),
                       code: ({ className, children }) => {
                         const match = /language-(\w+)/.exec(className || '');
+                        const lang = match ? match[1] : '';
+                        if (lang === 'mermaid') {
+                          return <MermaidViewer chart={String(children)} />;
+                        }
                         const isBlock = Boolean(match || String(children).includes('\n'));
                         if (isBlock) {
                           return (

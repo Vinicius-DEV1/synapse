@@ -88,7 +88,20 @@ DIRETRIZES FUNDAMENTAIS:
      * ## 💡 Conceitos Fundamentais & Teoria [mm:ss] (Explicações claras da base teórica)
      * ## 🛠️ Passo a Passo & Conteúdo Detalhado (Cada etapa explicada em profundidade com seu [mm:ss])
      * ## ⭐ Dicas Práticas, Boas Práticas & Atenções [mm:ss] (Alertas, recomendações e cuidados citados)
-     * ## 📌 Síntese Rápida & Fixação (Resumo consolidado dos pontos-chave para revisão rápida)`;
+     * ## 📌 Síntese Rápida & Fixação (Resumo consolidado dos pontos-chave para revisão rápida)
+     * ## 🧠 Quiz de Fixação & Autoavaliação (Perguntas desafiadoras com gabarito explicativo)
+5. DIAGRAMAS CONCEITUAIS MERMAID:
+   - Sempre que o tema envolver processos, fluxos de decisão, arquiteturas, ciclos de vida, modelos conceituais ou hierarquias, inclua 1 a 2 diagramas em blocos \`\`\`mermaid (ex: graph TD, flowchart LR, sequenceDiagram, mindmap).
+   - Use sintaxe estritamente correta no Mermaid, colocando sempre aspas em rótulos com caracteres especiais ou parênteses: ex. A["Início"] --> B["Processamento"].
+6. 🧠 QUIZ DE FIXAÇÃO & AUTOAVALIAÇÃO INTERATIVO:
+   - No final do resumo, crie SEMPRE a seção "## 🧠 Quiz de Fixação & Autoavaliação" com 3 a 5 perguntas desafiadoras para testar o aprendizado.
+   - Formate cada questão usando a estrutura HTML <details> para permitir que o estudante tente responder antes de conferir a resposta:
+     <details>
+     <summary>❓ <b>Pergunta 1:</b> [Enunciado instigante]</summary>
+
+     > **Gabarito & Explicação:**
+     > [Explicação clara do porquê do conceito correto com base na aula]
+     </details>`;
 
 /**
  * Parses timestamp string (mm:ss or hh:mm:ss) into total seconds.
@@ -223,6 +236,7 @@ DIRETRIZES FUNDAMENTAIS DE REVISÃO CRUZADA (ÁUDIO + VISÃO COMPUTACIONAL):
      * ## 🛠️ Passo a Passo Detalhado (com blocos de código e diagramas reais)
      * ## ⭐ Dicas Práticas & Boas Práticas [mm:ss]
      * ## 📌 Síntese Rápida & Fixação
+     * ## 🧠 Quiz de Fixação & Autoavaliação (com 3 a 5 perguntas interativas em tags <details>)
 
 TRANSCRIÇÃO ORIGINAL COMPLETA:
 ---

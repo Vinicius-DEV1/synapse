@@ -84,6 +84,21 @@ export default function YouTubePlaylistItemActions({
 
   return (
     <div className="flex items-center gap-1 shrink-0 ml-2 relative">
+      {/* Quick Summary Pill Button (revealed on hover of the playlist item row) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onOpenSummary();
+        }}
+        className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/30 text-xs font-medium cursor-pointer shadow-xs shrink-0"
+        title="Resumo do Vídeo com IA"
+      >
+        <Sparkles size={13} className="text-brand-400" />
+        <span>Resumo</span>
+      </button>
+
       {/* 3 dots menu button */}
       <button
         ref={buttonRef}

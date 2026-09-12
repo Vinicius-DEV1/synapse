@@ -15,7 +15,7 @@ export interface SlashMenuState {
 }
 
 interface UseSlashCommandProps {
-  setPageSearchMenu: React.Dispatch<React.SetStateAction<{ isOpen: boolean, x: number, y: number, query: string, mode?: 'link' | 'create' } | null>>;
+  setPageSearchMenu: React.Dispatch<React.SetStateAction<{ isOpen: boolean, x: number, y: number, query: string, mode?: 'link' | 'create', targetPos?: number } | null>>;
   setFocusModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTime?: number, initialTag?: string, initialDesc?: string } | null>>;
   setAlarmModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, initialTimeStr?: string } | null>>;
   setFileUploadModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, isLink: boolean } | null>>;
@@ -24,6 +24,39 @@ interface UseSlashCommandProps {
   setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
   setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
   setGroupBundleModal: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+/**
+ * Extracts argument passed after the slash command keyword.
+ * If the user only typed the command name or a prefix to filter the slash menu (e.g. "/vinc", "/vincular", "/page"),
+ * the argument is empty string ('') so modals open clean/blank.
+ * If arguments were typed after spaces (e.g. "/vincular Minha Nota"), returns the argument.
+ */
+export function extractSlashCommandArgument(rawQuery: string, aliases: string[]): string {
+  const trimmed = (rawQuery || '').trim();
+  if (!trimmed) return '';
+
+  const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+
+  for (const alias of sortedAliases) {
+    const lowerTrimmed = trimmed.toLowerCase();
+    const lowerAlias = alias.toLowerCase();
+
+    if (lowerTrimmed === lowerAlias) {
+      return '';
+    }
+
+    if (lowerTrimmed.startsWith(lowerAlias + ' ') || lowerTrimmed.startsWith(lowerAlias + '\t')) {
+      return trimmed.substring(alias.length).trim();
+    }
+  }
+
+  if (!trimmed.includes(' ')) {
+    return '';
+  }
+
+  const firstSpaceIndex = trimmed.indexOf(' ');
+  return trimmed.substring(firstSpaceIndex + 1).trim();
 }
 
 /**
@@ -150,13 +183,13 @@ export function useSlashCommand({
       case 'video': chain.run(); setMediaSelectModal({ isOpen: true, type: 'video' }); break;
       case 'livro': chain.run(); setMediaSelectModal({ isOpen: true, type: 'book' }); break;
       case 'event': {
-        const parts = (slashMenu.query || '').trim().split(' ');
-        let initialTitle = '';
-        
-        if (parts[0] && parts[0].toLowerCase() === 'event') parts.shift();
-        
-        initialTitle = parts.join(' ');
-        
+        const initialTitle = extractSlashCommandArgument(slashMenu.query || '', [
+          'evento da agenda',
+          'evento',
+          'agenda',
+          'calendario',
+          'event',
+        ]);
         chain.run();
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
@@ -167,28 +200,49 @@ export function useSlashCommand({
       case 'page-create':
       case 'criar-pagina':
       case 'nova-pagina': {
-        const queryText = slashMenu.query.replace(/^(page-create|criar-pagina|nova-pagina|criar|nova)\s*/i, '').trim();
+        const queryText = extractSlashCommandArgument(slashMenu.query || '', [
+          'criar pagina',
+          'criar-pagina',
+          'nova pagina',
+          'nova-pagina',
+          'subpagina',
+          'page create',
+          'new page',
+          'criar',
+          'nova',
+        ]);
         chain.run();
         setPageSearchMenu({
           isOpen: true,
           x: slashMenu.x,
           y: slashMenu.y,
           query: queryText,
-          mode: 'create'
+          mode: 'create',
+          targetPos: startPos,
         });
         break;
       }
       case 'page':
       case 'page-link':
       case 'vincular-pagina': {
-        const queryText = slashMenu.query.replace(/^(page-link|vincular-pagina|page|vincular|pagina)\s*/i, '').trim();
+        const queryText = extractSlashCommandArgument(slashMenu.query || '', [
+          'vincular pagina',
+          'vincular-pagina',
+          'link pagina',
+          'page-link',
+          'vincular',
+          'vinculo',
+          'pagina',
+          'page',
+        ]);
         chain.run();
         setPageSearchMenu({
           isOpen: true,
           x: slashMenu.x,
           y: slashMenu.y,
           query: queryText,
-          mode: 'link'
+          mode: 'link',
+          targetPos: startPos,
         }); 
         break;
       }
@@ -206,13 +260,11 @@ export function useSlashCommand({
         chain.insertTable({ rows: 5, cols: 8, withHeaderRow: true }).run();
         break;
       case 'foco': {
-        const parts = (slashMenu.query || '').trim().split(' ');
+        const arg = extractSlashCommandArgument(slashMenu.query || '', ['foco', 'timer', 'pomodoro']);
+        const parts = arg ? arg.split(' ') : [];
         let initialTime = 30;
         let initialTag = '';
         let initialDesc = '';
-        
-        parts.shift();
-        if (parts[0] && parts[0].toLowerCase() === 'foco') parts.shift();
         
         for (const p of parts) {
           if (!isNaN(Number(p)) && Number(p) > 0) {
@@ -229,14 +281,13 @@ export function useSlashCommand({
         break;
       }
       case 'alarme': {
-        const parts = (slashMenu.query || '').trim().split(' ');
+        const arg = extractSlashCommandArgument(slashMenu.query || '', ['alarme', 'despertador']);
         let initialTimeStr = '12:00';
         
-        if (parts[0] && parts[0].toLowerCase() === 'alarme') parts.shift();
-        
-        for (const p of parts) {
-          if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(p)) {
-            initialTimeStr = p.padStart(5, '0');
+        if (arg) {
+          const timeMatch = arg.split(' ').find(p => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(p));
+          if (timeMatch) {
+            initialTimeStr = timeMatch.padStart(5, '0');
           }
         }
         
@@ -245,8 +296,15 @@ export function useSlashCommand({
         break;
       }
       case 'scrap': {
-        const rawQuery = (slashMenu.query || '').trim();
-        let targetUrl = rawQuery.replace(/^(scrap|snapshot|web|capturar)\s*/i, '').trim();
+        let targetUrl = extractSlashCommandArgument(slashMenu.query || '', [
+          'snapshot web',
+          'snapshot',
+          'scrap',
+          'capturar',
+          'offline',
+          'copia',
+          'web',
+        ]);
 
         chain.run();
 
@@ -381,9 +439,13 @@ export function useSlashCommand({
         break;
       }
       case 'evento': {
-        const parts = (slashMenu.query || '').trim().split(' ');
-        if (parts[0] && parts[0].toLowerCase() === 'evento') parts.shift();
-        const initialTitle = parts.join(' ').trim() || '';
+        const initialTitle = extractSlashCommandArgument(slashMenu.query || '', [
+          'evento da agenda',
+          'evento',
+          'agenda',
+          'calendario',
+          'event',
+        ]);
         chain.run();
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;

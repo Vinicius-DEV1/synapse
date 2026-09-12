@@ -11,6 +11,7 @@ export interface LinkPreviewAttrs {
   playlistCount?: number | null;
   showNotes: boolean;
   watched?: boolean;
+  watching?: boolean;
   color?: string;
   scrapId?: string | null;
   scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;

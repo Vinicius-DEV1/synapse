@@ -27,9 +27,9 @@ interface EditorModalHostProps {
   slashMenu: SlashMenuState | null;
   setSlashMenu: React.Dispatch<React.SetStateAction<SlashMenuState | null>>;
   executeSlashCommand: (commandId: string, editor: Editor | null) => void;
-  pageSearchMenu: { isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create' } | null;
+  pageSearchMenu: { isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create'; targetPos?: number } | null;
   setPageSearchMenu: React.Dispatch<
-    React.SetStateAction<{ isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create' } | null>
+    React.SetStateAction<{ isOpen: boolean; x: number; y: number; query: string; mode?: 'link' | 'create'; targetPos?: number } | null>
   >;
   onCreateLinkedPage?: (title: string) => Promise<string | null>;
   viewerState: {
@@ -177,26 +177,30 @@ export default function EditorModalHost({
           y={pageSearchMenu.y}
           onClose={() => setPageSearchMenu(null)}
           onSelect={async (selectedPageId: string, title: string) => {
+            const savedTargetPos = pageSearchMenu.targetPos;
+            setPageSearchMenu(null);
+            setSlashMenu(null);
+
             let finalId: string | null = selectedPageId;
             if (selectedPageId === 'new' && onCreateLinkedPage) {
               finalId = await onCreateLinkedPage(title);
             }
             if (finalId && editor && !editor.isDestroyed) {
-              const rawStart = slashMenu
-                ? slashMenu.startPos
-                : editor.state.selection.$head.pos - pageSearchMenu.query.length - 1;
               const docSize = editor.state.doc.content.size;
-              const startPos = Math.max(0, Math.min(rawStart, docSize));
-              const endPos = Math.max(startPos, Math.min(editor.state.selection.$head.pos, docSize));
+              const targetPos = typeof savedTargetPos === 'number'
+                ? Math.max(0, Math.min(savedTargetPos, docSize))
+                : editor.state.selection.$head.pos;
 
-              editor.commands.deleteRange({ from: startPos, to: endPos });
-              editor.chain().focus().insertContent({
-                type: 'pageReference',
-                attrs: { pageId: finalId, title: title },
-              }).run();
+              editor
+                .chain()
+                .focus()
+                .setTextSelection(targetPos)
+                .insertContent({
+                  type: 'pageReference',
+                  attrs: { pageId: finalId, title: title },
+                })
+                .run();
             }
-            setPageSearchMenu(null);
-            setSlashMenu(null);
           }}
         />
       )}
