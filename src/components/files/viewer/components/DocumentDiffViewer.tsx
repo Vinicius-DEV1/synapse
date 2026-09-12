@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import HtmlDiff from 'htmldiff-js';
+import DOMPurify from 'dompurify';
 import { Check, X, FileDiff, Columns2, AlignLeft } from 'lucide-react';
 
 interface DocumentDiffViewerProps {
@@ -103,7 +104,7 @@ export function DocumentDiffViewer({
         {viewMode === 'diff' ? (
           <div
             className="whitespace-pre-wrap word-break text-gray-200"
-            dangerouslySetInnerHTML={{ __html: diffHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(diffHtml) }}
           />
         ) : (
           <pre className="whitespace-pre-wrap word-break text-gray-100 font-mono text-xs">
