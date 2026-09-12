@@ -273,7 +273,46 @@ describe('LinkPreviewBlock Component', () => {
     fireEvent.click(summaryButton);
 
     // YouTubeSummaryModal should be rendered
-    expect(await findByText('IA Didática')).toBeDefined();
+    expect(await findByText('RESUMO IA')).toBeDefined();
+  });
+
+  it('does not render summary hover pill when video has no summary, but renders it when summary exists', async () => {
+    const ytProps = {
+      ...mockProps,
+      node: {
+        attrs: {
+          url: 'https://www.youtube.com/watch?v=no_summary_vid',
+          title: 'Vídeo Sem Resumo',
+          channel: 'Canal Dev',
+          duration: 600,
+          isPlaylist: false,
+          notes: '',
+          showNotes: false,
+        },
+      },
+    };
+
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { queryByTitle } = render(<Component {...ytProps} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Pill should not be present initially
+    expect(queryByTitle('Abrir resumo didático em tela de foco')).toBeNull();
+
+    // Dispatch event simulating summary saved
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent('youtube-summary-saved', { detail: { videoId: 'no_summary_vid' } })
+      );
+    });
+
+    // Now the hover pill should be rendered with opacity-0 group-hover/link:opacity-100
+    const pill = queryByTitle('Abrir resumo didático em tela de foco');
+    expect(pill).not.toBeNull();
+    expect(pill?.closest('span')?.className).toContain('group-hover/link:opacity-100');
   });
 
   it('displays "Assistir Aqui" button for YouTube video links and opens watch modal on click', async () => {

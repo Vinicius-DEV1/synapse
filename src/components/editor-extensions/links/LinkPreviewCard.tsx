@@ -9,6 +9,7 @@ import {
   FileArchive,
   Loader2,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import YouTubeSummaryModal from '../youtube/YouTubeSummaryModal';
@@ -19,6 +20,10 @@ import LinkDragControls from './components/LinkDragControls';
 import LinkCardActions from './components/LinkCardActions';
 import LinkEmbeddedVideo from './components/LinkEmbeddedVideo';
 import type { DuplicatePageInfo } from './hooks/useLinkDuplicates';
+import {
+  hasExistingVideoSummary,
+  extractYouTubeVideoId,
+} from '../../../services/youtube/youtubeSummaryService';
 
 interface LinkPreviewCardProps {
   url: string;
@@ -120,6 +125,33 @@ export default function LinkPreviewCard({
   }, [showColorPicker]);
 
   const isYouTube = isYouTubeUrl(url);
+  const videoId = isYouTube && !isPlaylist ? extractYouTubeVideoId(url) : null;
+  const [hasSummary, setHasSummary] = useState(false);
+
+  useEffect(() => {
+    if (!videoId) {
+      setHasSummary(false);
+      return;
+    }
+
+    let isMounted = true;
+    hasExistingVideoSummary(videoId).then((exists) => {
+      if (isMounted) setHasSummary(exists);
+    });
+
+    const handleSummarySaved = (e: Event) => {
+      const custom = e as CustomEvent<{ videoId: string }>;
+      if (custom.detail?.videoId === videoId && isMounted) {
+        setHasSummary(true);
+      }
+    };
+
+    window.addEventListener('youtube-summary-saved', handleSummarySaved);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('youtube-summary-saved', handleSummarySaved);
+    };
+  }, [videoId]);
 
   const domain = (() => {
     try {
@@ -341,6 +373,26 @@ export default function LinkPreviewCard({
                       Ver Playlist
                     </button>
                   </>
+                )}
+
+                {/* AI Video Summary Pill (Only rendered if summary already exists, revealed on card hover) */}
+                {hasSummary && isYouTube && !isPlaylist && (
+                  <span className="inline-flex items-center gap-2 opacity-0 group-hover/link:opacity-100 transition-opacity duration-200 pointer-events-none group-hover/link:pointer-events-auto">
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowSummaryModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/30 text-[10px] font-medium transition-colors shadow-xs group/summary cursor-pointer"
+                      title="Abrir resumo didático em tela de foco"
+                    >
+                      <Sparkles size={11} className="text-brand-400 group-hover/summary:scale-110 transition-transform" />
+                      <span>Resumo do Vídeo</span>
+                    </button>
+                  </span>
                 )}
               </div>
             </div>

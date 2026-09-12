@@ -139,9 +139,9 @@ describe('YouTubePlaylistModal', () => {
     expect(screen.getByText('Copiar Link do Vídeo')).toBeDefined();
     expect(screen.getByText('Assistir no YouTube')).toBeDefined();
 
-    // Clicking summary opens the summary modal
+    // Clicking summary opens the summary focus screen
     fireEvent.click(summaryBtn);
-    expect(await screen.findByText('IA Didática')).toBeDefined();
+    expect(await screen.findByText('RESUMO IA')).toBeDefined();
     expect(await screen.findByText('Resumo Didático da Aula')).toBeDefined();
   });
 
