@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import hljs from 'highlight.js';
+import DOMPurify from 'dompurify';
 import { ScrollablePre, ScrollableDiv } from '../../../utils/scroll-forwarding';
 
 interface TextPreviewerProps {
@@ -88,7 +89,7 @@ const mdRenderers: Components = {
               {language}
             </div>
             <ScrollablePre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm border border-white/5 font-mono leading-relaxed">
-              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+              <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
             </ScrollablePre>
           </div>
         );

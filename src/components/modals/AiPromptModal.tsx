@@ -3,6 +3,7 @@ import { Sparkles, X, Image as ImageIcon, FileText, Trash2, Plus, Send, Check, C
 import { promptGemini } from '../../services/gemini';
 import { Portal } from '../ui/Portal';
 import { AiChatMarkdown } from '../ai-sidebar/AiChatMarkdown';
+import DOMPurify from 'dompurify';
 import type { AiChatMessage, AiChatMessagePart } from '../../types/store';
 import { parseSearchReplaceBlocks, applySearchReplace, generateDiffHtml } from '../editor-extensions/hooks/blockDiffEngine';
 
@@ -354,7 +355,7 @@ export default function AiPromptModal({
                         </div>
                         <div
                           className="diff-viewer-container text-[11.5px] font-mono p-2.5 bg-black/40 rounded-lg border border-white/5 overflow-x-auto whitespace-pre-wrap leading-relaxed select-text max-h-[220px] custom-scrollbar"
-                          dangerouslySetInnerHTML={{ __html: diffHtml }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(diffHtml) }}
                         />
                       </div>
                     ) : isQuestionJson ? (
