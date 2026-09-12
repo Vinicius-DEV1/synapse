@@ -1,31 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Minus, Square, Copy, X } from 'lucide-react';
-import { isDesktopApp } from '../../services/platform';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { windowService } from '../../services/windowService';
 
 export default function WindowControls() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    if (!isDesktopApp()) return;
+    if (!windowService.isSupported()) return;
     setIsDesktop(true);
 
-    try {
-      const appWindow = getCurrentWindow();
-      appWindow.isMaximized().then(setIsMaximized).catch(() => {});
+    windowService.isMaximized().then(setIsMaximized).catch(() => {});
+    const cleanup = windowService.onResized(() => {
+      windowService.isMaximized().then(setIsMaximized).catch(() => {});
+    });
 
-      const unlistenPromise = appWindow.onResized(() => {
-        appWindow.isMaximized().then(setIsMaximized).catch(() => {});
-      });
-
-      return () => {
-        unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
-      };
-    } catch {
-      // Graceful fallback in non-tauri or test environments
-    }
+    return () => {
+      cleanup();
+    };
   }, []);
 
   if (!isDesktop) {
@@ -34,45 +26,18 @@ export default function WindowControls() {
 
   const handleMinimize = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await getCurrentWindow().minimize();
-    } catch {
-      try {
-        await invoke('app_window_minimize');
-      } catch (err) {
-        console.warn('[WindowControls] Falha ao minimizar:', err);
-      }
-    }
+    await windowService.minimize();
   };
 
   const handleToggleMaximize = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      const win = getCurrentWindow();
-      await win.toggleMaximize();
-      const maximized = await win.isMaximized();
-      setIsMaximized(maximized);
-    } catch {
-      try {
-        const maximized = await invoke<boolean>('app_window_toggle_maximize');
-        setIsMaximized(maximized);
-      } catch (err) {
-        console.warn('[WindowControls] Falha ao maximizar/restaurar:', err);
-      }
-    }
+    const maximized = await windowService.toggleMaximize();
+    setIsMaximized(maximized);
   };
 
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await getCurrentWindow().close();
-    } catch {
-      try {
-        await invoke('app_window_close');
-      } catch (err) {
-        console.warn('[WindowControls] Falha ao fechar:', err);
-      }
-    }
+    await windowService.close();
   };
 
   return (
