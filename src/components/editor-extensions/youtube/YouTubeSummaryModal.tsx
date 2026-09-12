@@ -44,6 +44,7 @@ export default function YouTubeSummaryModal({
   const [rawTranscript, setRawTranscript] = useState<string | null>(null);
   const [showRawTranscript, setShowRawTranscript] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [framesCount, setFramesCount] = useState<number | undefined>(undefined);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
@@ -110,6 +111,9 @@ export default function YouTubeSummaryModal({
           title,
           channel,
           forceRegenerate,
+          onProgress: (msg) => {
+            if (isMountedRef.current) setStatusMessage(msg);
+          },
         });
 
         if (statusTimerRef.current) {
@@ -121,6 +125,7 @@ export default function YouTubeSummaryModal({
 
         setSummary(result.summary);
         setRawTranscript(result.record.raw_transcript || null);
+        setFramesCount(result.framesAnalyzed);
       } catch (err: unknown) {
         if (!isMountedRef.current) return;
         const msg = err instanceof Error ? err.message : String(err);
@@ -182,7 +187,7 @@ export default function YouTubeSummaryModal({
                   {title || 'Resumo do Vídeo'}
                 </h2>
                 <span className="px-1.5 py-0.5 text-[10px] uppercase font-mono font-semibold rounded bg-brand-500/10 text-brand-300 border border-brand-500/20 shrink-0">
-                  RESUMO IA
+                  {framesCount && framesCount > 0 ? `RESUMO IA • ${framesCount} FRAMES` : 'RESUMO IA'}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 flex items-center gap-2 font-mono mt-0.5 flex-wrap">
@@ -199,7 +204,7 @@ export default function YouTubeSummaryModal({
                     <span>~{estimatedMinutes} min de leitura</span>
                   </>
                 ) : (
-                  <span>Didático & Minutado</span>
+                  <span>{framesCount && framesCount > 0 ? 'Visão Computacional & Minutagens' : 'Didático & Minutado'}</span>
                 )}
                 {url && (
                   <>

@@ -361,6 +361,7 @@ pub fn run() {
             cmd_youtube::youtube_get_summary,
             cmd_youtube::youtube_save_summary,
             cmd_youtube::youtube_get_stream,
+            cmd_youtube::youtube_extract_frames,
             cmd_youtube::youtube_get_watched,
             cmd_youtube::youtube_set_watched,
             cmd_youtube::youtube_download,

@@ -104,7 +104,7 @@ export const tauriLofiApi = {
   },
 };
 
-import type { IYouTubeAPI, YouTubeTranscriptResult, YouTubeSummaryRecord, YouTubeStreamInfo } from '../types';
+import type { IYouTubeAPI, YouTubeTranscriptResult, YouTubeSummaryRecord, YouTubeStreamInfo, YouTubeFrameResult } from '../types';
 
 export const tauriYoutubeApi: IYouTubeAPI = {
   fetchInfo: async (url: string) => await invoke('youtube_fetch_info', { url }),
@@ -125,6 +125,8 @@ export const tauriYoutubeApi: IYouTubeAPI = {
   saveSummary: async (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) =>
     await invoke<boolean>('youtube_save_summary', { videoId, title, channel, summary, rawTranscript }),
   getStream: async (url: string) => await invoke<YouTubeStreamInfo>('youtube_get_stream', { url }),
+  extractFrames: async (streamUrl: string, timestamps: number[]) =>
+    await invoke<YouTubeFrameResult[]>('youtube_extract_frames', { streamUrl, timestamps }),
 };
 
 export const tauriAudioApi = {

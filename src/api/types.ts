@@ -376,6 +376,12 @@ export interface YouTubeStreamInfo {
   audio_url?: string | null;
 }
 
+export interface YouTubeFrameResult {
+  timestamp: string;
+  seconds: number;
+  data_url: string;
+}
+
 export interface IYouTubeAPI {
   fetchInfo: (url: string) => Promise<any>;
   fetchPlaylistInfo: (url: string) => Promise<any>;
@@ -387,6 +393,7 @@ export interface IYouTubeAPI {
   getSummary?: (videoId: string) => Promise<YouTubeSummaryRecord | null>;
   saveSummary?: (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) => Promise<boolean>;
   getStream?: (url: string) => Promise<YouTubeStreamInfo>;
+  extractFrames?: (streamUrl: string, timestamps: number[]) => Promise<YouTubeFrameResult[]>;
   [key: string]: any;
 }
 

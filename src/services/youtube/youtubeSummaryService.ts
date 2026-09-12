@@ -1,5 +1,5 @@
 import { promptGemini } from '../gemini';
-import type { YouTubeSummaryRecord, YouTubeTranscriptResult } from '../../api/types';
+import type { YouTubeSummaryRecord, YouTubeTranscriptResult, YouTubeFrameResult } from '../../api/types';
 
 /**
  * In-memory LRU-like cache for 0ms instantaneous retrieval during active app session.
@@ -91,7 +91,69 @@ DIRETRIZES FUNDAMENTAIS:
      * ## 📌 Síntese Rápida & Fixação (Resumo consolidado dos pontos-chave para revisão rápida)`;
 
 /**
- * Builds the user prompt payload for Gemini.
+ * Parses timestamp string (mm:ss or hh:mm:ss) into total seconds.
+ */
+export function parseTimestampToSeconds(ts: string): number {
+  if (!ts) return 0;
+  const clean = ts.trim().replace(/[^\d:]/g, '');
+  const parts = clean.split(':').map((p) => parseInt(p, 10));
+  if (parts.some((n) => isNaN(n))) return 0;
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return parts[0] || 0;
+}
+
+/**
+ * Formats total seconds into standard mm:ss string.
+ */
+export function formatSecondsToTimestamp(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(total / 60);
+  const s = total % 60;
+  return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Builds Pass 1 prompt asking Gemini to scout up to 20 key timestamps where visual frames
+ * (code, IDE, slides, diagrams, or garbled audio) are needed.
+ */
+export function buildScoutPrompt(title: string, channel: string, transcript: string): string {
+  return `Você é um instrutor de excelência do aplicativo Caderno.
+Analise a transcrição abaixo deste vídeo do YouTube ("${title}" - ${channel}) para prepararmos um resumo didático enriquecido com visão computacional.
+
+Sua tarefa nesta primeira etapa é identificar os momentos exatos (minutagens [mm:ss]) onde capturas de tela (prints em alta resolução da tela do vídeo) serão indispensáveis para enriquecer o resumo, tais como:
+1. Onde o professor mostra códigos em IDE/terminal, comandos, fórmulas matemáticas, tabelas ou arquitetura de software na tela.
+2. Onde o áudio da legenda parece truncado, com termos técnicos em inglês mal transcritos foneticamente ou jargões confusos.
+3. Transições chave de slides e demonstrações visuais práticas.
+
+Responda ESTRITAMENTE em formato JSON (sem preâmbulo, sem blocos de texto antes ou depois):
+\`\`\`json
+{
+  "has_visual_content": true,
+  "scout_notes": "Breve análise do tipo de conteúdo visual esperado",
+  "timestamps": [
+    { "timestamp": "02:15", "seconds": 135, "reason": "diagrama de arquitetura" },
+    { "timestamp": "05:40", "seconds": 340, "reason": "código-fonte da função na IDE" }
+  ]
+}
+\`\`\`
+
+REGRAS:
+- Peça no máximo 20 timestamps mais importantes e relevantes.
+- Se o vídeo for puramente falado/discursivo sem telas ou slides (ex: entrevista, podcast), defina "has_visual_content": false e "timestamps": [].
+
+TRANSCRIÇÃO DO VÍDEO:
+---
+${transcript}
+---`;
+}
+
+/**
+ * Builds the user prompt payload for Gemini (text-only fallback).
  */
 export function buildYouTubeSummaryPrompt(
   title: string,
@@ -118,11 +180,62 @@ LEMBRE-SE:
 - Responda em Português com formatação Markdown primorosa.`;
 }
 
+/**
+ * Builds Pass 2 Multimodal Prompt instructing Gemini to cross-review the full transcript
+ * against the captured high-resolution frames (OCR of code, diagrams, phonetic correction).
+ */
+export function buildMultimodalSummaryPrompt(
+  title: string,
+  channel: string,
+  transcript: string,
+  framesMetadata: Array<{ timestamp: string; seconds: number; reason?: string }>,
+  durationMinutes?: number
+): string {
+  const durationText = durationMinutes ? ` (Duração aproximada: ~${Math.round(durationMinutes)} minutos)` : '';
+  const framesList = framesMetadata
+    .map((f, i) => `- Imagem ${i + 1} em [${f.timestamp}] (${Math.round(f.seconds)}s)${f.reason ? `: ${f.reason}` : ''}`)
+    .join('\n');
+
+  return `Você é um instrutor e pedagogo especialista do Caderno.
+Você recebeu a transcrição completa deste vídeo e ${framesMetadata.length} capturas de tela (frames em alta resolução) extraídas exatamente nos momentos mais importantes do vídeo.
+
+TÍTULO DO VÍDEO: "${title}"
+CANAL / AUTOR: "${channel}"${durationText}
+
+LISTA DE CAPTURAS DE TELA ANEXADAS (ORDEM CRONOLÓGICA):
+${framesList}
+
+DIRETRIZES FUNDAMENTAIS DE REVISÃO CRUZADA (ÁUDIO + VISÃO COMPUTACIONAL):
+1. REVISÃO CRÍTICA E CORREÇÃO DA TRANSCRIÇÃO:
+   - Compare o áudio transcrito com o que está visível na tela em cada momento.
+   - CORRIJA no texto os erros fonéticos e termos truncados do áudio usando os textos, nomes de ferramentas, bibliotecas e comandos visíveis nas imagens.
+2. TRANSCRIÇÃO DE CÓDIGO E DIAGRAMAS REAIS:
+   - Se os frames mostrarem código de programação, transcreva os blocos reais com sintaxe correta e formatação impecável em blocos com linguagem (\`\`\`typescript, \`\`\`python, etc.).
+   - Se mostrarem diagramas, esquemas ou tabelas, descreva a estrutura e fluxo com riqueza de detalhes didáticos.
+3. CONTEÚDO DIDÁTICO INTEGRAL & MINUTAGENS:
+   - Mantenha todo o encadeamento e raciocínio ensinado no vídeo do início ao fim com riqueza conceitual.
+   - CITE AS MINUTAGENS [mm:ss] em cada seção e etapa explicada.
+   - Elimine 100% de jabás, patrocínios, pedidos de like/inscrição e vinhetas.
+4. ESTRUTURAÇÃO EM MARKDOWN DIDÁTICO:
+   - Siga a estrutura:
+     * ## 🎯 Visão Geral & Objetivo [00:00]
+     * ## 💡 Conceitos Fundamentais & Teoria [mm:ss]
+     * ## 🛠️ Passo a Passo Detalhado (com blocos de código e diagramas reais)
+     * ## ⭐ Dicas Práticas & Boas Práticas [mm:ss]
+     * ## 📌 Síntese Rápida & Fixação
+
+TRANSCRIÇÃO ORIGINAL COMPLETA:
+---
+${transcript}
+---`;
+}
+
 export interface GenerateSummaryOptions {
   url: string;
   title?: string | null;
   channel?: string | null;
   forceRegenerate?: boolean;
+  onProgress?: (status: string) => void;
 }
 
 export interface GenerateSummaryResult {
@@ -130,16 +243,18 @@ export interface GenerateSummaryResult {
   record: YouTubeSummaryRecord;
   transcriptResult: YouTubeTranscriptResult;
   fromCache: boolean;
+  framesAnalyzed?: number;
 }
 
 /**
- * Orchestrates transcript extraction, AI generation, and database persistence.
+ * Orchestrates transcript extraction, two-pass visual scouting, and database persistence.
  */
 export async function generateYouTubeSummary({
   url,
   title,
   channel,
   forceRegenerate = false,
+  onProgress,
 }: GenerateSummaryOptions): Promise<GenerateSummaryResult> {
   const videoId = extractYouTubeVideoId(url);
   if (!videoId) {
@@ -172,6 +287,8 @@ export async function generateYouTubeSummary({
     );
   }
 
+  onProgress?.('Extraindo transcrição e legendas do vídeo...');
+
   // 1. Fetch transcript and metadata from yt-dlp native command
   const transcriptResult = await window.api.youtube.fetchTranscript(url);
   if (!transcriptResult || !transcriptResult.transcript) {
@@ -182,7 +299,7 @@ export async function generateYouTubeSummary({
   const finalChannel = channel || transcriptResult.channel || 'Canal do YouTube';
   const durationMinutes = transcriptResult.duration ? transcriptResult.duration / 60 : undefined;
 
-  // 2. Build didactic prompt with timestamp instructions (capped at 300k chars for resilience)
+  // Capped at 300k chars for resilience
   const MAX_TRANSCRIPT_CHARS = 300_000;
   const processedTranscript =
     transcriptResult.transcript.length > MAX_TRANSCRIPT_CHARS
@@ -190,25 +307,114 @@ export async function generateYouTubeSummary({
         '\n\n... [Transcrição truncada para respeitar limites de processamento]'
       : transcriptResult.transcript;
 
-  const prompt = buildYouTubeSummaryPrompt(
-    finalTitle,
-    finalChannel,
-    processedTranscript,
-    durationMinutes
-  );
+  let frames: YouTubeFrameResult[] = [];
 
-  // 3. Prompt Gemini AI with key rotation and resilient timeout
-  const { text: rawGeneratedText } = await promptGemini(
-    prompt,
-    undefined,
-    [],
-    undefined,
-    YOUTUBE_SUMMARY_SYSTEM_INSTRUCTION,
-    75000 // 75 seconds for comprehensive long video transcripts
-  );
+  // 2. Active Visual Scouting (Pass 1) if frame extraction is natively supported
+  if (window.api?.youtube?.extractFrames && window.api?.youtube?.getStream) {
+    try {
+      onProgress?.('Passo 1/2: Analisando transcrição e mapeando momentos visuais...');
+      const scoutPrompt = buildScoutPrompt(finalTitle, finalChannel, processedTranscript);
+      const { text: scoutResponse } = await promptGemini(
+        scoutPrompt,
+        undefined,
+        [],
+        undefined,
+        undefined,
+        45000
+      );
+
+      let scoutJson: {
+        has_visual_content?: boolean;
+        timestamps?: Array<{ timestamp?: string; seconds?: number; reason?: string }>;
+      } | null = null;
+
+      try {
+        const match = scoutResponse.match(/\{[\s\S]*\}/);
+        if (match) {
+          scoutJson = JSON.parse(match[0]);
+        }
+      } catch (parseErr) {
+        console.warn('[youtubeSummaryService] Failed to parse scout JSON:', parseErr);
+      }
+
+      if (scoutJson?.has_visual_content !== false && scoutJson?.timestamps && scoutJson.timestamps.length > 0) {
+        // Normalize up to 20 valid timestamps
+        const requestedTimestamps = scoutJson.timestamps
+          .slice(0, 20)
+          .map((t) => {
+            const secs =
+              typeof t.seconds === 'number' && t.seconds >= 0
+                ? t.seconds
+                : parseTimestampToSeconds(t.timestamp || '');
+            return {
+              timestamp: t.timestamp || formatSecondsToTimestamp(secs),
+              seconds: secs,
+              reason: t.reason || '',
+            };
+          })
+          .filter(
+            (t) =>
+              t.seconds > 0 &&
+              (!transcriptResult.duration || t.seconds <= transcriptResult.duration + 5)
+          );
+
+        if (requestedTimestamps.length > 0) {
+          onProgress?.(`Passo 2/2: Capturando ${requestedTimestamps.length} frames de alta resolução da tela...`);
+          const streamInfo = await window.api.youtube.getStream(url);
+          if (streamInfo?.video_url) {
+            const secondsList = requestedTimestamps.map((t) => t.seconds);
+            frames = await window.api.youtube.extractFrames(streamInfo.video_url, secondsList);
+          }
+        }
+      }
+    } catch (scoutErr) {
+      console.warn('[youtubeSummaryService] Visual scouting/frame extraction non-fatal error:', scoutErr);
+    }
+  }
+
+  // 3. Multimodal Synthesis (Pass 2) or standard text-only generation
+  let rawGeneratedText: string;
+
+  if (frames.length > 0) {
+    onProgress?.(`Sintetizando resumo enriquecido com visão computacional (${frames.length} frames)...`);
+    const multimodalPrompt = buildMultimodalSummaryPrompt(
+      finalTitle,
+      finalChannel,
+      processedTranscript,
+      frames,
+      durationMinutes
+    );
+    const mediaList = frames.map((f) => f.data_url);
+    const res = await promptGemini(
+      multimodalPrompt,
+      mediaList,
+      [],
+      undefined,
+      YOUTUBE_SUMMARY_SYSTEM_INSTRUCTION,
+      90000
+    );
+    rawGeneratedText = res.text;
+  } else {
+    onProgress?.('A Inteligência Artificial está elaborando o resumo didático...');
+    const textPrompt = buildYouTubeSummaryPrompt(
+      finalTitle,
+      finalChannel,
+      processedTranscript,
+      durationMinutes
+    );
+    const res = await promptGemini(
+      textPrompt,
+      undefined,
+      [],
+      undefined,
+      YOUTUBE_SUMMARY_SYSTEM_INSTRUCTION,
+      75000
+    );
+    rawGeneratedText = res.text;
+  }
 
   let cleanSummary = (rawGeneratedText || '').trim();
-  // Strip any wrapping ```markdown ... ``` fence if Gemini enveloped the whole text in one
+  // Strip wrapping markdown code blocks if enveloped by Gemini
   if (cleanSummary.startsWith('```markdown') && cleanSummary.endsWith('```')) {
     cleanSummary = cleanSummary.slice(11, -3).trim();
   } else if (cleanSummary.startsWith('```md') && cleanSummary.endsWith('```')) {
@@ -259,5 +465,6 @@ export async function generateYouTubeSummary({
     record: newRecord,
     transcriptResult,
     fromCache: false,
+    framesAnalyzed: frames.length,
   };
 }
