@@ -173,7 +173,14 @@ export function ScrapWidgetNodeView(props: NodeViewProps) {
         {/* Favicon / Ícone */}
         <div className="w-5 h-5 rounded-md bg-black/20 flex items-center justify-center shrink-0 overflow-hidden">
           {favicon ? (
-            <img src={favicon} alt="" className="w-3.5 h-3.5 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+            <img
+              src={favicon}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-3.5 h-3.5 object-contain"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
           ) : (
             <Globe size={13} className={isError ? 'text-rose-400' : 'text-brand-primary'} />
           )}

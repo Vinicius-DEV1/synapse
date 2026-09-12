@@ -174,6 +174,8 @@ export default function LinkPreviewCard({
       <img
         src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
         alt={`${domain} icon`}
+        loading="lazy"
+        decoding="async"
         className="w-5 h-5 rounded-sm"
         onError={() => setFaviconError(true)}
       />

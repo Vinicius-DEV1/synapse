@@ -251,6 +251,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
             <img
               src={objectUrl}
               alt={item.name}
+              decoding="async"
               className="max-w-full max-h-full object-contain shadow-2xl"
             />
           </div>

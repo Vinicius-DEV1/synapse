@@ -83,7 +83,13 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
           {/* Poster / Cover */}
           <div className="w-52 hidden sm:flex flex-shrink-0 relative bg-black/60 flex-col">
             {item.cover_image ? (
-              <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+              <img
+                src={item.cover_image}
+                alt={item.title}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/20 text-4xl">📖</div>
             )}

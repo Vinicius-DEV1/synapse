@@ -41,7 +41,13 @@ export function CultureCardList({
       {/* Thumbnail */}
       <div className="flex-shrink-0 w-8 h-12 rounded-md overflow-hidden bg-white/5">
         {item.cover_image
-          ? <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+          ? <img
+              src={item.cover_image}
+              alt={item.title}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
           : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={14} className="opacity-40 text-dark-subtext" /></div>
         }
       </div>

@@ -54,7 +54,13 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
             <div className="relative flex justify-between items-start">
               <div className="flex gap-4 items-center">
                 {item.cover_image && (
-                  <img src={item.cover_image} alt="cover" className="w-16 h-24 object-cover rounded-xl shadow-lg ring-1 ring-white/10" />
+                  <img
+                    src={item.cover_image}
+                    alt="cover"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-16 h-24 object-cover rounded-xl shadow-lg ring-1 ring-white/10"
+                  />
                 )}
                 <div>
                   <h2 className="text-2xl font-bold text-white drop-shadow-md">{item.title}</h2>

@@ -117,6 +117,7 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
             <img 
               src={activeSrc} 
               alt="Viewer" 
+              decoding="async"
               className="max-w-full max-h-full object-contain transition-transform duration-150 select-none"
               style={{ transform: `scale(${zoom})` }}
               draggable={false}

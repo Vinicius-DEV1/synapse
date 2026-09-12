@@ -105,7 +105,13 @@ export function CoverPickerSection({
       <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-visible shrink-0 group">
         <div className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center">
           {coverImage && !extractingCover ? (
-            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+            <img
+              src={coverImage}
+              alt="Cover"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
           ) : extractingCover ? (
             <div className="flex flex-col items-center justify-center gap-1.5 p-2 text-center">
               <Loader2 size={20} className="animate-spin text-brand-400" />
