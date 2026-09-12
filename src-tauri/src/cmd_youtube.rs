@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine as _;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -756,5 +758,87 @@ pub async fn youtube_get_stream(url: String, _app: AppHandle) -> Result<YouTubeS
         video_url,
         audio_url,
     })
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct YouTubeFrameResult {
+    pub timestamp: String,
+    pub seconds: f64,
+    pub data_url: String,
+}
+
+#[tauri::command]
+pub async fn youtube_extract_frames(
+    stream_url: String,
+    timestamps: Vec<f64>,
+    _app: AppHandle,
+) -> Result<Vec<YouTubeFrameResult>, String> {
+    if !stream_url.starts_with("http://") && !stream_url.starts_with("https://") {
+        return Err("Invalid stream URL: must start with http:// or https://".into());
+    }
+
+    let ffmpeg_path = crate::cmd_binaries::get_bin_path("ffmpeg");
+    if !ffmpeg_path.exists() {
+        return Err("ffmpeg binary not found".into());
+    }
+
+    // Limit to at most 20 valid non-negative timestamps
+    let mut valid_timestamps: Vec<f64> = timestamps
+        .into_iter()
+        .filter(|t| *t >= 0.0 && !t.is_nan() && !t.is_infinite())
+        .take(20)
+        .collect();
+
+    // Deduplicate timestamps closer than 2.0 seconds apart
+    valid_timestamps.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    valid_timestamps.dedup_by(|a, b| (*a - *b).abs() < 2.0);
+
+    if valid_timestamps.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut results = Vec::new();
+
+    for sec in valid_timestamps {
+        let mut cmd = Command::new(&ffmpeg_path);
+        cmd.args([
+            "-ss",
+            &format!("{:.2}", sec),
+            "-user_agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "-i",
+            &stream_url,
+            "-vframes",
+            "1",
+            "-q:v",
+            "3",
+            "-vf",
+            "scale='min(1280,iw)':-2",
+            "-f",
+            "image2",
+            "-",
+        ]);
+
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
+        if let Ok(output) = cmd.output() {
+            if output.status.success() && !output.stdout.is_empty() {
+                let b64 = format!("data:image/jpeg;base64,{}", BASE64.encode(&output.stdout));
+                let total_secs = sec.floor() as u64;
+                let mins = total_secs / 60;
+                let s = total_secs % 60;
+                let formatted_time = format!("{:02}:{:02}", mins, s);
+
+                results.push(YouTubeFrameResult {
+                    timestamp: formatted_time,
+                    seconds: sec,
+                    data_url: b64,
+                });
+            }
+        }
+    }
+
+    Ok(results)
 }
 

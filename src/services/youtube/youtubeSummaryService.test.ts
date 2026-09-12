@@ -178,5 +178,59 @@ describe('youtubeSummaryService', () => {
       expect(result.summary).toBe('## Resumo Atualizado');
       expect(promptGemini).toHaveBeenCalled();
     });
+
+    it('executes two-pass multimodal pipeline when extractFrames and getStream are available', async () => {
+      (window.api.youtube.getSummary as any).mockResolvedValue(null);
+      (window.api.youtube.fetchTranscript as any).mockResolvedValue({
+        video_id: 'vid_multi',
+        title: 'React Hooks Completo',
+        channel: 'Rocketseat',
+        transcript: '[00:00] Fala devs\n[02:15] useReducer na prática\n[05:40] useCallback',
+        duration: 600,
+      });
+
+      window.api.youtube.getStream = vi.fn().mockResolvedValue({
+        video_url: 'https://googlevideo.com/stream720.mp4',
+        resolution: '1280x720',
+        duration: 600,
+      });
+
+      window.api.youtube.extractFrames = vi.fn().mockResolvedValue([
+        { timestamp: '02:15', seconds: 135, data_url: 'data:image/jpeg;base64,frame1' },
+        { timestamp: '05:40', seconds: 340, data_url: 'data:image/jpeg;base64,frame2' },
+      ]);
+
+      (promptGemini as any)
+        .mockResolvedValueOnce({
+          text: JSON.stringify({
+            has_visual_content: true,
+            timestamps: [
+              { timestamp: '02:15', seconds: 135, reason: 'código useReducer' },
+              { timestamp: '05:40', seconds: 340, reason: 'código useCallback' },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          text: '## 🎯 Resumo Multimodal com Visão Computacional\n\n```typescript\nconst [state, dispatch] = useReducer(reducer, initial);\n```',
+        });
+
+      const onProgress = vi.fn();
+      const result = await generateYouTubeSummary({
+        url: 'https://youtube.com/watch?v=vid_multi',
+        onProgress,
+      });
+
+      expect(result.fromCache).toBe(false);
+      expect(result.framesAnalyzed).toBe(2);
+      expect(result.summary).toContain('Resumo Multimodal');
+      expect(window.api.youtube.getStream).toHaveBeenCalledWith('https://youtube.com/watch?v=vid_multi');
+      expect(window.api.youtube.extractFrames).toHaveBeenCalledWith(
+        'https://googlevideo.com/stream720.mp4',
+        [135, 340]
+      );
+      expect(promptGemini).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('Passo 1/2'));
+      expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('Passo 2/2'));
+    });
   });
 });

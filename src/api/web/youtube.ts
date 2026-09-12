@@ -201,5 +201,8 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
   },
   getStream: async (_url: string) => {
     throw new Error('Streaming nativo via yt-dlp disponível apenas na versão Desktop (Tauri).');
+  },
+  extractFrames: async (_streamUrl: string, _timestamps: number[]) => {
+    return [];
   }
 });
