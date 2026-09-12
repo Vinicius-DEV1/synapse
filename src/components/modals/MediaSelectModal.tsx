@@ -119,7 +119,13 @@ export default function MediaSelectModal({ isOpen, type, onClose, onSelect }: Me
                 >
                   <div className="w-10 h-10 rounded overflow-hidden bg-dark-bg border border-white/10 flex items-center justify-center shrink-0">
                     {item.cover ? (
-                      <img src={item.cover} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={item.cover}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       type === 'video' ? <Film size={20} className="text-white/20" /> : <BookOpen size={20} className="text-white/20" />
                     )}

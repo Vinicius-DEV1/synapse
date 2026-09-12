@@ -42,7 +42,13 @@ export function CultureCardGrid({
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-dark-bg/50">
         {item.cover_image ? (
-          <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img
+            src={item.cover_image}
+            alt={item.title}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-dark-subtext">
             <ImageIcon size={32} className="opacity-50 mb-2" />

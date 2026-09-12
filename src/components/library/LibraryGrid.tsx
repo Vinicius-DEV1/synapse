@@ -133,6 +133,8 @@ export default function LibraryGrid({
                 <img
                   src={book.cover_image}
                   alt={book.title}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                   draggable={false}
                 />

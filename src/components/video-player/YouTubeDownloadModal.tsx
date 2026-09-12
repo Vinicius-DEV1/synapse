@@ -97,7 +97,13 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                 {/* Info Header */}
                 <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
                   {videoInfo.thumbnail ? (
-                    <img src={videoInfo.thumbnail} alt="Thumbnail" className="w-32 aspect-video object-cover rounded-lg bg-black/50 shadow-md" />
+                    <img
+                      src={videoInfo.thumbnail}
+                      alt="Thumbnail"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-32 aspect-video object-cover rounded-lg bg-black/50 shadow-md"
+                    />
                   ) : (
                     <div className="w-32 aspect-video rounded-lg bg-black/50 flex items-center justify-center text-white/20">
                       <Video size={24} />

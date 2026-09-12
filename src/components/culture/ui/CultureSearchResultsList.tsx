@@ -17,7 +17,13 @@ export function CultureSearchResultsList({ searchResults, onSelectResult }: Cult
           className="flex gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer transition-colors border border-transparent hover:border-white/5 items-center"
         >
           {res.cover && (
-            <img src={res.cover} alt={res.title} className="w-8 h-12 object-cover rounded bg-black/40" />
+            <img
+              src={res.cover}
+              alt={res.title}
+              loading="lazy"
+              decoding="async"
+              className="w-8 h-12 object-cover rounded bg-black/40"
+            />
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate text-white">{res.title}</p>

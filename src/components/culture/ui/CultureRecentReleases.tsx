@@ -31,7 +31,15 @@ export function CultureRecentReleases({
             }}
             className="flex-shrink-0 w-64 bg-black/20 rounded-xl p-3 border border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer"
           >
-            {ep.item_cover && <img src={ep.item_cover} alt="cover" className="w-10 h-14 object-cover rounded shadow" />}
+            {ep.item_cover && (
+              <img
+                src={ep.item_cover}
+                alt="cover"
+                loading="lazy"
+                decoding="async"
+                className="w-10 h-14 object-cover rounded shadow"
+              />
+            )}
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-white truncate">{ep.item_title}</div>
               <div className="text-xs text-white/50 truncate">EP {ep.episode_number}: {ep.title}</div>

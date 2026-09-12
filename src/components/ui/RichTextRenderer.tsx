@@ -12,7 +12,15 @@ export const ImageRenderer = React.memo(({ cacheItem }: { cacheItem: any }) => {
   }, [cacheItem]);
   
   if (!url) return null;
-  return <img src={url} className="max-w-full rounded-lg my-2 max-h-64 object-contain shadow-lg border border-white/10" alt="Anexo" />;
+  return (
+    <img
+      src={url}
+      loading="lazy"
+      decoding="async"
+      className="max-w-full rounded-lg my-2 max-h-64 object-contain shadow-lg border border-white/10"
+      alt="Anexo"
+    />
+  );
 });
 ImageRenderer.displayName = 'ImageRenderer';
 
