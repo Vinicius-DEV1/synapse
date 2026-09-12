@@ -400,6 +400,7 @@ pub fn run() {
             cmd_files::files_move,
             cmd_files::files_save_local,
             cmd_files::files_get_local,
+            cmd_files::read_local_binary_file,
             cmd_files::file_folders_get_all,
             cmd_files::file_folders_create,
             cmd_files::file_folders_update,

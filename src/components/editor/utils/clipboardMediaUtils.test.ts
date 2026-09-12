@@ -14,6 +14,7 @@ vi.mock('../../../services/platform', () => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
   convertFileSrc: vi.fn((path: string) => `asset://localhost${path}`),
 }));
 
@@ -122,13 +123,10 @@ describe('clipboardMediaUtils', () => {
       expect(res).toBeNull();
     });
 
-    it('reads file via convertFileSrc fetch when successful', async () => {
+    it('reads file via native Tauri invoke when successful', async () => {
       vi.mocked(platform.isDesktopApp).mockReturnValue(true);
-      const fakeBlob = new Blob(['image data'], { type: 'image/png' });
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        blob: vi.fn().mockResolvedValue(fakeBlob),
-      });
+      const core = await import('@tauri-apps/api/core');
+      vi.mocked(core.invoke).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
 
       const res = await readLocalImageAsFile('/home/vini/test.png');
       expect(res).not.toBeNull();
@@ -136,9 +134,10 @@ describe('clipboardMediaUtils', () => {
       expect(res?.type).toBe('image/png');
     });
 
-    it('falls back to plugin-fs readFile when convertFileSrc fetch fails', async () => {
+    it('falls back to plugin-fs when invoke fails', async () => {
       vi.mocked(platform.isDesktopApp).mockReturnValue(true);
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      const core = await import('@tauri-apps/api/core');
+      vi.mocked(core.invoke).mockRejectedValue(new Error('IPC error'));
       const fsModule = await import('@tauri-apps/plugin-fs');
       vi.mocked(fsModule.readFile).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
 

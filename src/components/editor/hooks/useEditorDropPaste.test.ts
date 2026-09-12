@@ -9,6 +9,7 @@ vi.mock('../../../services/platform', () => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
   convertFileSrc: vi.fn((path: string) => `asset://localhost${path}`),
 }));
 

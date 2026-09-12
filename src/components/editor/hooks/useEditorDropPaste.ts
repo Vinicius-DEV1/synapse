@@ -11,6 +11,7 @@ import {
   extractImageFilesFromClipboard,
   extractLocalImagePaths,
   readLocalImageAsFile,
+  isImageFilePath,
 } from '../utils/clipboardMediaUtils';
 
 function registerPendingUpload(tempId: string, file: File) {
@@ -182,6 +183,15 @@ export function useEditorDropPaste({
           }
 
           if (isUrl && view.state.selection.empty) {
+            if (isImageFilePath(urlStr)) {
+              currentEditor.chain().focus().insertContent({
+                type: 'image',
+                attrs: { src: urlStr },
+              }).run();
+              event.preventDefault();
+              return true;
+            }
+
             currentEditor.chain().focus().insertContent({
               type: 'linkPreview',
               attrs: { url: urlStr, isLoading: true },

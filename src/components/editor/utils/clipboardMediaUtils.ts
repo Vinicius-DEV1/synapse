@@ -134,7 +134,34 @@ export async function readLocalImageAsFile(filePath: string): Promise<File | nul
   const filename = filePath.split(/[/\\]/).pop() || 'image.png';
   const defaultMime = getMimeTypeFromPath(filePath);
 
-  // Strategy 1: Tauri v2 asset protocol streaming via convertFileSrc
+  // Strategy 1: Native Tauri IPC command (100% reliable on Linux/Mac/Windows)
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const rawBytes = await invoke<number[] | Uint8Array>('read_local_binary_file', { path: filePath });
+    if (rawBytes) {
+      const u8 = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes);
+      if (u8.byteLength > 0) {
+        const blob = new Blob([u8.buffer as ArrayBuffer], { type: defaultMime });
+        return new File([blob], filename, { type: defaultMime });
+      }
+    }
+  } catch (err) {
+    console.warn('[clipboardMediaUtils] read_local_binary_file invoke fallback:', err);
+  }
+
+  // Strategy 2: Tauri plugin-fs direct read fallback
+  try {
+    const { readFile } = await import('@tauri-apps/plugin-fs');
+    const rawBytes = await readFile(filePath);
+    if (rawBytes && rawBytes.byteLength > 0) {
+      const blob = new Blob([rawBytes.buffer as ArrayBuffer], { type: defaultMime });
+      return new File([blob], filename, { type: defaultMime });
+    }
+  } catch (err) {
+    console.warn('[clipboardMediaUtils] plugin-fs readFile fallback:', err);
+  }
+
+  // Strategy 3: Tauri v2 asset protocol streaming via convertFileSrc
   try {
     const { convertFileSrc } = await import('@tauri-apps/api/core');
     const assetUrl = convertFileSrc(filePath);
@@ -146,18 +173,6 @@ export async function readLocalImageAsFile(filePath: string): Promise<File | nul
     }
   } catch (err) {
     console.warn('[clipboardMediaUtils] convertFileSrc fetch fallback:', err);
-  }
-
-  // Strategy 2: Tauri plugin-fs direct read fallback
-  try {
-    const { readFile } = await import('@tauri-apps/plugin-fs');
-    const rawBytes = await readFile(filePath);
-    if (rawBytes && rawBytes.byteLength > 0) {
-      const blob = new Blob([rawBytes], { type: defaultMime });
-      return new File([blob], filename, { type: defaultMime });
-    }
-  } catch (err) {
-    console.warn('[clipboardMediaUtils] plugin-fs readFile fallback:', err);
   }
 
   return null;

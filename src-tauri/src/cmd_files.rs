@@ -399,3 +399,14 @@ pub fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<b
 
     Ok(true)
 }
+
+/// Reads any local binary file from disk into memory for editor paste and asset importing.
+#[tauri::command]
+pub fn read_local_binary_file(path: String) -> Result<Vec<u8>, String> {
+    let path_buf = std::path::PathBuf::from(&path);
+    if !path_buf.exists() {
+        return Err(format!("Arquivo não encontrado: {}", path));
+    }
+    std::fs::read(&path_buf).map_err(|e| format!("Falha ao ler arquivo {}: {}", path, e))
+}
+
