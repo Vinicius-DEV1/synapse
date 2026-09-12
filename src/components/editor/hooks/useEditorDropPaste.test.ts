@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useEditorDropPaste } from './useEditorDropPaste';
 import * as imageDrive from '../../../services/image-drive';
+import * as platform from '../../../services/platform';
+
+vi.mock('../../../services/platform', () => ({
+  isDesktopApp: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  convertFileSrc: vi.fn((path: string) => `asset://localhost${path}`),
+}));
 
 vi.mock('../../../services/image-drive', () => ({
   uploadEncryptedImage: vi.fn().mockResolvedValue('uploaded_drive_file_id_789'),
@@ -211,5 +220,82 @@ describe('useEditorDropPaste Hook', () => {
       expect.objectContaining({ isOpen: false, nodePos: null })
     );
     expect(mockEditor.view.dispatch).toHaveBeenCalled();
+  });
+
+  it('handles local image path paste in desktop mode and creates encryptedImage node with masterKey', async () => {
+    vi.mocked(platform.isDesktopApp).mockReturnValue(true);
+    const mockCryptoKey = {} as CryptoKey;
+    const { result } = renderHook(() =>
+      useEditorDropPaste({
+        editor: mockEditor,
+        masterKey: mockCryptoKey,
+        viewerState: mockViewerState,
+        setViewerState,
+      })
+    );
+
+    const fakeBlob = new Blob(['image data'], { type: 'image/jpeg' });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: vi.fn().mockResolvedValue(fakeBlob),
+    });
+
+    const mockEvent = {
+      clipboardData: {
+        getData: vi.fn((format: string) =>
+          format === 'text/plain'
+            ? '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg'
+            : ''
+        ),
+        items: [],
+        files: [],
+      },
+      preventDefault: vi.fn(),
+    } as unknown as ClipboardEvent;
+
+    let handled = false;
+    await act(async () => {
+      handled = result.current.handlePaste(mockEditor.view, mockEvent);
+    });
+
+    expect(handled).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+
+    // Allow promise resolution
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockEditor.chain).toHaveBeenCalled();
+  });
+
+  it('ignores local image path paste when not in desktop mode', () => {
+    vi.mocked(platform.isDesktopApp).mockReturnValue(false);
+    const { result } = renderHook(() =>
+      useEditorDropPaste({
+        editor: mockEditor,
+        masterKey: null,
+        viewerState: mockViewerState,
+        setViewerState,
+      })
+    );
+
+    const mockEvent = {
+      clipboardData: {
+        getData: vi.fn((format: string) =>
+          format === 'text/plain'
+            ? '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg'
+            : ''
+        ),
+        items: [],
+        files: [],
+      },
+      preventDefault: vi.fn(),
+    } as unknown as ClipboardEvent;
+
+    const handled = result.current.handlePaste(mockEditor.view, mockEvent);
+
+    expect(handled).toBe(false);
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
   });
 });
