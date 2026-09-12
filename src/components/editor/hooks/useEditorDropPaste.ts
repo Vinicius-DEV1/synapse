@@ -6,6 +6,12 @@ import { uploadEncryptedImage, setCachedImage } from '../../../services/image-dr
 import { applyGroupDrop, consumeGroupDropTarget } from '../../editor-extensions/group-layout';
 import { findNodePos } from '../../editor-extensions/image/imageUtils';
 import { triggerToast } from '../../ui/ToastContext';
+import { isDesktopApp } from '../../../services/platform';
+import {
+  extractImageFilesFromClipboard,
+  extractLocalImagePaths,
+  readLocalImageAsFile,
+} from '../utils/clipboardMediaUtils';
 
 function registerPendingUpload(tempId: string, file: File) {
   if (!window.__pendingImageUploads) {
@@ -16,6 +22,98 @@ function registerPendingUpload(tempId: string, file: File) {
   setTimeout(() => {
     window.__pendingImageUploads?.delete(tempId);
   }, 5 * 60 * 1000);
+}
+
+interface EditorImageNodeJSON {
+  type: 'encryptedImage' | 'image';
+  attrs: {
+    driveFileId?: string;
+    src?: string;
+  };
+}
+
+function insertImageFilesIntoEditor({
+  files,
+  currentEditor,
+  masterKey,
+  insertPos,
+}: {
+  files: File[];
+  currentEditor: Editor;
+  masterKey?: CryptoKey | null;
+  insertPos?: number | null;
+}) {
+  if (files.length === 0) return;
+
+  const nodesToInsert: EditorImageNodeJSON[] = [];
+  const readers: Promise<{ src: string }>[] = [];
+
+  for (const file of files) {
+    if (masterKey) {
+      const tempId = 'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
+      registerPendingUpload(tempId, file);
+      file
+        .arrayBuffer()
+        .then((buffer) => {
+          setCachedImage(tempId, buffer, file.type).catch(console.error);
+        })
+        .catch((err) => {
+          console.error('[Editor] Erro ao fazer buffer da imagem colada:', err);
+          triggerToast('Falha ao processar imagem para criptografia.', 'error');
+        });
+
+      nodesToInsert.push({
+        type: 'encryptedImage',
+        attrs: { driveFileId: tempId },
+      });
+    } else {
+      if (file.size > 2 * 1024 * 1024) {
+        triggerToast(
+          'Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou conecte o cofre.',
+          'error'
+        );
+        continue;
+      }
+      readers.push(
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve({ src: (e.target?.result as string) || '' });
+          reader.onerror = () => {
+            triggerToast('Erro ao ler arquivo de imagem.', 'error');
+            resolve({ src: '' });
+          };
+          reader.readAsDataURL(file);
+        })
+      );
+    }
+  }
+
+  const dispatchInsert = (nodes: EditorImageNodeJSON[]) => {
+    if (nodes.length === 0) return;
+    try {
+      if (insertPos !== null && insertPos !== undefined) {
+        currentEditor.chain().insertContentAt(insertPos, nodes).focus().run();
+      } else {
+        currentEditor.chain().focus().insertContent(nodes).run();
+      }
+    } catch (err) {
+      console.error('[Editor] Erro ao inserir nós de imagem:', err);
+      triggerToast('Não foi possível inserir a imagem no documento.', 'error');
+    }
+  };
+
+  if (masterKey && nodesToInsert.length > 0) {
+    dispatchInsert(nodesToInsert);
+  } else if (readers.length > 0) {
+    Promise.all(readers).then((results) => {
+      const validResults = results.filter((r) => r.src);
+      if (validResults.length > 0) {
+        dispatchInsert(
+          validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
+        );
+      }
+    });
+  }
 }
 
 interface UseEditorDropPasteProps {
@@ -93,92 +191,59 @@ export function useEditorDropPaste({
           }
         }
 
-        const items = Array.from(event.clipboardData?.items || []);
-        let imagePasted = false;
-        const nodesToInsert: any[] = [];
-        const readers: Promise<{ src: string }>[] = [];
-
-        for (const item of items) {
-          if (item.type.indexOf('image') === 0) {
-            imagePasted = true;
-            const file = item.getAsFile();
-            if (file) {
-              if (masterKey) {
-                const tempId =
-                  'uploading_' + Date.now() + Math.random().toString(36).substring(2, 6);
-                registerPendingUpload(tempId, file);
-                file
-                  .arrayBuffer()
-                  .then((buffer) => {
-                    setCachedImage(tempId, buffer, file.type).catch(console.error);
-                  })
-                  .catch((err) => {
-                    console.error('[Editor] Erro ao fazer buffer da imagem colada:', err);
-                    triggerToast('Falha ao processar imagem para criptografia.', 'error');
-                  });
-
-                nodesToInsert.push({
-                  type: 'encryptedImage',
-                  attrs: { driveFileId: tempId },
-                });
-              } else {
-                if (file.size > 2 * 1024 * 1024) {
-                  triggerToast(
-                    'Imagem muito grande para colar sem criptografia (limite 2MB). Reduza o tamanho ou conecte o cofre.',
-                    'error'
-                  );
-                  continue;
-                }
-                readers.push(
-                  new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) =>
-                      resolve({ src: e.target?.result as string });
-                    reader.onerror = () => {
-                      triggerToast('Erro ao ler arquivo de imagem.', 'error');
-                      resolve({ src: '' });
-                    };
-                    reader.readAsDataURL(file);
-                  })
-                );
-              }
-            }
-          }
-        }
-
-        if (imagePasted) {
+        // 3. Imagens diretas no clipboard (prints de tela, cópias do navegador, blobs de imagem)
+        const directImageFiles = extractImageFilesFromClipboard(event);
+        if (directImageFiles.length > 0) {
           const { selection } = view.state;
           const isNodeSelected = selection instanceof NodeSelection;
           const insertPos = isNodeSelected ? selection.to : null;
 
-          const insertPastedNodes = (nodes: any[]) => {
-            if (nodes.length === 0) return;
-            try {
-              if (insertPos !== null) {
-                currentEditor.chain().insertContentAt(insertPos, nodes).focus().run();
-              } else {
-                currentEditor.chain().focus().insertContent(nodes).run();
-              }
-            } catch (err) {
-              console.error('[Editor] Erro ao inserir nós de imagem:', err);
-              triggerToast('Não foi possível inserir a imagem no documento.', 'error');
-            }
-          };
+          insertImageFilesIntoEditor({
+            files: directImageFiles,
+            currentEditor,
+            masterKey,
+            insertPos,
+          });
 
-          if (masterKey && nodesToInsert.length > 0) {
-            insertPastedNodes(nodesToInsert);
-          } else if (readers.length > 0) {
-            Promise.all(readers).then((results) => {
-              const validResults = results.filter((r) => r.src);
-              if (currentEditor && validResults.length > 0) {
-                insertPastedNodes(
-                  validResults.map((r) => ({ type: 'image', attrs: { src: r.src } }))
-                );
-              }
-            });
-          }
           event.preventDefault();
           return true;
+        }
+
+        // 4. Se não há arquivos diretos no clipboard, verificar se é um caminho local de imagem
+        // (comum no Linux com GNOME Loupe / Nautilus, macOS Finder ou Windows Explorer)
+        if (isDesktopApp()) {
+          const uriList = event.clipboardData?.getData('text/uri-list') || '';
+          const candidateText = `${uriList}\n${textPasted || ''}`;
+          const localImagePaths = extractLocalImagePaths(candidateText);
+
+          if (localImagePaths.length > 0) {
+            const { selection } = view.state;
+            const isNodeSelected = selection instanceof NodeSelection;
+            const insertPos = isNodeSelected ? selection.to : null;
+
+            event.preventDefault();
+
+            Promise.all(localImagePaths.map((path) => readLocalImageAsFile(path)))
+              .then((loadedFiles) => {
+                const validFiles = loadedFiles.filter((f): f is File => f !== null);
+                if (validFiles.length > 0) {
+                  insertImageFilesIntoEditor({
+                    files: validFiles,
+                    currentEditor,
+                    masterKey,
+                    insertPos,
+                  });
+                } else {
+                  triggerToast('Não foi possível carregar a imagem a partir do caminho copiado.', 'error');
+                }
+              })
+              .catch((err) => {
+                console.error('[Editor] Erro ao resolver caminhos locais colados:', err);
+                triggerToast('Falha ao processar arquivo de imagem local.', 'error');
+              });
+
+            return true;
+          }
         }
       } catch (err) {
         console.error('[Editor] Erro inesperado ao colar:', err);
