@@ -8,6 +8,7 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
+use urlencoding::decode as urldecode;
 
 use tauri::{AppHandle, Manager};
 use tokio::net::TcpListener;
@@ -69,6 +70,7 @@ pub async fn start_stream_server(app: AppHandle) -> Result<u16, String> {
     let app_router = Router::new()
         .route("/stream", get(stream_handler))
         .route("/stream-drive", get(stream_drive_handler))
+        .route("/youtube-proxy", get(youtube_proxy_handler))
         .with_state(state)
         .layer(cors);
 
@@ -433,6 +435,189 @@ async fn stream_drive_handler(
     axum::response::Response::builder()
         .status(status)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_RANGE, content_range)
+        .header(header::CONTENT_LENGTH, content_length)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
+        .body(axum::body::Body::from_stream(stream))
+        .unwrap()
+}
+
+/// Browser User-Agent used to proxy requests to YouTube CDN.
+/// YouTube blocks non-browser UAs (e.g. GStreamer souphttpsrc) with HTTP 403.
+const YOUTUBE_PROXY_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+/// Maximum chunk size for proxied YouTube Range requests.
+/// YouTube rejects open-ended ranges and ranges larger than ~2-4MB.
+const YOUTUBE_MAX_CHUNK: u64 = 2 * 1024 * 1024; // 2 MiB
+
+#[derive(Deserialize)]
+pub struct YouTubeProxyParams {
+    /// URL-encoded googlevideo.com stream URL obtained from yt-dlp
+    pub url: String,
+    /// MIME type hint (video/mp4, audio/mp4)
+    pub mime: Option<String>,
+}
+
+/// Reverse-proxy handler for YouTube CDN streams.
+///
+/// WebKitGTK uses GStreamer souphttpsrc to load `<video src="...">`, which sends
+/// `User-Agent: GStreamer souphttpsrc ...`. YouTube's CDN blocks this with 403 Forbidden.
+/// This handler proxies the request with a browser User-Agent and proper Range headers
+/// so the WebView can play the stream natively without being blocked.
+async fn youtube_proxy_handler(
+    headers: axum::http::HeaderMap,
+    Query(params): Query<YouTubeProxyParams>,
+) -> impl IntoResponse {
+    let target_url = match urldecode(&params.url) {
+        Ok(decoded) => decoded.into_owned(),
+        Err(_) => params.url.clone(),
+    };
+
+    // Validate the URL is a legitimate YouTube CDN host
+    if !target_url.contains("googlevideo.com/") && !target_url.contains("youtube.com/") {
+        return (StatusCode::BAD_REQUEST, "Invalid YouTube stream URL").into_response();
+    }
+
+    let mime_type = params.mime.unwrap_or_else(|| "video/mp4".to_string());
+
+    // Step 1: Determine total content length via a small initial probe request
+    let client = match reqwest::Client::builder()
+        .user_agent(YOUTUBE_PROXY_UA)
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to build HTTP client: {}", e)).into_response();
+        }
+    };
+
+    // Probe with a tiny range to get Content-Range header with total size
+    let probe_resp = match client
+        .get(&target_url)
+        .header("Range", "bytes=0-0")
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            println!("[YouTubeProxy] Probe request failed: {}", e);
+            return (StatusCode::BAD_GATEWAY, format!("Failed to probe YouTube stream: {}", e)).into_response();
+        }
+    };
+
+    if !probe_resp.status().is_success() {
+        let status_code = probe_resp.status().as_u16();
+        println!("[YouTubeProxy] Probe returned HTTP {}", status_code);
+        return (StatusCode::BAD_GATEWAY, format!("YouTube CDN returned HTTP {}", status_code)).into_response();
+    }
+
+    // Extract total size from Content-Range: bytes 0-0/<total>
+    let total_size = probe_resp
+        .headers()
+        .get("content-range")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.rsplit('/').next())
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0);
+
+    if total_size == 0 {
+        println!("[YouTubeProxy] Could not determine total size from probe response");
+        return (StatusCode::BAD_GATEWAY, "Could not determine stream size").into_response();
+    }
+
+    // Step 2: Parse the Range header from the downstream WebView/GStreamer request
+    let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
+
+    let mut req_start: u64 = 0;
+    let mut req_end: u64 = total_size - 1;
+
+    if let Some(range) = range_header {
+        if range.starts_with("bytes=") {
+            let parts: Vec<&str> = range.trim_start_matches("bytes=").split('-').collect();
+            req_start = parts[0].parse::<u64>().unwrap_or(0);
+            if parts.len() > 1 && !parts[1].is_empty() {
+                req_end = parts[1].parse::<u64>().unwrap_or(total_size - 1);
+            }
+        }
+    }
+
+    if req_start >= total_size {
+        return (
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            [(header::CONTENT_RANGE, format!("bytes */{}", total_size))],
+            "Requested range not satisfiable",
+        )
+            .into_response();
+    }
+
+    if req_end >= total_size {
+        req_end = total_size - 1;
+    }
+
+    println!(
+        "[YouTubeProxy] Serving {}-{}/{} ({})",
+        req_start, req_end, total_size, mime_type
+    );
+
+    let content_range = format!("bytes {}-{}/{}", req_start, req_end, total_size);
+    let content_length = (req_end - req_start + 1).to_string();
+    let url_for_stream = target_url.clone();
+
+    // Step 3: Stream the data in <=2MB chunks, each fetched as a separate Range request
+    let stream = async_stream::stream! {
+        let mut current = req_start;
+        while current <= req_end {
+            let chunk_end = std::cmp::min(current + YOUTUBE_MAX_CHUNK - 1, req_end);
+            let range_val = format!("bytes={}-{}", current, chunk_end);
+
+            let chunk_resp = client
+                .get(&url_for_stream)
+                .header("Range", &range_val)
+                .send()
+                .await;
+
+            match chunk_resp {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.bytes().await {
+                        Ok(bytes) => {
+                            yield Ok::<axum::body::Bytes, std::io::Error>(bytes);
+                        }
+                        Err(e) => {
+                            println!("[YouTubeProxy] Error reading chunk body: {}", e);
+                            yield Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+                            break;
+                        }
+                    }
+                }
+                Ok(resp) => {
+                    println!("[YouTubeProxy] Chunk HTTP {}: {}", resp.status(), range_val);
+                    yield Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("YouTube CDN returned HTTP {} for chunk", resp.status()),
+                    ));
+                    break;
+                }
+                Err(e) => {
+                    println!("[YouTubeProxy] Chunk request error: {}", e);
+                    yield Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+                    break;
+                }
+            }
+
+            current = chunk_end + 1;
+        }
+    };
+
+    let status = if range_header.is_some() {
+        StatusCode::PARTIAL_CONTENT
+    } else {
+        StatusCode::OK
+    };
+
+    axum::response::Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, &mime_type)
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)

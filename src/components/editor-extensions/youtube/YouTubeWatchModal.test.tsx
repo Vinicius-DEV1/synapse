@@ -86,6 +86,41 @@ describe('YouTubeWatchModal', () => {
     expect(iframe?.getAttribute('src')).toContain('dQw4w9WgXcQ');
   });
 
+  it('allows toggling between native stream and embed player via header button', async () => {
+    const mockGetStream = vi.fn().mockResolvedValue({
+      title: 'Rick Astley - Never Gonna Give You Up',
+      resolution: '1280x720',
+      duration: 213,
+      video_url: 'https://googlevideo.com/video_720p.mp4',
+    });
+
+    (window as any).api = {
+      youtube: { getStream: mockGetStream },
+    };
+
+    render(
+      <YouTubeWatchModal
+        url={sampleUrl}
+        title="Rick Astley"
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(await screen.findByText('Rick Astley - Never Gonna Give You Up')).toBeDefined();
+    expect(document.querySelector('video')).not.toBeNull();
+
+    // Toggle to embed player via header
+    const toggleBtn = screen.getByTitle(/Alternar para Player Embutido/i);
+    expect(toggleBtn).toBeDefined();
+    fireEvent.click(toggleBtn);
+
+    // Verify iframe is rendered and video element is discarded
+    const iframe = document.querySelector('iframe');
+    expect(iframe).toBeDefined();
+    expect(iframe?.getAttribute('src')).toContain('dQw4w9WgXcQ');
+    expect(document.querySelector('video')).toBeNull();
+  });
+
   it('triggers onClose when close button is clicked or Escape is pressed', async () => {
     const mockGetStream = vi.fn().mockResolvedValue({
       title: 'Rick Astley',

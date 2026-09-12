@@ -10,6 +10,7 @@ import {
   Loader2,
   Layers,
   Sparkles,
+  Hourglass,
 } from 'lucide-react';
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import YouTubeSummaryModal from '../youtube/YouTubeSummaryModal';
@@ -36,6 +37,7 @@ interface LinkPreviewCardProps {
   notes: string;
   showNotes: boolean;
   watched?: boolean;
+  watching?: boolean;
   color?: string;
   loading: boolean;
   isReloading: boolean;
@@ -44,6 +46,7 @@ interface LinkPreviewCardProps {
   onOpenConfirm: () => void;
   onToggleNotes: (e: React.MouseEvent) => void;
   onToggleWatched?: (e: React.MouseEvent) => void;
+  onToggleWatching?: (e?: React.MouseEvent) => void;
   onConvertToText?: (e: React.MouseEvent) => void;
   onChangeColor?: (color: string) => void;
   onChangeNotes: (notes: string) => void;
@@ -76,6 +79,7 @@ export default function LinkPreviewCard({
   notes,
   showNotes,
   watched,
+  watching,
   color,
   loading,
   isReloading,
@@ -84,6 +88,7 @@ export default function LinkPreviewCard({
   onOpenConfirm,
   onToggleNotes,
   onToggleWatched,
+  onToggleWatching,
   onConvertToText,
   onChangeColor,
   onChangeNotes,
@@ -246,14 +251,21 @@ export default function LinkPreviewCard({
               ) : (
                 renderIcon()
               )}
-              {watched && (
+              {watched ? (
                 <div
                   className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-sm ring-1 ring-black/50 pointer-events-none"
                   title="Assistido / Concluído"
                 >
                   <Check size={9} className="stroke-[3.5]" />
                 </div>
-              )}
+              ) : watching ? (
+                <div
+                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center text-black shadow-sm ring-1 ring-black/50 pointer-events-none"
+                  title="Assistindo"
+                >
+                  <Hourglass size={8} className="stroke-[2.5]" />
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
               {loading || isReloading ? (
@@ -297,6 +309,20 @@ export default function LinkPreviewCard({
                     <span className="flex items-center gap-1 text-zinc-400 shrink-0">
                       <Calendar size={11} className="text-zinc-500" />
                       {formatDate(uploadDate)}
+                    </span>
+                  </>
+                )}
+
+                {/* Assistindo Badge */}
+                {watching && !watched && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/25 text-[10px] font-medium"
+                      title="Status: Assistindo"
+                    >
+                      <Hourglass size={10} className="text-amber-400" />
+                      <span>Assistindo</span>
                     </span>
                   </>
                 )}
@@ -419,7 +445,9 @@ export default function LinkPreviewCard({
         colorPickerRef={colorPickerRef as React.RefObject<HTMLDivElement>}
         setShowColorPicker={setShowColorPicker}
         onChangeColor={onChangeColor}
+        watching={watching}
         onToggleWatched={onToggleWatched}
+        onToggleWatching={onToggleWatching}
         onConvertToText={onConvertToText}
         onToggleNotes={onToggleNotes}
         onUngroup={onUngroup}
@@ -427,7 +455,12 @@ export default function LinkPreviewCard({
         onReload={onReload}
         onDelete={onDelete}
         isYouTube={isYouTube && !isPlaylist}
-        onWatch={() => setShowWatchModal(true)}
+        onWatch={() => {
+          setShowWatchModal(true);
+          if (!watched && !watching && onToggleWatching) {
+            onToggleWatching();
+          }
+        }}
         onOpenSummary={() => setShowSummaryModal(true)}
         duplicateCount={duplicatePages?.length || 0}
         onOpenDuplicates={onOpenDuplicates}

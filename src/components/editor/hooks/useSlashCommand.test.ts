@@ -175,6 +175,7 @@ describe('useSlashCommand Hook', () => {
       y: 150,
       query: 'anotações',
       mode: 'link',
+      targetPos: 10,
     });
     expect(result.current.slashMenu).toBeNull();
   });
@@ -211,7 +212,101 @@ describe('useSlashCommand Hook', () => {
       y: 150,
       query: 'Nova Tarefa',
       mode: 'create',
+      targetPos: 10,
     });
     expect(result.current.slashMenu).toBeNull();
   });
+
+  it('opens page search menu with blank query when user only typed filter like "vinc" or "vincular"', () => {
+    const { result } = renderHook(() =>
+      useSlashCommand({
+        setPageSearchMenu,
+        setFocusModal,
+        setAlarmModal,
+        setFileUploadModal,
+        setFileSelectModal,
+        setCalendarEventModal,
+        setMediaSelectModal,
+      })
+    );
+
+    // Test 1: user typed "vinc" to filter the menu
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'vinc',
+        startPos: 5,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('page', mockEditor);
+    });
+
+    expect(setPageSearchMenu).toHaveBeenCalledWith({
+      isOpen: true,
+      x: 50,
+      y: 150,
+      query: '',
+      mode: 'link',
+      targetPos: 5,
+    });
+
+    // Test 2: user typed "vincular" exactly
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'vincular',
+        startPos: 5,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('page', mockEditor);
+    });
+
+    expect(setPageSearchMenu).toHaveBeenCalledWith({
+      isOpen: true,
+      x: 50,
+      y: 150,
+      query: '',
+      mode: 'link',
+      targetPos: 5,
+    });
+  });
+
+  it('opens event modal with blank title when user only typed "eve" or "evento"', () => {
+    const { result } = renderHook(() =>
+      useSlashCommand({
+        setPageSearchMenu,
+        setFocusModal,
+        setAlarmModal,
+        setFileUploadModal,
+        setFileSelectModal,
+        setCalendarEventModal,
+        setMediaSelectModal,
+      })
+    );
+
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'eve',
+        startPos: 10,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('evento', mockEditor);
+    });
+
+    expect(setCalendarEventModal).toHaveBeenCalledWith({
+      isOpen: true,
+      initialTitle: '',
+    });
+  });
 });
+

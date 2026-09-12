@@ -12,6 +12,16 @@ import { Portal } from '../../ui/Portal';
 import type { YouTubeStreamInfo } from '../../../api/types';
 import { extractYouTubeVideoId } from '../../../services/youtube/youtubeSummaryService';
 
+/**
+ * Builds a local proxy URL for a YouTube CDN stream.
+ * Routes through the Rust Axum server's /youtube-proxy endpoint which
+ * forwards requests with a browser User-Agent, avoiding GStreamer's UA being blocked.
+ */
+function buildProxyUrl(port: number, rawUrl: string, mime: string): string {
+  const encoded = encodeURIComponent(rawUrl);
+  return `http://127.0.0.1:${port}/youtube-proxy?url=${encoded}&mime=${encodeURIComponent(mime)}`;
+}
+
 interface YouTubeWatchModalProps {
   url: string;
   title?: string | null;
@@ -30,6 +40,7 @@ export default function YouTubeWatchModal({
   const [error, setError] = useState<string | null>(null);
   const [streamInfo, setStreamInfo] = useState<YouTubeStreamInfo | null>(null);
   const [isUsingEmbedFallback, setIsUsingEmbedFallback] = useState(false);
+  const [streamPort, setStreamPort] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -38,6 +49,22 @@ export default function YouTubeWatchModal({
   const isMountedRef = useRef(true);
 
   const videoId = extractYouTubeVideoId(url);
+
+  // Fetch the local stream server port for proxying YouTube CDN requests
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (window.api?.video?.getStreamPort) {
+          const port = await window.api.video.getStreamPort();
+          if (!cancelled) setStreamPort(port);
+        }
+      } catch (err) {
+        console.warn('[YouTubeWatchModal] Could not get stream port:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Fetch 720p stream info via native yt-dlp
   const loadStream = useCallback(async () => {
@@ -74,10 +101,31 @@ export default function YouTubeWatchModal({
     };
   }, [loadStream]);
 
-  // Strict memory teardown when streamInfo or component unmounts
+  // Strict memory teardown when streamInfo or component unmounts or switches to embed
   useEffect(() => {
     const video = videoRef.current;
     const audio = audioRef.current;
+
+    if (isUsingEmbedFallback) {
+      if (video) {
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        } catch {
+          // Ignore any DOM exception on teardown
+        }
+      }
+      if (audio) {
+        try {
+          audio.pause();
+          audio.removeAttribute('src');
+          audio.load();
+        } catch {
+          // Ignore any DOM exception on teardown
+        }
+      }
+    }
 
     return () => {
       if (video) {
@@ -99,13 +147,16 @@ export default function YouTubeWatchModal({
         }
       }
     };
-  }, [streamInfo]);
+  }, [streamInfo, isUsingEmbedFallback]);
+
+  // Removed: Auto-fallback stall detection is no longer needed.
+  // The local reverse proxy eliminates the GStreamer User-Agent 403 root cause.
 
   // Audio-video sync for separated DASH streams
   useEffect(() => {
     const video = videoRef.current;
     const audio = audioRef.current;
-    if (!video || !audio || !streamInfo?.audio_url) return;
+    if (!video || !audio || !streamInfo?.audio_url || isUsingEmbedFallback) return;
 
     // Sync initial audio volume and mute state
     audio.volume = video.volume;
@@ -192,7 +243,7 @@ export default function YouTubeWatchModal({
         cancelAnimationFrame(syncLoopRef.current);
       }
     };
-  }, [streamInfo]);
+  }, [streamInfo, isUsingEmbedFallback]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -208,6 +259,11 @@ export default function YouTubeWatchModal({
         }
         e.preventDefault();
         onClose();
+        return;
+      }
+
+      // If in embed fallback mode, allow the YouTube iframe to handle playback shortcuts
+      if (isUsingEmbedFallback) {
         return;
       }
 
@@ -262,7 +318,7 @@ export default function YouTubeWatchModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, isUsingEmbedFallback]);
 
   const handleOpenExternal = () => {
     if (window.api?.os?.openInBrowser) {
@@ -298,10 +354,10 @@ export default function YouTubeWatchModal({
                     {displayTitle}
                   </h3>
                   <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[10px] font-mono px-2 py-0.5 rounded-full font-medium shrink-0">
-                    {displayResolution}
+                    {isUsingEmbedFallback ? 'YouTube HD' : displayResolution}
                   </span>
                   <span className="hidden sm:inline-flex bg-brand-500/15 text-brand-300 border border-brand-500/25 text-[10px] px-2 py-0.5 rounded-full shrink-0">
-                    yt-dlp stream
+                    {isUsingEmbedFallback ? 'Player Embutido' : 'yt-dlp stream'}
                   </span>
                 </div>
                 {channel && (
@@ -311,6 +367,30 @@ export default function YouTubeWatchModal({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {videoId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isUsingEmbedFallback) {
+                      setIsUsingEmbedFallback(false);
+                      if (!streamInfo) loadStream();
+                    } else {
+                      setIsUsingEmbedFallback(true);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-all ${
+                    isUsingEmbedFallback
+                      ? 'bg-brand-500/15 text-brand-300 border-brand-500/30 hover:bg-brand-500/25'
+                      : 'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white'
+                  }`}
+                  title={isUsingEmbedFallback ? 'Alternar para Stream Nativo (yt-dlp)' : 'Alternar para Player Embutido (iframe)'}
+                >
+                  <Tv className="w-3.5 h-3.5 text-brand-400" />
+                  <span className="hidden md:inline">
+                    {isUsingEmbedFallback ? 'Stream Nativo' : 'Player Embutido'}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleOpenExternal}
                 title="Abrir no YouTube externo"
@@ -334,7 +414,7 @@ export default function YouTubeWatchModal({
 
           {/* Video Player Canvas */}
           <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
-            {loading && (
+            {loading && !isUsingEmbedFallback && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950 z-20">
                 <div className="relative">
                   <Loader2 className="w-10 h-10 text-brand-400 animate-spin" />
@@ -348,6 +428,16 @@ export default function YouTubeWatchModal({
                     Bufferizando diretamente sem download prévio
                   </p>
                 </div>
+                {videoId && (
+                  <button
+                    type="button"
+                    onClick={() => setIsUsingEmbedFallback(true)}
+                    className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+                  >
+                    <Tv className="w-3.5 h-3.5 text-brand-400" />
+                    <span>Iniciar imediatamente com Player Embutido</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -405,15 +495,25 @@ export default function YouTubeWatchModal({
               <>
                 <video
                   ref={videoRef}
-                  src={streamInfo.video_url}
+                  src={
+                    streamPort
+                      ? buildProxyUrl(streamPort, streamInfo.video_url, 'video/mp4')
+                      : streamInfo.video_url
+                  }
                   className="w-full h-full object-contain"
                   controls
                   autoPlay
                   playsInline
+                  onContextMenu={(e) => e.preventDefault()}
                   onError={() => {
-                    if (videoRef.current?.error) {
-                      const msg = videoRef.current.error.message || 'Erro ao carregar stream de vídeo.';
-                      console.warn('[YouTubeWatchModal] Video playback error:', msg);
+                    const err = videoRef.current?.error;
+                    const msg =
+                      err?.message ||
+                      (err?.code ? `Erro ao carregar stream de vídeo (${err.code}).` : 'Erro ao carregar stream de vídeo.');
+                    console.warn('[YouTubeWatchModal] Video playback error:', msg);
+                    if (videoId) {
+                      setIsUsingEmbedFallback(true);
+                    } else {
                       setError(msg);
                     }
                   }}
@@ -421,7 +521,11 @@ export default function YouTubeWatchModal({
                 {streamInfo.audio_url && (
                   <audio
                     ref={audioRef}
-                    src={streamInfo.audio_url}
+                    src={
+                      streamPort
+                        ? buildProxyUrl(streamPort, streamInfo.audio_url, 'audio/mp4')
+                        : streamInfo.audio_url
+                    }
                     preload="auto"
                     className="hidden"
                   />
@@ -433,13 +537,23 @@ export default function YouTubeWatchModal({
           {/* Footer Shortcuts Help Bar */}
           <div className="h-8 px-4 bg-zinc-950 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-zinc-500 shrink-0">
             <div className="flex items-center gap-3">
-              <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">Espaço</kbd> Play/Pause</span>
-              <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">←/→</kbd> ±5s</span>
-              <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">F</kbd> Tela Cheia</span>
-              <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">M</kbd> Mudo</span>
+              {isUsingEmbedFallback ? (
+                <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">Esc</kbd> Fechar Player</span>
+              ) : (
+                <>
+                  <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">Espaço</kbd> Play/Pause</span>
+                  <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">←/→</kbd> ±5s</span>
+                  <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">F</kbd> Tela Cheia</span>
+                  <span><kbd className="font-mono bg-white/[0.05] px-1 py-0.5 rounded text-[10px]">M</kbd> Mudo</span>
+                </>
+              )}
             </div>
             <span className="hidden sm:inline text-zinc-600 font-mono text-[10px]">
-              {streamInfo ? `Resolução selecionada: ${displayResolution}` : ''}
+              {isUsingEmbedFallback
+                ? 'Player Oficial YouTube'
+                : streamInfo
+                ? `Resolução selecionada: ${displayResolution}`
+                : ''}
             </span>
           </div>
         </div>

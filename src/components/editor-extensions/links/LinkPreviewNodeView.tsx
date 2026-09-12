@@ -33,6 +33,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
     notes: rawNotes,
     showNotes: rawShowNotes,
     watched: rawWatched,
+    watching: rawWatching,
     color: rawColor,
     scrapId,
     scrapStatus,
@@ -47,6 +48,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
   const notes = rawNotes || '';
   const showNotes = !!rawShowNotes;
   const watched = !!rawWatched;
+  const watching = !!rawWatching;
   const color = rawColor || 'default';
 
   const [fetchedTitle, setFetchedTitle] = useState<string | null>(title);
@@ -185,11 +187,26 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
     props.updateAttributes({ showNotes: !showNotes });
   };
 
+  const handleToggleWatching = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const nextWatching = !watching;
+    playUiToggleSound(nextWatching);
+    props.updateAttributes({
+      watching: nextWatching,
+      ...(nextWatching ? { watched: false } : {}),
+    });
+  };
+
   const handleToggleWatched = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    playUiToggleSound(!watched);
-    props.updateAttributes({ watched: !watched });
+    const nextWatched = !watched;
+    playUiToggleSound(nextWatched);
+    props.updateAttributes({
+      watched: nextWatched,
+      ...(nextWatched ? { watching: false } : {}),
+    });
   };
 
   const handleConvertToText = (e: React.MouseEvent) => {
@@ -384,6 +401,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
         notes={notes}
         showNotes={showNotes}
         watched={watched}
+        watching={watching}
         color={color}
         loading={loading}
         isReloading={isReloading}
@@ -405,6 +423,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
         }}
         onToggleNotes={handleToggleNotes}
         onToggleWatched={handleToggleWatched}
+        onToggleWatching={handleToggleWatching}
         onConvertToText={handleConvertToText}
         onChangeNotes={handleChangeNotes}
         onReload={handleReload}

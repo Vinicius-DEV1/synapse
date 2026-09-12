@@ -15,6 +15,7 @@ import {
   Layers,
   Sparkles,
   Play,
+  Hourglass,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 
@@ -35,6 +36,8 @@ interface LinkMoreOptionsMenuProps {
   onCaptureScrap?: () => void;
   onOpenScrap?: () => void;
   // Other action props
+  watching?: boolean;
+  onToggleWatching?: (e: React.MouseEvent) => void;
   watched?: boolean;
   onToggleWatched?: (e: React.MouseEvent) => void;
   onOpenPalette?: () => void;
@@ -61,6 +64,8 @@ export default function LinkMoreOptionsMenu({
   scrapStatus,
   onCaptureScrap,
   onOpenScrap,
+  watching,
+  onToggleWatching,
   watched,
   onToggleWatched,
   onOpenPalette,
@@ -249,6 +254,24 @@ export default function LinkMoreOptionsMenu({
             >
               <Palette size={14} className="shrink-0 text-zinc-400" />
               <span>Personalizar Cor</span>
+            </button>
+          )}
+
+          {onToggleWatching && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+                onToggleWatching(e);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer"
+            >
+              <Hourglass
+                size={14}
+                className={`shrink-0 ${watching ? 'text-amber-400' : 'text-zinc-500'}`}
+              />
+              <span>{watching ? 'Marcar como não assistindo' : 'Assistindo'}</span>
             </button>
           )}
 

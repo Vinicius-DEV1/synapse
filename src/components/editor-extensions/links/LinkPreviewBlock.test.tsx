@@ -73,7 +73,24 @@ describe('LinkPreviewBlock Component', () => {
     fireEvent.click(watchedBtn);
 
     expect(mockProps.updateAttributes).toHaveBeenCalledWith(
-      expect.objectContaining({ watched: true })
+      expect.objectContaining({ watched: true, watching: false })
+    );
+  });
+
+  it('handles watching toggle button click and sets watching status', () => {
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle, getByText } = render(<Component {...mockProps} />);
+
+    const moreBtn = getByTitle(/Mais opções do link/i);
+    expect(moreBtn).toBeDefined();
+    fireEvent.click(moreBtn);
+
+    const watchingBtn = getByText(/Assistindo/i);
+    expect(watchingBtn).toBeDefined();
+    fireEvent.click(watchingBtn);
+
+    expect(mockProps.updateAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({ watching: true, watched: false })
     );
   });
 

@@ -689,7 +689,7 @@ pub async fn youtube_get_stream(url: String, _app: AppHandle) -> Result<YouTubeS
         "--no-playlist",
         "--no-warnings",
         "-f",
-        "bestvideo[height<=720]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+        "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best",
         "--print",
         "%(title)s",
         "--print",
