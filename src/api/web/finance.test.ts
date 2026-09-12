@@ -11,7 +11,10 @@ describe('webFinanceApi (IndexedDB)', () => {
     await db.clear('wishlist');
     try {
       await db.clear('finance_accounts');
-    } catch {}
+    } catch (err) {
+      // Ignored if table does not exist in schema, but logged for diagnostic visibility
+      console.warn('[finance.test] Optional finance_accounts store not cleared:', err);
+    }
     api = webFinanceApi(db, () => 'tx_' + Math.random().toString(36).substring(2, 8));
   });
 
