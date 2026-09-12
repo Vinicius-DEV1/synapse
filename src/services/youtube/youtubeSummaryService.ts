@@ -57,6 +57,14 @@ export async function getExistingVideoSummary(videoId: string): Promise<YouTubeS
 }
 
 /**
+ * Fast check whether a video already has a persisted summary.
+ */
+export async function hasExistingVideoSummary(videoId: string): Promise<boolean> {
+  const existing = await getExistingVideoSummary(videoId);
+  return Boolean(existing?.summary);
+}
+
+/**
  * System instruction and prompt formatting tailored for educational clarity,
  * strict noise/promotional elimination, and prominent timestamp citation.
  */
@@ -238,6 +246,13 @@ export async function generateYouTubeSummary({
   };
 
   memorySummaryCache.set(videoId, newRecord);
+
+  // Dispatch custom event so active link preview cards reactively update their hover pill state
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('youtube-summary-saved', { detail: { videoId } })
+    );
+  }
 
   return {
     summary: cleanSummary,
