@@ -1,7 +1,8 @@
 import { useEffect, useState, useId } from 'react';
-import { Network, Code2, Eye, Copy, Check, AlertTriangle } from 'lucide-react';
+import { Network, Code2, Eye, Copy, Check, AlertTriangle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { triggerToast } from '../../ui/ToastContext';
 import { ScrollableDiv, ScrollablePre } from '../../../utils/scroll-forwarding';
+import { MermaidFullscreenModal } from './MermaidFullscreenModal';
 
 interface MermaidViewerProps {
   chart: string;
@@ -15,6 +16,8 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [zoom, setZoom] = useState<number>(1);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const rawId = useId();
   const diagramId = `mermaid-${rawId.replace(/[:]/g, '')}`;
@@ -31,6 +34,20 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
           mermaid.initialize({
             startOnLoad: false,
             theme: 'dark',
+            flowchart: {
+              htmlLabels: true,
+              curve: 'basis',
+              padding: 24,
+              nodeSpacing: 45,
+              rankSpacing: 45,
+              useMaxWidth: false,
+            },
+            sequence: {
+              useMaxWidth: false,
+              diagramMarginX: 50,
+              diagramMarginY: 30,
+              boxMargin: 10,
+            },
             themeVariables: {
               darkMode: true,
               background: '#141416',
@@ -40,7 +57,7 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
               lineColor: '#a1a1aa',
               secondaryColor: '#27272a',
               tertiaryColor: '#18181b',
-              fontFamily: 'inherit',
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
               fontSize: '13px',
             },
             securityLevel: 'loose',
@@ -111,6 +128,49 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
+          {!showCode && !loading && !error && svgContent && (
+            <>
+              {/* Zoom Controls */}
+              <div className="flex items-center bg-white/5 border border-white/5 rounded-lg p-0.5 gap-0.5 mr-1">
+                <button
+                  type="button"
+                  onClick={() => setZoom((prev) => Math.max(0.4, +(prev - 0.15).toFixed(2)))}
+                  className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  title="Diminuir Zoom (-)"
+                >
+                  <ZoomOut size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoom(1)}
+                  className="px-1.5 py-0.5 text-[11px] font-mono text-zinc-400 hover:text-white transition-colors rounded hover:bg-white/10 cursor-pointer min-w-[42px] text-center"
+                  title="Resetar Zoom para 100%"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoom((prev) => Math.min(2.5, +(prev + 0.15).toFixed(2)))}
+                  className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  title="Aumentar Zoom (+)"
+                >
+                  <ZoomIn size={12} />
+                </button>
+              </div>
+
+              {/* Expand to Fullscreen Canvas */}
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer text-[11px] font-medium mr-1"
+                title="Expandir diagrama em tela cheia (Zoom e Pan)"
+              >
+                <Maximize2 size={12} />
+                <span className="hidden sm:inline">Expandir</span>
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setShowCode((prev) => !prev)}
@@ -164,11 +224,25 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
           </div>
         ) : (
           <div
-            className="mermaid-svg-container w-full flex justify-center [&_svg]:max-w-full [&_svg]:h-auto transition-all"
+            style={{
+              transform: zoom !== 1 ? `scale(${zoom})` : undefined,
+              transformOrigin: 'top center',
+              transition: 'transform 0.12s ease-out',
+            }}
+            className="mermaid-svg-container flex justify-center [&_svg]:max-w-none [&_svg]:h-auto transition-all"
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         )}
       </ScrollableDiv>
+
+      {/* Fullscreen Interactive Canvas Modal */}
+      {isFullscreen && svgContent && (
+        <MermaidFullscreenModal
+          svgContent={svgContent}
+          chartCode={chart}
+          onClose={() => setIsFullscreen(false)}
+        />
+      )}
     </div>
   );
 }
