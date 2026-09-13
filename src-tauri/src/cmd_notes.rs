@@ -17,6 +17,8 @@ pub struct PageMeta {
     pub is_locked: i32,
     pub is_pinned: i32,
     pub pinned_order: f64,
+    pub cover_image: Option<String>,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -30,7 +32,7 @@ pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order FROM pages WHERE deleted_at IS NULL")
+    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order, cover_image, description FROM pages WHERE deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
 
     let page_iter = stmt
@@ -48,6 +50,8 @@ pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>
                 is_locked: row.get(9)?,
                 is_pinned: row.get(10)?,
                 pinned_order: row.get(11)?,
+                cover_image: row.get(12)?,
+                description: row.get(13)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -138,6 +142,8 @@ pub fn notes_create_page(
         is_locked: 0,
         is_pinned: 0,
         pinned_order: 0.0,
+        cover_image: None,
+        description: None,
     })
 }
 
@@ -152,6 +158,8 @@ pub struct UpdatePagePayload {
     pub parent_id: Option<serde_json::Value>,
     pub is_pinned: Option<i32>,
     pub pinned_order: Option<f64>,
+    pub cover_image: Option<serde_json::Value>,
+    pub description: Option<String>,
 }
 
 #[tauri::command]
@@ -280,6 +288,28 @@ pub fn notes_update_page(
         params_vec.push(order.into());
         has_updates = true;
     }
+    if let Some(cover_val) = page.cover_image {
+        if has_updates {
+            query.push_str(",");
+        }
+        query.push_str(" cover_image = ?");
+        if cover_val.is_null() {
+            params_vec.push(rusqlite::types::Value::Null);
+        } else if let Some(s) = cover_val.as_str() {
+            params_vec.push(s.to_string().into());
+        } else {
+            params_vec.push(rusqlite::types::Value::Null);
+        }
+        has_updates = true;
+    }
+    if let Some(desc) = page.description {
+        if has_updates {
+            query.push_str(",");
+        }
+        query.push_str(" description = ?");
+        params_vec.push(desc.into());
+        has_updates = true;
+    }
 
     // Update updated_at timestamp only when actual content changes occur
     if has_updates {
@@ -315,7 +345,7 @@ pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageM
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
+    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order, cover_image, description FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
         .map_err(|e| e.to_string())?;
 
     let page_iter = stmt
@@ -333,6 +363,8 @@ pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageM
                 is_locked: row.get(9)?,
                 is_pinned: row.get(10).unwrap_or(0),
                 pinned_order: row.get(11).unwrap_or(0.0),
+                cover_image: row.get(12)?,
+                description: row.get(13)?,
             })
         })
         .map_err(|e| e.to_string())?;

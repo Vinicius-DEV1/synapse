@@ -71,6 +71,8 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
       'parent_id',
       'is_pinned',
       'pinned_order',
+      'cover_image',
+      'description',
     ];
     let hasChanges = false;
 
