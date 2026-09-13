@@ -147,7 +147,11 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   }, [fileKey, filesMasterKey, isPdf, isText, item, itemDriveId, itemFileType, objectUrl]);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#0f0f11] flex flex-col animate-fade-in select-text">
+    <div
+      className={`fixed inset-0 z-[200] flex flex-col animate-fade-in select-text transition-colors duration-200 ${
+        darkMode ? 'bg-black text-zinc-100' : 'bg-dark-bg text-zinc-200'
+      }`}
+    >
       {/* Header */}
       <FileViewerHeader
         item={item}

@@ -12,11 +12,14 @@ import {
   ChevronUp,
   FileText,
   ExternalLink,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import MermaidViewer from './MermaidViewer';
+import { ScrollablePre, ScrollableDiv } from '../../../utils/scroll-forwarding';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
 import {
@@ -47,9 +50,16 @@ export default function YouTubeSummaryModal({
   const [showRawTranscript, setShowRawTranscript] = useState(false);
   const [copied, setCopied] = useState(false);
   const [framesCount, setFramesCount] = useState<number | undefined>(undefined);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('caderno_summary_dark_mode') === 'true';
+  });
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    localStorage.setItem('caderno_summary_dark_mode', String(darkMode));
+  }, [darkMode]);
 
   const videoId = extractYouTubeVideoId(url);
 
@@ -176,9 +186,17 @@ export default function YouTubeSummaryModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[200] bg-[#0f0f11] flex flex-col animate-fade-in select-text">
+      <div
+        className={`fixed inset-0 z-[200] flex flex-col animate-fade-in select-text transition-colors duration-200 ${
+          darkMode ? 'bg-black text-zinc-100' : 'bg-dark-bg text-zinc-200'
+        }`}
+      >
         {/* Sticky Minimalist Header (Matching FileViewer / Markdown Reader) */}
-        <header className="h-14 border-b border-white/5 flex items-center justify-between px-5 sm:px-8 bg-[#0f0f11]/90 backdrop-blur-md z-30 sticky top-0 shrink-0">
+        <header
+          className={`h-14 border-b border-white/5 flex items-center justify-between px-5 sm:px-8 backdrop-blur-md z-30 sticky top-0 shrink-0 transition-colors duration-200 ${
+            darkMode ? 'bg-black/90' : 'bg-dark-bg/90'
+          }`}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center shrink-0 border border-brand-500/20">
               <Sparkles size={16} />
@@ -261,6 +279,16 @@ export default function YouTubeSummaryModal({
                 </button>
               </>
             )}
+
+            {/* Dark Mode Toggle (Identical to Markdown / FileViewer) */}
+            <button
+              type="button"
+              onClick={() => setDarkMode((prev) => !prev)}
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              title={darkMode ? 'Modo Normal (Fundo Caderno)' : 'Modo Escuro / Noturno'}
+            >
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
 
             <button
               type="button"
@@ -374,9 +402,9 @@ export default function YouTubeSummaryModal({
                         const isBlock = Boolean(match || String(children).includes('\n'));
                         if (isBlock) {
                           return (
-                            <pre className="bg-[#141416] border border-white/5 rounded-xl p-4 sm:p-5 my-4 overflow-x-auto text-xs sm:text-sm font-mono text-zinc-200 custom-scrollbar leading-relaxed">
+                            <ScrollablePre className="bg-[#141416] border border-white/5 rounded-xl p-4 sm:p-5 my-4 overflow-x-auto text-xs sm:text-sm font-mono text-zinc-200 custom-scrollbar leading-relaxed">
                               <code>{children}</code>
-                            </pre>
+                            </ScrollablePre>
                           );
                         }
                         return (
@@ -407,9 +435,9 @@ export default function YouTubeSummaryModal({
                     </button>
 
                     {showRawTranscript && (
-                      <div className="mt-3 p-4 sm:p-5 rounded-xl bg-black/40 border border-white/5 max-h-80 overflow-y-auto custom-scrollbar text-xs font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap select-text">
+                      <ScrollableDiv className="mt-3 p-4 sm:p-5 rounded-xl bg-black/40 border border-white/5 max-h-80 overflow-y-auto custom-scrollbar text-xs font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap select-text">
                         {rawTranscript}
-                      </div>
+                      </ScrollableDiv>
                     )}
                   </div>
                 )}
