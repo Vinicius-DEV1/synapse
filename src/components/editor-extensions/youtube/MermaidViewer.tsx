@@ -1,6 +1,7 @@
 import { useEffect, useState, useId } from 'react';
 import { Network, Code2, Eye, Copy, Check, AlertTriangle } from 'lucide-react';
 import { triggerToast } from '../../ui/ToastContext';
+import { ScrollableDiv, ScrollablePre } from '../../../utils/scroll-forwarding';
 
 interface MermaidViewerProps {
   chart: string;
@@ -141,11 +142,11 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
       </div>
 
       {/* Content body */}
-      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[140px] overflow-x-auto custom-scrollbar">
+      <ScrollableDiv className="p-4 sm:p-6 flex items-center justify-center min-h-[140px] overflow-x-auto custom-scrollbar">
         {showCode ? (
-          <pre className="w-full text-xs font-mono text-zinc-300 bg-black/40 p-4 rounded-xl border border-white/5 overflow-x-auto leading-relaxed">
+          <ScrollablePre className="w-full text-xs font-mono text-zinc-300 bg-black/40 p-4 rounded-xl border border-white/5 overflow-x-auto leading-relaxed">
             <code>{chart.trim()}</code>
-          </pre>
+          </ScrollablePre>
         ) : loading ? (
           <div className="flex items-center gap-2 text-xs text-zinc-400">
             <span className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
@@ -157,9 +158,9 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
               <AlertTriangle size={15} />
               <span>Não foi possível renderizar o gráfico visual</span>
             </div>
-            <pre className="text-left w-full text-[11px] font-mono text-zinc-400 bg-black/40 p-3 rounded-lg border border-white/5 overflow-x-auto">
+            <ScrollablePre className="text-left w-full text-[11px] font-mono text-zinc-400 bg-black/40 p-3 rounded-lg border border-white/5 overflow-x-auto">
               <code>{chart.trim()}</code>
-            </pre>
+            </ScrollablePre>
           </div>
         ) : (
           <div
@@ -167,7 +168,7 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         )}
-      </div>
+      </ScrollableDiv>
     </div>
   );
 }
