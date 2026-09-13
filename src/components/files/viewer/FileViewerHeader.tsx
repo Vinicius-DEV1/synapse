@@ -70,7 +70,11 @@ export function FileViewerHeader({
   const ext = item.name.includes('.') ? item.name.split('.').pop()?.toUpperCase() : '';
 
   return (
-    <div className="h-14 border-b border-white/5 flex items-center justify-between px-5 sm:px-8 bg-[#0f0f11]/90 backdrop-blur-md z-30 sticky top-0">
+    <div
+      className={`h-14 border-b border-white/5 flex items-center justify-between px-5 sm:px-8 backdrop-blur-md z-30 sticky top-0 transition-colors duration-200 ${
+        darkMode ? 'bg-black/90' : 'bg-dark-bg/90'
+      }`}
+    >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-8 h-8 rounded-lg bg-white/5 text-zinc-400 flex items-center justify-center shrink-0 border border-white/5">
           <FileText size={16} />

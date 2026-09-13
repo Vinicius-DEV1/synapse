@@ -122,4 +122,39 @@ describe('YouTubeSummaryModal', () => {
     expect(screen.getByText('Este vídeo não possui legendas disponíveis.')).toBeDefined();
     expect(screen.getByText('Tentar Novamente')).toBeDefined();
   });
+
+  it('toggles dark mode when clicking the theme button', async () => {
+    vi.mocked(youtubeSummaryService.getExistingVideoSummary).mockResolvedValue({
+      id: 'test_vid_123',
+      video_id: 'test_vid_123',
+      summary: '```typescript\nconst x = 42;\n```',
+      created_at: '2026-01-01',
+      updated_at: '2026-01-01',
+    });
+
+    const { container } = render(
+      <YouTubeSummaryModal
+        url={sampleUrl}
+        title="Aula de React"
+        channel="Canal Dev"
+        onClose={mockOnClose}
+      />
+    );
+
+    // Initial state: default Caderno background bg-dark-bg
+    const rootDiv = container.querySelector('.animate-fade-in') || document.querySelector('.animate-fade-in');
+    expect(rootDiv).toBeDefined();
+
+    // Dark mode toggle button
+    const themeBtn = screen.getByTitle(/Modo Escuro \/ Noturno|Modo Normal/i);
+    expect(themeBtn).toBeDefined();
+
+    // Click toggle button
+    fireEvent.click(themeBtn);
+    expect(localStorage.getItem('caderno_summary_dark_mode')).toBe('true');
+
+    // Click again to return to default
+    fireEvent.click(themeBtn);
+    expect(localStorage.getItem('caderno_summary_dark_mode')).toBe('false');
+  });
 });

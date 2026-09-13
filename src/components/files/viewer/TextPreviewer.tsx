@@ -128,7 +128,7 @@ export function TextPreviewer({
       ref={scrollContainerRef}
       onScroll={onScroll}
       className={`w-full h-full overflow-y-auto transition-colors duration-200 ${
-        darkMode ? 'bg-black text-zinc-100' : 'bg-[#0f0f11] text-zinc-200'
+        darkMode ? 'bg-black text-zinc-100' : 'bg-dark-bg text-zinc-200'
       }`}
     >
       <div className="max-w-3xl mx-auto px-6 py-10 sm:px-12 sm:py-16">
