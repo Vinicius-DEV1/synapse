@@ -73,6 +73,7 @@ export default function YouTubeSummaryModal({
   useEffect(() => {
     isMountedRef.current = true;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === 'Escape') {
         handleClose();
       }

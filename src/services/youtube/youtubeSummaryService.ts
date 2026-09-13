@@ -99,8 +99,11 @@ DIRETRIZES FUNDAMENTAIS (APLICAM-SE A TODOS OS TIPOS):
    - Use títulos e subtítulos claros com emojis funcionais.
    - Utilize listas com marcadores, destaques conceituais em negrito e blocos de código se houver programação/comandos.
 5. DIAGRAMAS CONCEITUAIS MERMAID:
-   - Sempre que o tema envolver processos, fluxos de decisão, arquiteturas, ciclos de vida, modelos conceituais ou hierarquias, inclua 1 a 2 diagramas em blocos \\\`\\\`\\\`mermaid (ex: graph TD, flowchart LR, sequenceDiagram, mindmap).
+   - Sempre que o tema envolver processos, fluxos de decisão, arquiteturas, ciclos de vida, modelos conceituais ou hierarquias, inclua 1 a 2 diagramas em blocos \\\`\\\`\\\`mermaid (ex: flowchart TD, sequenceDiagram, mindmap).
    - Use sintaxe estritamente correta no Mermaid, colocando sempre aspas em rótulos com caracteres especiais ou parênteses: ex. A["Início"] --> B["Processamento"].
+   - PREFIRA FLUXOGRAMAS VERTICAIS (flowchart TD): Estruturas verticais (de cima para baixo) adaptam-se perfeitamente à leitura de página e evitam que diagramas fiquem comprimidos ou com fontes minúsculas. Evite fluxogramas horizontais (LR) longos.
+   - RÓTULOS CONCISOS E QUEBRAS COM <br/>: Mantenha os textos dos nós breves (3 a 6 palavras). Se o texto tiver mais de 4 palavras, use quebras com <br/> (ex: A["Consulta o<br/>Contrato Web"] --> B["Executa a ação<br/>estruturada"]). Isso impede que o texto ultrapasse ou corte nas bordas da caixa.
+   - FOCO EM 4 A 7 ETAPAS: Sintetize o fluxo nas etapas essenciais. Evite dezenas de nós num mesmo gráfico para garantir clareza visual máxima.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ESTRUTURAS POR TIPO DE VÍDEO:

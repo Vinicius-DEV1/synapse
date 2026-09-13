@@ -50,4 +50,36 @@ describe('MermaidViewer', () => {
     fireEvent.click(screen.getByText('Ver Diagrama'));
     expect(screen.getByText('Código')).toBeInTheDocument();
   });
+
+  it('handles zoom controls and opens fullscreen modal', async () => {
+    render(<MermaidViewer chart={sampleChart} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('100%')).toBeInTheDocument();
+    });
+
+    const zoomInBtn = screen.getByTitle(/Aumentar Zoom/i);
+    const zoomOutBtn = screen.getByTitle(/Diminuir Zoom/i);
+    const resetZoomBtn = screen.getByTitle(/Resetar Zoom/i);
+
+    fireEvent.click(zoomInBtn);
+    expect(screen.getByText('115%')).toBeInTheDocument();
+
+    fireEvent.click(zoomOutBtn);
+    expect(screen.getByText('100%')).toBeInTheDocument();
+
+    fireEvent.click(resetZoomBtn);
+    expect(screen.getByText('100%')).toBeInTheDocument();
+
+    // Click Expand to open fullscreen modal
+    const expandBtn = screen.getByTitle(/Expandir diagrama em tela cheia/i);
+    fireEvent.click(expandBtn);
+
+    expect(screen.getByText('Diagrama Conceitual em Tela Cheia')).toBeInTheDocument();
+    expect(screen.getByText(/Arraste para mover/i)).toBeInTheDocument();
+
+    // Close fullscreen modal via Escape
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Diagrama Conceitual em Tela Cheia')).toBeNull();
+  });
 });
