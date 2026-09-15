@@ -15,6 +15,7 @@ import {
 import YouTubePlaylistModal from '../YouTubePlaylistModal';
 import YouTubeSummaryModal from '../youtube/YouTubeSummaryModal';
 import YouTubeWatchModal from '../youtube/YouTubeWatchModal';
+import LinkInfoModal from './components/LinkInfoModal';
 import { formatDuration, formatDate, isYouTubeUrl } from './youtubeUtils';
 import LinkNotesDrawer from './LinkNotesDrawer';
 import LinkDragControls from './components/LinkDragControls';
@@ -64,6 +65,9 @@ interface LinkPreviewCardProps {
   // Scrap integration
   scrapId?: string | null;
   scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;
+  scrapLocalPath?: string | null;
+  scrapDriveFileId?: string | null;
+  masterKey?: CryptoKey;
   onCaptureScrap?: () => void;
   onOpenScrap?: () => void;
 }
@@ -104,6 +108,9 @@ export default function LinkPreviewCard({
   onOpenDuplicates,
   scrapId,
   scrapStatus,
+  scrapLocalPath,
+  scrapDriveFileId,
+  masterKey,
   onCaptureScrap,
   onOpenScrap,
 }: LinkPreviewCardProps) {
@@ -111,6 +118,7 @@ export default function LinkPreviewCard({
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showWatchModal, setShowWatchModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -464,6 +472,7 @@ export default function LinkPreviewCard({
           }
         }}
         onOpenSummary={() => setShowSummaryModal(true)}
+        onOpenInfo={() => setShowInfoModal(true)}
         duplicateCount={duplicatePages?.length || 0}
         onOpenDuplicates={onOpenDuplicates}
         scrapId={scrapId}
@@ -495,6 +504,23 @@ export default function LinkPreviewCard({
           title={title || 'Vídeo do YouTube'}
           channel={channel || ''}
           onClose={() => setShowWatchModal(false)}
+        />
+      )}
+
+      {showInfoModal && (
+        <LinkInfoModal
+          isOpen={showInfoModal}
+          onClose={() => setShowInfoModal(false)}
+          url={url}
+          title={title}
+          scrapId={scrapId}
+          scrapDriveFileId={scrapDriveFileId}
+          scrapLocalPath={scrapLocalPath}
+          masterKey={masterKey}
+          onInsertIntoNotes={(summaryText) => {
+            const nextNotes = notes ? `${notes}\n\n${summaryText}` : summaryText;
+            onChangeNotes(nextNotes);
+          }}
         />
       )}
     </div>

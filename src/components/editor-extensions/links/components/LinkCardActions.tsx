@@ -36,6 +36,8 @@ interface LinkCardActionsProps {
   // Duplicate links integration
   duplicateCount?: number;
   onOpenDuplicates?: () => void;
+  // Info integration
+  onOpenInfo?: () => void;
   // Scrap integration
   scrapId?: string | null;
   scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;
@@ -70,6 +72,7 @@ export default function LinkCardActions({
   onOpenSummary,
   duplicateCount,
   onOpenDuplicates,
+  onOpenInfo,
   scrapId,
   scrapStatus,
   onCaptureScrap,
@@ -178,6 +181,7 @@ export default function LinkCardActions({
           onOpenSummary={onOpenSummary}
           duplicateCount={duplicateCount}
           onOpenDuplicates={onOpenDuplicates}
+          onOpenInfo={onOpenInfo}
           scrapId={scrapId}
           scrapStatus={scrapStatus}
           onCaptureScrap={onCaptureScrap}
