@@ -8,10 +8,11 @@ export function useGarbageCollection(isAuth: boolean) {
       const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
       
       if (Date.now() - lastRun > SEVEN_DAYS) {
-        import('../services/image-gc').then(m => {
-          m.runImageGarbageCollector().then(() => {
-            localStorage.setItem('last_gc_run', Date.now().toString());
-          });
+        Promise.allSettled([
+          import('../services/image-gc').then((m) => m.runImageGarbageCollector()),
+          import('../services/link-vault/link-gc').then((m) => m.runLinkGarbageCollector()),
+        ]).then(() => {
+          localStorage.setItem('last_gc_run', Date.now().toString());
         });
       }
     }

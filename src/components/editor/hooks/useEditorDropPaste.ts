@@ -13,6 +13,7 @@ import {
   readLocalImageAsFile,
   isImageFilePath,
 } from '../utils/clipboardMediaUtils';
+import { getLinkEntitySync, touchLinkEntity } from '../../../services/link-vault/linkVaultService';
 
 function registerPendingUpload(tempId: string, file: File) {
   if (!window.__pendingImageUploads) {
@@ -192,9 +193,29 @@ export function useEditorDropPaste({
               return true;
             }
 
+            const cached = getLinkEntitySync(urlStr);
+            if (cached) {
+              touchLinkEntity(urlStr).catch(() => {});
+            }
+
             currentEditor.chain().focus().insertContent({
               type: 'linkPreview',
-              attrs: { url: urlStr, isLoading: true },
+              attrs: {
+                url: urlStr,
+                isLoading: !cached?.title,
+                title: cached?.title ?? null,
+                channel: cached?.channel ?? null,
+                notes: cached?.notes ?? '',
+                color: cached?.color ?? 'default',
+                watched: cached?.watched ?? false,
+                watching: cached?.watching ?? false,
+                scrapId: cached?.scrapId ?? null,
+                scrapStatus: cached?.scrapStatus ?? null,
+                scrapLocalPath: cached?.scrapLocalPath ?? null,
+                scrapDriveFileId: cached?.scrapDriveFileId ?? null,
+                scrapFileSize: cached?.scrapFileSize ?? null,
+                scrapCreatedAt: cached?.scrapCreatedAt ?? null,
+              },
             }).run();
             event.preventDefault();
             return true;
