@@ -16,6 +16,7 @@ import {
   Sparkles,
   Play,
   Hourglass,
+  Info,
 } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 
@@ -31,6 +32,7 @@ interface LinkMoreOptionsMenuProps {
   duplicateCount?: number;
   onOpenDuplicates?: () => void;
   // Scrap props
+  onOpenInfo?: () => void;
   scrapId?: string | null;
   scrapStatus?: 'idle' | 'capturing' | 'ready' | 'sync_pending' | 'error' | null;
   onCaptureScrap?: () => void;
@@ -60,6 +62,7 @@ export default function LinkMoreOptionsMenu({
   onOpenSummary,
   duplicateCount,
   onOpenDuplicates,
+  onOpenInfo,
   scrapId,
   scrapStatus,
   onCaptureScrap,
@@ -176,6 +179,28 @@ export default function LinkMoreOptionsMenu({
                   <span>Resumo do Vídeo</span>
                 </button>
               )}
+            </div>
+            <div className="h-[1px] bg-white/[0.06] my-1" />
+          </>
+        )}
+
+        {/* Nova Ação: Informações & Resumo IA (acima de Snapshot) */}
+        {onOpenInfo && (
+          <>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                  onOpenInfo();
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-brand-500/15 text-zinc-200 hover:text-brand-300 transition-colors text-left font-medium cursor-pointer group/info"
+                title="Abrir informações detalhadas e resumo do link gerado por IA"
+              >
+                <Info size={14} className="shrink-0 text-brand-400 group-hover/info:scale-110 transition-transform" />
+                <span>Informações & Resumo IA</span>
+              </button>
             </div>
             <div className="h-[1px] bg-white/[0.06] my-1" />
           </>
