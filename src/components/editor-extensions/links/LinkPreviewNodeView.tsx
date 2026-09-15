@@ -42,6 +42,8 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
     scrapDriveFileId,
     scrapFileSize,
     scrapCreatedAt,
+    aiSummary,
+    aiSummaryCreatedAt,
   } = props.node.attrs as LinkPreviewAttrs;
 
   const masterKey = getNotesKey() || getStoreState().moduleKeys['files'];
@@ -273,6 +275,12 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
           updates.scrapFileSize = entity.scrapFileSize;
           updates.scrapCreatedAt = entity.scrapCreatedAt;
         }
+        if (!aiSummary && entity.aiSummary) {
+          updates.aiSummary = entity.aiSummary;
+          updates.aiSummaryCreatedAt = entity.aiSummaryCreatedAt;
+        } else if (aiSummary && !entity.aiSummary) {
+          saveLinkEntity({ url, aiSummary, aiSummaryCreatedAt }).catch(() => {});
+        }
         if (Object.keys(updates).length > 0) {
           props.updateAttributes(updates);
         }
@@ -487,6 +495,12 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
         scrapLocalPath={scrapLocalPath}
         scrapDriveFileId={scrapDriveFileId}
         masterKey={masterKey}
+        aiSummary={aiSummary}
+        onSaveSummary={(newSummary) => {
+          const nowIso = new Date().toISOString();
+          props.updateAttributes({ aiSummary: newSummary, aiSummaryCreatedAt: nowIso });
+          saveLinkEntity({ url, aiSummary: newSummary, aiSummaryCreatedAt: nowIso }).catch(() => {});
+        }}
         onCaptureScrap={handleCaptureScrap}
         onOpenScrap={handleOpenScrap}
         onMoveUp={() => {

@@ -19,6 +19,8 @@ export interface LinkPreviewAttrs {
   scrapDriveFileId?: string | null;
   scrapFileSize?: number | null;
   scrapCreatedAt?: string | null;
+  aiSummary?: string | null;
+  aiSummaryCreatedAt?: string | null;
 }
 
 export interface LinkMetadata {

@@ -18,6 +18,7 @@ import { Portal } from '../../../ui/Portal';
 import { triggerToast } from '../../../ui/ToastContext';
 import { getOrGenerateLinkInfo, type LinkInfoResult } from '../../../../services/link-info/linkInfoService';
 import { playUiClickSound, playUiActionSound } from '../../../../utils/uiSounds';
+import { getLinkEntitySync } from '../../../../services/link-vault/linkVaultService';
 
 interface LinkInfoModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface LinkInfoModalProps {
   scrapDriveFileId?: string | null;
   scrapLocalPath?: string | null;
   masterKey?: CryptoKey;
+  initialSummary?: string | null;
+  onSaveSummary?: (summary: string) => void;
   onInsertIntoNotes?: (summaryText: string) => void;
 }
 
@@ -40,12 +43,49 @@ export default function LinkInfoModal({
   scrapDriveFileId,
   scrapLocalPath,
   masterKey,
+  initialSummary,
+  onSaveSummary,
   onInsertIntoNotes,
 }: LinkInfoModalProps) {
-  const [loading, setLoading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState('Analisando recurso web...');
+  // Synchronously resolve any existing cached summary for 0ms initial render
+  const syncCachedSummary = initialSummary || getLinkEntitySync(url)?.aiSummary || null;
+
+  const [loading, setLoading] = useState<boolean>(!syncCachedSummary);
+  const [statusMessage, setStatusMessage] = useState<string>(
+    syncCachedSummary ? 'Carregando resumo salvo...' : 'Analisando recurso web...'
+  );
   const [error, setError] = useState<string | null>(null);
-  const [infoResult, setInfoResult] = useState<LinkInfoResult | null>(null);
+  const [infoResult, setInfoResult] = useState<LinkInfoResult | null>(() => {
+    if (syncCachedSummary) {
+      const domain = (() => {
+        try {
+          return new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+        } catch {
+          return '';
+        }
+      })();
+
+      return {
+        url,
+        title: initialTitle || domain || url,
+        domain,
+        summary: syncCachedSummary,
+        distilled: {
+          title: initialTitle || domain || url,
+          cleanText: '',
+          embeddedYouTubeVideoIds: [],
+          keyImages: [],
+          keyOutboundLinks: [],
+          wordCount: 0,
+        },
+        hasVideoTranscript: false,
+        isCached: true,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    return null;
+  });
+
   const [copied, setCopied] = useState(false);
   const [inserted, setInserted] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -55,9 +95,49 @@ export default function LinkInfoModal({
     async (forceRegenerate = false) => {
       if (!url) return;
       setError(null);
-      setLoading(true);
       setCopied(false);
       setInserted(false);
+
+      if (!forceRegenerate) {
+        // If already populated from sync cache, ensure loading is false and skip re-querying
+        const fastCached = initialSummary || getLinkEntitySync(url)?.aiSummary || null;
+        if (fastCached) {
+          if (isMountedRef.current) {
+            setLoading(false);
+            setInfoResult((prev) => {
+              if (prev && prev.summary === fastCached) return prev;
+              const domain = (() => {
+                try {
+                  return new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+                } catch {
+                  return '';
+                }
+              })();
+              return {
+                url,
+                title: initialTitle || domain || url,
+                domain,
+                summary: fastCached,
+                distilled: {
+                  title: initialTitle || domain || url,
+                  cleanText: '',
+                  embeddedYouTubeVideoIds: [],
+                  keyImages: [],
+                  keyOutboundLinks: [],
+                  wordCount: 0,
+                },
+                hasVideoTranscript: false,
+                isCached: true,
+                createdAt: new Date().toISOString(),
+              };
+            });
+          }
+          return;
+        }
+      }
+
+      setLoading(true);
+      setStatusMessage(forceRegenerate ? 'Reanalisando e gerando novo resumo...' : 'Analisando recurso web...');
 
       try {
         const result = await getOrGenerateLinkInfo(url, {
@@ -76,16 +156,20 @@ export default function LinkInfoModal({
         if (isMountedRef.current) {
           setInfoResult(result);
           setLoading(false);
+          if (result.summary) {
+            onSaveSummary?.(result.summary);
+          }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMountedRef.current) {
-          console.error('[LinkInfoModal] Falha ao processar informações:', err);
-          setError(err.message || 'Falha ao analisar a página. Verifique se a chave de IA está ativa.');
+          console.error('[LinkInfoModal] Failed to process link information:', err);
+          const msg = err instanceof Error ? err.message : String(err) || 'Falha ao analisar a página. Verifique se a chave de IA está ativa.';
+          setError(msg);
           setLoading(false);
         }
       }
     },
-    [url, scrapId, scrapDriveFileId, scrapLocalPath, masterKey]
+    [url, initialSummary, initialTitle, scrapId, scrapDriveFileId, scrapLocalPath, masterKey, onSaveSummary]
   );
 
   useEffect(() => {

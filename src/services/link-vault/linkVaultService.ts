@@ -38,12 +38,32 @@ export function clearLinkVaultMemoryCache(): void {
   memoryVaultCache.clear();
 }
 /**
- * Synchronous O(1) lookup from in-memory cache for drop/paste handlers.
+ * Synchronous O(1) lookup from in-memory cache or localStorage for drop/paste and modal initial state.
  */
 export function getLinkEntitySync(rawUrl: string): LinkEntityRecord | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const canonical = normalizeLinkUrl(rawUrl);
-  return canonical ? memoryVaultCache.get(canonical) || null : null;
+  if (!canonical) return null;
+
+  // 1. In-memory runtime cache
+  const cached = memoryVaultCache.get(canonical);
+  if (cached) return cached;
+
+  // 2. Synchronous localStorage lookup
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`${CONFIG_PREFIX}${canonical}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as LinkEntityRecord;
+        if (parsed) {
+          memoryVaultCache.set(canonical, parsed);
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+
+  return null;
 }
 
 function extractDomain(url: string): string {
@@ -55,22 +75,50 @@ function extractDomain(url: string): string {
 }
 
 /**
- * Reads a link entity from persistent storage (SQLite or IndexedDB via config table).
+ * Reads a link entity from persistent storage (localStorage, SQLite, or IndexedDB).
  */
 async function readPersistentEntity(configKey: string): Promise<LinkEntityRecord | null> {
+  // 1. Instant localStorage check
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const localRaw = localStorage.getItem(configKey);
+      if (localRaw) {
+        const parsed = JSON.parse(localRaw) as LinkEntityRecord;
+        if (parsed) return parsed;
+      }
+    } catch {}
+  }
+
+  // 2. Desktop IPC check (targeted query by ID preferred over full table scan)
   try {
-    if (isDesktopApp() && window.api?.sync?.getTable) {
-      const rows = (await window.api.sync.getTable('config')) as Array<{ id: string; data?: string; value?: string }>;
-      const targetRow = rows.find((r) => r.id === configKey);
-      if (targetRow) {
-        const rawJson = targetRow.data || targetRow.value;
-        if (rawJson) {
-          return JSON.parse(rawJson) as LinkEntityRecord;
+    if (isDesktopApp() && window.api?.sync) {
+      if (window.api.sync.getRowsByIds) {
+        try {
+          const rows = (await window.api.sync.getRowsByIds('config', [configKey])) as Array<{ id: string; data?: string; value?: string }>;
+          const targetRow = rows.find((r) => r.id === configKey) || rows[0];
+          if (targetRow) {
+            const rawJson = targetRow.data || targetRow.value;
+            if (rawJson) {
+              return JSON.parse(rawJson) as LinkEntityRecord;
+            }
+          }
+        } catch {}
+      }
+
+      if (window.api.sync.getTable) {
+        const rows = (await window.api.sync.getTable('config')) as Array<{ id: string; data?: string; value?: string }>;
+        const targetRow = rows.find((r) => r.id === configKey);
+        if (targetRow) {
+          const rawJson = targetRow.data || targetRow.value;
+          if (rawJson) {
+            return JSON.parse(rawJson) as LinkEntityRecord;
+          }
         }
       }
       return null;
     }
 
+    // 3. Web IndexedDB check
     const db = await getWebDb();
     if (db) {
       const row = await db.get('config', configKey);
@@ -91,25 +139,37 @@ async function readPersistentEntity(configKey: string): Promise<LinkEntityRecord
 }
 
 /**
- * Writes a link entity to persistent storage.
+ * Writes a link entity to persistent storage across all tiers (localStorage, SQLite, IndexedDB).
  */
 async function writePersistentEntity(configKey: string, record: LinkEntityRecord): Promise<void> {
   const jsonStr = JSON.stringify(record);
+
+  // 1. Instant local storage write
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(configKey, jsonStr);
+    } catch {}
+  }
+
   try {
+    // 2. Desktop SQLite write with dual column support (data & value)
     if (isDesktopApp() && window.api?.sync?.upsertRow) {
       await window.api.sync.upsertRow('config', {
         id: configKey,
         data: jsonStr,
+        value: jsonStr,
         updated_at: new Date().toISOString(),
       });
       return;
     }
 
+    // 3. Web IndexedDB write
     const db = await getWebDb();
     if (db) {
       await db.put('config', {
         id: configKey,
         data: jsonStr,
+        value: jsonStr,
         canonicalUrl: record.canonicalUrl,
         updated_at: new Date().toISOString(),
       });
@@ -259,6 +319,12 @@ export async function deleteLinkEntity(rawUrl: string): Promise<void> {
 
   memoryVaultCache.delete(canonical);
   const configKey = `${CONFIG_PREFIX}${canonical}`;
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(configKey);
+    } catch {}
+  }
 
   try {
     if (isDesktopApp() && window.api?.sync?.deleteRow) {

@@ -96,6 +96,13 @@ export const LinkPreviewBlock = Node.create({
       scrapDriveFileId: { default: null },
       scrapFileSize: numberAttr('scrapFileSize', null),
       scrapCreatedAt: { default: null },
+      aiSummary: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-ai-summary') || null,
+        renderHTML: (attributes: Record<string, any>) =>
+          attributes.aiSummary ? { 'data-ai-summary': attributes.aiSummary } : {},
+      },
+      aiSummaryCreatedAt: { default: null },
     };
   },
 
