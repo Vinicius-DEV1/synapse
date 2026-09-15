@@ -132,9 +132,11 @@ export function normalizeLinkUrl(rawUrl: string): string {
     // Standardize protocol (https)
     const protocol = 'https:';
 
-    // Normalize pathname (remove duplicate slashes and trailing slash if not root)
+    // Normalize pathname (remove duplicate slashes and trailing slash)
     let pathname = parsed.pathname.replace(/\/+/g, '/');
-    if (pathname.length > 1 && pathname.endsWith('/')) {
+    if (pathname === '/') {
+      pathname = '';
+    } else if (pathname.length > 1 && pathname.endsWith('/')) {
       pathname = pathname.slice(0, -1);
     }
 

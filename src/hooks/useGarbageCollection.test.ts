@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useGarbageCollection } from './useGarbageCollection';
 import * as imageGc from '../services/image-gc';
+import * as linkGc from '../services/link-vault/link-gc';
 
 vi.mock('../services/image-gc', () => ({
   runImageGarbageCollector: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../services/link-vault/link-gc', () => ({
+  runLinkGarbageCollector: vi.fn().mockResolvedValue({ activeCount: 0, orphanedCount: 0, purgedCount: 0 }),
 }));
 
 describe('useGarbageCollection Hook', () => {
@@ -23,6 +28,7 @@ describe('useGarbageCollection Hook', () => {
     // Allow dynamic import to resolve
     await vi.waitFor(() => {
       expect(imageGc.runImageGarbageCollector).toHaveBeenCalledTimes(1);
+      expect(linkGc.runLinkGarbageCollector).toHaveBeenCalledTimes(1);
     });
 
     expect(localStorage.getItem('last_gc_run')).toBeDefined();

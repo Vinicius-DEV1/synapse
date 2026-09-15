@@ -375,5 +375,23 @@ describe('LinkPreviewBlock Component', () => {
     expect(await findByText('yt-dlp stream')).toBeDefined();
     expect(getByText('1280x720')).toBeDefined();
   });
+
+  it('renders Informações & Resumo IA button in ••• menu and opens info modal', async () => {
+    const Component = (LinkPreviewBlock.config.addNodeView as any)();
+    const { getByTitle, findByText } = render(<Component {...mockProps} />);
+
+    // Open ••• menu
+    const moreButton = getByTitle('Mais opções do link (•••)');
+    fireEvent.click(moreButton);
+
+    const infoButton = await findByText('Informações & Resumo IA');
+    expect(infoButton).toBeDefined();
+
+    fireEvent.click(infoButton);
+
+    // LinkInfoModal header or loading indicator should be rendered
+    expect(await findByText(/Analisando recurso web.../i)).toBeDefined();
+  });
 });
+
 

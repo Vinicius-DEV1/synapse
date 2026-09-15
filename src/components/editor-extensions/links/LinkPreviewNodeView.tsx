@@ -19,6 +19,7 @@ import { platform } from '../../../services/platform';
 import { useLinkDuplicates } from './hooks/useLinkDuplicates';
 import LinkDuplicatesModal from './components/LinkDuplicatesModal';
 import { playUiClickSound, playUiToggleSound, playUiActionSound, playUiDeleteSound } from '../../../utils/uiSounds';
+import { getLinkEntity, saveLinkEntity, touchLinkEntity } from '../../../services/link-vault/linkVaultService';
 
 export const LinkPreviewComponent = (props: NodeViewProps) => {
   const {
@@ -196,6 +197,11 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
       watching: nextWatching,
       ...(nextWatching ? { watched: false } : {}),
     });
+    saveLinkEntity({
+      url,
+      watching: nextWatching,
+      ...(nextWatching ? { watched: false } : {}),
+    }).catch(() => {});
   };
 
   const handleToggleWatched = (e: React.MouseEvent) => {
@@ -207,6 +213,11 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
       watched: nextWatched,
       ...(nextWatched ? { watching: false } : {}),
     });
+    saveLinkEntity({
+      url,
+      watched: nextWatched,
+      ...(nextWatched ? { watching: false } : {}),
+    }).catch(() => {});
   };
 
   const handleConvertToText = (e: React.MouseEvent) => {
@@ -236,7 +247,38 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
 
   const handleChangeNotes = (nextNotes: string) => {
     props.updateAttributes({ notes: nextNotes });
+    saveLinkEntity({ url, notes: nextNotes }).catch(() => {});
   };
+
+  // Hydrate node from Link Vault if notes, scrap, color or progress exist in vault
+  useEffect(() => {
+    if (!url) return;
+    getLinkEntity(url)
+      .then((entity) => {
+        if (!entity || !mountedRef.current) return;
+        touchLinkEntity(url).catch(() => {});
+
+        const updates: Record<string, any> = {};
+        if (!rawNotes && entity.notes) updates.notes = entity.notes;
+        if ((!rawColor || rawColor === 'default') && entity.color && entity.color !== 'default') {
+          updates.color = entity.color;
+        }
+        if (!rawWatched && entity.watched) updates.watched = true;
+        if (!rawWatching && entity.watching) updates.watching = true;
+        if (!scrapId && entity.scrapId) {
+          updates.scrapId = entity.scrapId;
+          updates.scrapStatus = entity.scrapStatus;
+          updates.scrapLocalPath = entity.scrapLocalPath;
+          updates.scrapDriveFileId = entity.scrapDriveFileId;
+          updates.scrapFileSize = entity.scrapFileSize;
+          updates.scrapCreatedAt = entity.scrapCreatedAt;
+        }
+        if (Object.keys(updates).length > 0) {
+          props.updateAttributes(updates);
+        }
+      })
+      .catch(() => {});
+  }, [url]);
 
   useEffect(() => {
     setFetchedTitle(title);
@@ -335,14 +377,17 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
           masterKey
         );
 
-        props.updateAttributes({
+        const scrapData = {
           scrapId: payload.id,
           scrapLocalPath: payload.local_path,
           scrapDriveFileId: saveResult.driveFileId,
           scrapFileSize: payload.file_size,
-          scrapStatus: saveResult.isSynced ? 'ready' : 'sync_pending',
+          scrapStatus: saveResult.isSynced ? ('ready' as const) : ('sync_pending' as const),
           scrapCreatedAt: payload.created_at || new Date().toISOString(),
-        });
+        };
+
+        props.updateAttributes(scrapData);
+        saveLinkEntity({ url, ...scrapData }).catch(() => {});
         triggerToast('Snapshot offline salvo com sucesso!', 'info', 3000);
       } else {
         props.updateAttributes({ scrapStatus: 'error' });
@@ -415,7 +460,8 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
         isInsideGroup={isInsideGroup}
         onChangeColor={(newColor: string) => {
           playUiClickSound();
-          props.updateAttributes({ color: newColor })
+          props.updateAttributes({ color: newColor });
+          saveLinkEntity({ url, color: newColor }).catch(() => {});
         }}
         onOpenConfirm={() => {
           playUiClickSound();
@@ -438,6 +484,9 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
         }}
         scrapId={scrapId}
         scrapStatus={scrapStatus}
+        scrapLocalPath={scrapLocalPath}
+        scrapDriveFileId={scrapDriveFileId}
+        masterKey={masterKey}
         onCaptureScrap={handleCaptureScrap}
         onOpenScrap={handleOpenScrap}
         onMoveUp={() => {
