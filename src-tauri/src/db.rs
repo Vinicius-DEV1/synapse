@@ -176,6 +176,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     // Dynamic column migrations for legacy schemas updated via web/sync
     let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE config ADD COLUMN value TEXT", []);
+    let _ = conn.execute("ALTER TABLE config ADD COLUMN data TEXT", []);
 
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN cover_image TEXT", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN description TEXT", []);

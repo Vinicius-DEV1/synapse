@@ -3,6 +3,7 @@ import { distillHtmlContent, type DistilledContent } from './linkContentDistille
 import { getLinkEntity, saveLinkEntity } from '../link-vault/linkVaultService';
 import { getDecryptedScrap } from '../scrap/scrap-storage';
 import { isYouTubeUrl, getVideoId } from '../../components/editor-extensions/links/youtubeUtils';
+import { getExistingVideoSummary } from '../youtube/youtubeSummaryService';
 import { isDesktopApp } from '../platform';
 
 export interface LinkInfoResult {
@@ -205,6 +206,43 @@ export async function getOrGenerateLinkInfo(
         isCached: true,
         createdAt: existing.aiSummaryCreatedAt || new Date().toISOString(),
       };
+    }
+
+    // Check if a YouTube video summary was already generated via YouTube service
+    const ytVideoId = getVideoId(url);
+    if (ytVideoId) {
+      try {
+        const ytRecord = await getExistingVideoSummary(ytVideoId);
+        if (ytRecord?.summary) {
+          saveLinkEntity({
+            url,
+            title: ytRecord.title || domain || url,
+            channel: ytRecord.channel_name || null,
+            domain,
+            aiSummary: ytRecord.summary,
+            aiSummaryCreatedAt: ytRecord.created_at,
+            aiSummaryModel: 'gemini',
+          }).catch(() => {});
+
+          return {
+            url,
+            title: ytRecord.title || domain || url,
+            domain,
+            summary: ytRecord.summary,
+            distilled: {
+              title: ytRecord.title || domain,
+              cleanText: ytRecord.raw_transcript || '',
+              embeddedYouTubeVideoIds: [ytVideoId],
+              keyImages: [],
+              keyOutboundLinks: [],
+              wordCount: 0,
+            },
+            hasVideoTranscript: Boolean(ytRecord.raw_transcript),
+            isCached: true,
+            createdAt: ytRecord.created_at || new Date().toISOString(),
+          };
+        }
+      } catch {}
     }
   }
 

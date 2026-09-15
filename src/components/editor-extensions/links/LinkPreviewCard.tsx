@@ -70,6 +70,8 @@ interface LinkPreviewCardProps {
   masterKey?: CryptoKey;
   onCaptureScrap?: () => void;
   onOpenScrap?: () => void;
+  aiSummary?: string | null;
+  onSaveSummary?: (summary: string) => void;
 }
 
 export default function LinkPreviewCard({
@@ -113,6 +115,8 @@ export default function LinkPreviewCard({
   masterKey,
   onCaptureScrap,
   onOpenScrap,
+  aiSummary,
+  onSaveSummary,
 }: LinkPreviewCardProps) {
   const [showVideo, setShowVideo] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -517,6 +521,8 @@ export default function LinkPreviewCard({
           scrapDriveFileId={scrapDriveFileId}
           scrapLocalPath={scrapLocalPath}
           masterKey={masterKey}
+          initialSummary={aiSummary}
+          onSaveSummary={onSaveSummary}
           onInsertIntoNotes={(summaryText) => {
             const nextNotes = notes ? `${notes}\n\n${summaryText}` : summaryText;
             onChangeNotes(nextNotes);
