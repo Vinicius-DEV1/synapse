@@ -29,10 +29,10 @@ function convertImageToCoverDataUrl(img: HTMLImageElement): string | null {
   let width = img.width;
   let height = img.height;
 
-  // Max width 1600px for cover to avoid huge base64 strings
-  if (width > 1600) {
-    height = Math.round((height * 1600) / width);
-    width = 1600;
+  // Max width 1280px at 0.72 quality preserves visual clarity while reducing base64 weight by ~65%
+  if (width > 1280) {
+    height = Math.round((height * 1280) / width);
+    width = 1280;
   }
 
   canvas.width = width;
@@ -44,7 +44,7 @@ function convertImageToCoverDataUrl(img: HTMLImageElement): string | null {
   }
   ctx.drawImage(img, 0, 0, width, height);
 
-  return canvas.toDataURL('image/jpeg', 0.8);
+  return canvas.toDataURL('image/jpeg', 0.72);
 }
 
 export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCoverProps) {
