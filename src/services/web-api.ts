@@ -108,5 +108,25 @@ export const createWebApiMock = async () => {
 
     // --- QUIZ ---
     quiz: webQuizApi(db, generateId),
+
+    // --- LINKS CACHE ---
+    links: {
+      getMetadata: async (url: string) => {
+        try {
+          const row = await db.get('link_metadata_cache', url);
+          return row || null;
+        } catch {
+          return null;
+        }
+      },
+      saveMetadata: async (entry: any) => {
+        try {
+          await db.put('link_metadata_cache', { ...entry, updated_at: new Date().toISOString() });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    },
   };
 };

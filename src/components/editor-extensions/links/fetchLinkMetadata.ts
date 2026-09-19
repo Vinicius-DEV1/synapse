@@ -3,6 +3,25 @@ import { isYouTubeUrl } from './youtubeUtils';
 import { playlistCache } from '../youtube/youtubePlaylistHelper';
 
 export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+  // 1. Check persistent DB cache first (0ms latency, offline capable)
+  if (window.api?.links?.getMetadata) {
+    try {
+      const cached = await window.api.links.getMetadata(url);
+      if (cached && (cached.title || cached.channel)) {
+        return {
+          title: cached.title,
+          channel: cached.channel,
+          duration: cached.duration,
+          isPlaylist: Boolean(cached.isPlaylist || cached.is_playlist),
+          playlistCount: cached.playlistCount ?? cached.playlist_count,
+          uploadDate: cached.uploadDate ?? cached.upload_date,
+        };
+      }
+    } catch (e) {
+      console.warn('[fetchLinkMetadata] Failed to read link metadata cache:', e);
+    }
+  }
+
   const isYouTube = isYouTubeUrl(url);
   let oEmbedChannel: string | null = null;
 
@@ -169,7 +188,7 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     }
   }
 
-  return {
+  const metadataResult: LinkMetadata = {
     title: finalTitle,
     channel: finalChannel,
     duration: finalDuration,
@@ -177,5 +196,15 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     playlistCount: finalPlaylistCount,
     uploadDate: finalUploadDate,
   };
+
+  // 2. Persist to DB cache asynchronously in background (non-blocking)
+  if (window.api?.links?.saveMetadata && (finalTitle || finalChannel)) {
+    window.api.links.saveMetadata({
+      url,
+      ...metadataResult,
+    }).catch(err => console.warn('[fetchLinkMetadata] Failed to save link cache:', err));
+  }
+
+  return metadataResult;
 }
 
