@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 import { useHomeDashboard } from './hooks/useHomeDashboard';
 import { HomeQuickActions } from './ui/HomeQuickActions';
 import { HomeAgendaSection } from './ui/HomeAgendaSection';
 import { HomePagesSection } from './ui/HomePagesSection';
+import type { Page } from '../../types';
 
 export default function HomeView({ tabId }: { tabId: string }) {
   const { state, dispatch } = useStore();
@@ -13,15 +15,26 @@ export default function HomeView({ tabId }: { tabId: string }) {
     isEventLive
   } = useHomeDashboard();
 
-  const pinnedPages = state.pages
-    .filter((p) => p.is_pinned)
-    .sort((a, b) => (a.pinned_order || 0) - (b.pinned_order || 0));
+  const { pinnedPages, recentPages } = useMemo(() => {
+    const pinned: Page[] = [];
+    const unpinned: Page[] = [];
 
-  const pinnedIds = new Set(pinnedPages.map((p) => p.id));
-  const recentPages = [...state.pages]
-    .filter((p) => !pinnedIds.has(p.id) && p.title && p.title !== 'Nova Página')
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    .slice(0, 5);
+    for (const p of state.pages) {
+      if (p.is_pinned) {
+        pinned.push(p);
+      } else if (p.title && p.title !== 'Nova Página') {
+        unpinned.push(p);
+      }
+    }
+
+    pinned.sort((a, b) => (a.pinned_order || 0) - (b.pinned_order || 0));
+    unpinned.sort((a, b) => (b.updated_at > a.updated_at ? 1 : b.updated_at < a.updated_at ? -1 : 0));
+
+    return {
+      pinnedPages: pinned,
+      recentPages: unpinned.slice(0, 5),
+    };
+  }, [state.pages]);
 
   const handleOpenPage = (pageId: string) => {
     dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });

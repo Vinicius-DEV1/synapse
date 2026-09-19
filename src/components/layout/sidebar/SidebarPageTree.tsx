@@ -49,9 +49,10 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     }
 
     pinned.sort((a, b) => (a.pinned_order || 0) - (b.pinned_order || 0));
-    roots.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    const sortByUpdatedDesc = (a: Page, b: Page) => (b.updated_at > a.updated_at ? 1 : b.updated_at < a.updated_at ? -1 : 0);
+    roots.sort(sortByUpdatedDesc);
     for (const list of map.values()) {
-      list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      list.sort(sortByUpdatedDesc);
     }
 
     return { pinnedPages: pinned, rootPages: roots, childrenMap: map };

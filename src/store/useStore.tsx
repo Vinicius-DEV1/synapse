@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import type { AppState, Action, Tab } from '../types';
 import { appReducer as reducer } from './commands';
 
@@ -144,8 +144,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
 
+  const contextValue = useMemo(() => ({ state, dispatch }), [state]);
+
   return (
-    <StoreContext.Provider value={{ state, dispatch }}>
+    <StoreContext.Provider value={contextValue}>
       {children}
     </StoreContext.Provider>
   );
