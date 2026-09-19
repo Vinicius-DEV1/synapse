@@ -12,10 +12,10 @@ vi.mock('emoji-picker-react', () => ({
 }));
 
 describe('EmojiPopover Component', () => {
-  it('opens emoji picker on trigger click and emits selected emoji', () => {
+  it('opens emoji picker on trigger click and emits selected emoji', async () => {
     const onEmojiSelect = vi.fn();
 
-    const { getByText, queryByTestId } = render(
+    const { getByText, queryByTestId, findByText } = render(
       <EmojiPopover onEmojiSelect={onEmojiSelect}>
         <span>😀 Abrir Picker</span>
       </EmojiPopover>
@@ -26,7 +26,7 @@ describe('EmojiPopover Component', () => {
     const trigger = getByText('😀 Abrir Picker');
     fireEvent.click(trigger);
 
-    const emojiBtn = getByText('Selecionar Foguete');
+    const emojiBtn = await findByText('Selecionar Foguete');
     expect(emojiBtn).toBeDefined();
 
     fireEvent.click(emojiBtn);

@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
-import type { EmojiClickData } from 'emoji-picker-react';
+import type { EmojiClickData, Theme } from 'emoji-picker-react';
+
+const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface EmojiPopoverProps {
   onEmojiSelect: (emoji: string) => void;
@@ -61,16 +62,18 @@ export default function EmojiPopover({ onEmojiSelect, children }: EmojiPopoverPr
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <EmojiPicker
-            theme={Theme.DARK}
-            onEmojiClick={(emoji: EmojiClickData) => {
-              onEmojiSelect(emoji.emoji);
-              setIsOpen(false);
-            }}
-            lazyLoadEmojis={true}
-            searchDisabled={false}
-            skinTonesDisabled={true}
-          />
+          <Suspense fallback={<div className="w-[350px] h-[400px] bg-zinc-900 animate-pulse rounded-lg border border-zinc-800 flex items-center justify-center text-xs text-zinc-500">Carregando emojis...</div>}>
+            <EmojiPicker
+              theme={'dark' as Theme}
+              onEmojiClick={(emoji: EmojiClickData) => {
+                onEmojiSelect(emoji.emoji);
+                setIsOpen(false);
+              }}
+              lazyLoadEmojis={true}
+              searchDisabled={false}
+              skinTonesDisabled={true}
+            />
+          </Suspense>
         </div>,
         document.body
       )}
