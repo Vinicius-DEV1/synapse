@@ -18,14 +18,15 @@ export function useGlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Ancestor breadcrumbs map per page
+  // Ancestor breadcrumbs map per page - computed only when modal is actively open
   const pageAncestorsMap = useMemo(() => {
+    if (!isOpen) return new Map<string, HierarchyNode[]>();
     const map = new Map<string, HierarchyNode[]>();
     for (const p of state.pages) {
       map.set(p.id, getPageAncestors(state.pages, p.id));
     }
     return map;
-  }, [state.pages]);
+  }, [state.pages, isOpen]);
 
   // Open/close keyboard shortcut listeners
   useEffect(() => {
@@ -68,8 +69,9 @@ export function useGlobalSearch() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Result ranking calculation
+  // Result ranking calculation - deferred until modal is open
   const results: SearchResultItem[] = useMemo(() => {
+    if (!isOpen) return [];
     const trimmed = debouncedQuery.trim().toLowerCase();
 
     // 1. Initial empty state: show pinned and recent pages (Quick Switcher)
@@ -89,9 +91,9 @@ export function useGlobalSearch() {
       }
 
       const sortedByDate = [...state.pages].sort((a, b) => {
-        const dateA = new Date(a.updated_at || 0).getTime();
-        const dateB = new Date(b.updated_at || 0).getTime();
-        return dateB - dateA;
+        const dateA = a.updated_at || '';
+        const dateB = b.updated_at || '';
+        return dateB > dateA ? 1 : dateB < dateA ? -1 : 0;
       });
 
       const recentItems: SearchResultItem[] = sortedByDate.slice(0, 10).map((p: Page) => ({
@@ -193,7 +195,7 @@ export function useGlobalSearch() {
 
     matchedItems.sort((a, b) => b.score - a.score);
     return matchedItems;
-  }, [debouncedQuery, scope, state.pages, pageAncestorsMap]);
+  }, [isOpen, debouncedQuery, scope, state.pages, pageAncestorsMap]);
 
   // Keep selected index visible in scroll view
   useEffect(() => {
