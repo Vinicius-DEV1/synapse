@@ -90,4 +90,13 @@ describe('TableToolbar Component', () => {
 
     expect(getByText(/Cor da Célula \/ Linha \/ Coluna/i)).toBeInTheDocument();
   });
+
+  it('renders move row and column buttons', () => {
+    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+
+    expect(getByTitle(/Mover linha para cima/i)).toBeInTheDocument();
+    expect(getByTitle(/Mover linha para baixo/i)).toBeInTheDocument();
+    expect(getByTitle(/Mover coluna para a esquerda/i)).toBeInTheDocument();
+    expect(getByTitle(/Mover coluna para a direita/i)).toBeInTheDocument();
+  });
 });

@@ -296,6 +296,7 @@ export interface ICadernoAPI {
     getItem: (id: string) => Promise<VaultItem | null>;
     upsertItem: (item: VaultItem) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
+    reorderItems: (updates: { id: string; position: number }[]) => Promise<void>;
     searchItems: (query: string) => Promise<VaultItem[]>;
     getPasswordHistory: (itemId: string) => Promise<VaultPasswordHistoryEntry[]>;
     generatePassword: (opts: PasswordGenOptions) => Promise<string>;

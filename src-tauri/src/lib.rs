@@ -422,6 +422,7 @@ pub fn run() {
             vault_security::vault_check_breach,
             vault_security::vault_check_strength,
             cmd_vault::vault_reorder_groups,
+            cmd_vault::vault_reorder_items,
             cmd_practice::practice_get_sessions,
             cmd_practice::practice_create_session,
             cmd_practice::practice_update_session,

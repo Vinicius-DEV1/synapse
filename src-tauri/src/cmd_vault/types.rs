@@ -31,6 +31,7 @@ pub struct VaultItem {
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
+    pub position: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -46,6 +47,13 @@ pub struct VaultPasswordHistoryEntry {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct GroupOrderUpdate {
+    pub id: String,
+    pub position: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct ItemOrderUpdate {
     pub id: String,
     pub position: i32,
 }

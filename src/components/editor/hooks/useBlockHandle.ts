@@ -109,6 +109,14 @@ export function useBlockHandle(
         return;
       }
 
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest('[data-table-grip]')
+      ) {
+        hide();
+        return;
+      }
+
       const editorRect = view.dom.getBoundingClientRect();
       
       // Allows a margin of up to 60px on the left and 30px on the right
@@ -153,7 +161,10 @@ export function useBlockHandle(
       }
 
       posRef.current = block.pos;
-      setAnchor({ x: Math.max(4, rect.left - BLOCK_HANDLE_GAP), y: rect.top + 2 });
+      const isTable = block.node.type.name === 'table';
+      // For tables, position the block handle further to the left (52px) to clear TableExcelGrips gutter (24px)
+      const gap = isTable ? BLOCK_HANDLE_GAP + 24 : BLOCK_HANDLE_GAP;
+      setAnchor({ x: Math.max(4, rect.left - gap), y: rect.top + 2 });
     };
 
     const onMouseMove = (event: MouseEvent) => {

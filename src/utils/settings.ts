@@ -30,6 +30,8 @@ export interface AppSettings {
   /** Auto-lock vault after N minutes of inactivity (0 = disabled) */
   autoLockMinutes?: number;
   compactPinnedTabs?: boolean;
+  /** Maximum width in px for unpinned tabs (default: 400) */
+  tabMaxWidth?: number;
 }
 
 export function getSettings(): AppSettings {
@@ -56,7 +58,8 @@ export function getSettings(): AppSettings {
     videoConversionPreset: 'medium',
     videoPlaybackPreference: 'auto',
     videoDefaultWebQuality: '720p',
-    compactPinnedTabs: false
+    compactPinnedTabs: true,
+    tabMaxWidth: 400
   };
   
   try {

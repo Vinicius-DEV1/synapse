@@ -58,7 +58,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS file_folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, parent_id TEXT, color TEXT DEFAULT '#6366f1', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS file_page_links (id TEXT PRIMARY KEY, file_id TEXT NOT NULL, page_id TEXT NOT NULL, link_type TEXT DEFAULT 'upload', widget_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL);
          CREATE TABLE IF NOT EXISTS vault_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, icon TEXT, color TEXT, position INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
-         CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, group_id TEXT, label TEXT NOT NULL, username TEXT, email TEXT, password TEXT, url TEXT, notes TEXT, custom_fields TEXT, is_favorite INTEGER DEFAULT 0, password_changed_at TEXT, password_strength INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
+         CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, group_id TEXT, label TEXT NOT NULL, username TEXT, email TEXT, password TEXT, url TEXT, notes TEXT, custom_fields TEXT, is_favorite INTEGER DEFAULT 0, password_changed_at TEXT, password_strength INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT, position INTEGER DEFAULT 0);
          CREATE TABLE IF NOT EXISTS vault_password_history (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, password TEXT NOT NULL, changed_at TEXT NOT NULL, deleted_at TEXT);
          
          CREATE TABLE IF NOT EXISTS tutor_sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, started_at DATETIME NOT NULL, ended_at DATETIME, custom_prompt TEXT, deleted_at DATETIME);
@@ -338,6 +338,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN destination_account_id TEXT", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN linked_loan_id TEXT", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN expected_amount REAL", []);
+    let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN position INTEGER DEFAULT 0", []);
 
     let accounts_count: i64 = conn.query_row("SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL", [], |row| row.get(0)).unwrap_or(0);
     if accounts_count == 0 {
@@ -366,6 +367,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         CREATE INDEX IF NOT EXISTS idx_anki_srs_state_due ON anki_srs_state (due_date);
         CREATE INDEX IF NOT EXISTS idx_anki_reviews_card ON anki_reviews (card_id);
         CREATE INDEX IF NOT EXISTS idx_vault_items_group ON vault_items (group_id, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_vault_items_position ON vault_items (position);
         CREATE INDEX IF NOT EXISTS idx_files_folder ON files (folder_id, deleted_at);
         CREATE INDEX IF NOT EXISTS idx_file_page_links_ids ON file_page_links (file_id, page_id);
         CREATE INDEX IF NOT EXISTS idx_culture_episodes_item ON culture_episodes (item_id);

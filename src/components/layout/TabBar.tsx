@@ -23,6 +23,7 @@ interface TabItemProps {
   tabCount: number;
   onContextMenu: (e: React.MouseEvent, tab: Tab) => void;
   compactPinnedTabs?: boolean;
+  tabMaxWidth?: number;
 }
 
 const TabItem = memo(function TabItem({
@@ -35,6 +36,7 @@ const TabItem = memo(function TabItem({
   tabCount,
   onContextMenu,
   compactPinnedTabs,
+  tabMaxWidth = 400,
 }: TabItemProps) {
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
@@ -78,17 +80,19 @@ const TabItem = memo(function TabItem({
       {...listeners}
       data-active-tab={isActive}
       onClick={() => onSelect(tab.id)}
+      title={title}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onContextMenu(e, tab);
       }}
+      style={!tab.isPinned ? { maxWidth: `${tabMaxWidth}px` } : undefined}
       className={`group relative flex items-center px-3 py-2 text-xs font-medium rounded-t-xl transition-all duration-300 ease-out overflow-hidden ${
         tab.isPinned 
           ? compactPinnedTabs 
-            ? 'w-11 min-w-[44px] max-w-[44px] hover:w-36 hover:max-w-[144px] !px-0 justify-center hover:!px-3 hover:justify-start gap-0 hover:gap-1.5' 
+            ? 'w-10 min-w-[40px] max-w-[40px] !px-0 justify-center gap-0' 
             : 'min-w-[90px] max-w-[160px] gap-1.5'
-          : 'min-w-[120px] max-w-[200px] gap-1.5'
+          : 'min-w-[120px] gap-1.5'
       } h-[38px] ${
         isOver ? 'ring-1 ring-brand-500' : ''
       } ${
@@ -98,16 +102,20 @@ const TabItem = memo(function TabItem({
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {icon}
-      <span className={`truncate flex-1 text-left transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 max-w-0 opacity-0 group-hover:w-auto group-hover:max-w-[150px] group-hover:opacity-100' : ''}`}>
-        {title}
-      </span>
-      {tab.isPinned ? (
-        <span
-          className={`p-0.5 rounded-md text-brand-400 flex-shrink-0 transition-all duration-300 ${tab.isPinned && compactPinnedTabs ? 'w-0 max-w-0 opacity-0 group-hover:w-auto group-hover:max-w-full group-hover:opacity-100' : ''}`}
-          title="Aba fixada"
-        >
-          <Pin size={11} className="fill-brand-400/20 rotate-45" />
+      {(!tab.isPinned || !compactPinnedTabs) && (
+        <span className="truncate flex-1 text-left">
+          {title}
         </span>
+      )}
+      {tab.isPinned ? (
+        !compactPinnedTabs && (
+          <span
+            className="p-0.5 rounded-md text-brand-400 flex-shrink-0"
+            title="Aba fixada"
+          >
+            <Pin size={11} className="fill-brand-400/20 rotate-45" />
+          </span>
+        )
       ) : (
         tabCount > 1 && (
           <span
@@ -138,10 +146,15 @@ export default function TabBar() {
   } | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [compactPinnedTabs, setCompactPinnedTabs] = useState(() => getSettings().compactPinnedTabs);
+  const [compactPinnedTabs, setCompactPinnedTabs] = useState(() => getSettings().compactPinnedTabs ?? true);
+  const [tabMaxWidth, setTabMaxWidth] = useState(() => getSettings().tabMaxWidth ?? 400);
 
   useEffect(() => {
-    const handler = () => setCompactPinnedTabs(getSettings().compactPinnedTabs);
+    const handler = () => {
+      const s = getSettings();
+      setCompactPinnedTabs(s.compactPinnedTabs ?? true);
+      setTabMaxWidth(s.tabMaxWidth ?? 400);
+    };
     window.addEventListener('app-settings-changed', handler);
     return () => window.removeEventListener('app-settings-changed', handler);
   }, []);
@@ -392,6 +405,7 @@ export default function TabBar() {
                     tabCount={state.tabs.length}
                     onContextMenu={handleTabContextMenu}
                     compactPinnedTabs={compactPinnedTabs}
+                    tabMaxWidth={tabMaxWidth}
                   />
                   {isLastPinned && index < state.tabs.length - 1 && (
                     <div className="h-5 w-px bg-white/10 mx-1 mb-2 self-center flex-shrink-0" />
