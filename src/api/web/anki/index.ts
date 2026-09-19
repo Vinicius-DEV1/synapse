@@ -13,7 +13,7 @@ import {
   getAllCards,
   deleteCardsBulk,
 } from './anki-notes';
-import { getReviews, getDueCards, reviewCard, getCardIntervals } from './anki-reviews';
+import { getReviews, getDueCards, reviewCard, getCardIntervals, getTotalDueCount } from './anki-reviews';
 import { getDeckSettings, updateDeckSettings } from './anki-settings';
 
 export const webAnkiApi = (db: any, generateId: () => string) => ({
@@ -33,6 +33,7 @@ export const webAnkiApi = (db: any, generateId: () => string) => ({
   deleteNote: (noteId: string) => deleteNote(db, noteId),
   deleteCard: (cardId: string) => deleteCard(db, generateId, cardId),
   getDueCards: (deckId: string) => getDueCards(db, deckId),
+  getTotalDueCount: () => getTotalDueCount(db),
   reviewCard: (cardId: string, rating: number) => reviewCard(db, generateId, cardId, rating),
   getCardIntervals: (cardId: string) => getCardIntervals(db, cardId),
   getDeckSettings: (deckId: string) => getDeckSettings(db, deckId),

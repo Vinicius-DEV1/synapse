@@ -42,4 +42,17 @@ describe('useHomeDashboard Hook', () => {
 
     expect(result.current.todayEvents[0].title).toBe('Revisão Geral');
   });
+
+  it('uses getTotalDueCount fast-path directly when available', async () => {
+    (window as any).api.anki.getTotalDueCount = vi.fn().mockResolvedValue(15);
+
+    const { result } = renderHook(() => useHomeDashboard());
+
+    await waitFor(() => {
+      expect(result.current.dueCardsCount).toBe(15);
+    });
+
+    expect((window as any).api.anki.getTotalDueCount).toHaveBeenCalledTimes(1);
+    expect((window as any).api.anki.getDecks).not.toHaveBeenCalled();
+  });
 });

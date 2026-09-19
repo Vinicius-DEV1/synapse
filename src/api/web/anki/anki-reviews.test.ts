@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getWebDb } from '../../../services/db-web';
-import { getDueCards, reviewCard, getReviews, getCardIntervals } from './anki-reviews';
+import { getDueCards, reviewCard, getReviews, getCardIntervals, getTotalDueCount } from './anki-reviews';
 
 describe('anki-reviews web repository', () => {
   let db: any;
@@ -59,5 +59,33 @@ describe('anki-reviews web repository', () => {
 
     const intervals = await getCardIntervals(db, 'c1');
     expect(intervals.intervals).toHaveLength(4);
+  });
+
+  it('computes total due count across all decks efficiently', async () => {
+    await db.put('anki_decks', { id: 'deck_a', name: 'Deck A', parent_id: null });
+    await db.put('anki_decks', { id: 'deck_b', name: 'Deck B', parent_id: null });
+
+    // 2 new cards in deck A
+    await db.put('anki_cards', { id: 'c_a1', deck_id: 'deck_a', state: 0 });
+    await db.put('anki_cards', { id: 'c_a2', deck_id: 'deck_a', state: 0 });
+
+    // 1 review card in deck B due in the past
+    await db.put('anki_cards', {
+      id: 'c_b1',
+      deck_id: 'deck_b',
+      state: 2,
+      due_date: new Date(Date.now() - 100000).toISOString(),
+    });
+
+    // 1 review card in deck B due tomorrow (not due)
+    await db.put('anki_cards', {
+      id: 'c_b2',
+      deck_id: 'deck_b',
+      state: 2,
+      due_date: new Date(Date.now() + 100000000).toISOString(),
+    });
+
+    const totalDue = await getTotalDueCount(db);
+    expect(totalDue).toBe(3); // 2 new + 1 due review
   });
 });

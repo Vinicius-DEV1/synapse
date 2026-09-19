@@ -43,32 +43,37 @@ export function useHomeDashboard() {
       const ankiApi = window.api?.anki;
       if (ankiApi) {
         try {
-          const decksRes = await ankiApi.getDecks();
-          if (decksRes.success && decksRes.decks?.length) {
-            const counts = await Promise.all(
-              decksRes.decks.map(async (deck: { id: string }) => {
-                try {
-                  const dueRes = await ankiApi.getDueCards(deck.id);
-                  if (Array.isArray(dueRes)) {
-                    return dueRes.length;
-                  }
-                  if (
-                    dueRes &&
-                    typeof dueRes === 'object' &&
-                    'cards' in dueRes &&
-                    Array.isArray((dueRes as { cards?: unknown[] }).cards)
-                  ) {
-                    return (dueRes as { cards: unknown[] }).cards.length;
-                  }
-                } catch (err) {
-                  console.warn('[HomeDashboard] Failed to fetch due cards for deck:', deck.id, err);
-                  return 0;
-                }
-                return 0;
-              })
-            );
-            const total = counts.reduce((acc, count) => acc + count, 0);
+          if (typeof ankiApi.getTotalDueCount === 'function') {
+            const total = await ankiApi.getTotalDueCount();
             setDueCardsCount(total);
+          } else {
+            const decksRes = await ankiApi.getDecks();
+            if (decksRes.success && decksRes.decks?.length) {
+              const counts = await Promise.all(
+                decksRes.decks.map(async (deck: { id: string }) => {
+                  try {
+                    const dueRes = await ankiApi.getDueCards(deck.id);
+                    if (Array.isArray(dueRes)) {
+                      return dueRes.length;
+                    }
+                    if (
+                      dueRes &&
+                      typeof dueRes === 'object' &&
+                      'cards' in dueRes &&
+                      Array.isArray((dueRes as { cards?: unknown[] }).cards)
+                    ) {
+                      return (dueRes as { cards: unknown[] }).cards.length;
+                    }
+                  } catch (err) {
+                    console.warn('[HomeDashboard] Failed to fetch due cards for deck:', deck.id, err);
+                    return 0;
+                  }
+                  return 0;
+                })
+              );
+              const total = counts.reduce((acc, count) => acc + count, 0);
+              setDueCardsCount(total);
+            }
           }
         } catch (err) {
           // Anki module not available or failed to load decks
