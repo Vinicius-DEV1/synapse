@@ -386,7 +386,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         CREATE INDEX IF NOT EXISTS idx_pages_parent_deleted ON pages (parent_id, deleted_at);
         CREATE INDEX IF NOT EXISTS idx_pages_deleted_sort ON pages (deleted_at, sort_order);
         CREATE INDEX IF NOT EXISTS idx_page_history_page ON page_history (page_id);
+        CREATE INDEX IF NOT EXISTS idx_page_history_page_created ON page_history (page_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events (start_date, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_calendar_events_page ON calendar_events (page_id);
         CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (is_read, deleted_at, created_at);
         CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date, deleted_at);
         CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions (account_id, deleted_at);
@@ -401,6 +403,7 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         CREATE INDEX IF NOT EXISTS idx_vault_items_position ON vault_items (position);
         CREATE INDEX IF NOT EXISTS idx_files_folder ON files (folder_id, deleted_at);
         CREATE INDEX IF NOT EXISTS idx_file_page_links_ids ON file_page_links (file_id, page_id);
+        CREATE INDEX IF NOT EXISTS idx_file_page_links_page ON file_page_links (page_id);
         CREATE INDEX IF NOT EXISTS idx_culture_episodes_item ON culture_episodes (item_id);
         CREATE INDEX IF NOT EXISTS idx_activity_logs_date ON activity_logs (date, module);
         "

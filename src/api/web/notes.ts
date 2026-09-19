@@ -89,13 +89,29 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
     }
 
     if (page.content !== undefined && page.content !== existing.content) {
-      const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
-      await db.put('page_history', {
-        id: histId,
-        page_id: page.id,
-        content: page.content,
-        created_at: new Date().toISOString(),
-      });
+      // Record history entry only if > 60s elapsed since last revision (prevents IndexedDB bloating on autosave)
+      const existingHistory = ((await db.getAllFromIndex('page_history', 'page_id', page.id)) || []) as PageHistoryEntry[];
+      let shouldInsertHistory = true;
+      if (existingHistory.length > 0) {
+        let latestTime = 0;
+        for (const h of existingHistory) {
+          const t = new Date(h.created_at).getTime();
+          if (t > latestTime) latestTime = t;
+        }
+        if (Date.now() - latestTime < 60_000) {
+          shouldInsertHistory = false;
+        }
+      }
+
+      if (shouldInsertHistory) {
+        const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
+        await db.put('page_history', {
+          id: histId,
+          page_id: page.id,
+          content: page.content,
+          created_at: new Date().toISOString(),
+        });
+      }
     }
 
     await db.put('pages', updated);
