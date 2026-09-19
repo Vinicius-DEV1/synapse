@@ -64,18 +64,14 @@ export interface HierarchyNode {
 }
 
 /**
- * Returns ancestor pages ordered from root to immediate parent of `pageId`.
- * Excludes `pageId` itself. Protected against cyclic references.
+ * Returns ancestor pages ordered from root to immediate parent of `pageId`
+ * using a pre-indexed page map to guarantee O(depth) performance without Map recreation.
  */
-export function getPageAncestors<T extends HierarchyNode>(
-  pages: T[],
+export function getPageAncestorsWithMap<T extends HierarchyNode>(
+  pageMap: Map<string, T>,
   pageId: string
 ): T[] {
   if (!pageId) return [];
-  const pageMap = new Map<string, T>();
-  for (const page of pages) {
-    pageMap.set(page.id, page);
-  }
 
   const ancestors: T[] = [];
   const visited = new Set<string>();
@@ -93,6 +89,22 @@ export function getPageAncestors<T extends HierarchyNode>(
   }
 
   return ancestors;
+}
+
+/**
+ * Returns ancestor pages ordered from root to immediate parent of `pageId`.
+ * Excludes `pageId` itself. Protected against cyclic references.
+ */
+export function getPageAncestors<T extends HierarchyNode>(
+  pages: T[],
+  pageId: string
+): T[] {
+  if (!pageId) return [];
+  const pageMap = new Map<string, T>();
+  for (const page of pages) {
+    pageMap.set(page.id, page);
+  }
+  return getPageAncestorsWithMap(pageMap, pageId);
 }
 
 /**

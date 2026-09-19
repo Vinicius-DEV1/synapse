@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '../../../store/useStore';
-import { getPageAncestors, type HierarchyNode } from '../../../utils/hierarchy';
+import { getPageAncestorsWithMap, type HierarchyNode } from '../../../utils/hierarchy';
 import type { Page } from '../../../types';
 import {
   type SearchScope,
@@ -18,12 +18,17 @@ export function useGlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Ancestor breadcrumbs map per page - computed only when modal is actively open
+  // Ancestor breadcrumbs map per page - computed in a single O(N) pass using a pre-indexed Map
   const pageAncestorsMap = useMemo(() => {
     if (!isOpen) return new Map<string, HierarchyNode[]>();
+    const pageMap = new Map<string, Page>();
+    for (const p of state.pages) {
+      pageMap.set(p.id, p);
+    }
+
     const map = new Map<string, HierarchyNode[]>();
     for (const p of state.pages) {
-      map.set(p.id, getPageAncestors(state.pages, p.id));
+      map.set(p.id, getPageAncestorsWithMap(pageMap, p.id));
     }
     return map;
   }, [state.pages, isOpen]);
