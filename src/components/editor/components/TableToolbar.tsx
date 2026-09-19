@@ -18,6 +18,10 @@ import {
   ArrowDownFromLine,
   ArrowLeftFromLine,
   ArrowRightFromLine,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   X,
   Combine,
 } from 'lucide-react';
@@ -29,6 +33,10 @@ import {
   selectCurrentRow,
   selectEntireTable,
   applyFormatToTableSelection,
+  moveCurrentColumn,
+  moveCurrentRow,
+  canMoveCurrentColumn,
+  canMoveCurrentRow,
 } from './table/tableSelectionUtils';
 
 interface TableToolbarProps {
@@ -232,6 +240,34 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
 
         <button
           type="button"
+          onClick={() => moveCurrentRow(editor, 'up')}
+          disabled={!canMoveCurrentRow(editor, 'up')}
+          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+            canMoveCurrentRow(editor, 'up')
+              ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
+              : 'text-dark-subtext/25 cursor-not-allowed'
+          }`}
+          title="Mover linha para cima"
+        >
+          <ArrowUp size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => moveCurrentRow(editor, 'down')}
+          disabled={!canMoveCurrentRow(editor, 'down')}
+          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+            canMoveCurrentRow(editor, 'down')
+              ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
+              : 'text-dark-subtext/25 cursor-not-allowed'
+          }`}
+          title="Mover linha para baixo"
+        >
+          <ArrowDown size={15} />
+        </button>
+
+        <button
+          type="button"
           onClick={() => editor.chain().focus().deleteRow().run()}
           className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all active:scale-90"
           title="Excluir linha"
@@ -257,6 +293,34 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
           title="Adicionar coluna à direita"
         >
           <ArrowRightFromLine size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => moveCurrentColumn(editor, 'left')}
+          disabled={!canMoveCurrentColumn(editor, 'left')}
+          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+            canMoveCurrentColumn(editor, 'left')
+              ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
+              : 'text-dark-subtext/25 cursor-not-allowed'
+          }`}
+          title="Mover coluna para a esquerda"
+        >
+          <ArrowLeft size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => moveCurrentColumn(editor, 'right')}
+          disabled={!canMoveCurrentColumn(editor, 'right')}
+          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+            canMoveCurrentColumn(editor, 'right')
+              ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
+              : 'text-dark-subtext/25 cursor-not-allowed'
+          }`}
+          title="Mover coluna para a direita"
+        >
+          <ArrowRight size={15} />
         </button>
 
         <button

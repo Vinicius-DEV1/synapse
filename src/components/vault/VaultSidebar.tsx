@@ -128,7 +128,7 @@ export function VaultSidebar({
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/10 transition-colors"
           >
-            <Edit2 size={14} /> Renomear
+            <Edit2 size={14} /> Editar Grupo
           </button>
           <button
             onClick={() => {

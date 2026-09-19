@@ -5,6 +5,7 @@ import { VaultSecurityDashboard } from './VaultSecurityDashboard';
 import { VaultSidebar } from './VaultSidebar';
 import { VaultItemList } from './VaultItemList';
 import { VaultItemDetails } from './VaultItemDetails';
+import { VaultGroupModal } from './ui/VaultGroupModal';
 import { useVault } from './hooks/useVault';
 
 export default function VaultView() {
@@ -29,6 +30,10 @@ export default function VaultView() {
     handleCreateGroup,
     handleEditGroup,
     handleDeleteGroup,
+    groupModal,
+    handleCloseGroupModal,
+    handleSaveGroupModal,
+    handleReorderItems,
     handleSelectItem,
     handleDeleteItem,
     filteredItems,
@@ -68,6 +73,7 @@ export default function VaultView() {
             selectedItem={selectedItem}
             isLoading={isLoading}
             handleSelectItem={handleSelectItem}
+            onReorderItems={handleReorderItems}
             onNewItem={() => {
               setSelectedItem(null);
               setIsEditingItem(true);
@@ -108,6 +114,16 @@ export default function VaultView() {
             ) : null}
           </div>
         </>
+      )}
+
+      {/* Modal para criar/editar grupos com cores personalizadas */}
+      {groupModal && (
+        <VaultGroupModal
+          isOpen={groupModal.isOpen}
+          group={groupModal.group}
+          onClose={handleCloseGroupModal}
+          onSave={handleSaveGroupModal}
+        />
       )}
     </div>
   );

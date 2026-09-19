@@ -1,5 +1,12 @@
 import type { Editor } from '@tiptap/react';
-import { CellSelection, TableMap, cellAround, findTable } from '@tiptap/pm/tables';
+import {
+  CellSelection,
+  TableMap,
+  cellAround,
+  findTable,
+  moveTableColumn,
+  moveTableRow,
+} from '@tiptap/pm/tables';
 
 export interface SelectionScope {
   type: 'none' | 'cell' | 'row' | 'col' | 'table' | 'multi-cell';
@@ -166,6 +173,187 @@ export function selectRowAtIndex(editor: Editor, rowIndex: number): boolean {
     console.error('[tableSelectionUtils] Erro ao selecionar linha por índice:', err);
     return false;
   }
+}
+
+/**
+ * Retrieves the currently active rectangular cell bounds in the table (left, top, right, bottom)
+ * along with the total column and row count.
+ */
+export function getSelectedTableRect(editor: Editor): {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  totalCols: number;
+  totalRows: number;
+} | null {
+  try {
+    const info = getCurrentTableInfo(editor);
+    if (!info) return null;
+    const { selection } = editor.state;
+    const { start, map } = info;
+
+    if (selection instanceof CellSelection) {
+      const rect = map.rectBetween(selection.$anchorCell.pos - start, selection.$headCell.pos - start);
+      return {
+        ...rect,
+        totalCols: map.width,
+        totalRows: map.height,
+      };
+    }
+
+    const $cell = cellAround(selection.$from);
+    if ($cell) {
+      const rect = map.findCell($cell.pos - start);
+      return {
+        ...rect,
+        totalCols: map.width,
+        totalRows: map.height,
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[tableSelectionUtils] Erro ao obter retângulo da tabela:', err);
+    return null;
+  }
+}
+
+/**
+ * Moves a column from source index to target index.
+ */
+export function moveColumnAtIndex(editor: Editor, fromIndex: number, toIndex: number): boolean {
+  try {
+    const info = getCurrentTableInfo(editor);
+    if (!info) return false;
+
+    const { map } = info;
+    if (
+      fromIndex < 0 ||
+      fromIndex >= map.width ||
+      toIndex < 0 ||
+      toIndex >= map.width ||
+      fromIndex === toIndex
+    ) {
+      return false;
+    }
+
+    // Ensure editor selection is inside the table on the source column
+    selectColumnAtIndex(editor, fromIndex);
+
+    const cmd = moveTableColumn({
+      from: fromIndex,
+      to: toIndex,
+      select: true,
+    });
+
+    const result = cmd(editor.state, editor.view.dispatch);
+    if (result) {
+      editor.view.focus();
+    }
+    return Boolean(result);
+  } catch (err) {
+    console.error('[tableSelectionUtils] Erro ao mover coluna:', err);
+    return false;
+  }
+}
+
+/**
+ * Moves a row from source index to target index.
+ */
+export function moveRowAtIndex(editor: Editor, fromIndex: number, toIndex: number): boolean {
+  try {
+    const info = getCurrentTableInfo(editor);
+    if (!info) return false;
+
+    const { map } = info;
+    if (
+      fromIndex < 0 ||
+      fromIndex >= map.height ||
+      toIndex < 0 ||
+      toIndex >= map.height ||
+      fromIndex === toIndex
+    ) {
+      return false;
+    }
+
+    // Ensure editor selection is inside the table on the source row
+    selectRowAtIndex(editor, fromIndex);
+
+    const cmd = moveTableRow({
+      from: fromIndex,
+      to: toIndex,
+      select: true,
+    });
+
+    const result = cmd(editor.state, editor.view.dispatch);
+    if (result) {
+      editor.view.focus();
+    }
+    return Boolean(result);
+  } catch (err) {
+    console.error('[tableSelectionUtils] Erro ao mover linha:', err);
+    return false;
+  }
+}
+
+/**
+ * Moves the currently selected column (or column containing the cursor) left or right.
+ */
+export function moveCurrentColumn(editor: Editor, direction: 'left' | 'right'): boolean {
+  const rect = getSelectedTableRect(editor);
+  if (!rect) return false;
+  const targetCol = direction === 'left' ? rect.left - 1 : rect.right;
+  if (targetCol < 0 || targetCol >= rect.totalCols) return false;
+  return moveColumnAtIndex(editor, rect.left, targetCol);
+}
+
+/**
+ * Moves the currently selected row (or row containing the cursor) up or down.
+ */
+export function moveCurrentRow(editor: Editor, direction: 'up' | 'down'): boolean {
+  const rect = getSelectedTableRect(editor);
+  if (!rect) return false;
+  const targetRow = direction === 'up' ? rect.top - 1 : rect.bottom;
+  if (targetRow < 0 || targetRow >= rect.totalRows) return false;
+  return moveRowAtIndex(editor, rect.top, targetRow);
+}
+
+/**
+ * Checks if the current column can be moved in the given direction.
+ */
+export function canMoveCurrentColumn(editor: Editor, direction: 'left' | 'right'): boolean {
+  const rect = getSelectedTableRect(editor);
+  if (!rect) return false;
+  return direction === 'left' ? rect.left > 0 : rect.right < rect.totalCols;
+}
+
+/**
+ * Checks if the current row can be moved in the given direction.
+ */
+export function canMoveCurrentRow(editor: Editor, direction: 'up' | 'down'): boolean {
+  const rect = getSelectedTableRect(editor);
+  if (!rect) return false;
+  return direction === 'up' ? rect.top > 0 : rect.bottom < rect.totalRows;
+}
+
+/**
+ * Calculates the destination index when dropping a column or row before or after targetIndex.
+ * Returns null if the drop is a no-op (same position).
+ */
+export function computeDropIndex(
+  fromIndex: number,
+  targetIndex: number,
+  dropPosition: 'before' | 'after'
+): number | null {
+  if (targetIndex > fromIndex) {
+    const to = dropPosition === 'before' ? targetIndex - 1 : targetIndex;
+    return to === fromIndex ? null : to;
+  } else if (targetIndex < fromIndex) {
+    const to = dropPosition === 'before' ? targetIndex : targetIndex + 1;
+    return to === fromIndex ? null : to;
+  }
+  return null;
 }
 
 /**

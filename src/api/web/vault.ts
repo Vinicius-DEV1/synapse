@@ -93,7 +93,14 @@ export const webVaultApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
       }
       const activeItems = all
         .filter((i): i is VaultItem => !i.deleted_at)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        .sort((a, b) => {
+          if (b.is_favorite !== a.is_favorite) {
+            return (b.is_favorite || 0) - (a.is_favorite || 0);
+          }
+          const posDiff = (a.position ?? 0) - (b.position ?? 0);
+          if (posDiff !== 0) return posDiff;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
 
       const key = getVaultKey();
       const decryptedList: VaultItem[] = [];
@@ -173,6 +180,20 @@ export const webVaultApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
           updated_at: new Date().toISOString(),
         };
         await db.put('vault_items', updated);
+      }
+    },
+
+    reorderItems: async (updates: { id: string; position: number }[]): Promise<void> => {
+      for (const update of updates) {
+        const existing = await db.get('vault_items', update.id);
+        if (existing) {
+          const updated: VaultItem = {
+            ...existing,
+            position: update.position,
+            updated_at: new Date().toISOString(),
+          };
+          await db.put('vault_items', updated);
+        }
       }
     },
 

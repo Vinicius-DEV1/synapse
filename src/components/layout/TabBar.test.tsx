@@ -66,4 +66,16 @@ describe('TabBar component', () => {
     fireEvent.wheel(tabStrip, { deltaY: -50 });
     expect(tabStrip.scrollLeft).toBe(100);
   });
+
+  it('renders unpinned tab with tabMaxWidth style', () => {
+    const { container } = render(
+      <StoreProvider>
+        <TabBar />
+      </StoreProvider>
+    );
+
+    const activeTab = container.querySelector('[data-active-tab="true"]');
+    expect(activeTab).toBeInTheDocument();
+    expect(activeTab).toHaveStyle({ maxWidth: '400px' });
+  });
 });

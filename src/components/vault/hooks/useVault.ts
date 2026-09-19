@@ -81,7 +81,10 @@ export function useVault() {
     }
   }, []);
 
-  const createGroup = useCallback(async (name: string): Promise<void> => {
+  // Modal state for creating/editing groups
+  const [groupModal, setGroupModal] = useState<{ isOpen: boolean; group?: VaultGroup | null } | null>(null);
+
+  const createGroup = useCallback(async (name: string, color = '#3b82f6'): Promise<void> => {
     const trimmed = name.trim();
     if (!trimmed) return;
     try {
@@ -89,7 +92,7 @@ export function useVault() {
         id: crypto.randomUUID(),
         name: trimmed,
         icon: 'Folder',
-        color: '#3b82f6',
+        color,
         position: groups.length,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -105,19 +108,18 @@ export function useVault() {
     }
   }, [groups.length, loadData]);
 
-  const handleCreateGroup = useCallback(async () => {
-    const name = window.prompt('Nome do Grupo:');
-    if (name) {
-      await createGroup(name);
-    }
-  }, [createGroup]);
+  const handleCreateGroup = useCallback(() => {
+    setGroupModal({ isOpen: true, group: null });
+  }, []);
 
-  const editGroup = useCallback(async (group: VaultGroup, newName: string): Promise<void> => {
+  const editGroup = useCallback(async (group: VaultGroup, newName: string, newColor?: string): Promise<void> => {
     const trimmed = newName.trim();
-    if (!trimmed || trimmed === group.name) return;
+    const finalColor = newColor || group.color || '#3b82f6';
+    if (!trimmed) return;
+    if (trimmed === group.name && finalColor === group.color) return;
     try {
-      await window.api?.vault?.upsertGroup({ ...group, name: trimmed });
-      triggerToast('Grupo renomeado com sucesso!', 'success');
+      await window.api?.vault?.upsertGroup({ ...group, name: trimmed, color: finalColor });
+      triggerToast('Grupo atualizado com sucesso!', 'success');
       await loadData();
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao editar grupo');
@@ -126,12 +128,39 @@ export function useVault() {
     }
   }, [loadData]);
 
-  const handleEditGroup = useCallback(async (group: VaultGroup) => {
-    const newName = window.prompt('Novo nome para o grupo:', group.name);
-    if (newName) {
-      await editGroup(group, newName);
+  const handleEditGroup = useCallback((group: VaultGroup) => {
+    setGroupModal({ isOpen: true, group });
+  }, []);
+
+  const handleCloseGroupModal = useCallback(() => {
+    setGroupModal(null);
+  }, []);
+
+  const handleSaveGroupModal = useCallback(async (name: string, color: string) => {
+    if (groupModal?.group) {
+      await editGroup(groupModal.group, name, color);
+    } else {
+      await createGroup(name, color);
     }
-  }, [editGroup]);
+  }, [groupModal, editGroup, createGroup]);
+
+  const handleReorderItems = useCallback(async (sourceIndex: number, targetIndex: number) => {
+    if (sourceIndex === targetIndex || sourceIndex < 0 || targetIndex < 0) return;
+    const newItems = [...items];
+    const [moved] = newItems.splice(sourceIndex, 1);
+    if (!moved) return;
+    newItems.splice(targetIndex, 0, moved);
+    setItems(newItems);
+
+    const updates = newItems.map((it, idx) => ({ id: it.id, position: idx }));
+    try {
+      await window.api?.vault?.reorderItems(updates);
+    } catch (err: unknown) {
+      console.error('[Vault] Failed to persist items reorder:', err);
+      triggerToast('Erro ao salvar nova ordem dos itens', 'error');
+      await loadData();
+    }
+  }, [items, loadData]);
 
   const deleteGroup = useCallback(async (groupId: string): Promise<void> => {
     try {
@@ -209,6 +238,10 @@ export function useVault() {
     handleCreateGroup,
     handleEditGroup,
     handleDeleteGroup,
+    groupModal,
+    handleCloseGroupModal,
+    handleSaveGroupModal,
+    handleReorderItems,
     handleSelectItem,
     handleDeleteItem,
     filteredItems,

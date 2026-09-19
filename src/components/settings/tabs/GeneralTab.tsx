@@ -88,7 +88,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
               Ocultar Nomes de Abas Fixadas
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Exibe apenas o ícone nas abas fixadas, expandindo o nome ao passar o mouse.
+              Exibe apenas o ícone/emoji nas abas fixadas para economizar espaço horizontal.
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -101,6 +101,31 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
             <label className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer transition-colors duration-200 ${appSettings.compactPinnedTabs ? 'bg-brand-500' : 'bg-white/20'}`}></label>
           </div>
         </label>
+
+        <div className="flex items-center justify-between group pt-1">
+          <div>
+            <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
+              Largura Máxima das Abas
+            </span>
+            <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
+              Define o limite de largura em pixels antes de abreviar o título. Padrão: 400px.
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min="140"
+              max="800"
+              step="20"
+              value={appSettings.tabMaxWidth ?? 400}
+              onChange={(e) => setAppSettings({ ...appSettings, tabMaxWidth: parseInt(e.target.value, 10) })}
+              className="w-28 accent-brand-500 cursor-pointer"
+            />
+            <span className="text-xs font-mono px-2 py-1 bg-dark-bg border border-white/10 rounded text-brand-400 min-w-[58px] text-center">
+              {appSettings.tabMaxWidth ?? 400}px
+            </span>
+          </div>
+        </div>
       </div>
 
       <label className="flex items-center justify-between cursor-pointer group">

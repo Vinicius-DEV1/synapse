@@ -26,6 +26,7 @@ export interface VaultItem {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  position?: number;
   groupName?: string; // Virtual joined property
 }
 

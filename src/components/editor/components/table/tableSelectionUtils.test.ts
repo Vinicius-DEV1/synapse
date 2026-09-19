@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getSelectionScope,
   applyFormatToTableSelection,
+  computeDropIndex,
 } from './tableSelectionUtils';
 import { CellSelection } from '@tiptap/pm/tables';
 
@@ -106,5 +107,37 @@ describe('tableSelectionUtils', () => {
 
     applyFormatToTableSelection(mockEditor, 'backgroundColor', 'rgba(34, 197, 94, 0.2)');
     expect(chainObj.setCellAttribute).toHaveBeenCalledWith('backgroundColor', 'rgba(34, 197, 94, 0.2)');
+  });
+
+  describe('computeDropIndex', () => {
+    it('returns null when dropping element on itself', () => {
+      expect(computeDropIndex(1, 1, 'before')).toBeNull();
+      expect(computeDropIndex(1, 1, 'after')).toBeNull();
+    });
+
+    it('returns null when dropping immediately next to itself resulting in no position change', () => {
+      // Dragging 0 and dropping before 1 leaves it at index 0 (no move)
+      expect(computeDropIndex(0, 1, 'before')).toBeNull();
+      // Dragging 1 and dropping after 0 leaves it at index 1 (no move)
+      expect(computeDropIndex(1, 0, 'after')).toBeNull();
+    });
+
+    it('correctly calculates target index when dragging right/down', () => {
+      // Dragging 0 and dropping after 1 -> moves to index 1
+      expect(computeDropIndex(0, 1, 'after')).toBe(1);
+      // Dragging 0 and dropping before 2 -> moves to index 1
+      expect(computeDropIndex(0, 2, 'before')).toBe(1);
+      // Dragging 0 and dropping after 2 -> moves to index 2
+      expect(computeDropIndex(0, 2, 'after')).toBe(2);
+    });
+
+    it('correctly calculates target index when dragging left/up', () => {
+      // Dragging 2 and dropping before 0 -> moves to index 0
+      expect(computeDropIndex(2, 0, 'before')).toBe(0);
+      // Dragging 2 and dropping after 0 -> moves to index 1
+      expect(computeDropIndex(2, 0, 'after')).toBe(1);
+      // Dragging 2 and dropping before 1 -> moves to index 1
+      expect(computeDropIndex(2, 1, 'before')).toBe(1);
+    });
   });
 });

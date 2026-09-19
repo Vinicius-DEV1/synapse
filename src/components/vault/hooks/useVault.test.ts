@@ -106,4 +106,54 @@ describe('useVault hook', () => {
 
     expect(result.current.selectedItem?.id).toBe('item-1');
   });
+
+  it('reorders items manually and persists position updates', async () => {
+    const reorderItemsMock = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.vault.reorderItems = reorderItemsMock;
+
+    const { result } = renderHook(() => useVault());
+
+    await act(async () => {
+      await result.current.loadData();
+    });
+
+    expect(result.current.items[0].id).toBe('item-1');
+    expect(result.current.items[1].id).toBe('item-2');
+
+    await act(async () => {
+      await result.current.handleReorderItems(0, 1);
+    });
+
+    expect(result.current.items[0].id).toBe('item-2');
+    expect(result.current.items[1].id).toBe('item-1');
+    expect(reorderItemsMock).toHaveBeenCalledWith([
+      { id: 'item-2', position: 0 },
+      { id: 'item-1', position: 1 },
+    ]);
+  });
+
+  it('opens group modal and creates group with custom color', async () => {
+    const upsertGroupMock = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.vault.upsertGroup = upsertGroupMock;
+
+    const { result } = renderHook(() => useVault());
+
+    act(() => {
+      result.current.handleCreateGroup();
+    });
+
+    expect(result.current.groupModal?.isOpen).toBe(true);
+    expect(result.current.groupModal?.group).toBeNull();
+
+    await act(async () => {
+      await result.current.handleSaveGroupModal('Projetos', '#10b981');
+    });
+
+    expect(upsertGroupMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Projetos',
+        color: '#10b981',
+      })
+    );
+  });
 });

@@ -1,6 +1,6 @@
 use tauri::State;
 use crate::cmd_vault::helpers::{decrypt_vault_item, get_vault_key, row_to_vault_item};
-use crate::cmd_vault::types::VaultItem;
+use crate::cmd_vault::types::{ItemOrderUpdate, VaultItem};
 use crate::db::DbState;
 
 /// Retrieves all active vault items, optionally filtered by group ID.
@@ -16,7 +16,7 @@ pub fn vault_get_items(
     let mut items = Vec::new();
 
     if let Some(gid) = group_id {
-        let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at FROM vault_items WHERE group_id = ? AND deleted_at IS NULL ORDER BY created_at DESC")
+        let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at, position FROM vault_items WHERE group_id = ? AND deleted_at IS NULL ORDER BY is_favorite DESC, position ASC, created_at DESC")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map(rusqlite::params![gid], |row| Ok(row_to_vault_item(row)))
@@ -28,7 +28,7 @@ pub fn vault_get_items(
             }
         }
     } else {
-        let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at FROM vault_items WHERE deleted_at IS NULL ORDER BY created_at DESC")
+        let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at, position FROM vault_items WHERE deleted_at IS NULL ORDER BY is_favorite DESC, position ASC, created_at DESC")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |row| Ok(row_to_vault_item(row)))
@@ -51,7 +51,7 @@ pub fn vault_get_item(id: String, db_state: State<'_, DbState>) -> Result<VaultI
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at FROM vault_items WHERE id = ?")
+    let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at, position FROM vault_items WHERE id = ?")
         .map_err(|e| e.to_string())?;
 
     let mut item = stmt
@@ -136,8 +136,8 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
     }
 
     conn.execute(
-        "INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at, position) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
             group_id = excluded.group_id,
             label = excluded.label,
@@ -151,8 +151,9 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
             password_changed_at = excluded.password_changed_at,
             password_strength = excluded.password_strength,
             deleted_at = excluded.deleted_at,
+            position = excluded.position,
             updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![item.id, item.group_id, enc_label, enc_user, enc_email, enc_pass, enc_url, enc_notes, enc_custom, item.is_favorite, item.password_changed_at, item.password_strength, item.created_at, item.updated_at, item.deleted_at],
+        rusqlite::params![item.id, item.group_id, enc_label, enc_user, enc_email, enc_pass, enc_url, enc_notes, enc_custom, item.is_favorite, item.password_changed_at, item.password_strength, item.created_at, item.updated_at, item.deleted_at, item.position],
     ).map_err(|e| e.to_string())?;
 
     Ok(())
@@ -213,4 +214,24 @@ pub fn vault_search_items(
         .collect();
 
     Ok(filtered)
+}
+
+/// Batch updates order/position of vault items.
+#[tauri::command]
+pub fn vault_reorder_items(
+    updates: Vec<ItemOrderUpdate>,
+    db_state: State<'_, DbState>,
+) -> Result<(), String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    for update in updates {
+        conn.execute(
+            "UPDATE vault_items SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            rusqlite::params![update.position, update.id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

@@ -16,6 +16,7 @@ export interface IVaultApi {
   getItem: (id: string) => Promise<VaultItem | null>;
   upsertItem: (item: VaultItem) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
+  reorderItems: (updates: { id: string; position: number }[]) => Promise<void>;
   searchItems: (query: string) => Promise<VaultItem[]>;
   getPasswordHistory: (itemId: string) => Promise<VaultPasswordHistoryEntry[]>;
   generatePassword: (opts: PasswordGenOptions) => Promise<string>;
@@ -34,6 +35,8 @@ export const tauriVaultApi: IVaultApi = {
   getItem: async (id: string): Promise<VaultItem | null> => await invoke<VaultItem | null>('vault_get_item', { id }),
   upsertItem: async (item: VaultItem): Promise<void> => await invoke<void>('vault_upsert_item', { item }),
   deleteItem: async (id: string): Promise<void> => await invoke<void>('vault_delete_item', { id }),
+  reorderItems: async (updates: { id: string; position: number }[]): Promise<void> =>
+    await invoke<void>('vault_reorder_items', { updates }),
   searchItems: async (query: string): Promise<VaultItem[]> =>
     await invoke<VaultItem[]>('vault_search_items', { query }),
   getPasswordHistory: async (itemId: string): Promise<VaultPasswordHistoryEntry[]> =>
