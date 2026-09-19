@@ -5,6 +5,9 @@ export const tauriCalendarApi = {
   getEvents: async (): Promise<CalendarEvent[]> => {
     return await invoke('calendar_get_events');
   },
+  getEvent: async (id: string): Promise<CalendarEvent | null> => {
+    return await invoke('calendar_get_event', { id });
+  },
   createEvent: async (e: Partial<CalendarEvent>): Promise<CalendarEvent> => {
     const cleanE: Record<string, any> = { ...e };
     delete cleanE.type_;

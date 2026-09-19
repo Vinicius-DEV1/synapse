@@ -102,10 +102,15 @@ export default function MediaWidgetNodeView(props: NodeViewProps) {
     try {
       if (mediaType === 'video') {
         if (window.api?.sync) {
-          const rows = await fetchVideosCached();
-          const found = rows.find((v: BaseMediaEntity) => v.id === mediaId && !v.deleted_at);
+          let found: BaseMediaEntity | null = null;
+          if (typeof window.api.sync.getRow === 'function') {
+            found = (await window.api.sync.getRow('videos', mediaId)) as BaseMediaEntity | null;
+          } else {
+            const rows = await fetchVideosCached();
+            found = rows.find((v: BaseMediaEntity) => v.id === mediaId && !v.deleted_at) || null;
+          }
           if (mountedRef.current && currentReqId === reqIdRef.current) {
-            setMediaItem(found || null);
+            setMediaItem(found && !found.deleted_at ? found : null);
           }
         } else {
           if (mountedRef.current && currentReqId === reqIdRef.current) {
@@ -114,10 +119,15 @@ export default function MediaWidgetNodeView(props: NodeViewProps) {
         }
       } else if (mediaType === 'book') {
         if (window.api?.library) {
-          const books = await fetchBooksCached();
-          const found = books.find((b: BaseMediaEntity) => b.id === mediaId && !b.deleted_at);
+          let found: BaseMediaEntity | null = null;
+          if (typeof window.api.library.getBook === 'function') {
+            found = (await window.api.library.getBook(mediaId)) as BaseMediaEntity | null;
+          } else {
+            const books = await fetchBooksCached();
+            found = books.find((b: BaseMediaEntity) => b.id === mediaId && !b.deleted_at) || null;
+          }
           if (mountedRef.current && currentReqId === reqIdRef.current) {
-            setMediaItem(found || null);
+            setMediaItem(found && !found.deleted_at ? found : null);
           }
         } else {
           if (mountedRef.current && currentReqId === reqIdRef.current) {

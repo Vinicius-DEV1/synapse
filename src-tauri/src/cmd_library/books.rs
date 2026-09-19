@@ -280,3 +280,46 @@ pub fn library_evict_book_local_cache(
 
     Ok(true)
 }
+
+/// Retrieves a single active book by its ID.
+#[tauri::command]
+pub fn library_get_book(id: String, db_state: State<'_, DbState>) -> Result<Option<Book>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name FROM library_books WHERE id = ? AND deleted_at IS NULL",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let book = stmt.query_row([&id], |row| {
+        Ok(Book {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            author: row.get(2)?,
+            file_path: row.get(3)?,
+            drive_file_id: row.get(4)?,
+            cover_color: row.get(5)?,
+            cover_image: row.get(6)?,
+            total_pages: row.get(7)?,
+            current_page: row.get(8)?,
+            reading_status: row.get(9)?,
+            last_read_page: row.get(10)?,
+            epub_locations: row.get(11)?,
+            created_at: row.get(12)?,
+            updated_at: row.get(13)?,
+            deleted_at: row.get(14)?,
+            reading_preferences: row.get(15)?,
+            is_local: row.get(16).unwrap_or(Some(true)),
+            original_name: row.get(17).unwrap_or(None),
+        })
+    });
+
+    match book {
+        Ok(b) => Ok(Some(b)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+

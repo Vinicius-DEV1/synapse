@@ -93,6 +93,7 @@ export interface LibraryApi {
   evictBookLocalCache: (id: string) => Promise<boolean>;
   updateBook: (book: { id: string; title?: string; author?: string; current_page?: number; last_read_page?: number | string; total_pages?: number; reading_status?: ReadingStatus; last_read_at?: string }) => Promise<number>;
   getBookFile: (id: string) => Promise<string>;
+  getBook?: (id: string) => Promise<LibraryBook | null>;
   getCollections: () => Promise<LibraryCollection[]>;
   createCollection: (c: { name: string; color: string }) => Promise<LibraryCollection>;
   updateCollection: (c: { id: string; name?: string; color?: string }) => Promise<number>;
@@ -121,6 +122,7 @@ export interface SyncApi {
   deleteRow?: (tableName: string, id: string) => Promise<{ success: boolean }>;
   /** Fetches table rows by ID list. Present in runtime implementations. */
   getRowsByIds: (tableName: string, ids: string[]) => Promise<any[]>;
+  getRow?: (tableName: string, id: string) => Promise<any | null>;
   /** Enqueues an immediate push sync operation for a module. */
   push?: (type: string) => void;
 }
@@ -227,6 +229,7 @@ export interface ICadernoAPI {
     saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
     saveNote: (noteData: any) => Promise<{ success: boolean; note_id?: string; error?: string }>;
     getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
+    getTotalDueCount?: () => Promise<number>;
     reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
     getAllCards: (deckId?: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
     deleteCard: (cardId: string) => Promise<{ success: boolean; error?: string }>;
@@ -261,6 +264,7 @@ export interface ICadernoAPI {
 
   calendar?: {
     getEvents: () => Promise<CalendarEvent[]>;
+    getEvent?: (id: string) => Promise<CalendarEvent | null>;
     createEvent: (event: Partial<CalendarEvent>) => Promise<CalendarEvent>;
     updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<{ success: boolean }>;
     deleteEvent: (id: string) => Promise<boolean>;
@@ -286,6 +290,11 @@ export interface ICadernoAPI {
   };
 
   files?: FilesApi;
+
+  links?: {
+    getMetadata: (url: string) => Promise<any | null>;
+    saveMetadata: (entry: any) => Promise<boolean>;
+  };
 
   vault?: {
     getGroups: () => Promise<VaultGroup[]>;

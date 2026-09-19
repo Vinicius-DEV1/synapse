@@ -3,6 +3,11 @@ export const webCalendarApi = (db: any) => ({
     const all = await db.getAll('calendar_events') || [];
     return all.filter((e: any) => !e.deleted_at);
   },
+  getEvent: async (id: string) => {
+    const existing = await db.get('calendar_events', id);
+    if (!existing || existing.deleted_at) return null;
+    return existing;
+  },
   createEvent: async (event: any) => {
     const id = (event.id && event.id !== '') ? event.id : crypto.randomUUID();
     const newEvent = {

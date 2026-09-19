@@ -7,6 +7,12 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
     return all.filter((b: any) => !b.deleted_at);
   },
 
+  getBook: async (id: string) => {
+    const book = await db.get('library_books', id);
+    if (!book || book.deleted_at) return null;
+    return book;
+  },
+
   importBook: async () => {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');

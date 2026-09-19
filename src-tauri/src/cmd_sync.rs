@@ -47,6 +47,7 @@ const ALLOWED_SYNC_TABLES: &[&str] = &[
     "quiz_attempts",
     "quiz_page_links",
     "notifications",
+    "link_metadata_cache",
 ];
 
 fn validate_sync_table(table_name: &str) -> Result<(), String> {
@@ -272,3 +273,14 @@ pub fn sync_get_rows_by_ids(
     }
     Ok(items)
 }
+
+#[tauri::command]
+pub fn sync_get_row(
+    table_name: String,
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Option<Value>, String> {
+    let mut rows = sync_get_rows_by_ids(table_name, vec![id], db_state)?;
+    Ok(rows.pop())
+}
+
