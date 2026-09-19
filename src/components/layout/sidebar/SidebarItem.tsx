@@ -61,7 +61,7 @@ function SidebarItemComponent({
     ? childrenMap.get(page.id) || []
     : getStoreState()
         .pages.filter((p) => p.parent_id === page.id)
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+        .sort((a, b) => (b.updated_at > a.updated_at ? 1 : b.updated_at < a.updated_at ? -1 : 0));
   const hasChildren = children.length > 0;
   const isActive = activePageId === page.id;
 
@@ -158,7 +158,7 @@ function SidebarItemComponent({
       {isExpanded && !isSearchResult && hasChildren && (
         <div>
           {children.map((child) => (
-            <SidebarItemComponent
+            <SidebarItem
               key={child.id}
               page={child}
               depth={depth + 1}
@@ -187,4 +187,5 @@ function SidebarItemComponent({
   );
 }
 
-export default memo(SidebarItemComponent);
+const SidebarItem = memo(SidebarItemComponent);
+export default SidebarItem;
