@@ -39,7 +39,13 @@ export default function YouTubeWatchModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [streamInfo, setStreamInfo] = useState<YouTubeStreamInfo | null>(null);
-  const [isUsingEmbedFallback, setIsUsingEmbedFallback] = useState(false);
+  const [isUsingEmbedFallback, setIsUsingEmbedFallback] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('caderno_preferred_youtube_player') === 'embed';
+    } catch {
+      return false;
+    }
+  });
   const [streamPort, setStreamPort] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,7 +97,9 @@ export default function YouTubeWatchModal({
 
   useEffect(() => {
     isMountedRef.current = true;
-    loadStream();
+    if (!isUsingEmbedFallback) {
+      loadStream();
+    }
 
     return () => {
       isMountedRef.current = false;
@@ -99,7 +107,7 @@ export default function YouTubeWatchModal({
         cancelAnimationFrame(syncLoopRef.current);
       }
     };
-  }, [loadStream]);
+  }, [loadStream, isUsingEmbedFallback]);
 
   // Strict memory teardown when streamInfo or component unmounts or switches to embed
   useEffect(() => {
@@ -149,8 +157,81 @@ export default function YouTubeWatchModal({
     };
   }, [streamInfo, isUsingEmbedFallback]);
 
-  // Removed: Auto-fallback stall detection is no longer needed.
-  // The local reverse proxy eliminates the GStreamer User-Agent 403 root cause.
+  // Smart auto-fallback stall detection:
+  // YouTube CDN frequently blocks non-sequential range requests (e.g. MOOV atom inspection)
+  // or throttles DASH chunks, causing HTML5 <video> in WebKitGTK to hang in readyState < 2 without throwing an error.
+  // If native playback fails to begin or buffer within 3.5s, automatically and smoothly switch to the official YouTube embed player.
+  useEffect(() => {
+    if (isUsingEmbedFallback || !streamInfo || !videoId) return;
+
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    let hasStartedPlayback = false;
+
+    const clearTimer = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+    };
+
+    const triggerFallback = (reason: string) => {
+      if (isMountedRef.current && !hasStartedPlayback) {
+        console.warn(`[YouTubeWatchModal] Native stream stalled (${reason}), falling back to official player.`);
+        clearTimer();
+        setIsUsingEmbedFallback(true);
+      }
+    };
+
+    // If streamInfo is ready, give native video 3.5s to start playing or buffer frames
+    stallTimer = setTimeout(() => {
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.currentTime === 0 && video.readyState < 2) {
+        triggerFallback('timeout: buffer not ready after 3.5s');
+      }
+    }, 3500);
+
+    const video = videoRef.current;
+    if (!video) return clearTimer;
+
+    const handlePlaying = () => {
+      hasStartedPlayback = true;
+      clearTimer();
+    };
+
+    const handleTimeUpdate = () => {
+      if (video.currentTime > 0.1) {
+        hasStartedPlayback = true;
+        clearTimer();
+      }
+    };
+
+    const handleStalled = () => {
+      if (!hasStartedPlayback) {
+        clearTimer();
+        stallTimer = setTimeout(() => {
+          triggerFallback('video stalled event');
+        }, 1500);
+      }
+    };
+
+    const handleError = () => {
+      triggerFallback('native video error');
+    };
+
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('stalled', handleStalled);
+    video.addEventListener('error', handleError);
+
+    return () => {
+      clearTimer();
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('stalled', handleStalled);
+      video.removeEventListener('error', handleError);
+    };
+  }, [streamInfo, isUsingEmbedFallback, videoId]);
 
   // Audio-video sync for separated DASH streams
   useEffect(() => {
@@ -371,12 +452,16 @@ export default function YouTubeWatchModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isUsingEmbedFallback) {
-                      setIsUsingEmbedFallback(false);
-                      if (!streamInfo) loadStream();
-                    } else {
-                      setIsUsingEmbedFallback(true);
-                    }
+                    setIsUsingEmbedFallback((prev) => {
+                      const next = !prev;
+                      try {
+                        localStorage.setItem('caderno_preferred_youtube_player', next ? 'embed' : 'native');
+                      } catch {
+                        // Ignore localStorage errors
+                      }
+                      if (!next && !streamInfo) loadStream();
+                      return next;
+                    });
                   }}
                   className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-all ${
                     isUsingEmbedFallback
@@ -431,7 +516,14 @@ export default function YouTubeWatchModal({
                 {videoId && (
                   <button
                     type="button"
-                    onClick={() => setIsUsingEmbedFallback(true)}
+                    onClick={() => {
+                      try {
+                        localStorage.setItem('caderno_preferred_youtube_player', 'embed');
+                      } catch {
+                        // Ignore localStorage errors
+                      }
+                      setIsUsingEmbedFallback(true);
+                    }}
                     className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
                   >
                     <Tv className="w-3.5 h-3.5 text-brand-400" />
@@ -443,8 +535,8 @@ export default function YouTubeWatchModal({
 
             {error && !isUsingEmbedFallback && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-zinc-950/95 p-6 text-center z-20">
-                <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                  <AlertCircle className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-400" />
                 </div>
                 <div className="max-w-md">
                   <h4 className="text-sm font-semibold text-zinc-100">
@@ -464,7 +556,14 @@ export default function YouTubeWatchModal({
                   </button>
                   {videoId && (
                     <button
-                      onClick={() => setIsUsingEmbedFallback(true)}
+                      onClick={() => {
+                        try {
+                          localStorage.setItem('caderno_preferred_youtube_player', 'embed');
+                        } catch {
+                          // Ignore localStorage errors
+                        }
+                        setIsUsingEmbedFallback(true);
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-300 bg-brand-500/15 hover:bg-brand-500/25 border border-brand-500/30 rounded-lg transition-colors"
                     >
                       <Tv className="w-3.5 h-3.5" />
@@ -528,6 +627,12 @@ export default function YouTubeWatchModal({
                     }
                     preload="auto"
                     className="hidden"
+                    onError={() => {
+                      console.warn('[YouTubeWatchModal] Audio playback error, falling back to official player');
+                      if (videoId) {
+                        setIsUsingEmbedFallback(true);
+                      }
+                    }}
                   />
                 )}
               </>
