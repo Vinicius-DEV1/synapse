@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/s/**",
+        "destination": "/share-viewer.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
