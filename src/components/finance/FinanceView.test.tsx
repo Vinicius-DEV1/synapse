@@ -1,7 +1,19 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import FinanceView from './FinanceView';
+import type { Tab } from '../../types';
+
+/** Helper to build a minimal finance tab with a given pageId. */
+function makeTab(pageId: string | null = null): Tab {
+  return {
+    id: 'tab-finance',
+    module: 'finance',
+    pageId,
+    unsavedContent: null,
+    scrollY: 0,
+  };
+}
 
 describe('FinanceView component', () => {
   beforeEach(() => {
@@ -40,39 +52,46 @@ describe('FinanceView component', () => {
     };
   });
 
-  it('renders finance dashboard with metrics and tab switcher', async () => {
-    render(<FinanceView />);
+  it('renders finance dashboard with header and action buttons', async () => {
+    render(<FinanceView tab={makeTab('dashboard')} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Visão Geral')).toBeInTheDocument();
-      expect(screen.getByText(/Transações/i)).toBeInTheDocument();
-      expect(screen.getByText(/Empréstimos & Dívidas/i)).toBeInTheDocument();
-      expect(screen.getByText(/Desejos & Futuro/i)).toBeInTheDocument();
+      expect(screen.getByText('Finanças Pessoais')).toBeInTheDocument();
       expect(screen.getByText('Nova Transação')).toBeInTheDocument();
     });
   });
 
-  it('switches tabs to loans, transactions and wishlist', async () => {
-    render(<FinanceView />);
+  it('renders loans section when tab pageId is loans', async () => {
+    render(<FinanceView tab={makeTab('loans')} />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Desejos & Futuro/i)).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText(/Desejos & Futuro/i));
-    await waitFor(() => {
-      expect(screen.getByText('Adicionar Desejo')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText(/Empréstimos & Dívidas/i));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'A Receber' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'A Pagar (Dívidas)' })).toBeInTheDocument();
     });
+  });
 
-    fireEvent.click(screen.getByText(/Transações/i));
+  it('renders transactions section when tab pageId is transactions', async () => {
+    render(<FinanceView tab={makeTab('transactions')} />);
+
     await waitFor(() => {
       expect(screen.getByText('Salário')).toBeInTheDocument();
+    });
+  });
+
+  it('renders wishlist section when tab pageId is wishlist', async () => {
+    render(<FinanceView tab={makeTab('wishlist')} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Adicionar Desejo')).toBeInTheDocument();
+    });
+  });
+
+  it('defaults to dashboard when pageId is null', async () => {
+    render(<FinanceView tab={makeTab(null)} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Finanças Pessoais')).toBeInTheDocument();
+      expect(screen.getByText('Nova Transação')).toBeInTheDocument();
     });
   });
 });
