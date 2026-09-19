@@ -114,12 +114,12 @@ export const webFilesApi = (db: any, generateId: () => string): FilesApi => {
     },
     links: {
       getByPage: async (pageId: string): Promise<FilePageLink[]> => {
-        const all: FilePageLink[] = (await db.getAll('file_page_links')) || [];
-        return all.filter((l) => l.page_id === pageId && !l.deleted_at);
+        const all: FilePageLink[] = (await db.getAllFromIndex('file_page_links', 'page_id', pageId)) || [];
+        return all.filter((l) => !l.deleted_at);
       },
       getByFile: async (fileId: string): Promise<FilePageLink[]> => {
-        const all: FilePageLink[] = (await db.getAll('file_page_links')) || [];
-        return all.filter((l) => l.file_id === fileId && !l.deleted_at);
+        const all: FilePageLink[] = (await db.getAllFromIndex('file_page_links', 'file_id', fileId)) || [];
+        return all.filter((l) => !l.deleted_at);
       },
       create: async (link: Partial<FilePageLink> & { file_id: string; page_id: string }): Promise<FilePageLink> => {
         const now = new Date().toISOString();

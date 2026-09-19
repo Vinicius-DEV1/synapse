@@ -57,6 +57,10 @@ export const tauriAnkiApi = {
     return [...learningCards, ...reviewCards, ...newCards];
   },
 
+  getTotalDueCount: async (): Promise<number> => {
+    return await invoke<number>('anki_get_total_due_count');
+  },
+
   reviewCard: async (cardId: string, rating: number) => {
     const card: any = await invoke('anki_get_card', { cardId });
     if (!card) return false;

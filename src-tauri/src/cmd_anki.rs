@@ -404,3 +404,64 @@ pub fn anki_update_deck_settings(
 
     Ok(true)
 }
+
+#[tauri::command]
+pub fn anki_get_total_due_count(db_state: State<'_, DbState>) -> Result<i64, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let now = Utc::now().to_rfc3339();
+
+    let mut stmt = conn.prepare("
+        SELECT c.deck_id,
+               COALESCE(st.state, '0'),
+               st.due_date,
+               COALESCE(ds.new_limit, 20),
+               COALESCE(ds.review_limit, 200)
+        FROM anki_cards c
+        LEFT JOIN anki_srs_state st ON c.id = st.id
+        LEFT JOIN anki_deck_settings ds ON c.deck_id = ds.deck_id
+        WHERE c.deleted_at IS NULL
+    ").map_err(|e| e.to_string())?;
+
+    let mut deck_counts: std::collections::HashMap<String, (i64, i64, i64, i64, i64)> = std::collections::HashMap::new();
+
+    let rows = stmt.query_map([], |row| {
+        let deck_id: String = row.get(0)?;
+        let state: String = row.get(1)?;
+        let due_date: Option<String> = row.get(2)?;
+        let new_limit: i64 = row.get(3)?;
+        let review_limit: i64 = row.get(4)?;
+        Ok((deck_id, state, due_date, new_limit, review_limit))
+    }).map_err(|e| e.to_string())?;
+
+    for r in rows.flatten() {
+        let (deck_id, state_str, due_date, new_limit, review_limit) = r;
+        let entry = deck_counts.entry(deck_id).or_insert((0, 0, 0, new_limit, review_limit));
+        let state: i32 = state_str.parse().unwrap_or(0);
+        if state == 0 {
+            entry.0 += 1;
+        } else if state == 1 || state == 3 {
+            if let Some(ref d) = due_date {
+                if d.as_str() <= now.as_str() {
+                    entry.1 += 1;
+                }
+            }
+        } else if state == 2 {
+            if let Some(ref d) = due_date {
+                if d.as_str() <= now.as_str() {
+                    entry.2 += 1;
+                }
+            }
+        }
+    }
+
+    let mut total: i64 = 0;
+    for (_deck, (news, learning, reviews, new_lim, rev_lim)) in deck_counts {
+        let capped_new = news.min(new_lim);
+        let capped_review = reviews.min(rev_lim);
+        total += learning + capped_review + capped_new;
+    }
+
+    Ok(total)
+}

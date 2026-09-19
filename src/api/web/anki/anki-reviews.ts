@@ -115,3 +115,47 @@ export async function getCardIntervals(db: any, cardId: string) {
   }
   return { success: false, error: 'Card not found' };
 }
+
+export async function getTotalDueCount(db: any): Promise<number> {
+  const allCards: any[] = (await db.getAll('anki_cards')) || [];
+  const allSettings: any[] = (await db.getAll('anki_deck_settings')) || [];
+  const settingsMap = new Map<string, { new_limit: number; review_limit: number }>();
+  for (const s of allSettings) {
+    if (s.deck_id) {
+      settingsMap.set(s.deck_id, {
+        new_limit: s.new_limit ?? 20,
+        review_limit: s.review_limit ?? 200,
+      });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const deckCounts = new Map<string, { news: number; learning: number; review: number; new_limit: number; review_limit: number }>();
+
+  for (const c of allCards) {
+    if (c.deleted_at) continue;
+    const deckId = c.deck_id;
+    if (!deckId) continue;
+    let entry = deckCounts.get(deckId);
+    if (!entry) {
+      const s = settingsMap.get(deckId) || { new_limit: 20, review_limit: 200 };
+      entry = { news: 0, learning: 0, review: 0, new_limit: s.new_limit, review_limit: s.review_limit };
+      deckCounts.set(deckId, entry);
+    }
+
+    const state = Number(c.state) || 0;
+    if (state === 0) {
+      entry.news++;
+    } else if (state === 1 || state === 3) {
+      if (c.due_date && c.due_date <= now) entry.learning++;
+    } else if (state === 2) {
+      if (c.due_date && c.due_date <= now) entry.review++;
+    }
+  }
+
+  let total = 0;
+  for (const entry of deckCounts.values()) {
+    total += entry.learning + Math.min(entry.review, entry.review_limit) + Math.min(entry.news, entry.new_limit);
+  }
+  return total;
+}
