@@ -1,9 +1,9 @@
 import { memo, useMemo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
 import { Plus, X, FileText, Library, Settings, PanelLeft, Pin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import type { Tab } from '../../types';
+import type { Tab, Page } from '../../types';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
-import { MAIN_MODULES, SPECIAL_MODULES } from './sidebar/modules.config';
+import { MODULE_CONFIG_MAP } from './sidebar/modules.config';
 import NotificationBell from '../notifications/NotificationBell';
 import WindowControls from './WindowControls';
 import TabContextMenu from './TabContextMenu';
@@ -16,7 +16,7 @@ interface TabItemProps {
   tab: Tab;
   index: number;
   isActive: boolean;
-  page: any;
+  page: Page | null | undefined;
   onSelect: (id: string) => void;
   onClose: (e: React.MouseEvent, id: string) => void;
   onDropTab: (sourceIndex: number, targetIndex: number) => void;
@@ -41,7 +41,7 @@ const TabItem = memo(function TabItem({
   let title = 'Nova Aba';
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 
-  const moduleConfig = [...MAIN_MODULES, ...SPECIAL_MODULES].find(m => m.id === tab.module);
+  const moduleConfig = MODULE_CONFIG_MAP.get(tab.module);
 
   if (tab.module === 'notes') {
     title = page?.title || 'Nova Página';

@@ -219,6 +219,7 @@ function AppContent() {
               <div 
                 key={tab.id} 
                 className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
+                style={isActive ? undefined : { contentVisibility: 'hidden' }}
               >
                 <div 
                   key={page?.id || 'empty'} 
