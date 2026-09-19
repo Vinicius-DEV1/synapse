@@ -175,12 +175,14 @@ function SidebarItemComponent({
       )}
 
       {/* Rename Modal */}
-      <RenamePageModal
-        isOpen={showRenameModal}
-        onClose={() => setShowRenameModal(false)}
-        currentTitle={page.title}
-        onRename={handleRenameSubmit}
-      />
+      {showRenameModal && (
+        <RenamePageModal
+          isOpen={showRenameModal}
+          onClose={() => setShowRenameModal(false)}
+          currentTitle={page.title}
+          onRename={handleRenameSubmit}
+        />
+      )}
     </div>
   );
 }

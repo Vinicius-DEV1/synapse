@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import {
   Home,
   BookOpen,
@@ -19,7 +20,7 @@ import {
 export interface ModuleConfig {
   id: string;
   label: string;
-  icon: any;
+  icon: ComponentType<{ className?: string; size?: number | string }>;
   color?: string; // used for custom colors like trash
   isSpecial?: boolean;
 }
@@ -44,3 +45,9 @@ export const MAIN_MODULES: ModuleConfig[] = [
 export const SPECIAL_MODULES: ModuleConfig[] = [
   { id: 'trash', label: 'Lixeira', icon: Trash2, color: 'red', isSpecial: true },
 ];
+
+export const ALL_MODULES: ModuleConfig[] = [...MAIN_MODULES, ...SPECIAL_MODULES];
+
+export const MODULE_CONFIG_MAP = new Map<string, ModuleConfig>(
+  ALL_MODULES.map((m) => [m.id, m])
+);
