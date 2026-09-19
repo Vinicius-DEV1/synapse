@@ -52,6 +52,9 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
   const [cornerPosition, setCornerPosition] = useState<{ left: number; top: number } | null>(null);
   const [tableBounds, setTableBounds] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  dragStateRef.current = dragState;
+  const rafRef = useRef<number | null>(null);
   const activeTableRef = useRef<HTMLTableElement | null>(null);
   activeTableRef.current = activeTable;
 
