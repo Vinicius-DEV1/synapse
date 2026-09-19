@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Session } from '../../components/focus/types';
 import { playAlarmSound } from './focus-sound';
 
@@ -63,10 +63,13 @@ export function useFocusTimer(
     return () => clearInterval(int);
   }, [view, currentSession, isPaused]);
 
-  const handleStartTimer = (tag: string, description: string, targetTime: number, explicitId?: string) => {
+  const currentSessionRef = useRef(currentSession);
+  currentSessionRef.current = currentSession;
+
+  const handleStartTimer = useCallback((tag: string, description: string, targetTime: number, explicitId?: string) => {
     const sessionId = explicitId || Date.now().toString();
     setCurrentSession({
-      id: sessionId as any,
+      id: sessionId as unknown as number,
       tag,
       description,
       target_time_minutes: targetTime,
@@ -78,13 +81,14 @@ export function useFocusTimer(
     timerFinishedRef.current = false;
     setView('timer');
     return sessionId;
-  };
+  }, [setView]);
 
-  const handleAddTimeFromSuccess = (minutes: number) => {
-    if (currentSession) {
+  const handleAddTimeFromSuccess = useCallback((minutes: number) => {
+    const curr = currentSessionRef.current;
+    if (curr) {
       setCurrentSession({
-        ...currentSession,
-        target_time_minutes: (currentSession.target_time_minutes || 0) + minutes
+        ...curr,
+        target_time_minutes: (curr.target_time_minutes || 0) + minutes
       });
       setResumeMinutes(minutes);
       setTimeLeft(minutes * 60);
@@ -92,57 +96,60 @@ export function useFocusTimer(
       timerFinishedRef.current = false;
       setView('timer');
     }
-  };
+  }, [setView]);
 
-  const handleAddTotalTime = (minutes: number) => {
-    if (currentSession) {
-      setCurrentSession({
-        ...currentSession,
-        target_time_minutes: (currentSession.target_time_minutes || 0) + minutes
-      });
-    }
-  };
+  const handleAddTotalTime = useCallback((minutes: number) => {
+    setCurrentSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        target_time_minutes: (prev.target_time_minutes || 0) + minutes
+      };
+    });
+  }, []);
 
-  const handleAddQuickTime = (mins: number) => {
+  const handleAddQuickTime = useCallback((mins: number) => {
     setTimeLeft(prev => prev + mins * 60);
     handleAddTotalTime(mins);
     if (timerFinishedRef.current) {
       timerFinishedRef.current = false;
       setView('timer');
     }
-  };
+  }, [handleAddTotalTime, setView]);
 
-  const handleTimerFinish = () => setView('success');
-  const handleTimerCancel = () => setView('cancel');
-  const handleAbortSetup = () => setView('dashboard');
+  const handleTimerFinish = useCallback(() => setView('success'), [setView]);
+  const handleTimerCancel = useCallback(() => setView('cancel'), [setView]);
+  const handleAbortSetup = useCallback(() => setView('dashboard'), [setView]);
 
-  const handleSaveSuccess = async (summary: string) => {
-    if (currentSession && window.api?.focus) {
+  const handleSaveSuccess = useCallback(async (summary: string) => {
+    const curr = currentSessionRef.current;
+    if (curr && window.api?.focus) {
       await window.api.focus.createSession({
-        ...currentSession,
+        ...curr,
         status: 'completed',
         summary
       } as Session);
-      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: currentSession.id, status: 'completed' } }));
+      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: curr.id, status: 'completed' } }));
       setCurrentSession(null);
       await onReloadData();
       setView('dashboard');
     }
-  };
+  }, [onReloadData, setView]);
 
-  const handleSaveCancel = async (justification: string) => {
-    if (currentSession && window.api?.focus) {
+  const handleSaveCancel = useCallback(async (justification: string) => {
+    const curr = currentSessionRef.current;
+    if (curr && window.api?.focus) {
       await window.api.focus.createSession({
-        ...currentSession,
+        ...curr,
         status: 'cancelled',
         justification
       } as Session);
-      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: currentSession.id, status: 'cancelled' } }));
+      window.dispatchEvent(new CustomEvent('caderno-focus-ended', { detail: { id: curr.id, status: 'cancelled' } }));
     }
     await onReloadData();
     setView('dashboard');
     setCurrentSession(null);
-  };
+  }, [onReloadData, setView]);
 
   return {
     currentSession,

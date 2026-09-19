@@ -8,36 +8,33 @@ import { useFocusTimer } from './focus/useFocusTimer';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi' | 'stats';
 
-interface FocusContextType {
+export interface FocusStateContextType {
   view: ViewState;
-  setView: (v: ViewState) => void;
   sessions: Session[];
   alarms: Alarm[];
   currentSession: Partial<Session> | null;
-  setCurrentSession: (s: Partial<Session> | null) => void;
   resumeMinutes: number | undefined;
   triggeredAlarm: Alarm | null;
-  setTriggeredAlarm: (a: Alarm | null) => void;
   showAlarmSetup: boolean;
-  setShowAlarmSetup: (s: boolean) => void;
   toastMessage: string | null;
-  
-  // Timer State
   timeLeft: number;
   isPaused: boolean;
-  setIsPaused: (p: boolean) => void;
-
-  // Lofi State
   lofis: LofiItem[];
   activeLofi: LofiItem | null;
   isPlayingLofi: boolean;
   lofiVolume: number;
+}
+
+export interface FocusActionsContextType {
+  setView: (v: ViewState) => void;
+  setCurrentSession: (s: Partial<Session> | null) => void;
+  setTriggeredAlarm: (a: Alarm | null) => void;
+  setShowAlarmSetup: (s: boolean) => void;
+  setIsPaused: (p: boolean) => void;
   setActiveLofi: (lofi: LofiItem | null) => void;
   setIsPlayingLofi: (play: boolean) => void;
   setLofiVolume: (vol: number) => void;
   loadLofis: () => Promise<void>;
-  
-  // Actions
   loadData: () => Promise<void>;
   showToast: (msg: string) => void;
   handleStartSetup: () => void;
@@ -56,9 +53,25 @@ interface FocusContextType {
   handleAddQuickTime: (mins: number) => void;
 }
 
+export type FocusContextType = FocusStateContextType & FocusActionsContextType;
+
+const FocusStateContext = createContext<FocusStateContextType | null>(null);
+const FocusActionsContext = createContext<FocusActionsContextType | null>(null);
 const FocusContext = createContext<FocusContextType | null>(null);
 
-export const useFocusContext = () => {
+export const useFocusState = (): FocusStateContextType => {
+  const ctx = useContext(FocusStateContext);
+  if (!ctx) throw new Error('useFocusState must be used within FocusProvider');
+  return ctx;
+};
+
+export const useFocusActions = (): FocusActionsContextType => {
+  const ctx = useContext(FocusActionsContext);
+  if (!ctx) throw new Error('useFocusActions must be used within FocusProvider');
+  return ctx;
+};
+
+export const useFocusContext = (): FocusContextType => {
   const ctx = useContext(FocusContext);
   if (!ctx) throw new Error('useFocusContext must be used within FocusProvider');
   return ctx;
@@ -83,7 +96,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (window.api?.focus) {
       try {
         const data = await window.api.focus.getSessions();
-        const formattedData = (data || []).map((s: any) => {
+        const formattedData: Session[] = (data || []).map((s: { created_at?: string; [key: string]: unknown }) => {
           let iso = s.created_at;
           if (iso && !iso.includes('T')) {
             iso = iso.replace(' ', 'T') + 'Z';
@@ -91,7 +104,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           return {
             ...s,
             created_at: iso ? new Date(iso).toISOString() : undefined
-          };
+          } as Session;
         });
         setSessions(formattedData);
         if (window.api.focus.getAlarms) {
@@ -118,35 +131,53 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => window.removeEventListener('caderno-sync-complete', handleSyncComplete);
   }, [loadLofis, loadData]);
 
-  const handleDeleteSession = async (id: number) => {
+  const handleDeleteSession = useCallback(async (id: number) => {
     if (window.api?.focus) {
       await window.api.focus.deleteSessions({ type: 'specific', id });
       loadData();
     }
-  };
+  }, [loadData]);
 
-  const handleStartSetup = () => setView('setup');
+  const handleStartSetup = useCallback(() => setView('setup'), []);
 
-  const contextValue = useMemo(() => ({
+  const stateValue = useMemo<FocusStateContextType>(() => ({
     view,
-    setView,
     sessions,
     alarms: alarmControls.alarms,
     currentSession: timerControls.currentSession,
-    setCurrentSession: timerControls.setCurrentSession,
     resumeMinutes: timerControls.resumeMinutes,
     triggeredAlarm: alarmControls.triggeredAlarm,
-    setTriggeredAlarm: alarmControls.setTriggeredAlarm,
     showAlarmSetup: alarmControls.showAlarmSetup,
-    setShowAlarmSetup: alarmControls.setShowAlarmSetup,
     toastMessage: alarmControls.toastMessage,
     timeLeft: timerControls.timeLeft,
     isPaused: timerControls.isPaused,
-    setIsPaused: timerControls.setIsPaused,
     lofis,
     activeLofi,
     isPlayingLofi,
-    lofiVolume,
+    lofiVolume
+  }), [
+    view,
+    sessions,
+    alarmControls.alarms,
+    timerControls.currentSession,
+    timerControls.resumeMinutes,
+    alarmControls.triggeredAlarm,
+    alarmControls.showAlarmSetup,
+    alarmControls.toastMessage,
+    timerControls.timeLeft,
+    timerControls.isPaused,
+    lofis,
+    activeLofi,
+    isPlayingLofi,
+    lofiVolume
+  ]);
+
+  const actionsValue = useMemo<FocusActionsContextType>(() => ({
+    setView,
+    setCurrentSession: timerControls.setCurrentSession,
+    setTriggeredAlarm: alarmControls.setTriggeredAlarm,
+    setShowAlarmSetup: alarmControls.setShowAlarmSetup,
+    setIsPaused: timerControls.setIsPaused,
     setActiveLofi,
     setIsPlayingLofi,
     setLofiVolume,
@@ -168,26 +199,21 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     handleAbortSetup: timerControls.handleAbortSetup,
     handleAddQuickTime: timerControls.handleAddQuickTime
   }), [
-    view,
-    sessions,
-    alarmControls.alarms,
-    timerControls.currentSession,
-    timerControls.resumeMinutes,
-    alarmControls.triggeredAlarm,
-    alarmControls.showAlarmSetup,
-    alarmControls.toastMessage,
-    timerControls.timeLeft,
-    timerControls.isPaused,
-    lofis,
-    activeLofi,
-    isPlayingLofi,
-    lofiVolume,
+    timerControls.setCurrentSession,
+    alarmControls.setTriggeredAlarm,
+    alarmControls.setShowAlarmSetup,
+    timerControls.setIsPaused,
+    setActiveLofi,
+    setIsPlayingLofi,
+    setLofiVolume,
     loadLofis,
     loadData,
     alarmControls.showToast,
+    handleStartSetup,
     timerControls.handleStartTimer,
     timerControls.handleAddTimeFromSuccess,
     timerControls.handleAddTotalTime,
+    handleDeleteSession,
     alarmControls.handleSaveAlarm,
     alarmControls.handleToggleAlarm,
     alarmControls.handleDeleteAlarm,
@@ -196,19 +222,21 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     timerControls.handleSaveSuccess,
     timerControls.handleSaveCancel,
     timerControls.handleAbortSetup,
-    timerControls.handleAddQuickTime,
-    alarmControls.setShowAlarmSetup,
-    alarmControls.setTriggeredAlarm,
-    timerControls.setIsPaused,
-    timerControls.setCurrentSession,
-    setActiveLofi,
-    setIsPlayingLofi,
-    setLofiVolume
+    timerControls.handleAddQuickTime
   ]);
 
+  const combinedValue = useMemo<FocusContextType>(() => ({
+    ...stateValue,
+    ...actionsValue
+  }), [stateValue, actionsValue]);
+
   return (
-    <FocusContext.Provider value={contextValue}>
-      {children}
-    </FocusContext.Provider>
+    <FocusActionsContext.Provider value={actionsValue}>
+      <FocusStateContext.Provider value={stateValue}>
+        <FocusContext.Provider value={combinedValue}>
+          {children}
+        </FocusContext.Provider>
+      </FocusStateContext.Provider>
+    </FocusActionsContext.Provider>
   );
 };

@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
 import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
-import { FocusProvider, useFocusContext } from './store/FocusContext';
+import { FocusProvider, useFocusActions } from './store/FocusContext';
 import Sidebar from './components/layout/sidebar/Sidebar';
 import TabBar from './components/layout/TabBar';
 import ContextMenu from './components/modals/ContextMenu';
@@ -67,7 +67,7 @@ function AppContent() {
   const [floatingPageId, setFloatingPageId] = useState<string | null>(null);
   const [isDriveAuthModalOpen, setIsDriveAuthModalOpen] = useState(false);
   
-  const { loadData: loadFocusData } = useFocusContext();
+  const { loadData: loadFocusData } = useFocusActions();
 
   useAppEvents(setMovePageId, setIsDriveAuthModalOpen, setFloatingPageId);
 

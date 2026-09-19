@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { FocusProvider, useFocusContext } from './FocusContext';
+import { FocusProvider, useFocusContext, useFocusActions } from './FocusContext';
 
 describe('FocusContext (store/FocusContext)', () => {
   beforeEach(() => {
@@ -81,5 +81,12 @@ describe('FocusContext (store/FocusContext)', () => {
     });
 
     expect(result.current.view).toBe('cancel');
+  });
+
+  it('provides stable actions via useFocusActions without throwing', () => {
+    const { result } = renderHook(() => useFocusActions(), { wrapper });
+    expect(typeof result.current.handleStartTimer).toBe('function');
+    expect(typeof result.current.loadData).toBe('function');
+    expect(typeof result.current.handleSaveAlarm).toBe('function');
   });
 });
