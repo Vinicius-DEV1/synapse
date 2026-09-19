@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
 import type { Page } from '../../types';
 import Editor from '../Editor';
 import SubPageGrid from '../editor/components/SubPageGrid';
 import EmptyState from '../EmptyState';
-import PageHistoryModal from '../modals/PageHistoryModal';
+
+const PageHistoryModal = lazy(() => import('../modals/PageHistoryModal'));
 import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
@@ -187,7 +188,9 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
         )}
 
         {showHistoryModal && (
-          <PageHistoryModal pageId={page.id} onClose={() => setShowHistoryModal(false)} />
+          <Suspense fallback={null}>
+            <PageHistoryModal pageId={page.id} onClose={() => setShowHistoryModal(false)} />
+          </Suspense>
         )}
       </div>
     </div>

@@ -1,21 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
-import ConfirmModal from '../modals/ConfirmModal';
-import RenamePageModal from '../modals/RenamePageModal';
-import MovePageModal from '../modals/MovePageModal';
-import SyncErrorModal from '../modals/SyncErrorModal';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
-import FloatingPageModal from '../modals/FloatingPageModal';
 import GlobalSearchModal from '../modals/GlobalSearchModal';
-import DriveAuthModal from '../library/modals/DriveAuthModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';
-import { ScrapActionModal } from '../modals/ScrapActionModal';
-import { ScrapViewerModal } from '../modals/ScrapViewerModal';
-import { ScrapDeleteModal } from '../modals/ScrapDeleteModal';
-import { ScrapInputModal } from '../modals/ScrapInputModal';
 import { UploadProgressModal } from '../library/ui/UploadProgressModal';
+import SyncErrorModal from '../modals/SyncErrorModal';
 import type { Page } from '../../types';
+
+// Lazy load heavy and conditional modals to keep initial bundle ultra-light
+const ConfirmModal = lazy(() => import('../modals/ConfirmModal'));
+const RenamePageModal = lazy(() => import('../modals/RenamePageModal'));
+const MovePageModal = lazy(() => import('../modals/MovePageModal'));
+const FloatingPageModal = lazy(() => import('../modals/FloatingPageModal'));
+const DriveAuthModal = lazy(() => import('../library/modals/DriveAuthModal'));
+const ScrapActionModal = lazy(() => import('../modals/ScrapActionModal').then(m => ({ default: m.ScrapActionModal })));
+const ScrapViewerModal = lazy(() => import('../modals/ScrapViewerModal').then(m => ({ default: m.ScrapViewerModal })));
+const ScrapDeleteModal = lazy(() => import('../modals/ScrapDeleteModal').then(m => ({ default: m.ScrapDeleteModal })));
+const ScrapInputModal = lazy(() => import('../modals/ScrapInputModal').then(m => ({ default: m.ScrapInputModal })));
+
+interface ScrapModalData {
+  scrapId: string;
+  url: string;
+  title: string;
+  driveFileId?: string | null;
+  onConfirm?: () => void;
+  [key: string]: unknown;
+}
 
 interface GlobalModalsProps {
   renamePageId: string | null;
@@ -52,9 +63,9 @@ export function GlobalModals({
 }: GlobalModalsProps) {
   const { state, dispatch } = useStore();
 
-  const [scrapActionData, setScrapActionData] = useState<any | null>(null);
-  const [scrapViewerData, setScrapViewerData] = useState<any | null>(null);
-  const [scrapDeleteData, setScrapDeleteData] = useState<any | null>(null);
+  const [scrapActionData, setScrapActionData] = useState<ScrapModalData | null>(null);
+  const [scrapViewerData, setScrapViewerData] = useState<ScrapModalData | null>(null);
+  const [scrapDeleteData, setScrapDeleteData] = useState<ScrapModalData | null>(null);
   const [scrapInputData, setScrapInputData] = useState<{
     isOpen: boolean;
     initialUrl?: string;
@@ -62,37 +73,40 @@ export function GlobalModals({
   } | null>(null);
 
   useEffect(() => {
-    const handleOpenScrapAction = (e: CustomEvent) => {
-      if (e.detail) {
-        setScrapActionData(e.detail);
+    const handleOpenScrapAction = (e: Event) => {
+      const customEvent = e as CustomEvent<ScrapModalData>;
+      if (customEvent.detail) {
+        setScrapActionData(customEvent.detail);
       }
     };
-    const handleRequestScrapDelete = (e: CustomEvent) => {
-      if (e.detail) {
-        setScrapDeleteData(e.detail);
+    const handleRequestScrapDelete = (e: Event) => {
+      const customEvent = e as CustomEvent<ScrapModalData>;
+      if (customEvent.detail) {
+        setScrapDeleteData(customEvent.detail);
       }
     };
-    const handleOpenScrapInput = (e: CustomEvent) => {
-      if (e.detail) {
+    const handleOpenScrapInput = (e: Event) => {
+      const customEvent = e as CustomEvent<{ initialUrl?: string; onConfirm?: (url: string) => void }>;
+      if (customEvent.detail) {
         setScrapInputData({
           isOpen: true,
-          initialUrl: e.detail.initialUrl || '',
-          onConfirm: e.detail.onConfirm,
+          initialUrl: customEvent.detail.initialUrl || '',
+          onConfirm: customEvent.detail.onConfirm,
         });
       }
     };
-    window.addEventListener('caderno-open-scrap-action' as any, handleOpenScrapAction as any);
-    window.addEventListener('caderno-request-scrap-delete' as any, handleRequestScrapDelete as any);
-    window.addEventListener('caderno-open-scrap-input' as any, handleOpenScrapInput as any);
+    window.addEventListener('caderno-open-scrap-action', handleOpenScrapAction as EventListener);
+    window.addEventListener('caderno-request-scrap-delete', handleRequestScrapDelete as EventListener);
+    window.addEventListener('caderno-open-scrap-input', handleOpenScrapInput as EventListener);
     return () => {
-      window.removeEventListener('caderno-open-scrap-action' as any, handleOpenScrapAction as any);
-      window.removeEventListener('caderno-request-scrap-delete' as any, handleRequestScrapDelete as any);
-      window.removeEventListener('caderno-open-scrap-input' as any, handleOpenScrapInput as any);
+      window.removeEventListener('caderno-open-scrap-action', handleOpenScrapAction as EventListener);
+      window.removeEventListener('caderno-request-scrap-delete', handleRequestScrapDelete as EventListener);
+      window.removeEventListener('caderno-open-scrap-input', handleOpenScrapInput as EventListener);
     };
   }, []);
 
   return (
-    <>
+    <Suspense fallback={null}>
       {/* Confirm Delete Modal */}
       {state.confirmDelete && (
         <ConfirmModal
@@ -164,48 +178,56 @@ export function GlobalModals({
       {/* Background Tasks Widget */}
       <BackgroundTaskWidget />
 
-      {/* Scrap Modals (Single Global Host) */}
-      <ScrapActionModal
-        isOpen={!!scrapActionData}
-        onClose={() => setScrapActionData(null)}
-        onOpenViewer={() => {
-          setScrapViewerData(scrapActionData);
-          setScrapActionData(null);
-        }}
-        scrapData={scrapActionData}
-      />
+      {/* Scrap Modals (Mount only when data is present) */}
+      {scrapActionData && (
+        <ScrapActionModal
+          isOpen={true}
+          onClose={() => setScrapActionData(null)}
+          onOpenViewer={() => {
+            setScrapViewerData(scrapActionData);
+            setScrapActionData(null);
+          }}
+          scrapData={scrapActionData}
+        />
+      )}
 
-      <ScrapViewerModal
-        isOpen={!!scrapViewerData}
-        onClose={() => setScrapViewerData(null)}
-        scrapData={scrapViewerData}
-      />
+      {scrapViewerData && (
+        <ScrapViewerModal
+          isOpen={true}
+          onClose={() => setScrapViewerData(null)}
+          scrapData={scrapViewerData}
+        />
+      )}
 
-      <ScrapDeleteModal
-        isOpen={!!scrapDeleteData}
-        onClose={() => setScrapDeleteData(null)}
-        onConfirmDelete={() => {
-          if (scrapDeleteData?.onConfirm) {
-            scrapDeleteData.onConfirm();
-          }
-          setScrapDeleteData(null);
-        }}
-        scrapData={scrapDeleteData}
-      />
+      {scrapDeleteData && (
+        <ScrapDeleteModal
+          isOpen={true}
+          onClose={() => setScrapDeleteData(null)}
+          onConfirmDelete={() => {
+            if (scrapDeleteData?.onConfirm) {
+              scrapDeleteData.onConfirm();
+            }
+            setScrapDeleteData(null);
+          }}
+          scrapData={scrapDeleteData}
+        />
+      )}
 
-      <ScrapInputModal
-        isOpen={!!scrapInputData?.isOpen}
-        initialUrl={scrapInputData?.initialUrl}
-        onClose={() => setScrapInputData(null)}
-        onConfirm={(url) => {
-          if (scrapInputData?.onConfirm) {
-            scrapInputData.onConfirm(url);
-          }
-          setScrapInputData(null);
-        }}
-      />
+      {scrapInputData?.isOpen && (
+        <ScrapInputModal
+          isOpen={true}
+          initialUrl={scrapInputData?.initialUrl}
+          onClose={() => setScrapInputData(null)}
+          onConfirm={(url) => {
+            if (scrapInputData?.onConfirm) {
+              scrapInputData.onConfirm(url);
+            }
+            setScrapInputData(null);
+          }}
+        />
+      )}
 
       <UploadProgressModal />
-    </>
+    </Suspense>
   );
 }
