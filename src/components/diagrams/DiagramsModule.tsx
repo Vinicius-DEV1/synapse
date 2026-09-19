@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
-import { PenTool, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { PenTool, Plus, Trash2, X, Loader2 } from 'lucide-react';
 import type { DiagramMeta } from '../../types';
-import DiagramEditor from './DiagramEditor';
 import { triggerToast } from '../ui/ToastContext';
+
+const DiagramEditor = lazy(() => import('./DiagramEditor'));
 
 export default function DiagramsModule() {
   const [diagrams, setDiagrams] = useState<DiagramMeta[]>([]);
@@ -19,9 +20,9 @@ export default function DiagramsModule() {
       try {
         const res = await window.api.diagrams.getAll();
         setDiagrams(res || []);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e);
-        triggerToast(e.message || 'Erro ao carregar diagramas', 'error');
+        triggerToast(e instanceof Error ? e.message : 'Erro ao carregar diagramas', 'error');
       }
     }
   };
@@ -38,9 +39,9 @@ export default function DiagramsModule() {
         await loadDiagrams();
         setActiveDiagram(newDiagram);
         triggerToast('Diagrama criado com sucesso!', 'success');
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e);
-        triggerToast(e.message || 'Erro ao criar diagrama', 'error');
+        triggerToast(e instanceof Error ? e.message : 'Erro ao criar diagrama', 'error');
       }
     }
   };
@@ -54,9 +55,9 @@ export default function DiagramsModule() {
           if (activeDiagram?.id === id) setActiveDiagram(null);
           loadDiagrams();
           triggerToast('Diagrama excluído com sucesso.', 'info');
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error(e);
-          triggerToast(e.message || 'Erro ao excluir diagrama', 'error');
+          triggerToast(e instanceof Error ? e.message : 'Erro ao excluir diagrama', 'error');
         }
       }
     }
@@ -67,7 +68,16 @@ export default function DiagramsModule() {
   }, []);
 
   if (activeDiagram) {
-    return <DiagramEditor key={activeDiagram.id} diagram={activeDiagram} onBack={handleBack} />;
+    return (
+      <Suspense fallback={
+        <div className="flex-1 h-full flex items-center justify-center bg-dark-bg text-dark-subtext gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+          <span>Carregando editor de diagrama...</span>
+        </div>
+      }>
+        <DiagramEditor key={activeDiagram.id} diagram={activeDiagram} onBack={handleBack} />
+      </Suspense>
+    );
   }
 
   return (

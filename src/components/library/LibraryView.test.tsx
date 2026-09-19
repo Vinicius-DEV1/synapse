@@ -105,25 +105,25 @@ describe('LibraryView Component', () => {
     expect(getByTestId('library-grid')).toBeDefined();
   });
 
-  it('renders PdfReader when a PDF book is selected', () => {
+  it('renders PdfReader when a PDF book is selected', async () => {
     mockSelectedBook = {
       id: 'pdf-1',
       title: 'Book.pdf',
       file_path: 'path/to/book.pdf',
     };
 
-    const { getByTestId } = render(<LibraryView tabId="tab-1" />);
-    expect(getByTestId('pdf-reader')).toBeDefined();
+    const { findByTestId } = render(<LibraryView tabId="tab-1" />);
+    expect(await findByTestId('pdf-reader')).toBeDefined();
   });
 
-  it('renders EpubReader when an EPUB book is selected', () => {
+  it('renders EpubReader when an EPUB book is selected', async () => {
     mockSelectedBook = {
       id: 'epub-1',
       title: 'Book.epub',
       file_path: 'path/to/book.epub',
     };
 
-    const { getByTestId } = render(<LibraryView tabId="tab-1" />);
-    expect(getByTestId('epub-reader')).toBeDefined();
+    const { findByTestId } = render(<LibraryView tabId="tab-1" />);
+    expect(await findByTestId('epub-reader')).toBeDefined();
   });
 });

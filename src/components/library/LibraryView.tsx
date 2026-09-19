@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { LibraryHeader } from './ui/LibraryHeader';
 import { LibraryBulkActionsBar } from './ui/LibraryBulkActionsBar';
@@ -10,8 +10,9 @@ import {
   ReadingStatsModal,
   UploadResultModal,
 } from './modals';
-import PdfReader from './pdf/PdfReader';
-import EpubReader from './epub/EpubReader';
+
+const PdfReader = lazy(() => import('./pdf/PdfReader'));
+const EpubReader = lazy(() => import('./epub/EpubReader'));
 import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
@@ -165,20 +166,24 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
 
     if (isEpub) {
       return (
-        <EpubReader
-          book={selectedBook}
-          onBack={handleBackFromReader}
-          onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
-        />
+        <Suspense fallback={<div className="h-full flex items-center justify-center bg-dark-bg"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>}>
+          <EpubReader
+            book={selectedBook}
+            onBack={handleBackFromReader}
+            onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
+          />
+        </Suspense>
       );
     }
 
     return (
-      <PdfReader
-        book={selectedBook}
-        onBack={handleBackFromReader}
-        onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
-      />
+      <Suspense fallback={<div className="h-full flex items-center justify-center bg-dark-bg"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>}>
+        <PdfReader
+          book={selectedBook}
+          onBack={handleBackFromReader}
+          onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
+        />
+      </Suspense>
     );
   }
 
@@ -303,10 +308,12 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         />
       )}
 
-      <UploadResultModal
-        result={uploadResult}
-        onClose={() => setUploadResult(null)}
-      />
+      {uploadResult && (
+        <UploadResultModal
+          result={uploadResult}
+          onClose={() => setUploadResult(null)}
+        />
+      )}
     </div>
   );
 }
