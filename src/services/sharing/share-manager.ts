@@ -51,12 +51,14 @@ import {
  * Builds the public share URL given a shareId.
  */
 export function buildShareUrl(shareId: string): string {
-  if (platform.platform === 'desktop' || typeof window === 'undefined') {
-    const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-    const baseDomain = authDomain ? `https://${authDomain}` : 'https://caderno.web.app';
-    return `${baseDomain}/s/${shareId}`;
+  // Allow local URL in dev server for fast testing if explicitly accessed via localhost
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return `${window.location.origin}/s/${shareId}`;
   }
-  return `${window.location.origin}/s/${shareId}`;
+
+  const shareDomain = import.meta.env.VITE_FIREBASE_SHARE_DOMAIN || 'synapse-web.web.app';
+  const baseDomain = shareDomain.startsWith('http') ? shareDomain : `https://${shareDomain}`;
+  return `${baseDomain}/s/${shareId}`;
 }
 
 /**
