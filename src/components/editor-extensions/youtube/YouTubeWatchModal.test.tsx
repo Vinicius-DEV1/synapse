@@ -190,4 +190,58 @@ describe('YouTubeWatchModal', () => {
     pauseSpy.mockRestore();
     loadSpy.mockRestore();
   });
+
+  it('automatically falls back to embed player when native video errors', async () => {
+    const mockGetStream = vi.fn().mockResolvedValue({
+      title: 'Rick Astley',
+      resolution: '720p',
+      duration: 213,
+      video_url: 'https://googlevideo.com/video.mp4',
+    });
+
+    (window as any).api = {
+      youtube: { getStream: mockGetStream },
+    };
+
+    render(
+      <YouTubeWatchModal
+        url={sampleUrl}
+        title="Rick Astley"
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(await screen.findByText('Rick Astley')).toBeDefined();
+    const video = document.querySelector('video');
+    expect(video).not.toBeNull();
+
+    // Trigger error event on video
+    fireEvent.error(video!);
+
+    // Should automatically switch to embed iframe
+    const iframe = document.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toContain('dQw4w9WgXcQ');
+    expect(document.querySelector('video')).toBeNull();
+  });
+
+  it('respects saved embed player preference from localStorage', async () => {
+    localStorage.setItem('caderno_preferred_youtube_player', 'embed');
+
+    render(
+      <YouTubeWatchModal
+        url={sampleUrl}
+        title="Rick Astley"
+        onClose={mockOnClose}
+      />
+    );
+
+    // Should immediately render embed iframe without native yt-dlp delay
+    const iframe = document.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toContain('dQw4w9WgXcQ');
+    expect(document.querySelector('video')).toBeNull();
+
+    localStorage.removeItem('caderno_preferred_youtube_player');
+  });
 });
