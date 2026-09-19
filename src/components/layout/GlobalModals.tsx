@@ -18,6 +18,10 @@ const ScrapActionModal = lazy(() => import('../modals/ScrapActionModal').then(m 
 const ScrapViewerModal = lazy(() => import('../modals/ScrapViewerModal').then(m => ({ default: m.ScrapViewerModal })));
 const ScrapDeleteModal = lazy(() => import('../modals/ScrapDeleteModal').then(m => ({ default: m.ScrapDeleteModal })));
 const ScrapInputModal = lazy(() => import('../modals/ScrapInputModal').then(m => ({ default: m.ScrapInputModal })));
+const ShareModal = lazy(() => import('../sharing/ShareModal').then(m => ({ default: m.ShareModal })));
+import { ShareAccessRequestToast } from '../sharing/ShareAccessRequestToast';
+import { ShareAccessRequestModal } from '../sharing/ShareAccessRequestModal';
+import { useShareAccessRequests } from '../../hooks/useShareAccessRequests';
 
 interface ScrapModalData {
   scrapId: string;
@@ -71,6 +75,29 @@ export function GlobalModals({
     initialUrl?: string;
     onConfirm?: (url: string) => void;
   } | null>(null);
+
+  const {
+    pendingRequests,
+    activeModalRequest,
+    setActiveModalRequest,
+    approveRequest,
+    denyRequest,
+  } = useShareAccessRequests();
+
+  const [shareModalPageId, setShareModalPageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOpenShare = (e: Event) => {
+      const customEvent = e as CustomEvent<{ pageId: string }>;
+      if (customEvent.detail?.pageId) {
+        setShareModalPageId(customEvent.detail.pageId);
+      }
+    };
+    window.addEventListener('caderno-open-share-page', handleOpenShare as EventListener);
+    return () => {
+      window.removeEventListener('caderno-open-share-page', handleOpenShare as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOpenScrapAction = (e: Event) => {
@@ -228,6 +255,36 @@ export function GlobalModals({
       )}
 
       <UploadProgressModal />
+
+      {/* Real-time Gated Access Toasts & Inspection Modal */}
+      <ShareAccessRequestToast
+        requests={pendingRequests}
+        onApprove={(req) => approveRequest(req, true)}
+        onDeny={(id) => denyRequest(id)}
+        onInspect={(req) => setActiveModalRequest(req)}
+      />
+
+      {activeModalRequest && (
+        <ShareAccessRequestModal
+          request={activeModalRequest}
+          onClose={() => setActiveModalRequest(null)}
+          onApprove={(req, trust) => approveRequest(req, trust)}
+          onDeny={(id) => denyRequest(id)}
+        />
+      )}
+
+      {/* Share Configuration Modal triggered via ContextMenu or Events */}
+      {shareModalPageId && (() => {
+        const sharePage = state.pages.find((p) => p.id === shareModalPageId);
+        return sharePage ? (
+          <ShareModal
+            page={sharePage}
+            isOpen={true}
+            onClose={() => setShareModalPageId(null)}
+            masterKey={state.moduleKeys?.notes}
+          />
+        ) : null;
+      })()}
     </Suspense>
   );
 }

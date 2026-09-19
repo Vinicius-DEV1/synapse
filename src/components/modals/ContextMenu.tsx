@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput, ExternalLink } from 'lucide-react';
+import { FilePlus, Edit2, Trash2, Pin, PinOff, Download, Upload, FolderInput, ExternalLink, Share2 } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
@@ -10,6 +10,7 @@ interface ContextMenuProps {
   onCreateSubPage: (parentId: string) => void;
   onImportSubPage?: (parentId: string) => void;
   onExportPage?: (pageId: string) => void;
+  onSharePage?: (pageId: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string) => void;
   onMovePage?: (id: string) => void;
@@ -17,7 +18,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, onCreateSubPage, onImportSubPage, onExportPage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, onCreateSubPage, onImportSubPage, onExportPage, onSharePage, onDelete, onRename, onMovePage, onTogglePin, onClose }: ContextMenuProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -72,6 +73,19 @@ export default function ContextMenu({ x, y, pageId, isPinned, onOpenInNewTab, on
         >
           <Upload size={14} className="text-dark-subtext" />
           Importar sub-página
+        </button>
+      )}
+
+      {onSharePage && (
+        <button
+          onClick={() => {
+            onClose();
+            onSharePage(pageId);
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/5 transition-colors"
+        >
+          <Share2 size={14} className="text-dark-subtext" />
+          Compartilhar
         </button>
       )}
 
