@@ -56,14 +56,29 @@ export interface CadernoDBSchema extends DBSchema {
   quiz_page_links: { key: string; value: any; indexes: { 'battery_id': string; 'page_id': string } };
   link_metadata_cache: { key: string; value: any };
   scraps: { key: string; value: { id: string; encrypted_data: ArrayBuffer; updated_at?: string } };
+  shared_page_keys: {
+    key: string;
+    value: {
+      shareId: string;
+      pageId: string;
+      shareKeyBase64: string;
+      config: any;
+      createdAt: string;
+    };
+    indexes: { 'pageId': string };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 24, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 25, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
+        if (!db.objectStoreNames.contains('shared_page_keys')) {
+          const store = db.createObjectStore('shared_page_keys', { keyPath: 'shareId' });
+          store.createIndex('pageId', 'pageId');
+        }
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
           store.createIndex('parent_id', 'parent_id');
@@ -306,3 +321,37 @@ export async function saveAiPrompt(id: string, module: string, content: string):
     updated_at: new Date().toISOString()
   });
 }
+
+// ─── Shared Page Keys Storage ───────────────────────────────────────────────
+
+export async function getWebShareKey(shareId: string): Promise<any | null> {
+  const db = await getWebDb();
+  return (await db.get('shared_page_keys', shareId)) || null;
+}
+
+export async function getWebShareKeyByPage(pageId: string): Promise<any | null> {
+  const db = await getWebDb();
+  return (await db.getFromIndex('shared_page_keys', 'pageId', pageId)) || null;
+}
+
+export async function saveWebShareKey(record: {
+  shareId: string;
+  pageId: string;
+  shareKeyBase64: string;
+  config: any;
+  createdAt: string;
+}): Promise<void> {
+  const db = await getWebDb();
+  await db.put('shared_page_keys', record);
+}
+
+export async function deleteWebShareKey(shareId: string): Promise<void> {
+  const db = await getWebDb();
+  await db.delete('shared_page_keys', shareId);
+}
+
+export async function listWebShareKeys(): Promise<any[]> {
+  const db = await getWebDb();
+  return await db.getAll('shared_page_keys');
+}
+
