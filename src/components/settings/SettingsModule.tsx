@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video } from 'lucide-react';
+import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { getSettings, saveSettings } from '../../utils/settings';
 import type { AppSettings } from '../../utils/settings';
 
@@ -12,6 +12,7 @@ import StorageTab from './tabs/StorageTab';
 import VideoTab from './tabs/VideoTab';
 import { BackupTab } from './tabs/BackupTab';
 import SyncMonitor from './SyncMonitor';
+import { SharingTab } from './tabs/SharingTab';
 import type { Tab } from '../../types';
 
 export default function SettingsModule({ tab }: { tab?: Tab }) {
@@ -37,6 +38,7 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
     { id: 'video', label: 'Vídeo', icon: Video },
     { id: 'backup', label: 'Backup', icon: DownloadCloud },
     { id: 'sync', label: 'Sync', icon: RefreshCw },
+    { id: 'sharing', label: 'Compartilhamento', icon: Share2 },
   ] as const;
 
   const showSaveButton = !isChangingPassword && ['general', 'editor', 'security', 'ai'].includes(activeTab);
@@ -92,6 +94,10 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
 
             {activeTab === 'sync' && !isChangingPassword && (
               <SyncMonitor />
+            )}
+
+            {activeTab === 'sharing' && !isChangingPassword && (
+              <SharingTab />
             )}
 
             {showSaveButton && (
