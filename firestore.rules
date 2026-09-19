@@ -12,6 +12,47 @@ rules_version = '2';
  */
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ─── Caderno Page Sharing Collections ────────────────────────────
+    // Public metadata readable when active; content guarded by E2EE keys
+    match /shared_pages/{shareId} {
+      allow read: if resource == null || resource.data.isActive == true;
+      allow write: if true;
+    }
+
+    match /shared_page_content/{shareId} {
+      allow read, write: if true;
+    }
+
+    match /shared_page_children/{childId} {
+      allow read, write: if true;
+    }
+
+    // Access approval gate
+    match /share_access_requests/{requestId} {
+      allow read, write: if true;
+    }
+
+    match /share_trusted_devices/{deviceId} {
+      allow read, write: if true;
+    }
+
+    // Append-only audit logs for security monitoring
+    match /share_access_logs/{logId} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if false;
+    }
+
+    // Real-time E2EE collaboration deltas & ephemeral live presence
+    match /share_updates/{updateId} {
+      allow read, write: if true;
+    }
+
+    match /share_presence/{presenceId} {
+      allow read, write: if true;
+    }
+
+    // Global fallback for core sync collections (protected via Master Key E2EE)
     match /{document=**} {
       allow read, write: if true;
     }
