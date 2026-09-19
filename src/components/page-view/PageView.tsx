@@ -55,11 +55,11 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
   }, [activePageId, loadedData]);
 
   const childPages = useMemo(() => {
-    if (!page) return [];
+    if (!activePageId) return [];
     return state.pages
-      .filter((p: Page) => p.parent_id === page.id && !p.deleted_at)
+      .filter((p: Page) => p.parent_id === activePageId && !p.deleted_at)
       .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [page, state.pages]);
+  }, [activePageId, state.pages]);
 
   useEffect(() => {
     let mounted = true;
