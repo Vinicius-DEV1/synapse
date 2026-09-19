@@ -127,6 +127,22 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
     return true;
   },
 
+  deletePages: async (ids: string[]): Promise<boolean> => {
+    if (ids.length === 0) return true;
+    const now = new Date().toISOString();
+    const tx = db.transaction('pages', 'readwrite');
+    for (const id of ids) {
+      const existing = (await tx.store.get(id)) as Page | undefined;
+      if (existing) {
+        existing.deleted_at = now;
+        existing.updated_at = now;
+        await tx.store.put(existing);
+      }
+    }
+    await tx.done;
+    return true;
+  },
+
   getDeletedPages: async (): Promise<PageMeta[]> => {
     const all = (await db.getAll('pages')) as Page[];
     return all

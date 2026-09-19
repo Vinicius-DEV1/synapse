@@ -341,6 +341,33 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
 }
 
 #[tauri::command]
+pub fn notes_delete_pages(ids: Vec<String>, db_state: State<'_, DbState>) -> Result<bool, String> {
+    if ids.is_empty() {
+        return Ok(true);
+    }
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let query_pages = format!(
+        "UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id IN ({})",
+        placeholders
+    );
+    let params: Vec<rusqlite::types::Value> = ids.iter().map(|id| id.clone().into()).collect();
+    conn.execute(&query_pages, rusqlite::params_from_iter(params.clone()))
+        .map_err(|e| e.to_string())?;
+
+    // Soft-delete linked calendar events in single atomic query
+    let query_events = format!(
+        "UPDATE calendar_events SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE page_id IN ({})",
+        placeholders
+    );
+    let _ = conn.execute(&query_events, rusqlite::params_from_iter(params));
+
+    Ok(true)
+}
+
+#[tauri::command]
 pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;

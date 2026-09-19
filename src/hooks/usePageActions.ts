@@ -67,22 +67,24 @@ export function usePageActions() {
           }
         }
 
-        // 2. Delete calendar events associated with page and subpages
-        if (window.api.calendar) {
-          try {
-            const events = await window.api.calendar.getEvents();
-            const eventsToDelete = events.filter((ev) => ev.page_id && toDeleteIds.has(ev.page_id));
-
-            if (eventsToDelete.length > 0) {
-              await Promise.all(eventsToDelete.map((ev) => window.api.calendar!.deleteEvent(ev.id)));
+        // 2. Delete pages and linked calendar events in single atomic backend batch if available
+        const idList = Array.from(toDeleteIds);
+        if (window.api.deletePages) {
+          await window.api.deletePages(idList);
+        } else {
+          if (window.api.calendar) {
+            try {
+              const events = await window.api.calendar.getEvents();
+              const eventsToDelete = events.filter((ev) => ev.page_id && toDeleteIds.has(ev.page_id));
+              if (eventsToDelete.length > 0) {
+                await Promise.all(eventsToDelete.map((ev) => window.api.calendar!.deleteEvent(ev.id)));
+              }
+            } catch (err) {
+              console.error('Erro ao excluir eventos vinculados à página e subpáginas:', err);
             }
-          } catch (err) {
-            console.error('Erro ao excluir eventos vinculados à página e subpáginas:', err);
           }
+          await Promise.all(idList.map((pageId) => window.api.deletePage(pageId)));
         }
-
-        // 3. Delete pages in backend concurrently
-        await Promise.all(Array.from(toDeleteIds).map((pageId) => window.api.deletePage(pageId)));
 
         // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
