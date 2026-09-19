@@ -266,6 +266,7 @@ pub fn run() {
             cmd_notes::notes_update_page,
             notes_history::notes_get_page_history,
             cmd_notes::notes_delete_page,
+            cmd_notes::notes_delete_pages,
             cmd_notes::notes_get_deleted_pages,
             cmd_notes::notes_restore_page,
             notes_history::image_cache_get,
