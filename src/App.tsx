@@ -274,6 +274,9 @@ function AppContent() {
               onCreateSubPage={handleCreatePage}
               onImportSubPage={handleImportPage}
               onExportPage={handleExportPage}
+              onSharePage={(id) => {
+                window.dispatchEvent(new CustomEvent('caderno-open-share-page', { detail: { pageId: id } }));
+              }}
               onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
               onRename={(id) => setRenamePageId(id)}
               onMovePage={(id) => setMovePageId(id)}

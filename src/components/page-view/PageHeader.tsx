@@ -5,6 +5,7 @@ import type { Page } from '../../types';
 import { getPagePath } from '../../utils/hierarchy';
 import { getSiblingPageNavigation } from '../../utils/page-navigation';
 import EmojiPopover from '../EmojiPopover';
+import { ShareButton } from '../sharing/ShareButton';
 
 interface PageHeaderProps {
   page: Page;
@@ -197,6 +198,8 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
               <Clock size={16} />
               <span className="hidden sm:inline font-medium">Histórico</span>
             </button>
+
+            <ShareButton page={page} />
           </div>
         </div>
       </div>
