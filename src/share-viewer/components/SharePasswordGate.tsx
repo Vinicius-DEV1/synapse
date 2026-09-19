@@ -36,20 +36,26 @@ export const SharePasswordGate: React.FC<SharePasswordGateProps> = ({
     setIsSubmitting(true);
     setError(null);
 
-    const success = await onVerify(password);
-    setIsSubmitting(false);
+    try {
+      const success = await onVerify(password);
+      setIsSubmitting(false);
 
-    if (!success) {
-      const nextAttempts = attempts + 1;
-      setAttempts(nextAttempts);
+      if (!success) {
+        const nextAttempts = attempts + 1;
+        setAttempts(nextAttempts);
 
-      if (nextAttempts >= MAX_ATTEMPTS) {
-        const lockoutTime = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
-        setLockedUntil(lockoutTime);
-        setError(`Muitas tentativas incorretas. Tente novamente em ${LOCKOUT_MINUTES} minutos.`);
-      } else {
-        setError(`Senha incorreta. Tentativa ${nextAttempts} de ${MAX_ATTEMPTS}.`);
+        if (nextAttempts >= MAX_ATTEMPTS) {
+          const lockoutTime = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
+          setLockedUntil(lockoutTime);
+          setError(`Muitas tentativas incorretas. Tente novamente em ${LOCKOUT_MINUTES} minutos.`);
+        } else {
+          setError(`Senha incorreta. Tentativa ${nextAttempts} de ${MAX_ATTEMPTS}.`);
+        }
       }
+    } catch (err) {
+      console.error('Password verification error:', err);
+      setIsSubmitting(false);
+      setError('Erro de conexão ou ao descriptografar. Tente novamente.');
     }
   };
 

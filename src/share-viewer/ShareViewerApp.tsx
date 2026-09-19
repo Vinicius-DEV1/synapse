@@ -75,6 +75,16 @@ export const ShareViewerApp: React.FC = () => {
   const [fingerprint, setFingerprint] = useState<DeviceFingerprint | null>(null);
   const [persona, setPersona] = useState<VisitorPersona | null>(null);
 
+  // Ensure page scrolling is enabled even if loaded inside index.html shell (where overflow is hidden by default)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'auto';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   // 1. Initial Load & Device Identification
   useEffect(() => {
     let isMounted = true;
