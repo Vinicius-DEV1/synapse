@@ -52,26 +52,35 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
   const [cornerPosition, setCornerPosition] = useState<{ left: number; top: number } | null>(null);
   const [tableBounds, setTableBounds] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [dragState, setDragState] = useState<DragState | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const activeTableRef = useRef<HTMLTableElement | null>(null);
+  activeTableRef.current = activeTable;
 
   const updateGrips = useCallback(() => {
-    if (!editor || !wrapperRef.current) {
-      setActiveTable(null);
+    if (!editor || editor.isDestroyed || !wrapperRef.current) {
+      if (activeTableRef.current !== null) {
+        setActiveTable(null);
+        setColumnGrips([]);
+        setRowGrips([]);
+        setCornerPosition(null);
+      }
       return;
     }
 
     const wrapper = wrapperRef.current;
-    const wrapperRect = wrapper.getBoundingClientRect();
 
-    // Check if editor has an active table or cursor in table
+    // Fast check: Is cursor currently inside a table according to ProseMirror schema?
+    const isCursorInTable = editor.isActive('table');
     let tableEl: HTMLTableElement | null = null;
-    const domSelection = window.getSelection();
 
-    if (domSelection && domSelection.anchorNode) {
-      const node = domSelection.anchorNode instanceof Element ? domSelection.anchorNode : domSelection.anchorNode.parentElement;
-      tableEl = node?.closest('table') || null;
+    if (isCursorInTable) {
+      const domSelection = window.getSelection();
+      if (domSelection && domSelection.anchorNode) {
+        const node = domSelection.anchorNode instanceof Element ? domSelection.anchorNode : domSelection.anchorNode.parentElement;
+        tableEl = node?.closest('table') || null;
+      }
     }
 
+    // Fallback: Check if mouse is hovering over a table
     if (!tableEl) {
       const hoveredTable = wrapper.querySelector('.ProseMirror table:hover');
       if (hoveredTable instanceof HTMLTableElement) {
@@ -80,14 +89,17 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
     }
 
     if (!tableEl) {
-      setActiveTable(null);
-      setColumnGrips([]);
-      setRowGrips([]);
-      setCornerPosition(null);
+      if (activeTableRef.current !== null) {
+        setActiveTable(null);
+        setColumnGrips([]);
+        setRowGrips([]);
+        setCornerPosition(null);
+      }
       return;
     }
 
-    setActiveTable(tableEl);
+    // Only read DOM geometry if an active table actually exists
+    const wrapperRect = wrapper.getBoundingClientRect();
     const tableRect = tableEl.getBoundingClientRect();
     setTableBounds({
       width: tableRect.width,
