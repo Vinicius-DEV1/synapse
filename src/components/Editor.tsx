@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent, type Editor as TipTapEditor } from '@tiptap/react';
 import { getSettings } from '../utils/settings';
 import { EditorBubbleMenus } from './editor/components/EditorBubbleMenus';
-import { useFocusContext } from '../store/FocusContext';
+import { useFocusActions } from '../store/FocusContext';
 import { getNotesKey } from '../store/useStore';
 
 import { useEditorSync } from './editor/hooks/useEditorSync';
@@ -71,7 +71,7 @@ export default function Editor({
   const instanceId = useRef('ed_inst_' + Math.random().toString(36).substring(2, 9)).current;
 
   const masterKey = getNotesKey();
-  const { handleStartTimer, handleSaveAlarm } = useFocusContext();
+  const { handleStartTimer, handleSaveAlarm } = useFocusActions();
 
   const onSaveRef = useRef(onSave);
   const latestContentRef = useRef<{ html: string; crdt: string } | null>(null);

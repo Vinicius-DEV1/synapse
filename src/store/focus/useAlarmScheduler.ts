@@ -71,7 +71,7 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
     return () => clearInterval(interval);
   }, [alarms, handleToggleAlarm]);
 
-  const handleSaveAlarm = async (alarm: Alarm) => {
+  const handleSaveAlarm = useCallback(async (alarm: Alarm) => {
     if (window.api?.focus) {
       await window.api.focus.createAlarm(alarm);
       setShowAlarmSetup(false);
@@ -80,14 +80,14 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
         showToast(`Alarm set for ${calculateTimeLeft(alarm.time_str)} from now`);
       }
     }
-  };
+  }, [onReloadData, showToast]);
 
-  const handleDeleteAlarm = async (id: number) => {
+  const handleDeleteAlarm = useCallback(async (id: number) => {
     if (window.api?.focus) {
       await window.api.focus.deleteAlarm(id);
       await onReloadData();
     }
-  };
+  }, [onReloadData]);
 
   return {
     alarms,
