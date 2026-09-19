@@ -5,7 +5,37 @@ import './index.css'
 import 'highlight.js/styles/atom-one-dark.css'
 import { platform } from './services/platform';
 
+function isShareRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  const search = window.location.search;
+  return (
+    path.startsWith('/s/') ||
+    path === '/s' ||
+    path.includes('share-viewer') ||
+    new URLSearchParams(search).has('s') ||
+    new URLSearchParams(search).has('shareId') ||
+    new URLSearchParams(search).has('share')
+  );
+}
+
 async function init() {
+  // If user navigates directly to a share link (/s/:id or ?s=:id), mount the standalone viewer directly.
+  // This completely prevents unauthenticated visitors from ever being redirected to Caderno's Master Password setup screen.
+  if (isShareRoute()) {
+    console.log('[Caderno] Share link route detected. Initializing standalone ShareViewerApp...');
+    const { ShareViewerApp } = await import('./share-viewer/ShareViewerApp');
+    const rootEl = document.getElementById('root') || document.getElementById('share-root');
+    if (rootEl) {
+      ReactDOM.createRoot(rootEl).render(
+        <React.StrictMode>
+          <ShareViewerApp />
+        </React.StrictMode>
+      );
+    }
+    return;
+  }
+
   if (!window.api) {
     let mockApi: Record<string, unknown>;
     if (platform.platform === 'desktop') {
