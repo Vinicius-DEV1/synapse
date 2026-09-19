@@ -33,12 +33,32 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     case 'DELETE_PAGE': {
       const toDelete = new Set<string>();
-      const collectIds = (parentId: string) => {
-        if (toDelete.has(parentId)) return;
-        toDelete.add(parentId);
-        state.pages.filter((p) => p.parent_id === parentId).forEach((p) => collectIds(p.id));
-      };
-      collectIds(action.id);
+      const childrenByParent = new Map<string, string[]>();
+
+      // Single-pass O(N) indexing of child pages
+      for (const p of state.pages) {
+        if (p.parent_id) {
+          const list = childrenByParent.get(p.parent_id);
+          if (list) {
+            list.push(p.id);
+          } else {
+            childrenByParent.set(p.parent_id, [p.id]);
+          }
+        }
+      }
+
+      // Iterative O(N) traversal without recursion or array filters
+      const stack = [action.id];
+      while (stack.length > 0) {
+        const currentId = stack.pop()!;
+        if (!toDelete.has(currentId)) {
+          toDelete.add(currentId);
+          const children = childrenByParent.get(currentId);
+          if (children) {
+            stack.push(...children);
+          }
+        }
+      }
 
       const newPages = state.pages.filter((p) => !toDelete.has(p.id));
       const newTabs = state.tabs.map((t) => t.pageId && toDelete.has(t.pageId) ? { ...t, pageId: null, unsavedContent: null } : t);
