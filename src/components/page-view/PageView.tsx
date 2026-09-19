@@ -97,8 +97,11 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
     fetchContent(false);
 
+    let lastFocusTime = 0;
     const handleFocusCheck = () => {
-      if (document.visibilityState === 'visible') {
+      const now = Date.now();
+      if (document.visibilityState === 'visible' && now - lastFocusTime > 2000) {
+        lastFocusTime = now;
         fetchContent(true);
       }
     };
