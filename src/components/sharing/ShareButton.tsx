@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { Share2 } from 'lucide-react';
 import type { Page } from '../../types/notes';
 import { ShareModal } from './ShareModal';
+import { getNotesKey } from '../../store/useStore';
 
 interface ShareButtonProps {
   page: Page;
@@ -16,6 +17,7 @@ interface ShareButtonProps {
 
 export const ShareButton: React.FC<ShareButtonProps> = ({ page, masterKey }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const effectiveMasterKey = masterKey || getNotesKey();
 
   return (
     <>
@@ -33,7 +35,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ page, masterKey }) => 
           page={page}
           isOpen={isOpen}
           onClose={() => setIsOpen(false)}
-          masterKey={masterKey}
+          masterKey={effectiveMasterKey}
         />
       )}
     </>

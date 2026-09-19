@@ -4,7 +4,7 @@
   },
   "hosting": [
     {
-      "site": "synapse-web",
+      "site": "synapse-dev",
       "public": "dist-web",
       "ignore": [
         "firebase.json",
@@ -52,7 +52,55 @@
       ]
     },
     {
-      "site": "synapse-dev",
+      "site": "synapsedev",
+      "public": "dist-web",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/s/**",
+          "destination": "/share-viewer.html"
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(eot|otf|ttf|ttc|woff|font.css)",
+          "headers": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            }
+          ]
+        },
+        {
+          "source": "**/index.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "**/*.@(js|css)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "max-age=31536000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "synapse-web",
       "public": "dist-web",
       "ignore": [
         "firebase.json",

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { LayoutDashboard, ArrowRightLeft, Scale, Gift, Plus, Loader2, Building2 } from 'lucide-react';
-import type { Transaction, WishlistItem } from '../../types';
+import { Plus, Loader2, Building2 } from 'lucide-react';
+import type { Transaction, WishlistItem, Tab } from '../../types';
 import TransactionModal from './TransactionModal';
 import WishlistModal from './WishlistModal';
 import PaymentModal from './PaymentModal';
@@ -16,7 +16,20 @@ import { WishlistDetailsModal } from './ui/WishlistDetailsModal';
 import { AccountManagerModal } from './ui/AccountManagerModal';
 import { DeleteTransactionModal } from './ui/DeleteTransactionModal';
 
-export default function FinanceView() {
+type FinanceSection = 'dashboard' | 'transactions' | 'loans' | 'wishlist';
+
+const VALID_SECTIONS = new Set<FinanceSection>(['dashboard', 'transactions', 'loans', 'wishlist']);
+
+function resolveSection(pageId: string | null): FinanceSection {
+  if (pageId && VALID_SECTIONS.has(pageId as FinanceSection)) {
+    return pageId as FinanceSection;
+  }
+  return 'dashboard';
+}
+
+export default function FinanceView({ tab }: { tab?: Tab }) {
+  const activeSection = resolveSection(tab?.pageId ?? null);
+
   const {
     transactions,
     wishlist,
@@ -37,7 +50,6 @@ export default function FinanceView() {
     deleteWishlistItem,
   } = useFinance();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'loans' | 'wishlist'>('dashboard');
   const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('all');
   const [showAccountModal, setShowAccountModal] = useState(false);
 
@@ -102,7 +114,7 @@ export default function FinanceView() {
   };
 
   // Dashboard calculations with account awareness
-  const { totalIncome, totalExpense, balance, loansList, regularTransactions } = useFinanceMetrics({
+  const { totalIncome, totalExpense, balance, loansList } = useFinanceMetrics({
     transactions,
     accounts,
     selectedAccountId,
@@ -127,7 +139,7 @@ export default function FinanceView() {
   return (
     <div className="h-full flex flex-col bg-dark-bg">
       <div className="flex-1 overflow-auto p-4 sm:p-5">
-        <div className="max-w-5xl mx-auto flex flex-col gap-3.5">
+        <div className="max-w-5xl mx-auto flex flex-col gap-4">
           {/* Header */}
           <div className="flex justify-between items-center">
             <div>
@@ -157,57 +169,9 @@ export default function FinanceView() {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-white/5 pb-2.5">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'dashboard'
-                  ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                  : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text border border-transparent'
-              }`}
-            >
-              <LayoutDashboard size={14} />
-              <span>Visão Geral</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'transactions'
-                  ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                  : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text border border-transparent'
-              }`}
-            >
-              <ArrowRightLeft size={14} />
-              <span>Transações ({regularTransactions.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('loans')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'loans'
-                  ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                  : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text border border-transparent'
-              }`}
-            >
-              <Scale size={14} />
-              <span>Empréstimos & Dívidas ({loansList.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('wishlist')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'wishlist'
-                  ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                  : 'text-dark-subtext hover:bg-white/5 hover:text-dark-text border border-transparent'
-              }`}
-            >
-              <Gift size={14} />
-              <span>Desejos & Futuro ({wishlist.length})</span>
-            </button>
-          </div>
-
-          {/* Tab Content Container */}
-          <div className="bg-dark-card/40 border border-white/5 rounded-xl p-4 sm:p-5 min-h-[360px]">
-            {activeTab === 'dashboard' && (
+          {/* Content — driven by sidebar navigation */}
+          <div className="border-t border-white/5 pt-4">
+            {activeSection === 'dashboard' && (
               <DashboardMetrics
                 totalIncome={totalIncome}
                 totalExpense={totalExpense}
@@ -218,11 +182,13 @@ export default function FinanceView() {
                 selectedAccountId={selectedAccountId}
                 onSelectAccount={setSelectedAccountId}
                 onOpenAccountManager={() => setShowAccountModal(true)}
-                onNavigateToLoans={() => setActiveTab('loans')}
+                onNavigateToLoans={() => {
+                  /* Loans navigation is handled by the sidebar */
+                }}
               />
             )}
 
-            {activeTab === 'transactions' && (
+            {activeSection === 'transactions' && (
               <TransactionList
                 transactions={transactions}
                 accounts={accounts}
@@ -236,7 +202,7 @@ export default function FinanceView() {
               />
             )}
 
-            {activeTab === 'loans' && (
+            {activeSection === 'loans' && (
               <LoansTab
                 loans={loansList}
                 onAddLoan={() => {
@@ -254,7 +220,7 @@ export default function FinanceView() {
               />
             )}
 
-            {activeTab === 'wishlist' && (
+            {activeSection === 'wishlist' && (
               <WishlistTab
                 wishlist={wishlist}
                 collapsedCategories={collapsedCategories}

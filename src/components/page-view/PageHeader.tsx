@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, Clock, FolderInput } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStore, getNotesKey } from '../../store/useStore';
 import type { Page } from '../../types';
 import { getPagePath } from '../../utils/hierarchy';
 import { getSiblingPageNavigation } from '../../utils/page-navigation';
@@ -199,7 +199,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
               <span className="hidden sm:inline font-medium">Histórico</span>
             </button>
 
-            <ShareButton page={page} />
+            <ShareButton page={page} masterKey={getNotesKey()} />
           </div>
         </div>
       </div>
