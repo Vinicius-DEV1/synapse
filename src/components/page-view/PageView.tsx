@@ -11,12 +11,14 @@ import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
 import { getEditorBackupMap } from '../editor/hooks/editorBackupStore';
 
+import { LruMap } from '../../utils/lru-cache';
+
 export interface PageContentData {
   content: string;
   encrypted_content: string | null;
 }
 
-const pageContentCache = new Map<string, PageContentData>();
+const pageContentCache = new LruMap<string, PageContentData>(30);
 
 function getCachedPageContent(pageId: string): PageContentData | null {
   const backup = getEditorBackupMap().get(pageId);
