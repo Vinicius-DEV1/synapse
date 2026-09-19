@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, getStoreState } from '../store/useStore';
 import type { Page } from '../types';
 import { getEditorBackupMap } from '../components/editor/hooks/editorBackupStore';
 import { triggerToast } from '../components/ui/ToastContext';
@@ -7,7 +7,7 @@ import { broadcastPageSaved } from '../services/page-broadcast';
 import { exportPageFile, importPageFile } from '../utils/pageTransferUtils';
 
 export function usePageActions() {
-  const { state, dispatch } = useStore();
+  const { dispatch } = useStore();
 
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {
@@ -44,28 +44,34 @@ export function usePageActions() {
   const handleDeletePage = useCallback(async (id: string) => {
     if (window.api) {
       try {
-        // 1. Collect target page ID and all descendants recursively
+        const pages = getStoreState().pages;
+
+        // 1. Single-pass O(N) indexing of child pages and iterative traversal
         const toDeleteIds = new Set<string>();
-        const collect = (parentId: string) => {
-          toDeleteIds.add(parentId);
-          state.pages.filter((p) => p.parent_id === parentId).forEach((p) => collect(p.id));
-        };
-        collect(id);
+        const childrenByParent = new Map<string, string[]>();
+        for (const p of pages) {
+          if (p.parent_id) {
+            const list = childrenByParent.get(p.parent_id);
+            if (list) list.push(p.id);
+            else childrenByParent.set(p.parent_id, [p.id]);
+          }
+        }
+
+        const stack = [id];
+        while (stack.length > 0) {
+          const currentId = stack.pop()!;
+          if (!toDeleteIds.has(currentId)) {
+            toDeleteIds.add(currentId);
+            const children = childrenByParent.get(currentId);
+            if (children) stack.push(...children);
+          }
+        }
 
         // 2. Delete calendar events associated with page and subpages
         if (window.api.calendar) {
           try {
             const events = await window.api.calendar.getEvents();
-            // Pre-aggregate page content string for fast matching
-            const deletedPagesContent = state.pages
-              .filter((p) => toDeleteIds.has(p.id))
-              .map((p) => p.content || '')
-              .join(' ');
-
-            const eventsToDelete = events.filter((ev) => {
-              if (ev.page_id && toDeleteIds.has(ev.page_id)) return true;
-              return deletedPagesContent.includes(`data-event-id="${ev.id}"`);
-            });
+            const eventsToDelete = events.filter((ev) => ev.page_id && toDeleteIds.has(ev.page_id));
 
             if (eventsToDelete.length > 0) {
               await Promise.all(eventsToDelete.map((ev) => window.api.calendar!.deleteEvent(ev.id)));
@@ -88,10 +94,11 @@ export function usePageActions() {
         dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null });
       }
     }
-  }, [dispatch, state.pages]);
+  }, [dispatch]);
 
   const handleUpdatePage = useCallback(async (id: string, updates: Partial<Page>) => {
-    const targetPage = state.pages.find(p => p.id === id);
+    const pages = getStoreState().pages;
+    const targetPage = pages.find(p => p.id === id);
     if (targetPage && targetPage.deleted_at) {
       console.warn(`[Caderno:SafeUpdate] Ignored update to deleted page ${id}`);
       return;
@@ -105,10 +112,11 @@ export function usePageActions() {
         triggerToast(err instanceof Error ? err.message : 'Erro ao atualizar página', 'error');
       }
     }
-  }, [dispatch, state.pages]);
+  }, [dispatch]);
 
   const handleUpdateContent = useCallback(async (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => {
-    const targetPage = state.pages.find(p => p.id === id);
+    const pages = getStoreState().pages;
+    const targetPage = pages.find(p => p.id === id);
     if (targetPage && targetPage.deleted_at) {
       console.warn(`[Caderno:SafeAutosave] Ignored autosave to deleted page ${id}`);
       return;
@@ -120,7 +128,7 @@ export function usePageActions() {
         broadcastPageSaved(id, crdtState, content, senderInstanceId);
         
         if (embeddedSaves && embeddedSaves.length > 0) {
-          const pageMap = new Map(state.pages.map(p => [p.id, p]));
+          const pageMap = new Map(pages.map(p => [p.id, p]));
           for (const embed of embeddedSaves) {
             const embedPage = pageMap.get(embed.id);
             if (!embedPage || !embedPage.deleted_at) {
@@ -139,7 +147,7 @@ export function usePageActions() {
         console.error('Erro ao salvar conteúdo da página:', err);
       }
     }
-  }, [state.pages]);
+  }, []);
 
   const handleExportPage = useCallback(async (id: string) => {
     await exportPageFile(id);
