@@ -30,7 +30,7 @@ type ModuleId = Tab['module'] | 'settings';
 
 const HomeView = lazyWithRetry(() => import('./home/HomeView'));
 const PageView = lazyWithRetry(() => import('./page-view/PageView'));
-const FinanceView = lazyWithRetry(() => import('./finance/FinanceView'));
+const FinanceView = lazyWithRetry<ComponentType<{ tab?: Tab }>>(() => import('./finance/FinanceView'));
 const LibraryView = lazyWithRetry(() => import('./library/LibraryView'));
 const CultureView = lazyWithRetry(() => import('./culture/CultureView'));
 const VideoView = lazyWithRetry(() => import('./video-player/VideoView'));
@@ -110,7 +110,7 @@ export const ViewFactory = memo(function ViewFactory({
         return <QuestionsView tabId={id} />;
       case 'finance':
       default:
-        return <FinanceView />;
+        return <FinanceView tab={tab} />;
     }
   };
 

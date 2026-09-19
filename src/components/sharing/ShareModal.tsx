@@ -18,6 +18,7 @@ import {
   Layers,
   Image as ImageIcon,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import type { Page } from '../../types/notes';
 import type { SharedPageConfig } from '../../types/sharing';
@@ -27,7 +28,14 @@ import {
   revokeShare,
   buildShareUrl,
   updateShareConfig,
+  updateShareContent,
 } from '../../services/sharing/share-manager';
+import { getWebShareKey } from '../../services/db-web';
+import {
+  importShareKeyFromBase64,
+  unwrapShareKeyWithMaster,
+} from '../../services/sharing/share-crypto';
+import { getNotesKey } from '../../store/useStore';
 import { triggerToast } from '../ui/ToastContext';
 
 interface ShareModalProps {
@@ -98,6 +106,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const handleCreateShare = async () => {
     try {
       setIsSubmitting(true);
+      const effectiveMasterKey = masterKey || getNotesKey();
       const result = await createShare(
         {
           pageId: page.id,
@@ -110,7 +119,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           maxViews: null,
         },
         page,
-        masterKey
+        effectiveMasterKey
       );
 
       setExistingShare(result.config);
@@ -119,6 +128,42 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     } catch (err) {
       console.error('Failed to create share:', err);
       triggerToast('Erro ao criar link de compartilhamento.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSyncContent = async () => {
+    if (!existingShare) return;
+    try {
+      setIsSubmitting(true);
+      const effectiveMasterKey = masterKey || getNotesKey();
+      let shareKey: CryptoKey | null = null;
+      const cached = await getWebShareKey(existingShare.id);
+      if (cached?.shareKeyBase64) {
+        shareKey = await importShareKeyFromBase64(cached.shareKeyBase64);
+      } else if (existingShare.wrappedShareKey) {
+        if (effectiveMasterKey) {
+          try {
+            shareKey = await unwrapShareKeyWithMaster(existingShare.wrappedShareKey, effectiveMasterKey);
+          } catch {
+            shareKey = await importShareKeyFromBase64(existingShare.wrappedShareKey);
+          }
+        } else {
+          shareKey = await importShareKeyFromBase64(existingShare.wrappedShareKey);
+        }
+      }
+
+      if (!shareKey) {
+        triggerToast('Não foi possível recuperar a chave criptográfica.', 'error');
+        return;
+      }
+
+      await updateShareContent(existingShare.id, page, shareKey, effectiveMasterKey);
+      triggerToast('Conteúdo sincronizado com sucesso no link compartilhado!', 'success');
+    } catch (err) {
+      console.error('Failed to sync share content:', err);
+      triggerToast('Erro ao sincronizar conteúdo da página.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -258,14 +303,26 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               </div>
 
               {/* Quick Actions */}
-              <div className="pt-2 flex items-center justify-between gap-3">
-                <button
-                  onClick={handleToggleActive}
-                  disabled={isSubmitting}
-                  className="py-2 px-3 rounded-xl text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-850 border border-white/[0.08] transition-colors cursor-pointer"
-                >
-                  {existingShare.isActive ? 'Pausar Link' : 'Reativar Link'}
-                </button>
+              <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleToggleActive}
+                    disabled={isSubmitting}
+                    className="py-2 px-3 rounded-xl text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-850 border border-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    {existingShare.isActive ? 'Pausar Link' : 'Reativar Link'}
+                  </button>
+
+                  <button
+                    onClick={handleSyncContent}
+                    disabled={isSubmitting}
+                    className="py-2 px-3 rounded-xl text-xs font-medium text-indigo-300 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Atualiza o conteúdo público com as alterações mais recentes da página"
+                  >
+                    <RefreshCw size={13} className={isSubmitting ? 'animate-spin' : ''} />
+                    Sincronizar Conteúdo
+                  </button>
+                </div>
 
                 <button
                   onClick={handleRevoke}

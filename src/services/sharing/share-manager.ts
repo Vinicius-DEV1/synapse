@@ -18,7 +18,6 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { platform } from '../platform';
 import type { Page } from '../../types/notes';
 import type {
   CreateShareRequest,
@@ -39,6 +38,7 @@ import {
   wrapShareKeyWithMaster,
 } from './share-crypto';
 import { generateDeviceFingerprint } from './device-fingerprint';
+import { decryptText } from '../crypto';
 import {
   deleteWebShareKey,
   getWebShareKey,
@@ -56,9 +56,68 @@ export function buildShareUrl(shareId: string): string {
     return `${window.location.origin}/s/${shareId}`;
   }
 
-  const shareDomain = import.meta.env.VITE_FIREBASE_SHARE_DOMAIN || 'synapse-web.web.app';
+  const shareDomain = import.meta.env.VITE_FIREBASE_SHARE_DOMAIN || 'synapse-dev.web.app';
   const baseDomain = shareDomain.startsWith('http') ? shareDomain : `https://${shareDomain}`;
   return `${baseDomain}/s/${shareId}`;
+}
+
+/**
+ * Resolves the full plaintext HTML of a page across in-memory backup,
+ * platform storage API (Tauri IPC or Web IndexedDB), and E2EE keychain fallback.
+ */
+export async function resolvePageRawContent(
+  page: Page,
+  masterKey?: CryptoKey
+): Promise<string> {
+  // 1. If content is already populated on the Page object
+  if (page.content && page.content.trim().length > 0) {
+    return page.content;
+  }
+
+  // 2. Check in-memory editor backup (active edits not yet flushed to disk/IDB)
+  if (typeof window !== 'undefined') {
+    const inMemoryBackup = (
+      window as unknown as {
+        __cadernoEditorBackup?: Map<string | null, { html: string; crdt: string }>;
+      }
+    ).__cadernoEditorBackup?.get(page.id);
+
+    if (inMemoryBackup?.html && inMemoryBackup.html.trim().length > 0) {
+      return inMemoryBackup.html;
+    }
+
+    // 3. Fetch from platform storage API (Tauri IPC or Web IndexedDB)
+    if (window.api?.getPageContent) {
+      try {
+        const res = await window.api.getPageContent(page.id);
+        if (res?.content && res.content.trim().length > 0) {
+          return res.content;
+        }
+        if (res?.encrypted_content && masterKey) {
+          const decrypted = await decryptText(res.encrypted_content, masterKey);
+          if (decrypted && decrypted.trim().length > 0) {
+            return decrypted;
+          }
+        }
+      } catch (err) {
+        console.warn('[share-manager] Error fetching page content via window.api:', err);
+      }
+    }
+  }
+
+  // 4. Fallback: page.encrypted_content if directly present on page object
+  if (page.encrypted_content && masterKey) {
+    try {
+      const decrypted = await decryptText(page.encrypted_content, masterKey);
+      if (decrypted && decrypted.trim().length > 0) {
+        return decrypted;
+      }
+    } catch (err) {
+      console.warn('[share-manager] Error decrypting page.encrypted_content:', err);
+    }
+  }
+
+  return page.content || '';
 }
 
 /**
@@ -85,13 +144,14 @@ export async function createShare(
     passwordHash = await hashPasswordPBKDF2(req.password, passwordSalt);
   }
 
-  // Key wrapping
+  // Key wrapping: only wrap with master key if owner approval is required;
+  // for direct shares, visitor unlocks directly with shareKeyBase64
   let wrappedShareKey = shareKeyBase64;
-  if (masterKey) {
+  if (masterKey && req.requireOwnerApproval) {
     wrappedShareKey = await wrapShareKeyWithMaster(shareKey, masterKey);
   }
 
-  const rawContent = page.content || '';
+  const rawContent = await resolvePageRawContent(page, masterKey);
   const encryptedContent = await encryptForShare(rawContent, shareKey);
   const encryptedTitle = await encryptForShare(page.title || 'Untitled', shareKey);
   const encryptedIcon = await encryptForShare(page.icon || '📄', shareKey);
@@ -167,9 +227,10 @@ export async function createShare(
 export async function updateShareContent(
   shareId: string,
   page: Page,
-  shareKey: CryptoKey
+  shareKey: CryptoKey,
+  masterKey?: CryptoKey
 ): Promise<void> {
-  const rawContent = page.content || '';
+  const rawContent = await resolvePageRawContent(page, masterKey);
   const encryptedContent = await encryptForShare(rawContent, shareKey);
   const encryptedTitle = await encryptForShare(page.title || 'Untitled', shareKey);
   const encryptedIcon = await encryptForShare(page.icon || '📄', shareKey);
