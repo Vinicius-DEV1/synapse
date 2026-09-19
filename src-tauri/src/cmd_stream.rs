@@ -448,8 +448,8 @@ async fn stream_drive_handler(
 const YOUTUBE_PROXY_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 /// Maximum chunk size for proxied YouTube Range requests.
-/// YouTube rejects open-ended ranges and ranges larger than ~2-4MB.
-const YOUTUBE_MAX_CHUNK: u64 = 2 * 1024 * 1024; // 2 MiB
+/// YouTube rejects open-ended ranges and ranges larger than ~1MB with HTTP 403 Forbidden.
+const YOUTUBE_MAX_CHUNK: u64 = 512 * 1024; // 512 KiB (safe chunk size for YouTube CDN)
 
 #[derive(Deserialize)]
 pub struct YouTubeProxyParams {
@@ -469,9 +469,16 @@ async fn youtube_proxy_handler(
     headers: axum::http::HeaderMap,
     Query(params): Query<YouTubeProxyParams>,
 ) -> impl IntoResponse {
-    let target_url = match urldecode(&params.url) {
-        Ok(decoded) => decoded.into_owned(),
-        Err(_) => params.url.clone(),
+    // When Axum parses Query(params), serde_urlencoded already decodes URL-encoded parameters.
+    // Only perform a second decode if the URL still contains percent-encoded protocol separators (http%3A%2F%2F),
+    // to avoid corrupting tokens and HMAC signatures containing literal '+' or '%3D' in YouTube query strings.
+    let target_url = if params.url.contains("%3A%2F%2F") || params.url.contains("%2F%2F") {
+        match urldecode(&params.url) {
+            Ok(decoded) => decoded.into_owned(),
+            Err(_) => params.url.clone(),
+        }
+    } else {
+        params.url.clone()
     };
 
     // Validate the URL is a legitimate YouTube CDN host
