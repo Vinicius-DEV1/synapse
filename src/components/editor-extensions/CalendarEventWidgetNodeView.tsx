@@ -77,8 +77,13 @@ export default function CalendarEventWidgetNodeView(props: any) {
     }
     if (mountedRef.current) setIsLoadingEvents(true);
     try {
-      const events = await fetchCalendarEventsCached();
-      const found = events.find((e: CalendarEvent) => e.id === eventId);
+      let found: CalendarEvent | null = null;
+      if (typeof window.api.calendar.getEvent === 'function') {
+        found = await window.api.calendar.getEvent(eventId);
+      } else {
+        const events = await fetchCalendarEventsCached();
+        found = events.find((e: CalendarEvent) => e.id === eventId) || null;
+      }
       if (mountedRef.current && currentReqId === reqIdRef.current) {
         if (found) {
           setEventData(found);

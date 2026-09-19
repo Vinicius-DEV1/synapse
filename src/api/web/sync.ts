@@ -23,6 +23,15 @@ export const webSyncApi = (db: any, originalDelete: any, originalPut: any) => ({
     }
     return { success: true };
   },
+  getRow: async (tableName: string, id: string) => {
+    if (!db.objectStoreNames.contains(tableName as any)) return null;
+    try {
+      const row = await db.get(tableName as any, id);
+      return row || null;
+    } catch {
+      return null;
+    }
+  },
   // Fetches only rows with specific IDs (avoids loading the entire table into memory).
   // In IndexedDB, uses a single readonly transaction with individual get operations,
   // which is significantly more efficient than getAll + filter for selective syncing.

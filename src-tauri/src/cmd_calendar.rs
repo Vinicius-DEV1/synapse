@@ -225,3 +225,41 @@ pub fn calendar_delete_event(id: String, db_state: State<'_, DbState>) -> Result
 
     Ok(true)
 }
+
+#[tauri::command]
+pub fn calendar_get_event(id: String, db_state: State<'_, DbState>) -> Result<Option<CalendarEvent>, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, title, description, start_date, end_date, type, status, color, page_id, reminders, notified_reminders FROM calendar_events WHERE id = ? AND deleted_at IS NULL")
+        .map_err(|e| e.to_string())?;
+
+    let result = stmt.query_row([&id], |row| {
+        let reminders_raw: Option<String> = row.get(9).unwrap_or(None);
+        let reminders_val = reminders_raw.and_then(|s| serde_json::from_str(&s).ok());
+        let notified_raw: Option<String> = row.get(10).unwrap_or(None);
+        let notified_val = notified_raw.and_then(|s| serde_json::from_str(&s).ok());
+
+        Ok(CalendarEvent {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            description: row.get(2)?,
+            start_date: row.get(3)?,
+            end_date: row.get(4)?,
+            type_: row.get(5)?,
+            status: row.get(6)?,
+            color: row.get(7)?,
+            page_id: row.get(8).unwrap_or(None),
+            reminders: reminders_val.or(Some(serde_json::json!([]))),
+            notified_reminders: notified_val.or(Some(serde_json::json!([]))),
+        })
+    });
+
+    match result {
+        Ok(ev) => Ok(Some(ev)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+

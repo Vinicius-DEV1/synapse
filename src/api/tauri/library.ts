@@ -69,8 +69,7 @@ export const tauriLibraryApi = {
         // fallback to JS reading
       }
 
-      const books = await invoke<any[]>('library_get_books');
-      const book = books.find((b: any) => b.id === id);
+      const book = await invoke<{ file_path?: string } | null>('library_get_book', { id });
       if (!book) return null;
       
       const candidatePaths: string[] = [];
@@ -78,29 +77,17 @@ export const tauriLibraryApi = {
       // 1. Canonical candidates based on book ID
       candidatePaths.push(`library/${id}.epub.enc`);
       candidatePaths.push(`library/${id}.pdf.enc`);
-      candidatePaths.push(`library/${id}.epub`);
-      candidatePaths.push(`library/${id}.pdf`);
+      candidatePaths.push(`library/${id}.enc`);
 
-      // 2. Candidate based on saved file_path
-      if (book.file_path) {
-        let clean = book.file_path.replace(/^file:\/\//, '');
-        if (clean.startsWith('/') || clean.match(/^[a-zA-Z]:/)) {
-          // If absolute, extract filename
-          const filename = clean.split(/[/\\]/).pop();
-          if (filename) {
-            candidatePaths.push(`library/${filename}`);
-            if (!filename.endsWith('.enc')) candidatePaths.push(`library/${filename}.enc`);
-          }
-        } else {
-          // Relative path
-          candidatePaths.push(clean);
-          if (!clean.endsWith('.enc')) candidatePaths.push(`${clean}.enc`);
-        }
+      // 2. Exact database path if present
+      if (book.file_path && !candidatePaths.includes(book.file_path)) {
+        candidatePaths.push(book.file_path);
       }
 
       let buffer: Uint8Array | null = null;
-      console.log(`[library.ts] candidatePaths para JS fallback:`, candidatePaths);
       for (const p of candidatePaths) {
+        const clean = p.replace('file://', '');
+        console.log(`[library.ts] Tentando ler candidato para ${id}: ${clean}`);
         try {
           if (p.startsWith('/') || p.match(/^[a-zA-Z]:/)) {
             console.log(`[library.ts] Tentando ler absolute path via JS: ${p}`);
@@ -136,6 +123,7 @@ export const tauriLibraryApi = {
     } catch(e) { console.error("Error getting book file", e); return null; }
   },
   getBooks: async () => await invoke('library_get_books'),
+  getBook: async (id: string) => await invoke('library_get_book', { id }),
   addBook: async (b: any) => await invoke('library_add_book', { book: b }),
   updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
   deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
