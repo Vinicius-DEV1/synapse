@@ -113,5 +113,24 @@ export const createTauriApi = async () => {
 
     // --- QUIZ ---
     quiz: tauriQuizApi,
+
+    // --- LINKS CACHE ---
+    links: {
+      getMetadata: async (url: string) => {
+        try {
+          return await tauriSyncApi.getRow('link_metadata_cache', url);
+        } catch {
+          return null;
+        }
+      },
+      saveMetadata: async (entry: any) => {
+        try {
+          await tauriSyncApi.upsertRow('link_metadata_cache', { ...entry, id: entry.url, updated_at: new Date().toISOString() });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    },
   };
 };

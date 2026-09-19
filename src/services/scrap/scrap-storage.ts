@@ -36,13 +36,20 @@ export async function encryptAndSaveScrap(
     const rawBytes = encoder.encode(htmlContent);
     const encryptedBuffer = await encryptFile(rawBytes.buffer as ArrayBuffer, masterKey);
 
-    // Save encrypted copy locally in AppData (Desktop)
+    // Save encrypted copy locally in AppData (Desktop) or IndexedDB (Web)
     if (platform.canReadLocalFilesystem) {
       try {
         const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
         await writeFile(`scraps/${scrapId}.enc`, new Uint8Array(encryptedBuffer), { baseDir: BaseDirectory.AppData });
       } catch (err) {
         console.warn('[ScrapStorage] Falha ao salvar arquivo .enc no cache local:', err);
+      }
+    } else {
+      try {
+        const { saveWebScrap } = await import('../db-web');
+        await saveWebScrap(scrapId, encryptedBuffer);
+      } catch (idbErr) {
+        console.warn('[ScrapStorage] Falha ao salvar scrap no IndexedDB:', idbErr);
       }
     }
 
@@ -116,7 +123,24 @@ export async function getDecryptedScrap(
     }
   }
 
-  // 4. Download do Google Drive
+  // 4. Web IndexedDB Cache
+  if (!platform.canReadLocalFilesystem && masterKey) {
+    try {
+      const { getWebScrap } = await import('../db-web');
+      const encBytes = await getWebScrap(scrapId);
+      if (encBytes) {
+        const decrypted = await decryptFile(encBytes, masterKey);
+        const decoder = new TextDecoder();
+        const content = decoder.decode(decrypted);
+        memoryCache.set(scrapId, content);
+        return content;
+      }
+    } catch (e) {
+      console.warn('[ScrapStorage] Falha na leitura do scrap no IndexedDB:', e);
+    }
+  }
+
+  // 5. Download do Google Drive
   if (driveFileId && masterKey) {
     try {
       const token = await getValidAccessToken();
@@ -128,9 +152,10 @@ export async function getDecryptedScrap(
       const content = decoder.decode(decrypted);
       memoryCache.set(scrapId, content);
       return content;
-    } catch (driveErr: any) {
+    } catch (driveErr: unknown) {
+      const msg = driveErr instanceof Error ? driveErr.message : 'Erro de conexão';
       console.error('[ScrapStorage] Falha ao baixar ou decriptografar snapshot do Google Drive:', driveErr);
-      throw new Error(`Falha ao baixar snapshot da nuvem: ${driveErr.message || 'Erro de conexão'}`);
+      throw new Error(`Falha ao baixar snapshot da nuvem: ${msg}`);
     }
   }
 
@@ -165,6 +190,16 @@ export async function deleteScrapSafely(scrapId: string, driveFileId?: string | 
       }
     } catch (cloudErr) {
       console.warn('[ScrapStorage] Falha ao excluir snapshot do Google Drive:', cloudErr);
+    }
+  }
+
+  // 4. Excluir do IndexedDB (Web)
+  if (!platform.canReadLocalFilesystem) {
+    try {
+      const { deleteWebScrap } = await import('../db-web');
+      await deleteWebScrap(scrapId);
+    } catch (idbErr) {
+      console.warn('[ScrapStorage] Falha ao excluir scrap do IndexedDB:', idbErr);
     }
   }
 }

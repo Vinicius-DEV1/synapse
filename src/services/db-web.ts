@@ -54,14 +54,15 @@ export interface CadernoDBSchema extends DBSchema {
   quiz_questions: { key: string; value: any; indexes: { 'battery_id': string } };
   quiz_attempts: { key: string; value: any; indexes: { 'question_id': string; 'battery_id': string } };
   quiz_page_links: { key: string; value: any; indexes: { 'battery_id': string; 'page_id': string } };
-  
+  link_metadata_cache: { key: string; value: any };
+  scraps: { key: string; value: { id: string; encrypted_data: ArrayBuffer; updated_at?: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 22, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 24, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('pages')) {
           const store = db.createObjectStore('pages', { keyPath: 'id' });
@@ -258,11 +259,36 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
           store.createIndex('battery_id', 'battery_id');
           store.createIndex('page_id', 'page_id');
         }
-
+        if (!db.objectStoreNames.contains('link_metadata_cache')) {
+          db.createObjectStore('link_metadata_cache', { keyPath: 'url' });
+        }
+        if (!db.objectStoreNames.contains('scraps')) {
+          db.createObjectStore('scraps', { keyPath: 'id' });
+        }
       },
     });
   }
   return dbPromise;
+}
+
+export async function getWebScrap(id: string): Promise<ArrayBuffer | null> {
+  const db = await getWebDb();
+  const scrap = await db.get('scraps', id);
+  return scrap?.encrypted_data || null;
+}
+
+export async function saveWebScrap(id: string, encryptedData: ArrayBuffer): Promise<void> {
+  const db = await getWebDb();
+  await db.put('scraps', {
+    id,
+    encrypted_data: encryptedData,
+    updated_at: new Date().toISOString()
+  });
+}
+
+export async function deleteWebScrap(id: string): Promise<void> {
+  const db = await getWebDb();
+  await db.delete('scraps', id);
 }
 
 export async function getAiPrompt(id: string): Promise<string | null> {

@@ -145,6 +145,20 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
          );
          CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id);
+         CREATE TABLE IF NOT EXISTS link_metadata_cache (
+             url TEXT PRIMARY KEY,
+             title TEXT,
+             channel TEXT,
+             duration REAL,
+             is_playlist INTEGER DEFAULT 0,
+             playlist_count INTEGER,
+             upload_date TEXT,
+             image_url TEXT,
+             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+             deleted_at DATETIME DEFAULT NULL
+         );
+         CREATE INDEX IF NOT EXISTS idx_link_metadata_cache_updated ON link_metadata_cache(updated_at);
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
 
@@ -163,6 +177,23 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
         [],
     );
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id)", []);
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS link_metadata_cache (
+            url TEXT PRIMARY KEY,
+            title TEXT,
+            channel TEXT,
+            duration REAL,
+            is_playlist INTEGER DEFAULT 0,
+            playlist_count INTEGER,
+            upload_date TEXT,
+            image_url TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_link_metadata_cache_updated ON link_metadata_cache(updated_at)", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN files_key_enc TEXT", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN vault_key_enc TEXT", []);
     let _ = conn.execute("ALTER TABLE keychain ADD COLUMN calendar_key_enc TEXT", []);
