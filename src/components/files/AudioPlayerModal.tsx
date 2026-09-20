@@ -23,6 +23,7 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
   const [isMuted, setIsMuted] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const filesMasterKey = state.moduleKeys['files'];
 
   useEffect(() => {
@@ -31,15 +32,25 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
     
     getDecryptedFileUrl(item, filesMasterKey)
       .then((resolvedUrl) => {
-        if (isCancelled) return;
+        if (isCancelled) {
+          if (resolvedUrl && typeof resolvedUrl === 'string' && resolvedUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(resolvedUrl);
+          }
+          return;
+        }
         if (resolvedUrl && typeof resolvedUrl === 'string') {
+          if (objectUrlRef.current && objectUrlRef.current.startsWith('blob:')) {
+            URL.revokeObjectURL(objectUrlRef.current);
+          }
+          objectUrlRef.current = resolvedUrl;
           setObjectUrl(resolvedUrl);
         } else {
           setError('Arquivo de áudio não encontrado localmente.');
         }
       })
-      .catch((err) => {
-        if (!isCancelled) setError(err?.message || 'Falha ao carregar o áudio.');
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Falha ao carregar o áudio.';
+        if (!isCancelled) setError(message);
       })
       .finally(() => {
         if (!isCancelled) setIsLoading(false);
@@ -47,12 +58,22 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
 
     return () => {
       isCancelled = true;
-      if (objectUrl && objectUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(objectUrl);
+      if (objectUrlRef.current && objectUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, filesMasterKey]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;

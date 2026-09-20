@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import type { UploadOptions } from './VideoUploadModal';
-import { resolveVideoUrl, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video';
+import { resolveVideoUrl, revokeVideoStreamLink, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video';
 import { useStore } from '../../store/useStore';
 import { useTasks } from '../../store/TaskContext';
 import { useVideoFolders } from './hooks/useVideoFolders';
@@ -16,7 +16,8 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>(() => {
-    return (localStorage.getItem('videoViewMode') as any) || 'grid';
+    const saved = localStorage.getItem('videoViewMode');
+    return (saved === 'list' || saved === 'compact') ? saved : 'grid';
   });
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedFolderName, setSelectedFolderName] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   // Player state
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [activeVideoSrc, setActiveVideoSrc] = useState<string | null>(null);
+  const activeVideoSrcRef = useRef<string | null>(null);
   const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>();
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [webVersionVideo, setWebVersionVideo] = useState<VideoItem | null>(null);
@@ -72,12 +74,25 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       setPlayerError(null);
       setActiveSubtitle(undefined);
       const src = await resolveVideoUrl(video);
+      if (activeVideoSrcRef.current && activeVideoSrcRef.current !== src) {
+        revokeVideoStreamLink(activeVideoSrcRef.current);
+      }
+      activeVideoSrcRef.current = src;
       setActiveVideoSrc(src);
       setActiveVideo(video);
     } catch (e: unknown) {
       console.error(e);
       setPlayerError(e instanceof Error ? e.message : 'Erro ao carregar o vídeo.');
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (activeVideoSrcRef.current) {
+        revokeVideoStreamLink(activeVideoSrcRef.current);
+        activeVideoSrcRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -282,6 +297,10 @@ export default function VideoView({ tabId }: { tabId?: string }) {
             title={activeVideo.title}
             subtitleContent={activeSubtitle}
             onClose={() => {
+              if (activeVideoSrcRef.current) {
+                revokeVideoStreamLink(activeVideoSrcRef.current);
+                activeVideoSrcRef.current = null;
+              }
               setActiveVideo(null);
               setActiveVideoSrc(null);
               loadVideos();

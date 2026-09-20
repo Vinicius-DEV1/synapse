@@ -197,9 +197,28 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
   const handleClose = async () => {
     if (videoRef.current) {
       await saveProgress(videoRef.current.currentTime);
+      videoRef.current.pause();
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
     }
     onClose();
   };
+
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      }
+    };
+  }, []);
 
   const handleWordClick = (word: string, context: string) => {
     if (videoRef.current) {
