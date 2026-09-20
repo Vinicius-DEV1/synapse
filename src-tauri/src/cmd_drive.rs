@@ -5,9 +5,18 @@ use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
 pub fn drive_open_url(app: AppHandle, url: String) -> Result<(), String> {
-    if !url.starts_with("http://") && !url.starts_with("https://") {
-        return Err("Apenas URLs HTTP e HTTPS são permitidas".into());
+    let parsed = url::Url::parse(&url).map_err(|e| format!("URL inválida: {}", e))?;
+    let scheme = parsed.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err("Apenas protocolos HTTP e HTTPS são permitidos".into());
     }
+    if parsed.host_str().is_none() || parsed.host_str().unwrap().trim().is_empty() {
+        return Err("URL deve conter um host válido".into());
+    }
+    if url.chars().any(|c| c.is_control() || c == '\n' || c == '\r') {
+        return Err("URL contém caracteres de controle inválidos".into());
+    }
+
     app.shell()
         .open(&url, None)
         .map_err(|e| format!("Falha ao abrir navegador: {}", e))
@@ -15,7 +24,7 @@ pub fn drive_open_url(app: AppHandle, url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn drive_get_credentials(db_state: State<'_, DbState>) -> Result<Option<Value>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("DB not initialized")?;
 
     let mut stmt = conn
@@ -25,7 +34,9 @@ pub fn drive_get_credentials(db_state: State<'_, DbState>) -> Result<Option<Valu
 
     match row {
         Ok(data) => {
-            let parsed: Value = serde_json::from_str(&data).map_err(|e| e.to_string())?;
+            // Support both structured JSON payloads and encrypted ciphertext strings
+            let parsed: Value =
+                serde_json::from_str(&data).unwrap_or_else(|_| Value::String(data));
             Ok(Some(parsed))
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -35,10 +46,13 @@ pub fn drive_get_credentials(db_state: State<'_, DbState>) -> Result<Option<Valu
 
 #[tauri::command]
 pub fn drive_save_credentials(data: Value, db_state: State<'_, DbState>) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("DB not initialized")?;
 
-    let str_data = serde_json::to_string(&data).map_err(|e| e.to_string())?;
+    let str_data = match &data {
+        Value::String(s) => s.clone(),
+        other => serde_json::to_string(other).map_err(|e| e.to_string())?,
+    };
 
     conn.execute(
         "INSERT INTO config (id, data, updated_at) VALUES ('drive_credentials', ?, CURRENT_TIMESTAMP)
@@ -48,3 +62,4 @@ pub fn drive_save_credentials(data: Value, db_state: State<'_, DbState>) -> Resu
 
     Ok(())
 }
+
