@@ -17,6 +17,8 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
   const editorRef = useRef<Editor | null>(null);
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const unlistenRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     let isCancelled = false;
     const initStore = async () => {
@@ -38,9 +40,10 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
           }
           
           setStore(newStore);
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error(e);
-          triggerToast(e.message || 'Erro ao carregar conteúdo do diagrama.', 'error');
+          const errorMsg = e instanceof Error ? e.message : 'Erro ao carregar conteúdo do diagrama.';
+          triggerToast(errorMsg, 'error');
         } finally {
           if (!isCancelled) setLoading(false);
         }
@@ -51,6 +54,10 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
     return () => {
       isCancelled = true;
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      if (unlistenRef.current) {
+        unlistenRef.current();
+        unlistenRef.current = null;
+      }
     };
   }, [diagram.id]);
 
@@ -60,7 +67,12 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
     // Set dark theme as default to match app appearance
     editor.user.updateUserPreferences({ colorScheme: 'dark' });
 
-    editor.store.listen(() => {
+    if (unlistenRef.current) {
+      unlistenRef.current();
+      unlistenRef.current = null;
+    }
+
+    unlistenRef.current = editor.store.listen(() => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       
       saveTimeout.current = setTimeout(async () => {

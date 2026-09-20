@@ -298,6 +298,19 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
   return newLofi;
 }
 
+/**
+ * Revokes a previously created lofi object URL to prevent memory leaks.
+ */
+export function revokeLofiUrl(url: string): void {
+  if (url && url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // Ignore revocation errors if URL is already released
+    }
+  }
+}
+
 export async function deleteLofiCompletely(lofi: LofiItem): Promise<void> {
   // Soft-delete: moves item to trash by setting deleted_at without deleting files
   if (window.api?.sync) {
@@ -311,12 +324,12 @@ export async function deleteLofiCompletely(lofi: LofiItem): Promise<void> {
 
 export async function hardDeleteLofiPermanently(lofi: LofiItem): Promise<void> {
   if (lofi.is_local && window.api?.lofi) {
-    await window.api.lofi.deleteLocal(lofi.original_name).catch((e: any) => console.warn("Failed to delete local", e));
+    await window.api.lofi.deleteLocal(lofi.original_name).catch((e: unknown) => console.warn("Failed to delete local", e));
   }
 
   const token = await getValidAccessToken();
   if (token && lofi.drive_file_id) {
-    await deleteFromDrive(token, lofi.drive_file_id).catch((e: any) => console.warn("Falha ao apagar lofi do Drive", e));
+    await deleteFromDrive(token, lofi.drive_file_id).catch((e: unknown) => console.warn("Falha ao apagar lofi do Drive", e));
   }
 
   if (window.api?.trash?.deletePermanently) {
@@ -326,7 +339,7 @@ export async function hardDeleteLofiPermanently(lofi: LofiItem): Promise<void> {
 
 export async function deleteLofiLocal(lofi: LofiItem): Promise<void> {
   if (lofi.is_local && window.api?.lofi) {
-    await window.api.lofi.deleteLocal(lofi.original_name).catch((e: any) => console.warn("Failed to delete local", e));
+    await window.api.lofi.deleteLocal(lofi.original_name).catch((e: unknown) => console.warn("Failed to delete local", e));
     
     // Update local state to cloud-only
     if (window.api?.sync) {
