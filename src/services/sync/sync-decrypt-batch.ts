@@ -8,31 +8,41 @@ export interface CloudData {
   [key: string]: unknown;
 }
 
+export interface FirestoreDocLike {
+  id: string;
+  data: () => Record<string, unknown> | undefined;
+  ref?: unknown;
+}
+
 export interface DecryptedResult {
-  docSnap: any;
+  docSnap: FirestoreDocLike;
   cloudData: CloudData;
-  parsed: any;
+  parsed: Record<string, unknown> | null;
   isLegacy: boolean;
-  error: any;
+  error: unknown;
 }
 
 export async function decryptCloudDoc(
-  docSnap: any,
+  docSnap: FirestoreDocLike,
   key: CryptoKey,
   moduleKeys: Record<string, CryptoKey>
 ): Promise<DecryptedResult> {
-  const cloudData = docSnap.data() as CloudData;
+  const rawData = docSnap.data();
+  const cloudData: CloudData = (rawData as CloudData) || {};
   try {
-    let decryptedJsonOrB64;
+    let decryptedJsonOrB64: string;
     let isLegacy = false;
     try {
-      decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, key);
+      if (!cloudData.encryptedData) {
+        throw new Error('Missing encryptedData');
+      }
+      decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
     } catch (e) {
-      if (key !== moduleKeys['core']) {
+      if (key !== moduleKeys['core'] && moduleKeys['core'] && cloudData.encryptedData) {
         try {
-          decryptedJsonOrB64 = await decryptText(cloudData.encryptedData!, moduleKeys['core']);
+          decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, moduleKeys['core']);
           isLegacy = true; // Decrypt success with core key instead of module key
-        } catch (e2) {
+        } catch {
           throw e;
         }
       } else {
@@ -53,20 +63,20 @@ export async function decryptCloudDoc(
         const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
         finalJson = await new Response(stream).text();
       } catch (decErr) {
-        console.error(`Erro ao descomprimir doc`, decErr);
+        console.error('Erro ao descomprimir doc', decErr);
         throw decErr;
       }
     }
 
-    const parsed = JSON.parse(finalJson);
+    const parsed = JSON.parse(finalJson) as Record<string, unknown>;
     return { docSnap, cloudData, parsed, isLegacy, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { docSnap, cloudData, parsed: null, isLegacy: false, error: err };
   }
 }
 
 export async function decryptCloudBatch(
-  batch: any[],
+  batch: FirestoreDocLike[],
   key: CryptoKey,
   moduleKeys: Record<string, CryptoKey>
 ): Promise<DecryptedResult[]> {

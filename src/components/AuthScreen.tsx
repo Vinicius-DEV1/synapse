@@ -1,32 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
 import WindowControls from './layout/WindowControls';
 import { useStore } from '../store/useStore';
-import { deriveMasterKey, importHexKey, exportKeyToHex } from '../services/crypto';
+import { deriveMasterKey, exportKeyToHex } from '../services/crypto';
 import { getVaultKeyHash } from '../services/vault-crypto';
-import { initializeCloudValidator, verifyCloudMasterPassword, pushModularKeysToCloud, pullModularKeysFromCloud, getSecurityLock, recordFailedAttempt, clearFailedAttempts } from '../services/sync';
+import {
+  initializeCloudValidator,
+  verifyCloudMasterPassword,
+  pushModularKeysToCloud,
+  pullModularKeysFromCloud,
+  recordFailedAttempt,
+  clearFailedAttempts,
+} from '../services/sync';
 import { setDriveMasterKey } from '../services/drive';
 import { setWebVaultKey } from '../api/web/vault';
 import { platform } from '../services/platform';
-import { getRandomIntimidatingPhrase } from './auth/AuthSecurityPhrases';
 import { AuthLockoutView } from './auth/AuthLockoutView';
+import { useAuthLockout } from './auth/useAuthLockout';
+import { buildModuleKeys } from './auth/auth-keys-builder';
 
-async function buildModuleKeys(rawKeys: Record<string, string> | null | undefined, masterKey: CryptoKey): Promise<Record<string, CryptoKey>> {
-  const keys: Record<string, CryptoKey> = {};
-  const modules = ['library', 'finance', 'notes', 'core', 'focus', 'vault', 'culture', 'anki', 'files', 'calendar', 'practice'];
-  
-  for (const mod of modules) {
-    if (rawKeys && rawKeys[mod]) {
-      keys[mod] = await importHexKey(rawKeys[mod]);
-    } else {
-      keys[mod] = masterKey;
-    }
-  }
-  return keys;
-}
-
-// The AuthApi interface (src/api/types.ts) does not declare forceUpdateKeychain, but both
-// tauriAuthApi (src/api/tauri/auth.ts) quanto webAuthApi (src/api/web/auth.ts) o implementam.
+// The AuthApi interface (src/api/types.ts) does not declare forceUpdateKeychain,
+// but both tauriAuthApi and webAuthApi implement it.
 type AuthApiWithKeychain = typeof window.api.auth & {
   forceUpdateKeychain?: (password: string, keys: Record<string, string>) => Promise<{ success: boolean; error?: string }>;
 };
@@ -41,46 +35,13 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
-  const [lockoutTime, setLockoutTime] = useState<number>(0);
-  const [intimidatingPhrase, setIntimidatingPhrase] = useState('');
   const { dispatch } = useStore();
 
   // If status is unencrypted, we are setting up a master password and migrating.
   // If status is new, we are just creating it.
   // If status is encrypted, we are logging in.
   const isSetup = status === 'new' || status === 'unencrypted';
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    let localLock: { failedAttempts: number, lastFailedAt: number } | null = null;
-
-    const initLock = async () => {
-      if (isSetup) return;
-      localLock = await getSecurityLock();
-      updateLockout();
-    };
-
-    const updateLockout = () => {
-      if (!localLock) return;
-      if (localLock.failedAttempts > 0 && localLock.failedAttempts % 3 === 0) {
-        const remaining = 15 - Math.floor((Date.now() - localLock.lastFailedAt) / 1000);
-        if (remaining > 0) {
-          setLockoutTime(remaining);
-          if (!intimidatingPhrase) {
-            setIntimidatingPhrase(getRandomIntimidatingPhrase());
-          }
-        } else {
-          setLockoutTime(0);
-        }
-      } else {
-        setLockoutTime(0);
-      }
-    };
-
-    initLock();
-    interval = setInterval(updateLockout, 1000);
-    return () => clearInterval(interval);
-  }, [isSetup, intimidatingPhrase]);
+  const { lockoutTime, intimidatingPhrase, triggerImmediateLockout } = useAuthLockout(isSetup);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +93,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
            let pulled = null;
            try {
              pulled = await pullModularKeysFromCloud(masterKey);
-           } catch (e: any) {
+           } catch (e: unknown) {
              if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou (Timeout). App Web bloqueado.");
            }
            if (pulled) {
@@ -151,7 +112,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           } else {
              try {
                rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
-             } catch (e: any) {
+             } catch (e: unknown) {
                if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
                rawKeys = existingKeysToUse;
              }
@@ -195,7 +156,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           let cloudKeys = null;
           try {
             cloudKeys = await pullModularKeysFromCloud(masterKey);
-          } catch (e: any) {
+          } catch (e: unknown) {
             if (platform.platform === 'web') {
               throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.");
             }
@@ -210,7 +171,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           } else if (!rawKeys) {
              try {
                rawKeys = await pullModularKeysFromCloud(masterKey);
-             } catch (e: any) {
+             } catch (e: unknown) {
                if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
              }
           }
@@ -231,16 +192,16 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         } else {
           const newLock = await recordFailedAttempt();
           if (newLock.failedAttempts > 0 && newLock.failedAttempts % 3 === 0) {
-            setLockoutTime(15);
-            setIntimidatingPhrase(getRandomIntimidatingPhrase());
+            triggerImmediateLockout(15);
             triggerError('Acesso bloqueado por tentativas excessivas');
           } else {
             triggerError(res.error || `Senha incorreta. (${newLock.failedAttempts % 3}/3)`);
           }
         }
       }
-    } catch (err: any) {
-      triggerError(err.message || 'Erro ao processar');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao processar';
+      triggerError(message);
     } finally {
       setLoading(false);
     }

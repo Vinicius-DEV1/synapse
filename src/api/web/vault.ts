@@ -5,10 +5,9 @@ import type {
   VaultGroup,
   VaultItem,
   VaultPasswordHistoryEntry,
-  PasswordGenOptions,
-  BreachCheckResult,
 } from '../../types/vault';
 import type { IVaultApi } from '../tauri/vault';
+import { generatePassword, checkBreach, checkStrength } from './vault-security';
 
 let activeVaultKey: string | undefined = undefined;
 
@@ -229,133 +228,9 @@ export const webVaultApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
       return result;
     },
 
-    generatePassword: async (opts: PasswordGenOptions): Promise<string> => {
-      const length = opts?.length || 16;
-      const useUppercase = opts?.uppercase !== false;
-      const useLowercase = opts?.lowercase !== false;
-      const useNumbers = opts?.numbers !== false;
-      const useSymbols = opts?.symbols !== false;
-
-      let charset = '';
-      const requiredChars: string[] = [];
-
-      const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const LOWER = 'abcdefghijklmnopqrstuvwxyz';
-      const NUMBERS = '0123456789';
-      const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-      if (useUppercase) { charset += UPPER; requiredChars.push(UPPER); }
-      if (useLowercase) { charset += LOWER; requiredChars.push(LOWER); }
-      if (useNumbers) { charset += NUMBERS; requiredChars.push(NUMBERS); }
-      if (useSymbols) { charset += SYMBOLS; requiredChars.push(SYMBOLS); }
-
-      if (!charset) charset = LOWER + UPPER + NUMBERS;
-
-      // Cryptographically secure, unbiased integer generation via rejection sampling
-      const getSecureRandom = (max: number): number => {
-        if (max <= 0) return 0;
-        const limit = Math.floor(0x100000000 / max) * max;
-        const array = new Uint32Array(1);
-        let val: number;
-        do {
-          crypto.getRandomValues(array);
-          val = array[0];
-        } while (val >= limit);
-        return val % max;
-      };
-
-      // Generate the password
-      const chars: string[] = [];
-
-      // Ensure at least one character from each required set
-      for (const reqSet of requiredChars) {
-        chars.push(reqSet[getSecureRandom(reqSet.length)]);
-      }
-
-      // Fill remaining length
-      while (chars.length < length) {
-        chars.push(charset[getSecureRandom(charset.length)]);
-      }
-
-      // Shuffle using Fisher-Yates with secure random
-      for (let i = chars.length - 1; i > 0; i--) {
-        const j = getSecureRandom(i + 1);
-        const temp = chars[i];
-        chars[i] = chars[j];
-        chars[j] = temp;
-      }
-
-      return chars.join('');
-    },
-
-    checkBreach: async (password: string): Promise<BreachCheckResult> => {
-      try {
-        // Use Have I Been Pwned k-Anonymity API (only sends first 5 chars of SHA-1 hash)
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-
-        const prefix = hashHex.substring(0, 5);
-        const suffix = hashHex.substring(5);
-
-        const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-          headers: { 'Add-Padding': 'true' }
-        });
-
-        if (!response.ok) {
-          return { breached: false, count: 0 };
-        }
-
-        const text = await response.text();
-        const lines = text.split('\n');
-
-        for (const line of lines) {
-          const [hashSuffix, countStr] = line.trim().split(':');
-          if (hashSuffix === suffix) {
-            const count = parseInt(countStr, 10);
-            return { breached: count > 0, count };
-          }
-        }
-
-        return { breached: false, count: 0 };
-      } catch (e) {
-        console.error('[Vault] Error checking HIBP breach:', e);
-        // Return safe default on network error — don't falsely alarm the user
-        return { breached: false, count: 0 };
-      }
-    },
-
-    checkStrength: async (password: string): Promise<number> => {
-      if (!password) return 0;
-
-      let score = 0;
-      if (password.length >= 8) score++;
-      if (password.length >= 12) score++;
-      if (password.length >= 16) score++;
-      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-      if (/\d/.test(password)) score++;
-      if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-      // Common patterns penalty
-      const commonPatterns = [
-        /^[a-z]+$/i, // only letters
-        /^[0-9]+$/, // only numbers
-      ];
-      let penalties = 0;
-      for (const pattern of commonPatterns) {
-        if (pattern.test(password)) penalties++;
-      }
-      score = Math.max(0, score - penalties);
-
-      // Map to 0-4 scale
-      if (score <= 1) return 0; // Very Weak
-      if (score <= 2) return 1; // Weak
-      if (score <= 3) return 2; // Fair
-      if (score <= 4) return 3; // Strong
-      return 4; // Very Strong
-    }
+    generatePassword,
+    checkBreach,
+    checkStrength,
   };
 
   return api;
