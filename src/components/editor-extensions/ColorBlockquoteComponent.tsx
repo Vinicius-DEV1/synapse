@@ -112,13 +112,15 @@ export default function ColorBlockquoteComponent(props: NodeViewProps) {
         contentEditable={false}
       >
         <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
-          <button
-            onClick={handleConvertToToggle}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Converter em Toggle"
-          >
-            <ListTree size={14} />
-          </button>
+          {props.editor?.isEditable && (
+            <button
+              onClick={handleConvertToToggle}
+              className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+              title="Converter em Toggle"
+            >
+              <ListTree size={14} />
+            </button>
+          )}
           <div className="relative">
             <button
               onClick={handleCopy}
@@ -133,39 +135,43 @@ export default function ColorBlockquoteComponent(props: NodeViewProps) {
               </div>
             )}
           </div>
-          <button
-            ref={aiModal.aiButtonRef}
-            onClick={aiModal.handleOpenAi}
-            className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
-            title="Assistente de IA"
-          >
-            <Sparkles size={14} />
-          </button>
-          <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
-          <button
-            onClick={() => {
-              setShowConfirm(false);
-              setShowColors(!showColors);
-            }}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Cor do Destaque"
-          >
-            <Palette size={14} />
-          </button>
-          <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
-          <button
-            onClick={() => {
-              setShowColors(false);
-              setShowConfirm(!showConfirm);
-            }}
-            className={`p-1 rounded-md transition-all ${showConfirm ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:bg-red-500/20 hover:text-red-400'}`}
-            title="Excluir Destaque"
-          >
-            <X size={14} />
-          </button>
+          {props.editor?.isEditable && (
+            <>
+              <button
+                ref={aiModal.aiButtonRef}
+                onClick={aiModal.handleOpenAi}
+                className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+                title="Assistente de IA"
+              >
+                <Sparkles size={14} />
+              </button>
+              <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
+              <button
+                onClick={() => {
+                  setShowConfirm(false);
+                  setShowColors(!showColors);
+                }}
+                className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+                title="Cor do Destaque"
+              >
+                <Palette size={14} />
+              </button>
+              <div className="w-[1px] h-3 bg-white/10 mx-0.5"></div>
+              <button
+                onClick={() => {
+                  setShowColors(false);
+                  setShowConfirm(!showConfirm);
+                }}
+                className={`p-1 rounded-md transition-all ${showConfirm ? 'bg-red-500/20 text-red-400' : 'text-dark-subtext hover:bg-red-500/20 hover:text-red-400'}`}
+                title="Excluir Destaque"
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
         </div>
         
-        {showConfirm && (
+        {props.editor?.isEditable && showConfirm && (
           <div ref={confirmRef} className="absolute top-full right-0 mt-1 bg-dark-card border border-red-500/30 rounded-xl p-3 shadow-xl z-50 w-64 animate-fade-in">
             <p className="text-xs text-dark-text mb-3">Deseja apagar este destaque e todo o conteúdo dentro dele?</p>
             <div className="flex items-center justify-end gap-2">
@@ -185,7 +191,7 @@ export default function ColorBlockquoteComponent(props: NodeViewProps) {
           </div>
         )}
 
-        {showColors && (
+        {props.editor?.isEditable && showColors && (
           <div ref={colorMenuRef} 
                className="absolute top-full right-0 mt-1 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50 w-max"
                onMouseDown={(e) => {

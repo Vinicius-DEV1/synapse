@@ -59,22 +59,69 @@ const FocusStateContext = createContext<FocusStateContextType | null>(null);
 const FocusActionsContext = createContext<FocusActionsContextType | null>(null);
 const FocusContext = createContext<FocusContextType | null>(null);
 
+const defaultFocusState: FocusStateContextType = {
+  view: 'dashboard',
+  sessions: [],
+  alarms: [],
+  currentSession: null,
+  resumeMinutes: undefined,
+  triggeredAlarm: null,
+  showAlarmSetup: false,
+  toastMessage: null,
+  timeLeft: 0,
+  isPaused: false,
+  lofis: [],
+  activeLofi: null,
+  isPlayingLofi: false,
+  lofiVolume: 0.5,
+};
+
+const defaultFocusActions: FocusActionsContextType = {
+  setView: () => {},
+  setCurrentSession: () => {},
+  setTriggeredAlarm: () => {},
+  setShowAlarmSetup: () => {},
+  setIsPaused: () => {},
+  setActiveLofi: () => {},
+  setIsPlayingLofi: () => {},
+  setLofiVolume: () => {},
+  loadLofis: async () => {},
+  loadData: async () => {},
+  showToast: () => {},
+  handleStartSetup: () => {},
+  handleStartTimer: () => {},
+  handleAddTimeFromSuccess: () => {},
+  handleAddTotalTime: () => {},
+  handleDeleteSession: async () => {},
+  handleSaveAlarm: async () => {},
+  handleToggleAlarm: async () => {},
+  handleDeleteAlarm: async () => {},
+  handleTimerFinish: () => {},
+  handleTimerCancel: () => {},
+  handleSaveSuccess: async () => {},
+  handleSaveCancel: async () => {},
+  handleAbortSetup: () => {},
+  handleAddQuickTime: () => {},
+};
+
+const defaultFocusContext: FocusContextType = {
+  ...defaultFocusState,
+  ...defaultFocusActions,
+};
+
 export const useFocusState = (): FocusStateContextType => {
   const ctx = useContext(FocusStateContext);
-  if (!ctx) throw new Error('useFocusState must be used within FocusProvider');
-  return ctx;
+  return ctx || defaultFocusState;
 };
 
 export const useFocusActions = (): FocusActionsContextType => {
   const ctx = useContext(FocusActionsContext);
-  if (!ctx) throw new Error('useFocusActions must be used within FocusProvider');
-  return ctx;
+  return ctx || defaultFocusActions;
 };
 
 export const useFocusContext = (): FocusContextType => {
   const ctx = useContext(FocusContext);
-  if (!ctx) throw new Error('useFocusContext must be used within FocusProvider');
-  return ctx;
+  return ctx || defaultFocusContext;
 };
 
 export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

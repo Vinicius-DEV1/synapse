@@ -9,11 +9,26 @@ import { useBlockAiModal } from '../hooks/useBlockAiModal';
 import AiPromptModal from '../../modals/AiPromptModal';
 
 export const ToggleBlockComponent = (props: NodeViewProps) => {
-  const isOpen = props.node.attrs.isOpen;
+  const isEditable = props.editor?.isEditable ?? true;
+  const [localIsOpen, setLocalIsOpen] = useState<boolean>(props.node.attrs.isOpen ?? true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (props.node.attrs.isOpen !== undefined) {
+      setLocalIsOpen(props.node.attrs.isOpen);
+    }
+  }, [props.node.attrs.isOpen]);
+
+  const toggleOpen = () => {
+    const next = !localIsOpen;
+    setLocalIsOpen(next);
+    if (isEditable) {
+      props.updateAttributes({ isOpen: next });
+    }
+  };
 
   const aiModal = useBlockAiModal({
     editor: props.editor,
@@ -90,7 +105,7 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown' && isOpen) {
+    if (e.key === 'ArrowDown' && localIsOpen) {
       e.preventDefault();
       if (typeof props.getPos === 'function') {
         const pos = props.getPos();
@@ -140,136 +155,140 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
   return (
     <NodeViewWrapper className="toggle-wrapper toggle-block my-1 marker:text-dark-subtext block relative group/toggle">
       {/* Alça e controles de movimentação discretos — verticais, fora do conteúdo */}
-      <div
-        contentEditable={false}
-        className="absolute -left-7 top-0.5 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/toggle:opacity-100"
-      >
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof props.getPos === 'function' && props.editor) {
-              const pos = props.getPos();
-              if (typeof pos === 'number') moveBlockUp(props.editor.view, pos);
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Subir toggle (Mover para cima)"
+      {isEditable && (
+        <div
+          contentEditable={false}
+          className="absolute -left-7 top-0.5 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/toggle:opacity-100"
         >
-          <ArrowUp size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof props.getPos === 'function' && props.editor) {
-              const pos = props.getPos();
-              if (typeof pos === 'number') {
-                props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function' && props.editor) {
+                const pos = props.getPos();
+                if (typeof pos === 'number') moveBlockUp(props.editor.view, pos);
               }
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Adicionar linha abaixo (+)"
-        >
-          <Plus size={11} />
-        </button>
-        <div 
-          data-drag-handle
-          onMouseDown={handleDragHandleMouseDown}
-          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
-          title="Arrastar toggle"
-        >
-          <GripVertical size={13} />
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Subir toggle (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function' && props.editor) {
+                const pos = props.getPos();
+                if (typeof pos === 'number') {
+                  props.editor.chain().focus().insertContentAt(pos + props.node.nodeSize, { type: 'paragraph' }).run();
+                }
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Adicionar linha abaixo (+)"
+          >
+            <Plus size={11} />
+          </button>
+          <div 
+            data-drag-handle
+            onMouseDown={handleDragHandleMouseDown}
+            className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+            title="Arrastar toggle"
+          >
+            <GripVertical size={13} />
+          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof props.getPos === 'function' && props.editor) {
+                const pos = props.getPos();
+                if (typeof pos === 'number') moveBlockDown(props.editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Descer toggle (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
         </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof props.getPos === 'function' && props.editor) {
-              const pos = props.getPos();
-              if (typeof pos === 'number') moveBlockDown(props.editor.view, pos);
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Descer toggle (Mover para baixo)"
-        >
-          <ArrowDown size={11} />
-        </button>
-      </div>
+      )}
 
       {/* Barra de ações discretas no hover */}
-      <div
-        className="absolute top-0 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
-        contentEditable={false}
-      >
-        <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
-          <button
-            onClick={handleConvertToPage}
-            className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
-            title="Converter em Página"
-          >
-            <FileText size={14} />
-          </button>
-
-          <div className="relative">
+      {isEditable && (
+        <div
+          className="absolute top-0 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
+          contentEditable={false}
+        >
+          <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
             <button
-              onClick={handleCopy}
-              className={`p-1 rounded-md transition-all ${
-                copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'
-              }`}
-              title="Copiar lista oculta"
+              onClick={handleConvertToPage}
+              className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+              title="Converter em Página"
             >
-              <Copy size={14} />
+              <FileText size={14} />
             </button>
-            {copied && (
-              <div className="absolute bottom-full right-0 mb-1.5 px-2 py-0.5 bg-dark-bg border border-white/10 rounded-md text-[11px] text-white/70 whitespace-nowrap pointer-events-none shadow-lg">
-                Copiado!
-              </div>
-            )}
-          </div>
 
-          <button
-            ref={aiModal.aiButtonRef}
-            onClick={aiModal.handleOpenAi}
-            className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
-            title="Assistente de IA"
-          >
-            <Sparkles size={14} />
-          </button>
-
-          <div className="relative" ref={confirmRef}>
-            <button
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="p-1 rounded-md transition-all text-dark-subtext hover:bg-red-500/20 hover:text-red-400"
-              title="Excluir lista oculta"
-            >
-              <Trash2 size={14} />
-            </button>
-            {showConfirm && (
-              <div className="absolute top-full right-0 mt-1 bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px]">
-                <span className="text-xs text-white">Excluir lista oculta?</span>
-                <div className="flex gap-1 justify-end">
-                  <button
-                    onClick={() => setShowConfirm(false)}
-                    className="px-2 py-1 text-xs text-dark-subtext hover:text-white rounded hover:bg-white/5"
-                  >
-                    Não
-                  </button>
-                  <button
-                    onClick={() => props.deleteNode()}
-                    className="px-2 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded"
-                  >
-                    Sim
-                  </button>
+            <div className="relative">
+              <button
+                onClick={handleCopy}
+                className={`p-1 rounded-md transition-all ${
+                  copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'
+                }`}
+                title="Copiar lista oculta"
+              >
+                <Copy size={14} />
+              </button>
+              {copied && (
+                <div className="absolute bottom-full right-0 mb-1.5 px-2 py-0.5 bg-dark-bg border border-white/10 rounded-md text-[11px] text-white/70 whitespace-nowrap pointer-events-none shadow-lg">
+                  Copiado!
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            <button
+              ref={aiModal.aiButtonRef}
+              onClick={aiModal.handleOpenAi}
+              className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+              title="Assistente de IA"
+            >
+              <Sparkles size={14} />
+            </button>
+
+            <div className="relative" ref={confirmRef}>
+              <button
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="p-1 rounded-md transition-all text-dark-subtext hover:bg-red-500/20 hover:text-red-400"
+                title="Excluir lista oculta"
+              >
+                <Trash2 size={14} />
+              </button>
+              {showConfirm && (
+                <div className="absolute top-full right-0 mt-1 bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px]">
+                  <span className="text-xs text-white">Excluir lista oculta?</span>
+                  <div className="flex gap-1 justify-end">
+                    <button
+                      onClick={() => setShowConfirm(false)}
+                      className="px-2 py-1 text-xs text-dark-subtext hover:text-white rounded hover:bg-white/5"
+                    >
+                      Não
+                    </button>
+                    <button
+                      onClick={() => props.deleteNode()}
+                      className="px-2 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded"
+                    >
+                      Sim
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {aiModal.isOpen && aiModal.anchorPos && (
+      {isEditable && aiModal.isOpen && aiModal.anchorPos && (
         <AiPromptModal
           x={aiModal.anchorPos.x}
           y={aiModal.anchorPos.y}
@@ -291,27 +310,39 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
       )}
 
       <div 
-        className="flex items-center gap-1 cursor-pointer outline-none font-medium pr-16"
+        className="flex items-center gap-1 cursor-pointer outline-none font-medium pr-4 select-none"
         contentEditable={false}
+        onClick={toggleOpen}
       >
         <button 
-          onClick={() => props.updateAttributes({ isOpen: !isOpen })}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleOpen();
+          }}
           className="p-1 hover:bg-white/10 rounded transition-colors text-dark-subtext"
         >
-          {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          {localIsOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
-        <input 
-          ref={titleInputRef} 
-          type="text"
-          value={props.node.attrs.title}
-          onChange={handleTitleChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Tópico..."
-          className="bg-transparent outline-none flex-1 text-dark-text placeholder-white/30"
-        />
+        {isEditable ? (
+          <input 
+            ref={titleInputRef} 
+            type="text"
+            value={props.node.attrs.title}
+            onClick={(e) => e.stopPropagation()}
+            onChange={handleTitleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Tópico..."
+            className="bg-transparent outline-none flex-1 text-dark-text placeholder-white/30"
+          />
+        ) : (
+          <span className="flex-1 text-dark-text font-medium">
+            {props.node.attrs.title || 'Tópico'}
+          </span>
+        )}
       </div>
       
-      <div className={isOpen ? 'block' : 'hidden'}>
+      <div className={localIsOpen ? 'block' : 'hidden'}>
         <div className="h-px bg-white/5 my-1 ml-7 mr-2"></div>
         <div className="toggle-content pl-6 text-dark-subtext border-l-2 border-white/5 ml-2">
           <NodeViewContent />

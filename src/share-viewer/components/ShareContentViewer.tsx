@@ -1,17 +1,22 @@
 /**
  * @file ShareContentViewer.tsx
- * @description Standalone full-canvas viewer and live collaboration editor for shared pages.
- * Zero distraction, zero sidebar, zero tabs — pure typography and live cursors with animal personas.
+ * @description Standalone full-canvas rich viewer and live collaboration editor for shared pages.
+ * Renders complete ProseMirror/TipTap rich content identical to Caderno desktop:
+ * collapsible toggles, callouts, widgets, code blocks, tables, highlights, and live cursors.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import DOMPurify from 'dompurify';
+import React, { useState, useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { Users, Lock, Sparkles, Check } from 'lucide-react';
 import type {
   SharedPageConfig,
+  SharedPagePayload,
   VisitorPersona,
   SharePresenceState,
 } from '../../types/sharing';
+import { decryptFromShare } from '../../services/sharing/share-crypto';
 import {
   broadcastCollabUpdate,
   listenToCollabUpdates,
@@ -19,6 +24,7 @@ import {
   listenToPresence,
   removePresence,
 } from '../../services/sharing/share-collab';
+import { useEditorExtensions } from '../../components/editor/hooks/useEditorExtensions';
 
 interface ShareContentViewerProps {
   config: SharedPageConfig;
@@ -35,14 +41,75 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
   myDeviceId,
   myPersona,
 }) => {
-  const [content, setContent] = useState(initialContent);
   const [peers, setPeers] = useState<SharePresenceState[]>([]);
   const [isSaved, setIsSaved] = useState(true);
-  const editorRef = useRef<HTMLDivElement>(null);
+
+  const isEditable = config.permission === 'editable';
+  const extensions = useEditorExtensions(null);
+
+  const editor = useEditor({
+    extensions,
+    content: initialContent,
+    editable: isEditable,
+    editorProps: {
+      attributes: {
+        class: 'editor-content min-h-[50vh] leading-relaxed text-dark-text/90 focus:outline-none text-base',
+        spellcheck: 'false',
+      },
+      handleClick: (_view, _pos, event) => {
+        const targetElement = event.target as HTMLElement;
+        const spoiler = targetElement.closest('.caderno-spoiler, [data-type="spoiler"]');
+        if (spoiler) {
+          if (event.altKey) {
+            spoiler.classList.toggle('is-revealed');
+            return true;
+          } else if (!spoiler.classList.contains('is-revealed')) {
+            spoiler.classList.add('is-revealed');
+            return true;
+          }
+        }
+        const link = targetElement.closest('a');
+        if (link && link.href) {
+          const href = link.href.trim();
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+            window.open(href, '_blank', 'noopener,noreferrer');
+            return true;
+          }
+        }
+        return false;
+      },
+    },
+    onCreate: ({ editor: currentEditor }) => {
+      if (initialContent && typeof initialContent === 'string' && initialContent.trim().length > 0) {
+        try {
+          if (currentEditor.isEmpty) {
+            currentEditor.commands.setContent(initialContent, { emitUpdate: false });
+          }
+        } catch (err) {
+          console.error('[ShareContentViewer] Error setting initial content in onCreate:', err);
+        }
+      }
+    },
+    onUpdate: ({ editor: currentEditor }) => {
+      if (!isEditable) return;
+      setIsSaved(false);
+      const newHtml = currentEditor.getHTML();
+      const bytes = new TextEncoder().encode(newHtml);
+      broadcastCollabUpdate(config.id, myDeviceId, bytes, shareKey)
+        .then(() => setIsSaved(true))
+        .catch(() => {});
+    },
+  });
+
+  // Ensure content gets set if editor was created before initialContent was ready
+  useEffect(() => {
+    if (editor && !editor.isDestroyed && initialContent && editor.isEmpty) {
+      editor.commands.setContent(initialContent, { emitUpdate: false });
+    }
+  }, [editor, initialContent]);
 
   // ─── Presence & Cursors ───────────────────────────────────────────────────
   useEffect(() => {
-    // Initial presence broadcast
     broadcastPresence(config.id, {
       deviceId: myDeviceId,
       persona: myPersona,
@@ -50,7 +117,6 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       lastActive: Date.now(),
     });
 
-    // Heartbeat every 15 seconds
     const interval = setInterval(() => {
       broadcastPresence(config.id, {
         deviceId: myDeviceId,
@@ -60,7 +126,6 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       });
     }, 15_000);
 
-    // Listen to other peers
     const unsubscribe = listenToPresence(config.id, myDeviceId, (activePeers) => {
       setPeers(activePeers);
     });
@@ -74,7 +139,7 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
 
   // ─── Real-time Collab Updates (if editable) ──────────────────────────────
   useEffect(() => {
-    if (config.permission !== 'editable') return;
+    if (!isEditable) return;
 
     const unsubscribe = listenToCollabUpdates(
       config.id,
@@ -83,13 +148,8 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       (incomingBytes) => {
         try {
           const text = new TextDecoder().decode(incomingBytes);
-          const sanitized = DOMPurify.sanitize(text, {
-            ADD_TAGS: ['iframe'],
-            ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling'],
-          });
-          setContent(sanitized);
-          if (editorRef.current && editorRef.current.innerHTML !== sanitized) {
-            editorRef.current.innerHTML = sanitized;
+          if (text && editor && !editor.isDestroyed && editor.getHTML() !== text) {
+            editor.commands.setContent(text, { emitUpdate: false });
           }
         } catch {
           // Ignore parse errors
@@ -98,27 +158,34 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
     );
 
     return () => unsubscribe();
-  }, [config.id, config.permission, myDeviceId, shareKey]);
+  }, [config.id, isEditable, myDeviceId, shareKey, editor]);
 
-  // Handle local text edits
-  const handleContentInput = () => {
-    if (!editorRef.current || config.permission !== 'editable') return;
-    const newHtml = editorRef.current.innerHTML;
-    setContent(newHtml);
-    setIsSaved(false);
+  // ─── Listen to Owner Updates to Shared Page Content ───────────────────────
+  useEffect(() => {
+    const contentRef = doc(db, 'shared_page_content', config.id);
+    const unsubscribe = onSnapshot(
+      contentRef,
+      async (snap) => {
+        if (!snap.exists()) return;
+        const payload = snap.data() as SharedPagePayload;
+        if (payload?.encryptedContent) {
+          try {
+            const decrypted = await decryptFromShare(payload.encryptedContent, shareKey);
+            if (decrypted && editor && !editor.isDestroyed && editor.getHTML() !== decrypted) {
+              editor.commands.setContent(decrypted, { emitUpdate: false });
+            }
+          } catch (err) {
+            console.debug('[ShareContentViewer] Error decrypting remote content update:', err);
+          }
+        }
+      },
+      (err) => {
+        console.warn('[ShareContentViewer] Error listening to remote shared_page_content:', err);
+      }
+    );
 
-    // Broadcast encrypted update
-    const bytes = new TextEncoder().encode(newHtml);
-    broadcastCollabUpdate(config.id, myDeviceId, bytes, shareKey)
-      .then(() => setIsSaved(true))
-      .catch(() => {});
-  };
-
-  // Sanitized content for read-only mode
-  const sanitizedHtml = DOMPurify.sanitize(content, {
-    ADD_TAGS: ['iframe'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling'],
-  });
+    return () => unsubscribe();
+  }, [config.id, editor, shareKey]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500/30">
@@ -126,7 +193,7 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-white/[0.06] px-6 py-3.5 flex items-center justify-between">
         {/* Left: Brand + Page Title */}
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-2xl">{config.icon || '📄'}</span>
+          <span className="text-2xl select-none">{config.icon || '📄'}</span>
           <div className="min-w-0">
             <h1 className="text-sm font-semibold text-white truncate max-w-sm sm:max-w-md">
               {config.title || 'Sem Título'}
@@ -179,7 +246,7 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
           </div>
 
           {/* Editable Mode Status */}
-          {config.permission === 'editable' && (
+          {isEditable && (
             <div className="flex items-center gap-1.5 text-xs text-zinc-400">
               {isSaved ? (
                 <span className="flex items-center gap-1 text-emerald-400 text-[11px]">
@@ -198,28 +265,16 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-12 md:py-16">
         {/* Title display */}
         <div className="mb-8">
-          <div className="text-5xl mb-4">{config.icon || '📄'}</div>
+          <div className="text-5xl mb-4 select-none">{config.icon || '📄'}</div>
           <h1 className="text-3xl sm:text-4xl font-bold text-zinc-100 tracking-tight leading-tight">
             {config.title || 'Sem Título'}
           </h1>
         </div>
 
-        {/* Document Content */}
-        {config.permission === 'editable' ? (
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={handleContentInput}
-            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-            className="prose prose-invert max-w-none focus:outline-none min-h-[60vh] text-zinc-200 leading-relaxed text-base editor-prose"
-          />
-        ) : (
-          <article
-            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-            className="prose prose-invert max-w-none text-zinc-200 leading-relaxed text-base editor-prose"
-          />
-        )}
+        {/* TipTap Document Content */}
+        <div className="editor-container relative z-0">
+          <EditorContent editor={editor} />
+        </div>
       </main>
 
       {/* Discreet Zen Footer */}

@@ -119,7 +119,7 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
       TaskList, TaskItem.configure({ nested: true }),
-      Collaboration.configure({ document: ydoc || new Y.Doc() }),
+      ...(ydoc ? [Collaboration.configure({ document: ydoc })] : []),
       CollectionBlock,
       QuestionBlock,
       ToggleBlock,

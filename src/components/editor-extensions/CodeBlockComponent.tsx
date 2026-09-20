@@ -118,67 +118,70 @@ export default function CodeBlockComponent(props: NodeViewProps) {
   };
 
   const languages = extension.options.lowlight?.listLanguages?.().sort() || [];
+  const isEditable = editor?.isEditable !== false;
 
   return (
     <NodeViewWrapper className="code-block-wrapper relative group/code my-4">
       {/* Alça e controles verticais no gutter esquerdo */}
-      <div
-        contentEditable={false}
-        className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/code:opacity-100"
-      >
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof getPos === 'function' && editor) {
-              const pos = getPos();
-              if (typeof pos === 'number') moveBlockUp(editor.view, pos);
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Subir bloco de código (Mover para cima)"
-        >
-          <ArrowUp size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof getPos === 'function' && editor) {
-              const pos = getPos();
-              if (typeof pos === 'number') {
-                editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
-              }
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Adicionar linha abaixo (+)"
-        >
-          <Plus size={11} />
-        </button>
+      {isEditable && (
         <div
-          data-drag-handle
-          onMouseDown={handleDragMouseDown}
-          className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
-          title="Arrastar bloco de código"
+          contentEditable={false}
+          className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/code:opacity-100"
         >
-          <GripVertical size={13} />
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof getPos === 'function' && editor) {
+                const pos = getPos();
+                if (typeof pos === 'number') moveBlockUp(editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Subir bloco de código (Mover para cima)"
+          >
+            <ArrowUp size={11} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof getPos === 'function' && editor) {
+                const pos = getPos();
+                if (typeof pos === 'number') {
+                  editor.chain().focus().insertContentAt(pos + node.nodeSize, { type: 'paragraph' }).run();
+                }
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Adicionar linha abaixo (+)"
+          >
+            <Plus size={11} />
+          </button>
+          <div
+            data-drag-handle
+            onMouseDown={handleDragMouseDown}
+            className="p-0.5 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+            title="Arrastar bloco de código"
+          >
+            <GripVertical size={13} />
+          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof getPos === 'function' && editor) {
+                const pos = getPos();
+                if (typeof pos === 'number') moveBlockDown(editor.view, pos);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
+            title="Descer bloco de código (Mover para baixo)"
+          >
+            <ArrowDown size={11} />
+          </button>
         </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof getPos === 'function' && editor) {
-              const pos = getPos();
-              if (typeof pos === 'number') moveBlockDown(editor.view, pos);
-            }
-          }}
-          className="p-1 rounded hover:bg-white/10 hover:text-white transition-colors"
-          title="Descer bloco de código (Mover para baixo)"
-        >
-          <ArrowDown size={11} />
-        </button>
-      </div>
+      )}
 
       {/* Card da Janela de Código */}
       <div className="rounded-xl border border-white/10 bg-[#0d1117] shadow-xl overflow-hidden transition-all group-hover/code:border-white/20">
@@ -199,86 +202,90 @@ export default function CodeBlockComponent(props: NodeViewProps) {
 
             <div className="flex items-center gap-1.5">
               <Code2 size={13} className="text-brand-400 opacity-80" />
-              <div className="relative inline-flex items-center">
-                <select
-                  value={defaultLanguage || 'auto'}
-                  onChange={(event) => {
-                    const val = event.target.value;
-                    updateAttributes({ language: val === 'auto' ? null : val });
-                  }}
-                  style={{ colorScheme: 'dark' }}
-                  className="appearance-none !bg-[#161b22] hover:!bg-[#1c2128] !text-zinc-200 text-[11px] font-medium border border-white/10 hover:border-white/20 rounded-md pl-2 pr-5 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
-                >
-                  <option className="!bg-[#161b22] !text-white" value="auto">
-                    Auto
-                  </option>
-                  <option className="!bg-[#161b22] !text-white/40" disabled>
-                    ──────────
-                  </option>
-                  {languages.map((lang: string) => (
-                    <option className="!bg-[#161b22] !text-white" key={lang} value={lang}>
-                      {lang}
+              {isEditable ? (
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={defaultLanguage || 'auto'}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      updateAttributes({ language: val === 'auto' ? null : val });
+                    }}
+                    style={{ colorScheme: 'dark' }}
+                    className="appearance-none !bg-[#161b22] hover:!bg-[#1c2128] !text-zinc-200 text-[11px] font-medium border border-white/10 hover:border-white/20 rounded-md pl-2 pr-5 py-0.5 outline-none cursor-pointer transition-colors focus:border-brand-500/50"
+                  >
+                    <option className="!bg-[#161b22] !text-white" value="auto">
+                      Auto
                     </option>
-                  ))}
-                </select>
-                <ChevronDown size={10} className="absolute right-1.5 pointer-events-none text-zinc-400" />
-              </div>
+                    <option className="!bg-[#161b22] !text-white/40" disabled>
+                      ──────────
+                    </option>
+                    {languages.map((lang: string) => (
+                      <option className="!bg-[#161b22] !text-white" key={lang} value={lang}>
+                        {lang}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-1.5 pointer-events-none text-zinc-400" />
+                </div>
+              ) : (
+                <span className="text-zinc-300 text-[11px] font-mono uppercase tracking-wider">
+                  {defaultLanguage || 'auto'}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Lado direito: Copiar e Excluir */}
+          {/* Lado direito: Copiar, IA, Excluir */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-dark-subtext hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border transition-all cursor-pointer ${
+                copied
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white'
+              }`}
               title="Copiar código"
             >
-              {copied ? (
-                <>
-                  <Check size={12} className="text-emerald-400" />
-                  <span className="text-emerald-400">Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={12} />
-                  <span>Copiar</span>
-                </>
-              )}
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              <span>{copied ? 'Copiado!' : 'Copiar'}</span>
             </button>
 
-            <button
-              ref={aiModal.aiButtonRef}
-              onClick={aiModal.handleOpenAi}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-brand-400 hover:text-brand-300 hover:bg-brand-500/20 border border-transparent hover:border-brand-500/30 transition-all cursor-pointer"
-              title="Assistente de IA"
-            >
-              <Sparkles size={12} />
-              <span>IA</span>
-            </button>
-
-            <div className="relative" ref={confirmRef}>
+            {isEditable && (
               <button
-                onClick={() => setShowConfirm(!showConfirm)}
-                className="p-1 rounded-md text-dark-subtext hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors cursor-pointer flex items-center justify-center"
-                title="Excluir bloco de código"
+                ref={aiModal.aiButtonRef}
+                onClick={aiModal.handleOpenAi}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-brand-400 hover:text-brand-300 hover:bg-brand-500/20 border border-transparent hover:border-brand-500/30 transition-all cursor-pointer"
+                title="Assistente de IA"
               >
-                <Trash2 size={12} />
+                <Sparkles size={12} />
+                <span>IA</span>
               </button>
+            )}
 
-              {showConfirm && (
-                <Portal>
-                  <div
-                    ref={(node) => {
-                      refs.setFloating(node);
-                      (floatingConfirmRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-                    }}
-                    style={{
-                      ...floatingStyles,
-                      zIndex: 9999,
-                      visibility: isPositioned ? 'visible' : 'hidden',
-                      opacity: isPositioned ? 1 : 0,
-                      pointerEvents: isPositioned ? 'auto' : 'none',
-                    }}
+            {isEditable && (
+              <div className="relative" ref={confirmRef}>
+                <button
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="p-1 rounded-md text-dark-subtext hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors cursor-pointer flex items-center justify-center"
+                  title="Excluir bloco de código"
+                >
+                  <Trash2 size={12} />
+                </button>
+
+                {showConfirm && (
+                  <Portal>
+                    <div
+                      ref={(node) => {
+                        refs.setFloating(node);
+                        (floatingConfirmRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+                      }}
+                      style={{
+                        ...floatingStyles,
+                        zIndex: 9999,
+                        visibility: isPositioned ? 'visible' : 'hidden',
+                        opacity: isPositioned ? 1 : 0,
+                        pointerEvents: isPositioned ? 'auto' : 'none',
+                      }}
                     className={`fixed bg-dark-bg border border-white/10 rounded-lg p-2 shadow-xl z-50 flex flex-col gap-2 min-w-[140px] ${
                       isPositioned ? 'animate-in fade-in zoom-in-95' : ''
                     }`}
@@ -306,8 +313,9 @@ export default function CodeBlockComponent(props: NodeViewProps) {
                 </Portal>
               )}
             </div>
-          </div>
+          )}
         </div>
+      </div>
 
         {aiModal.isOpen && aiModal.anchorPos && (
           <AiPromptModal
