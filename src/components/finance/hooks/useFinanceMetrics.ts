@@ -25,8 +25,8 @@ export function useFinanceMetrics({
   selectedAccountId,
 }: UseFinanceMetricsProps): FinanceMetricsResult {
   return useMemo(() => {
-    let inc = 0;
-    let exp = 0;
+    let incCents = 0;
+    let expCents = 0;
 
     const filtered = selectedAccountId === 'all'
       ? transactions
@@ -35,42 +35,47 @@ export function useFinanceMetrics({
         );
 
     for (const t of filtered) {
-      const amount = Number(t.amount || 0);
+      const amountCents = Math.round(Number(t.amount || 0) * 100);
       const accId = t.account_id || 'default-wallet';
 
       if (t.type === 'income') {
         if (selectedAccountId === 'all' || accId === selectedAccountId) {
-          inc += amount;
+          incCents += amountCents;
         }
       } else if (t.type === 'expense') {
         if (selectedAccountId === 'all' || accId === selectedAccountId) {
-          exp += amount;
+          expCents += amountCents;
         }
       } else if (t.type === 'transfer' && selectedAccountId !== 'all') {
         if (t.destination_account_id === selectedAccountId) {
-          inc += amount;
+          incCents += amountCents;
         }
         if (accId === selectedAccountId) {
-          exp += amount;
+          expCents += amountCents;
         }
       }
     }
 
-    let calculatedBalance = 0;
+    let calculatedBalanceCents = 0;
     if (selectedAccountId === 'all') {
-      calculatedBalance = accounts.reduce((sum, acc) => sum + calculateAccountBalance(acc, transactions), 0);
+      calculatedBalanceCents = accounts.reduce(
+        (sum, acc) => sum + Math.round(calculateAccountBalance(acc, transactions) * 100),
+        0
+      );
     } else {
       const targetAcc = accounts.find(a => a.id === selectedAccountId);
-      calculatedBalance = targetAcc ? calculateAccountBalance(targetAcc, transactions) : (inc - exp);
+      calculatedBalanceCents = targetAcc
+        ? Math.round(calculateAccountBalance(targetAcc, transactions) * 100)
+        : (incCents - expCents);
     }
 
     const loans = transactions.filter((t) => t.type === 'loan_made' || t.type === 'loan_taken');
     const regulars = transactions.filter((t) => t.type === 'income' || t.type === 'expense' || t.type === 'transfer');
 
     return {
-      totalIncome: Math.round(inc * 100) / 100,
-      totalExpense: Math.round(exp * 100) / 100,
-      balance: Math.round(calculatedBalance * 100) / 100,
+      totalIncome: incCents / 100,
+      totalExpense: expCents / 100,
+      balance: calculatedBalanceCents / 100,
       loansList: loans,
       regularTransactions: regulars,
     };

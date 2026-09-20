@@ -8,33 +8,36 @@ interface LoanSummaryCardsProps {
 
 export const LoanSummaryCards = React.memo(({ loans }: LoanSummaryCardsProps) => {
   const { toReceive, toPay, netBalance, activeCount, completedCount } = React.useMemo(() => {
-    let rec = 0;
-    let pay = 0;
+    let recCents = 0;
+    let payCents = 0;
     let active = 0;
     let completed = 0;
 
     for (const loan of loans) {
-      const total = Number(loan.expected_amount || loan.amount || 0);
-      const paid = Number(loan.paid_amount || 0);
-      const isPaid = Boolean(loan.is_paid) || (total > 0 && paid >= total - 0.001);
-      const pending = Math.max(0, total - paid);
+      const totalCents = Math.round(Number(loan.expected_amount || loan.amount || 0) * 100);
+      const paidCents = Math.round(Number(loan.paid_amount || 0) * 100);
+      const isPaid = Boolean(loan.is_paid) || (totalCents > 0 && paidCents >= totalCents);
+      const pendingCents = Math.max(0, totalCents - paidCents);
 
       if (isPaid) {
         completed++;
       } else {
         active++;
         if (loan.type === 'loan_made') {
-          rec += pending;
+          recCents += pendingCents;
         } else if (loan.type === 'loan_taken') {
-          pay += pending;
+          payCents += pendingCents;
         }
       }
     }
 
+    const rec = recCents / 100;
+    const pay = payCents / 100;
+
     return {
       toReceive: rec,
       toPay: pay,
-      netBalance: rec - pay,
+      netBalance: (recCents - payCents) / 100,
       activeCount: active,
       completedCount: completed,
     };

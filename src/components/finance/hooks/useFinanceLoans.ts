@@ -21,10 +21,12 @@ export function useFinanceLoans({
   ) => {
     if (!window.api?.finance) return;
     try {
-      const targetTotal = Number(loan.expected_amount || loan.amount || 0);
-      const currentPaid = Number(loan.paid_amount || 0);
-      const newPaidAmount = Math.min(targetTotal, currentPaid + paymentAmount);
-      const isPaid = (targetTotal > 0 && newPaidAmount >= targetTotal - 0.001) ? 1 : 0;
+      const targetTotalCents = Math.round(Number(loan.expected_amount || loan.amount || 0) * 100);
+      const currentPaidCents = Math.round(Number(loan.paid_amount || 0) * 100);
+      const paymentAmountCents = Math.round(paymentAmount * 100);
+      const newPaidAmountCents = Math.min(targetTotalCents, currentPaidCents + paymentAmountCents);
+      const newPaidAmount = newPaidAmountCents / 100;
+      const isPaid = (targetTotalCents > 0 && newPaidAmountCents >= targetTotalCents) ? 1 : 0;
       const status = isPaid ? 'completed' : 'in_progress';
 
       // 1. Create linked cashflow transaction in target account FIRST
@@ -65,8 +67,10 @@ export function useFinanceLoans({
     if (!window.api?.finance) return;
     const tx = transactions.find(t => t.id === id);
     if (tx) {
-      const targetTotal = Number(tx.expected_amount || tx.amount || 0);
-      const pending = Math.max(0, targetTotal - Number(tx.paid_amount || 0));
+      const targetTotalCents = Math.round(Number(tx.expected_amount || tx.amount || 0) * 100);
+      const paidCents = Math.round(Number(tx.paid_amount || 0) * 100);
+      const pendingCents = Math.max(0, targetTotalCents - paidCents);
+      const pending = pendingCents / 100;
       const accId = targetAccountId || tx.account_id || 'default-wallet';
       if (pending > 0) {
         await payLoanWithAccount(tx, pending, accId);
