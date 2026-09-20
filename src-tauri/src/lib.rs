@@ -3,6 +3,7 @@ mod cmd_audio;
 pub mod cmd_audio_lofi;
 pub mod cmd_audio_lofi_drive;
 mod cmd_auth;
+pub mod cmd_auth_keys;
 mod cmd_backup;
 mod cmd_binaries;
 mod cmd_calendar;

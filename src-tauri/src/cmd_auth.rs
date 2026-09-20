@@ -1,16 +1,12 @@
+pub use crate::cmd_auth_keys::{AuthStatus, LoginResponse, UnlockedKeys};
+use crate::cmd_auth_keys::{resolve_unlocked_keys, KeychainRow};
 use crate::crypto::{
-    decrypt_module_key_with_key, derive_key_from_password,
-    encrypt_module_key, generate_module_key, hash_auth_password,
+    decrypt_module_key_with_key, derive_key_from_password, encrypt_module_key,
+    generate_module_key, hash_auth_password,
 };
 use crate::db::DbState;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::State;
-
-#[derive(Serialize, Deserialize)]
-pub struct AuthStatus {
-    pub status: String,
-}
 
 #[tauri::command]
 pub fn get_base_dir() -> Result<String, String> {
@@ -19,7 +15,7 @@ pub fn get_base_dir() -> Result<String, String> {
 
 #[tauri::command]
 pub fn auth_status(db_state: State<'_, DbState>) -> Result<AuthStatus, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = match &*guard {
         Some(c) => c,
         None => {
@@ -52,7 +48,7 @@ pub fn auth_wipe_local_data(
     db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<(), String> {
     {
-        let mut guard = db_state.conn.lock().unwrap();
+        let mut guard = db_state.lock_conn()?;
         *guard = None; // Drop SQLite connection
     }
 
@@ -77,86 +73,68 @@ pub fn auth_wipe_local_data(
     app.restart();
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct UnlockedKeys {
-    pub library: Option<String>,
-    pub finance: Option<String>,
-    pub notes: Option<String>,
-    pub culture: Option<String>,
-    pub anki: Option<String>,
-    pub focus: Option<String>,
-    pub files: Option<String>,
-    pub vault: Option<String>,
-    pub calendar: Option<String>,
-    pub practice: Option<String>,
-    pub core: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct LoginResponse {
-    pub success: bool,
-    pub error: Option<String>,
-    pub modules: Vec<String>,
-    pub keys: Option<UnlockedKeys>,
-}
-
 #[tauri::command]
 pub async fn auth_login(
     password: String,
     db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = match &*guard {
-        Some(c) => c,
-        None => {
-            return Ok(LoginResponse {
-                success: false,
-                error: Some("Banco não inicializado".into()),
-                modules: vec![],
-                keys: None,
+    // 1. Read keychain row in isolated block to drop conn mutex before decryption & keys acquisition
+    let keychain_row = {
+        let guard = db_state.lock_conn()?;
+        let conn = match &*guard {
+            Some(c) => c,
+            None => {
+                return Ok(LoginResponse {
+                    success: false,
+                    error: Some("Banco não inicializado".into()),
+                    modules: vec![],
+                    keys: None,
+                })
+            }
+        };
+
+        let mut stmt = conn.prepare("SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
+            .map_err(|e| e.to_string())?;
+
+        match stmt.query_row([], |row| {
+            Ok(KeychainRow {
+                auth_hash: row.get::<_, String>(0)?,
+                library_enc: row.get::<_, Option<String>>(1)?,
+                finance_enc: row.get::<_, Option<String>>(2)?,
+                notes_enc: row.get::<_, Option<String>>(3)?,
+                culture_enc: row.get::<_, Option<String>>(4)?,
+                anki_enc: row.get::<_, Option<String>>(5)?,
+                focus_enc: row.get::<_, Option<String>>(6)?,
+                files_enc: row.get::<_, Option<String>>(7).unwrap_or(None),
+                vault_enc: row.get::<_, Option<String>>(8).unwrap_or(None),
+                calendar_enc: row.get::<_, Option<String>>(9).unwrap_or(None),
+                practice_enc: row.get::<_, Option<String>>(10).unwrap_or(None),
+                core_enc: row.get::<_, Option<String>>(11).unwrap_or(None),
             })
+        }) {
+            Ok(r) => r,
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                return Ok(LoginResponse {
+                    success: false,
+                    error: Some("Senha incorreta".into()),
+                    modules: vec![],
+                    keys: None,
+                });
+            }
+            Err(e) => return Err(e.to_string()),
         }
-    };
+    }; // guard dropped here
 
     let auth_hash = hash_auth_password(&password);
-
     let modern_key = derive_key_from_password(&password);
-
-    let mut stmt = conn.prepare("SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
-        .map_err(|e| e.to_string())?;
-
-    let row_data = match stmt.query_row([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, Option<String>>(1)?,
-            row.get::<_, Option<String>>(2)?,
-            row.get::<_, Option<String>>(3)?,
-            row.get::<_, Option<String>>(4)?,
-            row.get::<_, Option<String>>(5)?,
-            row.get::<_, Option<String>>(6)?,
-            row.get::<_, Option<String>>(7).unwrap_or(None),
-            row.get::<_, Option<String>>(8).unwrap_or(None),
-            row.get::<_, Option<String>>(9).unwrap_or(None),
-            row.get::<_, Option<String>>(10).unwrap_or(None),
-            row.get::<_, Option<String>>(11).unwrap_or(None),
-        ))
-    }) {
-        Ok(r) => r,
-        Err(rusqlite::Error::QueryReturnedNoRows) => {
-            return Ok(LoginResponse {
-                success: false,
-                error: Some("Senha incorreta".into()),
-                modules: vec![],
-                keys: None,
-            });
-        }
-        Err(e) => return Err(e.to_string()),
-    };
 
     let mut is_valid = false;
 
     // Primary verification: Authenticated AES-256-GCM decryption check using 600,000-round PBKDF2 key
-    let test_enc = row_data.1.as_ref().or(row_data.3.as_ref());
+    let test_enc = keychain_row
+        .library_enc
+        .as_ref()
+        .or(keychain_row.notes_enc.as_ref());
     if let Some(enc) = test_enc {
         if decrypt_module_key_with_key(enc, &modern_key).is_ok() {
             is_valid = true;
@@ -164,7 +142,7 @@ pub async fn auth_login(
     }
 
     // Secondary fallback for legacy keychain records
-    if !is_valid && row_data.0 == auth_hash {
+    if !is_valid && keychain_row.auth_hash == auth_hash {
         is_valid = true;
     }
 
@@ -177,81 +155,11 @@ pub async fn auth_login(
         });
     }
 
-    // Select matching decryption key
-    let try_decrypt = |enc: &Option<String>| -> Option<String> {
-        if let Some(e) = enc {
-            if let Ok(dec) = decrypt_module_key_with_key(e, &modern_key) {
-                return Some(dec);
-            }
-        }
-        None
-    };
+    let (keys_to_return, modules) = resolve_unlocked_keys(&keychain_row, &modern_key);
 
-    let library = try_decrypt(&row_data.1);
-    let finance = try_decrypt(&row_data.2);
-    let notes = try_decrypt(&row_data.3);
-    
-    let calendar = try_decrypt(&row_data.9).or_else(|| notes.clone());
-    let practice = try_decrypt(&row_data.10).or_else(|| notes.clone());
-    let core = try_decrypt(&row_data.11).or_else(|| notes.clone());
-    let culture = try_decrypt(&row_data.4).or_else(|| notes.clone());
-    let anki = try_decrypt(&row_data.5).or_else(|| notes.clone());
-    let focus = try_decrypt(&row_data.6).or_else(|| notes.clone());
-    let files = try_decrypt(&row_data.7).or_else(|| notes.clone());
-    let vault = try_decrypt(&row_data.8).or_else(|| notes.clone());
-
-    let mut modules = Vec::new();
-    if library.is_some() {
-        modules.push("library".into());
-    }
-    if finance.is_some() {
-        modules.push("finance".into());
-    }
-    if notes.is_some() {
-        modules.push("notes".into());
-    }
-    if culture.is_some() {
-        modules.push("culture".into());
-    }
-    if anki.is_some() {
-        modules.push("anki".into());
-    }
-    if focus.is_some() {
-        modules.push("focus".into());
-    }
-    if files.is_some() {
-        modules.push("files".into());
-    }
-    if vault.is_some() {
-        modules.push("vault".into());
-    }
-    if calendar.is_some() {
-        modules.push("calendar".into());
-    }
-    if practice.is_some() {
-        modules.push("practice".into());
-    }
-    if core.is_some() {
-        modules.push("core".into());
-    }
-
-    let keys_to_return = UnlockedKeys {
-        library: library.clone(),
-        finance: finance.clone(),
-        notes: notes.clone(),
-        culture: culture.clone(),
-        anki: anki.clone(),
-        focus: focus.clone(),
-        files: files.clone(),
-        vault: vault.clone(),
-        calendar: calendar.clone(),
-        practice: practice.clone(),
-        core: core.clone(),
-    };
-
-    // Persist to AppState
+    // Persist to AppState with safe mutex recovery
     {
-        let mut keys_guard = db_state.keys.lock().unwrap();
+        let mut keys_guard = db_state.lock_keys()?;
         *keys_guard = Some(keys_to_return.clone());
     }
 
@@ -270,7 +178,7 @@ pub async fn auth_setup(
     db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
     {
-        let guard = db_state.conn.lock().unwrap();
+        let guard = db_state.lock_conn()?;
         let conn = match &*guard {
             Some(c) => c,
             None => {
@@ -316,9 +224,13 @@ pub async fn auth_setup(
     auth_login(password, db_state).await
 }
 
+/// Open developer tools only in debug builds to prevent production tampering.
 #[tauri::command]
 pub fn app_open_devtools(window: tauri::WebviewWindow) {
+    #[cfg(debug_assertions)]
     window.open_devtools();
+    #[cfg(not(debug_assertions))]
+    let _ = window;
 }
 
 #[tauri::command]
@@ -327,7 +239,7 @@ pub async fn auth_force_update_keychain(
     keys: HashMap<String, String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let get_enc = |module: &str| -> Option<String> {
@@ -358,7 +270,7 @@ pub async fn auth_force_update_keychain(
 
 #[tauri::command]
 pub fn auth_lock(db_state: State<'_, DbState>) -> Result<bool, String> {
-    let mut keys_guard = db_state.keys.lock().unwrap();
+    let mut keys_guard = db_state.lock_keys()?;
     *keys_guard = None;
     Ok(true)
 }
