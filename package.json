@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "swarm:setup": "bash .agents/skills/parallel-swarm-audit/scripts/setup.sh",
-    "swarm:merge": "bash .agents/skills/parallel-swarm-audit/scripts/merge.sh"
+    "swarm:merge": "bash .agents/skills/parallel-swarm-audit/scripts/merge.sh",
+    "launch:conta2": "bash scripts/launch-conta2.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
