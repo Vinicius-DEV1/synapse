@@ -29,9 +29,11 @@ pub fn get_key_for_media_dir(
 ) -> Option<String> {
     let keys = keys.as_ref()?;
     match dir_name {
-        "videos" | "lofis" => keys.library.clone(), // Videos/lofis use library key
+        "videos" => keys.culture.clone().or_else(|| keys.library.clone()),
+        "lofis" => keys.focus.clone().or_else(|| keys.library.clone()),
         "files" => keys.files.clone(),
-        "audio" | "anki" => keys.notes.clone(), // Audio clips from notes/anki
+        "anki" => keys.anki.clone().or_else(|| keys.notes.clone()),
+        "audio" => keys.notes.clone(),
         _ => None,
     }
 }
@@ -39,7 +41,8 @@ pub fn get_key_for_media_dir(
 /// Increments the appropriate media category counter in backup statistics.
 pub fn increment_media_stat(stats: &mut BackupStats, dir_name: &str) {
     match dir_name {
-        "videos" | "lofis" => stats.videos_copied += 1,
+        "videos" => stats.videos_copied += 1,
+        "lofis" => stats.audio_copied += 1,
         "files" => stats.files_copied += 1,
         "audio" | "anki" => stats.audio_copied += 1,
         _ => {}
