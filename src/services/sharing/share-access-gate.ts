@@ -163,14 +163,21 @@ export async function submitAccessRequest(
  */
 export function listenToAccessRequest(
   requestId: string,
-  onUpdate: (request: ShareAccessRequest) => void
+  onUpdate: (request: ShareAccessRequest) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   const reqRef = doc(db, 'share_access_requests', requestId);
-  return onSnapshot(reqRef, (snapshot) => {
-    if (snapshot.exists()) {
-      onUpdate(snapshot.data() as ShareAccessRequest);
+  return onSnapshot(
+    reqRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        onUpdate(snapshot.data() as ShareAccessRequest);
+      }
+    },
+    (err) => {
+      onError?.(err);
     }
-  });
+  );
 }
 
 /**

@@ -5,7 +5,7 @@
  * persistent device fingerprinting, and witty animal pun personas.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type {
@@ -74,6 +74,7 @@ export const ShareViewerApp: React.FC = () => {
   const [shareConfig, setShareConfig] = useState<SharedPageConfig | null>(null);
   const [fingerprint, setFingerprint] = useState<DeviceFingerprint | null>(null);
   const [persona, setPersona] = useState<VisitorPersona | null>(null);
+  const accessRequestUnsubRef = useRef<(() => void) | null>(null);
 
   // Ensure page scrolling is enabled even if loaded inside index.html shell (where overflow is hidden by default)
   useEffect(() => {
@@ -82,6 +83,16 @@ export const ShareViewerApp: React.FC = () => {
     document.body.style.overflow = 'auto';
     return () => {
       document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  // Cleanup active Firestore snapshot listener on unmount
+  useEffect(() => {
+    return () => {
+      if (accessRequestUnsubRef.current) {
+        accessRequestUnsubRef.current();
+        accessRequestUnsubRef.current = null;
+      }
     };
   }, []);
 
@@ -202,6 +213,12 @@ export const ShareViewerApp: React.FC = () => {
     fp: DeviceFingerprint,
     passwordVerified: boolean
   ) => {
+    // Unsubscribe any existing listener before initiating a new request
+    if (accessRequestUnsubRef.current) {
+      accessRequestUnsubRef.current();
+      accessRequestUnsubRef.current = null;
+    }
+
     const keyPair = await generateECDHKeyPair();
 
     const visitorPublicKeyJwk = await exportKeyToJWK(keyPair.publicKey);
@@ -216,28 +233,42 @@ export const ShareViewerApp: React.FC = () => {
     setState({ status: 'waiting-approval', requestedAt: now });
 
     // Listen to real-time status resolution via Firestore onSnapshot
-    const unsubscribe = listenToAccessRequest(requestId, async (updatedRequest) => {
-      if (updatedRequest.status === 'approved') {
-        unsubscribe();
-        if (updatedRequest.encryptedShareKey && updatedRequest.ownerPublicKey) {
-          try {
-            const ownerPublicKey = await importPublicKeyFromJWK(updatedRequest.ownerPublicKey);
-            const sharedSecret = await deriveSharedSecretKey(keyPair.privateKey, ownerPublicKey);
-            const shareKey = await unwrapShareKeyWithSecret(
-              updatedRequest.encryptedShareKey,
-              sharedSecret
-            );
-            await loadAndDisplayContent(config, shareKey, fp);
-          } catch (err) {
-            console.error('Failed to unwrap approved share key:', err);
-            setState({ status: 'access-denied' });
+    const unsubscribe = listenToAccessRequest(
+      requestId,
+      async (updatedRequest) => {
+        if (updatedRequest.status === 'approved') {
+          if (accessRequestUnsubRef.current) {
+            accessRequestUnsubRef.current();
+            accessRequestUnsubRef.current = null;
           }
+          if (updatedRequest.encryptedShareKey && updatedRequest.ownerPublicKey) {
+            try {
+              const ownerPublicKey = await importPublicKeyFromJWK(updatedRequest.ownerPublicKey);
+              const sharedSecret = await deriveSharedSecretKey(keyPair.privateKey, ownerPublicKey);
+              const shareKey = await unwrapShareKeyWithSecret(
+                updatedRequest.encryptedShareKey,
+                sharedSecret
+              );
+              await loadAndDisplayContent(config, shareKey, fp);
+            } catch (err) {
+              console.error('Failed to unwrap approved share key:', err);
+              setState({ status: 'access-denied' });
+            }
+          }
+        } else if (updatedRequest.status === 'denied') {
+          if (accessRequestUnsubRef.current) {
+            accessRequestUnsubRef.current();
+            accessRequestUnsubRef.current = null;
+          }
+          setState({ status: 'access-denied' });
         }
-      } else if (updatedRequest.status === 'denied') {
-        unsubscribe();
-        setState({ status: 'access-denied' });
+      },
+      (err) => {
+        console.error('Error listening to access request status:', err);
       }
-    });
+    );
+
+    accessRequestUnsubRef.current = unsubscribe;
   };
 
   // 4. Handle Password Submission
