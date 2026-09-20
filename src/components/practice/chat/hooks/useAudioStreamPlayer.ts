@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 export function useAudioStreamPlayer() {
   const playbackContextRef = useRef<AudioContext | null>(null);
@@ -79,6 +79,12 @@ export function useAudioStreamPlayer() {
     isPlayingRef.current = false;
     nextAudioTimeRef.current = 0;
   }, []);
+
+  useEffect(() => {
+    return () => {
+      closePlayback();
+    };
+  }, [closePlayback]);
 
   return {
     playbackContextRef,
