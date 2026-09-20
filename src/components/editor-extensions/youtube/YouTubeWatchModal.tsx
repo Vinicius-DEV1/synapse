@@ -44,6 +44,7 @@ export default function YouTubeWatchModal({
   const {
     loading,
     error,
+    setError,
     streamInfo,
     streamPort,
     loadStream,

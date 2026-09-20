@@ -71,6 +71,7 @@ export function useYouTubeStreamLoader({
   return {
     loading,
     error,
+    setError,
     streamInfo,
     streamPort,
     loadStream,
