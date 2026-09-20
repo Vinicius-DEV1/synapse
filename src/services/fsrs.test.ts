@@ -100,5 +100,32 @@ describe('FSRS Service', () => {
         expect(interval.length).toBeGreaterThan(0);
       });
     });
+
+    it('ensures due date is never scheduled in the past or NaN', () => {
+      const pastCard = {
+        due_date: new Date(Date.now() - 10000000).toISOString(),
+        last_review: new Date(Date.now() + 500000).toISOString(), // future last review edge case
+        stability: 0,
+        difficulty: 0,
+        state: '0',
+      };
+
+      const now = Date.now();
+      const updated = processReview(pastCard, 1); // Again
+      expect(updated.due.getTime()).toBeGreaterThanOrEqual(now);
+      expect(Number.isFinite(updated.stability)).toBe(true);
+      expect(updated.stability).toBeGreaterThan(0);
+      expect(updated.difficulty).toBeGreaterThanOrEqual(1);
+      expect(updated.difficulty).toBeLessThanOrEqual(10);
+      expect(updated.scheduled_days).toBeGreaterThanOrEqual(0);
+    });
+
+    it('handles negative or NaN diffMs in formatAnkiInterval gracefully', () => {
+      expect(formatAnkiInterval(-500)).toBe('<1m');
+      expect(formatAnkiInterval(0)).toBe('<1m');
+      expect(formatAnkiInterval(NaN)).toBe('<1m');
+      expect(formatAnkiInterval(Infinity)).toBe('<1m');
+    });
   });
 });
+

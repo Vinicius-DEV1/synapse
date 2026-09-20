@@ -145,6 +145,11 @@ export const processReview = (
       break;
   }
 
+  // Guard against last_review in the future (prevent negative elapsed calculations)
+  if (fsrsCard.last_review && fsrsCard.last_review.getTime() > now.getTime()) {
+    fsrsCard.last_review = new Date(now.getTime());
+  }
+
   const record = f.next(fsrsCard, now, rating);
 
   if (rating === Rating.Again && (record.card.state === State.Learning || record.card.state === State.Relearning)) {
@@ -153,6 +158,17 @@ export const processReview = (
     const stepMinutes = parseStepMinutes(stepsConfig, 5);
     record.card.due = new Date(now.getTime() + stepMinutes * 60000);
   }
+
+  // Guard against due date scheduled in the past or invalid NaN
+  if (isNaN(record.card.due.getTime()) || record.card.due.getTime() < now.getTime()) {
+    record.card.due = new Date(now.getTime() + 60000);
+  }
+
+  // Guard against NaN or invalid intervals and FSRS metrics
+  record.card.scheduled_days = Math.max(0, safeNumber(record.card.scheduled_days, 0));
+  record.card.elapsed_days = Math.max(0, safeNumber(record.card.elapsed_days, 0));
+  record.card.stability = Math.max(0.01, safeNumber(record.card.stability, 0.1));
+  record.card.difficulty = Math.min(10, Math.max(1, safeNumber(record.card.difficulty, 5)));
 
   return record.card;
 };
@@ -193,7 +209,7 @@ export const previewIntervals = (
       due = new Date(now.getTime() + stepMinutes * 60000);
     }
 
-    const diff = due.getTime() - now.getTime();
+    const diff = isNaN(due.getTime()) ? 0 : Math.max(0, due.getTime() - now.getTime());
     intervals.push(formatAnkiInterval(diff));
   }
 
