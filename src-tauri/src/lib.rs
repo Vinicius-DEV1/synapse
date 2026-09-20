@@ -1,5 +1,7 @@
 mod cmd_anki;
 mod cmd_audio;
+pub mod cmd_audio_lofi;
+pub mod cmd_audio_lofi_drive;
 mod cmd_auth;
 mod cmd_backup;
 mod cmd_binaries;
@@ -377,11 +379,11 @@ pub fn run() {
             cmd_youtube::youtube_download,
             cmd_audio::audio_extract_clip,
             cmd_audio::audio_generate_tts,
-            cmd_audio::lofi_get_local_path,
-            cmd_audio::lofi_delete_local,
-            cmd_audio::lofi_save_local,
-            cmd_audio::lofi_copy_local,
-            cmd_audio::lofi_download_drive_file,
+            cmd_audio_lofi::lofi_get_local_path,
+            cmd_audio_lofi::lofi_delete_local,
+            cmd_audio_lofi::lofi_save_local,
+            cmd_audio_lofi::lofi_copy_local,
+            cmd_audio_lofi_drive::lofi_download_drive_file,
             cmd_drive::drive_open_url,
             cmd_drive::drive_get_credentials,
             cmd_drive::drive_save_credentials,
