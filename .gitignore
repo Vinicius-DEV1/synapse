@@ -73,3 +73,6 @@ audit_report_*.md
 .worktrees/
 scripts/
 
+# Agent Customizations & Claude Metadata (Never Commit)
+.agents/
+.claude/
