@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type {
   SharedPageConfig,
@@ -75,6 +75,7 @@ export const ShareViewerApp: React.FC = () => {
   const [fingerprint, setFingerprint] = useState<DeviceFingerprint | null>(null);
   const [persona, setPersona] = useState<VisitorPersona | null>(null);
   const accessRequestUnsubRef = useRef<(() => void) | null>(null);
+  const shareDocUnsubRef = useRef<(() => void) | null>(null);
 
   // Ensure page scrolling is enabled even if loaded inside index.html shell (where overflow is hidden by default)
   useEffect(() => {
@@ -86,17 +87,21 @@ export const ShareViewerApp: React.FC = () => {
     };
   }, []);
 
-  // Cleanup active Firestore snapshot listener on unmount
+  // Cleanup active Firestore snapshot listeners on unmount
   useEffect(() => {
     return () => {
       if (accessRequestUnsubRef.current) {
         accessRequestUnsubRef.current();
         accessRequestUnsubRef.current = null;
       }
+      if (shareDocUnsubRef.current) {
+        shareDocUnsubRef.current();
+        shareDocUnsubRef.current = null;
+      }
     };
   }, []);
 
-  // 1. Initial Load & Device Identification
+  // 1. Initial Load, Device Identification & Real-Time Share State Listener
   useEffect(() => {
     let isMounted = true;
 
@@ -116,48 +121,100 @@ export const ShareViewerApp: React.FC = () => {
         setFingerprint(fp);
         setPersona(p);
 
-        // Fetch share metadata from Firestore
+        // Listen to share metadata from Firestore in real time
         const shareRef = doc(db, 'shared_pages', shareId);
-        const shareSnap = await getDoc(shareRef);
+        let initialGateProcessed = false;
 
-        if (!shareSnap.exists()) {
-          setState({ status: 'expired', reason: 'not-found' });
-          return;
-        }
+        const unsub = onSnapshot(
+          shareRef,
+          async (shareSnap) => {
+            if (!isMounted) return;
 
-        const config = shareSnap.data() as SharedPageConfig;
-        setShareConfig(config);
+            // Instant reaction to deletion
+            if (!shareSnap.exists()) {
+              if (accessRequestUnsubRef.current) {
+                accessRequestUnsubRef.current();
+                accessRequestUnsubRef.current = null;
+              }
+              setState({ status: 'expired', reason: 'not-found' });
+              return;
+            }
 
-        if (!config.isActive) {
-          setState({ status: 'expired', reason: 'revoked' });
-          return;
-        }
+            const config = shareSnap.data() as SharedPageConfig;
+            setShareConfig(config);
 
-        if (config.expiresAt && new Date(config.expiresAt).getTime() < Date.now()) {
-          setState({ status: 'expired', reason: 'expired' });
-          return;
-        }
+            // Instant reaction to revocation
+            if (!config.isActive) {
+              if (accessRequestUnsubRef.current) {
+                accessRequestUnsubRef.current();
+                accessRequestUnsubRef.current = null;
+              }
+              setState({ status: 'expired', reason: 'revoked' });
+              return;
+            }
 
-        // Check if device was previously approved (trusted device bypass)
-        const trustCheck = await checkDeviceTrust(shareId, fp);
-        if (trustCheck.isTrusted && trustCheck.encryptedShareKey) {
-          // Device is trusted! Decrypt content immediately
-          const shareKey = await importShareKeyFromBase64(trustCheck.encryptedShareKey);
-          await loadAndDisplayContent(config, shareKey, fp);
-          return;
-        }
+            // Instant reaction to expiration
+            if (config.expiresAt && new Date(config.expiresAt).getTime() < Date.now()) {
+              if (accessRequestUnsubRef.current) {
+                accessRequestUnsubRef.current();
+                accessRequestUnsubRef.current = null;
+              }
+              setState({ status: 'expired', reason: 'expired' });
+              return;
+            }
 
-        // If not trusted: determine gate
-        if (config.isPasswordProtected) {
-          setState({ status: 'password-gate' });
-        } else if (config.requireOwnerApproval) {
-          // No password, but owner approval required
-          await initiateAccessRequest(config, fp, false);
-        } else {
-          // Unprotected share: deliver key directly
-          const shareKey = await importShareKeyFromBase64(config.wrappedShareKey);
-          await loadAndDisplayContent(config, shareKey, fp);
-        }
+            // If already unlocked and displaying content, live-update config metadata
+            if (initialGateProcessed) {
+              setState((prev) => {
+                if (prev.status === 'content') {
+                  return { ...prev, config };
+                }
+                return prev;
+              });
+              return;
+            }
+
+            initialGateProcessed = true;
+
+            try {
+              // Check if device was previously approved (trusted device bypass)
+              const trustCheck = await checkDeviceTrust(shareId, fp);
+              if (!isMounted) return;
+
+              if (trustCheck.isTrusted && trustCheck.encryptedShareKey) {
+                // Device is trusted! Decrypt content immediately
+                const shareKey = await importShareKeyFromBase64(trustCheck.encryptedShareKey);
+                await loadAndDisplayContent(config, shareKey, fp);
+                return;
+              }
+
+              // If not trusted: determine gate
+              if (config.isPasswordProtected) {
+                setState({ status: 'password-gate' });
+              } else if (config.requireOwnerApproval) {
+                // No password, but owner approval required
+                await initiateAccessRequest(config, fp, false);
+              } else {
+                // Unprotected share: deliver key directly
+                const shareKey = await importShareKeyFromBase64(config.wrappedShareKey);
+                await loadAndDisplayContent(config, shareKey, fp);
+              }
+            } catch (gateErr) {
+              console.error('Error during gate resolution:', gateErr);
+              if (isMounted) {
+                setState({ status: 'expired', reason: 'not-found' });
+              }
+            }
+          },
+          (snapshotErr) => {
+            console.error('Error listening to shared page config:', snapshotErr);
+            if (isMounted) {
+              setState({ status: 'expired', reason: 'not-found' });
+            }
+          }
+        );
+
+        shareDocUnsubRef.current = unsub;
       } catch (err) {
         console.error('Error during share viewer initialization:', err);
         if (isMounted) {
@@ -170,6 +227,10 @@ export const ShareViewerApp: React.FC = () => {
 
     return () => {
       isMounted = false;
+      if (shareDocUnsubRef.current) {
+        shareDocUnsubRef.current();
+        shareDocUnsubRef.current = null;
+      }
     };
   }, []);
 
@@ -199,11 +260,16 @@ export const ShareViewerApp: React.FC = () => {
       action: 'view',
     });
 
-    setState({
-      status: 'content',
-      config,
-      decryptedContent: decrypted,
-      shareKey,
+    setState((prev) => {
+      if (prev.status === 'expired') {
+        return prev;
+      }
+      return {
+        status: 'content',
+        config,
+        decryptedContent: decrypted,
+        shareKey,
+      };
     });
   };
 
@@ -275,6 +341,10 @@ export const ShareViewerApp: React.FC = () => {
   const handlePasswordVerify = useCallback(
     async (candidatePassword: string): Promise<boolean> => {
       if (!shareConfig || !fingerprint) return false;
+      if (!shareConfig.isActive) {
+        setState({ status: 'expired', reason: 'revoked' });
+        return false;
+      }
 
       if (shareConfig.passwordHash && shareConfig.passwordSalt) {
         const isValid = await verifyPasswordHash(
