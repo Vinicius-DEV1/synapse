@@ -1,5 +1,16 @@
-import { createContext, useContext, useReducer, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import type { AppState, Action, Tab } from '../types';
+import type { Page } from '../types/notes';
 import { appReducer as reducer } from './commands';
 
 function generateTabId(): string {
@@ -68,18 +79,36 @@ const initialState: AppState = {
   navDirection: null,
 };
 
-
-
 interface StoreContextType {
   state: AppState;
   dispatch: React.Dispatch<Action>;
 }
 
 export const StoreContext = createContext<StoreContextType | null>(null);
+export const StateContext = createContext<AppState | null>(null);
+export const DispatchContext = createContext<React.Dispatch<Action> | null>(null);
 
 // Global imperative reference to access state and dispatch without forcing re-renders in ProseMirror node views
 let _storeStateRef: AppState = initialState;
 let _storeDispatchRef: React.Dispatch<Action> | null = null;
+const _storeSubscribers = new Set<() => void>();
+
+function subscribeToStore(callback: () => void): () => void {
+  _storeSubscribers.add(callback);
+  return () => {
+    _storeSubscribers.delete(callback);
+  };
+}
+
+function notifyStoreSubscribers(): void {
+  _storeSubscribers.forEach((callback) => {
+    try {
+      callback();
+    } catch (err) {
+      console.error('[useStore] Subscriber error:', err);
+    }
+  });
+}
 
 export function getStoreState(): AppState {
   return _storeStateRef;
@@ -107,6 +136,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     _storeStateRef = state;
     _storeDispatchRef = dispatch;
+    notifyStoreSubscribers();
   }, [state, dispatch]);
 
   const lastSavedRef = useRef<string | null>(null);
@@ -147,16 +177,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(() => ({ state, dispatch }), [state]);
 
   return (
-    <StoreContext.Provider value={contextValue}>
-      {children}
-    </StoreContext.Provider>
+    <DispatchContext.Provider value={dispatch}>
+      <StateContext.Provider value={state}>
+        <StoreContext.Provider value={contextValue}>
+          {children}
+        </StoreContext.Provider>
+      </StateContext.Provider>
+    </DispatchContext.Provider>
   );
 }
 
+/**
+ * Legacy full store hook. Returns state and dispatch.
+ * Note: Subscribes to the entire state. For optimized leaf components, prefer useStoreSelector or useStoreDispatch.
+ */
 export function useStore(): StoreContextType {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error('useStore must be used within StoreProvider');
   return ctx;
+}
+
+/**
+ * Zero-rerender dispatch hook. Never triggers re-renders when state changes.
+ */
+export function useStoreDispatch(): React.Dispatch<Action> {
+  const ctx = useContext(DispatchContext);
+  return ctx || _storeDispatchRef || (() => {});
+}
+
+/**
+ * Fine-grained selector hook that isolates re-render boundaries.
+ * Callers will only re-render if the selected slice changes by equalityFn (default: Object.is).
+ */
+export function useStoreSelector<T>(
+  selector: (state: AppState) => T,
+  equalityFn: (prev: T, next: T) => boolean = Object.is
+): T {
+  const selectorRef = useRef(selector);
+  const equalityFnRef = useRef(equalityFn);
+  selectorRef.current = selector;
+  equalityFnRef.current = equalityFn;
+
+  const currentSelectionRef = useRef<T>(selector(_storeStateRef));
+
+  const getSnapshot = useCallback(() => {
+    const nextSelection = selectorRef.current(_storeStateRef);
+    if (!equalityFnRef.current(currentSelectionRef.current, nextSelection)) {
+      currentSelectionRef.current = nextSelection;
+    }
+    return currentSelectionRef.current;
+  }, []);
+
+  return useSyncExternalStore(subscribeToStore, getSnapshot);
+}
+
+/**
+ * Sliced selector hook for active tab.
+ */
+export function useActiveTab(): Tab | undefined {
+  return useStoreSelector(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId) || s.tabs[0]
+  );
+}
+
+/**
+ * Sliced selector hook for pages list.
+ */
+export function usePages(): Page[] {
+  return useStoreSelector((s) => s.pages);
+}
+
+/**
+ * Sliced selector hook for tabs list.
+ */
+export function useTabs(): Tab[] {
+  return useStoreSelector((s) => s.tabs);
 }
 
 export async function syncLayoutFromDb(dispatch: React.Dispatch<Action>) {

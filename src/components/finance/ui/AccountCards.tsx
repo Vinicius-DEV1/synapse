@@ -11,31 +11,31 @@ interface AccountCardsProps {
 }
 
 export function calculateAccountBalance(acc: Account, transactions: Transaction[]): number {
-  let bal = Number(acc.initial_balance || 0);
+  let balCents = Math.round(Number(acc.initial_balance || 0) * 100);
 
   for (const tx of transactions) {
-    const amount = Number(tx.amount || 0);
+    const amountCents = Math.round(Number(tx.amount || 0) * 100);
     const txAccountId = tx.account_id || 'default-wallet';
 
     if (tx.type === 'income' && txAccountId === acc.id) {
-      bal += amount;
+      balCents += amountCents;
     } else if (tx.type === 'expense' && txAccountId === acc.id) {
-      bal -= amount;
+      balCents -= amountCents;
     } else if (tx.type === 'loan_made' && txAccountId === acc.id) {
-      bal -= amount;
+      balCents -= amountCents;
     } else if (tx.type === 'loan_taken' && txAccountId === acc.id) {
-      bal += amount;
+      balCents += amountCents;
     } else if (tx.type === 'transfer') {
       if (txAccountId === acc.id) {
-        bal -= amount;
+        balCents -= amountCents;
       }
       if (tx.destination_account_id === acc.id) {
-        bal += amount;
+        balCents += amountCents;
       }
     }
   }
 
-  return Math.round(bal * 100) / 100;
+  return balCents / 100;
 }
 
 export function AccountCards({
@@ -53,7 +53,11 @@ export function AccountCards({
   }, [accounts, transactions]);
 
   const totalConsolidated = useMemo(() => {
-    return accountBalances.reduce((sum, item) => sum + item.balance, 0);
+    const totalCents = accountBalances.reduce(
+      (sum, item) => sum + Math.round(item.balance * 100),
+      0
+    );
+    return totalCents / 100;
   }, [accountBalances]);
 
   return (

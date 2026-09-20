@@ -83,9 +83,13 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
       (incomingBytes) => {
         try {
           const text = new TextDecoder().decode(incomingBytes);
-          setContent(text);
-          if (editorRef.current && editorRef.current.innerHTML !== text) {
-            editorRef.current.innerHTML = text;
+          const sanitized = DOMPurify.sanitize(text, {
+            ADD_TAGS: ['iframe'],
+            ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling'],
+          });
+          setContent(sanitized);
+          if (editorRef.current && editorRef.current.innerHTML !== sanitized) {
+            editorRef.current.innerHTML = sanitized;
           }
         } catch {
           // Ignore parse errors

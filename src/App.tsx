@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
 import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
 import { FocusProvider, useFocusActions } from './store/FocusContext';
@@ -23,6 +24,7 @@ import { GlobalModals } from './components/layout/GlobalModals';
 import { useAppEvents } from './hooks/useAppEvents';
 import { useAppBackPress } from './hooks/useAppBackPress';
 import WindowControls from './components/layout/WindowControls';
+import type { Page } from './types';
 
 
 function AppContent() {
@@ -111,7 +113,7 @@ function AppContent() {
     if (window.api) {
       try {
         const pages = await window.api.getAllPages();
-        const pagesWithCrdt = pages.filter((p: any) => !!p.crdt_state).length;
+        const pagesWithCrdt = pages.filter((p: Page) => !!p.crdt_state).length;
         console.log(`[Caderno:LoadPages] SET_PAGES with ${pages.length} pages (${pagesWithCrdt} have crdt_state)`);
         dispatch({ type: 'SET_PAGES', pages });
       } catch (err) {
@@ -228,15 +230,17 @@ function AppContent() {
                     isActive && state.navDirection === 'backward' ? 'animate-slide-in-left' : ''
                   }`}
                 >
-                  <ViewFactory 
-                    tab={tab}
-                    page={page}
-                    onUpdateContent={handleUpdateContent}
-                    onCreatePage={handleCreatePage}
-                    onCreateLinkedPage={handleCreateLinkedPage}
-                    onUpdatePage={handleUpdatePage}
-                    isActive={isActive}
-                  />
+                  <ErrorBoundary moduleName={`Aba: ${tab.module}`} pageId={tab.pageId}>
+                    <ViewFactory 
+                      tab={tab}
+                      page={page}
+                      onUpdateContent={handleUpdateContent}
+                      onCreatePage={handleCreatePage}
+                      onCreateLinkedPage={handleCreateLinkedPage}
+                      onUpdatePage={handleUpdatePage}
+                      isActive={isActive}
+                    />
+                  </ErrorBoundary>
                 </div>
               </div>
             );

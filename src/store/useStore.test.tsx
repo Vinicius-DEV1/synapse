@@ -1,7 +1,17 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { StoreProvider, useStore, getCultureKey, syncLayoutFromDb } from './useStore';
+import {
+  StoreProvider,
+  useStore,
+  useStoreDispatch,
+  useStoreSelector,
+  useActiveTab,
+  usePages,
+  useTabs,
+  getCultureKey,
+  syncLayoutFromDb,
+} from './useStore';
 
 describe('useStore & StoreProvider (store/useStore)', () => {
   beforeEach(() => {
@@ -66,5 +76,47 @@ describe('useStore & StoreProvider (store/useStore)', () => {
     });
 
     expect(getCultureKey()).toBe(mockKey);
+  });
+
+  it('provides identity-stable useStoreDispatch and updates state', () => {
+    const { result } = renderHook(
+      () => ({
+        dispatch: useStoreDispatch(),
+        store: useStore(),
+      }),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.dispatch({ type: 'TOGGLE_SIDEBAR' });
+    });
+
+    expect(result.current.store.state.sidebarCollapsed).toBe(true);
+  });
+
+  it('isolates state changes via useStoreSelector', () => {
+    const { result: selectorResult } = renderHook(
+      () => useStoreSelector((s) => s.sidebarCollapsed),
+      { wrapper }
+    );
+    const { result: dispatchResult } = renderHook(() => useStoreDispatch(), { wrapper });
+
+    expect(selectorResult.current).toBe(false);
+
+    act(() => {
+      dispatchResult.current({ type: 'TOGGLE_SIDEBAR' });
+    });
+
+    expect(selectorResult.current).toBe(true);
+  });
+
+  it('returns sliced collections via useActiveTab, usePages, and useTabs', () => {
+    const { result: tabResult } = renderHook(() => useActiveTab(), { wrapper });
+    const { result: pagesResult } = renderHook(() => usePages(), { wrapper });
+    const { result: tabsResult } = renderHook(() => useTabs(), { wrapper });
+
+    expect(tabResult.current?.module).toBe('home');
+    expect(pagesResult.current).toEqual([]);
+    expect(tabsResult.current.length).toBeGreaterThanOrEqual(1);
   });
 });

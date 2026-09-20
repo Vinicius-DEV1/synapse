@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '../../../store/useStore';
 import { hardDeleteLofiPermanently } from '../../../services/lofi-manager';
+import type { LofiItem } from '../../../types';
 import { triggerToast } from '../../ui/ToastContext';
 
 export interface TrashItem {
@@ -26,10 +27,11 @@ export function useTrash() {
         const res = await window.api.trash.getAll();
         setItems(res || []);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Erro ao carregar lixeira:", e);
       setItems([]);
-      triggerToast(e.message || 'Erro ao carregar itens da lixeira', 'error');
+      const msg = e instanceof Error ? e.message : 'Erro ao carregar itens da lixeira';
+      triggerToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -50,9 +52,10 @@ export function useTrash() {
         }
         triggerToast(`"${item.title}" restaurado com sucesso!`, 'success');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || "Falha ao restaurar item.", 'error');
+      const msg = e instanceof Error ? e.message : "Falha ao restaurar item.";
+      triggerToast(msg, 'error');
     } finally {
       setProcessingId(null);
     }
@@ -65,8 +68,8 @@ export function useTrash() {
     try {
       if (item.item_type === 'lofi' && window.api?.sync) {
         try {
-          const rows = await window.api.sync.getTable('lofis');
-          const lofi = rows?.find((r: any) => r.id === item.id);
+          const rows = (await window.api.sync.getTable('lofis')) as LofiItem[] | undefined;
+          const lofi = rows?.find((r) => r.id === item.id);
           if (lofi) {
             await hardDeleteLofiPermanently(lofi);
             setItems(prev => prev.filter(i => i.id !== item.id));
@@ -89,9 +92,10 @@ export function useTrash() {
       } else {
         triggerToast("Função de exclusão permanente não disponível.", 'error');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || "Falha ao excluir item permanentemente.", 'error');
+      const msg = e instanceof Error ? e.message : "Falha ao excluir item permanentemente.";
+      triggerToast(msg, 'error');
     } finally {
       setProcessingId(null);
     }
@@ -102,8 +106,8 @@ export function useTrash() {
     try {
       if (window.api?.sync) {
         try {
-          const rows = await window.api.sync.getTable('lofis');
-          const trashed = rows?.filter((r: any) => r.deleted_at);
+          const rows = (await window.api.sync.getTable('lofis')) as LofiItem[] | undefined;
+          const trashed = rows?.filter((r) => r.deleted_at);
           if (trashed) {
             for (const lofi of trashed) {
               await hardDeleteLofiPermanently(lofi).catch(() => {});
@@ -123,9 +127,10 @@ export function useTrash() {
         setShowEmptyConfirm(false);
         triggerToast("Lixeira esvaziada com sucesso!", 'success');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || "Falha ao esvaziar lixeira.", 'error');
+      const msg = e instanceof Error ? e.message : "Falha ao esvaziar lixeira.";
+      triggerToast(msg, 'error');
     } finally {
       setIsEmptying(false);
     }

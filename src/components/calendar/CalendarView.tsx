@@ -44,7 +44,7 @@ export default function CalendarView() {
           const recRule = eventData.recurrence_rule;
           if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
             const groupId = `group_${crypto.randomUUID()}`;
-            const copies: any[] = [];
+            const copies: (Partial<CalendarEvent> & { id: string })[] = [];
             const start = eventData.start_date ? new Date(eventData.start_date) : new Date();
             const end = eventData.end_date ? new Date(eventData.end_date) : new Date(start.getTime() + 60 * 60 * 1000);
             const duration = !isNaN(end.getTime()) && !isNaN(start.getTime()) && end.getTime() >= start.getTime()
@@ -111,9 +111,10 @@ export default function CalendarView() {
           triggerToast('Evento excluído do calendário.', 'info');
         }
         loadEvents();
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Erro ao deletar eventos:", e);
-        triggerToast(e.message || 'Erro ao excluir evento.', 'error');
+        const msg = e instanceof Error ? e.message : 'Erro ao excluir evento.';
+        triggerToast(msg, 'error');
       }
     }
   };

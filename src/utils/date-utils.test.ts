@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventDate, getEventDayStr, getEventTimeStr, getLocalIsoDate } from './date-utils';
+import {
+  parseEventDate,
+  getEventDayStr,
+  getEventTimeStr,
+  getLocalIsoDate,
+  formatDateTime,
+  formatDateTimeWithSeconds,
+  formatDayMonth,
+} from './date-utils';
 
 describe('dateUtils', () => {
   it('formats local ISO date correctly', () => {
@@ -35,5 +43,13 @@ describe('dateUtils', () => {
     expect(getEventTimeStr(null)).toBe('');
     // For midnight local
     expect(getEventTimeStr('2026-08-19')).toBe('00:00');
+  });
+
+  it('formats date strings safely without timezone shifts', () => {
+    expect(formatDayMonth('2026-08-19')).toContain('19');
+    expect(formatDateTime('2026-08-19')).toContain('19/08/2026');
+    expect(formatDateTimeWithSeconds('2026-08-19')).toContain('19');
+    expect(formatDayMonth(null)).toBe('Recente');
+    expect(formatDateTime(null)).toBe('');
   });
 });

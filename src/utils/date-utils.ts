@@ -60,7 +60,7 @@ export function getEventTimeStr(dateStr?: string | null): string {
 export function formatDateTime(dateStr?: string | null): string {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
+    const d = parseEventDate(dateStr);
     if (isNaN(d.getTime())) return String(dateStr);
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -77,7 +77,7 @@ export function formatDateTime(dateStr?: string | null): string {
 export function formatDateTimeWithSeconds(dateStr?: string | null): string {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
+    const d = parseEventDate(dateStr);
     if (isNaN(d.getTime())) return String(dateStr);
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit', month: 'short', year: 'numeric',
@@ -94,7 +94,7 @@ export function formatDateTimeWithSeconds(dateStr?: string | null): string {
 export function formatDayMonth(dateStr?: string | null, fallback: string = 'Recente'): string {
   if (!dateStr) return fallback;
   try {
-    const d = new Date(dateStr);
+    const d = parseEventDate(dateStr);
     if (isNaN(d.getTime())) return fallback;
     return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(d);
   } catch {

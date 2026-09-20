@@ -23,13 +23,13 @@ export function useFocusTimer(
   const lastTickRef = useRef<number>(Date.now());
   const timerFinishedRef = useRef<boolean>(false);
 
-  // Timer interval with drift compensation
+  // Timer interval with drift compensation and wake/visibility sync
   useEffect(() => {
     lastTickRef.current = Date.now();
     
     if (!currentSession || isPaused || timerFinishedRef.current) return;
 
-    const timer = setInterval(() => {
+    const tick = () => {
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - lastTickRef.current) / 1000);
       
@@ -45,9 +45,22 @@ export function useFocusTimer(
         });
         lastTickRef.current += elapsedSeconds * 1000;
       }
-    }, 500);
+    };
 
-    return () => clearInterval(timer);
+    const timer = setInterval(tick, 500);
+
+    const onWakeOrFocus = () => {
+      tick();
+    };
+
+    window.addEventListener('focus', onWakeOrFocus);
+    document.addEventListener('visibilitychange', onWakeOrFocus);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onWakeOrFocus);
+      document.removeEventListener('visibilitychange', onWakeOrFocus);
+    };
   }, [currentSession, isPaused, setView]);
 
   // Tray icon manager
