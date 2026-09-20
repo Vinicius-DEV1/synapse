@@ -71,3 +71,5 @@ Desktop.ini
 docs/audit/
 audit_report_*.md
 .worktrees/
+scripts/
+

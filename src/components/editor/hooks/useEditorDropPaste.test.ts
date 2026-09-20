@@ -245,7 +245,7 @@ describe('useEditorDropPaste Hook', () => {
       clipboardData: {
         getData: vi.fn((format: string) =>
           format === 'text/plain'
-            ? '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg'
+            ? '/home/user/Downloads/sample-image.jpeg'
             : ''
         ),
         items: [],
@@ -285,7 +285,7 @@ describe('useEditorDropPaste Hook', () => {
       clipboardData: {
         getData: vi.fn((format: string) =>
           format === 'text/plain'
-            ? '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg'
+            ? '/home/user/Downloads/sample-image.jpeg'
             : ''
         ),
         items: [],

@@ -29,21 +29,21 @@ describe('clipboardMediaUtils', () => {
 
   describe('isImageFilePath', () => {
     it('identifies valid image extensions correctly', () => {
-      expect(isImageFilePath('/home/vini/photo.jpeg')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.jpg')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.png')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.webp')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.gif')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.svg')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.bmp')).toBe(true);
-      expect(isImageFilePath('/home/vini/photo.avif')).toBe(true);
-      expect(isImageFilePath('C:\\Users\\vini\\photo.PNG')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.jpeg')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.jpg')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.png')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.webp')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.gif')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.svg')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.bmp')).toBe(true);
+      expect(isImageFilePath('/home/user/photo.avif')).toBe(true);
+      expect(isImageFilePath('C:\\Users\\testuser\\photo.PNG')).toBe(true);
     });
 
     it('rejects non-image extensions', () => {
-      expect(isImageFilePath('/home/vini/document.pdf')).toBe(false);
-      expect(isImageFilePath('/home/vini/video.mp4')).toBe(false);
-      expect(isImageFilePath('/home/vini/notes.txt')).toBe(false);
+      expect(isImageFilePath('/home/user/document.pdf')).toBe(false);
+      expect(isImageFilePath('/home/user/video.mp4')).toBe(false);
+      expect(isImageFilePath('/home/user/notes.txt')).toBe(false);
       expect(isImageFilePath('')).toBe(false);
     });
   });
@@ -61,31 +61,31 @@ describe('clipboardMediaUtils', () => {
 
   describe('extractLocalImagePaths', () => {
     it('extracts Linux absolute image path from plain text', () => {
-      const text = '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg';
+      const text = '/home/user/Downloads/sample-image.jpeg';
       const paths = extractLocalImagePaths(text);
-      expect(paths).toEqual(['/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg']);
+      expect(paths).toEqual(['/home/user/Downloads/sample-image.jpeg']);
     });
 
     it('extracts path from file:// URI with URL encoding', () => {
-      const uri = 'file:///home/vini/Downloads/WhatsApp%20Image%202026-09-11%20at%2022.18.32.jpeg';
+      const uri = 'file:///home/user/Downloads/sample-image.jpeg';
       const paths = extractLocalImagePaths(uri);
-      expect(paths).toEqual(['/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg']);
+      expect(paths).toEqual(['/home/user/Downloads/sample-image.jpeg']);
     });
 
     it('extracts Windows file paths', () => {
-      const winPath = 'C:\\Users\\vini\\Pictures\\screenshot.png';
+      const winPath = 'C:\\Users\\testuser\\Pictures\\screenshot.png';
       const paths = extractLocalImagePaths(winPath);
-      expect(paths).toEqual(['C:\\Users\\vini\\Pictures\\screenshot.png']);
+      expect(paths).toEqual(['C:\\Users\\testuser\\Pictures\\screenshot.png']);
     });
 
     it('extracts multiple lines from text/uri-list', () => {
       const multi = `
-        file:///home/vini/Pictures/img1.png
-        file:///home/vini/Pictures/img2.jpg
-        /home/vini/document.pdf
+        file:///home/user/Pictures/img1.png
+        file:///home/user/Pictures/img2.jpg
+        /home/user/document.pdf
       `;
       const paths = extractLocalImagePaths(multi);
-      expect(paths).toEqual(['/home/vini/Pictures/img1.png', '/home/vini/Pictures/img2.jpg']);
+      expect(paths).toEqual(['/home/user/Pictures/img1.png', '/home/user/Pictures/img2.jpg']);
     });
 
     it('ignores non-path and regular text', () => {
@@ -119,7 +119,7 @@ describe('clipboardMediaUtils', () => {
   describe('readLocalImageAsFile', () => {
     it('returns null if not running in desktop app', async () => {
       vi.mocked(platform.isDesktopApp).mockReturnValue(false);
-      const res = await readLocalImageAsFile('/home/vini/test.png');
+      const res = await readLocalImageAsFile('/home/user/test.png');
       expect(res).toBeNull();
     });
 
@@ -128,7 +128,7 @@ describe('clipboardMediaUtils', () => {
       const core = await import('@tauri-apps/api/core');
       vi.mocked(core.invoke).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
 
-      const res = await readLocalImageAsFile('/home/vini/test.png');
+      const res = await readLocalImageAsFile('/home/user/test.png');
       expect(res).not.toBeNull();
       expect(res?.name).toBe('test.png');
       expect(res?.type).toBe('image/png');
@@ -141,7 +141,7 @@ describe('clipboardMediaUtils', () => {
       const fsModule = await import('@tauri-apps/plugin-fs');
       vi.mocked(fsModule.readFile).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
 
-      const res = await readLocalImageAsFile('/home/vini/test.jpg');
+      const res = await readLocalImageAsFile('/home/user/test.jpg');
       expect(res).not.toBeNull();
       expect(res?.name).toBe('test.jpg');
       expect(res?.type).toBe('image/jpeg');
@@ -178,7 +178,7 @@ describe('clipboardMediaUtils', () => {
           files: [],
           getData: vi.fn((format: string) =>
             format === 'text/plain'
-              ? '/home/vini/Downloads/WhatsApp Image 2026-09-11 at 22.18.32.jpeg'
+              ? '/home/user/Downloads/sample-image.jpeg'
               : ''
           ),
         },
@@ -186,7 +186,7 @@ describe('clipboardMediaUtils', () => {
 
       const result = await resolveClipboardImages(mockEvent);
       expect(result.length).toBe(1);
-      expect(result[0].name).toBe('WhatsApp Image 2026-09-11 at 22.18.32.jpeg');
+      expect(result[0].name).toBe('sample-image.jpeg');
       expect(result[0].type).toBe('image/jpeg');
     });
   });
