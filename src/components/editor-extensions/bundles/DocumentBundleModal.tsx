@@ -17,6 +17,7 @@ import {
   ArrowDown,
   Eye,
   AlertCircle,
+  Pencil,
 } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
@@ -331,11 +332,20 @@ export default function DocumentBundleModal({
                 ) : (
                   <div className="flex items-center gap-2 group/title">
                     <span
+                      onDoubleClick={() => setIsEditingTitle(true)}
                       className="text-white font-medium text-base truncate cursor-pointer hover:text-brand-300 transition-colors"
                       title={title}
                     >
                       {title}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTitle(true)}
+                      className="opacity-0 group-hover/title:opacity-100 p-1 text-zinc-400 hover:text-white transition-opacity"
+                      title="Renomear agrupamento"
+                    >
+                      <Pencil size={12} />
+                    </button>
                     <span className="text-[11px] text-zinc-500 font-mono">({items.length} {items.length === 1 ? 'arquivo' : 'arquivos'})</span>
                   </div>
                 )}

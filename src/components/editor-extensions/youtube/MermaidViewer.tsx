@@ -1,4 +1,5 @@
 import { useEffect, useState, useId } from 'react';
+import DOMPurify from 'dompurify';
 import { Network, Code2, Eye, Copy, Check, AlertTriangle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { triggerToast } from '../../ui/ToastContext';
 import { ScrollableDiv, ScrollablePre } from '../../../utils/scroll-forwarding';
@@ -76,7 +77,10 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
 
         const { svg } = await mermaid.render(diagramId, trimmedChart);
         if (isMounted) {
-          setSvgContent(svg);
+          const sanitized = DOMPurify.sanitize(svg, {
+            USE_PROFILES: { svg: true, svgFilters: true },
+          });
+          setSvgContent(sanitized);
           setLoading(false);
         }
       } catch (err: unknown) {
