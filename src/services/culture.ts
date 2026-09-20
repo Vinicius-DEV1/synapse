@@ -37,7 +37,7 @@ export const CultureService = {
     return await window.api.culture.getEpisodes(itemId);
   },
 
-  async saveEpisodes(itemId: string, episodes: any[]): Promise<{success: boolean, count: number}> {
+  async saveEpisodes(itemId: string, episodes: Partial<CultureEpisode>[]): Promise<{success: boolean, count: number}> {
     if (!window.api?.culture) throw new Error('API não disponível');
     return await window.api.culture.saveEpisodes(itemId, episodes);
   },

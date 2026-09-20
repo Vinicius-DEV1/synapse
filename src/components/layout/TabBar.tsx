@@ -283,7 +283,7 @@ export default function TabBar() {
   }, [dispatch]);
 
   const pageMap = useMemo(() => {
-    const map = new Map<string, any>();
+    const map = new Map<string, Page>();
     for (const p of state.pages) {
       map.set(p.id, p);
     }

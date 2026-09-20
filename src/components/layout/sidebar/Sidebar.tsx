@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video, CheckSquare, Share2 } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import type { Tab } from '../../../types';
+import type { Tab, Page } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
 import { isDesktopApp } from '../../../services/platform';
@@ -14,7 +14,7 @@ type ModuleId = Tab['module'] | 'settings';
 
 interface SidebarProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
-  onUpdatePage: (id: string, updates: Partial<any>) => Promise<void>;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 
 export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
@@ -26,8 +26,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
   useEffect(() => {
     if (window.api?.config) {
-      window.api.config.get('caderno_modules_expanded').then((saved: any) => {
-        if (saved !== null && saved !== undefined) {
+      window.api.config.get('caderno_modules_expanded').then((saved: unknown) => {
+        if (typeof saved === 'boolean') {
           setIsModulesExpanded(saved);
         }
       }).catch(console.error);
