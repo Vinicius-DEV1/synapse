@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import {
   X,
   ZoomIn,
@@ -225,7 +226,11 @@ export function MermaidFullscreenModal({
               transition: isDragging ? 'none' : 'transform 0.08s ease-out',
             }}
             className="mermaid-svg-container select-none pointer-events-none [&_svg]:max-w-none [&_svg]:h-auto [&_svg]:drop-shadow-2xl"
-            dangerouslySetInnerHTML={{ __html: svgContent }}
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(svgContent, {
+                USE_PROFILES: { svg: true, svgFilters: true },
+              }),
+            }}
           />
         </main>
       </div>

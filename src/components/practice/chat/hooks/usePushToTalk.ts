@@ -2,10 +2,41 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { encodeWAV } from '../../../../utils/audio';
 import { arrayBufferToBase64 } from '../../../../utils/binary';
 
+interface ISpeechRecognitionResult {
+  readonly length: number;
+  readonly isFinal: boolean;
+  [index: number]: { readonly transcript: string };
+}
+
+interface ISpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: ISpeechRecognitionResult;
+}
+
+interface ISpeechRecognitionEvent {
+  readonly resultIndex: number;
+  readonly results: ISpeechRecognitionResultList;
+}
+
+interface ISpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface ISpeechRecognitionConstructor {
+  new (): ISpeechRecognitionInstance;
+}
+
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition?: ISpeechRecognitionConstructor;
+    webkitSpeechRecognition?: ISpeechRecognitionConstructor;
   }
 }
 
@@ -45,7 +76,7 @@ export function usePushToTalk({
   const processorRef = useRef<ScriptProcessorNode | AudioWorkletNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
   const userTranscriptRef = useRef<string>('');
   const finalTranscriptRef = useRef<string>('');
   const userAudioChunksRef = useRef<Float32Array[]>([]);
@@ -80,14 +111,27 @@ export function usePushToTalk({
       const audioCtx = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioCtx;
       
-      await audioCtx.audioWorklet.addModule('/audio-worklet.js');
-      const workletNode = new AudioWorkletNode(audioCtx, 'pcm-extractor');
-      const source = audioCtx.createMediaStreamSource(stream);
+      let workletNode: AudioWorkletNode | null = null;
+      if (typeof AudioWorkletNode !== 'undefined' && audioCtx.audioWorklet?.addModule) {
+        try {
+          await audioCtx.audioWorklet.addModule('/audio-worklet.js');
+          workletNode = new AudioWorkletNode(audioCtx, 'pcm-extractor');
+        } catch (workletErr) {
+          console.warn('Failed to initialize AudioWorkletNode:', workletErr);
+        }
+      }
+
+      let source: MediaStreamAudioSourceNode | null = null;
+      if (typeof audioCtx.createMediaStreamSource === 'function') {
+        source = audioCtx.createMediaStreamSource(stream);
+      }
       
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyserRef.current = analyser;
+      if (typeof audioCtx.createAnalyser === 'function') {
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source?.connect(analyser);
+        analyserRef.current = analyser;
+      }
       
       // Initialize STT
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -97,7 +141,7 @@ export function usePushToTalk({
         recognition.continuous = true;
         recognition.interimResults = true;
         
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: ISpeechRecognitionEvent) => {
           let interimTranscript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const chunk = event.results[i][0].transcript;
@@ -132,9 +176,10 @@ export function usePushToTalk({
         recognitionRef.current = recognition;
       }
       
-      workletNode.port.onmessage = (e) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-        const inputData: Float32Array = e.data;
+      if (workletNode) {
+        workletNode.port.onmessage = (e) => {
+          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+          const inputData: Float32Array = e.data;
 
         if (continuousMode) {
           // In continuous mode, pause mic input while AI speaks to avoid speaker acoustic feedback
@@ -239,16 +284,22 @@ export function usePushToTalk({
           userAudioChunksRef.current.push(inputData.slice());
         }
       };
+      }
       
-      source.connect(workletNode);
-      workletNode.connect(audioCtx.destination);
-      processorRef.current = workletNode;
+      if (source && workletNode) {
+        source.connect(workletNode);
+      }
+      if (workletNode) {
+        workletNode.connect(audioCtx.destination);
+        processorRef.current = workletNode;
+      }
       
       isRecordingRef.current = false;
       setIsRecording(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Mic error:', err);
-      if (err.name === 'NotAllowedError') {
+      const isNotAllowed = err instanceof Error && err.name === 'NotAllowedError';
+      if (isNotAllowed) {
         setError('Permissão de microfone negada. Verifique as permissões de áudio do sistema.');
       } else {
         setError('Erro ao acessar microfone.');
@@ -261,18 +312,31 @@ export function usePushToTalk({
     setIsRecording(false);
     
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      if (typeof mediaStreamRef.current.getTracks === 'function') {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop?.());
+      }
       mediaStreamRef.current = null;
     }
     if (processorRef.current) {
-      processorRef.current.disconnect();
+      if (typeof processorRef.current.disconnect === 'function') {
+        processorRef.current.disconnect();
+      }
       processorRef.current = null;
     }
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      if (typeof audioContextRef.current.close === 'function') {
+        audioContextRef.current.close().catch?.(() => {});
+      }
       audioContextRef.current = null;
     }
   }, []);
+
+  // Ensure microphone stream is stopped and AudioContext closed on component unmount
+  useEffect(() => {
+    return () => {
+      stopAudioCapture();
+    };
+  }, [stopAudioCapture]);
 
   // Auto start capture on call start
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { getGeminiKeys, getRotatedActiveKeys } from '../../../../services/gemini/keys';
 
 const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest';
@@ -6,6 +6,32 @@ const HOST = 'generativelanguage.googleapis.com';
 
 export function useVoicePreview() {
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const cleanupVoicePreview = useCallback(() => {
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        wsRef.current.close();
+      }
+      wsRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      try {
+        audioContextRef.current.close().catch(() => {});
+      } catch (err: unknown) {
+        console.debug('[useVoicePreview] AudioContext close error:', err);
+      }
+      audioContextRef.current = null;
+    }
+    setPreviewingVoice(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupVoicePreview();
+    };
+  }, [cleanupVoicePreview]);
 
   const previewVoice = useCallback(async (voiceName: string) => {
     if (previewingVoice) return;
@@ -22,8 +48,10 @@ export function useVoicePreview() {
 
       const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${activeKey}`;
       const ws = new WebSocket(url);
+      wsRef.current = ws;
 
       const audioCtx = new AudioContext({ sampleRate: 24000 });
+      audioContextRef.current = audioCtx;
       let nextTime = audioCtx.currentTime;
 
       ws.onopen = () => {
@@ -86,21 +114,20 @@ export function useVoicePreview() {
               }
             }
           } else if (res.serverContent?.turnComplete) {
-            ws.close();
-            setPreviewingVoice(null);
+            cleanupVoicePreview();
           }
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('Preview WS msg error:', err);
         }
       };
 
-      ws.onerror = () => setPreviewingVoice(null);
-      ws.onclose = () => setPreviewingVoice(null);
-    } catch (err) {
+      ws.onerror = () => cleanupVoicePreview();
+      ws.onclose = () => cleanupVoicePreview();
+    } catch (err: unknown) {
       console.error(err);
-      setPreviewingVoice(null);
+      cleanupVoicePreview();
     }
-  }, [previewingVoice]);
+  }, [previewingVoice, cleanupVoicePreview]);
 
   return {
     previewingVoice,
