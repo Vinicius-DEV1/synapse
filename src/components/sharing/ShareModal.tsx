@@ -103,6 +103,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleOpenInBrowser = () => {
+    if (!shareUrl) return;
+    if (window.api?.os?.openInBrowser) {
+      window.api.os.openInBrowser(shareUrl);
+    } else {
+      window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleCreateShare = async () => {
     try {
       setIsSubmitting(true);
@@ -274,15 +283,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   >
                     {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                   </button>
-                  <a
-                    href={shareUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
+                  <button
+                    onClick={handleOpenInBrowser}
+                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
                     title="Abrir no Navegador"
                   >
                     <ExternalLink size={14} />
-                  </a>
+                  </button>
                 </div>
               </div>
 

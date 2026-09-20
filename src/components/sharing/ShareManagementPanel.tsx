@@ -72,6 +72,15 @@ export const ShareManagementPanel: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleOpenInBrowser = (shareId: string) => {
+    const url = buildShareUrl(shareId);
+    if (window.api?.os?.openInBrowser) {
+      window.api.os.openInBrowser(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleToggleActive = async (share: SharedPageConfig) => {
     try {
       const nextActive = !share.isActive;
@@ -242,15 +251,13 @@ export const ShareManagementPanel: React.FC = () => {
                   {copiedId === share.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                 </button>
 
-                <a
-                  href={buildShareUrl(share.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-2 rounded-xl text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-white/5 transition-colors"
+                <button
+                  onClick={() => handleOpenInBrowser(share.id)}
+                  className="p-2 rounded-xl text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-white/5 transition-colors cursor-pointer"
                   title="Abrir Página Compartilhada"
                 >
                   <ExternalLink size={14} />
-                </a>
+                </button>
 
                 <button
                   onClick={() => setInspectingLogsShare(share)}

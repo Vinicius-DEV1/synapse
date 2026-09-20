@@ -49,15 +49,27 @@ import {
 
 /**
  * Builds the public share URL given a shareId.
+ * Always resolves to the public web domain (configured via VITE_FIREBASE_SHARE_DOMAIN, defaulting to synapse-dev.web.app)
+ * so that shared links can be accessed by any recipient on the web.
+ * Internal Tauri desktop origins (e.g. tauri://localhost) are strictly prohibited.
  */
 export function buildShareUrl(shareId: string): string {
-  // Allow local URL in dev server for fast testing if explicitly accessed via localhost
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  // Explicit opt-in ONLY for local dev testing in a standard web browser (never in desktop Tauri app)
+  if (
+    import.meta.env.VITE_USE_LOCAL_SHARE_URL === 'true' &&
+    typeof window !== 'undefined' &&
+    window.location.protocol.startsWith('http') &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
     return `${window.location.origin}/s/${shareId}`;
   }
 
-  const shareDomain = import.meta.env.VITE_FIREBASE_SHARE_DOMAIN || 'synapse-dev.web.app';
-  const baseDomain = shareDomain.startsWith('http') ? shareDomain : `https://${shareDomain}`;
+  const rawDomain = (import.meta.env.VITE_FIREBASE_SHARE_DOMAIN as string | undefined) || 'synapse-dev.web.app';
+  const cleanDomain = rawDomain.trim().replace(/\/+$/, '');
+  const baseDomain = cleanDomain.startsWith('http://') || cleanDomain.startsWith('https://')
+    ? cleanDomain
+    : `https://${cleanDomain}`;
+
   return `${baseDomain}/s/${shareId}`;
 }
 
