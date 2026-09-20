@@ -27,6 +27,7 @@ mod cmd_youtube;
 mod cmd_scraps;
 pub mod crypto;
 pub mod crypto_stream;
+pub mod crypto_stream_drive;
 pub mod video_probe;
 pub mod vault_security;
 pub mod library_stats;
