@@ -8,6 +8,8 @@ mod cmd_culture;
 mod cmd_diagrams;
 mod cmd_drive;
 mod cmd_files;
+pub mod cmd_files_folders;
+pub mod cmd_files_storage;
 mod cmd_finance;
 mod cmd_focus;
 mod cmd_library;
@@ -406,13 +408,13 @@ pub fn run() {
             cmd_files::files_update,
             cmd_files::files_delete,
             cmd_files::files_move,
-            cmd_files::files_save_local,
-            cmd_files::files_get_local,
-            cmd_files::read_local_binary_file,
-            cmd_files::file_folders_get_all,
-            cmd_files::file_folders_create,
-            cmd_files::file_folders_update,
-            cmd_files::file_folders_delete,
+            cmd_files_storage::files_save_local,
+            cmd_files_storage::files_get_local,
+            cmd_files_storage::read_local_binary_file,
+            cmd_files_folders::file_folders_get_all,
+            cmd_files_folders::file_folders_create,
+            cmd_files_folders::file_folders_update,
+            cmd_files_folders::file_folders_delete,
             file_links::file_links_get_by_page,
             file_links::file_links_get_by_file,
             file_links::file_links_create,

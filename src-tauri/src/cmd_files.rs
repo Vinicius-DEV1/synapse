@@ -1,9 +1,7 @@
 use crate::db::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
-use tauri::{AppHandle, State};
+use tauri::State;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -22,24 +20,9 @@ pub struct FileRecord {
     pub deleted_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default)]
-pub struct FileFolder {
-    pub id: String,
-    pub name: String,
-    pub parent_id: Option<String>,
-    pub color: Option<String>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
-    pub deleted_at: Option<String>,
-}
-
-fn get_files_key(db_state: &DbState) -> Option<String> {
-    let keys_guard = db_state.keys.lock().unwrap();
-    if let Some(keys) = keys_guard.as_ref() {
-        return keys.files.clone();
-    }
-    None
+fn get_files_key(db_state: &DbState) -> Result<Option<String>, String> {
+    let keys_guard = db_state.lock_keys()?;
+    Ok(keys_guard.as_ref().and_then(|k| k.files.clone()))
 }
 
 fn encrypt_opt(val: &Option<String>, key: &Option<String>) -> Option<String> {
@@ -65,9 +48,9 @@ pub fn files_get_all(
     folder_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<FileRecord>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state);
+    let enc_key = get_files_key(&db_state)?;
 
     let mut query = String::from("SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE deleted_at IS NULL");
 
@@ -117,9 +100,9 @@ pub fn files_get_by_id(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Option<FileRecord>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state);
+    let enc_key = get_files_key(&db_state)?;
 
     let result = conn.query_row(
         "SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE id = ? AND deleted_at IS NULL",
@@ -156,9 +139,9 @@ pub fn files_create(
     mut file: FileRecord,
     db_state: State<'_, DbState>,
 ) -> Result<FileRecord, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state);
+    let enc_key = get_files_key(&db_state)?;
 
     if file.id.is_empty() {
         file.id = Uuid::new_v4().to_string();
@@ -188,9 +171,9 @@ pub fn files_create(
 
 #[tauri::command]
 pub fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state);
+    let enc_key = get_files_key(&db_state)?;
 
     let enc_path = encrypt_opt(&file.local_path, &enc_key);
     let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
@@ -205,7 +188,7 @@ pub fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i3
 
 #[tauri::command]
 pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
@@ -224,7 +207,7 @@ pub fn files_move(
     folder_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     conn.execute(
@@ -235,178 +218,3 @@ pub fn files_move(
 
     Ok(true)
 }
-
-#[tauri::command]
-pub fn files_save_local(
-    filename: String,
-    data: Vec<u8>,
-    db_state: State<'_, DbState>,
-    _app_handle: AppHandle,
-) -> Result<String, String> {
-    let app_dir = crate::get_app_data_dir();
-    let files_dir = app_dir.join("files");
-
-    if !files_dir.exists() {
-        fs::create_dir_all(&files_dir).map_err(|e| e.to_string())?;
-    }
-
-    let source_path_buf = PathBuf::from(&filename);
-
-    let uuid = Uuid::new_v4().to_string();
-    let ext = source_path_buf
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-    let new_filename = if ext.is_empty() {
-        format!("{}.enc", uuid)
-    } else {
-        format!("{}.{}.enc", uuid, ext)
-    };
-
-    let dest_path = files_dir.join(&new_filename);
-    let temp_path = files_dir.join(format!("{}.tmp", uuid));
-
-    // Save to temp file
-    fs::write(&temp_path, data).map_err(|e| e.to_string())?;
-
-    // Encrypt
-    let keys_guard = db_state.keys.lock().unwrap();
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.files {
-            k.clone()
-        } else {
-            let _ = fs::remove_file(&temp_path);
-            return Err("Files key not found".into());
-        }
-    } else {
-        let _ = fs::remove_file(&temp_path);
-        return Err("Keys not unlocked".into());
-    };
-
-    if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &dest_path, &master_key)
-    {
-        let _ = fs::remove_file(&temp_path);
-        return Err(e);
-    }
-
-    let _ = fs::remove_file(&temp_path);
-
-    Ok(new_filename)
-}
-
-#[tauri::command]
-pub fn files_get_local(_filename: String, _app_handle: AppHandle) -> Result<Vec<u8>, String> {
-    Err("Obsoleto. Use http://encrypted.localhost/files/ em vez desta API.".to_string())
-}
-
-#[tauri::command]
-pub fn file_folders_get_all(db_state: State<'_, DbState>) -> Result<Vec<FileFolder>, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    let mut stmt = conn.prepare("SELECT id, name, parent_id, color, created_at, updated_at, deleted_at FROM file_folders WHERE deleted_at IS NULL")
-        .map_err(|e| e.to_string())?;
-
-    let iter = stmt
-        .query_map([], |row| {
-            Ok(FileFolder {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                parent_id: row.get(2)?,
-                color: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                deleted_at: row.get(6)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
-}
-
-#[tauri::command]
-pub fn file_folders_create(
-    mut folder: FileFolder,
-    db_state: State<'_, DbState>,
-) -> Result<FileFolder, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    if folder.id.is_empty() {
-        folder.id = Uuid::new_v4().to_string();
-    }
-
-    conn.execute(
-        "INSERT INTO file_folders (id, name, parent_id, color) 
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            parent_id = excluded.parent_id,
-            color = excluded.color,
-            deleted_at = NULL,
-            updated_at = CURRENT_TIMESTAMP",
-        params![folder.id, folder.name, folder.parent_id, folder.color],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(folder)
-}
-
-#[tauri::command]
-pub fn file_folders_update(
-    folder: FileFolder,
-    db_state: State<'_, DbState>,
-) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    let count = conn.execute(
-        "UPDATE file_folders SET name = ?, parent_id = ?, color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![folder.name, folder.parent_id, folder.color, folder.id]
-    ).map_err(|e| e.to_string())?;
-
-    Ok(count as i32)
-}
-
-#[tauri::command]
-pub fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    // soft delete folder
-    conn.execute("UPDATE file_folders SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
-        .map_err(|e| e.to_string())?;
-
-    // move files to root (folder_id = NULL)
-    conn.execute(
-        "UPDATE files SET folder_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE folder_id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // move subfolders to root (parent_id = NULL)
-    conn.execute(
-        "UPDATE file_folders SET parent_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE parent_id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
-}
-
-/// Reads any local binary file from disk into memory for editor paste and asset importing.
-#[tauri::command]
-pub fn read_local_binary_file(path: String) -> Result<Vec<u8>, String> {
-    let path_buf = std::path::PathBuf::from(&path);
-    if !path_buf.exists() {
-        return Err(format!("Arquivo não encontrado: {}", path));
-    }
-    std::fs::read(&path_buf).map_err(|e| format!("Falha ao ler arquivo {}: {}", path, e))
-}
-
