@@ -30,6 +30,7 @@ pub mod notes_history;
 pub mod file_links;
 pub mod anki_fsrs;
 mod db;
+pub mod db_migrations;
 pub mod protocol_encrypted;
 use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
@@ -188,7 +189,9 @@ pub fn run() {
         .setup(|app| {
             let app_data_dir = init_app_data_dir(app.handle());
             migrate_legacy_data_dir(&app_data_dir);
-            std::fs::create_dir_all(&app_data_dir).unwrap();
+            if let Err(e) = std::fs::create_dir_all(&app_data_dir) {
+                eprintln!("[Caderno Setup] Failed to create app data directory: {}", e);
+            }
 
             let db_path = app_data_dir.join("caderno.sqlite");
 
