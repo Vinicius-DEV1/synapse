@@ -36,6 +36,7 @@ pub mod anki_fsrs;
 mod db;
 pub mod db_migrations;
 pub mod protocol_encrypted;
+pub mod protocol_encrypted_utils;
 use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
 
