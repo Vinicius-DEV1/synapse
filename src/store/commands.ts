@@ -142,8 +142,17 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, tabs: newTabs, activeTabId: newTab.id, contextMenu: null };
     }
     case 'REORDER_TABS': {
+      if (
+        action.sourceIndex < 0 ||
+        action.sourceIndex >= state.tabs.length ||
+        action.targetIndex < 0 ||
+        action.targetIndex >= state.tabs.length
+      ) {
+        return state;
+      }
       const newTabs = [...state.tabs];
       const [moved] = newTabs.splice(action.sourceIndex, 1);
+      if (!moved) return state;
       newTabs.splice(action.targetIndex, 0, moved);
       // Maintain invariant: pinned tabs always come first
       const pinned = newTabs.filter((t) => t.isPinned);
@@ -206,13 +215,12 @@ export function appReducer(state: AppState, action: Action): AppState {
         }
       };
     case 'DELETE_AI_CHAT': {
-      const newSessions = { ...state.aiChatSessions };
-      delete newSessions[action.id];
-      const newState = { ...state, aiChatSessions: newSessions };
-      if (state.activeAiChatId === action.id) {
-        newState.activeAiChatId = null;
-      }
-      return newState;
+      const { [action.id]: _, ...remainingSessions } = state.aiChatSessions;
+      return {
+        ...state,
+        aiChatSessions: remainingSessions,
+        activeAiChatId: state.activeAiChatId === action.id ? null : state.activeAiChatId,
+      };
     }
     case 'CLEAR_AI_CHATS':
       return { ...state, aiChatSessions: {}, activeAiChatId: null };
