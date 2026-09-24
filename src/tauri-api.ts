@@ -18,6 +18,7 @@ import { tauriTrashApi } from './api/tauri/trash';
 import { tauriDiagramsApi } from './api/tauri/diagrams';
 import { tauriNotificationsApi } from './api/tauri/notifications';
 import { tauriQuizApi } from './api/tauri/quiz';
+import { tauriHabitsApi } from './api/tauri/habits';
 
 const syncCallbacks = new Set<() => void>();
 let isGlobalSyncTriggerAttached = false;
@@ -64,6 +65,9 @@ export const createTauriApi = async () => {
     // --- CALENDAR ---
     calendar: tauriCalendarApi,
     
+    // --- HABITS ---
+    habits: tauriHabitsApi,
+
     // --- CULTURE ---
     culture: tauriCultureApi,
     

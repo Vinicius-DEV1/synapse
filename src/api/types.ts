@@ -21,6 +21,7 @@ import type { TutorSession, TutorMessage, TutorMemory } from '../types/practice'
 import type { DiagramMeta, DiagramContent } from '../types/diagrams';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 import type { IQuizApi } from './contracts/quiz';
+import type { IHabitsApi } from '../types/habits';
 
 export interface FilesApi {
   getAll: () => Promise<FileItem[]>;
@@ -270,6 +271,8 @@ export interface ICadernoAPI {
     updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<{ success: boolean }>;
     deleteEvent: (id: string) => Promise<boolean>;
   };
+
+  habits?: IHabitsApi;
 
   notifications?: {
     getNotifications: () => Promise<AppNotification[]>;

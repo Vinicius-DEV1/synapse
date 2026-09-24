@@ -6,3 +6,4 @@ export * from './video';
 export * from './dictionary';
 export * from './stats';
 export * from './quiz';
+export * from './habits';

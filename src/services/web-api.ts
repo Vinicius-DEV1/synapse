@@ -20,6 +20,7 @@ import { webNotificationsApi } from '../api/web/notifications';
 import { createWebConfigApi } from '../api/web/config';
 import { createWebNotesApi } from '../api/web/notes';
 import { webQuizApi } from '../api/web/quiz';
+import { webHabitsApi } from '../api/web/habits';
 
 // Helper function for ID generation
 const generateId = () => crypto.randomUUID();
@@ -87,6 +88,9 @@ export const createWebApiMock = async () => {
     // --- CALENDAR ---
     calendar: webCalendarApi(db),
     notifications: webNotificationsApi(db),
+
+    // --- HABITS ---
+    habits: webHabitsApi(db, generateId),
 
     // --- VAULT ---
     vault: webVaultApi(db, generateId),
