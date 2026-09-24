@@ -8,13 +8,11 @@ import {
   Trash2,
   Edit2,
   Check,
-  RotateCcw,
 } from 'lucide-react';
 import type { Habit, HabitLog, HabitStats } from '../../types/habits';
 import {
   calculateHabitStreak,
   getLocalDateString,
-  shiftDateString,
   broadcastHabitUpdate,
 } from '../../utils/habitUtils';
 import { playUiToggleSound, playUiClickSound, playUiDeleteSound } from '../../utils/uiSounds';
@@ -26,7 +24,6 @@ export interface HabitHeatmapModalProps {
   onHabitUpdated?: () => void;
 }
 
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTH_NAMES = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
   'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
@@ -40,7 +37,6 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
 }) => {
   const [habit, setHabit] = useState<Habit | null>(null);
   const [logs, setLogs] = useState<HabitLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -52,7 +48,6 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
   const loadHabitData = useCallback(async () => {
     if (!window.api?.habits) return;
     try {
-      setLoading(true);
       const [h, l] = await Promise.all([
         window.api.habits.getHabit(habitId),
         window.api.habits.getLogs(habitId),
@@ -62,8 +57,6 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
       setTitleInput(h?.title || '');
     } catch (err) {
       console.error('Failed to load habit data:', err);
-    } finally {
-      setLoading(false);
     }
   }, [habitId]);
 
@@ -151,7 +144,8 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
   const handleToggleDay = async (date: string) => {
     if (!window.api?.habits || !habit) return;
     try {
-      playUiToggleSound();
+      const nextDone = !completedDateSet.has(date);
+      playUiToggleSound(nextDone);
       const res = await window.api.habits.toggleDayLog(habit.id, date);
       setLogs((prev) => {
         if (res.completed) {

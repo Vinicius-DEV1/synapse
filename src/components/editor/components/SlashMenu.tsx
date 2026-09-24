@@ -1,4 +1,4 @@
-import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus, Layers } from 'lucide-react';
+import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus, Layers, Flame } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SlashCommandItem {
@@ -40,6 +40,7 @@ const SLASH_COMMANDS: SlashCommandItem[] = [
   { id: 'video', title: 'Vincular Vídeo', subtitle: 'Vincular um vídeo da sua galeria.', icon: Film, keywords: ['video', 'midia'] },
   { id: 'livro', title: 'Vincular Livro', subtitle: 'Vincular um livro da sua biblioteca.', icon: BookOpen, keywords: ['livro', 'epub', 'pdf'] },
   { id: 'evento', title: 'Evento da Agenda', subtitle: 'Criar e vincular um evento na agenda com avisos.', icon: Calendar, keywords: ['evento', 'agenda', 'calendario'] },
+  { id: 'habito', title: 'Hábito / Meta Diária', subtitle: 'Rastrear hábito com mapa de consistência (Heatmap).', icon: Flame, keywords: ['habito', 'habit', 'tracker', 'rotina', 'frequencia', 'meta'] },
 ];
 
 interface SlashMenuProps {

@@ -19,6 +19,7 @@ const MediaActionModal = lazy(() => import('../../modals/MediaActionModal'));
 const FileActionModal = lazy(() => import('../../modals/FileActionModal'));
 const ImageDeleteModal = lazy(() => import('../../modals/ImageDeleteModal'));
 const QuestionCreateModal = lazy(() => import('../../editor-extensions/quiz/components/QuestionCreateModal'));
+const HabitSelectModal = lazy(() => import('../../habits/HabitSelectModal'));
 
 interface EditorModalHostProps {
   editor: Editor | null;
@@ -93,6 +94,10 @@ interface EditorModalHostProps {
   setCalendarEventModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; initialTitle?: string } | null>
   >;
+  habitSelectModal: { isOpen: boolean; initialQuery?: string } | null;
+  setHabitSelectModal: React.Dispatch<
+    React.SetStateAction<{ isOpen: boolean; initialQuery?: string } | null>
+  >;
   mediaSelectModal: { isOpen: boolean; type: 'video' | 'book' } | null;
   setMediaSelectModal: React.Dispatch<
     React.SetStateAction<{ isOpen: boolean; type: 'video' | 'book' } | null>
@@ -148,6 +153,8 @@ export default function EditorModalHost({
   setGroupBundleModal: _setGroupBundleModal,
   calendarEventModal,
   setCalendarEventModal,
+  habitSelectModal,
+  setHabitSelectModal,
   mediaSelectModal,
   setMediaSelectModal,
   mediaActionModal,
@@ -333,6 +340,24 @@ export default function EditorModalHost({
             initialTitle={calendarEventModal.initialTitle}
             pageId={pageId}
             pageTitle={pageTitle}
+          />
+        )}
+
+        {habitSelectModal?.isOpen && (
+          <HabitSelectModal
+            isOpen={true}
+            initialQuery={habitSelectModal.initialQuery}
+            onClose={() => setHabitSelectModal(null)}
+            onSelect={(habit) => {
+              if (editor) {
+                editor.chain().focus().insertHabitWidget({
+                  habitId: habit.id,
+                  title: habit.title,
+                  color: habit.color,
+                }).run();
+              }
+              setHabitSelectModal(null);
+            }}
           />
         )}
 

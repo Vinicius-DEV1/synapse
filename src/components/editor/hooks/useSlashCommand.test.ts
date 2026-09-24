@@ -308,5 +308,41 @@ describe('useSlashCommand Hook', () => {
       initialTitle: '',
     });
   });
+
+  it('opens habit select modal with parsed query when executing "habito"', () => {
+    const setHabitSelectModal = vi.fn();
+    const { result } = renderHook(() =>
+      useSlashCommand({
+        setPageSearchMenu,
+        setFocusModal,
+        setAlarmModal,
+        setFileUploadModal,
+        setFileSelectModal,
+        setCalendarEventModal,
+        setMediaSelectModal,
+        setQuestionCreateModal: vi.fn(),
+        setGroupBundleModal: vi.fn(),
+        setHabitSelectModal,
+      })
+    );
+
+    act(() => {
+      result.current.setSlashMenu({
+        query: 'habito Ler ingles',
+        startPos: 10,
+        x: 50,
+        y: 150,
+      });
+    });
+
+    act(() => {
+      result.current.executeSlashCommand('habito', mockEditor);
+    });
+
+    expect(setHabitSelectModal).toHaveBeenCalledWith({
+      isOpen: true,
+      initialQuery: 'Ler ingles',
+    });
+  });
 });
 

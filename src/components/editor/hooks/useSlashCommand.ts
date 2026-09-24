@@ -24,6 +24,7 @@ interface UseSlashCommandProps {
   setMediaSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean, type: 'video' | 'book' } | null>>;
   setQuestionCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
   setGroupBundleModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setHabitSelectModal: React.Dispatch<React.SetStateAction<{ isOpen: boolean; initialQuery?: string } | null>>;
 }
 
 /**
@@ -72,6 +73,7 @@ export function useSlashCommand({
   setMediaSelectModal,
   setQuestionCreateModal,
   setGroupBundleModal,
+  setHabitSelectModal,
 }: UseSlashCommandProps) {
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
 
@@ -450,6 +452,20 @@ export function useSlashCommand({
         setCalendarEventModal({ isOpen: true, initialTitle });
         break;
       }
+      case 'habito': {
+        const initialQuery = extractSlashCommandArgument(slashMenu.query || '', [
+          'habito / meta diaria',
+          'habito',
+          'habit',
+          'tracker',
+          'rotina',
+          'frequencia',
+          'meta',
+        ]);
+        chain.run();
+        setHabitSelectModal({ isOpen: true, initialQuery });
+        break;
+      }
       case 'agrupar': {
         // Insert an empty documentBundle, then open the loose-files picker automatically.
         // The bundle ID is generated here so the event targets the exact new node.
@@ -490,6 +506,7 @@ export function useSlashCommand({
     setCalendarEventModal,
     setMediaSelectModal,
     setGroupBundleModal,
+    setHabitSelectModal,
   ]);
 
   return { slashMenu, setSlashMenu, handleSlashKeyDown, updateSlashMenuOnUpdate, executeSlashCommand };

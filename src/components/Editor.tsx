@@ -137,6 +137,7 @@ export default function Editor({
     setMediaSelectModal: modals.setMediaSelectModal,
     setQuestionCreateModal: modals.setQuestionCreateModal,
     setGroupBundleModal: modals.setGroupBundleModal,
+    setHabitSelectModal: modals.setHabitSelectModal,
   });
 
   const { handlePaste, handleDrop, handleCroppedImage } = useEditorDropPaste({
@@ -292,6 +293,8 @@ export default function Editor({
         setGroupBundleModal={modals.setGroupBundleModal}
         calendarEventModal={modals.calendarEventModal}
         setCalendarEventModal={modals.setCalendarEventModal}
+        habitSelectModal={modals.habitSelectModal}
+        setHabitSelectModal={modals.setHabitSelectModal}
         mediaSelectModal={modals.mediaSelectModal}
         setMediaSelectModal={modals.setMediaSelectModal}
         mediaActionModal={modals.mediaActionModal}

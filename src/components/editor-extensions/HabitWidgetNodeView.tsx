@@ -3,7 +3,6 @@ import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Flame, Check, Activity, AlertCircle } from 'lucide-react';
 import { getStoreState } from '../../store/useStore';
 import {
-  getLocalDateString,
   resolveDateFromPageTitle,
   broadcastHabitUpdate,
 } from '../../utils/habitUtils';
@@ -11,13 +10,12 @@ import { playUiToggleSound } from '../../utils/uiSounds';
 import { HabitHeatmapModal } from '../habits/HabitHeatmapModal';
 import { Portal } from '../ui/Portal';
 
-export default function HabitWidgetNodeView({ node, updateAttributes, editor }: NodeViewProps) {
+export default function HabitWidgetNodeView({ node, updateAttributes }: NodeViewProps) {
   const { habitId, targetDate, title: initialTitle, streak: initialStreak } = node.attrs;
 
   const [title, setTitle] = useState<string>(initialTitle || 'Hábito');
   const [streak, setStreak] = useState<number>(Number(initialStreak) || 0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
   const mountedRef = useRef<boolean>(true);
@@ -36,12 +34,10 @@ export default function HabitWidgetNodeView({ node, updateAttributes, editor }: 
 
   const loadStatus = useCallback(async () => {
     if (!habitId || !window.api?.habits) {
-      if (mountedRef.current) setIsLoading(false);
       return;
     }
 
     try {
-      if (mountedRef.current) setIsLoading(true);
       const data = await window.api.habits.getHabitWithStats(habitId);
 
       if (!mountedRef.current) return;
@@ -67,8 +63,6 @@ export default function HabitWidgetNodeView({ node, updateAttributes, editor }: 
       }
     } catch (err) {
       console.error('Failed to load habit status in widget:', err);
-    } finally {
-      if (mountedRef.current) setIsLoading(false);
     }
   }, [habitId, effectiveDate, initialTitle, initialStreak, updateAttributes]);
 
@@ -95,8 +89,8 @@ export default function HabitWidgetNodeView({ node, updateAttributes, editor }: 
     if (!window.api?.habits || isNotFound) return;
 
     try {
-      playUiToggleSound();
       const nextCompleted = !isCompleted;
+      playUiToggleSound(nextCompleted);
       setIsCompleted(nextCompleted);
 
       // Optimistic streak adjustment

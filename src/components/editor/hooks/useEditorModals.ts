@@ -58,6 +58,11 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
     initialTitle?: string;
   } | null>(null);
 
+  const [habitSelectModal, setHabitSelectModal] = useState<{
+    isOpen: boolean;
+    initialQuery?: string;
+  } | null>(null);
+
   const [mediaSelectModal, setMediaSelectModal] = useState<{
     isOpen: boolean;
     type: 'video' | 'book';
@@ -167,6 +172,7 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
       setGroupBundleModal(false);
       setFileUploadModal(null);
       setCalendarEventModal(null);
+      setHabitSelectModal(null);
       setFocusModal(null);
       setAlarmModal(null);
     };
@@ -207,6 +213,8 @@ export function useEditorModals(options?: UseEditorModalsOptions) {
     setPageSearchMenu,
     calendarEventModal,
     setCalendarEventModal,
+    habitSelectModal,
+    setHabitSelectModal,
     mediaSelectModal,
     setMediaSelectModal,
     mediaActionModal,
