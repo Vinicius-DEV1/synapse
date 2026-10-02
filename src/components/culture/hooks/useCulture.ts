@@ -3,7 +3,7 @@ import type { CultureItem, CultureEpisode } from '../../../types';
 import { CultureService } from '../../../services/culture';
 import { useLocalStorage } from '../../../hooks/useLocalStorage';
 
-export type FilterType = 'all' | 'goals' | 'finished' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
+export type FilterType = 'all' | 'goals' | 'finished' | 'recommendations' | 'anime' | 'filme' | 'série' | 'hq' | 'manga' | 'livro' | 'novel';
 export type ViewMode = 'grid' | 'compact' | 'list';
 export type SortMode = 'default' | 'alpha' | 'progress' | 'added';
 
@@ -132,7 +132,7 @@ export function useCulture() {
         (item.synopsis && item.synopsis.toLowerCase().includes(search.toLowerCase()));
 
       if (!matchSearch) return false;
-
+      if (activeFilter === 'recommendations') return false;
       if (activeFilter === 'goals') return !!item.is_goal;
       if (activeFilter === 'finished') return item.total_progress > 0 && item.progress >= item.total_progress;
       if (activeFilter !== 'all') return item.type === activeFilter;

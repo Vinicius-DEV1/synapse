@@ -11,6 +11,8 @@ vi.mock('../../../services/culture', () => ({
     createItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
+    getRecentReleases: vi.fn().mockResolvedValue([]),
+    syncOngoingItems: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
