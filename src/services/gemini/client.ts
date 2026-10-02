@@ -67,13 +67,30 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   throw lastError || new Error('Nenhuma chave ativa conseguiu listar os modelos disponíveis.');
 }
 
+function isKeyAuthenticationError(message?: string): boolean {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('api_key_invalid') ||
+    lower.includes('api key not valid') ||
+    lower.includes('key not valid') ||
+    lower.includes('invalid api key') ||
+    lower.includes('permission denied') ||
+    lower.includes('permission_denied') ||
+    lower.includes('consumer_suspended') ||
+    lower.includes('revoked') ||
+    lower.includes('revogada')
+  );
+}
+
 export async function promptGemini(
   prompt: string,
   mediaBase64?: string | string[],
   history: any[] = [],
   customModelId?: string,
   customSystemInstruction?: string,
-  timeoutMs = 45000
+  timeoutMs = 45000,
+  tools?: Array<Record<string, unknown>>
 ): Promise<{ text: string; usage?: any }> {
   const keys = await getGeminiKeys();
   const activeKeys = getRotatedActiveKeys(keys);
@@ -83,11 +100,11 @@ export async function promptGemini(
   }
 
   const settings = getSettings();
-  const modelId = customModelId || settings.geminiModel;
+  let modelId = customModelId || settings.geminiModel;
 
-  // Require configuration if model is unset or points to legacy defaults
-  if (!modelId || modelId.includes('1.5-pro') || modelId.includes('2.5-pro') || modelId.includes('2.5-flash')) {
-    throw new Error('Por favor, acesse as Configurações > Inteligência Artificial, carregue os modelos e escolha um modelo atual para usar.');
+  // Gracefully fallback legacy placeholder model defaults to stable production model
+  if (!modelId || modelId === 'gemini-2.5-pro' || modelId === 'models/gemini-2.5-pro' || modelId.includes('2.5-flash')) {
+    modelId = 'gemini-2.0-flash';
   }
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
@@ -127,6 +144,9 @@ export async function promptGemini(
   };
   if (customSystemInstruction) {
     requestBody.system_instruction = { parts: { text: customSystemInstruction } };
+  }
+  if (tools && tools.length > 0) {
+    requestBody.tools = tools;
   }
 
   let allServerErrors = true;
@@ -172,7 +192,7 @@ export async function promptGemini(
           allAuthErrors = false;
           lastErrorMsg = errorMsg || 'Limite de cota excedido (429)';
           continue;
-        } else if (response.status === 400 || response.status === 403) {
+        } else if (response.status === 403 || (response.status === 400 && isKeyAuthenticationError(data.error?.message))) {
           const errorMsg = data.error?.message || `Chave rejeitada (${response.status}).`;
           console.warn(`[GeminiPool] Chave inválida ou revogada (${response.status}): ${errorMsg}. Rotacionando para próxima chave...`);
           await updateGeminiKeyStatus(currentKeyEntry.id, 'error', undefined, errorMsg);
@@ -181,6 +201,12 @@ export async function promptGemini(
           allQuotaErrors = false;
           lastErrorMsg = errorMsg;
           continue;
+        } else if (response.status === 400) {
+          // Client request/payload error (unsupported tool, malformed param, etc.)
+          // The key itself is valid and must NOT be marked as error or poisoned.
+          const errorMsg = data.error?.message || 'Parâmetro ou payload inválido na requisição.';
+          console.error(`[GeminiPool] Erro de requisição (400): ${errorMsg}`);
+          throw new Error(`Erro na requisição à API Gemini (${response.status}): ${errorMsg}`);
         } else if (response.status >= 500) {
           console.warn(`[GeminiPool] Servidor do Google indisponível (${response.status}). Tentando próxima chave sem penalizar a atual...`);
           allQuotaErrors = false;

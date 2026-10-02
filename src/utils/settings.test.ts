@@ -11,7 +11,7 @@ describe('settings utils', () => {
     expect(s.autoLockOnSuspend).toBe(true);
     expect(s.fontSize).toBe('text-base');
     expect(s.spellcheck).toBe(true);
-    expect(s.geminiModel).toBe('gemini-2.5-pro');
+    expect(s.geminiModel).toBe('gemini-2.0-flash');
     expect(s.quizDualAiValidation).toBe(true);
     expect(s.restoreTabsOnStartup).toBe(true);
   });

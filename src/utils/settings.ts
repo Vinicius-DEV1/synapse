@@ -43,7 +43,7 @@ export function getSettings(): AppSettings {
     enableTabsDesktop: true,
     fontSize: 'text-base',
     spellcheck: true,
-    geminiModel: 'gemini-2.5-pro',
+    geminiModel: 'gemini-2.0-flash',
     quizDualAiValidation: true,
     geminiModelQuizGenerator: '',
     geminiModelQuizValidator: '',

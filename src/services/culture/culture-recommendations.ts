@@ -153,31 +153,16 @@ export const CultureRecommendationsService = {
     // 3. Build prompt for Gemini
     const prompt = buildCultureRecommendationsPrompt(dna, freshAnchors, serendipityMode);
 
-    // 4. Request Gemini with Google Search Grounding tool (with graceful fallback if tool is not supported)
-    let aiResponseText = '';
-    try {
-      const result = await promptGemini(
-        prompt,
-        undefined,
-        [],
-        undefined,
-        CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
-        60000,
-        [{ googleSearch: {} }]
-      );
-      aiResponseText = result.text;
-    } catch (groundingError) {
-      console.warn('[CultureRecommendations] Falha com Google Search Grounding. Tentando sem ferramentas:', groundingError);
-      const fallbackResult = await promptGemini(
-        prompt,
-        undefined,
-        [],
-        undefined,
-        CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
-        60000
-      );
-      aiResponseText = fallbackResult.text;
-    }
+    // 4. Request Gemini
+    const result = await promptGemini(
+      prompt,
+      undefined,
+      [],
+      undefined,
+      CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
+      60000
+    );
+    const aiResponseText = result.text;
 
     // 5. Parse JSON
     const parsed = extractJsonFromResponse(aiResponseText);

@@ -149,4 +149,28 @@ describe('Gemini Client Multi-Key Resilient Failover', () => {
       promptGemini('Teste', undefined, [], 'gemini-2.0-flash')
     ).rejects.toThrow('Os servidores da IA do Google estão temporariamente instáveis (5xx)');
   });
+
+  it('does NOT mark key as error and throws immediately when receiving non-auth 400 (bad request/payload)', async () => {
+    const mockKeys: GeminiKeyEntry[] = [
+      { id: 'key-healthy', key: 'AIzaSyHealthyKey', status: 'active', addedAt: 1 },
+      { id: 'key-second', key: 'AIzaSySecondKey', status: 'active', addedAt: 2 },
+    ];
+
+    vi.spyOn(keysModule, 'getGeminiKeys').mockResolvedValue(mockKeys);
+    const updateKeySpy = vi.spyOn(keysModule, 'updateGeminiKeyStatus').mockResolvedValue();
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: { code: 400, message: 'Invalid JSON payload received. Unknown name "googleSearch".' },
+      }),
+    }));
+
+    await expect(
+      promptGemini('Teste', undefined, [], 'gemini-2.0-flash')
+    ).rejects.toThrow('Erro na requisição à API Gemini (400)');
+
+    expect(updateKeySpy).not.toHaveBeenCalled();
+  });
 });

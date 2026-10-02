@@ -1,6 +1,23 @@
 import { getWebDb } from '../db-web';
 import type { GeminiKeyEntry } from './types';
 
+export function isConfirmedKeyRevocation(errorMessage?: string): boolean {
+  if (!errorMessage) return false;
+  const msg = errorMessage.toLowerCase();
+  return (
+    msg.includes('api_key_invalid') ||
+    msg.includes('api key not valid') ||
+    msg.includes('key not valid') ||
+    msg.includes('invalid api key') ||
+    msg.includes('permission_denied') ||
+    msg.includes('permission denied') ||
+    msg.includes('consumer_suspended') ||
+    msg.includes('revogada') ||
+    msg.includes('revoked') ||
+    msg.includes('403')
+  );
+}
+
 export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
   const db = await getWebDb();
   const doc = await db.get('config', 'geminiApiKeys');
@@ -10,7 +27,7 @@ export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
     keys = [];
   }
   
-  // Reactivate keys if disabled time has passed
+  // Reactivate keys if disabled time has passed or if falsely marked as error
   let needsSave = false;
   const now = Date.now();
   for (const k of keys) {
@@ -18,6 +35,26 @@ export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
       k.status = 'active';
       k.disabledUntil = undefined;
       needsSave = true;
+    }
+
+    // Auto-heal keys that were falsely marked as 'error' due to payload/400 errors
+    if (k.status === 'error' && !isConfirmedKeyRevocation(k.errorMessage)) {
+      k.status = 'active';
+      k.errorMessage = undefined;
+      k.disabledUntil = undefined;
+      needsSave = true;
+    }
+  }
+
+  // Safety net: if all keys are currently inactive but some are not confirmed revoked, reactivate them
+  if (keys.length > 0 && keys.every(k => k.status !== 'active')) {
+    for (const k of keys) {
+      if (!isConfirmedKeyRevocation(k.errorMessage)) {
+        k.status = 'active';
+        k.errorMessage = undefined;
+        k.disabledUntil = undefined;
+        needsSave = true;
+      }
     }
   }
   

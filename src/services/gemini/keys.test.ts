@@ -78,4 +78,20 @@ describe('gemini keys service', () => {
     const pass4 = getRotatedActiveKeys(keys);
     expect(pass4.map((k) => k.id)).toEqual(['k1', 'k2', 'k3']);
   });
+
+  it('auto-heals keys falsely marked as error by non-revocation payload errors', async () => {
+    const falselyBlockedKey: GeminiKeyEntry = {
+      id: 'key-false-block',
+      key: 'AIzaSyFalseBlock',
+      status: 'error',
+      errorMessage: 'Invalid JSON payload received (400)',
+      addedAt: Date.now(),
+    };
+
+    await saveGeminiKeys([falselyBlockedKey]);
+    const retrieved = await getGeminiKeys();
+
+    expect(retrieved[0].status).toBe('active');
+    expect(retrieved[0].errorMessage).toBeUndefined();
+  });
 });
