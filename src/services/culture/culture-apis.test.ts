@@ -50,22 +50,11 @@ describe('culture-apis', () => {
         ],
       };
 
-      const mockWikiResponse = {
-        type: 'standard',
-        extract: 'Her é um filme americano de 2013 dirigido por Spike Jonze.',
-      };
-
       globalThis.fetch = vi.fn().mockImplementation((url: string) => {
         if (url.includes('imdb.com')) {
           return Promise.resolve({
             ok: true,
             json: async () => mockImdbResponse,
-          } as Response);
-        }
-        if (url.includes('wikipedia.org')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockWikiResponse,
           } as Response);
         }
         return Promise.reject(new Error('Unknown URL'));
@@ -77,7 +66,8 @@ describe('culture-apis', () => {
       expect(results[0]).toEqual({
         title: 'Her',
         year: 2013,
-        synopsis: 'Her é um filme americano de 2013 dirigido por Spike Jonze.',
+        synopsis: '',
+        cast: 'Joaquin Phoenix, Amy Adams',
         cover: 'https://m.media-amazon.com/images/M/poster._V1_UX600_.jpg',
         total: 0,
         type: 'filme',
@@ -131,7 +121,8 @@ describe('culture-apis', () => {
       expect(results[1].title).toBe('Her');
       expect(results[1].year).toBe(2013);
       expect(results[1].api_id).toBe('tt1798709');
-      expect(results[1].synopsis).toBe('Estrelando: Joaquin Phoenix, Amy Adams');
+      expect(results[1].synopsis).toBe('');
+      expect(results[1].cast).toBe('Joaquin Phoenix, Amy Adams');
     });
 
     it('gracefully handles network errors without crashing', async () => {

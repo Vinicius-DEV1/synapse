@@ -11,13 +11,23 @@ export interface CultureSearchResult {
   api_id: string;
   api_source: string;
   status?: 'releasing' | 'finished' | 'unknown';
+  cast?: string;
 }
+
 const cultureApiCache = new Map<string, { timestamp: number; data: CultureSearchResult[] }>();
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 let lastJikanRequestTime = 0;
 let jikanCooldownUntil = 0;
 let googleBooksCooldownUntil = 0;
+
+export function isJikanAvailable(): boolean {
+  return Date.now() >= jikanCooldownUntil;
+}
+
+export function reportJikanFailure(durationMs = 120000): void {
+  jikanCooldownUntil = Date.now() + durationMs;
+}
 
 async function throttleJikan(): Promise<void> {
   const now = Date.now();
@@ -49,8 +59,8 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
     await throttleJikan();
     const res = await fetch(`https://api.jikan.moe/v4/${t}?q=${encodeURIComponent(q)}&limit=3`);
     if (!res.ok) {
-      if (res.status === 429 || res.status === 504) {
-        jikanCooldownUntil = Date.now() + 10000; // 10s cooldown
+      if (res.status === 429 || res.status === 504 || res.status >= 500) {
+        reportJikanFailure(120000); // 2-min circuit breaker
       }
       return [];
     }
@@ -198,51 +208,102 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
       })
       .slice(0, 6);
 
-    const enriched = await Promise.all(
-      items.map(async (item: any) => {
-        let synopsis = item.s ? `Estrelando: ${item.s}` : '';
+    const enriched: CultureSearchResult[] = items.map((item: any) => {
+      let cover = '';
+      if (item.i?.imageUrl) {
+        cover = item.i.imageUrl.replace(/_V1_.*\.jpg/, '_V1_UX600_.jpg');
+      }
 
-        // Fast attempt to enrich with Portuguese Wikipedia summary (anonymous standard CORS)
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 1200);
-          const wRes = await fetch(
-            `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(item.l)}`,
-            {
-              signal: controller.signal,
-            }
-          );
-          clearTimeout(timeout);
-          if (wRes.ok) {
-            const wData = await wRes.json();
-            if (wData.extract && wData.type === 'standard' && !wData.description?.includes('desambiguação')) {
-              synopsis = wData.extract;
-            }
-          }
-        } catch {}
+      return {
+        title: item.l,
+        year: item.y || null,
+        synopsis: '', // IMDb autocomplete API does not provide plot synopses
+        cast: item.s || undefined,
+        cover,
+        total: 0,
+        type: 'filme',
+        api_id: item.id,
+        api_source: 'imdb',
+        status: 'finished' as const,
+      };
+    });
 
-        let cover = '';
-        if (item.i?.imageUrl) {
-          cover = item.i.imageUrl.replace(/_V1_.*\.jpg/, '_V1_UX600_.jpg');
-        }
 
-        return {
-          title: item.l,
-          year: item.y || null,
-          synopsis,
-          cover,
-          total: 0,
-          type: 'filme',
-          api_id: item.id,
-          api_source: 'imdb',
-          status: 'finished' as const,
-        };
-      })
-    );
-
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: enriched });
     return enriched;
   } catch (err) {
     console.warn('[CultureAPI] Erro ao buscar IMDb:', err);
+    return [];
+  }
+}
+
+/**
+ * Queries IMDb Autosuggest API specifically for TV series and mini-series.
+ */
+export async function fetchImdbSeries(q: string): Promise<CultureSearchResult[]> {
+  const clean = q
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  if (!clean) return [];
+
+  const cacheKey = `imdb_series_${clean}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const first = clean[0];
+  const url = `https://v3.sg.media-imdb.com/suggestion/${first}/${clean}.json`;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = (data?.d || [])
+      .filter((item: any) => {
+        return (
+          item.qid === 'tvSeries' ||
+          item.qid === 'tvMiniSeries' ||
+          item.q === 'TV series' ||
+          item.q === 'TV mini-series'
+        );
+      })
+      .slice(0, 6);
+
+    const enriched: CultureSearchResult[] = items.map((item: any) => {
+      let cover = '';
+      if (item.i?.imageUrl) {
+        cover = item.i.imageUrl.replace(/_V1_.*\.jpg/, '_V1_UX600_.jpg');
+      }
+
+      return {
+        title: item.l,
+        year: item.y || null,
+        synopsis: '',
+        cast: item.s || undefined,
+        cover,
+        total: 0,
+        type: 'série',
+        api_id: item.id,
+        api_source: 'imdb',
+        status: 'finished' as const,
+      };
+    });
+
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: enriched });
+    return enriched;
+  } catch (err) {
+    console.warn('[CultureAPI] Erro ao buscar séries no IMDb:', err);
     return [];
   }
 }
@@ -253,13 +314,16 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
 export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[]> {
   try {
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=movie&entity=movie&limit=10`);
+    if (!res.ok) return [];
     const data = await res.json();
     let movies = (data?.results || []).filter((r: any) => r.kind === 'feature-movie' || r.trackName).slice(0, 5);
 
     if (movies.length === 0) {
       const fallbackRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&limit=30`);
-      const fallbackData = await fallbackRes.json();
-      movies = (fallbackData?.results || []).filter((r: any) => r.kind === 'feature-movie').slice(0, 5);
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        movies = (fallbackData?.results || []).filter((r: any) => r.kind === 'feature-movie').slice(0, 5);
+      }
     }
 
     return movies.map((item: any) => {

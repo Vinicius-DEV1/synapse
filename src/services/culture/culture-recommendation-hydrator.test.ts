@@ -75,4 +75,37 @@ describe('culture-recommendation-hydrator', () => {
     imdbSpy.mockRestore();
     itunesSpy.mockRestore();
   });
+
+  it('rejects unrelated or wrong covers from API searches (preventing cover contamination)', async () => {
+    // API returns a 1979 Alien movie when searching for 2024 Alien: Romulus
+    const imdbSpy = vi.spyOn(cultureApis, 'fetchImdbMovies').mockResolvedValue([
+      {
+        title: 'Alien',
+        type: 'filme',
+        api_id: 'tt0078748',
+        api_source: 'imdb',
+        synopsis: 'Classic 1979 film.',
+        cover: 'https://example.com/alien1979.jpg',
+        total: 0,
+      },
+    ]);
+
+    const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
+
+    const item: RawAIRecommendation = {
+      title: 'Alien: Romulus',
+      type: 'filme',
+      tier: 'recent',
+      cluster: 'Sci-Fi Horror',
+      affinity_reason: 'Novo filme da franquia',
+      confidence_score: 0.95,
+    };
+
+    const match = await searchMediaForRecommendation(item);
+    // Must be null because Alien (1979) does not match Alien: Romulus!
+    expect(match).toBeNull();
+
+    imdbSpy.mockRestore();
+    itunesSpy.mockRestore();
+  });
 });
