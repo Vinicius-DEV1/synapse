@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sparkles, RefreshCw, Award, Gem, Clock, Target, Compass } from 'lucide-react';
-import type { RecommendationFilterTab } from '../../../types/culture-recommendations';
+import type {
+  RecommendationFilterTab,
+  HydratedRecommendation,
+} from '../../../types/culture-recommendations';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { RecommendationClusterSection } from './RecommendationClusterSection';
+import { RecommendationDetailsModal } from './RecommendationDetailsModal';
 import { RecommendationSkeleton } from './RecommendationSkeleton';
 import { RecommendationsEmptyState } from './RecommendationsEmptyState';
 
@@ -23,11 +27,14 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
     setSerendipityMode,
     addedItemIds,
     lastGeneratedAt,
+    aiDna,
     refresh,
     handleAddItem,
     handleDislikeItem,
     handleMarkAlreadySeen,
   } = useRecommendations(onLibraryUpdated);
+
+  const [selectedItem, setSelectedItem] = useState<HydratedRecommendation | null>(null);
 
   const formatLastUpdated = (dateStr: string | null) => {
     if (!dateStr) return null;
@@ -127,6 +134,41 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
         </div>
       )}
 
+      {/* AI-Extracted Cultural Taste DNA Badge Strip */}
+      {aiDna && aiDna.thematic_axes && aiDna.thematic_axes.length > 0 && !isLoading && (
+        <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-zinc-900/60 border border-white/[0.06] backdrop-blur-sm">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-amber-400" />
+              <span className="text-xs font-semibold text-zinc-200">DNA Cultural Detectado pela IA</span>
+            </div>
+            {aiDna.emotional_atmosphere && (
+              <span className="text-[11px] text-zinc-400 italic">
+                "{aiDna.emotional_atmosphere}"
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {aiDna.thematic_axes.map(axis => (
+              <span
+                key={axis}
+                className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20"
+              >
+                {axis}
+              </span>
+            ))}
+            {aiDna.core_influences && aiDna.core_influences.slice(0, 4).map(inf => (
+              <span
+                key={inf}
+                className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white/5 text-zinc-300 border border-white/5"
+              >
+                {inf}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main View Area */}
       {isLoading && clusters.length === 0 ? (
         <RecommendationSkeleton />
@@ -151,9 +193,32 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
               onAdd={handleAddItem}
               onDislike={handleDislikeItem}
               onMarkAlreadySeen={handleMarkAlreadySeen}
+              onItemClick={setSelectedItem}
             />
           ))}
         </div>
+      )}
+
+      {/* Detailed Recommendation Inspection Modal */}
+      {selectedItem && (
+        <RecommendationDetailsModal
+          item={selectedItem}
+          isOpen={Boolean(selectedItem)}
+          onClose={() => setSelectedItem(null)}
+          onAdd={handleAddItem}
+          onDislike={(item) => {
+            handleDislikeItem(item);
+            setSelectedItem(null);
+          }}
+          onMarkAlreadySeen={(item) => {
+            handleMarkAlreadySeen(item);
+            setSelectedItem(null);
+          }}
+          isAdded={
+            addedItemIds.has(selectedItem.id) ||
+            addedItemIds.has(selectedItem.title.toLowerCase().trim())
+          }
+        />
       )}
     </div>
   );

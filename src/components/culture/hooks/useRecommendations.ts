@@ -4,6 +4,7 @@ import type {
   HydratedRecommendation,
   RecommendationFilterTab,
   SerendipityMode,
+  AiCulturalDnaProfile,
 } from '../../../types/culture-recommendations';
 import { CultureRecommendationsService } from '../../../services/culture/culture-recommendations';
 import { CultureFeedbackStorage } from '../../../services/culture/culture-feedback-storage';
@@ -16,6 +17,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   const [activeSubFilter, setActiveSubFilter] = useState<RecommendationFilterTab>('all');
   const [addedItemIds, setAddedItemIds] = useState<Set<string>>(new Set());
   const [lastGeneratedAt, setLastGeneratedAt] = useState<string | null>(null);
+  const [aiDna, setAiDna] = useState<AiCulturalDnaProfile | null>(null);
 
   const [serendipityMode, setSerendipityModeState] = useState<SerendipityMode>(() => {
     try {
@@ -54,6 +56,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
       const cached = await CultureFeedbackStorage.getCachedRecommendations();
       if (cached && isMountedRef.current) {
         setLastGeneratedAt(cached.generated_at);
+        setAiDna(cached.ai_dna || null);
       }
     } catch (err: unknown) {
       if (!isMountedRef.current) return;
@@ -70,6 +73,15 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
 
   useEffect(() => {
     loadRecommendations(false);
+
+    const handleSettingsChanged = () => {
+      loadRecommendations(false);
+    };
+
+    window.addEventListener('app-settings-changed', handleSettingsChanged);
+    return () => {
+      window.removeEventListener('app-settings-changed', handleSettingsChanged);
+    };
   }, [loadRecommendations]);
 
   const setSerendipityMode = useCallback((newMode: SerendipityMode) => {
@@ -158,6 +170,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     setSerendipityMode,
     addedItemIds,
     lastGeneratedAt,
+    aiDna,
     refresh: () => loadRecommendations(true),
     handleAddItem,
     handleDislikeItem,

@@ -22,7 +22,7 @@ export function CultureMetaGrid({ item }: CultureMetaGridProps) {
     metaCards.push({ icon: <Hash size={15} />, label: 'Total', value: String(item.total_progress), color: 'text-brand-400' });
   }
   if (item.api_source) {
-    const sourceLabels: Record<string, string> = { jikan: 'MyAnimeList', books: 'Google Books', tvmaze: 'TVmaze', itunes: 'iTunes' };
+    const sourceLabels: Record<string, string> = { jikan: 'MyAnimeList', books: 'Google Books', tvmaze: 'TVmaze', itunes: 'iTunes', imdb: 'IMDb' };
     metaCards.push({ icon: <Globe size={15} />, label: 'Fonte', value: sourceLabels[item.api_source] || item.api_source, color: 'text-green-400' });
   }
   if (item.created_at) {

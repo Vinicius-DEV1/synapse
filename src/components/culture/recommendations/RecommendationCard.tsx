@@ -8,6 +8,7 @@ interface Props {
   onAdd: (item: HydratedRecommendation) => void;
   onDislike: (item: HydratedRecommendation) => void;
   onMarkAlreadySeen: (item: HydratedRecommendation) => void;
+  onClick?: (item: HydratedRecommendation) => void;
   isAdded: boolean;
 }
 
@@ -16,9 +17,11 @@ export function RecommendationCard({
   onAdd,
   onDislike,
   onMarkAlreadySeen,
+  onClick,
   isAdded,
 }: Props) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const handleClose = () => setContextMenu(null);
@@ -80,17 +83,28 @@ export function RecommendationCard({
 
   return (
     <div
+      onClick={() => onClick?.(item)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(item);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Ver detalhes de ${item.title}`}
       onContextMenu={handleContextMenu}
-      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-white/[0.15] rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-200 transform hover:-translate-y-1 select-none"
+      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-amber-500/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-200 transform hover:-translate-y-1 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50"
     >
       {/* Poster Image or Fallback Header */}
       <div className="relative aspect-[2/3] w-full bg-zinc-800 overflow-hidden">
-        {item.cover_image ? (
+        {item.cover_image && !imgError ? (
           <img
             src={item.cover_image}
             alt={item.title}
             loading="lazy"
             decoding="async"
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

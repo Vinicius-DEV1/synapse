@@ -1,4 +1,4 @@
-import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target } from 'lucide-react';
+import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target, Sparkles } from 'lucide-react';
 import { SORT_OPTIONS, type SortMode, type FilterType } from '../hooks/useCulture';
 
 interface CultureHeaderProps {
@@ -109,19 +109,39 @@ export function CultureHeader({
           />
         </div>
         <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
-          {(['all', 'goals', 'finished', 'anime', 'filme', 'série', 'hq', 'manga', 'livro', 'novel'] as FilterType[]).map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                activeFilter === filter
-                  ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                  : 'bg-white/5 text-dark-subtext border border-transparent hover:bg-white/10 hover:text-dark-text'
-              }`}
-            >
-              {filter === 'all' ? 'Tudo' : filter === 'goals' ? 'Objetivos' : filter === 'finished' ? 'Finalizados' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
+          {(['all', 'goals', 'finished', 'recommendations', 'anime', 'filme', 'série', 'hq', 'manga', 'livro', 'novel'] as FilterType[]).map(filter => {
+            if (filter === 'recommendations') {
+              const isRec = activeFilter === 'recommendations';
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    isRec
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                      : 'bg-white/5 text-amber-400/90 border border-amber-500/25 hover:bg-amber-500/10 hover:text-amber-300'
+                  }`}
+                >
+                  <Sparkles size={12} className={isRec ? 'animate-pulse text-amber-300' : 'text-amber-400/90'} />
+                  <span>Para Você</span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  activeFilter === filter
+                    ? 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
+                    : 'bg-white/5 text-dark-subtext border border-transparent hover:bg-white/10 hover:text-dark-text'
+                }`}
+              >
+                {filter === 'all' ? 'Tudo' : filter === 'goals' ? 'Objetivos' : filter === 'finished' ? 'Finalizados' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

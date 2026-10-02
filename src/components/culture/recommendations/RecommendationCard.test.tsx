@@ -109,4 +109,61 @@ describe('RecommendationCard', () => {
 
     expect(screen.getByText('Denis Villeneuve')).toBeInTheDocument();
   });
+
+  it('calls onClick when clicking on the card', () => {
+    const handleClick = vi.fn();
+    render(
+      <RecommendationCard
+        item={mockItem}
+        isAdded={false}
+        onAdd={vi.fn()}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+        onClick={handleClick}
+      />
+    );
+
+    const card = screen.getByRole('button', { name: /ver detalhes de arrival/i });
+    fireEvent.click(card);
+    expect(handleClick).toHaveBeenCalledWith(mockItem);
+  });
+
+  it('calls onClick when pressing Enter key on the card', () => {
+    const handleClick = vi.fn();
+    render(
+      <RecommendationCard
+        item={mockItem}
+        isAdded={false}
+        onAdd={vi.fn()}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+        onClick={handleClick}
+      />
+    );
+
+    const card = screen.getByRole('button', { name: /ver detalhes de arrival/i });
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(handleClick).toHaveBeenCalledWith(mockItem);
+  });
+
+  it('does not trigger onClick when clicking on the Add button', () => {
+    const handleClick = vi.fn();
+    const handleAdd = vi.fn();
+    render(
+      <RecommendationCard
+        item={mockItem}
+        isAdded={false}
+        onAdd={handleAdd}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+        onClick={handleClick}
+      />
+    );
+
+    const addButton = screen.getByRole('button', { name: /adicionar à coleção/i });
+    fireEvent.click(addButton);
+
+    expect(handleAdd).toHaveBeenCalledWith(mockItem);
+    expect(handleClick).not.toHaveBeenCalled();
+  });
 });

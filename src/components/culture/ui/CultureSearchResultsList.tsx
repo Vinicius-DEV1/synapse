@@ -26,7 +26,9 @@ export function CultureSearchResultsList({ searchResults, onSelectResult }: Cult
             />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-white">{res.title}</p>
+            <p className="text-sm font-semibold truncate text-white">
+              {res.title} {res.year ? <span className="text-xs text-white/40 font-normal">({res.year})</span> : null}
+            </p>
             <p className="text-xs text-white/50 truncate">{res.synopsis || 'Sem sinopse'}</p>
           </div>
           <span className="text-[10px] uppercase tracking-wider bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded">

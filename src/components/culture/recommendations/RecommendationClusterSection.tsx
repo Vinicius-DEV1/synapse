@@ -11,6 +11,7 @@ interface Props {
   onAdd: (item: HydratedRecommendation) => void;
   onDislike: (item: HydratedRecommendation) => void;
   onMarkAlreadySeen: (item: HydratedRecommendation) => void;
+  onItemClick?: (item: HydratedRecommendation) => void;
 }
 
 export function RecommendationClusterSection({
@@ -19,6 +20,7 @@ export function RecommendationClusterSection({
   onAdd,
   onDislike,
   onMarkAlreadySeen,
+  onItemClick,
 }: Props) {
   if (!cluster.items || cluster.items.length === 0) return null;
 
@@ -45,7 +47,7 @@ export function RecommendationClusterSection({
       </div>
 
       {/* Grid of Recommendation Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
         {cluster.items.map(item => (
           <RecommendationCard
             key={item.id}
@@ -54,6 +56,7 @@ export function RecommendationClusterSection({
             onAdd={onAdd}
             onDislike={onDislike}
             onMarkAlreadySeen={onMarkAlreadySeen}
+            onClick={onItemClick}
           />
         ))}
       </div>

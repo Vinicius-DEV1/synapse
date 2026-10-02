@@ -10,6 +10,7 @@ import { useCulture, TYPE_LABELS, sortItems } from './hooks/useCulture';
 
 import { CultureHeader } from './ui/CultureHeader';
 import { CultureRecentReleases } from './ui/CultureRecentReleases';
+import { CultureRecommendationsView } from './recommendations/CultureRecommendationsView';
 
 export default function CultureView() {
   const {
@@ -130,15 +131,19 @@ export default function CultureView() {
         onOpenAddModal={() => setIsAddModalOpen(true)}
       />
 
-      <CultureRecentReleases
-        recentReleases={recentReleases}
-        items={items}
-        onSelectItem={(it) => setEditingItem(it)}
-      />
+      {activeFilter !== 'recommendations' && (
+        <CultureRecentReleases
+          recentReleases={recentReleases}
+          items={items}
+          onSelectItem={(it) => setEditingItem(it)}
+        />
+      )}
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
-        {filteredItems.length === 0 ? (
+        {activeFilter === 'recommendations' ? (
+          <CultureRecommendationsView onLibraryUpdated={loadData} />
+        ) : filteredItems.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-dark-subtext gap-4">
             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
               <Filter size={32} className="opacity-50" />
