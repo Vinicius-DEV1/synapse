@@ -60,7 +60,16 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
       if (forceRefresh) {
         setIsGenerating(true);
       } else {
-        setIsLoading(true);
+        // SWR fast path: synchronously check cache to render with 0ms perceived latency
+        const cached = await CultureFeedbackStorage.getCachedRecommendations();
+        if (cached && isMountedRef.current) {
+          setClusters(cached.clusters);
+          setLastGeneratedAt(cached.generated_at);
+          setAiDna(cached.ai_dna || null);
+          setIsLoading(false);
+        } else {
+          setIsLoading(true);
+        }
       }
       if (isMountedRef.current) {
         setError(null);

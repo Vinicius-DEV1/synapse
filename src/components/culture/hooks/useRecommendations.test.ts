@@ -8,6 +8,7 @@ import type { RecommendationCluster, HydratedRecommendation } from '../../../typ
 vi.mock('../../../services/culture/culture-recommendations', () => ({
   CultureRecommendationsService: {
     getRecommendations: vi.fn(),
+    getRecommendationsProgressive: vi.fn(),
     addToLibrary: vi.fn().mockResolvedValue(undefined),
     dislikeItem: vi.fn().mockResolvedValue(undefined),
     markAsAlreadySeen: vi.fn().mockResolvedValue(undefined),
@@ -47,6 +48,21 @@ describe('useRecommendations Hook (SWR & Zero Perceived Latency)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(CultureRecommendationsService.getRecommendationsProgressive).mockImplementation(
+      async (_forceRefresh, _mode, onProgress) => {
+        onProgress?.({
+          phase: 'complete',
+          currentBatch: 2,
+          totalBatches: 2,
+          clusters: [mockCluster],
+          message: 'Pronto',
+          progressPercent: 100,
+          isPartial: false,
+          totalItemsCount: 1,
+        });
+        return [mockCluster];
+      }
+    );
   });
 
   it('immediately populates clusters from SWR cache on mount without waiting for recalculation', async () => {
@@ -90,6 +106,7 @@ describe('useRecommendations Hook (SWR & Zero Perceived Latency)', () => {
     const slowPromise = new Promise<RecommendationCluster[]>(resolve => {
       resolveGeneration = resolve;
     });
+    vi.mocked(CultureRecommendationsService.getRecommendationsProgressive).mockReturnValue(slowPromise);
     vi.mocked(CultureRecommendationsService.getRecommendations).mockReturnValue(slowPromise);
 
     const { result } = renderHook(() => useRecommendations());
