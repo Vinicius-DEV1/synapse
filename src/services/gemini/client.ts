@@ -102,9 +102,9 @@ export async function promptGemini(
   const settings = getSettings();
   let modelId = customModelId || settings.geminiModel;
 
-  // Gracefully fallback legacy placeholder model defaults to stable production model
-  if (!modelId || modelId === 'gemini-2.5-pro' || modelId === 'models/gemini-2.5-pro' || modelId.includes('2.5-flash')) {
-    modelId = 'gemini-2.0-flash';
+  // Gracefully fallback to latest flash model if model is unset or pointing to legacy defaults
+  if (!modelId || modelId === 'gemini-2.5-pro' || modelId === 'models/gemini-2.5-pro') {
+    modelId = 'gemini-flash-latest';
   }
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
