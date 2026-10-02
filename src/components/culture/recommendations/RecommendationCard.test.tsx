@@ -18,7 +18,7 @@ describe('RecommendationCard', () => {
     cover_image: 'https://example.com/arrival.jpg',
   };
 
-  it('renders title, year, tier badge, and affinity reason', () => {
+  it('renders title, year, emoji badges, and omits affinity reason on the small card', () => {
     render(
       <RecommendationCard
         item={mockItem}
@@ -31,10 +31,12 @@ describe('RecommendationCard', () => {
 
     expect(screen.getByText('Arrival')).toBeInTheDocument();
     expect(screen.getByText('2016')).toBeInTheDocument();
-    expect(screen.getByText('Clássico')).toBeInTheDocument();
+    expect(screen.getByTitle('Clássico')).toHaveTextContent('🏆');
+    expect(screen.getByTitle('Formato: filme')).toHaveTextContent('🎬');
+    // Affinity reason should NOT be rendered on the compact card to keep it clean
     expect(
-      screen.getByText(/Porque você assistiu Her e aprecia abordagens reflexivas/)
-    ).toBeInTheDocument();
+      screen.queryByText(/Porque você assistiu Her/)
+    ).not.toBeInTheDocument();
   });
 
   it('calls onAdd when clicking the add button', () => {
@@ -65,7 +67,9 @@ describe('RecommendationCard', () => {
       />
     );
 
-    expect(screen.getByText('Na Coleção')).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /na coleção/i });
+    expect(button).toBeInTheDocument();
+    expect(button).toBeDisabled();
   });
 
   it('renders upcoming badge and "Aguardar / Meta" button for upcoming tier', () => {
@@ -87,7 +91,7 @@ describe('RecommendationCard', () => {
       />
     );
 
-    expect(screen.getByText('Dezembro 2026')).toBeInTheDocument();
+    expect(screen.getByTitle('Dezembro 2026')).toHaveTextContent('⏳');
     expect(screen.getByRole('button', { name: /aguardar \/ meta/i })).toBeInTheDocument();
   });
 
@@ -167,7 +171,7 @@ describe('RecommendationCard', () => {
     expect(handleClick).not.toHaveBeenCalled();
   });
 
-  it('renders rating badge and platform / duration subtitle when available', () => {
+  it('renders rating badge and duration below title while omitting platform', () => {
     const enrichedItem: HydratedRecommendation = {
       ...mockItem,
       rating: 8.7,
@@ -187,8 +191,9 @@ describe('RecommendationCard', () => {
     );
 
     expect(screen.getByText('8.7')).toBeInTheDocument();
-    expect(screen.getByText('Paramount+ / Cinema')).toBeInTheDocument();
     expect(screen.getByText('• 116 min')).toBeInTheDocument();
+    // Platform should NOT be rendered on the compact card to keep it clean
+    expect(screen.queryByText('Paramount+ / Cinema')).not.toBeInTheDocument();
   });
 });
 

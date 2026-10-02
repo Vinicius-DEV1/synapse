@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, Sparkles, Award, Gem, ThumbsDown, EyeOff, Film, Tv, BookOpen, Clock, Target, Star } from 'lucide-react';
+import { Plus, Check, ThumbsDown, EyeOff, Film, Target, Star } from 'lucide-react';
 import type { HydratedRecommendation } from '../../../types/culture-recommendations';
 import { RecommendationContextMenu } from './RecommendationContextMenu';
 
@@ -35,49 +35,52 @@ export function RecommendationCard({
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  const getTierBadge = () => {
-    switch (item.tier) {
-      case 'recent':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-            <Sparkles size={10} />
-            Lançamento
-          </span>
-        );
-      case 'classic':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-            <Award size={10} />
-            Clássico
-          </span>
-        );
-      case 'upcoming':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-            <Clock size={10} />
-            {item.expected_release_date ? item.expected_release_date : 'Em Breve'}
-          </span>
-        );
-      case 'hidden_gem':
+  const getTypeEmoji = () => {
+    switch (item.type) {
+      case 'filme':
+        return '🎬';
+      case 'série':
+        return '📺';
+      case 'anime':
+        return '⛩️';
+      case 'manga':
+        return '📖';
+      case 'livro':
+        return '📚';
+      case 'hq':
+        return '🎨';
+      case 'novel':
+        return '📑';
       default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
-            <Gem size={10} />
-            Joia Oculta
-          </span>
-        );
+        return '🎬';
     }
   };
 
-  const getTypeIcon = () => {
-    switch (item.type) {
-      case 'filme':
-        return <Film size={12} />;
-      case 'série':
-      case 'anime':
-        return <Tv size={12} />;
+  const getTierEmoji = () => {
+    switch (item.tier) {
+      case 'recent':
+        return '✨';
+      case 'classic':
+        return '🏆';
+      case 'upcoming':
+        return '⏳';
+      case 'hidden_gem':
       default:
-        return <BookOpen size={12} />;
+        return '💎';
+    }
+  };
+
+  const getTierLabel = () => {
+    switch (item.tier) {
+      case 'recent':
+        return 'Lançamento';
+      case 'classic':
+        return 'Clássico';
+      case 'upcoming':
+        return item.expected_release_date || 'Em Breve';
+      case 'hidden_gem':
+      default:
+        return 'Joia Oculta';
     }
   };
 
@@ -116,13 +119,20 @@ export function RecommendationCard({
           </div>
         )}
 
-        {/* Gradient Overlay for Top Badges */}
-        <div className="absolute inset-x-0 top-0 p-2.5 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/70 to-transparent">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-black/60 backdrop-blur-md text-zinc-200 uppercase tracking-wider">
-            {getTypeIcon()}
-            {item.type}
+        {/* Gradient Overlay for Top Badges (Only Emojis) */}
+        <div className="absolute inset-x-0 top-0 p-2 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/70 to-transparent">
+          <span
+            title={`Formato: ${item.type}`}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/10"
+          >
+            {getTypeEmoji()}
           </span>
-          {getTierBadge()}
+          <span
+            title={getTierLabel()}
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/10"
+          >
+            {getTierEmoji()}
+          </span>
         </div>
 
         {/* Quick hover action overlay */}
@@ -151,103 +161,82 @@ export function RecommendationCard({
       </div>
 
       {/* Card Metadata & Content */}
-      <div className="p-3.5 flex flex-col flex-1 justify-between gap-2.5">
+      <div className="p-3 flex flex-col flex-1 justify-between gap-2">
         <div>
-          <div className="flex items-start justify-between gap-1.5">
-            <h3
-              title={item.title}
-              className="text-sm font-semibold text-zinc-100 line-clamp-1 group-hover:text-white transition-colors"
-            >
-              {item.title}
-            </h3>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {item.rating && (
-                <span
-                  title={`Nota: ${item.rating.toFixed(1)}/10 ${item.rating_source ? `(${item.rating_source})` : ''}`}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/25"
-                >
-                  <Star size={9} className="fill-amber-400 text-amber-400" />
-                  {item.rating.toFixed(1)}
-                </span>
-              )}
-              {item.year && (
-                <span className="text-[11px] font-medium text-zinc-500">
-                  {item.year}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Platform / Duration Subtitle */}
-          {(item.platform || item.duration) && (
-            <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-1 flex-wrap">
-              {item.platform && (
-                <span
-                  title={`Onde foi exibido / Origem: ${item.platform}`}
-                  className="inline-flex items-center px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-zinc-300 font-medium truncate max-w-[130px]"
-                >
-                  {item.platform}
-                </span>
-              )}
-              {item.duration && (
-                <span className="text-zinc-500 font-normal">
-                  {item.platform ? `• ${item.duration}` : item.duration}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Creator / Studio / Author Signature */}
-          {item.creator && (
-            <div
-              title={item.creator}
-              className="text-[11px] font-medium text-amber-400/80 truncate mt-0.5"
-            >
-              {item.creator}
-            </div>
-          )}
-
-          {/* Personalized Affinity Reason */}
-          <p
-            title={item.affinity_reason}
-            className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed"
+          {/* Full-width Title for complete visibility */}
+          <h3
+            title={item.title}
+            className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug group-hover:text-white transition-colors"
           >
-            {item.affinity_reason}
-          </p>
+            {item.title}
+          </h3>
+
+          {/* Rating, Year, and Duration right below Title */}
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-1 flex-wrap">
+            {item.rating && (
+              <span
+                title={`Nota: ${item.rating.toFixed(1)}/10 ${item.rating_source ? `(${item.rating_source})` : ''}`}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/25"
+              >
+                <Star size={9} className="fill-amber-400 text-amber-400" />
+                {item.rating.toFixed(1)}
+              </span>
+            )}
+            {item.year && (
+              <span className="text-[11px] font-medium text-zinc-400">
+                {item.year}
+              </span>
+            )}
+            {item.duration && (
+              <span className="text-[11px] text-zinc-500">
+                • {item.duration}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Add Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isAdded) onAdd(item);
-          }}
-          disabled={isAdded}
-          className={`w-full py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all duration-150 ${
-            isAdded
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default'
-              : item.tier === 'upcoming'
-              ? 'bg-cyan-500/15 hover:bg-cyan-600/30 text-cyan-200 hover:text-cyan-100 border border-cyan-500/30 active:scale-[0.98]'
-              : 'bg-white/10 hover:bg-brand-600 text-zinc-200 hover:text-white border border-white/10 hover:border-brand-500 active:scale-[0.98]'
-          }`}
-        >
-          {isAdded ? (
-            <>
-              <Check size={13} className="text-emerald-400" />
-              <span>{item.tier === 'upcoming' ? 'Nos Objetivos' : 'Na Coleção'}</span>
-            </>
-          ) : item.tier === 'upcoming' ? (
-            <>
-              <Target size={13} className="text-cyan-400" />
-              <span>Aguardar / Meta</span>
-            </>
-          ) : (
-            <>
-              <Plus size={13} />
-              <span>Adicionar à Coleção</span>
-            </>
-          )}
-        </button>
+        {/* Bottom Bar: Creator on Left, Minimalist "+" Button on Right */}
+        <div className="flex items-center justify-between gap-1.5 pt-1 mt-auto border-t border-white/[0.04]">
+          <div className="min-w-0 flex-1">
+            {item.creator ? (
+              <div
+                title={item.creator}
+                className="text-[11px] font-medium text-amber-400/80 truncate"
+              >
+                {item.creator}
+              </div>
+            ) : (
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider capitalize">
+                {item.type}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isAdded) onAdd(item);
+            }}
+            disabled={isAdded}
+            aria-label={isAdded ? 'Na Coleção' : item.tier === 'upcoming' ? 'Aguardar / Meta' : 'Adicionar à Coleção'}
+            title={isAdded ? 'Na Coleção' : item.tier === 'upcoming' ? 'Aguardar / Meta' : 'Adicionar à Coleção'}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
+              isAdded
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default'
+                : item.tier === 'upcoming'
+                ? 'bg-cyan-500/15 hover:bg-cyan-600/30 text-cyan-200 border border-cyan-500/30 active:scale-95'
+                : 'bg-white/10 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-200 border border-white/10 hover:border-amber-500/30 active:scale-95'
+            }`}
+          >
+            {isAdded ? (
+              <Check size={14} className="text-emerald-400" />
+            ) : item.tier === 'upcoming' ? (
+              <Target size={14} className="text-cyan-400" />
+            ) : (
+              <Plus size={15} />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Context Menu on Right Click */}
