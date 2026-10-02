@@ -1,3 +1,5 @@
+import { isJikanAvailable, reportJikanFailure } from './culture-apis';
+
 export interface FreshReleaseAnchor {
   title: string;
   type: 'anime' | 'série' | 'filme';
@@ -5,6 +7,10 @@ export interface FreshReleaseAnchor {
   isUpcoming?: boolean;
   expectedDate?: string;
 }
+
+const FRESH_ANCHORS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
+let cachedAnchors: { timestamp: number; data: FreshReleaseAnchor[] } | null = null;
+
 async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -24,7 +30,7 @@ const FALLBACK_UPCOMING_ANCHORS: FreshReleaseAnchor[] = [
     expectedDate: '2026',
   },
   {
-    title: 'Stranger Things (Temporada 5)',
+    title: 'Stranger Things',
     type: 'série',
     releaseNote: 'Temporada final confirmada (Netflix)',
     isUpcoming: true,
@@ -55,13 +61,18 @@ const FALLBACK_UPCOMING_ANCHORS: FreshReleaseAnchor[] = [
 
 /**
  * Fetches real-time fresh broadcast, current season, and upcoming premiering media
- * to give the AI up-to-the-minute release awareness.
+ * to give the AI up-to-the-minute release awareness with SWR caching and circuit breaking.
  */
 export async function fetchCurrentFreshReleases(): Promise<FreshReleaseAnchor[]> {
+  if (cachedAnchors && Date.now() - cachedAnchors.timestamp < FRESH_ANCHORS_CACHE_TTL) {
+    return cachedAnchors.data;
+  }
+
   const anchors: FreshReleaseAnchor[] = [];
 
-  // 1. Current anime season (now)
+  // 1. Current anime season (now) - guarded by circuit breaker
   const animeNowPromise = (async () => {
+    if (!isJikanAvailable()) return;
     try {
       const res = await fetchWithTimeout('https://api.jikan.moe/v4/seasons/now?limit=8');
       if (res.ok) {
@@ -76,14 +87,17 @@ export async function fetchCurrentFreshReleases(): Promise<FreshReleaseAnchor[]>
             });
           }
         }
+      } else if (res.status === 504 || res.status === 429 || res.status >= 500) {
+        reportJikanFailure(5 * 60 * 1000); // 5 min circuit breaker
       }
     } catch {
-      // Quiet fallback for transient rate limits or 504 timeouts
+      reportJikanFailure(5 * 60 * 1000);
     }
   })();
 
-  // 2. Upcoming anime seasons (future premieres)
+  // 2. Upcoming anime seasons (future premieres) - guarded by circuit breaker
   const animeUpcomingPromise = (async () => {
+    if (!isJikanAvailable()) return;
     try {
       const res = await fetchWithTimeout('https://api.jikan.moe/v4/seasons/upcoming?limit=8');
       if (res.ok) {
@@ -102,9 +116,11 @@ export async function fetchCurrentFreshReleases(): Promise<FreshReleaseAnchor[]>
             });
           }
         }
+      } else if (res.status === 504 || res.status === 429 || res.status >= 500) {
+        reportJikanFailure(5 * 60 * 1000); // 5 min circuit breaker
       }
     } catch {
-      // Quiet fallback for Jikan 504 / gateway timeouts
+      reportJikanFailure(5 * 60 * 1000);
     }
   })();
 
@@ -141,6 +157,11 @@ export async function fetchCurrentFreshReleases(): Promise<FreshReleaseAnchor[]>
   if (!anchors.some(a => a.isUpcoming)) {
     anchors.push(...FALLBACK_UPCOMING_ANCHORS);
   }
+
+  cachedAnchors = {
+    timestamp: Date.now(),
+    data: anchors,
+  };
 
   return anchors;
 }

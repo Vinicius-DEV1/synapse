@@ -15,7 +15,11 @@ import {
   buildCultureRecommendationsPrompt,
 } from './culture-recommendations-prompt';
 import { hydrateRecommendations } from './culture-recommendation-hydrator';
+import { normalizeTitle, isItemInLibrary } from './culture-title-utils';
+import { getSettings } from '../../utils/settings';
 import { promptGemini } from '../gemini/client';
+import { extractAiCulturalDna } from './culture-ai-dna';
+
 
 interface RawClusterResponse {
   id?: string;
@@ -109,40 +113,47 @@ export const CultureRecommendationsService = {
     const ignored = await CultureFeedbackStorage.getIgnoredItems();
 
     const dna = extractCulturalDNA(items, disliked, ignored);
-    const effectiveHash = `${dna.libraryHash}_${serendipityMode}`;
+    const settings = getSettings();
+    const volume = settings.cultureRecommendationsVolume || 'quadruple';
+    const excludedTypes = settings.cultureExcludedTypes || [];
+    const excludedThemes = settings.cultureExcludedThemes || [];
+    const excludedTypeSet = new Set(excludedTypes);
+    const excludedTypesKey = [...excludedTypes].sort().join('-');
+    const excludedThemesKey = [...excludedThemes].map(t => t.trim().toLowerCase()).sort().join('-');
+    const effectiveHash = `${dna.libraryHash}_${serendipityMode}_${volume}_exT:${excludedTypesKey}_exTh:${excludedThemesKey}_dense_v5_doubled`;
 
     // 1. Check cache if not forcing refresh
-    if (!forceRefresh) {
-      const cached = await CultureFeedbackStorage.getCachedRecommendations();
-      if (cached && (cached.library_hash === effectiveHash || cached.library_hash === dna.libraryHash)) {
+    const cached = await CultureFeedbackStorage.getCachedRecommendations();
+    if (!forceRefresh && cached) {
+      if (cached.library_hash === effectiveHash) {
         // Filter out any newly disliked, ignored, or added items from cached clusters
         const dislikedIds = new Set(disliked.map(d => d.id));
-        const dislikedTitles = new Set(disliked.map(d => d.title.toLowerCase().trim()));
-        const ignoredTitles = new Set(ignored.map(ig => ig.title.toLowerCase().trim()));
-        const currentItemTitles = new Set(items.map(i => i.title.toLowerCase().trim()));
+        const dislikedTitles = new Set(disliked.map(d => normalizeTitle(d.title)));
+        const ignoredTitles = new Set(ignored.map(ig => normalizeTitle(ig.title)));
 
         const cleanedClusters: RecommendationCluster[] = cached.clusters
           .map(cluster => ({
             ...cluster,
             items: cluster.items.filter(item => {
-              const titleLower = item.title.toLowerCase().trim();
+              const norm = normalizeTitle(item.title);
+              const inLib = isItemInLibrary(item, items);
               return (
                 !dislikedIds.has(item.id) &&
-                !dislikedTitles.has(titleLower) &&
-                !ignoredTitles.has(titleLower) &&
-                !currentItemTitles.has(titleLower)
+                !dislikedTitles.has(norm) &&
+                !ignoredTitles.has(norm) &&
+                !inLib &&
+                !excludedTypeSet.has(item.type)
               );
             }),
           }))
           .filter(cluster => cluster.items.length > 0);
 
         const totalRemainingItems = cleanedClusters.reduce((acc, c) => acc + c.items.length, 0);
+        const minItemsThreshold = volume === 'quadruple' ? 65 : volume === 'expanded' ? 45 : 25;
 
-        // If the library hash matches OR if we still have plenty of clean recommendations, use cache
-        if (cached.library_hash === effectiveHash || totalRemainingItems >= 4) {
-          if (cleanedClusters.length > 0) {
-            return cleanedClusters;
-          }
+        // If the library hash matches AND we have a sufficiently rich recommendation set, use cache
+        if (totalRemainingItems >= minItemsThreshold && cleanedClusters.length > 0) {
+          return cleanedClusters;
         }
       }
     }
@@ -150,35 +161,59 @@ export const CultureRecommendationsService = {
     // 2. Fetch fresh broadcast/season anchors for up-to-the-minute release grounding
     const freshAnchors = await fetchCurrentFreshReleases();
 
-    // 3. Build prompt for Gemini
-    const prompt = buildCultureRecommendationsPrompt(dna, freshAnchors, serendipityMode);
+    // 3. Collect previously recommended titles to ensure 100% novelty on refresh
+    const historyTitles = await CultureFeedbackStorage.getRecentRecommendedTitles();
+    const previousTitles = Array.from(
+      new Set([
+        ...(cached ? cached.clusters.flatMap(c => c.items.map(i => i.title)) : []),
+        ...historyTitles,
+      ])
+    );
 
-    // 4. Request Gemini
+    // 3.5. Extract deep cultural DNA via AI (instant 0ms if cached for this library state)
+    const aiDna = await extractAiCulturalDna(items, dna.libraryHash);
+
+    // 4. Build prompt for Gemini with full exclusion list, volume directive, pre-extracted AI DNA, and format/theme exclusions
+    const prompt = buildCultureRecommendationsPrompt(
+      dna,
+      freshAnchors,
+      serendipityMode,
+      previousTitles,
+      volume,
+      aiDna,
+      excludedTypes,
+      excludedThemes
+    );
+
+    // 5. Request Gemini with generous timeout for large recommendation sets
     const result = await promptGemini(
       prompt,
       undefined,
       [],
       undefined,
       CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
-      60000
+      120000
     );
     const aiResponseText = result.text;
 
-    // 5. Parse JSON
+
+    // 6. Parse JSON
     const parsed = extractJsonFromResponse(aiResponseText);
     if (!parsed || !parsed.clusters || !Array.isArray(parsed.clusters)) {
       throw new Error('Não foi possível gerar recomendações no formato esperado. Tente novamente em instantes.');
     }
 
-    // 6. Hydrate items across clusters using real media APIs
+    // 7. Hydrate items across clusters using real media APIs with shared seenTracker
+    const seenTracker = new Set<string>();
     const hydratedClusters: RecommendationCluster[] = [];
 
     for (let cIdx = 0; cIdx < parsed.clusters.length; cIdx++) {
       const rawCluster = parsed.clusters[cIdx];
-      const validItems = Array.isArray(rawCluster.items) ? rawCluster.items : [];
+      const validItems = (Array.isArray(rawCluster.items) ? rawCluster.items : [])
+        .filter(item => !excludedTypeSet.has(item.type));
       if (validItems.length === 0) continue;
 
-      const hydratedItems = await hydrateRecommendations(validItems, items);
+      const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
       if (hydratedItems.length > 0) {
         hydratedClusters.push({
           id: rawCluster.id || `cluster_${cIdx + 1}`,
@@ -189,13 +224,17 @@ export const CultureRecommendationsService = {
       }
     }
 
-    // 7. Persist to cache
+    // 8. Persist to cache and update history ring buffer
     if (hydratedClusters.length > 0) {
       await CultureFeedbackStorage.saveCachedRecommendations(
         hydratedClusters,
         effectiveHash,
-        6
+        6,
+        aiDna
       );
+
+      const newlyRecommendedTitles = hydratedClusters.flatMap(c => c.items.map(i => i.title));
+      await CultureFeedbackStorage.addRecentRecommendedTitles(newlyRecommendedTitles);
     }
 
     return hydratedClusters;

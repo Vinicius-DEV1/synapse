@@ -3,6 +3,7 @@ import type {
   DislikedCultureItem,
   IgnoredCultureItem,
   CachedRecommendations,
+  AiCulturalDnaProfile,
 } from '../../types/culture-recommendations';
 
 const CACHE_KEY = 'current_culture_recommendations';
@@ -97,7 +98,8 @@ export const CultureFeedbackStorage = {
     try {
       const db = await getWebDb();
       const entry = await db.get('culture_recommendations_cache', CACHE_KEY);
-      if (!entry) return null;
+      if (!entry || !('clusters' in entry)) return null;
+
 
       const now = new Date().getTime();
       const expiresAt = new Date(entry.expires_at).getTime();
@@ -118,7 +120,8 @@ export const CultureFeedbackStorage = {
   async saveCachedRecommendations(
     clusters: CachedRecommendations['clusters'],
     libraryHash: string,
-    ttlHours = 6
+    ttlHours = 6,
+    aiDna?: AiCulturalDnaProfile
   ): Promise<void> {
     try {
       const db = await getWebDb();
@@ -130,6 +133,7 @@ export const CultureFeedbackStorage = {
         generated_at: now.toISOString(),
         expires_at: expires.toISOString(),
         library_hash: libraryHash,
+        ai_dna: aiDna,
       };
       await db.put('culture_recommendations_cache', entry);
     } catch (err) {
@@ -148,4 +152,74 @@ export const CultureFeedbackStorage = {
       console.warn('[CultureFeedbackStorage] Erro ao limpar cache de recomendações:', err);
     }
   },
+
+  /**
+   * Fetches recent recommendation titles across sessions to avoid repetitive suggestions.
+   */
+  async getRecentRecommendedTitles(): Promise<string[]> {
+    try {
+      const db = await getWebDb();
+      const entry = await db.get('culture_recommendations_cache', 'recent_recommended_titles');
+      if (entry && 'titles' in entry && Array.isArray(entry.titles)) {
+        return entry.titles;
+      }
+      return [];
+    } catch (err) {
+      console.warn('[CultureFeedbackStorage] Erro ao buscar histórico de recomendações recentes:', err);
+      return [];
+    }
+  },
+
+
+  /**
+   * Appends newly recommended titles to the recent history ring buffer (up to 300 items).
+   */
+  async addRecentRecommendedTitles(newTitles: string[]): Promise<void> {
+    if (!newTitles || newTitles.length === 0) return;
+    try {
+      const db = await getWebDb();
+      const current = await this.getRecentRecommendedTitles();
+      const combined = Array.from(new Set([...newTitles, ...current])).slice(0, 300);
+      await db.put('culture_recommendations_cache', {
+        id: 'recent_recommended_titles',
+        titles: combined,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('[CultureFeedbackStorage] Erro ao atualizar histórico de recomendações recentes:', err);
+    }
+  },
+
+  /**
+   * Retrieves AI-extracted cultural DNA if matching the current library hash.
+   */
+  async getCachedAiDna(libraryHash: string): Promise<AiCulturalDnaProfile | null> {
+    try {
+      const db = await getWebDb();
+      const entry = await db.get('culture_recommendations_cache', 'ai_cultural_dna');
+      if (entry && 'thematic_axes' in entry && entry.library_hash === libraryHash) {
+        return entry as AiCulturalDnaProfile;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[CultureFeedbackStorage] Erro ao buscar DNA de IA em cache:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Persists AI-extracted cultural DNA to cache.
+   */
+  async saveCachedAiDna(dna: AiCulturalDnaProfile): Promise<void> {
+    try {
+      const db = await getWebDb();
+      await db.put('culture_recommendations_cache', {
+        ...dna,
+        id: 'ai_cultural_dna',
+      });
+    } catch (err) {
+      console.warn('[CultureFeedbackStorage] Erro ao salvar DNA de IA em cache:', err);
+    }
+  },
 };
+
