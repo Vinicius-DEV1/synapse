@@ -108,4 +108,53 @@ describe('culture-recommendation-hydrator', () => {
     imdbSpy.mockRestore();
     itunesSpy.mockRestore();
   });
+
+  it('enriches recommendation with Cinemeta metadata (IMDb rating, duration, country, cast) when IMDb ID is matched', async () => {
+    const imdbSpy = vi.spyOn(cultureApis, 'fetchImdbMovies').mockResolvedValue([
+      {
+        title: 'Interstellar',
+        type: 'filme',
+        api_id: 'tt0816692',
+        api_source: 'imdb',
+        synopsis: 'Mankind must leave Earth to search for a new habitable world in the cosmos.',
+        cover: 'https://example.com/interstellar.jpg',
+        total: 0,
+      },
+    ]);
+
+    const cinemetaSpy = vi.spyOn(cultureApis, 'fetchCinemetaMetadata').mockResolvedValue({
+      rating: 8.7,
+      rating_source: 'IMDb',
+      duration: '169 min',
+      origin_country: 'Estados Unidos, Reino Unido',
+      director: 'Christopher Nolan',
+      cast: 'Matthew McConaughey, Anne Hathaway',
+      genres: ['Ficção Científica', 'Aventura'],
+    });
+
+    const rawItems: RawAIRecommendation[] = [
+      {
+        title: 'Interstellar',
+        type: 'filme',
+        tier: 'classic',
+        cluster: 'Exploração Espacial',
+        affinity_reason: 'Porque você assistiu 2001',
+        confidence_score: 0.98,
+      },
+    ];
+
+    const results = await hydrateRecommendations(rawItems, []);
+    expect(results).toHaveLength(1);
+    expect(results[0].rating).toBe(8.7);
+    expect(results[0].rating_source).toBe('IMDb');
+    expect(results[0].duration).toBe('169 min');
+    expect(results[0].origin_country).toBe('Estados Unidos, Reino Unido');
+    expect(results[0].director).toBe('Christopher Nolan');
+    expect(results[0].cast).toBe('Matthew McConaughey, Anne Hathaway');
+    expect(results[0].genres).toEqual(['Ficção Científica', 'Aventura']);
+
+    imdbSpy.mockRestore();
+    cinemetaSpy.mockRestore();
+  });
 });
+

@@ -166,4 +166,29 @@ describe('RecommendationCard', () => {
     expect(handleAdd).toHaveBeenCalledWith(mockItem);
     expect(handleClick).not.toHaveBeenCalled();
   });
+
+  it('renders rating badge and platform / duration subtitle when available', () => {
+    const enrichedItem: HydratedRecommendation = {
+      ...mockItem,
+      rating: 8.7,
+      rating_source: 'IMDb',
+      platform: 'Paramount+ / Cinema',
+      duration: '116 min',
+    };
+
+    render(
+      <RecommendationCard
+        item={enrichedItem}
+        isAdded={false}
+        onAdd={vi.fn()}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('8.7')).toBeInTheDocument();
+    expect(screen.getByText('Paramount+ / Cinema')).toBeInTheDocument();
+    expect(screen.getByText('• 116 min')).toBeInTheDocument();
+  });
 });
+

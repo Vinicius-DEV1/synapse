@@ -7,6 +7,7 @@ import {
   fetchTVMaze,
   fetchJikan,
   fetchGoogleBooks,
+  fetchCinemetaMetadata,
   type CultureSearchResult,
 } from './culture-apis';
 import {
@@ -296,6 +297,19 @@ export async function hydrateRecommendations(
           if (match?.title) seenTracker.add(normalizeTitle(match.title));
           if (match?.api_id) seenTracker.add(match.api_id);
 
+          // Enrich with Cinemeta if match has an IMDb ID
+          let cinemetaExtra: Partial<CultureSearchResult> | null = null;
+          if (match && (match.api_id?.startsWith('tt') || match.api_source === 'imdb')) {
+            try {
+              cinemetaExtra = await fetchCinemetaMetadata(
+                match.api_id,
+                rawItem.type === 'série' ? 'series' : 'movie'
+              );
+            } catch (cinErr) {
+              // Gracefully continue with base match
+            }
+          }
+
           const deterministicId = `rec_${rawItem.type}_${slugify(rawItem.title)}_${rawItem.year || ''}`;
 
           // Select the richest plot synopsis, rejecting any actor listings or shallow placeholders
@@ -310,6 +324,23 @@ export async function hydrateRecommendations(
           const finalSynopsis =
             rawItem.synopsis?.trim() || cleanApiSynopsis || rawItem.affinity_reason;
 
+          const resolvedRating = cinemetaExtra?.rating ?? match?.rating ?? rawItem.rating;
+          const resolvedRatingSource =
+            cinemetaExtra?.rating_source ??
+            match?.rating_source ??
+            (rawItem.rating !== undefined ? 'Estimativa' : undefined);
+
+          const resolvedPlatform = match?.platform ?? rawItem.platform;
+          const resolvedCountry = cinemetaExtra?.origin_country ?? match?.origin_country ?? rawItem.origin_country;
+          const resolvedDuration = cinemetaExtra?.duration ?? match?.duration ?? rawItem.duration;
+          const resolvedDirector = cinemetaExtra?.director ?? match?.director ?? rawItem.creator;
+          const resolvedCast = cinemetaExtra?.cast ?? match?.cast ?? rawItem.cast;
+          const resolvedGenres = cinemetaExtra?.genres?.length
+            ? cinemetaExtra.genres
+            : match?.genres?.length
+            ? match.genres
+            : rawItem.genres;
+
           return {
             ...rawItem,
             id: deterministicId,
@@ -321,8 +352,15 @@ export async function hydrateRecommendations(
             episodes_count: match?.episodes_count || null,
             status: rawItem.tier === 'upcoming' ? 'upcoming' : match?.status,
             expected_release_date: rawItem.expected_release_date,
-            creator: rawItem.creator,
-            cast: match?.cast,
+            creator: resolvedDirector,
+            director: resolvedDirector,
+            cast: resolvedCast,
+            rating: resolvedRating,
+            rating_source: resolvedRatingSource,
+            platform: resolvedPlatform,
+            origin_country: resolvedCountry,
+            duration: resolvedDuration,
+            genres: resolvedGenres,
             already_in_library: false,
           };
         } catch (unexpectedErr) {

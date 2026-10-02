@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, Sparkles, Award, Gem, ThumbsDown, EyeOff, Film, Tv, BookOpen, Clock, Target } from 'lucide-react';
+import { Plus, Check, Sparkles, Award, Gem, ThumbsDown, EyeOff, Film, Tv, BookOpen, Clock, Target, Star } from 'lucide-react';
 import type { HydratedRecommendation } from '../../../types/culture-recommendations';
 import { RecommendationContextMenu } from './RecommendationContextMenu';
 
@@ -160,12 +160,42 @@ export function RecommendationCard({
             >
               {item.title}
             </h3>
-            {item.year && (
-              <span className="text-[11px] font-medium text-zinc-500 flex-shrink-0">
-                {item.year}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {item.rating && (
+                <span
+                  title={`Nota: ${item.rating.toFixed(1)}/10 ${item.rating_source ? `(${item.rating_source})` : ''}`}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                >
+                  <Star size={9} className="fill-amber-400 text-amber-400" />
+                  {item.rating.toFixed(1)}
+                </span>
+              )}
+              {item.year && (
+                <span className="text-[11px] font-medium text-zinc-500">
+                  {item.year}
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Platform / Duration Subtitle */}
+          {(item.platform || item.duration) && (
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-1 flex-wrap">
+              {item.platform && (
+                <span
+                  title={`Onde foi exibido / Origem: ${item.platform}`}
+                  className="inline-flex items-center px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-zinc-300 font-medium truncate max-w-[130px]"
+                >
+                  {item.platform}
+                </span>
+              )}
+              {item.duration && (
+                <span className="text-zinc-500 font-normal">
+                  {item.platform ? `• ${item.duration}` : item.duration}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Creator / Studio / Author Signature */}
           {item.creator && (

@@ -12,7 +12,7 @@ export interface CultureItem {
   is_goal: boolean;
   goal_note?: string;
   api_id?: string;
-  api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books' | 'imdb';
+  api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books' | 'imdb' | 'anilist' | 'kitsu' | 'openlibrary';
   status?: string; // 'releasing', 'finished', etc.
   last_sync_at?: string;
   // Campos extras de metadados da API

@@ -16,6 +16,7 @@ import {
   Layers,
   Star,
   Users,
+  Globe,
 } from 'lucide-react';
 
 import type { HydratedRecommendation } from '../../../types/culture-recommendations';
@@ -227,9 +228,23 @@ export function RecommendationDetailsModal({
                     </span>
                   )}
                   {item.rating && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-medium">
-                      <Star size={11} className="fill-amber-400" />
+                    <span
+                      title={`Avaliação: ${item.rating.toFixed(1)}/10 ${item.rating_source ? `(${item.rating_source})` : ''}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-semibold border border-amber-500/25"
+                    >
+                      <Star size={11} className="fill-amber-400 text-amber-400" />
                       {item.rating.toFixed(1)}
+                      {item.rating_source && (
+                        <span className="text-[10px] text-amber-400/80 font-normal">
+                          ({item.rating_source})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {item.duration && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 text-zinc-300">
+                      <Clock size={11} className="text-zinc-400" />
+                      {item.duration}
                     </span>
                   )}
                   {item.episodes_count && (
@@ -245,6 +260,67 @@ export function RecommendationDetailsModal({
                 </div>
               </div>
             </div>
+
+            {/* Comprehensive Technical & Production Specifications */}
+            {(item.platform || item.origin_country || item.duration || item.rating) && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                {item.rating && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                      Avaliação
+                    </span>
+                    <div className="flex items-center gap-1 font-semibold text-amber-300">
+                      <Star size={12} className="fill-amber-400 text-amber-400" />
+                      <span>{item.rating.toFixed(1)} / 10</span>
+                      {item.rating_source && (
+                        <span className="text-[10px] text-zinc-400 font-normal">
+                          ({item.rating_source})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {item.platform && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                      Onde Exibido / Origem
+                    </span>
+                    <span className="font-medium text-zinc-200 truncate" title={item.platform}>
+                      {item.platform}
+                    </span>
+                  </div>
+                )}
+
+                {item.origin_country && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                      País de Origem
+                    </span>
+                    <div className="flex items-center gap-1 text-zinc-200 font-medium">
+                      <Globe size={11} className="text-zinc-400 flex-shrink-0" />
+                      <span className="truncate" title={item.origin_country}>
+                        {item.origin_country}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {item.duration && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                      Duração / Extensão
+                    </span>
+                    <div className="flex items-center gap-1 text-zinc-200 font-medium">
+                      <Clock size={11} className="text-zinc-400 flex-shrink-0" />
+                      <span className="truncate" title={item.duration}>
+                        {item.duration}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* AI Affinity Rationale Card */}
             <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 via-zinc-900 to-purple-500/10 border border-amber-500/20 shadow-sm space-y-1.5">

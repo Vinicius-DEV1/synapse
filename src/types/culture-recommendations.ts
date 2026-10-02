@@ -18,6 +18,12 @@ export interface RawAIRecommendation {
   release_date?: string;
   expected_release_date?: string;
   search_hint?: string;
+  rating?: number;
+  platform?: string; // e.g. "HBO / Max", "Apple TV+", "Netflix", "Cinema", "Editora Aleph"
+  origin_country?: string; // e.g. "Estados Unidos", "Japão", "Reino Unido", "Brasil"
+  duration?: string; // e.g. "2h 49m", "10 episódios", "416 págs"
+  genres?: string[];
+  cast?: string;
 }
 
 export interface HydratedRecommendation extends RawAIRecommendation {
@@ -25,8 +31,13 @@ export interface HydratedRecommendation extends RawAIRecommendation {
   synopsis?: string;
   cover_image?: string;
   api_id?: string;
-  api_source?: 'jikan' | 'tvmaze' | 'imdb' | 'books' | 'itunes';
+  api_source?: 'jikan' | 'tvmaze' | 'imdb' | 'books' | 'itunes' | 'anilist' | 'kitsu' | 'openlibrary';
   rating?: number;
+  rating_source?: string; // e.g. "IMDb", "AniList", "MAL", "TVMaze", "Google Books"
+  platform?: string;
+  origin_country?: string;
+  duration?: string;
+  director?: string;
   episodes_count?: number | null;
   status?: string;
   genres?: string[];

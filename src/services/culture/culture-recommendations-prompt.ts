@@ -217,6 +217,13 @@ Mix tiers across clusters:
 
 Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 CRITICAL: For EVERY single recommended item, you MUST write a rich, immersive, and narrative synopsis (2 to 4 sentences in Portuguese) explaining the plot, the universe, and the main dramatic conflict without giving spoilers. Do not leave synopsis empty and do not provide simple actor lists.
+Also provide accurate baseline metadata:
+- "rating": Estimated public/critical consensus score out of 10 (e.g. 8.7, 8.4, 9.1).
+- "platform": Primary broadcasting network, streaming service, cinema distributor, or publisher (e.g. "HBO / Max", "Apple TV+", "Netflix", "Prime Video", "FX", "Cinema", "Editora Aleph", "Shueisha").
+- "origin_country": Country of origin in Portuguese (e.g. "Estados Unidos", "Japão", "Reino Unido", "Coreia do Sul", "França", "Brasil").
+- "duration": Approximate runtime, episode count, or pages (e.g. "2h 49m", "10 episódios", "416 págs").
+- "genres": Array of 2 to 3 main genres in Portuguese (e.g. ["Ficção Científica", "Drama"]).
+- "cast": 2 to 3 main actors or key voices.
 
 Respond with ONLY a raw JSON object in this format:
 {
@@ -237,6 +244,12 @@ Respond with ONLY a raw JSON object in this format:
           "affinity_reason": "Porque você assistiu X e aprecia a direção de Y...",
           "synopsis": "Sinopse rica, envolvente e detalhada em português (2 a 4 frases) contextualizando a premissa, o universo e o conflito dramático central sem spoilers.",
           "confidence_score": 0.95,
+          "rating": 8.7,
+          "platform": "HBO / Max" | "Apple TV+" | "Netflix" | "Cinema" | "Editora Aleph",
+          "origin_country": "Estados Unidos" | "Japão" | "Reino Unido",
+          "duration": "2h 49m" | "10 episódios" | "416 págs",
+          "genres": ["Ficção Científica", "Drama"],
+          "cast": "Matthew McConaughey, Anne Hathaway",
           "release_date": "YYYY-MM-DD",
           "expected_release_date": "Outubro 2025",
           "search_hint": "Title for IMDb/Jikan API search"

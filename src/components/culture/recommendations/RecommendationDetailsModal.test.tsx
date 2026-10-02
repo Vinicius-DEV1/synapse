@@ -196,5 +196,37 @@ describe('RecommendationDetailsModal', () => {
     expect(screen.getByText(/Anya Taylor-Joy, Lee Pace/)).toBeInTheDocument();
     expect(screen.queryByText(/^Sinopse$/)).not.toBeInTheDocument();
   });
+
+  it('renders technical specifications grid with rating source, platform, country, and duration', () => {
+    const richItem: HydratedRecommendation = {
+      ...mockItem,
+      rating: 8.7,
+      rating_source: 'IMDb',
+      platform: 'HBO / Max',
+      origin_country: 'Estados Unidos',
+      duration: '169 min',
+    };
+
+    render(
+      <RecommendationDetailsModal
+        item={richItem}
+        isOpen={true}
+        onClose={vi.fn()}
+        onAdd={vi.fn()}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+        isAdded={false}
+      />
+    );
+
+    expect(screen.getByText('Onde Exibido / Origem')).toBeInTheDocument();
+    expect(screen.getByText('HBO / Max')).toBeInTheDocument();
+    expect(screen.getByText('País de Origem')).toBeInTheDocument();
+    expect(screen.getByText('Estados Unidos')).toBeInTheDocument();
+    expect(screen.getByText('Duração / Extensão')).toBeInTheDocument();
+    expect(screen.getAllByText('169 min')).toHaveLength(2);
+    expect(screen.getAllByText('(IMDb)')).toHaveLength(2);
+  });
 });
+
 

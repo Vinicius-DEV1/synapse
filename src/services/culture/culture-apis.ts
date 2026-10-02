@@ -12,10 +12,77 @@ export interface CultureSearchResult {
   api_source: string;
   status?: 'releasing' | 'finished' | 'unknown';
   cast?: string;
+  rating?: number;
+  rating_source?: string;
+  platform?: string;
+  origin_country?: string;
+  duration?: string;
+  director?: string;
+  genres?: string[];
 }
 
 const cultureApiCache = new Map<string, { timestamp: number; data: CultureSearchResult[] }>();
+const cinemetaCache = new Map<string, { timestamp: number; data: Partial<CultureSearchResult> }>();
 const CACHE_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Fetches high-precision metadata for movies and TV series from Cinemeta using IMDb IDs.
+ * Provides exact IMDb ratings, runtime, cast, director, country of origin, and genre classifications.
+ */
+export async function fetchCinemetaMetadata(
+  imdbId: string,
+  type: 'movie' | 'series' = 'movie'
+): Promise<Partial<CultureSearchResult> | null> {
+  if (!imdbId || !imdbId.startsWith('tt')) return null;
+
+  const cacheKey = `cinemeta_${type}_${imdbId}`;
+  const cached = cinemetaCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3500);
+
+  try {
+    const res = await fetch(`https://v3-cinemeta.strem.io/meta/${type}/${imdbId}.json`, {
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meta = data?.meta;
+    if (!meta) return null;
+
+    const parsedRating = meta.imdbRating ? parseFloat(meta.imdbRating) : undefined;
+    const rating = typeof parsedRating === 'number' && !isNaN(parsedRating) ? parsedRating : undefined;
+
+    const directorStr = Array.isArray(meta.director) && meta.director.length > 0
+      ? meta.director.join(', ')
+      : undefined;
+
+    const castStr = Array.isArray(meta.cast) && meta.cast.length > 0
+      ? meta.cast.slice(0, 4).join(', ')
+      : undefined;
+
+    const result: Partial<CultureSearchResult> = {
+      rating,
+      rating_source: rating !== undefined ? 'IMDb' : undefined,
+      duration: meta.runtime ? String(meta.runtime) : undefined,
+      origin_country: meta.country ? String(meta.country) : undefined,
+      director: directorStr,
+      cast: castStr,
+      genres: Array.isArray(meta.genres) ? meta.genres : undefined,
+    };
+
+    cinemetaCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    return result;
+  } catch (err) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 
 let lastJikanRequestTime = 0;
 let jikanCooldownUntil = 0;
@@ -65,23 +132,35 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
       return [];
     }
     const data = await res.json();
-    const results: CultureSearchResult[] = (data?.data || []).map((item: any) => ({
-      title: item.title,
-      synopsis: item.synopsis || '',
-      cover: item.images?.jpg?.large_image_url || '',
-      total: item.episodes || item.chapters || 0,
-      volumes: item.volumes || null,
-      chapters: item.chapters || null,
-      episodes_count: item.episodes || null,
-      type: t,
-      api_id: item.mal_id.toString(),
-      api_source: 'jikan',
-      status: item.status === 'Currently Airing' || item.status === 'Publishing'
-        ? 'releasing'
-        : item.status === 'Finished Airing' || item.status === 'Finished'
-        ? 'finished'
-        : 'unknown'
-    }));
+    const results: CultureSearchResult[] = (data?.data || []).map((item: any) => {
+      const rawScore = item.score;
+      const rating = typeof rawScore === 'number' && !isNaN(rawScore) ? rawScore : undefined;
+      const platform = item.studios?.[0]?.name || item.authors?.[0]?.name || undefined;
+      const genres = Array.isArray(item.genres) ? item.genres.map((g: any) => g.name).filter(Boolean) : undefined;
+
+      return {
+        title: item.title,
+        synopsis: item.synopsis || '',
+        cover: item.images?.jpg?.large_image_url || '',
+        total: item.episodes || item.chapters || 0,
+        volumes: item.volumes || null,
+        chapters: item.chapters || null,
+        episodes_count: item.episodes || null,
+        type: t,
+        api_id: item.mal_id.toString(),
+        api_source: 'jikan',
+        status: item.status === 'Currently Airing' || item.status === 'Publishing'
+          ? 'releasing'
+          : item.status === 'Finished Airing' || item.status === 'Finished'
+          ? 'finished'
+          : 'unknown',
+        rating,
+        rating_source: rating !== undefined ? 'MAL' : undefined,
+        platform,
+        duration: item.duration || undefined,
+        genres,
+      };
+    });
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
@@ -113,16 +192,31 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
       return [];
     }
     const data = await res.json();
-    const results: CultureSearchResult[] = (data.items || []).map((item: any) => ({
-      title: item.volumeInfo?.title || q,
-      synopsis: item.volumeInfo?.description || '',
-      cover: item.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
-      total: item.volumeInfo?.pageCount || 0,
-      type: targetType,
-      api_id: item.id,
-      api_source: 'books',
-      status: 'finished' as const
-    }));
+    const results: CultureSearchResult[] = (data.items || []).map((item: any) => {
+      const vInfo = item.volumeInfo || {};
+      const rawRating = vInfo.averageRating;
+      const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : undefined;
+      const publisher = vInfo.publisher || undefined;
+      const authors = Array.isArray(vInfo.authors) ? vInfo.authors.join(', ') : undefined;
+      const duration = vInfo.pageCount ? `${vInfo.pageCount} págs` : undefined;
+
+      return {
+        title: vInfo.title || q,
+        synopsis: vInfo.description || '',
+        cover: vInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
+        total: vInfo.pageCount || 0,
+        type: targetType,
+        api_id: item.id,
+        api_source: 'books',
+        status: 'finished' as const,
+        rating,
+        rating_source: rating !== undefined ? 'Google Books' : undefined,
+        platform: publisher,
+        director: authors,
+        duration,
+        genres: Array.isArray(vInfo.categories) ? vInfo.categories : undefined,
+      };
+    });
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
@@ -145,16 +239,35 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
     const res = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`);
     if (!res.ok) return [];
     const data = await res.json();
-    const results: CultureSearchResult[] = (data || []).slice(0, 3).map((item: any) => ({
-      title: item.show.name,
-      synopsis: (item.show.summary || '').replace(/<[^>]+>/g, ''),
-      cover: item.show.image?.medium || '',
-      total: 0,
-      type: 'série',
-      api_id: item.show.id.toString(),
-      api_source: 'tvmaze',
-      status: item.show.status === 'Running' ? 'releasing' : item.show.status === 'Ended' ? 'finished' : 'unknown'
-    }));
+    const results: CultureSearchResult[] = (data || []).slice(0, 3).map((item: any) => {
+      const show = item.show || {};
+      const rawRating = show.rating?.average;
+      const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : undefined;
+      const platform = show.webChannel?.name || show.network?.name || undefined;
+      const country = show.network?.country?.name || show.webChannel?.country?.name || undefined;
+      const duration = show.averageRuntime
+        ? `${show.averageRuntime} min/ep`
+        : show.runtime
+        ? `${show.runtime} min/ep`
+        : undefined;
+
+      return {
+        title: show.name,
+        synopsis: (show.summary || '').replace(/<[^>]+>/g, ''),
+        cover: show.image?.medium || '',
+        total: 0,
+        type: 'série',
+        api_id: show.id.toString(),
+        api_source: 'tvmaze',
+        status: show.status === 'Running' ? 'releasing' : show.status === 'Ended' ? 'finished' : 'unknown',
+        rating,
+        rating_source: rating !== undefined ? 'TVMaze' : undefined,
+        platform,
+        origin_country: country,
+        duration,
+        genres: Array.isArray(show.genres) ? show.genres : undefined,
+      };
+    });
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
@@ -328,6 +441,10 @@ export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[
 
     return movies.map((item: any) => {
       const releaseYear = item.releaseDate ? new Date(item.releaseDate).getFullYear() : null;
+      const durationMs = item.trackTimeMillis;
+      const durationMin = durationMs ? Math.round(durationMs / 60000) : null;
+      const duration = durationMin ? `${durationMin} min` : undefined;
+
       return {
         title: item.trackName,
         year: releaseYear,
@@ -338,6 +455,10 @@ export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[
         api_id: item.trackId.toString(),
         api_source: 'itunes',
         status: 'finished' as const,
+        director: item.artistName || undefined,
+        duration,
+        origin_country: item.country || undefined,
+        genres: item.primaryGenreName ? [item.primaryGenreName] : undefined,
       };
     });
   } catch (err) {

@@ -35,7 +35,7 @@ export async function fetchOpenLibraryBooks(
   }
 
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=4`;
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=title,author_name,publisher,ratings_average,ratings_count,number_of_pages_median,first_publish_year,cover_i,subject&limit=4`;
     const res = await fetchWithTimeout(url, {}, 4500);
     if (!res.ok) return [];
 
@@ -49,6 +49,19 @@ export async function fetchOpenLibraryBooks(
         const coverId = doc.cover_i;
         const cover = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
         const year = doc.first_publish_year || (doc.publish_year ? doc.publish_year[0] : null);
+        const rating = typeof doc.ratings_average === 'number'
+          ? Number(doc.ratings_average.toFixed(1))
+          : undefined;
+        const publisher = Array.isArray(doc.publisher) && doc.publisher.length > 0
+          ? doc.publisher[0]
+          : undefined;
+        const authors = Array.isArray(doc.author_name) && doc.author_name.length > 0
+          ? doc.author_name.join(', ')
+          : undefined;
+        const duration = doc.number_of_pages_median
+          ? `${doc.number_of_pages_median} págs`
+          : undefined;
+        const genres = Array.isArray(doc.subject) ? doc.subject.slice(0, 3) : undefined;
 
         return {
           title: doc.title || query,
@@ -60,6 +73,12 @@ export async function fetchOpenLibraryBooks(
           api_id: `ol_${doc.key || coverId}`,
           api_source: 'openlibrary',
           status: 'finished' as const,
+          rating,
+          rating_source: rating !== undefined ? 'OpenLibrary' : undefined,
+          platform: publisher,
+          director: authors,
+          duration,
+          genres,
         };
       });
 
@@ -107,6 +126,15 @@ export async function fetchAniListMedia(
           episodes
           chapters
           volumes
+          averageScore
+          countryOfOrigin
+          duration
+          genres
+          studios(isMain: true) {
+            nodes {
+              name
+            }
+          }
           startDate {
             year
           }
@@ -140,6 +168,18 @@ export async function fetchAniListMedia(
     const results: CultureSearchResult[] = mediaList.map((m: any) => {
       const cover = m.coverImage?.extraLarge || m.coverImage?.large || '';
       const rawSynopsis = m.description ? m.description.replace(/<[^>]+>/g, '').trim() : '';
+      const rating = typeof m.averageScore === 'number'
+        ? Number((m.averageScore / 10).toFixed(1))
+        : undefined;
+      const studio = m.studios?.nodes?.[0]?.name;
+      const country = m.countryOfOrigin === 'JP'
+        ? 'Japão'
+        : m.countryOfOrigin === 'KR'
+        ? 'Coreia do Sul'
+        : m.countryOfOrigin === 'CN'
+        ? 'China'
+        : m.countryOfOrigin || undefined;
+      const duration = m.duration ? `${m.duration} min/ep` : undefined;
 
       return {
         title: m.title?.userPreferred || m.title?.english || m.title?.romaji || query,
@@ -154,6 +194,12 @@ export async function fetchAniListMedia(
         api_id: `al_${m.id}`,
         api_source: 'anilist',
         status: m.status === 'RELEASING' ? 'releasing' : 'finished',
+        rating,
+        rating_source: rating !== undefined ? 'AniList' : undefined,
+        platform: studio,
+        origin_country: country,
+        duration,
+        genres: Array.isArray(m.genres) ? m.genres : undefined,
       };
     });
 
@@ -198,6 +244,9 @@ export async function fetchKitsuManga(query: string): Promise<CultureSearchResul
       const attrs = item.attributes || {};
       const cover = attrs.posterImage?.large || attrs.posterImage?.medium || attrs.posterImage?.original || '';
       const year = attrs.startDate ? new Date(attrs.startDate).getFullYear() : null;
+      const rawRating = attrs.averageRating ? parseFloat(attrs.averageRating) : NaN;
+      const rating = !isNaN(rawRating) ? Number((rawRating / 10).toFixed(1)) : undefined;
+      const serialization = attrs.serialization || undefined;
 
       return {
         title: attrs.canonicalTitle || query,
@@ -211,6 +260,10 @@ export async function fetchKitsuManga(query: string): Promise<CultureSearchResul
         api_id: `kitsu_${item.id}`,
         api_source: 'kitsu',
         status: attrs.status === 'current' ? 'releasing' : 'finished',
+        rating,
+        rating_source: rating !== undefined ? 'Kitsu' : undefined,
+        platform: serialization,
+        origin_country: 'Japão',
       };
     });
 

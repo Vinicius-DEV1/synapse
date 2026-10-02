@@ -6,6 +6,7 @@ import {
   fetchJikan,
   fetchGoogleBooks,
   fetchTVMaze,
+  fetchCinemetaMetadata,
 } from './culture-apis';
 
 describe('culture-apis', () => {
@@ -211,4 +212,121 @@ describe('culture-apis', () => {
       expect(results[0].api_source).toBe('itunes');
     });
   });
+
+  describe('fetchCinemetaMetadata', () => {
+    it('returns null for non-IMDb or empty IDs', async () => {
+      const res = await fetchCinemetaMetadata('12345');
+      expect(res).toBeNull();
+    });
+
+    it('extracts rating, runtime, director, cast, country, and genres from Cinemeta', async () => {
+      const mockCineData = {
+        meta: {
+          imdbRating: '8.7',
+          runtime: '169 min',
+          director: ['Christopher Nolan'],
+          cast: ['Matthew McConaughey', 'Anne Hathaway', 'Jessica Chastain'],
+          country: 'United States, United Kingdom',
+          genres: ['Adventure', 'Drama', 'Sci-Fi'],
+        },
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockCineData,
+      } as Response);
+
+      const metadata = await fetchCinemetaMetadata('tt0816692', 'movie');
+
+      expect(metadata).toEqual({
+        rating: 8.7,
+        rating_source: 'IMDb',
+        duration: '169 min',
+        origin_country: 'United States, United Kingdom',
+        director: 'Christopher Nolan',
+        cast: 'Matthew McConaughey, Anne Hathaway, Jessica Chastain',
+        genres: ['Adventure', 'Drama', 'Sci-Fi'],
+      });
+    });
+
+    it('handles network failure gracefully without throwing', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      const metadata = await fetchCinemetaMetadata('tt9999999', 'movie');
+      expect(metadata).toBeNull();
+    });
+  });
+
+  describe('fetchTVMaze', () => {
+    it('extracts rating, platform, origin_country, duration, and genres', async () => {
+      const mockTvResponse = [
+        {
+          show: {
+            id: 42107,
+            name: 'Severance',
+            summary: '<p>Mark leads a team of office workers.</p>',
+            image: { medium: 'https://static.tvmaze.com/uploads/images/medium_portrait/severance.jpg' },
+            rating: { average: 8.6 },
+            webChannel: { name: 'Apple TV+', country: { name: 'United States' } },
+            averageRuntime: 49,
+            genres: ['Drama', 'Science-Fiction', 'Mystery'],
+            status: 'Running',
+          },
+        },
+      ];
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockTvResponse,
+      } as Response);
+
+      const results = await fetchTVMaze('severance');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].rating).toBe(8.6);
+      expect(results[0].rating_source).toBe('TVMaze');
+      expect(results[0].platform).toBe('Apple TV+');
+      expect(results[0].origin_country).toBe('United States');
+      expect(results[0].duration).toBe('49 min/ep');
+      expect(results[0].genres).toEqual(['Drama', 'Science-Fiction', 'Mystery']);
+      expect(results[0].status).toBe('releasing');
+    });
+  });
+
+  describe('fetchGoogleBooks', () => {
+    it('extracts rating, publisher platform, authors, duration, and genres', async () => {
+      const mockBooksResponse = {
+        items: [
+          {
+            id: 'book123',
+            volumeInfo: {
+              title: 'Duna',
+              description: 'Em um futuro distante...',
+              imageLinks: { thumbnail: 'http://books.google.com/cover.jpg' },
+              pageCount: 680,
+              averageRating: 4.6,
+              publisher: 'Editora Aleph',
+              authors: ['Frank Herbert'],
+              categories: ['Ficção Científica'],
+            },
+          },
+        ],
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockBooksResponse,
+      } as Response);
+
+      const results = await fetchGoogleBooks('duna');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].rating).toBe(4.6);
+      expect(results[0].rating_source).toBe('Google Books');
+      expect(results[0].platform).toBe('Editora Aleph');
+      expect(results[0].director).toBe('Frank Herbert');
+      expect(results[0].duration).toBe('680 págs');
+      expect(results[0].genres).toEqual(['Ficção Científica']);
+    });
+  });
 });
+
