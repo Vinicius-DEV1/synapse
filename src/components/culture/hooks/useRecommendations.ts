@@ -18,6 +18,23 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   const [addedItemIds, setAddedItemIds] = useState<Set<string>>(new Set());
   const [lastGeneratedAt, setLastGeneratedAt] = useState<string | null>(null);
   const [aiDna, setAiDna] = useState<AiCulturalDnaProfile | null>(null);
+  const [generationProgress, setGenerationProgress] = useState<{
+    isActive: boolean;
+    phase: string;
+    currentBatch: number;
+    totalBatches: number;
+    message: string;
+    progressPercent: number;
+    totalItemsCount: number;
+  }>({
+    isActive: false,
+    phase: 'idle',
+    currentBatch: 0,
+    totalBatches: 2,
+    message: '',
+    progressPercent: 0,
+    totalItemsCount: 0,
+  });
 
   const [serendipityMode, setSerendipityModeState] = useState<SerendipityMode>(() => {
     try {
@@ -29,8 +46,6 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   });
 
   const isMountedRef = useRef(true);
-  const clustersRef = useRef<RecommendationCluster[]>([]);
-  clustersRef.current = clusters;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -39,32 +54,10 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     };
   }, []);
 
-  // 1. Instant SWR fast-path: load cached clusters from IndexedDB immediately on mount (<5ms)
-  useEffect(() => {
-    let cancelled = false;
-    CultureFeedbackStorage.getCachedRecommendations()
-      .then(cached => {
-        if (!cancelled && cached && cached.clusters && cached.clusters.length > 0) {
-          setClusters(cached.clusters);
-          setLastGeneratedAt(cached.generated_at);
-          setAiDna(cached.ai_dna || null);
-          setIsLoading(false);
-        }
-      })
-      .catch(err => {
-        console.warn('[useRecommendations] Erro ao ler cache SWR inicial:', err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const loadRecommendations = useCallback(async (forceRefresh = false, modeOverride?: SerendipityMode) => {
     const mode = modeOverride || serendipityMode;
     try {
-      // If we already have clusters rendered, do NOT drop back to skeleton; show non-intrusive background state
-      if (clustersRef.current.length > 0 || forceRefresh) {
+      if (forceRefresh) {
         setIsGenerating(true);
       } else {
         setIsLoading(true);
@@ -73,7 +66,30 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
         setError(null);
       }
 
-      const result = await CultureRecommendationsService.getRecommendations(forceRefresh, mode);
+      const result = await CultureRecommendationsService.getRecommendationsProgressive(
+        forceRefresh,
+        mode,
+        (update) => {
+          if (!isMountedRef.current) return;
+
+          setGenerationProgress({
+            isActive: update.phase !== 'complete' && update.phase !== 'error',
+            phase: update.phase,
+            currentBatch: update.currentBatch,
+            totalBatches: update.totalBatches,
+            message: update.message,
+            progressPercent: update.progressPercent,
+            totalItemsCount: update.totalItemsCount,
+          });
+
+          // Progressive rendering: mount cards immediately on screen as soon as Batch 1 arrives!
+          if (update.clusters && update.clusters.length > 0) {
+            setClusters(update.clusters);
+            setIsLoading(false);
+          }
+        }
+      );
+
       if (!isMountedRef.current) return;
       setClusters(result);
 
@@ -91,6 +107,11 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
       if (isMountedRef.current) {
         setIsLoading(false);
         setIsGenerating(false);
+        setGenerationProgress(prev => ({
+          ...prev,
+          isActive: false,
+          progressPercent: 100,
+        }));
       }
     }
   }, [serendipityMode]);
@@ -195,6 +216,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     addedItemIds,
     lastGeneratedAt,
     aiDna,
+    generationProgress,
     refresh: () => loadRecommendations(true),
     handleAddItem,
     handleDislikeItem,

@@ -5,6 +5,7 @@ import type {
   RawAIRecommendation,
   DislikedCultureItem,
   SerendipityMode,
+  RecommendationProgressUpdate,
 } from '../../types/culture-recommendations';
 import { CultureService } from '../culture';
 import { CultureFeedbackStorage } from './culture-feedback-storage';
@@ -108,6 +109,20 @@ export const CultureRecommendationsService = {
     forceRefresh = false,
     serendipityMode: SerendipityMode = 'safe'
   ): Promise<RecommendationCluster[]> {
+    return this.getRecommendationsProgressive(forceRefresh, serendipityMode);
+  },
+
+  /**
+   * Generates or fetches recommendations progressively in batches.
+   * - Batch 1: Generates the first 2 high-priority collections and hydrates them (~4-7s).
+   * - Safety Pacing: Introduces a 2s delay to protect API RPM rate limits.
+   * - Batch 2: Background expansion for remaining collections with anti-duplication tracking and retry resilience.
+   */
+  async getRecommendationsProgressive(
+    forceRefresh = false,
+    serendipityMode: SerendipityMode = 'safe',
+    onProgress?: (update: RecommendationProgressUpdate) => void
+  ): Promise<RecommendationCluster[]> {
     const items = await CultureService.getItems();
     const disliked = await CultureFeedbackStorage.getDislikedItems();
     const ignored = await CultureFeedbackStorage.getIgnoredItems();
@@ -120,7 +135,7 @@ export const CultureRecommendationsService = {
     const excludedTypeSet = new Set(excludedTypes);
     const excludedTypesKey = [...excludedTypes].sort().join('-');
     const excludedThemesKey = [...excludedThemes].map(t => t.trim().toLowerCase()).sort().join('-');
-    const effectiveHash = `${dna.libraryHash}_${serendipityMode}_${volume}_exT:${excludedTypesKey}_exTh:${excludedThemesKey}_v6_fast`;
+    const effectiveHash = `${dna.libraryHash}_${serendipityMode}_${volume}_exT:${excludedTypesKey}_exTh:${excludedThemesKey}_dense_v6_batched`;
 
     // 1. Check cache if not forcing refresh
     const cached = await CultureFeedbackStorage.getCachedRecommendations();
@@ -149,23 +164,30 @@ export const CultureRecommendationsService = {
           .filter(cluster => cluster.items.length > 0);
 
         const totalRemainingItems = cleanedClusters.reduce((acc, c) => acc + c.items.length, 0);
-        const minItemsThreshold = volume === 'quadruple' ? 40 : volume === 'expanded' ? 25 : 15;
+        const minItemsThreshold = volume === 'quadruple' ? 65 : volume === 'expanded' ? 45 : 25;
 
         // If the library hash matches AND we have a sufficiently rich recommendation set, use cache
         if (totalRemainingItems >= minItemsThreshold && cleanedClusters.length > 0) {
+          onProgress?.({
+            phase: 'complete',
+            currentBatch: 2,
+            totalBatches: 2,
+            clusters: cleanedClusters,
+            message: 'Recomendações carregadas do cache local.',
+            progressPercent: 100,
+            isPartial: false,
+            totalItemsCount: totalRemainingItems,
+          });
           return cleanedClusters;
         }
       }
     }
 
-    // 2. Fetch fresh broadcast anchors, history titles, and deep AI DNA concurrently
-    const [freshAnchors, historyTitles, aiDna] = await Promise.all([
-      fetchCurrentFreshReleases(),
-      CultureFeedbackStorage.getRecentRecommendedTitles(),
-      extractAiCulturalDna(items, dna.libraryHash),
-    ]);
+    // 2. Fetch fresh broadcast/season anchors for up-to-the-minute release grounding
+    const freshAnchors = await fetchCurrentFreshReleases();
 
     // 3. Collect previously recommended titles to ensure 100% novelty on refresh
+    const historyTitles = await CultureFeedbackStorage.getRecentRecommendedTitles();
     const previousTitles = Array.from(
       new Set([
         ...(cached ? cached.clusters.flatMap(c => c.items.map(i => i.title)) : []),
@@ -173,8 +195,37 @@ export const CultureRecommendationsService = {
       ])
     );
 
-    // 4. Build prompt for Gemini with full exclusion list, volume directive, pre-extracted AI DNA, and format/theme exclusions
-    const prompt = buildCultureRecommendationsPrompt(
+    // 3.5. Extract deep cultural DNA via AI (instant 0ms if cached for this library state)
+    onProgress?.({
+      phase: 'dna',
+      currentBatch: 0,
+      totalBatches: 2,
+      clusters: cached?.clusters || [],
+      message: 'Mapeando DNA cultural...',
+      progressPercent: 10,
+      isPartial: true,
+      totalItemsCount: cached?.clusters ? cached.clusters.reduce((acc, c) => acc + c.items.length, 0) : 0,
+    });
+    const aiDna = await extractAiCulturalDna(items, dna.libraryHash);
+
+    // Partition thematic axes across batches
+    const thematicAxes = aiDna?.thematic_axes || [];
+    const batch1ThematicFocus = thematicAxes.slice(0, 2);
+    const batch2ThematicFocus = thematicAxes.slice(2, 5);
+
+    // 4. BATCH 1: Prompt & Generation (~4-7s)
+    onProgress?.({
+      phase: 'batch_generating',
+      currentBatch: 1,
+      totalBatches: 2,
+      clusters: [],
+      message: 'Curando primeiro lote de obras (Lote 1 de 2)...',
+      progressPercent: 25,
+      isPartial: true,
+      totalItemsCount: 0,
+    });
+
+    const prompt1 = buildCultureRecommendationsPrompt(
       dna,
       freshAnchors,
       serendipityMode,
@@ -182,77 +233,211 @@ export const CultureRecommendationsService = {
       volume,
       aiDna,
       excludedTypes,
-      excludedThemes
+      excludedThemes,
+      {
+        batchIndex: 0,
+        totalBatches: 2,
+        targetClusterCount: 2,
+        itemsPerCluster: 22,
+        thematicFocus: batch1ThematicFocus,
+      }
     );
 
-    // 5. Request Gemini with balanced timeout
-    const result = await promptGemini(
-      prompt,
+    const result1 = await promptGemini(
+      prompt1,
       undefined,
       [],
       undefined,
       CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
       60000
     );
-    const aiResponseText = result.text;
 
-    // 6. Parse JSON
-    const parsed = extractJsonFromResponse(aiResponseText);
-    if (!parsed || !parsed.clusters || !Array.isArray(parsed.clusters)) {
+    const parsed1 = extractJsonFromResponse(result1.text);
+    if (!parsed1 || !parsed1.clusters || !Array.isArray(parsed1.clusters)) {
       throw new Error('Não foi possível gerar recomendações no formato esperado. Tente novamente em instantes.');
     }
 
-    // 7. Hydrate items across clusters concurrently with cross-cluster title deduplication
-    const seenTracker = new Set<string>();
-
-    for (const libItem of items) {
-      if (libItem.title) seenTracker.add(normalizeTitle(libItem.title));
-      if (libItem.api_id) seenTracker.add(libItem.api_id);
-    }
-
-    const seenRawTitles = new Set<string>();
-    const preparedClusters = parsed.clusters.map(rawCluster => {
-      const validItems = (Array.isArray(rawCluster.items) ? rawCluster.items : [])
-        .filter(item => {
-          if (excludedTypeSet.has(item.type)) return false;
-          const norm = normalizeTitle(item.title || '');
-          if (!norm || seenRawTitles.has(norm)) return false;
-          seenRawTitles.add(norm);
-          return true;
-        });
-      return { rawCluster, validItems };
+    // Hydrate Batch 1
+    onProgress?.({
+      phase: 'batch_hydrating',
+      currentBatch: 1,
+      totalBatches: 2,
+      clusters: [],
+      message: 'Buscando capas e avaliações do Lote 1...',
+      progressPercent: 45,
+      isPartial: true,
+      totalItemsCount: 0,
     });
 
-    const hydratedClustersRaw = await Promise.all(
-      preparedClusters.map(async ({ rawCluster, validItems }, cIdx) => {
-        if (validItems.length === 0) return null;
-        const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
-        if (hydratedItems.length === 0) return null;
-        return {
+    const seenTracker = new Set<string>();
+    const seenBatchTitles = new Set<string>();
+    const accumulatedClusters: RecommendationCluster[] = [];
+
+    for (let cIdx = 0; cIdx < parsed1.clusters.length; cIdx++) {
+      const rawCluster = parsed1.clusters[cIdx];
+      const validItems = (Array.isArray(rawCluster.items) ? rawCluster.items : [])
+        .filter(item => !excludedTypeSet.has(item.type));
+      if (validItems.length === 0) continue;
+
+      for (const item of validItems) {
+        seenBatchTitles.add(item.title);
+      }
+
+      const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
+      if (hydratedItems.length > 0) {
+        accumulatedClusters.push({
           id: rawCluster.id || `cluster_${cIdx + 1}`,
           title: rawCluster.title || `Coleção ${cIdx + 1}`,
           description: rawCluster.description || '',
           items: hydratedItems,
-        };
-      })
-    );
+        });
+      }
+    }
 
-    const hydratedClusters = hydratedClustersRaw.filter((c): c is RecommendationCluster => c !== null);
+    const batch1ItemsCount = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
 
-    // 8. Persist to cache and update history ring buffer
-    if (hydratedClusters.length > 0) {
+    // Emit Batch 1 Ready: UI will immediately render cards on screen!
+    onProgress?.({
+      phase: 'batch_ready',
+      currentBatch: 1,
+      totalBatches: 2,
+      clusters: [...accumulatedClusters],
+      message: 'Lote 1 pronto! Descobrindo mais coleções em segundo plano...',
+      progressPercent: 55,
+      isPartial: true,
+      totalItemsCount: batch1ItemsCount,
+    });
+
+    // 5. SAFETY PACING (Rate-limit safeguard: 2000ms delay to prevent 429 RPM spikes)
+    onProgress?.({
+      phase: 'pacing',
+      currentBatch: 1,
+      totalBatches: 2,
+      clusters: [...accumulatedClusters],
+      message: 'Aguardando intervalo de segurança para expandir o acervo...',
+      progressPercent: 60,
+      isPartial: true,
+      totalItemsCount: batch1ItemsCount,
+    });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 6. BATCH 2: Background Expansion
+    onProgress?.({
+      phase: 'batch_generating',
+      currentBatch: 2,
+      totalBatches: 2,
+      clusters: [...accumulatedClusters],
+      message: 'Curando segundo lote de obras (Lote 2 de 2)...',
+      progressPercent: 72,
+      isPartial: true,
+      totalItemsCount: batch1ItemsCount,
+    });
+
+    try {
+      const prompt2 = buildCultureRecommendationsPrompt(
+        dna,
+        freshAnchors,
+        serendipityMode,
+        previousTitles,
+        volume,
+        aiDna,
+        excludedTypes,
+        excludedThemes,
+        {
+          batchIndex: 1,
+          totalBatches: 2,
+          targetClusterCount: 2,
+          itemsPerCluster: 22,
+          seenInPreviousBatches: Array.from(seenBatchTitles),
+          thematicFocus: batch2ThematicFocus,
+        }
+      );
+
+      let parsed2: RawGeminiOutput | null = null;
+      try {
+        const result2 = await promptGemini(
+          prompt2,
+          undefined,
+          [],
+          undefined,
+          CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
+          60000
+        );
+        parsed2 = extractJsonFromResponse(result2.text);
+      } catch (geminiError: unknown) {
+        console.warn('[CultureRecommendations] Batch 2 falhou na primeira tentativa, aplicando backoff...', geminiError);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const retryResult2 = await promptGemini(
+          prompt2,
+          undefined,
+          [],
+          undefined,
+          CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
+          60000
+        );
+        parsed2 = extractJsonFromResponse(retryResult2.text);
+      }
+
+      if (parsed2 && Array.isArray(parsed2.clusters)) {
+        onProgress?.({
+          phase: 'batch_hydrating',
+          currentBatch: 2,
+          totalBatches: 2,
+          clusters: [...accumulatedClusters],
+          message: 'Buscando capas e avaliações do Lote 2...',
+          progressPercent: 88,
+          isPartial: true,
+          totalItemsCount: batch1ItemsCount,
+        });
+
+        for (let cIdx = 0; cIdx < parsed2.clusters.length; cIdx++) {
+          const rawCluster = parsed2.clusters[cIdx];
+          const validItems = (Array.isArray(rawCluster.items) ? rawCluster.items : [])
+            .filter(item => !excludedTypeSet.has(item.type));
+          if (validItems.length === 0) continue;
+
+          const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
+          if (hydratedItems.length > 0) {
+            accumulatedClusters.push({
+              id: rawCluster.id || `cluster_b2_${cIdx + 1}`,
+              title: rawCluster.title || `Coleção ${accumulatedClusters.length + 1}`,
+              description: rawCluster.description || '',
+              items: hydratedItems,
+            });
+          }
+        }
+      }
+    } catch (batch2Error: unknown) {
+      console.warn('[CultureRecommendations] Batch 2 falhou ou atingiu limite de cota; mantendo Lote 1 de forma segura:', batch2Error);
+    }
+
+    // 7. Persist to cache & history
+    if (accumulatedClusters.length > 0) {
       await CultureFeedbackStorage.saveCachedRecommendations(
-        hydratedClusters,
+        accumulatedClusters,
         effectiveHash,
         6,
         aiDna
       );
 
-      const newlyRecommendedTitles = hydratedClusters.flatMap(c => c.items.map(i => i.title));
+      const newlyRecommendedTitles = accumulatedClusters.flatMap(c => c.items.map(i => i.title));
       await CultureFeedbackStorage.addRecentRecommendedTitles(newlyRecommendedTitles);
     }
 
-    return hydratedClusters;
+    const finalTotalItems = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
+
+    onProgress?.({
+      phase: 'complete',
+      currentBatch: 2,
+      totalBatches: 2,
+      clusters: [...accumulatedClusters],
+      message: `Catálogo completo: ${finalTotalItems} recomendações em ${accumulatedClusters.length} coleções.`,
+      progressPercent: 100,
+      isPartial: false,
+      totalItemsCount: finalTotalItems,
+    });
+
+    return accumulatedClusters;
   },
 
   /**

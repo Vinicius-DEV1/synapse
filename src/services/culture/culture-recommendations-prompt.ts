@@ -20,11 +20,11 @@ Key Principles:
    - NEVER suggest alternate cuts, extended versions, director's cuts, or remastered editions of works already in the user's library (e.g. if the user has "Ex-Machina", NEVER recommend "Ex-Machina: Versão Longa" or "Ex-Machina (Extended Cut)").
    - MANDATORY SERIES & ANIME RULE: Always recommend TV series and anime by their main overarching show title (e.g., "Severance", "Succession", "Frieren"). NEVER recommend specific seasons or season numbers (e.g. do NOT output "Severance: Temporada 2" or "Succession: Temporada 3"). If the user already has any season/entry of a series in their library, that series is considered present and you MUST NOT recommend any future, current, or past seasons of it.
    - NEVER suggest titles that the user marked as disliked or already watched/read.
-6. COHESIVE, RICH & ASSERTIVE THEMATIC CLUSTERS:
-   - STRICT COLLECTION COUNT: Maintain strictly between 3 and 5 cohesive thematic collections as specified in the curation task.
-   - BALANCED DENSITY: Populate each collection with laser-focused, high-caliber recommendations forming clean, substantial desktop card rows without diluted filler.
+6. COHESIVE, MASSIVELY PACKED & ASSERTIVE THEMATIC CLUSTERS (2X DOUBLED CATALOG DENSITY):
+   - STRICT COLLECTION COUNT: Maintain strictly between 4 and 5 cohesive thematic collections. Do NOT increase the number of collections (avoid vertical clutter and fragmented rows).
+   - DOUBLED 2X DEPTH REQUIREMENT: Instead of adding more collections, DOUBLE the depth and breadth of each collection. Each collection must be exceptionally packed, rich, and visually substantial, containing strictly 28 to 36 high-caliber recommendations (forming 5 to 6 full rows in desktop card grids, with a target of 120 to 160+ total recommendations across the 4 to 5 collections).
    - PURITY & COHESION: Keep each collection laser-focused ('acertiva') on its distinct thematic pillar and creator lineages. Never dilute quality with generic filler.
-   - BALANCED SPECTRUM: Within each collection, provide a rich, engaging mix of allowed formats (movies, series, anime, books, manga) and tiers (recent, classic, hidden_gem, upcoming).
+   - BALANCED SPECTRUM: Within each dense collection of 28 to 36 works, provide a rich, engaging mix of allowed formats (movies, series, anime, books, manga) and tiers (recent, classic, hidden_gem, upcoming).
    - Include upcoming future works so the user can anticipate what to watch or read next.
 7. REAL, FACTUAL WORKS ONLY:
    - Do NOT invent or hallucinate fake titles. Use accurate canonical titles that can be matched on IMDb, Jikan (MAL), TVMaze, or Google Books.
@@ -35,6 +35,15 @@ Key Principles:
 
 const ALL_CULTURE_TYPES: CultureType[] = ['filme', 'série', 'anime', 'manga', 'livro', 'hq', 'novel'];
 
+export interface BatchPromptOptions {
+  batchIndex: number;
+  totalBatches: number;
+  targetClusterCount?: number;
+  itemsPerCluster?: number;
+  seenInPreviousBatches?: string[];
+  thematicFocus?: string[];
+}
+
 export function buildCultureRecommendationsPrompt(
   dna: UserCulturalDNA,
   freshAnchors: FreshReleaseAnchor[] = [],
@@ -43,7 +52,8 @@ export function buildCultureRecommendationsPrompt(
   volume: 'standard' | 'expanded' | 'quadruple' = 'quadruple',
   aiDna?: AiCulturalDnaProfile | null,
   excludedTypes: CultureType[] = [],
-  excludedThemes: string[] = []
+  excludedThemes: string[] = [],
+  batchOptions?: BatchPromptOptions
 ): string {
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -144,7 +154,7 @@ ALLOWED FORMATS ONLY: ${effectiveAllowedTypes.join(', ')}
 MANDATORY RULES:
 1. NEVER recommend any work belonging to the excluded formats: ${normalizedExcludedTypes.join(', ')}.
 2. You MUST ONLY recommend works in the ALLOWED formats: ${effectiveAllowedTypes.join(', ')}.
-3. REDISTRIBUTION & FULL VOLUME COMPENSATION: Because [${normalizedExcludedTypes.join(', ')}] are excluded, you MUST redistribute and complete all collections with high-caliber works of the ALLOWED formats (e.g. more ${effectiveAllowedTypes.slice(0, 3).join(', ')}). Each collection MUST still strictly achieve its target volume (${volume === 'quadruple' ? '14 to 18' : volume === 'expanded' ? '10 to 12' : '6 to 8'} works per collection). Do NOT leave collections sparse, half-empty, or reduce collection sizes!
+3. REDISTRIBUTION & FULL VOLUME COMPENSATION: Because [${normalizedExcludedTypes.join(', ')}] are excluded, you MUST redistribute and complete all collections with high-caliber works of the ALLOWED formats (e.g. more ${effectiveAllowedTypes.slice(0, 3).join(', ')}). Each collection MUST still strictly achieve its full density target (28 to 36 works per collection). Do NOT leave collections sparse, half-empty, or reduce collection sizes!
 ` : '';
 
   const themeConstraintSection = (excludedThemes || []).length > 0 ? `
@@ -156,10 +166,34 @@ NEVER recommend any work that centers on, features, or is categorized under thes
 
   const volumeDirective =
     volume === 'quadruple'
-      ? 'Analyze the user\'s cultural tastes and generate strictly 4 cohesive thematic collections. Each collection must contain strictly 14 to 18 laser-focused, high-caliber recommendations (target 56 to 70 total works across the 4 collections, forming 3 full desktop card rows per cluster). Every recommendation must be highly assertive, directly tied to identified creators, key themes, and undisputed artistic consensus.'
+      ? 'Analyze the user\'s cultural tastes and generate strictly 4 to 5 cohesive thematic collections. Each collection must be MASSIVELY PACKED with strictly 28 to 36 laser-focused, high-caliber recommendations (target 120 to 160+ total works across the 4 to 5 collections). Do NOT increase the number of collections beyond 5; instead, DOUBLE the volume of works inside each collection (forming 5 to 6 full desktop rows of cards per cluster). Every recommendation must be highly assertive, directly tied to identified creators, key themes, and undisputed artistic consensus.'
       : volume === 'expanded'
-      ? 'Analyze the user\'s cultural tastes and generate strictly 4 major thematic collections with 10 to 12 laser-focused recommendations each (target 40 to 48 total works across collections, forming 2 full desktop card rows).'
-      : 'Analyze the user\'s cultural tastes and generate strictly 3 to 4 major thematic collections with 6 to 8 laser-focused recommendations each (target 20 to 30 total works).';
+      ? 'Analyze the user\'s cultural tastes and generate strictly 4 to 5 major thematic collections with 20 to 24 laser-focused recommendations each (target 80 to 100+ total works across the collections).'
+      : 'Analyze the user\'s cultural tastes and generate strictly 3 to 4 major thematic collections with 14 to 18 laser-focused recommendations each (target 45 to 65 total works).';
+
+  const targetClusterCount = batchOptions?.targetClusterCount ?? (batchOptions?.batchIndex === 0 ? 2 : 2);
+  const targetItemsPerCluster = batchOptions?.itemsPerCluster ?? 24;
+
+  const effectiveVolumeDirective = batchOptions
+    ? `Analyze the user's cultural tastes and generate strictly ${targetClusterCount} major, highly cohesive thematic collections (Batch ${batchOptions.batchIndex + 1} of ${batchOptions.totalBatches}). Each collection must be DENSELY PACKED with strictly ${targetItemsPerCluster} to ${targetItemsPerCluster + 4} laser-focused, high-caliber recommendations (target ${targetClusterCount * targetItemsPerCluster} to ${targetClusterCount * (targetItemsPerCluster + 4)} works for this batch).`
+    : volumeDirective;
+
+  const batchFocusSection = batchOptions?.thematicFocus && batchOptions.thematicFocus.length > 0 ? `
+=== BATCH ${batchOptions.batchIndex + 1} PRIORITY THEMATIC FOCUS ===
+For this specific batch, dedicate your ${targetClusterCount} collections to deeply exploring these thematic pillars and tropes:
+${batchOptions.thematicFocus.map(f => `- ${f}`).join('\n')}
+` : '';
+
+  const previousBatchesSection = batchOptions?.seenInPreviousBatches && batchOptions.seenInPreviousBatches.length > 0 ? `
+Already recommended in earlier batch of this current session (STRICTLY FORBIDDEN TO REPEAT - provide fresh new titles):
+${batchOptions.seenInPreviousBatches.map(t => `- ${t}`).join('\n')}
+` : '';
+
+  const effectiveClusterCountDirective = batchOptions
+    ? `Strictly maintain ${targetClusterCount} cohesive thematic collections for this batch (Batch ${batchOptions.batchIndex + 1} of ${batchOptions.totalBatches}).
+Provide strictly ${targetItemsPerCluster} to ${targetItemsPerCluster + 4} high-caliber works per collection (target ${targetClusterCount * targetItemsPerCluster} to ${targetClusterCount * (targetItemsPerCluster + 4)} works for this batch), with an engaging, assertive mix of ${effectiveAllowedTypes.join(', ')}.`
+    : `Strictly maintain 4 to 5 major thematic collections (do NOT increase the number of collections).
+Instead, DOUBLE the quantity of recommendations in each collection: provide strictly 28 to 36 high-caliber works per collection (spanning 5 to 6 full rows of cards on desktop grids, target 120 to 160+ works across the collections), with an engaging, assertive mix of ${effectiveAllowedTypes.join(', ')}.`;
 
   return `Current Date: ${currentDate}
 
@@ -167,6 +201,7 @@ NEVER recommend any work that centers on, features, or is categorized under thes
 === CURATION MODE ===
 ${serendipityGuidance}
 ${aiDnaSection}
+${batchFocusSection}
 ${formatConstraintSection}
 ${themeConstraintSection}
 === USER CULTURAL PROFILE (METRICS & ANCHORS) ===
@@ -197,14 +232,14 @@ ${ignoredList || 'None'}
 ${previousRecommendationsList ? `
 Previously recommended in past batches (DO NOT repeat these, suggest FRESH new discoveries):
 ${previousRecommendationsList}
-` : ''}
+` : ''}${previousBatchesSection}
 
 === REAL-TIME BROADCAST & SEASON ANCHORS (CURRENT & UPCOMING) ===
 ${anchorsList || 'None available currently'}
 
 === TASK ===
-${volumeDirective}
-Provide an engaging, assertive mix of ${effectiveAllowedTypes.join(', ')}.
+${effectiveVolumeDirective}
+${effectiveClusterCountDirective}
 Prioritize undeniable quality and direct auteur/creator affinity over generic filler.
 
 Include creator lineage whenever applicable.
@@ -215,7 +250,7 @@ Mix tiers across clusters:
 - "upcoming": Highly anticipated future releases and upcoming premieres (with "expected_release_date" such as "Novembro 2024", "2025" or "2026")
 
 Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
-CRITICAL: For EVERY single recommended item, provide a concise, engaging narrative synopsis in Portuguese (1 to 2 sentences capturing the premise and main dramatic conflict without spoilers). Do not leave synopsis empty and do not provide simple actor lists.
+CRITICAL: For EVERY single recommended item, you MUST write a rich, immersive, and narrative synopsis (2 to 4 sentences in Portuguese) explaining the plot, the universe, and the main dramatic conflict without giving spoilers. Do not leave synopsis empty and do not provide simple actor lists.
 Also provide accurate baseline metadata:
 - "rating": Estimated public/critical consensus score out of 10 (e.g. 8.7, 8.4, 9.1).
 - "platform": Primary broadcasting network, streaming service, cinema distributor, or publisher (e.g. "HBO / Max", "Apple TV+", "Netflix", "Prime Video", "FX", "Cinema", "Editora Aleph", "Shueisha").

@@ -10,6 +10,8 @@ import { RecommendationDetailsModal } from './RecommendationDetailsModal';
 import { RecommendationSkeleton } from './RecommendationSkeleton';
 import { RecommendationsEmptyState } from './RecommendationsEmptyState';
 
+import { RecommendationProgressBar } from './RecommendationProgressBar';
+
 interface Props {
   onLibraryUpdated?: () => void;
 }
@@ -28,6 +30,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
     addedItemIds,
     lastGeneratedAt,
     aiDna,
+    generationProgress,
     refresh,
     handleAddItem,
     handleDislikeItem,
@@ -126,13 +129,15 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
         </div>
       </div>
 
-      {/* Background Recalculation Notification Banner (SWR) */}
-      {isGenerating && clusters.length > 0 && (
-        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs animate-fadeIn">
-          <RefreshCw size={13} className="animate-spin text-amber-400 flex-shrink-0" />
-          <span>Curando novas recomendações com inteligência artificial em segundo plano...</span>
-        </div>
-      )}
+      {/* Progressive Batching Visual Feedback */}
+      <RecommendationProgressBar
+        isActive={generationProgress.isActive}
+        currentBatch={generationProgress.currentBatch}
+        totalBatches={generationProgress.totalBatches}
+        message={generationProgress.message}
+        progressPercent={generationProgress.progressPercent}
+        totalItemsCount={generationProgress.totalItemsCount}
+      />
 
       {/* AI-Extracted Cultural Taste DNA Badge Strip */}
       {aiDna && aiDna.thematic_axes && aiDna.thematic_axes.length > 0 && !isLoading && (

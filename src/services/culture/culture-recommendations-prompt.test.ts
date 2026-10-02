@@ -47,13 +47,13 @@ describe('culture-recommendations-prompt', () => {
 
   it('adapts prompt directives for volume settings (quadruple vs standard)', () => {
     const quadPrompt = buildCultureRecommendationsPrompt(mockDNA, [], 'safe', [], 'quadruple');
-    expect(quadPrompt).toContain('strictly 4 cohesive thematic collections');
-    expect(quadPrompt).toContain('strictly 14 to 18 laser-focused, high-caliber recommendations');
-    expect(quadPrompt).toContain('target 56 to 70 total works');
+    expect(quadPrompt).toContain('strictly 4 to 5 cohesive thematic collections');
+    expect(quadPrompt).toContain('strictly 28 to 36 laser-focused, high-caliber recommendations');
+    expect(quadPrompt).toContain('target 120 to 160+ total works');
 
     const standardPrompt = buildCultureRecommendationsPrompt(mockDNA, [], 'safe', [], 'standard');
     expect(standardPrompt).toContain('strictly 3 to 4 major thematic collections');
-    expect(standardPrompt).toContain('6 to 8 laser-focused recommendations');
+    expect(standardPrompt).toContain('14 to 18 laser-focused recommendations');
   });
 
   it('injects strict format exclusions and volume compensation directive when types are excluded', () => {
@@ -102,6 +102,54 @@ describe('culture-recommendations-prompt', () => {
     expect(prompt).toContain('Work Title Number 120');
     expect(prompt).toContain('Complete user library (ABSOLUTELY FORBIDDEN TO SUGGEST)');
     expect(prompt).toContain('extended cut, director\'s cut, or subsequent season');
+  });
+
+  it('customizes prompt for progressive batches (Batch 1 and Batch 2)', () => {
+    const batch1Prompt = buildCultureRecommendationsPrompt(
+      mockDNA,
+      [],
+      'safe',
+      [],
+      'quadruple',
+      null,
+      [],
+      [],
+      {
+        batchIndex: 0,
+        totalBatches: 2,
+        targetClusterCount: 2,
+        itemsPerCluster: 22,
+        thematicFocus: ['Ficção Científica Filosófica', 'Distopia Cyberpunk'],
+      }
+    );
+
+    expect(batch1Prompt).toContain('Batch 1 of 2');
+    expect(batch1Prompt).toContain('strictly 2 major, highly cohesive thematic collections');
+    expect(batch1Prompt).toContain('=== BATCH 1 PRIORITY THEMATIC FOCUS ===');
+    expect(batch1Prompt).toContain('Ficção Científica Filosófica');
+
+    const batch2Prompt = buildCultureRecommendationsPrompt(
+      mockDNA,
+      [],
+      'safe',
+      [],
+      'quadruple',
+      null,
+      [],
+      [],
+      {
+        batchIndex: 1,
+        totalBatches: 2,
+        targetClusterCount: 2,
+        itemsPerCluster: 22,
+        seenInPreviousBatches: ['Ex-Machina', 'Blade Runner 2049'],
+      }
+    );
+
+    expect(batch2Prompt).toContain('Batch 2 of 2');
+    expect(batch2Prompt).toContain('Already recommended in earlier batch of this current session');
+    expect(batch2Prompt).toContain('- Ex-Machina');
+    expect(batch2Prompt).toContain('- Blade Runner 2049');
   });
 });
 

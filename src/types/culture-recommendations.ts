@@ -95,3 +95,14 @@ export interface RecentRecommendedTitlesEntry {
 
 export type RecommendationFilterTab = 'all' | 'recent' | 'classic' | 'hidden_gem' | 'upcoming';
 
+export interface RecommendationProgressUpdate {
+  phase: 'idle' | 'dna' | 'batch_generating' | 'batch_hydrating' | 'batch_ready' | 'pacing' | 'complete' | 'error';
+  currentBatch: number;
+  totalBatches: number;
+  clusters: RecommendationCluster[];
+  message: string;
+  progressPercent: number;
+  isPartial: boolean;
+  totalItemsCount: number;
+}
+
