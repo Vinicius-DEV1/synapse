@@ -39,7 +39,7 @@ export async function searchMediaForRecommendation(item: RawAIRecommendation): P
   if (item.title && !queriesToTry.includes(item.title)) queriesToTry.push(item.title);
   if (item.original_title && !queriesToTry.includes(item.original_title)) queriesToTry.push(item.original_title);
 
-  for (const query of queriesToTry) {
+  for (const query of queriesToTry.slice(0, 2)) {
     try {
       if (item.type === 'filme') {
         const imdbMatches = await fetchImdbMovies(query);
@@ -80,8 +80,8 @@ export async function hydrateRecommendations(
   );
 
   const hydratedResults: HydratedRecommendation[] = [];
-  const BATCH_SIZE = 3;
-  const DELAY_MS = 300;
+  const BATCH_SIZE = 2;
+  const DELAY_MS = 200;
 
   for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
     const batch = rawItems.slice(i, i + BATCH_SIZE);
@@ -99,11 +99,6 @@ export async function hydrateRecommendations(
         }
 
         const match = await searchMediaForRecommendation(rawItem);
-
-        // Anti-hallucination guard: If no match found and no release anchor, reject hallucination
-        if (!match && !rawItem.release_date && !rawItem.expected_release_date) {
-          return null;
-        }
 
         const deterministicId = `rec_${rawItem.type}_${slugify(rawItem.title)}_${rawItem.year || ''}`;
 

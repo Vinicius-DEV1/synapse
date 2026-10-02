@@ -12,15 +12,50 @@ export interface CultureSearchResult {
   api_source: string;
   status?: 'releasing' | 'finished' | 'unknown';
 }
+const cultureApiCache = new Map<string, { timestamp: number; data: CultureSearchResult[] }>();
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+let lastJikanRequestTime = 0;
+let jikanCooldownUntil = 0;
+let googleBooksCooldownUntil = 0;
+
+async function throttleJikan(): Promise<void> {
+  const now = Date.now();
+  if (now < jikanCooldownUntil) {
+    throw new Error('Jikan cooldown active');
+  }
+  const timeSinceLast = now - lastJikanRequestTime;
+  if (timeSinceLast < 360) {
+    await new Promise(resolve => setTimeout(resolve, 360 - timeSinceLast));
+  }
+  lastJikanRequestTime = Date.now();
+}
 
 /**
  * Queries Jikan API (MyAnimeList) for anime or manga
  */
 export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<CultureSearchResult[]> {
+  const cacheKey = `jikan_${t}_${q.toLowerCase().trim()}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  if (Date.now() < jikanCooldownUntil) {
+    return [];
+  }
+
   try {
+    await throttleJikan();
     const res = await fetch(`https://api.jikan.moe/v4/${t}?q=${encodeURIComponent(q)}&limit=3`);
+    if (!res.ok) {
+      if (res.status === 429 || res.status === 504) {
+        jikanCooldownUntil = Date.now() + 10000; // 10s cooldown
+      }
+      return [];
+    }
     const data = await res.json();
-    return (data?.data || []).map((item: any) => ({
+    const results: CultureSearchResult[] = (data?.data || []).map((item: any) => ({
       title: item.title,
       synopsis: item.synopsis || '',
       cover: item.images?.jpg?.large_image_url || '',
@@ -37,8 +72,10 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
         ? 'finished'
         : 'unknown'
     }));
+
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
+    return results;
   } catch (err) {
-    console.warn('[CultureAPI] Erro ao buscar Jikan:', err);
     return [];
   }
 }
@@ -47,21 +84,39 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
  * Queries Google Books API
  */
 export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise<CultureSearchResult[]> {
+  const cacheKey = `books_${q.toLowerCase().trim()}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  if (Date.now() < googleBooksCooldownUntil) {
+    return [];
+  }
+
   try {
     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3`);
+    if (!res.ok) {
+      if (res.status === 429) {
+        googleBooksCooldownUntil = Date.now() + 15000; // 15s cooldown
+      }
+      return [];
+    }
     const data = await res.json();
-    return (data.items || []).map((item: any) => ({
-      title: item.volumeInfo.title,
-      synopsis: item.volumeInfo.description || '',
-      cover: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
-      total: item.volumeInfo.pageCount || 0,
+    const results: CultureSearchResult[] = (data.items || []).map((item: any) => ({
+      title: item.volumeInfo?.title || q,
+      synopsis: item.volumeInfo?.description || '',
+      cover: item.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
+      total: item.volumeInfo?.pageCount || 0,
       type: targetType,
       api_id: item.id,
       api_source: 'books',
       status: 'finished' as const
     }));
+
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
+    return results;
   } catch (err) {
-    console.warn('[CultureAPI] Erro ao buscar Google Books:', err);
     return [];
   }
 }
@@ -70,10 +125,17 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
  * Queries TVMaze API (TV Series)
  */
 export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
+  const cacheKey = `tvmaze_${q.toLowerCase().trim()}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   try {
     const res = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
     const data = await res.json();
-    return (data || []).slice(0, 3).map((item: any) => ({
+    const results: CultureSearchResult[] = (data || []).slice(0, 3).map((item: any) => ({
       title: item.show.name,
       synopsis: (item.show.summary || '').replace(/<[^>]+>/g, ''),
       cover: item.show.image?.medium || '',
@@ -83,8 +145,10 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
       api_source: 'tvmaze',
       status: item.show.status === 'Running' ? 'releasing' : item.show.status === 'Ended' ? 'finished' : 'unknown'
     }));
+
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
+    return results;
   } catch (err) {
-    console.warn('[CultureAPI] Erro ao buscar TVMaze:', err);
     return [];
   }
 }
@@ -104,13 +168,19 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
     .replace(/^_|_$/g, '');
 
   if (!clean) return [];
+
+  const cacheKey = `imdb_${clean}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const first = clean[0];
   const url = `https://v3.sg.media-imdb.com/suggestion/${first}/${clean}.json`;
 
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         Accept: 'application/json',
       },
     });
@@ -132,14 +202,13 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
       items.map(async (item: any) => {
         let synopsis = item.s ? `Estrelando: ${item.s}` : '';
 
-        // Fast attempt to enrich with Portuguese Wikipedia summary
+        // Fast attempt to enrich with Portuguese Wikipedia summary (anonymous standard CORS)
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 1200);
           const wRes = await fetch(
             `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(item.l)}`,
             {
-              headers: { 'User-Agent': 'CadernoApp/1.0' },
               signal: controller.signal,
             }
           );
