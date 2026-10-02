@@ -29,6 +29,8 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   });
 
   const isMountedRef = useRef(true);
+  const clustersRef = useRef<RecommendationCluster[]>([]);
+  clustersRef.current = clusters;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -37,10 +39,32 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     };
   }, []);
 
+  // 1. Instant SWR fast-path: load cached clusters from IndexedDB immediately on mount (<5ms)
+  useEffect(() => {
+    let cancelled = false;
+    CultureFeedbackStorage.getCachedRecommendations()
+      .then(cached => {
+        if (!cancelled && cached && cached.clusters && cached.clusters.length > 0) {
+          setClusters(cached.clusters);
+          setLastGeneratedAt(cached.generated_at);
+          setAiDna(cached.ai_dna || null);
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        console.warn('[useRecommendations] Erro ao ler cache SWR inicial:', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const loadRecommendations = useCallback(async (forceRefresh = false, modeOverride?: SerendipityMode) => {
     const mode = modeOverride || serendipityMode;
     try {
-      if (forceRefresh) {
+      // If we already have clusters rendered, do NOT drop back to skeleton; show non-intrusive background state
+      if (clustersRef.current.length > 0 || forceRefresh) {
         setIsGenerating(true);
       } else {
         setIsLoading(true);

@@ -11,7 +11,7 @@ export interface FreshReleaseAnchor {
 const FRESH_ANCHORS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
 let cachedAnchors: { timestamp: number; data: FreshReleaseAnchor[] } | null = null;
 
-async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs = 1500): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {

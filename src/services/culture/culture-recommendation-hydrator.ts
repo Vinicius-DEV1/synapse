@@ -136,7 +136,7 @@ export async function searchMediaForRecommendation(item: RawAIRecommendation): P
     }
   }
 
-  for (const query of queriesToTry.slice(0, 4)) {
+  for (const query of queriesToTry.slice(0, 2)) {
     try {
       if (item.type === 'filme') {
         const imdbMatches = await fetchImdbMovies(query);
@@ -237,8 +237,8 @@ export async function hydrateRecommendations(
   seenTracker: Set<string> = new Set<string>()
 ): Promise<HydratedRecommendation[]> {
   const hydratedResults: HydratedRecommendation[] = [];
-  const BATCH_SIZE = 4;
-  const DELAY_MS = 60;
+  const BATCH_SIZE = 8;
+  const DELAY_MS = 15;
 
   for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
     const batch = rawItems.slice(i, i + BATCH_SIZE);

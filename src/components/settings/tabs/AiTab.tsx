@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, DatabaseBackup, ShieldCheck } from 'lucide-react';
+import { RefreshCw, DatabaseBackup, ShieldCheck, Sparkles, Filter, Check, X, Plus, Ban } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
+import type { CultureType } from '../../../types/culture';
 import { fetchGeminiModels, getGeminiKeys, saveGeminiKeys } from '../../../services/gemini';
 import type { GeminiModel, GeminiKeyEntry } from '../../../services/gemini';
 import { ApiKeyPoolSection } from './ai/ApiKeyPoolSection';
+
+const ALL_CULTURE_FORMATS: Array<{ type: CultureType; label: string; icon: string }> = [
+  { type: 'filme', label: 'Filmes', icon: '🎬' },
+  { type: 'série', label: 'Séries', icon: '📺' },
+  { type: 'anime', label: 'Animes', icon: '⛩️' },
+  { type: 'manga', label: 'Mangás', icon: '📖' },
+  { type: 'livro', label: 'Livros', icon: '📚' },
+  { type: 'hq', label: 'HQs & Comics', icon: '💬' },
+  { type: 'novel', label: 'Novels', icon: '📝' },
+];
 
 interface AiTabProps {
   appSettings: AppSettings;
@@ -19,6 +30,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
   const [dictProgress, setDictProgress] = useState(0);
   const [keys, setKeys] = useState<GeminiKeyEntry[]>([]);
   const [newKey, setNewKey] = useState('');
+  const [newThemeInput, setNewThemeInput] = useState('');
   const dictIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -114,6 +126,47 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         return p + 10;
       });
     }, 200);
+  };
+
+  const toggleFormat = (formatType: CultureType) => {
+    const currentExcluded = appSettings.cultureExcludedTypes || [];
+    const isCurrentlyExcluded = currentExcluded.includes(formatType);
+
+    if (isCurrentlyExcluded) {
+      setAppSettings({
+        ...appSettings,
+        cultureExcludedTypes: currentExcluded.filter(t => t !== formatType),
+      });
+    } else {
+      if (currentExcluded.length >= ALL_CULTURE_FORMATS.length - 1) {
+        return; // At least one format must remain active
+      }
+      setAppSettings({
+        ...appSettings,
+        cultureExcludedTypes: [...currentExcluded, formatType],
+      });
+    }
+  };
+
+  const handleAddExcludedTheme = () => {
+    const trimmed = newThemeInput.trim().toLowerCase();
+    if (!trimmed) return;
+    const currentThemes = appSettings.cultureExcludedThemes || [];
+    if (!currentThemes.includes(trimmed)) {
+      setAppSettings({
+        ...appSettings,
+        cultureExcludedThemes: [...currentThemes, trimmed],
+      });
+    }
+    setNewThemeInput('');
+  };
+
+  const handleRemoveExcludedTheme = (themeToRemove: string) => {
+    const currentThemes = appSettings.cultureExcludedThemes || [];
+    setAppSettings({
+      ...appSettings,
+      cultureExcludedThemes: currentThemes.filter(t => t !== themeToRemove),
+    });
   };
 
   return (
@@ -294,9 +347,155 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
             </div>
           )}
         </div>
+
+        {/* Recomendações Culturais */}
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-4 mt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-400" />
+              <label className="text-sm font-semibold text-white">
+                Recomendações Culturais (Curadoria IA)
+              </label>
+            </div>
+            <span className="text-[11px] text-amber-300/80 font-medium px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+              Personalização Ativa
+            </span>
+          </div>
+
+          {/* Volume de Recomendações */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-zinc-300">
+              Densidade e Volume das Coleções
+            </label>
+            <select
+              value={appSettings.cultureRecommendationsVolume || 'quadruple'}
+              onChange={(e) =>
+                setAppSettings({
+                  ...appSettings,
+                  cultureRecommendationsVolume: e.target.value as 'standard' | 'expanded' | 'quadruple',
+                })
+              }
+              className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
+            >
+              <option className="bg-dark-bg text-white" value="quadruple">
+                Volume Máximo (4 coleções com 14 a 18 obras cada — 56 a 70 sugestões em 3 fileiras) — Recomendado
+              </option>
+              <option className="bg-dark-bg text-white" value="expanded">
+                Volume Expandido (4 coleções com 10 a 12 obras cada — 40 a 48 sugestões)
+              </option>
+              <option className="bg-dark-bg text-white" value="standard">
+                Volume Moderado (3 a 4 coleções com 6 a 8 obras cada — 20 a 30 sugestões)
+              </option>
+            </select>
+            <p className="text-[11px] text-dark-subtext leading-relaxed">
+              Gera coleções densas e assertivas (14 a 18 obras por coleção, formando 3 fileiras completas de cards) mantendo estritamente 4 coleções temáticas com geração rápida e fluida.
+            </p>
+          </div>
+
+          {/* Formatos Permitidos / Excluídos */}
+          <div className="space-y-2 pt-2 border-t border-amber-500/10">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                <Filter size={13} className="text-amber-400" />
+                <span>Formatos Permitidos nas Recomendações</span>
+              </label>
+              <span className="text-[10px] text-zinc-400">
+                {ALL_CULTURE_FORMATS.length - (appSettings.cultureExcludedTypes || []).length} de {ALL_CULTURE_FORMATS.length} ativos
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {ALL_CULTURE_FORMATS.map((f) => {
+                const isExcluded = (appSettings.cultureExcludedTypes || []).includes(f.type);
+                return (
+                  <button
+                    key={f.type}
+                    type="button"
+                    onClick={() => toggleFormat(f.type)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all border text-left ${
+                      !isExcluded
+                        ? 'bg-amber-500/15 border-amber-500/35 text-amber-200 shadow-sm'
+                        : 'bg-white/[0.03] border-white/5 text-zinc-500 hover:text-zinc-400 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm">{f.icon}</span>
+                      <span className={isExcluded ? 'line-through text-zinc-500' : ''}>{f.label}</span>
+                    </span>
+                    {!isExcluded ? (
+                      <Check size={13} className="text-amber-400 shrink-0 ml-1.5" />
+                    ) : (
+                      <X size={13} className="text-zinc-600 shrink-0 ml-1.5" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-dark-subtext leading-relaxed">
+              Desative os formatos que não deseja receber (ex: Livros ou Animes). O algoritmo redistribuirá o espaço automaticamente para completar as coleções com os demais formatos permitidos (Filmes, Séries, etc.), mantendo as listas cheias e densas.
+            </p>
+          </div>
+
+          {/* Temas / Gêneros a Excluir */}
+          <div className="space-y-2 pt-2 border-t border-amber-500/10">
+            <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+              <Ban size={13} className="text-amber-400" />
+              <span>Temas, Tropos ou Gêneros a Excluir (Opcional)</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newThemeInput}
+                onChange={(e) => setNewThemeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddExcludedTheme();
+                  }
+                }}
+                placeholder="Ex: terror, reality show, gore, faroeste..."
+                className="flex-1 bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleAddExcludedTheme}
+                disabled={!newThemeInput.trim()}
+                className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 disabled:opacity-40 disabled:hover:bg-amber-500/20 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 border border-amber-500/30 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Adicionar</span>
+              </button>
+            </div>
+
+            {(appSettings.cultureExcludedThemes || []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(appSettings.cultureExcludedThemes || []).map((theme) => (
+                  <span
+                    key={theme}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs"
+                  >
+                    <span>{theme}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExcludedTheme(theme)}
+                      className="hover:text-white transition-colors cursor-pointer"
+                      title="Remover filtro"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-dark-subtext leading-relaxed">
+              Tópicos ou gêneros que a IA deve evitar estritamente ao formular as recomendações.
+            </p>
+          </div>
+        </div>
         
         {modelsError && <p className="text-xs text-red-400 mt-2">{modelsError}</p>}
       </div>
+
       
       <div className="border-t border-white/5 pt-4">
         <label className="block text-sm font-medium text-white mb-2">Destaque de Texto (Chat de IA)</label>

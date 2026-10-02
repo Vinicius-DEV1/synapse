@@ -47,13 +47,13 @@ describe('culture-recommendations-prompt', () => {
 
   it('adapts prompt directives for volume settings (quadruple vs standard)', () => {
     const quadPrompt = buildCultureRecommendationsPrompt(mockDNA, [], 'safe', [], 'quadruple');
-    expect(quadPrompt).toContain('strictly 4 to 5 cohesive thematic collections');
-    expect(quadPrompt).toContain('strictly 28 to 36 laser-focused, high-caliber recommendations');
-    expect(quadPrompt).toContain('target 120 to 160+ total works');
+    expect(quadPrompt).toContain('strictly 4 cohesive thematic collections');
+    expect(quadPrompt).toContain('strictly 14 to 18 laser-focused, high-caliber recommendations');
+    expect(quadPrompt).toContain('target 56 to 70 total works');
 
     const standardPrompt = buildCultureRecommendationsPrompt(mockDNA, [], 'safe', [], 'standard');
     expect(standardPrompt).toContain('strictly 3 to 4 major thematic collections');
-    expect(standardPrompt).toContain('14 to 18 laser-focused recommendations');
+    expect(standardPrompt).toContain('6 to 8 laser-focused recommendations');
   });
 
   it('injects strict format exclusions and volume compensation directive when types are excluded', () => {

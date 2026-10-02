@@ -42,7 +42,7 @@ export async function fetchCinemetaMetadata(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3500);
+  const timer = setTimeout(() => controller.abort(), 1800);
 
   try {
     const res = await fetch(`https://v3-cinemeta.strem.io/meta/${type}/${imdbId}.json`, {
