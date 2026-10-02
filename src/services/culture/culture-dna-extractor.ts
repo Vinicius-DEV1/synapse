@@ -7,24 +7,37 @@ export interface UserCulturalDNA {
   completedItems: Array<{ title: string; type: CultureType; year?: number | null }>;
   inProgressItems: Array<{ title: string; type: CultureType; progressPercent: number }>;
   goalItems: Array<{ title: string; type: CultureType }>;
-  prioritySeeds: Array<{ title: string; type: CultureType }>;
+  prioritySeeds: Array<{ title: string; type: CultureType; synopsis?: string }>;
+  registeredWorks: Array<{ title: string; type: CultureType; synopsis?: string }>;
   thematicKeywords: string[];
   creatorSignatures: string[];
   typeDistribution: Partial<Record<CultureType, number>>;
   topTypes: CultureType[];
   dislikedTitles: Array<{ title: string; type: CultureType; reason?: string }>;
   ignoredTitles: Array<{ title: string; type: CultureType }>;
+  allLibraryTitles: string[];
   libraryHash: string;
 }
 
 const THEMATIC_VOCABULARY = [
+  // Sci-Fi & Speculative
   'ficção científica', 'sci-fi', 'cyberpunk', 'distopia', 'inteligência artificial',
   'viagem no tempo', 'multiverso', 'espaço', 'astronomia',
+  // Mystery & Psychological
   'psicológico', 'suspense', 'investigação', 'mistério', 'detetive', 'crime', 'noir',
+  // Fantasy & Adventure
   'fantasia', 'magia', 'alta fantasia', 'isekai', 'medieval', 'mitologia',
-  'terror', 'horror', 'sobrenatural', 'apocalipse', 'pós-apocalíptico',
+  // Horror & Thriller
+  'terror', 'horror', 'sobrenatural', 'apocalipse', 'pós-apocalíptico', 'thriller',
+  // Drama, Coming-of-Age & Romance
   'drama', 'filosofia', 'existencial', 'solidão', 'melancolia', 'romance',
-  'shonen', 'seinen', 'mecha', 'slice of life', 'thriller',
+  'coming of age', 'coming-of-age', 'amadurecimento', 'adolescência', 'adolescente', 'juvenil', 'jovem adulto', 'young adult',
+  'comédia romântica', 'rom-com',
+  // LGBTQIA+ / Queer Themes
+  'lgbt', 'lgbtq', 'lgbtqia', 'queer', 'gay', 'gays', 'lésbica', 'trans', 'homossexual',
+  'autodescoberta', 'orientação sexual', 'boys love', 'bl', 'yaoi', 'yuri', 'gl', 'romance lgbt',
+  // Anime & Manga specific
+  'shonen', 'seinen', 'shojo', 'josei', 'mecha', 'slice of life',
 ];
 
 const NOTABLE_CREATORS = [
@@ -35,6 +48,9 @@ const NOTABLE_CREATORS = [
   'Mamoru Oshii', 'Shinichiro Watanabe', 'Alex Garland', 'David Lynch',
   'Studio Ghibli', 'MAPPA', 'Ufotable', 'Madhouse', 'Kyoto Animation',
   'Bones', 'Wit Studio', 'Trigger', 'Pixar', 'A24',
+  'Becky Albertalli', 'Alice Oseman', 'Luca Guadagnino', 'Greg Berlanti',
+  'Xavier Dolan', 'Pedro Almodóvar', 'Céline Sciamma', 'Gregg Araki',
+  'Casey McQuiston', 'Adam Silvera',
   'Philip K. Dick', 'Isaac Asimov', 'Frank Herbert', 'Arthur C. Clarke',
   'George Orwell', 'William Gibson', 'Brandon Sanderson', 'Neil Gaiman',
   'Haruki Murakami', 'Ted Chiang', 'Junji Ito', 'Naoki Urasawa',
@@ -112,19 +128,27 @@ export function extractCulturalDNA(
   disliked: DislikedCultureItem[] = [],
   ignored: IgnoredCultureItem[] = []
 ): UserCulturalDNA {
-  const completedItems: Array<{ title: string; type: CultureType; year?: number | null }> = [];
+  const completedItems: Array<{ title: string; type: CultureType; year?: number | null; synopsis?: string }> = [];
   const inProgressItems: Array<{ title: string; type: CultureType; progressPercent: number }> = [];
-  const goalItems: Array<{ title: string; type: CultureType }> = [];
+  const goalItems: Array<{ title: string; type: CultureType; synopsis?: string }> = [];
+  const registeredWorks: Array<{ title: string; type: CultureType; synopsis?: string }> = [];
   const typeDistribution: Partial<Record<CultureType, number>> = {};
 
   for (const item of items) {
     typeDistribution[item.type] = (typeDistribution[item.type] || 0) + 1;
+
+    registeredWorks.push({
+      title: item.title,
+      type: item.type,
+      synopsis: item.synopsis ? item.synopsis.slice(0, 150) : undefined,
+    });
 
     const isCompleted = item.total_progress > 0 && item.progress >= item.total_progress;
     if (isCompleted) {
       completedItems.push({
         title: item.title,
         type: item.type,
+        synopsis: item.synopsis ? item.synopsis.slice(0, 150) : undefined,
       });
     } else if (item.progress > 0 && item.total_progress > 0) {
       const progressPercent = Math.round((item.progress / item.total_progress) * 100);
@@ -139,6 +163,7 @@ export function extractCulturalDNA(
       goalItems.push({
         title: item.title,
         type: item.type,
+        synopsis: item.synopsis ? item.synopsis.slice(0, 150) : undefined,
       });
     }
   }
@@ -147,10 +172,14 @@ export function extractCulturalDNA(
     return (typeDistribution[b] || 0) - (typeDistribution[a] || 0);
   });
 
-  const prioritySeeds = [...completedItems, ...goalItems].slice(0, 10);
+  const explicitSeeds = [...completedItems, ...goalItems];
+  const prioritySeeds = explicitSeeds.length > 0
+    ? explicitSeeds.slice(0, 10)
+    : registeredWorks.slice(0, 10);
+
   const thematicKeywords = extractThematicKeywords(items);
   const creatorSignatures = extractCreatorSignatures(items);
-  const isColdStart = items.length < 3;
+  const isColdStart = items.length === 0;
 
   const dislikedTitles = disliked.map(d => ({
     title: d.title,
@@ -163,6 +192,7 @@ export function extractCulturalDNA(
     type: ig.type,
   }));
 
+  const allLibraryTitles = items.map(i => i.title?.trim()).filter(Boolean) as string[];
   const libraryHash = generateLibraryHash(items, disliked, ignored);
 
   return {
@@ -172,12 +202,14 @@ export function extractCulturalDNA(
     inProgressItems,
     goalItems,
     prioritySeeds,
+    registeredWorks,
     thematicKeywords,
     creatorSignatures,
     typeDistribution,
     topTypes,
     dislikedTitles,
     ignoredTitles,
+    allLibraryTitles,
     libraryHash,
   };
 }

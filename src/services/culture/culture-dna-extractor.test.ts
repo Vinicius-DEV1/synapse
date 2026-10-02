@@ -176,4 +176,38 @@ describe('culture-dna-extractor', () => {
     const dna = extractCulturalDNA(creatorItems);
     expect(dna.creatorSignatures).toEqual(expect.arrayContaining(['Christopher Nolan', 'Hayao Miyazaki']));
   });
+
+  it('correctly extracts LGBTQIA+ themes and uses registeredWorks as prioritySeeds fallback', () => {
+    const queerItems: CultureItem[] = [
+      {
+        id: 'lgbt-1',
+        title: 'i love simon',
+        type: 'filme',
+        synopsis: 'Simon Spier guarda um grande segredo da sua família e amigos: ele é gay.',
+        progress: 0,
+        total_progress: 0,
+        is_goal: false,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+      {
+        id: 'lgbt-2',
+        title: 'i love victor',
+        type: 'série',
+        synopsis: 'Victor é um novo estudante na Creekwood High School em sua própria jornada de autodescoberta e aceitação de sua orientação sexual.',
+        progress: 0,
+        total_progress: 0,
+        is_goal: false,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+    ];
+
+    const dna = extractCulturalDNA(queerItems);
+    expect(dna.isColdStart).toBe(false);
+    expect(dna.prioritySeeds).toHaveLength(2);
+    expect(dna.prioritySeeds[0].title).toBe('i love simon');
+    expect(dna.prioritySeeds[1].title).toBe('i love victor');
+    expect(dna.thematicKeywords).toEqual(expect.arrayContaining(['gay', 'autodescoberta', 'orientação sexual']));
+  });
 });

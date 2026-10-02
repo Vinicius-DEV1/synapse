@@ -13,6 +13,7 @@ export interface RawAIRecommendation {
   cluster: string;
   creator?: string; // e.g. "Dir. Denis Villeneuve", "Estúdio MAPPA", "Autor: Philip K. Dick"
   affinity_reason: string;
+  synopsis?: string;
   confidence_score: number;
   release_date?: string;
   expected_release_date?: string;
@@ -29,8 +30,10 @@ export interface HydratedRecommendation extends RawAIRecommendation {
   episodes_count?: number | null;
   status?: string;
   genres?: string[];
+  cast?: string;
   already_in_library?: boolean;
 }
+
 
 export interface RecommendationCluster {
   id: string;
@@ -55,12 +58,29 @@ export interface IgnoredCultureItem {
   already_watched: boolean;
 }
 
+export interface AiCulturalDnaProfile {
+  thematic_axes: string[];
+  core_influences: string[];
+  emotional_atmosphere: string;
+  key_anchor_works: string[];
+  extracted_at: string;
+  library_hash: string;
+}
+
 export interface CachedRecommendations {
   id: string;
   clusters: RecommendationCluster[];
   generated_at: string;
   expires_at: string;
   library_hash: string;
+  ai_dna?: AiCulturalDnaProfile;
+}
+
+export interface RecentRecommendedTitlesEntry {
+  id: string;
+  titles: string[];
+  updated_at: string;
 }
 
 export type RecommendationFilterTab = 'all' | 'recent' | 'classic' | 'hidden_gem' | 'upcoming';
+
