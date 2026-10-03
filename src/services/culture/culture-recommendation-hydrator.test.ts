@@ -3,6 +3,7 @@ import { hydrateRecommendations, searchMediaForRecommendation } from './culture-
 import type { CultureItem } from '../../types';
 import type { RawAIRecommendation } from '../../types/culture-recommendations';
 import * as cultureApis from './culture-apis';
+import * as cultureMediaProviders from './culture-media-providers';
 
 describe('culture-recommendation-hydrator', () => {
   it('deduplicates items against existing library using normalized titles', async () => {
@@ -156,5 +157,39 @@ describe('culture-recommendation-hydrator', () => {
     imdbSpy.mockRestore();
     cinemetaSpy.mockRestore();
   });
+
+  it('resolves canonical title for anime/manga when API match provides authoritative name', async () => {
+    const aniListSpy = vi.spyOn(cultureMediaProviders, 'fetchAniListMedia').mockResolvedValue([
+      {
+        title: 'Chainsaw Man',
+        type: 'anime',
+        api_id: 'al_127230',
+        api_source: 'anilist',
+        cover: 'https://example.com/csm.jpg',
+        total: 12,
+        rating: 8.4,
+      },
+    ]);
+
+    const rawItems: RawAIRecommendation[] = [
+      {
+        title: 'Homem-Motosserra',
+        original_title: 'Chainsaw Man',
+        type: 'anime',
+        tier: 'recent',
+        cluster: 'Dark Shonen',
+        affinity_reason: 'Você curtiu Jujutsu Kaisen',
+        confidence_score: 0.95,
+      },
+    ];
+
+    const results = await hydrateRecommendations(rawItems, []);
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe('Chainsaw Man');
+    expect(results[0].cover_image).toBe('https://example.com/csm.jpg');
+
+    aniListSpy.mockRestore();
+  });
 });
+
 

@@ -26,9 +26,14 @@ Key Principles:
    - PURITY & COHESION: Keep each collection laser-focused ('acertiva') on its distinct thematic pillar and creator lineages. Never dilute quality with generic filler.
    - BALANCED SPECTRUM: Within each dense collection of 28 to 36 works, provide a rich, engaging mix of allowed formats (movies, series, anime, books, manga) and tiers (recent, classic, hidden_gem, upcoming).
    - Include upcoming future works so the user can anticipate what to watch or read next.
-7. REAL, FACTUAL WORKS ONLY:
-   - Do NOT invent or hallucinate fake titles. Use accurate canonical titles that can be matched on IMDb, Jikan (MAL), TVMaze, or Google Books.
-   - Provide a "search_hint" with the best international or original title for search indexing.
+7. REAL, FACTUAL WORKS ONLY & CANONICAL TITLE FIDELITY (NO MACHINE TRANSLATIONS):
+   - Do NOT invent or hallucinate fake titles. Use accurate canonical titles that can be matched on IMDb, AniList, TVMaze, or Google Books.
+   - ABSOLUTE PROHIBITION OF MACHINE TRANSLATION FOR TITLES:
+     * Anime & Manga: ALWAYS use the universally recognized canonical title (usually English or Romanized Japanese, e.g. "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga", "Berserk", "Monster", "Death Note", "Cowboy Bebop", "Bocchi the Rock!"). NEVER invent literal machine translations like "Homem-Motosserra", "Portão de Steins", or "Bocchi a Rocha".
+     * Movies & TV Series: Use the official Brazilian Portuguese release title ONLY IF it was officially released and marketed with that name in Brazil (e.g. "Interestelar", "A Origem", "Um Sonho de Liberdade", "Ruptura", "O Poderoso Chefão", "Bastardos Inglórios"). If a movie or series is officially marketed or widely known in Brazil under its original English/foreign title (e.g. "Succession", "Stranger Things", "Slow Horses", "Breaking Bad", "Dark", "Mindhunter", "Fleabag", "The Bear", "Oppenheimer", "Dune", "Euphoria", "Twin Peaks", "True Detective"), keep that established title! NEVER create artificial translations (e.g. NEVER "Cavalos Lentos", "Coisas Estranhas", "Saco de Pulgas").
+     * Books & Graphic Novels: Use the official Brazilian published title if published in Brazil (e.g. "Duna", "Neuromancer", "Fundação", "O Problema dos Três Corpos"); otherwise use the canonical original title.
+   - Provide "search_hint" with the best international or original title for search indexing.
+   - Provide "original_title" with the true original language title (e.g. "Sousou no Frieren", "Inception", "Slow Horses", "Shingeki no Kyojin").
 8. JSON FORMAT ONLY:
    - Output must be valid JSON matching the exact schema specified in the user prompt. No Markdown formatting outside the codeblock.
 `;
@@ -251,6 +256,14 @@ Mix tiers across clusters:
 
 Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 CRITICAL: For EVERY single recommended item, you MUST write a rich, immersive, and narrative synopsis (2 to 4 sentences in Portuguese) explaining the plot, the universe, and the main dramatic conflict without giving spoilers. Do not leave synopsis empty and do not provide simple actor lists.
+
+=== REGRA CRÍTICA DE TÍTULOS (NOMES REAIS E CONSAGRADOS NO BRASIL) ===
+NUNCA faça tradução literal automática de títulos estrangeiros para o português!
+- Anime e Mangá: SEMPRE utilize o título oficial consagrado (ex: "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga", "Bocchi the Rock!"). JAMAIS invente traduções literais como "Homem-Motosserra", "Portão de Steins" ou "Bocchi a Rocha".
+- Filmes e Séries: Use o título oficial brasileiro APENAS se ele existir oficialmente no Brasil (ex: "Interestelar", "A Origem", "Ruptura", "Um Sonho de Liberdade"). Se a obra foi lançada ou é conhecida no Brasil com o título original em inglês (ex: "Slow Horses", "Succession", "Stranger Things", "Fleabag", "The Bear", "Mindhunter"), MANTENHA o título consagrado. JAMAIS invente traduções literais automáticas como "Cavalos Lentos" ou "Saco de Pulgas".
+- Livros e HQs: Use o título publicado no Brasil se existir; caso contrário, mantenha o título original.
+- original_title: Forneça sempre o título original/romanizado oficial.
+
 Also provide accurate baseline metadata:
 - "rating": Estimated public/critical consensus score out of 10 (e.g. 8.7, 8.4, 9.1).
 - "platform": Primary broadcasting network, streaming service, cinema distributor, or publisher (e.g. "HBO / Max", "Apple TV+", "Netflix", "Prime Video", "FX", "Cinema", "Editora Aleph", "Shueisha").
@@ -268,7 +281,7 @@ Respond with ONLY a raw JSON object in this format:
       "description": "Breve síntese temática deste agrupamento",
       "items": [
         {
-          "title": "Título Principal em PT ou Internacional",
+          "title": "Título Consagrado no Brasil (Oficial PT-BR ou Original em Inglês - NUNCA tradução literal da IA)",
           "original_title": "Título Original / Romanizado",
           "type": ${effectiveAllowedTypes.map(t => `"${t}"`).join(' | ')},
           "year": 2025,
@@ -330,11 +343,17 @@ Generate strictly ${minCount} to ${maxCount} NEW, HIGH-QUALITY cultural recommen
 - For each item, write a rich, immersive 2 to 4 sentence plot synopsis in Portuguese without spoilers.
 - Include estimated rating out of 10, streaming platform/origin, country of origin, duration, genres, and cast.
 
+=== REGRA CRÍTICA DE TÍTULOS (NOMES REAIS E CONSAGRADOS NO BRASIL) ===
+NUNCA faça tradução literal automática de títulos estrangeiros para o português!
+- Anime e Mangá: SEMPRE utilize o título oficial consagrado (ex: "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga"). JAMAIS invente traduções como "Homem-Motosserra" ou "Portão de Steins".
+- Filmes e Séries: Use o título oficial brasileiro APENAS se ele existir oficialmente no Brasil (ex: "Interestelar", "A Origem", "Ruptura"). Se a obra foi lançada ou é conhecida no Brasil com o título original em inglês (ex: "Slow Horses", "Succession", "Stranger Things", "Fleabag", "The Bear"), MANTENHA o título original consagrado. JAMAIS invente traduções como "Cavalos Lentos" ou "Saco de Pulgas".
+- original_title: Forneça sempre o título original/romanizado oficial.
+
 Respond with ONLY a raw JSON object in this format:
 {
   "recommendations": [
     {
-      "title": "Título Principal em Português ou Internacional",
+      "title": "Título Consagrado no Brasil (Oficial PT-BR ou Original em Inglês - NUNCA tradução literal da IA)",
       "original_title": "Título Original / Romanizado",
       "type": "filme" | "série" | "anime" | "livro" | "manga" | "hq" | "novel",
       "year": 2024,

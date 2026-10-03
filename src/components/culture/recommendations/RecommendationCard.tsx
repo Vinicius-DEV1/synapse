@@ -166,7 +166,7 @@ export const RecommendationCard = React.memo(function RecommendationCard({
         <div>
           {/* Full-width Title for complete visibility */}
           <h3
-            title={item.title}
+            title={item.original_title && item.original_title !== item.title ? `${item.title} (${item.original_title})` : item.title}
             className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug group-hover:text-white transition-colors"
           >
             {item.title}

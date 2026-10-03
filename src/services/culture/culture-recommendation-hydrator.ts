@@ -118,9 +118,15 @@ function pickValidMatch(
  */
 export async function searchMediaForRecommendation(item: RawAIRecommendation): Promise<CultureSearchResult | null> {
   const queriesToTry: string[] = [];
-  if (item.search_hint && !queriesToTry.includes(item.search_hint)) queriesToTry.push(item.search_hint);
-  if (item.title && !queriesToTry.includes(item.title)) queriesToTry.push(item.title);
-  if (item.original_title && !queriesToTry.includes(item.original_title)) queriesToTry.push(item.original_title);
+  if (item.type === 'anime' || item.type === 'manga') {
+    if (item.original_title && !queriesToTry.includes(item.original_title)) queriesToTry.push(item.original_title);
+    if (item.search_hint && !queriesToTry.includes(item.search_hint)) queriesToTry.push(item.search_hint);
+    if (item.title && !queriesToTry.includes(item.title)) queriesToTry.push(item.title);
+  } else {
+    if (item.search_hint && !queriesToTry.includes(item.search_hint)) queriesToTry.push(item.search_hint);
+    if (item.title && !queriesToTry.includes(item.title)) queriesToTry.push(item.title);
+    if (item.original_title && !queriesToTry.includes(item.original_title)) queriesToTry.push(item.original_title);
+  }
 
   // Clean edition modifiers for search if title contains them (e.g. "Ex-Machina: Versão Longa" -> "Ex-Machina")
   const cleanEdition = cleanEditionModifiers(item.title || '');
@@ -310,7 +316,24 @@ export async function hydrateRecommendations(
             }
           }
 
-          const deterministicId = `rec_${rawItem.type}_${slugify(rawItem.title)}_${rawItem.year || ''}`;
+          // Resolve canonical title and avoid weird machine-translated titles from AI:
+          let resolvedTitle = rawItem.title;
+          let resolvedOriginalTitle = rawItem.original_title;
+
+          if (match?.title) {
+            if (rawItem.type === 'anime' || rawItem.type === 'manga') {
+              // AniList/Jikan canonical titles are universally authoritative
+              // (e.g. "Chainsaw Man" instead of machine-translated "Homem-Motosserra")
+              resolvedTitle = match.title;
+              if (!resolvedOriginalTitle || resolvedOriginalTitle === match.title) {
+                resolvedOriginalTitle = rawItem.original_title || (rawItem.title !== match.title ? rawItem.title : undefined);
+              }
+            } else if (!resolvedOriginalTitle && match.title !== rawItem.title) {
+              resolvedOriginalTitle = match.title;
+            }
+          }
+
+          const deterministicId = `rec_${rawItem.type}_${slugify(resolvedTitle)}_${rawItem.year || ''}`;
 
           // Select the richest plot synopsis, rejecting any actor listings or shallow placeholders
           const cleanApiSynopsis =
@@ -346,7 +369,8 @@ export async function hydrateRecommendations(
           return {
             ...rawItem,
             id: deterministicId,
-            title: rawItem.title,
+            title: resolvedTitle,
+            original_title: resolvedOriginalTitle,
             synopsis: finalSynopsis,
             cover_image: match?.cover || undefined,
             api_id: match?.api_id,
