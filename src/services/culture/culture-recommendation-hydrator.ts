@@ -340,6 +340,8 @@ export async function hydrateRecommendations(
             : match?.genres?.length
             ? match.genres
             : rawItem.genres;
+          const resolvedTrailerUrl = cinemetaExtra?.trailer_url ?? match?.trailer_url ?? rawItem.trailer_url;
+          const resolvedTrailerYtId = cinemetaExtra?.trailer_yt_id ?? match?.trailer_yt_id ?? rawItem.trailer_yt_id;
 
           return {
             ...rawItem,
@@ -361,6 +363,8 @@ export async function hydrateRecommendations(
             origin_country: resolvedCountry,
             duration: resolvedDuration,
             genres: resolvedGenres,
+            trailer_url: resolvedTrailerUrl,
+            trailer_yt_id: resolvedTrailerYtId,
             already_in_library: false,
           };
         } catch (unexpectedErr) {

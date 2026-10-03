@@ -24,6 +24,8 @@ export interface RawAIRecommendation {
   duration?: string; // e.g. "2h 49m", "10 episódios", "416 págs"
   genres?: string[];
   cast?: string;
+  trailer_url?: string;
+  trailer_yt_id?: string;
 }
 
 export interface HydratedRecommendation extends RawAIRecommendation {
@@ -42,6 +44,8 @@ export interface HydratedRecommendation extends RawAIRecommendation {
   status?: string;
   genres?: string[];
   cast?: string;
+  trailer_url?: string;
+  trailer_yt_id?: string;
   already_in_library?: boolean;
 }
 

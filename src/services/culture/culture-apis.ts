@@ -19,6 +19,8 @@ export interface CultureSearchResult {
   duration?: string;
   director?: string;
   genres?: string[];
+  trailer_url?: string;
+  trailer_yt_id?: string;
 }
 
 const cultureApiCache = new Map<string, { timestamp: number; data: CultureSearchResult[] }>();
@@ -27,7 +29,7 @@ const CACHE_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Fetches high-precision metadata for movies and TV series from Cinemeta using IMDb IDs.
- * Provides exact IMDb ratings, runtime, cast, director, country of origin, and genre classifications.
+ * Provides exact IMDb ratings, runtime, cast, director, country of origin, genre classifications, and official trailers.
  */
 export async function fetchCinemetaMetadata(
   imdbId: string,
@@ -64,6 +66,18 @@ export async function fetchCinemetaMetadata(
       ? meta.cast.slice(0, 4).join(', ')
       : undefined;
 
+    const trailers = Array.isArray(meta.trailers) ? meta.trailers : [];
+    const mainTrailer = trailers.find((t: any) => t && t.type === 'Trailer') || trailers[0];
+    const rawTrailer = mainTrailer?.source || (typeof meta.trailer === 'string' ? meta.trailer : undefined);
+    let trailer_yt_id: string | undefined = undefined;
+    if (typeof rawTrailer === 'string') {
+      const match = rawTrailer.match(/([a-zA-Z0-9_-]{11})/);
+      if (match) {
+        trailer_yt_id = match[1];
+      }
+    }
+    const trailer_url = trailer_yt_id ? `https://www.youtube.com/watch?v=${trailer_yt_id}` : undefined;
+
     const result: Partial<CultureSearchResult> = {
       rating,
       rating_source: rating !== undefined ? 'IMDb' : undefined,
@@ -72,6 +86,8 @@ export async function fetchCinemetaMetadata(
       director: directorStr,
       cast: castStr,
       genres: Array.isArray(meta.genres) ? meta.genres : undefined,
+      trailer_url,
+      trailer_yt_id,
     };
 
     cinemetaCache.set(cacheKey, { timestamp: Date.now(), data: result });
@@ -138,6 +154,10 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
       const platform = item.studios?.[0]?.name || item.authors?.[0]?.name || undefined;
       const genres = Array.isArray(item.genres) ? item.genres.map((g: any) => g.name).filter(Boolean) : undefined;
 
+      const trailerYtId = item.trailer?.youtube_id || undefined;
+      const trailer_yt_id = trailerYtId && /^[a-zA-Z0-9_-]{11}$/.test(trailerYtId) ? trailerYtId : undefined;
+      const trailer_url = item.trailer?.url || (trailer_yt_id ? `https://www.youtube.com/watch?v=${trailer_yt_id}` : undefined);
+
       return {
         title: item.title,
         synopsis: item.synopsis || '',
@@ -159,6 +179,8 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
         platform,
         duration: item.duration || undefined,
         genres,
+        trailer_url,
+        trailer_yt_id,
       };
     });
 

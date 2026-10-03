@@ -227,6 +227,27 @@ describe('RecommendationDetailsModal', () => {
     expect(screen.getAllByText('169 min')).toHaveLength(2);
     expect(screen.getAllByText('(IMDb)')).toHaveLength(2);
   });
+
+  it('renders official trailer section inside the modal when trailer is available', async () => {
+    const itemWithTrailer: HydratedRecommendation = {
+      ...mockItem,
+      trailer_yt_id: 'cdx31ak4KbQ',
+    };
+
+    render(
+      <RecommendationDetailsModal
+        item={itemWithTrailer}
+        isOpen={true}
+        onClose={vi.fn()}
+        onAdd={vi.fn()}
+        onDislike={vi.fn()}
+        onMarkAlreadySeen={vi.fn()}
+        isAdded={false}
+      />
+    );
+
+    expect(await screen.findByText('Assistir Trailer Oficial')).toBeInTheDocument();
+  });
 });
 
 

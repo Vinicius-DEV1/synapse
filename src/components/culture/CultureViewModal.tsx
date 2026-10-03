@@ -4,6 +4,7 @@ import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import { Portal } from '../ui/Portal';
 import { CultureMetaGrid } from './ui/CultureMetaGrid';
+import { CultureTrailerSection } from './ui/CultureTrailerSection';
 
 interface Props {
   item: CultureItem;
@@ -164,6 +165,17 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
 
               {/* Meta Grid */}
               <CultureMetaGrid item={item} />
+
+              {/* Official Trailer Section */}
+              <CultureTrailerSection
+                title={item.title}
+                type={item.type}
+                apiId={item.api_id}
+                apiSource={item.api_source}
+                trailerUrl={item.trailer_url}
+                trailerYtId={item.trailer_yt_id}
+                accessLink={item.access_link}
+              />
 
               {/* Goal note */}
               {item.is_goal && item.goal_note && (

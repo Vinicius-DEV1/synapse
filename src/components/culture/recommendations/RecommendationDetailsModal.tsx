@@ -21,6 +21,7 @@ import {
 
 import type { HydratedRecommendation } from '../../../types/culture-recommendations';
 import { Portal } from '../../ui/Portal';
+import { CultureTrailerSection } from '../ui/CultureTrailerSection';
 
 interface Props {
   item: HydratedRecommendation;
@@ -260,6 +261,17 @@ export function RecommendationDetailsModal({
                 </div>
               </div>
             </div>
+
+            {/* Official Trailer Section */}
+            <CultureTrailerSection
+              title={item.title}
+              type={item.type}
+              year={item.year}
+              apiId={item.api_id}
+              apiSource={item.api_source}
+              trailerUrl={item.trailer_url}
+              trailerYtId={item.trailer_yt_id}
+            />
 
             {/* Comprehensive Technical & Production Specifications */}
             {(item.platform || item.origin_country || item.duration || item.rating) && (
