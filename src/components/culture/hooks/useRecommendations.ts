@@ -37,6 +37,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   });
 
   const [expandingClusterId, setExpandingClusterId] = useState<string | null>(null);
+  const [expandError, setExpandError] = useState<string | null>(null);
 
   const [serendipityMode, setSerendipityModeState] = useState<SerendipityMode>(() => {
     try {
@@ -218,13 +219,21 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
   const expandCluster = useCallback(async (clusterId: string) => {
     if (expandingClusterId) return;
     setExpandingClusterId(clusterId);
+    setExpandError(null);
     try {
       const updated = await CultureRecommendationsService.expandCluster(clusterId, clusters);
       if (isMountedRef.current) {
         setClusters(updated);
       }
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao buscar novas recomendações para este tema.';
       console.error('[useRecommendations] Falha ao expandir coleção:', err);
+      if (isMountedRef.current) {
+        setExpandError(msg);
+        setTimeout(() => {
+          if (isMountedRef.current) setExpandError(null);
+        }, 7000);
+      }
     } finally {
       if (isMountedRef.current) {
         setExpandingClusterId(null);
@@ -249,6 +258,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     isLoading,
     isGenerating,
     error,
+    expandError,
     activeSubFilter,
     setActiveSubFilter,
     serendipityMode,

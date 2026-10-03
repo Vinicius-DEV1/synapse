@@ -298,30 +298,33 @@ export function buildExpandClusterPrompt(
   cluster: { title: string; description?: string },
   existingTitlesInCluster: string[],
   libraryTitles: string[],
+  allRecommendedTitles: string[] = [],
   dislikedTitles: string[] = [],
   targetCount = 22
 ): string {
-  const minCount = Math.max(18, targetCount - 2);
-  const maxCount = targetCount + 2;
+  const minCount = Math.max(20, targetCount - 2);
+  const maxCount = Math.max(24, targetCount + 2);
+
+  const allAlreadySuggested = Array.from(new Set([...existingTitlesInCluster, ...allRecommendedTitles]));
 
   return `### TARGET CLUSTER TO EXPAND
 Collection Title: "${cluster.title}"
 ${cluster.description ? `Theme & Mood: "${cluster.description}"` : ''}
 
 === STRICT NEGATIVE CONSTRAINTS (DO NOT RECOMMEND) ===
-1. ALREADY RECOMMENDED IN THIS CLUSTER (DO NOT REPEAT):
-[${existingTitlesInCluster.map(t => `"${t}"`).join(', ')}]
+1. ALREADY RECOMMENDED IN THIS SESSION (STRICTLY FORBIDDEN TO REPEAT):
+[${allAlreadySuggested.map(t => `"${t}"`).join(', ')}]
 
 2. USER LIBRARY (ALREADY OWNED - STRICTLY FORBIDDEN):
 [${libraryTitles.map(t => `"${t}"`).join(', ')}]
 - Do not recommend alternate cuts, extended versions, or sequels/prequels if already owned.
 - If recommending a TV series or anime, recommend the overarching show title, NEVER individual season numbers.
 
-${dislikedTitles.length > 0 ? `3. DISLIKED WORKS: [${dislikedTitles.map(t => `"${t}"`).join(', ')}]` : ''}
+${dislikedTitles.length > 0 ? `3. DISLIKED BY USER (STRICTLY FORBIDDEN): [${dislikedTitles.map(t => `"${t}"`).join(', ')}]` : ''}
 
 === TASK ===
 Generate strictly ${minCount} to ${maxCount} NEW, HIGH-QUALITY cultural recommendations that belong deeply and authentically to this specific collection "${cluster.title}".
-- This is a full collection expansion: generate a dense, richly curated catalog of strictly ${minCount} to ${maxCount} works (forming 3 to 4 full new rows of cards on desktop grids).
+- Guarantee full density: Provide strictly ${minCount} to ${maxCount} distinct works so the collection expands with at least 20+ fresh works.
 - Provide a balanced mix of formats (filme, série, anime, livro, manga) and tiers (recent, classic, hidden_gem, upcoming).
 - Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 - For each item, write a rich, immersive 2 to 4 sentence plot synopsis in Portuguese without spoilers.

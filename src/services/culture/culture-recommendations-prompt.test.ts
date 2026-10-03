@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildCultureRecommendationsPrompt } from './culture-recommendations-prompt';
+import {
+  buildCultureRecommendationsPrompt,
+  buildExpandClusterPrompt,
+} from './culture-recommendations-prompt';
 import type { UserCulturalDNA } from './culture-dna-extractor';
 
 describe('culture-recommendations-prompt', () => {
@@ -150,6 +153,31 @@ describe('culture-recommendations-prompt', () => {
     expect(batch2Prompt).toContain('Already recommended in earlier batch of this current session');
     expect(batch2Prompt).toContain('- Ex-Machina');
     expect(batch2Prompt).toContain('- Blade Runner 2049');
+  });
+
+  it('builds a focused expand cluster prompt targeting 20-24 works with strict negative exclusions', () => {
+    const prompt = buildExpandClusterPrompt(
+      { title: 'Ficção Científica Existencial', description: 'Obras reflexivas sobre o tempo' },
+      ['Arrival', 'Interstellar'],
+      ['Matrix', 'Blade Runner'],
+      ['Severance', 'Dark'],
+      ['Twilight'],
+      22
+    );
+
+    expect(prompt).toContain('### TARGET CLUSTER TO EXPAND');
+    expect(prompt).toContain('Ficção Científica Existencial');
+    expect(prompt).toContain('Obras reflexivas sobre o tempo');
+    expect(prompt).toContain('ALREADY RECOMMENDED IN THIS SESSION (STRICTLY FORBIDDEN TO REPEAT)');
+    expect(prompt).toContain('Arrival');
+    expect(prompt).toContain('Interstellar');
+    expect(prompt).toContain('Severance');
+    expect(prompt).toContain('Dark');
+    expect(prompt).toContain('USER LIBRARY (ALREADY OWNED - STRICTLY FORBIDDEN)');
+    expect(prompt).toContain('Matrix');
+    expect(prompt).toContain('Blade Runner');
+    expect(prompt).toContain('DISLIKED BY USER (STRICTLY FORBIDDEN): ["Twilight"]');
+    expect(prompt).toContain('Generate strictly 20 to 24 NEW, HIGH-QUALITY cultural recommendations');
   });
 });
 

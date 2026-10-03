@@ -124,6 +124,21 @@ describe('extractRecommendationsListFromResponse', () => {
     expect(res[0].title).toBe('Ex Machina');
   });
 
+  it('extracts from nested cluster.items or cluster.recommendations', () => {
+    const raw = `{"cluster": {"title": "Sci-Fi", "items": [{"title": "Solaris", "type": "filme"}]}}`;
+    const res = extractRecommendationsListFromResponse(raw);
+    expect(res).toHaveLength(1);
+    expect(res[0].title).toBe('Solaris');
+  });
+
+  it('extracts from generic array property containing title objects', () => {
+    const raw = `{"obras": [{"title": "Dune", "type": "livro"}, {"title": "Hyperion", "type": "livro"}]}`;
+    const res = extractRecommendationsListFromResponse(raw);
+    expect(res).toHaveLength(2);
+    expect(res[0].title).toBe('Dune');
+    expect(res[1].title).toBe('Hyperion');
+  });
+
   it('returns empty array when text has no valid JSON', () => {
     expect(extractRecommendationsListFromResponse('')).toEqual([]);
     expect(extractRecommendationsListFromResponse('random talk')).toEqual([]);

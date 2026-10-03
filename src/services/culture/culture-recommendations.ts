@@ -117,17 +117,33 @@ export function extractRecommendationsListFromResponse(text: string): RawAIRecom
   };
 
   const tryExtractArray = (candidate: string): RawAIRecommendation[] | null => {
+    const extractFromArrayOrObject = (p: Record<string, unknown>): RawAIRecommendation[] | null => {
+      if (Array.isArray(p.recommendations)) return p.recommendations as RawAIRecommendation[];
+      if (Array.isArray(p.items)) return p.items as RawAIRecommendation[];
+      if (Array.isArray(p.clusters) && p.clusters.length > 0) {
+        const first = p.clusters[0] as Record<string, unknown>;
+        if (Array.isArray(first?.items)) return first.items as RawAIRecommendation[];
+      }
+      if (p.cluster && typeof p.cluster === 'object') {
+        const cl = p.cluster as Record<string, unknown>;
+        if (Array.isArray(cl.items)) return cl.items as RawAIRecommendation[];
+        if (Array.isArray(cl.recommendations)) return cl.recommendations as RawAIRecommendation[];
+      }
+      for (const key of Object.keys(p)) {
+        const val = p[key];
+        if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && val[0] !== null && 'title' in val[0]) {
+          return val as RawAIRecommendation[];
+        }
+      }
+      return null;
+    };
+
     try {
       const parsed = JSON.parse(candidate);
       if (Array.isArray(parsed)) return parsed as RawAIRecommendation[];
       if (parsed && typeof parsed === 'object') {
-        const p = parsed as Record<string, unknown>;
-        if (Array.isArray(p.recommendations)) return p.recommendations as RawAIRecommendation[];
-        if (Array.isArray(p.items)) return p.items as RawAIRecommendation[];
-        if (Array.isArray(p.clusters) && p.clusters.length > 0) {
-          const first = p.clusters[0] as Record<string, unknown>;
-          if (Array.isArray(first?.items)) return first.items as RawAIRecommendation[];
-        }
+        const res = extractFromArrayOrObject(parsed as Record<string, unknown>);
+        if (res) return res;
       }
     } catch {
       try {
@@ -135,13 +151,8 @@ export function extractRecommendationsListFromResponse(text: string): RawAIRecom
         const parsed = JSON.parse(sanitized);
         if (Array.isArray(parsed)) return parsed as RawAIRecommendation[];
         if (parsed && typeof parsed === 'object') {
-          const p = parsed as Record<string, unknown>;
-          if (Array.isArray(p.recommendations)) return p.recommendations as RawAIRecommendation[];
-          if (Array.isArray(p.items)) return p.items as RawAIRecommendation[];
-          if (Array.isArray(p.clusters) && p.clusters.length > 0) {
-            const first = p.clusters[0] as Record<string, unknown>;
-            if (Array.isArray(first?.items)) return first.items as RawAIRecommendation[];
-          }
+          const res = extractFromArrayOrObject(parsed as Record<string, unknown>);
+          if (res) return res;
         }
       } catch {
         // Fall through
@@ -641,20 +652,20 @@ export const CultureRecommendationsService = {
     const existingTitlesInCluster = targetCluster.items.map(i => i.title);
     const allExistingRecommendedTitles = currentClusters.flatMap(c => c.items.map(i => i.title));
     const libraryTitles = items.map(i => i.title);
-    const dislikedTitles = [
+    const actualDislikedTitles = [
       ...disliked.map(d => d.title),
       ...ignored.map(ig => ig.title),
-      ...allExistingRecommendedTitles,
     ];
 
     const volume = settings.cultureRecommendationsVolume || 'quadruple';
-    const targetCount = volume === 'quadruple' ? 24 : volume === 'expanded' ? 22 : 18;
+    const targetCount = volume === 'quadruple' ? 24 : volume === 'expanded' ? 22 : 20;
 
     const prompt = buildExpandClusterPrompt(
       { title: targetCluster.title, description: targetCluster.description },
       existingTitlesInCluster,
       libraryTitles,
-      dislikedTitles,
+      allExistingRecommendedTitles,
+      actualDislikedTitles,
       targetCount
     );
 
@@ -684,9 +695,12 @@ export const CultureRecommendationsService = {
       throw new Error('As recomendações geradas já constam na sua biblioteca ou não puderam ser validadas.');
     }
 
-    // Append new items to cluster avoiding duplicate IDs
+    // Append new items to cluster avoiding duplicate IDs or duplicate titles
     const existingIds = new Set(targetCluster.items.map(i => i.id));
-    const freshItemsToAppend = hydratedNewItems.filter(i => !existingIds.has(i.id));
+    const existingNormTitles = new Set(targetCluster.items.map(i => normalizeTitle(i.title)));
+    const freshItemsToAppend = hydratedNewItems.filter(
+      i => !existingIds.has(i.id) && !existingNormTitles.has(normalizeTitle(i.title))
+    );
 
     if (freshItemsToAppend.length === 0) {
       return currentClusters;

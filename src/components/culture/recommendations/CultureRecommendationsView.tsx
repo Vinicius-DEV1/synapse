@@ -33,6 +33,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
     generationProgress,
     expandingClusterId,
     expandCluster,
+    expandError,
     refresh,
     handleAddItem,
     handleDislikeItem,
@@ -189,6 +190,13 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Expansion error banner */}
+      {expandError && (
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+          <span>{expandError}</span>
         </div>
       )}
 
