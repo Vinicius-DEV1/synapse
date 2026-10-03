@@ -101,6 +101,11 @@ export function extractJsonFromResponse(text: string): RawGeminiOutput | null {
   return null;
 }
 
+let activeProgressiveRun: {
+  promise: Promise<RecommendationCluster[]>;
+  listeners: Set<(update: RecommendationProgressUpdate) => void>;
+} | null = null;
+
 export const CultureRecommendationsService = {
   /**
    * Generates or fetches cached personalized recommendations for the user.
@@ -137,51 +142,72 @@ export const CultureRecommendationsService = {
     const excludedThemesKey = [...excludedThemes].map(t => t.trim().toLowerCase()).sort().join('-');
     const effectiveHash = `${dna.libraryHash}_${serendipityMode}_${volume}_exT:${excludedTypesKey}_exTh:${excludedThemesKey}_dense_v6_batched`;
 
-    // 1. Check cache if not forcing refresh
+    // 1. Check cache if not forcing refresh: serve cleaned cache without hitting AI on navigation
     const cached = await CultureFeedbackStorage.getCachedRecommendations();
-    if (!forceRefresh && cached) {
-      if (cached.library_hash === effectiveHash) {
-        // Filter out any newly disliked, ignored, or added items from cached clusters
-        const dislikedIds = new Set(disliked.map(d => d.id));
-        const dislikedTitles = new Set(disliked.map(d => normalizeTitle(d.title)));
-        const ignoredTitles = new Set(ignored.map(ig => normalizeTitle(ig.title)));
+    if (!forceRefresh && cached && cached.clusters && cached.clusters.length > 0) {
+      // Filter out any newly disliked, ignored, or added items from cached clusters
+      const dislikedIds = new Set(disliked.map(d => d.id));
+      const dislikedTitles = new Set(disliked.map(d => normalizeTitle(d.title)));
+      const ignoredTitles = new Set(ignored.map(ig => normalizeTitle(ig.title)));
 
-        const cleanedClusters: RecommendationCluster[] = cached.clusters
-          .map(cluster => ({
-            ...cluster,
-            items: cluster.items.filter(item => {
-              const norm = normalizeTitle(item.title);
-              const inLib = isItemInLibrary(item, items);
-              return (
-                !dislikedIds.has(item.id) &&
-                !dislikedTitles.has(norm) &&
-                !ignoredTitles.has(norm) &&
-                !inLib &&
-                !excludedTypeSet.has(item.type)
-              );
-            }),
-          }))
-          .filter(cluster => cluster.items.length > 0);
+      const cleanedClusters: RecommendationCluster[] = cached.clusters
+        .map(cluster => ({
+          ...cluster,
+          items: cluster.items.filter(item => {
+            const norm = normalizeTitle(item.title);
+            const inLib = isItemInLibrary(item, items);
+            return (
+              !dislikedIds.has(item.id) &&
+              !dislikedTitles.has(norm) &&
+              !ignoredTitles.has(norm) &&
+              !inLib &&
+              !excludedTypeSet.has(item.type)
+            );
+          }),
+        }))
+        .filter(cluster => cluster.items.length > 0);
 
-        const totalRemainingItems = cleanedClusters.reduce((acc, c) => acc + c.items.length, 0);
-        const minItemsThreshold = volume === 'quadruple' ? 65 : volume === 'expanded' ? 45 : 25;
+      const totalRemainingItems = cleanedClusters.reduce((acc, c) => acc + c.items.length, 0);
 
-        // If the library hash matches AND we have a sufficiently rich recommendation set, use cache
-        if (totalRemainingItems >= minItemsThreshold && cleanedClusters.length > 0) {
-          onProgress?.({
-            phase: 'complete',
-            currentBatch: 2,
-            totalBatches: 2,
-            clusters: cleanedClusters,
-            message: 'Recomendações carregadas do cache local.',
-            progressPercent: 100,
-            isPartial: false,
-            totalItemsCount: totalRemainingItems,
-          });
-          return cleanedClusters;
-        }
+      // If we have cached recommendations, serve them immediately with zero network delay or layout shift
+      if (totalRemainingItems >= 12 && cleanedClusters.length > 0) {
+        onProgress?.({
+          phase: 'complete',
+          currentBatch: 2,
+          totalBatches: 2,
+          clusters: cleanedClusters,
+          message: 'Recomendações prontas.',
+          progressPercent: 100,
+          isPartial: false,
+          totalItemsCount: totalRemainingItems,
+        });
+        return cleanedClusters;
       }
     }
+
+    // 1.5. In-flight singleton lock: attach to existing ongoing run if already generating
+    if (activeProgressiveRun) {
+      if (onProgress) {
+        activeProgressiveRun.listeners.add(onProgress);
+      }
+      return activeProgressiveRun.promise;
+    }
+
+    const listeners = new Set<(update: RecommendationProgressUpdate) => void>();
+    if (onProgress) listeners.add(onProgress);
+
+    const broadcast = (update: RecommendationProgressUpdate) => {
+      for (const listener of listeners) {
+        try {
+          listener(update);
+        } catch (err) {
+          console.warn('[CultureRecommendations] Erro no listener de progresso:', err);
+        }
+      }
+    };
+
+    const runPromise = (async () => {
+      try {
 
     // 2. Fetch fresh broadcast/season anchors for up-to-the-minute release grounding
     const freshAnchors = await fetchCurrentFreshReleases();
@@ -196,7 +222,7 @@ export const CultureRecommendationsService = {
     );
 
     // 3.5. Extract deep cultural DNA via AI (instant 0ms if cached for this library state)
-    onProgress?.({
+    broadcast({
       phase: 'dna',
       currentBatch: 0,
       totalBatches: 2,
@@ -214,7 +240,7 @@ export const CultureRecommendationsService = {
     const batch2ThematicFocus = thematicAxes.slice(2, 5);
 
     // 4. BATCH 1: Prompt & Generation (~4-7s)
-    onProgress?.({
+    broadcast({
       phase: 'batch_generating',
       currentBatch: 1,
       totalBatches: 2,
@@ -258,7 +284,7 @@ export const CultureRecommendationsService = {
     }
 
     // Hydrate Batch 1
-    onProgress?.({
+    broadcast({
       phase: 'batch_hydrating',
       currentBatch: 1,
       totalBatches: 2,
@@ -297,7 +323,7 @@ export const CultureRecommendationsService = {
     const batch1ItemsCount = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
 
     // Emit Batch 1 Ready: UI will immediately render cards on screen!
-    onProgress?.({
+    broadcast({
       phase: 'batch_ready',
       currentBatch: 1,
       totalBatches: 2,
@@ -309,7 +335,7 @@ export const CultureRecommendationsService = {
     });
 
     // 5. SAFETY PACING (Rate-limit safeguard: 2000ms delay to prevent 429 RPM spikes)
-    onProgress?.({
+    broadcast({
       phase: 'pacing',
       currentBatch: 1,
       totalBatches: 2,
@@ -322,7 +348,7 @@ export const CultureRecommendationsService = {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // 6. BATCH 2: Background Expansion
-    onProgress?.({
+    broadcast({
       phase: 'batch_generating',
       currentBatch: 2,
       totalBatches: 2,
@@ -379,7 +405,7 @@ export const CultureRecommendationsService = {
       }
 
       if (parsed2 && Array.isArray(parsed2.clusters)) {
-        onProgress?.({
+        broadcast({
           phase: 'batch_hydrating',
           currentBatch: 2,
           totalBatches: 2,
@@ -426,7 +452,7 @@ export const CultureRecommendationsService = {
 
     const finalTotalItems = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
 
-    onProgress?.({
+    broadcast({
       phase: 'complete',
       currentBatch: 2,
       totalBatches: 2,
@@ -438,6 +464,17 @@ export const CultureRecommendationsService = {
     });
 
     return accumulatedClusters;
+      } finally {
+        activeProgressiveRun = null;
+      }
+    })();
+
+    activeProgressiveRun = {
+      promise: runPromise,
+      listeners,
+    };
+
+    return runPromise;
   },
 
   /**

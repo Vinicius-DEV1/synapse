@@ -1,4 +1,5 @@
 
+import React from 'react';
 import type {
   RecommendationCluster,
   HydratedRecommendation,
@@ -14,7 +15,7 @@ interface Props {
   onItemClick?: (item: HydratedRecommendation) => void;
 }
 
-export function RecommendationClusterSection({
+export const RecommendationClusterSection = React.memo(function RecommendationClusterSection({
   cluster,
   addedItemIds,
   onAdd,
@@ -25,7 +26,10 @@ export function RecommendationClusterSection({
   if (!cluster.items || cluster.items.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3.5">
+    <section
+      className="flex flex-col gap-3.5"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 320px' }}
+    >
       {/* Cluster Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2.5">
@@ -62,4 +66,4 @@ export function RecommendationClusterSection({
       </div>
     </section>
   );
-}
+});

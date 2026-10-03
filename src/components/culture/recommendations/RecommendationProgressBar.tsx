@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Sparkles, Layers, CheckCircle2 } from 'lucide-react';
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   totalItemsCount: number;
 }
 
-export function RecommendationProgressBar({
+export const RecommendationProgressBar = memo(function RecommendationProgressBar({
   isActive,
   currentBatch,
   totalBatches,
@@ -22,12 +23,13 @@ export function RecommendationProgressBar({
   const isComplete = progressPercent >= 100;
 
   return (
-    <div
+    <aside
       role="progressbar"
       aria-valuenow={progressPercent}
       aria-valuemin={0}
       aria-valuemax={100}
-      className="relative overflow-hidden rounded-2xl bg-zinc-900/85 border border-amber-500/25 p-3.5 backdrop-blur-md shadow-lg shadow-black/40 animate-fadeIn"
+      aria-label="Progresso da curadoria de recomendações"
+      className="fixed bottom-6 right-6 z-40 max-w-sm sm:max-w-md w-[calc(100%-3rem)] overflow-hidden rounded-2xl bg-zinc-900/95 border border-amber-500/35 p-3.5 backdrop-blur-xl shadow-2xl shadow-black/80 transition-all duration-300 pointer-events-auto animate-fadeIn"
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -72,6 +74,6 @@ export function RecommendationProgressBar({
           style={{ width: `${Math.max(4, Math.min(100, progressPercent))}%` }}
         />
       </div>
-    </div>
+    </aside>
   );
-}
+});

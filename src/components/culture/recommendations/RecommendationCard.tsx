@@ -12,7 +12,7 @@ interface Props {
   isAdded: boolean;
 }
 
-export function RecommendationCard({
+export const RecommendationCard = React.memo(function RecommendationCard({
   item,
   onAdd,
   onDislike,
@@ -261,4 +261,4 @@ export function RecommendationCard({
       )}
     </div>
   );
-}
+});

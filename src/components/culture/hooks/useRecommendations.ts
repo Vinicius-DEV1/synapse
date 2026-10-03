@@ -91,16 +91,28 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
             totalItemsCount: update.totalItemsCount,
           });
 
-          // Progressive rendering: mount cards immediately on screen as soon as Batch 1 arrives!
+          // Progressive rendering: mount cards smoothly without collapsing page height or causing scroll jumps!
           if (update.clusters && update.clusters.length > 0) {
-            setClusters(update.clusters);
+            setClusters(prevClusters => {
+              if (!prevClusters || prevClusters.length === 0) {
+                return update.clusters;
+              }
+              // If previous clusters existed, preserve the bottom clusters to avoid height collapse / scroll jump
+              const merged = [...update.clusters];
+              if (prevClusters.length > update.clusters.length) {
+                merged.push(...prevClusters.slice(update.clusters.length));
+              }
+              return merged;
+            });
             setIsLoading(false);
           }
         }
       );
 
       if (!isMountedRef.current) return;
-      setClusters(result);
+      if (result && result.length > 0) {
+        setClusters(result);
+      }
 
       const cached = await CultureFeedbackStorage.getCachedRecommendations();
       if (cached && isMountedRef.current) {

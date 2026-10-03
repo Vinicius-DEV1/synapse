@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Sparkles, RefreshCw, Award, Gem, Clock, Target, Compass } from 'lucide-react';
 import type {
   RecommendationFilterTab,
@@ -38,6 +38,10 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
   } = useRecommendations(onLibraryUpdated);
 
   const [selectedItem, setSelectedItem] = useState<HydratedRecommendation | null>(null);
+
+  const handleItemClick = useCallback((item: HydratedRecommendation) => {
+    setSelectedItem(item);
+  }, []);
 
   const formatLastUpdated = (dateStr: string | null) => {
     if (!dateStr) return null;
@@ -129,7 +133,19 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
         </div>
       </div>
 
-      {/* Progressive Batching Visual Feedback */}
+      {/* Subtle Hairline Loader Bar at the top (Zero Layout Shift) */}
+      <div
+        className={`w-full h-0.5 -mt-3 mb-1 overflow-hidden transition-opacity duration-300 ${
+          isGenerating ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <div
+          className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-brand-500 transition-all duration-300 rounded-full"
+          style={{ width: `${Math.max(5, generationProgress.progressPercent)}%` }}
+        />
+      </div>
+
+      {/* Progressive Batching Visual Feedback (Floating Zero-CLS Dock) */}
       <RecommendationProgressBar
         isActive={generationProgress.isActive}
         currentBatch={generationProgress.currentBatch}
@@ -198,7 +214,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
               onAdd={handleAddItem}
               onDislike={handleDislikeItem}
               onMarkAlreadySeen={handleMarkAlreadySeen}
-              onItemClick={setSelectedItem}
+              onItemClick={handleItemClick}
             />
           ))}
         </div>
