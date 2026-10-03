@@ -647,11 +647,15 @@ export const CultureRecommendationsService = {
       ...allExistingRecommendedTitles,
     ];
 
+    const volume = settings.cultureRecommendationsVolume || 'quadruple';
+    const targetCount = volume === 'quadruple' ? 24 : volume === 'expanded' ? 22 : 18;
+
     const prompt = buildExpandClusterPrompt(
       { title: targetCluster.title, description: targetCluster.description },
       existingTitlesInCluster,
       libraryTitles,
-      dislikedTitles
+      dislikedTitles,
+      targetCount
     );
 
     const result = await promptGemini(

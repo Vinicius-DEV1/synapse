@@ -92,7 +92,7 @@ export const RecommendationExpandCard = React.memo(function RecommendationExpand
             <span>Processando</span>
           ) : (
             <>
-              <span>+6 a 8 obras</span>
+              <span>+20 a 24 obras</span>
             </>
           )}
         </div>

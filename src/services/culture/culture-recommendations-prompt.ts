@@ -298,8 +298,12 @@ export function buildExpandClusterPrompt(
   cluster: { title: string; description?: string },
   existingTitlesInCluster: string[],
   libraryTitles: string[],
-  dislikedTitles: string[] = []
+  dislikedTitles: string[] = [],
+  targetCount = 22
 ): string {
+  const minCount = Math.max(18, targetCount - 2);
+  const maxCount = targetCount + 2;
+
   return `### TARGET CLUSTER TO EXPAND
 Collection Title: "${cluster.title}"
 ${cluster.description ? `Theme & Mood: "${cluster.description}"` : ''}
@@ -316,7 +320,8 @@ ${cluster.description ? `Theme & Mood: "${cluster.description}"` : ''}
 ${dislikedTitles.length > 0 ? `3. DISLIKED WORKS: [${dislikedTitles.map(t => `"${t}"`).join(', ')}]` : ''}
 
 === TASK ===
-Generate strictly 6 to 8 NEW, HIGH-QUALITY cultural recommendations that belong deeply and authentically to this specific collection "${cluster.title}".
+Generate strictly ${minCount} to ${maxCount} NEW, HIGH-QUALITY cultural recommendations that belong deeply and authentically to this specific collection "${cluster.title}".
+- This is a full collection expansion: generate a dense, richly curated catalog of strictly ${minCount} to ${maxCount} works (forming 3 to 4 full new rows of cards on desktop grids).
 - Provide a balanced mix of formats (filme, série, anime, livro, manga) and tiers (recent, classic, hidden_gem, upcoming).
 - Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 - For each item, write a rich, immersive 2 to 4 sentence plot synopsis in Portuguese without spoilers.

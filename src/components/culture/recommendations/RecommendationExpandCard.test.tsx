@@ -15,7 +15,7 @@ describe('RecommendationExpandCard', () => {
 
     expect(screen.getByText('Exibir Mais')).toBeInTheDocument();
     expect(screen.getByText(/Buscar \+ sugestões deste tema com IA/)).toBeInTheDocument();
-    expect(screen.getByText('+6 a 8 obras')).toBeInTheDocument();
+    expect(screen.getByText('+20 a 24 obras')).toBeInTheDocument();
 
     const card = screen.getByRole('button', { name: /Buscar mais recomendações para Ficção Científica/ });
     fireEvent.click(card);
