@@ -175,16 +175,15 @@ describe('culture-recommendations-prompt', () => {
     expect(prompt).toContain('Dark');
     expect(prompt).toContain('USER LIBRARY (ALREADY OWNED - STRICTLY FORBIDDEN)');
     expect(prompt).toContain('Matrix');
-    expect(prompt).toContain('Blade Runner');
-    expect(prompt).toContain('Generate strictly 20 to 24 NEW, HIGH-QUALITY cultural recommendations');
-    expect(prompt).toContain('REGRA CRÍTICA DE TÍTULOS');
+    expect(prompt).toContain('Generate strictly 18 to 22 NEW, HIGH-QUALITY cultural recommendations');
+    expect(prompt).toContain('REGRA CRÍTICA ANTI-ALUCINAÇÃO & FIDELIDADE CANÔNICA');
     expect(prompt).toContain('Chainsaw Man');
     expect(prompt).toContain('Slow Horses');
   });
 
   it('instructs AI with strict canonical title fidelity rules to prevent machine-translating titles', () => {
     const prompt = buildCultureRecommendationsPrompt(mockDNA, [], 'safe');
-    expect(prompt).toContain('REGRA CRÍTICA DE TÍTULOS');
+    expect(prompt).toContain('REGRA CRÍTICA ANTI-ALUCINAÇÃO & FIDELIDADE CANÔNICA');
     expect(prompt).toContain('Chainsaw Man');
     expect(prompt).toContain('Slow Horses');
     expect(prompt).toContain('Título Consagrado no Brasil');

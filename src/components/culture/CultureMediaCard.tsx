@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
 import { CultureEpisodeModal } from './CultureEpisodeModal';
@@ -13,13 +13,27 @@ interface Props {
   item: CultureItem;
   viewMode: ViewMode;
   onUpdate: () => void;
-  onClick: () => void;
-  onEdit: () => void;
-  onEditGoal: () => void;
+  onClick?: () => void;
+  onItemClick?: (item: CultureItem) => void;
+  onEdit?: () => void;
+  onItemEdit?: (item: CultureItem) => void;
+  onEditGoal?: () => void;
+  onItemEditGoal?: (item: CultureItem) => void;
   hasNewRelease?: boolean;
 }
 
-function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoal, hasNewRelease }: Props) {
+function CultureMediaCard({
+  item,
+  viewMode,
+  onUpdate,
+  onClick,
+  onItemClick,
+  onEdit,
+  onItemEdit,
+  onEditGoal,
+  onItemEditGoal,
+  hasNewRelease,
+}: Props) {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -37,7 +51,34 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
     return () => window.removeEventListener('click', close);
   }, [contextMenu]);
 
-  const handleIncrement = async (e: React.MouseEvent) => {
+  const handleClick = useCallback(() => {
+    if (onItemClick) {
+      onItemClick(item);
+    } else {
+      onClick?.();
+    }
+  }, [onItemClick, onClick, item]);
+
+  const handleEditClick = useCallback(() => {
+    setContextMenu(null);
+    if (onItemEdit) {
+      onItemEdit(item);
+    } else {
+      onEdit?.();
+    }
+  }, [onItemEdit, onEdit, item]);
+
+  const handleEditGoalClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContextMenu(null);
+    if (onItemEditGoal) {
+      onItemEditGoal(item);
+    } else {
+      onEditGoal?.();
+    }
+  }, [onItemEditGoal, onEditGoal, item]);
+
+  const handleIncrement = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isFinished) return;
     try { 
@@ -46,9 +87,9 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
     } catch (err) { 
       console.error(err); 
     }
-  };
+  }, [isFinished, item.id, item.progress, onUpdate]);
 
-  const handleToggleGoal = async (e: React.MouseEvent) => {
+  const handleToggleGoal = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     try { 
       await CultureService.updateItem(item.id, { ...item, is_goal: !item.is_goal });
@@ -56,19 +97,19 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
     } catch (err) { 
       console.error(err); 
     }
-  };
+  }, [item, onUpdate]);
 
-  const handleOpenLink = (e: React.MouseEvent) => {
+  const handleOpenLink = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (item.access_link) window.api?.drive?.openExternalUrl(item.access_link);
-  };
+  }, [item.access_link]);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
-  };
+  }, []);
 
-  const handleFinish = async (e: React.MouseEvent) => {
+  const handleFinish = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const p = item.total_progress > 0 ? item.total_progress : (item.progress > 0 ? item.progress : 1);
@@ -77,9 +118,9 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
     } catch (err) { 
       console.error(err); 
     }
-  };
+  }, [item.id, item.progress, item.total_progress, onUpdate]);
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Tem certeza que deseja excluir '${item.title}'?`)) {
       try { 
@@ -89,24 +130,13 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
         console.error(err); 
       }
     }
-  };
+  }, [item.id, item.title, onUpdate]);
 
-  const handleEditGoalClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setContextMenu(null);
-    onEditGoal();
-  };
-
-  const openEpisodes = (e: React.MouseEvent) => {
+  const openEpisodes = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setContextMenu(null);
     setShowEpisodes(true);
-  };
-
-  const handleEditClick = () => {
-    setContextMenu(null);
-    onEdit();
-  };
+  }, []);
 
   return (
     <>
@@ -118,7 +148,7 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
           hasEpisodes={hasEpisodes}
           hasNewRelease={hasNewRelease}
           statusInfo={statusInfo}
-          onClick={onClick}
+          onClick={handleClick}
           onContextMenu={handleContextMenu}
           onOpenEpisodes={openEpisodes}
           onIncrement={handleIncrement}
@@ -132,7 +162,7 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
           hasEpisodes={hasEpisodes}
           hasNewRelease={hasNewRelease}
           statusInfo={statusInfo}
-          onClick={onClick}
+          onClick={handleClick}
           onContextMenu={handleContextMenu}
           onOpenEpisodes={openEpisodes}
           onIncrement={handleIncrement}
@@ -148,7 +178,7 @@ function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoa
           hasEpisodes={hasEpisodes}
           hasNewRelease={hasNewRelease}
           statusInfo={statusInfo}
-          onClick={onClick}
+          onClick={handleClick}
           onContextMenu={handleContextMenu}
           onOpenEpisodes={openEpisodes}
           onIncrement={handleIncrement}

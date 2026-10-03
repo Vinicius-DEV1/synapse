@@ -26,8 +26,9 @@ Key Principles:
    - PURITY & COHESION: Keep each collection laser-focused ('acertiva') on its distinct thematic pillar and creator lineages. Never dilute quality with generic filler.
    - BALANCED SPECTRUM: Within each dense collection of 28 to 36 works, provide a rich, engaging mix of allowed formats (movies, series, anime, books, manga) and tiers (recent, classic, hidden_gem, upcoming).
    - Include upcoming future works so the user can anticipate what to watch or read next.
-7. REAL, FACTUAL WORKS ONLY & CANONICAL TITLE FIDELITY (NO MACHINE TRANSLATIONS):
-   - Do NOT invent or hallucinate fake titles. Use accurate canonical titles that can be matched on IMDb, AniList, TVMaze, or Google Books.
+7. REAL, FACTUAL WORKS ONLY & CANONICAL TITLE FIDELITY (ZERO TOLERANCE FOR FAKE ENTRIES):
+   - ABSOLUTE PROHIBITION OF FAKE OR HALLUCINATED WORKS: Every single recommendation MUST be a real, factually existing, commercially released or officially announced work that exists on IMDb, AniList, TVMaze, or Google Books. NEVER invent non-existent movie/series titles and attribute them to real creators (e.g. NEVER fabricate fake films like "Quase uma Canção" by Céline Sciamma or fake series like "Luzes na Cidade" by Ryan Murphy).
+   - If a specific theme or subgenre runs out of works, broaden gracefully to adjacent real works within the same mood rather than fabricating fake entries!
    - ABSOLUTE PROHIBITION OF MACHINE TRANSLATION FOR TITLES:
      * Anime & Manga: ALWAYS use the universally recognized canonical title (usually English or Romanized Japanese, e.g. "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga", "Berserk", "Monster", "Death Note", "Cowboy Bebop", "Bocchi the Rock!"). NEVER invent literal machine translations like "Homem-Motosserra", "Portão de Steins", or "Bocchi a Rocha".
      * Movies & TV Series: Use the official Brazilian Portuguese release title ONLY IF it was officially released and marketed with that name in Brazil (e.g. "Interestelar", "A Origem", "Um Sonho de Liberdade", "Ruptura", "O Poderoso Chefão", "Bastardos Inglórios"). If a movie or series is officially marketed or widely known in Brazil under its original English/foreign title (e.g. "Succession", "Stranger Things", "Slow Horses", "Breaking Bad", "Dark", "Mindhunter", "Fleabag", "The Bear", "Oppenheimer", "Dune", "Euphoria", "Twin Peaks", "True Detective"), keep that established title! NEVER create artificial translations (e.g. NEVER "Cavalos Lentos", "Coisas Estranhas", "Saco de Pulgas").
@@ -257,8 +258,9 @@ Mix tiers across clusters:
 Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 CRITICAL: For EVERY single recommended item, you MUST write a rich, immersive, and narrative synopsis (2 to 4 sentences in Portuguese) explaining the plot, the universe, and the main dramatic conflict without giving spoilers. Do not leave synopsis empty and do not provide simple actor lists.
 
-=== REGRA CRÍTICA DE TÍTULOS (NOMES REAIS E CONSAGRADOS NO BRASIL) ===
-NUNCA faça tradução literal automática de títulos estrangeiros para o português!
+=== REGRA CRÍTICA ANTI-ALUCINAÇÃO & FIDELIDADE CANÔNICA ===
+1. PROIBIÇÃO TOTAL DE OBRAS INVENTADAS: Cada obra recomendada DEVE existir no mundo real e estar indexada no IMDb, AniList, TVMaze ou Google Books. JAMAIS invente títulos fictícios atribuindo a diretores ou autores reais (ex: NUNCA crie filmes como "Quase uma Canção" de Céline Sciamma ou séries como "Luzes na Cidade" de Ryan Murphy). Se um nicho temático for muito restrito, expanda com obras reais consagradas de tom ou atmosfera similares, JAMAIS invente obras falsas.
+2. NUNCA faça tradução literal automática de títulos estrangeiros para o português!
 - Anime e Mangá: SEMPRE utilize o título oficial consagrado (ex: "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga", "Bocchi the Rock!"). JAMAIS invente traduções literais como "Homem-Motosserra", "Portão de Steins" ou "Bocchi a Rocha".
 - Filmes e Séries: Use o título oficial brasileiro APENAS se ele existir oficialmente no Brasil (ex: "Interestelar", "A Origem", "Ruptura", "Um Sonho de Liberdade"). Se a obra foi lançada ou é conhecida no Brasil com o título original em inglês (ex: "Slow Horses", "Succession", "Stranger Things", "Fleabag", "The Bear", "Mindhunter"), MANTENHA o título consagrado. JAMAIS invente traduções literais automáticas como "Cavalos Lentos" ou "Saco de Pulgas".
 - Livros e HQs: Use o título publicado no Brasil se existir; caso contrário, mantenha o título original.
@@ -315,8 +317,8 @@ export function buildExpandClusterPrompt(
   dislikedTitles: string[] = [],
   targetCount = 22
 ): string {
-  const minCount = Math.max(20, targetCount - 2);
-  const maxCount = Math.max(24, targetCount + 2);
+  const minCount = Math.max(16, targetCount - 4);
+  const maxCount = Math.max(22, targetCount);
 
   const allAlreadySuggested = Array.from(new Set([...existingTitlesInCluster, ...allRecommendedTitles]));
 
@@ -337,14 +339,15 @@ ${dislikedTitles.length > 0 ? `3. DISLIKED BY USER (STRICTLY FORBIDDEN): [${disl
 
 === TASK ===
 Generate strictly ${minCount} to ${maxCount} NEW, HIGH-QUALITY cultural recommendations that belong deeply and authentically to this specific collection "${cluster.title}".
-- Guarantee full density: Provide strictly ${minCount} to ${maxCount} distinct works so the collection expands with at least 20+ fresh works.
+- Guarantee full density: Provide strictly ${minCount} to ${maxCount} distinct works so the collection expands with fresh works.
 - Provide a balanced mix of formats (filme, série, anime, livro, manga) and tiers (recent, classic, hidden_gem, upcoming).
 - Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
 - For each item, write a rich, immersive 2 to 4 sentence plot synopsis in Portuguese without spoilers.
 - Include estimated rating out of 10, streaming platform/origin, country of origin, duration, genres, and cast.
 
-=== REGRA CRÍTICA DE TÍTULOS (NOMES REAIS E CONSAGRADOS NO BRASIL) ===
-NUNCA faça tradução literal automática de títulos estrangeiros para o português!
+=== REGRA CRÍTICA ANTI-ALUCINAÇÃO & FIDELIDADE CANÔNICA ===
+1. PROIBIÇÃO TOTAL DE OBRAS INVENTADAS: Todas as obras recomendadas DEVEM existir de fato no mundo real (IMDb, AniList, TVMaze, Google Books). NUNCA invente filmes, séries, animes ou livros fictícios atribuindo a diretores ou autores reais (ex: JAMAIS crie obras falsas como "Quase uma Canção" de Céline Sciamma ou "Luzes na Cidade" de Ryan Murphy). Se o nicho temático for muito específico e faltarem títulos daquele nicho exato, inclua obras consagradas adjacentes que compartilhem a mesma atmosfera, tom ou estética, MAS NUNCA INVENTE OBRAS INEXISTENTES.
+2. NUNCA faça tradução literal automática de títulos estrangeiros para o português!
 - Anime e Mangá: SEMPRE utilize o título oficial consagrado (ex: "Chainsaw Man", "Sousou no Frieren", "Steins;Gate", "Jujutsu Kaisen", "Vinland Saga"). JAMAIS invente traduções como "Homem-Motosserra" ou "Portão de Steins".
 - Filmes e Séries: Use o título oficial brasileiro APENAS se ele existir oficialmente no Brasil (ex: "Interestelar", "A Origem", "Ruptura"). Se a obra foi lançada ou é conhecida no Brasil com o título original em inglês (ex: "Slow Horses", "Succession", "Stranger Things", "Fleabag", "The Bear"), MANTENHA o título original consagrado. JAMAIS invente traduções como "Cavalos Lentos" ou "Saco de Pulgas".
 - original_title: Forneça sempre o título original/romanizado oficial.

@@ -31,10 +31,7 @@ export const RecommendationClusterSection = React.memo(function RecommendationCl
   if (!cluster.items || cluster.items.length === 0) return null;
 
   return (
-    <section
-      className="flex flex-col gap-3.5"
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 650px' }}
-    >
+    <section className="flex flex-col gap-3.5">
       {/* Cluster Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2.5">

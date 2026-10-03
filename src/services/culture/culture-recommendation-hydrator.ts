@@ -48,17 +48,55 @@ export function isMediaMatchValid(
   const isSeries = candidate.type === 'série' || candidate.type === 'anime';
 
   // 1. Direct title equivalence check (handles accents, editions, seasons)
-  if (areTitlesEquivalent(candTitle, match.title, { isSeries })) {
-    return true;
+  const hasDirectEquivalence =
+    areTitlesEquivalent(candTitle, match.title, { isSeries }) ||
+    Boolean(candOriginal && areTitlesEquivalent(candOriginal, match.title, { isSeries })) ||
+    Boolean(candHint && areTitlesEquivalent(candHint, match.title, { isSeries }));
+
+  // Media Genre and Content Type Sanity Guard:
+  // Prevent matching a sports documentary or club tribute when candidate is a narrative/drama/romance work
+  if (match.genres && match.genres.length > 0) {
+    const isMatchSports = match.genres.some(g =>
+      /\b(?:sport|sports|esporte|esportes|futebol|football|soccer)\b/i.test(g)
+    );
+    const isMatchDoc = match.genres.some(g =>
+      /\b(?:documentary|documentário|news|notícias)\b/i.test(g)
+    );
+
+    const candThemes = [
+      ...(candidate.genres || []),
+      candidate.cluster || '',
+      candidate.affinity_reason || '',
+      candidate.synopsis || '',
+      candTitle,
+    ].join(' ').toLowerCase();
+
+    const candWantsSports = /\b(?:sport|sports|esporte|esportes|futebol|football|soccer)\b/i.test(candThemes);
+    const candWantsDoc = /\b(?:documentary|documentário)\b/i.test(candThemes);
+
+    if (isMatchSports && !candWantsSports) return false;
+    if (isMatchDoc && !candWantsDoc && candidate.type !== 'filme' && candidate.type !== 'série') return false;
   }
-  if (candOriginal && areTitlesEquivalent(candOriginal, match.title, { isSeries })) {
-    return true;
+
+  // Reject titles with sports or club prefixes when candidate has none (e.g. "PSG ...", "FC Barcelona ...", "WWE ...")
+  if (/\b(?:psg|fifa|uefa|nba|nfl|wwe|ufc|f1|formula 1|olympics)\b/i.test(match.title)) {
+    const candHasClub = /\b(?:psg|fifa|uefa|nba|nfl|wwe|ufc|f1|formula 1|olympics)\b/i.test(candTitle);
+    if (!candHasClub) return false;
   }
-  if (candHint && areTitlesEquivalent(candHint, match.title, { isSeries })) {
+
+  // Year Sanity Guard:
+  // For recent releases (current/past year), reject matches with > 1 year distance (e.g. 2024 candidate vs 2020 match)
+  if (candidate.year && match.year && (candidate.tier === 'recent' || candidate.tier === 'upcoming')) {
+    if (Math.abs(candidate.year - match.year) > 1) {
+      return false;
+    }
+  }
+
+  if (hasDirectEquivalence) {
     return true;
   }
 
-  // 2. Token overlap check
+  // 2. Token overlap check (Dice coefficient to ensure symmetrical mutual coverage)
   const normCand = normalizeTitle(candTitle);
   const normMatch = normalizeTitle(match.title);
   const normOriginal = candOriginal ? normalizeTitle(candOriginal) : '';
@@ -76,9 +114,9 @@ export function isMediaMatchValid(
   if (tokensCand.length > 0 && tokensMatch.length > 0) {
     const candSet = new Set(tokensCand);
     const common = tokensMatch.filter(t => candSet.has(t));
-    const overlapRatio = common.length / Math.min(tokensCand.length, tokensMatch.length);
+    const diceRatio = (2 * common.length) / (tokensCand.length + tokensMatch.length);
 
-    if (overlapRatio >= 0.75 && common.length >= 2) {
+    if (diceRatio >= 0.70 && common.length >= 1) {
       return true;
     }
   }
@@ -88,8 +126,9 @@ export function isMediaMatchValid(
     if (tokensOrig.length > 0 && tokensMatch.length > 0) {
       const origSet = new Set(tokensOrig);
       const commonOrig = tokensMatch.filter(t => origSet.has(t));
-      const overlapRatioOrig = commonOrig.length / Math.min(tokensOrig.length, tokensMatch.length);
-      if (overlapRatioOrig >= 0.75 && commonOrig.length >= 2) {
+      const diceRatioOrig = (2 * commonOrig.length) / (tokensOrig.length + tokensMatch.length);
+
+      if (diceRatioOrig >= 0.70 && commonOrig.length >= 1) {
         return true;
       }
     }
@@ -275,6 +314,16 @@ export async function hydrateRecommendations(
             match = await searchMediaForRecommendation(rawItem);
           } catch (fetchErr) {
             console.warn(`[Hydrator] Falha ao consultar metadados para "${rawItem.title}":`, fetchErr);
+          }
+
+          // Strict Factual Verification & No Ghost Works Guard:
+          // If no verified match with a cover was found in external APIs (IMDb, AniList, TVMaze, Google Books):
+          // Reject unverified or hallucinated ghost works so the user never sees "Sem Capa" or fake titles.
+          if (!match || !match.cover) {
+            if (!(rawItem.tier === 'upcoming' && match?.api_id)) {
+              console.warn(`[Hydrator] Rejeitando obra não verificada/sem capa (possível alucinação da IA): "${rawItem.title}"`);
+              return null;
+            }
           }
 
           // 2. Post-search check: verify API metadata matches against library or seen items

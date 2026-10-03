@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
@@ -75,15 +75,15 @@ export default function CultureView() {
     return sortItems(filteredItems, sortMode);
   }, [filteredItems, activeFilter, sortMode]);
 
-  const handleEdit = (item: CultureItem) => { setEditingItem(item); setIsAddModalOpen(true); };
-  const handleCloseModal = () => { setIsAddModalOpen(false); setEditingItem(null); };
+  const handleEdit = useCallback((item: CultureItem) => { setEditingItem(item); setIsAddModalOpen(true); }, []);
+  const handleCloseModal = useCallback(() => { setIsAddModalOpen(false); setEditingItem(null); }, []);
   
-  const handleView = (item: CultureItem) => { setViewingItem(item); };
-  const handleCloseViewModal = () => { setViewingItem(null); };
+  const handleView = useCallback((item: CultureItem) => { setViewingItem(item); }, []);
+  const handleCloseViewModal = useCallback(() => { setViewingItem(null); }, []);
 
-  const handleEditGoalNote = (item: CultureItem) => { setGoalModalItem(item); };
-  const handleCloseGoalModal = () => { setGoalModalItem(null); };
-  const handleSaveGoalNote = async (note: string) => {
+  const handleEditGoalNote = useCallback((item: CultureItem) => { setGoalModalItem(item); }, []);
+  const handleCloseGoalModal = useCallback(() => { setGoalModalItem(null); }, []);
+  const handleSaveGoalNote = useCallback(async (note: string) => {
     if (goalModalItem) {
       try {
         await CultureService.updateItem(goalModalItem.id, { ...goalModalItem, is_goal: true, goal_note: note });
@@ -92,7 +92,12 @@ export default function CultureView() {
         console.error(err);
       }
     }
-  };
+  }, [goalModalItem, loadData]);
+
+  const recentReleaseItemIds = useMemo(
+    () => new Set(recentReleases.map(ep => ep.item_id)),
+    [recentReleases]
+  );
 
   const gridClass =
     viewMode === 'grid'    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5' :
@@ -106,10 +111,10 @@ export default function CultureView() {
         item={item}
         viewMode={viewMode}
         onUpdate={loadData}
-        onClick={() => handleView(item)}
-        onEdit={() => handleEdit(item)}
-        onEditGoal={() => handleEditGoalNote(item)}
-        hasNewRelease={recentReleases.some(ep => ep.item_id === item.id)}
+        onItemClick={handleView}
+        onItemEdit={handleEdit}
+        onItemEditGoal={handleEditGoalNote}
+        hasNewRelease={recentReleaseItemIds.has(item.id)}
       />
     ));
 
@@ -162,10 +167,7 @@ export default function CultureView() {
               const isFirst = idx === 0;
               const isLast = isOther ? true : idx === visibleGroupCount - 1;
               return (
-                <section
-                  key={group.type}
-                  style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' }}
-                >
+                <section key={group.type}>
                   <div className="flex items-center gap-3 mb-4">
                     <h2 className="text-base font-semibold text-dark-text tracking-tight">{group.label}</h2>
                     <span className="text-xs text-dark-subtext bg-white/5 px-2 py-0.5 rounded-full">

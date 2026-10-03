@@ -190,6 +190,63 @@ describe('culture-recommendation-hydrator', () => {
 
     aniListSpy.mockRestore();
   });
+
+  it('rejects sports documentaries from matching non-sports fictional drama recommendations', async () => {
+    const tvMazeSpy = vi.spyOn(cultureApis, 'fetchTVMaze').mockResolvedValue([
+      {
+        title: 'PSG City of Lights, 50 years of Legend',
+        type: 'série',
+        api_id: '50001',
+        api_source: 'tvmaze',
+        cover: 'https://example.com/psg.jpg',
+        total: 4,
+        genres: ['Sports'],
+      },
+    ]);
+
+    const item: RawAIRecommendation = {
+      title: 'Luzes na Cidade',
+      original_title: 'City Lights',
+      type: 'série',
+      tier: 'recent',
+      year: 2024,
+      cluster: 'Romance LGBTQIA+',
+      affinity_reason: 'Drama juvenil',
+      confidence_score: 0.95,
+      genres: ['Romance', 'Drama'],
+    };
+
+    const match = await searchMediaForRecommendation(item);
+    expect(match).toBeNull(); // Correctly rejected because of sports genre and title mismatch
+
+    tvMazeSpy.mockRestore();
+  });
+
+  it('filters out hallucinated or unverified works that have no match and no cover image', async () => {
+    const imdbSpy = vi.spyOn(cultureApis, 'fetchImdbMovies').mockResolvedValue([]);
+    const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
+
+    const rawItems: RawAIRecommendation[] = [
+      {
+        title: 'Quase uma Canção',
+        original_title: 'Just a Song',
+        type: 'filme',
+        tier: 'hidden_gem',
+        year: 2023,
+        creator: 'Dir. Céline Sciamma',
+        cluster: 'Romance LGBTQIA+',
+        affinity_reason: 'Filme inventado pela IA',
+        confidence_score: 0.93,
+      },
+    ];
+
+    const results = await hydrateRecommendations(rawItems, []);
+    expect(results).toHaveLength(0); // Hallucinated item with no match/cover is discarded!
+
+    imdbSpy.mockRestore();
+    itunesSpy.mockRestore();
+  });
 });
+
 
 

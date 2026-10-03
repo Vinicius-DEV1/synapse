@@ -98,7 +98,7 @@ export const RecommendationCard = React.memo(function RecommendationCard({
       tabIndex={0}
       aria-label={`Ver detalhes de ${item.title}`}
       onContextMenu={handleContextMenu}
-      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-amber-500/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-[transform,opacity,border-color,box-shadow] duration-200 transform hover:-translate-y-1 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-amber-500/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-200 ease-out transform hover:-translate-y-1 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50"
     >
       {/* Poster Image or Fallback Header */}
       <div className="relative aspect-[2/3] w-full bg-zinc-800 overflow-hidden">
@@ -109,7 +109,7 @@ export const RecommendationCard = React.memo(function RecommendationCard({
             loading="lazy"
             decoding="async"
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-zinc-800 to-zinc-900 text-zinc-500">

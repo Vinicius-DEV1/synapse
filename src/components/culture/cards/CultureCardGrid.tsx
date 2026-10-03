@@ -40,7 +40,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
     <div
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`group relative overflow-hidden rounded-xl cursor-pointer transition-[transform,box-shadow,border-color] duration-200 transform hover:-translate-y-1 hover:shadow-xl ${
+      className={`group relative overflow-hidden rounded-xl cursor-pointer transition-transform duration-200 ease-out transform hover:-translate-y-1 hover:shadow-xl ${
         item.is_goal ? 'ring-2 ring-brand-500 shadow-[0_0_15px_rgba(var(--brand-500),0.3)]' : 'ring-1 ring-white/5 border border-white/5'
       } bg-zinc-900/60`}
     >
@@ -51,7 +51,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
             alt={item.title}
             loading="lazy"
             decoding="async"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-dark-subtext">
