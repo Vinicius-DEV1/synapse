@@ -19,7 +19,7 @@ interface Props {
   hasNewRelease?: boolean;
 }
 
-export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoal, hasNewRelease }: Props) {
+function CultureMediaCard({ item, viewMode, onUpdate, onClick, onEdit, onEditGoal, hasNewRelease }: Props) {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -31,10 +31,11 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
   const statusInfo = getStatusInfo(item.status);
 
   useEffect(() => {
+    if (!contextMenu) return;
     const close = () => setContextMenu(null);
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
-  }, []);
+  }, [contextMenu]);
 
   const handleIncrement = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -184,3 +185,5 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
     </>
   );
 }
+
+export default React.memo(CultureMediaCard);

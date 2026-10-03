@@ -24,10 +24,11 @@ export const RecommendationCard = React.memo(function RecommendationCard({
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
+    if (!contextMenu) return;
     const handleClose = () => setContextMenu(null);
     window.addEventListener('click', handleClose);
     return () => window.removeEventListener('click', handleClose);
-  }, []);
+  }, [contextMenu]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -97,7 +98,7 @@ export const RecommendationCard = React.memo(function RecommendationCard({
       tabIndex={0}
       aria-label={`Ver detalhes de ${item.title}`}
       onContextMenu={handleContextMenu}
-      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-amber-500/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-200 transform hover:-translate-y-1 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+      className="group relative flex flex-col bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] hover:border-amber-500/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-[transform,opacity,border-color,box-shadow] duration-200 transform hover:-translate-y-1 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50"
     >
       {/* Poster Image or Fallback Header */}
       <div className="relative aspect-[2/3] w-full bg-zinc-800 overflow-hidden">

@@ -19,7 +19,7 @@ interface CultureCardCompactProps {
   onToggleGoal?: (e: React.MouseEvent) => void;
 }
 
-export function CultureCardCompact({
+export const CultureCardCompact = React.memo(function CultureCardCompact({
   item,
   percent,
   isFinished,
@@ -37,9 +37,9 @@ export function CultureCardCompact({
     <div
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`group relative overflow-hidden rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg ${
+      className={`group relative overflow-hidden rounded-lg cursor-pointer transition-[transform,box-shadow] duration-150 transform hover:scale-[1.02] hover:shadow-lg ${
         item.is_goal ? 'ring-2 ring-brand-500/60' : 'ring-1 ring-white/5'
-      } bg-white/5`}
+      } bg-zinc-900/60`}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-dark-bg/50">
         {item.cover_image ? (
@@ -175,4 +175,4 @@ export function CultureCardCompact({
       </div>
     </div>
   );
-}
+});

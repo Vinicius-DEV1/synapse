@@ -33,7 +33,7 @@ export const RecommendationClusterSection = React.memo(function RecommendationCl
   return (
     <section
       className="flex flex-col gap-3.5"
-      style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 320px' }}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 650px' }}
     >
       {/* Cluster Header */}
       <div className="flex flex-col gap-1">

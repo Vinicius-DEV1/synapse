@@ -162,7 +162,10 @@ export default function CultureView() {
               const isFirst = idx === 0;
               const isLast = isOther ? true : idx === visibleGroupCount - 1;
               return (
-                <section key={group.type}>
+                <section
+                  key={group.type}
+                  style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' }}
+                >
                   <div className="flex items-center gap-3 mb-4">
                     <h2 className="text-base font-semibold text-dark-text tracking-tight">{group.label}</h2>
                     <span className="text-xs text-dark-subtext bg-white/5 px-2 py-0.5 rounded-full">
