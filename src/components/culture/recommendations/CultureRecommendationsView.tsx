@@ -31,6 +31,8 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
     lastGeneratedAt,
     aiDna,
     generationProgress,
+    expandingClusterId,
+    expandCluster,
     refresh,
     handleAddItem,
     handleDislikeItem,
@@ -215,6 +217,8 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
               onDislike={handleDislikeItem}
               onMarkAlreadySeen={handleMarkAlreadySeen}
               onItemClick={handleItemClick}
+              onExpandCluster={expandCluster}
+              isExpanding={expandingClusterId === cluster.id}
             />
           ))}
         </div>

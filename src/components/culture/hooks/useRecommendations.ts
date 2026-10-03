@@ -36,6 +36,8 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     totalItemsCount: 0,
   });
 
+  const [expandingClusterId, setExpandingClusterId] = useState<string | null>(null);
+
   const [serendipityMode, setSerendipityModeState] = useState<SerendipityMode>(() => {
     try {
       const saved = localStorage.getItem('culture_rec_serendipity_mode');
@@ -213,6 +215,23 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     }
   }, []);
 
+  const expandCluster = useCallback(async (clusterId: string) => {
+    if (expandingClusterId) return;
+    setExpandingClusterId(clusterId);
+    try {
+      const updated = await CultureRecommendationsService.expandCluster(clusterId, clusters);
+      if (isMountedRef.current) {
+        setClusters(updated);
+      }
+    } catch (err: unknown) {
+      console.error('[useRecommendations] Falha ao expandir coleção:', err);
+    } finally {
+      if (isMountedRef.current) {
+        setExpandingClusterId(null);
+      }
+    }
+  }, [clusters, expandingClusterId]);
+
   const filteredClusters = useMemo(() => {
     if (activeSubFilter === 'all') return clusters;
 
@@ -238,6 +257,8 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     lastGeneratedAt,
     aiDna,
     generationProgress,
+    expandingClusterId,
+    expandCluster,
     refresh: () => loadRecommendations(true),
     handleAddItem,
     handleDislikeItem,

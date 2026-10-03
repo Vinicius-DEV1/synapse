@@ -14,6 +14,7 @@ import { fetchCurrentFreshReleases } from './culture-fresh-releases';
 import {
   CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
   buildCultureRecommendationsPrompt,
+  buildExpandClusterPrompt,
 } from './culture-recommendations-prompt';
 import { hydrateRecommendations } from './culture-recommendation-hydrator';
 import { normalizeTitle, isItemInLibrary } from './culture-title-utils';
@@ -101,9 +102,84 @@ export function extractJsonFromResponse(text: string): RawGeminiOutput | null {
   return null;
 }
 
+/**
+ * Robustly extracts an array of raw recommendations from an AI text response.
+ * Handles markdown code blocks, JSON objects ({ recommendations: [...] }, { items: [...] }, { clusters: [{ items: [...] }] }),
+ * and bare arrays ([...]).
+ */
+export function extractRecommendationsListFromResponse(text: string): RawAIRecommendation[] {
+  if (!text || typeof text !== 'string') return [];
+
+  const sanitizeJsonString = (str: string): string => {
+    return str
+      .replace(/,\s*([\]}])/g, '$1')
+      .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  };
+
+  const tryExtractArray = (candidate: string): RawAIRecommendation[] | null => {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) return parsed as RawAIRecommendation[];
+      if (parsed && typeof parsed === 'object') {
+        const p = parsed as Record<string, unknown>;
+        if (Array.isArray(p.recommendations)) return p.recommendations as RawAIRecommendation[];
+        if (Array.isArray(p.items)) return p.items as RawAIRecommendation[];
+        if (Array.isArray(p.clusters) && p.clusters.length > 0) {
+          const first = p.clusters[0] as Record<string, unknown>;
+          if (Array.isArray(first?.items)) return first.items as RawAIRecommendation[];
+        }
+      }
+    } catch {
+      try {
+        const sanitized = sanitizeJsonString(candidate);
+        const parsed = JSON.parse(sanitized);
+        if (Array.isArray(parsed)) return parsed as RawAIRecommendation[];
+        if (parsed && typeof parsed === 'object') {
+          const p = parsed as Record<string, unknown>;
+          if (Array.isArray(p.recommendations)) return p.recommendations as RawAIRecommendation[];
+          if (Array.isArray(p.items)) return p.items as RawAIRecommendation[];
+          if (Array.isArray(p.clusters) && p.clusters.length > 0) {
+            const first = p.clusters[0] as Record<string, unknown>;
+            if (Array.isArray(first?.items)) return first.items as RawAIRecommendation[];
+          }
+        }
+      } catch {
+        // Fall through
+      }
+    }
+    return null;
+  };
+
+  // 1. Markdown code block
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (jsonMatch && jsonMatch[1]) {
+    const res = tryExtractArray(jsonMatch[1].trim());
+    if (res && res.length > 0) return res;
+  }
+
+  // 2. Outermost { ... }
+  const startObj = text.indexOf('{');
+  const endObj = text.lastIndexOf('}');
+  if (startObj !== -1 && endObj > startObj) {
+    const res = tryExtractArray(text.substring(startObj, endObj + 1));
+    if (res && res.length > 0) return res;
+  }
+
+  // 3. Outermost [ ... ]
+  const startArr = text.indexOf('[');
+  const endArr = text.lastIndexOf(']');
+  if (startArr !== -1 && endArr > startArr) {
+    const res = tryExtractArray(text.substring(startArr, endArr + 1));
+    if (res && res.length > 0) return res;
+  }
+
+  return [];
+}
+
 let activeProgressiveRun: {
   promise: Promise<RecommendationCluster[]>;
   listeners: Set<(update: RecommendationProgressUpdate) => void>;
+  lastUpdate?: RecommendationProgressUpdate;
 } | null = null;
 
 export const CultureRecommendationsService = {
@@ -189,6 +265,13 @@ export const CultureRecommendationsService = {
     if (activeProgressiveRun) {
       if (onProgress) {
         activeProgressiveRun.listeners.add(onProgress);
+        if (activeProgressiveRun.lastUpdate) {
+          try {
+            onProgress(activeProgressiveRun.lastUpdate);
+          } catch (err) {
+            console.warn('[CultureRecommendations] Erro ao reproduzir lastUpdate no listener:', err);
+          }
+        }
       }
       return activeProgressiveRun.promise;
     }
@@ -197,6 +280,9 @@ export const CultureRecommendationsService = {
     if (onProgress) listeners.add(onProgress);
 
     const broadcast = (update: RecommendationProgressUpdate) => {
+      if (activeProgressiveRun) {
+        activeProgressiveRun.lastUpdate = update;
+      }
       for (const listener of listeners) {
         try {
           listener(update);
@@ -530,6 +616,99 @@ export const CultureRecommendationsService = {
     });
 
     return newItem;
+  },
+
+  /**
+   * Expands an existing recommendation cluster with 6 to 8 fresh, high-caliber recommendations.
+   * Prompts Gemini targeted strictly on the cluster's theme while excluding already recommended and owned works.
+   */
+  async expandCluster(
+    clusterId: string,
+    currentClusters: RecommendationCluster[]
+  ): Promise<RecommendationCluster[]> {
+    const targetClusterIndex = currentClusters.findIndex(c => c.id === clusterId);
+    if (targetClusterIndex === -1) {
+      throw new Error(`Coleção com id "${clusterId}" não encontrada.`);
+    }
+
+    const targetCluster = currentClusters[targetClusterIndex];
+    const items = await CultureService.getItems();
+    const disliked = await CultureFeedbackStorage.getDislikedItems();
+    const ignored = await CultureFeedbackStorage.getIgnoredItems();
+    const settings = getSettings();
+    const excludedTypes = new Set(settings.cultureExcludedTypes || []);
+
+    const existingTitlesInCluster = targetCluster.items.map(i => i.title);
+    const allExistingRecommendedTitles = currentClusters.flatMap(c => c.items.map(i => i.title));
+    const libraryTitles = items.map(i => i.title);
+    const dislikedTitles = [
+      ...disliked.map(d => d.title),
+      ...ignored.map(ig => ig.title),
+      ...allExistingRecommendedTitles,
+    ];
+
+    const prompt = buildExpandClusterPrompt(
+      { title: targetCluster.title, description: targetCluster.description },
+      existingTitlesInCluster,
+      libraryTitles,
+      dislikedTitles
+    );
+
+    const result = await promptGemini(
+      prompt,
+      undefined,
+      [],
+      undefined,
+      CULTURE_RECOMMENDATIONS_SYSTEM_PROMPT,
+      60000
+    );
+
+    const rawNewItems = extractRecommendationsListFromResponse(result.text)
+      .filter(item => !excludedTypes.has(item.type));
+
+    if (rawNewItems.length === 0) {
+      throw new Error('Nenhuma nova recomendação pôde ser gerada para esta coleção no momento.');
+    }
+
+    // Hydrate the fresh recommendations
+    const seenTracker = new Set<string>(
+      allExistingRecommendedTitles.map(t => normalizeTitle(t))
+    );
+    const hydratedNewItems = await hydrateRecommendations(rawNewItems, items, seenTracker);
+
+    if (hydratedNewItems.length === 0) {
+      throw new Error('As recomendações geradas já constam na sua biblioteca ou não puderam ser validadas.');
+    }
+
+    // Append new items to cluster avoiding duplicate IDs
+    const existingIds = new Set(targetCluster.items.map(i => i.id));
+    const freshItemsToAppend = hydratedNewItems.filter(i => !existingIds.has(i.id));
+
+    if (freshItemsToAppend.length === 0) {
+      return currentClusters;
+    }
+
+    const updatedClusters = currentClusters.map((cluster, idx) => {
+      if (idx !== targetClusterIndex) return cluster;
+      return {
+        ...cluster,
+        items: [...cluster.items, ...freshItemsToAppend],
+      };
+    });
+
+    // Update cache and history
+    const cached = await CultureFeedbackStorage.getCachedRecommendations();
+    if (cached) {
+      await CultureFeedbackStorage.saveCachedRecommendations(
+        updatedClusters,
+        cached.library_hash,
+        6,
+        cached.ai_dna
+      );
+    }
+    await CultureFeedbackStorage.addRecentRecommendedTitles(freshItemsToAppend.map(i => i.title));
+
+    return updatedClusters;
   },
 
   /**

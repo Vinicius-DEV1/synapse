@@ -5,6 +5,7 @@ import type {
   HydratedRecommendation,
 } from '../../../types/culture-recommendations';
 import { RecommendationCard } from './RecommendationCard';
+import { RecommendationExpandCard } from './RecommendationExpandCard';
 
 interface Props {
   cluster: RecommendationCluster;
@@ -13,6 +14,8 @@ interface Props {
   onDislike: (item: HydratedRecommendation) => void;
   onMarkAlreadySeen: (item: HydratedRecommendation) => void;
   onItemClick?: (item: HydratedRecommendation) => void;
+  onExpandCluster?: (clusterId: string) => void;
+  isExpanding?: boolean;
 }
 
 export const RecommendationClusterSection = React.memo(function RecommendationClusterSection({
@@ -22,6 +25,8 @@ export const RecommendationClusterSection = React.memo(function RecommendationCl
   onDislike,
   onMarkAlreadySeen,
   onItemClick,
+  onExpandCluster,
+  isExpanding = false,
 }: Props) {
   if (!cluster.items || cluster.items.length === 0) return null;
 
@@ -63,6 +68,15 @@ export const RecommendationClusterSection = React.memo(function RecommendationCl
             onClick={onItemClick}
           />
         ))}
+
+        {/* Immersive Expand Collection Card */}
+        {onExpandCluster && (
+          <RecommendationExpandCard
+            clusterTitle={cluster.title}
+            onExpand={() => onExpandCluster(cluster.id)}
+            isExpanding={isExpanding}
+          />
+        )}
       </div>
     </section>
   );

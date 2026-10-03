@@ -135,6 +135,9 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
           onContextMenu={handleContextMenu}
           onOpenEpisodes={openEpisodes}
           onIncrement={handleIncrement}
+          onFinish={handleFinish}
+          onEdit={handleEditClick}
+          onToggleGoal={handleToggleGoal}
         />
       ) : (
         <CultureCardGrid
@@ -148,8 +151,10 @@ export default function CultureMediaCard({ item, viewMode, onUpdate, onClick, on
           onContextMenu={handleContextMenu}
           onOpenEpisodes={openEpisodes}
           onIncrement={handleIncrement}
+          onFinish={handleFinish}
           onToggleGoal={handleToggleGoal}
           onOpenLink={handleOpenLink}
+          onEdit={handleEditClick}
         />
       )}
 

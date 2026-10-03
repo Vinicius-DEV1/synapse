@@ -1,15 +1,25 @@
-import { useState } from 'react';
-import { X, ExternalLink, Target, CheckCircle, Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ExternalLink, Target, CheckCircle, Play, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import { Portal } from '../ui/Portal';
 import { CultureMetaGrid } from './ui/CultureMetaGrid';
 import { CultureTrailerSection } from './ui/CultureTrailerSection';
+import {
+  fetchImdbMovies,
+  fetchImdbSeries,
+  fetchJikan,
+  fetchGoogleBooks,
+  fetchCinemetaMetadata,
+  type CultureSearchResult,
+} from '../../services/culture/culture-apis';
 
 interface Props {
   item: CultureItem;
   isOpen: boolean;
   onClose: () => void;
+  onUpdate?: () => void;
+  onEdit?: (item: CultureItem) => void;
 }
 
 function getStatusInfo(status?: string) {
@@ -38,16 +48,23 @@ function typeLabel(type: string) {
   return map[type] || type;
 }
 
-export default function CultureViewModal({ item, isOpen, onClose }: Props) {
+export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEdit }: Props) {
+  const [currentItem, setCurrentItem] = useState<CultureItem>(item);
   const [episodes, setEpisodes] = useState<CultureEpisode[]>([]);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentItem(item);
+  }, [item]);
 
   const handleLoadEpisodes = async () => {
     if (episodes.length > 0) { setShowEpisodes(v => !v); return; }
     setLoadingEpisodes(true);
     try {
-      const eps = await CultureService.getEpisodes(item.id);
+      const eps = await CultureService.getEpisodes(currentItem.id);
       setEpisodes(eps);
       setShowEpisodes(true);
     } catch (err) {
@@ -57,18 +74,99 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
     }
   };
 
+  const handleToggleFinish = async () => {
+    const isFin = currentItem.total_progress > 0
+      ? currentItem.progress >= currentItem.total_progress
+      : currentItem.progress > 0;
+
+    const newProgress = isFin ? 0 : (currentItem.total_progress > 0 ? currentItem.total_progress : 1);
+    try {
+      await CultureService.updateProgress(currentItem.id, newProgress);
+      setCurrentItem(prev => ({ ...prev, progress: newProgress }));
+      onUpdate?.();
+      setFeedbackMessage(newProgress > 0 ? 'Obra marcada como concluída!' : 'Progresso reiniciado.');
+      setTimeout(() => setFeedbackMessage(null), 3000);
+    } catch (err) {
+      console.error('[CultureViewModal] Erro ao alternar conclusão:', err);
+    }
+  };
+
+  const handleRefreshMetadata = async () => {
+    setRefreshing(true);
+    setFeedbackMessage(null);
+    try {
+      let match: CultureSearchResult | null = null;
+      if (currentItem.type === 'filme') {
+        const res = await fetchImdbMovies(currentItem.title);
+        match = res[0] || null;
+      } else if (currentItem.type === 'série') {
+        const res = await fetchImdbSeries(currentItem.title);
+        match = res[0] || null;
+      } else if (currentItem.type === 'anime') {
+        const res = await fetchJikan(currentItem.title, 'anime');
+        match = res[0] || null;
+      } else if (currentItem.type === 'livro') {
+        const res = await fetchGoogleBooks(currentItem.title);
+        match = res[0] || null;
+      }
+
+      if (match && (match.cover || match.synopsis || match.api_id)) {
+        let extraCinemeta: Partial<CultureSearchResult> | null = null;
+        if (match.api_id?.startsWith('tt')) {
+          extraCinemeta = await fetchCinemetaMetadata(match.api_id, currentItem.type === 'série' ? 'series' : 'movie');
+        }
+
+        const updatedFields: Partial<CultureItem> = {
+          cover_image: match.cover || currentItem.cover_image,
+          synopsis: (match.synopsis && match.synopsis.length > 20) ? match.synopsis : currentItem.synopsis,
+          api_id: match.api_id || currentItem.api_id,
+          api_source: (match.api_source as CultureItem['api_source']) || currentItem.api_source,
+          trailer_url: extraCinemeta?.trailer_url || match.trailer_url || currentItem.trailer_url,
+          trailer_yt_id: extraCinemeta?.trailer_yt_id || match.trailer_yt_id || currentItem.trailer_yt_id,
+        };
+
+        await CultureService.updateItem(currentItem.id, { ...currentItem, ...updatedFields });
+        setCurrentItem(prev => ({ ...prev, ...updatedFields }));
+        setFeedbackMessage('Capa e dados oficiais atualizados!');
+        onUpdate?.();
+      } else {
+        setFeedbackMessage('Nenhuma informação nova encontrada para este título.');
+      }
+    } catch (err) {
+      console.error('[CultureViewModal] Erro ao sincronizar metadados:', err);
+      setFeedbackMessage('Erro ao consultar bases externas.');
+    } finally {
+      setRefreshing(false);
+      setTimeout(() => setFeedbackMessage(null), 3500);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm(`Tem certeza que deseja excluir "${currentItem.title}" do seu acervo?`)) {
+      try {
+        await CultureService.deleteItem(currentItem.id);
+        onUpdate?.();
+        onClose();
+      } catch (err) {
+        console.error('[CultureViewModal] Erro ao excluir:', err);
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
-  const percent = item.total_progress > 0
-    ? Math.min(100, Math.round((item.progress / item.total_progress) * 100))
+  const percent = currentItem.total_progress > 0
+    ? Math.min(100, Math.round((currentItem.progress / currentItem.total_progress) * 100))
     : 0;
-  const isFinished = item.total_progress > 0 && item.progress >= item.total_progress;
-  const statusInfo = getStatusInfo(item.status);
+  const isFinished = currentItem.total_progress > 0
+    ? currentItem.progress >= currentItem.total_progress
+    : currentItem.progress > 0;
+  const statusInfo = getStatusInfo(currentItem.status);
 
-  const hasEpisodesFeature = ['anime', 'série', 'manga', 'hq', 'novel'].includes(item.type);
+  const hasEpisodesFeature = ['anime', 'série', 'manga', 'hq', 'novel'].includes(currentItem.type);
 
   const handleOpenLink = () => {
-    if (item.access_link) window.api?.drive?.openExternalUrl(item.access_link);
+    if (currentItem.access_link) window.api?.drive?.openExternalUrl(currentItem.access_link);
   };
 
   return (
@@ -83,10 +181,10 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
         >
           {/* Poster / Cover */}
           <div className="w-52 hidden sm:flex flex-shrink-0 relative bg-black/60 flex-col">
-            {item.cover_image ? (
+            {currentItem.cover_image ? (
               <img
-                src={item.cover_image}
-                alt={item.title}
+                src={currentItem.cover_image}
+                alt={currentItem.title}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-cover"
@@ -97,7 +195,7 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
             <div className="absolute bottom-3 left-3">
               <span className="px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
-                {typeLabel(item.type)}
+                {typeLabel(currentItem.type)}
               </span>
             </div>
           </div>
@@ -110,7 +208,7 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
               <div className="relative z-10 flex-1 pr-4">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="sm:hidden px-2 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
-                    {typeLabel(item.type)}
+                    {typeLabel(currentItem.type)}
                   </span>
                   {statusInfo && (
                     <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${statusInfo.text} ${statusInfo.bg}`}>
@@ -118,7 +216,7 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
                       {statusInfo.label}
                     </span>
                   )}
-                  {item.is_goal && (
+                  {currentItem.is_goal && (
                     <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">
                       <Target size={10} />
                       Objetivo
@@ -131,7 +229,61 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
                     </span>
                   )}
                 </div>
-                <h2 className="text-xl font-bold text-white leading-tight">{item.title}</h2>
+                <h2 className="text-xl font-bold text-white leading-tight">{currentItem.title}</h2>
+
+                {/* Modal Action Bar */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(currentItem)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors active:scale-95"
+                      title="Editar título, capa, progresso ou meta"
+                    >
+                      <Pencil size={13} />
+                      <span>Editar</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleToggleFinish}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95 ${
+                      isFinished
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    }`}
+                    title={isFinished ? 'Marcar como Em Andamento' : 'Marcar como Concluído / Visto'}
+                  >
+                    <CheckCircle size={13} />
+                    <span>{isFinished ? 'Concluído' : 'Marcar como Visto'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleRefreshMetadata}
+                    disabled={refreshing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white text-xs font-medium transition-colors disabled:opacity-50 active:scale-95"
+                    title="Buscar na base do IMDb/Jikan para corrigir capa ou sinopse"
+                  >
+                    <RefreshCw size={13} className={refreshing ? 'animate-spin text-brand-400' : ''} />
+                    <span>{refreshing ? 'Atualizando...' : 'Atualizar Capa / Dados'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-medium transition-colors ml-auto active:scale-95"
+                    title="Excluir obra do acervo"
+                  >
+                    <Trash2 size={13} />
+                    <span className="hidden sm:inline">Excluir</span>
+                  </button>
+                </div>
+
+                {/* Feedback Notification Banner */}
+                {feedbackMessage && (
+                  <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs animate-fade-in flex items-center gap-1.5">
+                    <CheckCircle size={13} />
+                    <span>{feedbackMessage}</span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={onClose}
@@ -148,12 +300,12 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-white/50 font-medium">Progresso de Consumo</span>
                   <span className="font-bold text-white">
-                    {item.progress}
-                    {item.total_progress > 0 && <span className="text-white/40 font-normal"> / {item.total_progress}</span>}
-                    {item.total_progress > 0 && <span className="text-brand-400 ml-1.5">({percent}%)</span>}
+                    {currentItem.progress}
+                    {currentItem.total_progress > 0 && <span className="text-white/40 font-normal"> / {currentItem.total_progress}</span>}
+                    {currentItem.total_progress > 0 && <span className="text-brand-400 ml-1.5">({percent}%)</span>}
                   </span>
                 </div>
-                {item.total_progress > 0 && (
+                {currentItem.total_progress > 0 && (
                   <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden border border-white/5">
                     <div
                       className="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full transition-all duration-500"
@@ -164,42 +316,42 @@ export default function CultureViewModal({ item, isOpen, onClose }: Props) {
               </div>
 
               {/* Meta Grid */}
-              <CultureMetaGrid item={item} />
+              <CultureMetaGrid item={currentItem} />
 
               {/* Official Trailer Section */}
               <CultureTrailerSection
-                title={item.title}
-                type={item.type}
-                apiId={item.api_id}
-                apiSource={item.api_source}
-                trailerUrl={item.trailer_url}
-                trailerYtId={item.trailer_yt_id}
-                accessLink={item.access_link}
+                title={currentItem.title}
+                type={currentItem.type}
+                apiId={currentItem.api_id}
+                apiSource={currentItem.api_source}
+                trailerUrl={currentItem.trailer_url}
+                trailerYtId={currentItem.trailer_yt_id}
+                accessLink={currentItem.access_link}
               />
 
               {/* Goal note */}
-              {item.is_goal && item.goal_note && (
+              {currentItem.is_goal && currentItem.goal_note && (
                 <div className="p-3.5 rounded-xl bg-purple-500/5 border border-purple-500/15 flex items-start gap-2.5">
                   <Target size={16} className="text-purple-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Meta Pessoal</span>
-                    <p className="text-xs text-white/80 mt-0.5">{item.goal_note}</p>
+                    <p className="text-xs text-white/80 mt-0.5">{currentItem.goal_note}</p>
                   </div>
                 </div>
               )}
 
               {/* Synopsis */}
-              {item.synopsis && (
+              {currentItem.synopsis && (
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider block">Sinopse</span>
                   <p className="text-xs text-white/70 leading-relaxed whitespace-pre-line bg-white/[0.02] p-3.5 rounded-xl border border-white/5">
-                    {item.synopsis}
+                    {currentItem.synopsis}
                   </p>
                 </div>
               )}
 
               {/* Episodes section */}
-              {hasEpisodesFeature && item.api_id && (
+              {hasEpisodesFeature && currentItem.api_id && (
                 <div className="space-y-2">
                   <button
                     onClick={handleLoadEpisodes}

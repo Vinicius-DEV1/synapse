@@ -141,17 +141,22 @@ export default function CultureView() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
-        {activeFilter === 'recommendations' ? (
+        {/* Recommendations Tab: preserved in DOM to ensure zero-latency switching and uninterrupted async AI generation */}
+        <div className={activeFilter === 'recommendations' ? 'block' : 'hidden'}>
           <CultureRecommendationsView onLibraryUpdated={loadData} />
-        ) : filteredItems.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-dark-subtext gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-              <Filter size={32} className="opacity-50" />
+        </div>
+
+        {/* Library Collections (Tudo, Filmes, Séries, etc.) */}
+        {activeFilter !== 'recommendations' && (
+          filteredItems.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-dark-subtext gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                <Filter size={32} className="opacity-50" />
+              </div>
+              <p className="text-sm">Nenhuma obra encontrada para esta visualização.</p>
             </div>
-            <p className="text-sm">Nenhuma obra encontrada para esta visualização.</p>
-          </div>
-        ) : activeFilter === 'all' && groupedItems ? (
-          <div className="flex flex-col gap-8">
+          ) : activeFilter === 'all' && groupedItems ? (
+            <div className="flex flex-col gap-8">
             {groupedItems.map((group, idx) => {
               const isOther = group.type === 'other';
               const isFirst = idx === 0;
@@ -193,7 +198,7 @@ export default function CultureView() {
           </div>
         ) : (
           <div className={gridClass}>{renderCards(flatItems)}</div>
-        )}
+        ))}
       </div>
 
       {isAddModalOpen && (
@@ -210,6 +215,11 @@ export default function CultureView() {
           isOpen={!!viewingItem}
           onClose={handleCloseViewModal}
           item={viewingItem}
+          onUpdate={loadData}
+          onEdit={(it) => {
+            handleCloseViewModal();
+            handleEdit(it);
+          }}
         />
       )}
 

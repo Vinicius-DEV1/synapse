@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { extractJsonFromResponse } from './culture-recommendations';
+import {
+  extractJsonFromResponse,
+  extractRecommendationsListFromResponse,
+} from './culture-recommendations';
 
 describe('extractJsonFromResponse', () => {
   it('parses standard clean JSON', () => {
@@ -85,5 +88,44 @@ Espero que aprecie as escolhas!
   it('returns null on invalid or empty text', () => {
     expect(extractJsonFromResponse('')).toBeNull();
     expect(extractJsonFromResponse('não há json aqui')).toBeNull();
+  });
+});
+
+describe('extractRecommendationsListFromResponse', () => {
+  it('extracts recommendations array from json block', () => {
+    const raw = `
+\`\`\`json
+{
+  "recommendations": [
+    {
+      "title": "Arrival",
+      "type": "filme",
+      "year": 2016
+    },
+    {
+      "title": "Contact",
+      "type": "filme",
+      "year": 1997
+    }
+  ]
+}
+\`\`\`
+`;
+    const res = extractRecommendationsListFromResponse(raw);
+    expect(res).toHaveLength(2);
+    expect(res[0].title).toBe('Arrival');
+    expect(res[1].title).toBe('Contact');
+  });
+
+  it('extracts direct array of items', () => {
+    const raw = `[{"title": "Ex Machina", "type": "filme"}]`;
+    const res = extractRecommendationsListFromResponse(raw);
+    expect(res).toHaveLength(1);
+    expect(res[0].title).toBe('Ex Machina');
+  });
+
+  it('returns empty array when text has no valid JSON', () => {
+    expect(extractRecommendationsListFromResponse('')).toEqual([]);
+    expect(extractRecommendationsListFromResponse('random talk')).toEqual([]);
   });
 });

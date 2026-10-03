@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Plus, CheckCircle, ExternalLink, Image as ImageIcon, List } from 'lucide-react';
+import { Target, Plus, CheckCircle, ExternalLink, Image as ImageIcon, List, Pencil } from 'lucide-react';
 import type { CultureItem } from '../../../types';
 import type { CultureStatusInfo } from './culture-status';
 
@@ -14,8 +14,10 @@ interface CultureCardGridProps {
   onContextMenu: (e: React.MouseEvent) => void;
   onOpenEpisodes: (e: React.MouseEvent) => void;
   onIncrement: (e: React.MouseEvent) => void;
+  onFinish?: (e: React.MouseEvent) => void;
   onToggleGoal: (e: React.MouseEvent) => void;
   onOpenLink: (e: React.MouseEvent) => void;
+  onEdit?: () => void;
 }
 
 export function CultureCardGrid({
@@ -29,8 +31,10 @@ export function CultureCardGrid({
   onContextMenu,
   onOpenEpisodes,
   onIncrement,
+  onFinish,
   onToggleGoal,
-  onOpenLink
+  onOpenLink,
+  onEdit,
 }: CultureCardGridProps) {
   return (
     <div
@@ -58,19 +62,40 @@ export function CultureCardGrid({
         <div className="absolute inset-0 bg-gradient-to-t from-dark-card via-transparent to-transparent opacity-80" />
 
         {/* Top action buttons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              title="Editar Obra"
+              className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-brand-500 transition-colors shadow"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          {onFinish && !isFinished && (
+            <button
+              onClick={onFinish}
+              title="Marcar como Visto / Finalizado"
+              className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-emerald-600 transition-colors shadow"
+            >
+              <CheckCircle size={14} />
+            </button>
+          )}
           <button
             onClick={onToggleGoal}
             title={item.is_goal ? 'Remover dos Objetivos' : 'Marcar como Objetivo'}
             className={`p-2 rounded-full backdrop-blur-md transition-colors ${
-              item.is_goal ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/50' : 'bg-black/50 text-white/70 hover:text-white hover:bg-brand-500/80'
+              item.is_goal ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/50' : 'bg-black/60 text-white/70 hover:text-white hover:bg-brand-500/80'
             }`}
           >
-            <Target size={16} />
+            <Target size={14} />
           </button>
           {item.access_link && (
-            <button onClick={onOpenLink} title="Abrir Link" className="p-2 rounded-full bg-black/50 backdrop-blur-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
-              <ExternalLink size={16} />
+            <button onClick={onOpenLink} title="Abrir Link" className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+              <ExternalLink size={14} />
             </button>
           )}
         </div>
@@ -115,7 +140,9 @@ export function CultureCardGrid({
           </div>
           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${item.is_goal ? 'bg-brand-400 shadow-[0_0_10px_rgba(var(--brand-400),0.8)]' : 'bg-brand-500/70'}`}
+              className={`h-full rounded-full transition-all duration-500 ${
+                isFinished ? 'bg-emerald-400' : item.is_goal ? 'bg-brand-400 shadow-[0_0_10px_rgba(var(--brand-400),0.8)]' : 'bg-brand-500/70'
+              }`}
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -125,6 +152,18 @@ export function CultureCardGrid({
           {hasEpisodes ? (
             <button onClick={onOpenEpisodes} className="flex items-center justify-center gap-1 bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-all">
               <List size={14} /><span>Episódios</span>
+            </button>
+          ) : item.type === 'filme' ? (
+            <button
+              onClick={isFinished ? onClick : (onFinish || onIncrement)}
+              className={`flex items-center justify-center gap-1.5 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-all ${
+                isFinished
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
+              }`}
+            >
+              <CheckCircle size={14} className={isFinished ? 'text-emerald-400' : 'text-emerald-300'} />
+              <span>{isFinished ? 'Visto' : 'Marcar Visto'}</span>
             </button>
           ) : (
             <button onClick={onIncrement} disabled={isFinished} className="flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-50 disabled:active:scale-100 text-xs font-medium text-dark-text py-1.5 px-3 rounded-lg transition-all">

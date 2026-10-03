@@ -293,3 +293,59 @@ Respond with ONLY a raw JSON object in this format:
   ]
 }`;
 }
+
+export function buildExpandClusterPrompt(
+  cluster: { title: string; description?: string },
+  existingTitlesInCluster: string[],
+  libraryTitles: string[],
+  dislikedTitles: string[] = []
+): string {
+  return `### TARGET CLUSTER TO EXPAND
+Collection Title: "${cluster.title}"
+${cluster.description ? `Theme & Mood: "${cluster.description}"` : ''}
+
+=== STRICT NEGATIVE CONSTRAINTS (DO NOT RECOMMEND) ===
+1. ALREADY RECOMMENDED IN THIS CLUSTER (DO NOT REPEAT):
+[${existingTitlesInCluster.map(t => `"${t}"`).join(', ')}]
+
+2. USER LIBRARY (ALREADY OWNED - STRICTLY FORBIDDEN):
+[${libraryTitles.map(t => `"${t}"`).join(', ')}]
+- Do not recommend alternate cuts, extended versions, or sequels/prequels if already owned.
+- If recommending a TV series or anime, recommend the overarching show title, NEVER individual season numbers.
+
+${dislikedTitles.length > 0 ? `3. DISLIKED WORKS: [${dislikedTitles.map(t => `"${t}"`).join(', ')}]` : ''}
+
+=== TASK ===
+Generate strictly 6 to 8 NEW, HIGH-QUALITY cultural recommendations that belong deeply and authentically to this specific collection "${cluster.title}".
+- Provide a balanced mix of formats (filme, série, anime, livro, manga) and tiers (recent, classic, hidden_gem, upcoming).
+- Every affinity reason and synopsis must be in warm, natural Brazilian Portuguese (PT-BR).
+- For each item, write a rich, immersive 2 to 4 sentence plot synopsis in Portuguese without spoilers.
+- Include estimated rating out of 10, streaming platform/origin, country of origin, duration, genres, and cast.
+
+Respond with ONLY a raw JSON object in this format:
+{
+  "recommendations": [
+    {
+      "title": "Título Principal em Português ou Internacional",
+      "original_title": "Título Original / Romanizado",
+      "type": "filme" | "série" | "anime" | "livro" | "manga" | "hq" | "novel",
+      "year": 2024,
+      "tier": "recent" | "classic" | "hidden_gem" | "upcoming",
+      "cluster": "${cluster.title}",
+      "creator": "Dir. Nome" | "Autor: Nome" | "Estúdio: Nome",
+      "affinity_reason": "Por que esta obra se encaixa perfeitamente nesta coleção...",
+      "synopsis": "Sinopse narrativa rica e envolvente em português (2 a 4 frases)...",
+      "confidence_score": 0.95,
+      "rating": 8.5,
+      "platform": "HBO / Max" | "Netflix" | "Apple TV+" | "Cinema" | "Editora",
+      "origin_country": "Estados Unidos" | "Japão" | "Reino Unido",
+      "duration": "2h 10m" | "8 episódios" | "350 págs",
+      "genres": ["Gênero 1", "Gênero 2"],
+      "cast": "Ator 1, Ator 2",
+      "expected_release_date": "Outubro 2025",
+      "search_hint": "Title for API search"
+    }
+  ]
+}`;
+}
+
