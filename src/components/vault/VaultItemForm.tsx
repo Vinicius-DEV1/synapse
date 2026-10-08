@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
 import { Save, RefreshCw, Star, Eye, EyeOff } from 'lucide-react';
-import type { VaultItem, VaultGroup, VaultCustomField, VaultLoginType } from '../../types';
-import { parseVaultCustomFields } from '../../types';
+import type { VaultItem, VaultGroup } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
 import { VaultAuthTypeToggle } from './ui/VaultAuthTypeToggle';
-import { triggerToast } from '../ui/ToastContext';
+import { useVaultItemFormLogic } from './hooks/useVaultItemFormLogic';
 
 interface VaultItemFormProps {
   item: VaultItem | null;
@@ -15,183 +13,122 @@ interface VaultItemFormProps {
   onCancel: () => void;
 }
 
+const strengthLabels = ['Muito Fraca', 'Fraca', 'Média', 'Forte', 'Muito Forte'];
+const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-emerald-500'];
+
 export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: VaultItemFormProps) {
-  const [label, setLabel] = useState(item?.label || '');
-  const [loginType, setLoginType] = useState<VaultLoginType>(item?.login_type || 'password');
-  const [username, setUsername] = useState(item?.username || '');
-  const [email, setEmail] = useState(item?.email || '');
-  const [password, setPassword] = useState(item?.password || '');
-  const [showPassword, setShowPassword] = useState(false);
-  const [url, setUrl] = useState(item?.url || '');
-  const [notes, setNotes] = useState(item?.notes || '');
-  const [isFavorite, setIsFavorite] = useState(item?.is_favorite === 1);
-  const [selectedGroupId, setSelectedGroupId] = useState(item ? (item.group_id || '') : (groupId || ''));
-  
-  const [customFields, setCustomFields] = useState<VaultCustomField[]>(() => {
-    return parseVaultCustomFields(item?.custom_fields);
-  });
-
-  const [passwordStrength, setPasswordStrength] = useState(item?.password_strength || 0);
-
-  const checkStrength = useCallback(async (pass: string) => {
-    if (!pass) return setPasswordStrength(0);
-    try {
-      const str = await window.api?.vault?.checkStrength(pass);
-      setPasswordStrength(str ?? 0);
-    } catch {
-      setPasswordStrength(pass.length > 10 ? 3 : 1);
-    }
-  }, []);
-
-  // Calculate strength on mount or when item password changes
-  useEffect(() => {
-    if (item?.password) {
-      checkStrength(item.password);
-    }
-  }, [item?.password, checkStrength]);
-
-  const handleSave = async () => {
-    if (!label.trim()) {
-      triggerToast('O item precisa de um nome (Rótulo).', 'error');
-      return;
-    }
-    
-    try {
-      const isGoogle = loginType === 'google';
-      const itemToSave: VaultItem = {
-        ...item,
-        id: item?.id || crypto.randomUUID(),
-        group_id: selectedGroupId || null,
-        label: label.trim(),
-        login_type: loginType,
-        username: username || null,
-        email: email || null,
-        password: isGoogle ? null : (password || null),
-        url: url || null,
-        notes: notes || null,
-        custom_fields: customFields.length > 0 ? JSON.stringify(customFields) : null,
-        is_favorite: isFavorite ? 1 : 0,
-        password_strength: isGoogle ? 4 : passwordStrength,
-        created_at: item?.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: item?.deleted_at || null,
-        password_changed_at: item?.password_changed_at || null,
-      };
-
-      await window.api?.vault?.upsertItem(itemToSave);
-      triggerToast(item ? 'Item atualizado com sucesso!' : 'Item salvo no cofre!', 'success');
-      onSave();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao salvar item no cofre.';
-      console.error('[Vault] Error saving vault item:', err);
-      triggerToast(message, 'error');
-    }
-  };
-
-  const generatePassword = async () => {
-    try {
-      const newPass = await window.api?.vault?.generatePassword({
-        length: 16,
-        uppercase: true,
-        lowercase: true,
-        numbers: true,
-        symbols: true,
-      });
-      if (newPass) {
-        setPassword(newPass);
-        checkStrength(newPass);
-      }
-    } catch (e) {
-      console.error('[Vault] Error generating password through API, using local secure fallback:', e);
-      // Cryptographically secure local fallback
-      const fallbackChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-      const array = new Uint8Array(16);
-      crypto.getRandomValues(array);
-      const fallbackPass = Array.from(array).map(b => fallbackChars[b % fallbackChars.length]).join('');
-      setPassword(fallbackPass);
-      checkStrength(fallbackPass);
-    }
-  };
-
-  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-emerald-500'];
-  const strengthLabels = ['Muito Fraca', 'Fraca', 'Razoável', 'Forte', 'Muito Forte'];
+  const {
+    label,
+    setLabel,
+    loginType,
+    setLoginType,
+    username,
+    setUsername,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    url,
+    setUrl,
+    notes,
+    setNotes,
+    isFavorite,
+    setIsFavorite,
+    selectedGroupId,
+    setSelectedGroupId,
+    customFields,
+    setCustomFields,
+    passwordStrength,
+    checkStrength,
+    generatePassword,
+    handleSave,
+  } = useVaultItemFormLogic({ item, groupId, onSave });
 
   return (
-    <div className="max-w-3xl mx-auto w-full p-8 animate-fade-in pb-32">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-dark-text">{item ? 'Editar Item' : 'Novo Item'}</h2>
-        <div className="flex items-center gap-2">
-          <button onClick={onCancel} className="px-4 py-2 text-dark-subtext hover:text-white transition-colors">Cancelar</button>
-          <button onClick={handleSave} className="px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2">
-            <Save size={16} /> Salvar
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-6">
+    <div className="flex-1 flex flex-col bg-dark-bg overflow-y-auto p-8 animate-fade-in relative pb-32">
+      <div className="max-w-2xl mx-auto w-full space-y-6">
         
-        {/* Bloco Principal */}
-        <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-5">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-dark-subtext uppercase tracking-wider mb-2">Rótulo *</label>
-              <input 
-                type="text" 
-                value={label} 
-                onChange={e => setLabel(e.target.value)}
-                placeholder="Ex: Minha Conta do Google"
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
-              />
-            </div>
-            <div className="w-48">
-              <label className="block text-xs font-semibold text-dark-subtext uppercase tracking-wider mb-2">Grupo</label>
-              <select 
-                value={selectedGroupId} 
-                onChange={e => setSelectedGroupId(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-dark-text focus:outline-none focus:border-brand-500 transition-colors appearance-none"
-              >
-                <option className="bg-dark-bg text-white" value="">Nenhum Grupo</option>
-                {groups.map(g => (
-                  <option className="bg-dark-bg text-white" key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-dark-text flex items-center gap-3">
+              {item ? 'Editar Item' : 'Novo Item do Cofre'}
+            </h1>
+            <p className="text-dark-subtext text-xs mt-1">Armazene credenciais de forma segura com criptografia de ponta a ponta.</p>
           </div>
           
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-3">
             <button 
-              type="button" 
+              type="button"
               onClick={() => setIsFavorite(!isFavorite)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                isFavorite 
-                  ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' 
-                  : 'border-white/10 text-dark-subtext hover:text-white'
-              }`}
+              className={`p-2 rounded-xl border transition-colors ${isFavorite ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-black/20 border-white/5 text-dark-subtext hover:text-dark-text'}`}
+              title={isFavorite ? "Remover dos Favoritos" : "Marcar como Favorito"}
             >
-              <Star size={14} className={isFavorite ? 'fill-yellow-400' : ''} />
-              Favorito
+              <Star size={18} fill={isFavorite ? "currentColor" : "none"} />
+            </button>
+            <button 
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 bg-dark-card border border-white/5 hover:bg-white/5 text-dark-text rounded-xl text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2"
+            >
+              <Save size={16} /> Salvar
             </button>
           </div>
         </div>
 
-        {/* Credenciais */}
+        {/* Informações Básicas */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Credenciais</h3>
-
-          {/* Seletor de Tipo de Autenticação */}
-          <VaultAuthTypeToggle loginType={loginType} onChange={setLoginType} />
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Identificação</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-dark-subtext mb-1.5">Usuário / Login</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-xs text-dark-subtext mb-1.5">Nome / Serviço *</label>
               <input 
                 type="text" 
-                value={username} 
-                onChange={e => setUsername(e.target.value)} 
-                placeholder="Ex: vinicius123"
+                value={label} 
+                onChange={e => setLabel(e.target.value)}
+                placeholder="Ex: Netflix, GitHub, Banco Inter"
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
+                autoFocus
               />
             </div>
+            
+            <div>
+              <label className="block text-xs text-dark-subtext mb-1.5">Pasta</label>
+              <select 
+                value={selectedGroupId} 
+                onChange={e => setSelectedGroupId(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
+              >
+                <option value="">Nenhuma pasta</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Tipo de Autenticação */}
+        <VaultAuthTypeToggle
+          loginType={loginType}
+          onChange={(type) => setLoginType(type)}
+        />
+
+        {/* Credenciais de Acesso */}
+        <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Credenciais</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-dark-subtext mb-1.5">
                 {loginType === 'google' ? 'E-mail da Conta Google' : 'E-mail'}
@@ -199,8 +136,19 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
               <input 
                 type="email" 
                 value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                placeholder="Ex: usuario@gmail.com"
+                onChange={e => setEmail(e.target.value)}
+                placeholder="usuario@exemplo.com"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs text-dark-subtext mb-1.5">Usuário (Opcional)</label>
+              <input 
+                type="text" 
+                value={username} 
+                onChange={e => setUsername(e.target.value)}
+                placeholder="joaosilva"
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
               />
             </div>
@@ -285,7 +233,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
 
         {/* Anotações Seguras */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Anotações Seguras</h3>
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Anotações Seguras</h2>
           <textarea 
             value={notes} 
             onChange={e => setNotes(e.target.value)}

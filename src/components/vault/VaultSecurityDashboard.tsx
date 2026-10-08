@@ -1,154 +1,39 @@
-import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  ShieldCheck,
+  Key,
+  RefreshCw,
+  AlertTriangle,
+  Play,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import type { VaultItem } from '../../types';
 import { GoogleGIcon } from './ui/GoogleGIcon';
+import { useVaultSecurityAnalysis } from './hooks/useVaultSecurityAnalysis';
+import { VaultSecurityCategoryCard } from './ui/VaultSecurityCategoryCard';
 
 interface VaultSecurityDashboardProps {
   items: VaultItem[];
   onEditItem: (item: VaultItem) => void;
 }
 
-interface AnalyzedItem extends VaultItem {
-  strengthScore?: number;
-  breachedCount?: number;
-  isReused?: boolean;
-}
-
 export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashboardProps) {
-  const [analyzing, setAnalyzing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [analyzedItems, setAnalyzedItems] = useState<AnalyzedItem[]>([]);
-  const [hasAnalyzed, setHasAnalyzed] = useState(false);
-
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const startAnalysis = async () => {
-    if (analyzing || items.length === 0) return;
-    setAnalyzing(true);
-    setProgress(0);
-    setHasAnalyzed(false);
-
-    // Deep clone each item to prevent mutating parent component state in-place
-    const results: AnalyzedItem[] = items.map((item) => ({ ...item }));
-    
-    // Group passwords to find reused ones (excluding Google SSO items which don't have passwords)
-    const passwordMap = new Map<string, string[]>(); // password -> itemIds
-    items.forEach(item => {
-      if (item.login_type !== 'google' && item.password && item.password.length > 0) {
-        const existing = passwordMap.get(item.password) || [];
-        existing.push(item.id);
-        passwordMap.set(item.password, existing);
-      }
-    });
-
-    const reusedIds = new Set<string>();
-    passwordMap.forEach(ids => {
-      if (ids.length > 1) {
-        ids.forEach(id => reusedIds.add(id));
-      }
-    });
-
-    // We only need to check breach once per unique password
-    const breachCache = new Map<string, number>();
-
-    const totalChecks = items.length;
-    let completedChecks = 0;
-
-    for (let i = 0; i < results.length; i++) {
-      if (!mountedRef.current) {
-        passwordMap.clear();
-        breachCache.clear();
-        return;
-      }
-
-      const item = results[i];
-      if (item.login_type === 'google' || !item.password) {
-        completedChecks++;
-        if (mountedRef.current) {
-          setProgress(Math.round((completedChecks / totalChecks) * 100));
-        }
-        continue;
-      }
-
-      item.isReused = reusedIds.has(item.id);
-
-      // Check strength safely
-      try {
-        item.strengthScore = await window.api?.vault?.checkStrength(item.password);
-      } catch {
-        item.strengthScore = 0;
-      }
-
-      if (!mountedRef.current) return;
-
-      // Check breach (use cache to avoid duplicate network requests)
-      if (breachCache.has(item.password)) {
-        item.breachedCount = breachCache.get(item.password);
-      } else {
-        try {
-          const breachRes = await window.api?.vault?.checkBreach(item.password);
-          item.breachedCount = breachRes?.count || 0;
-          breachCache.set(item.password, item.breachedCount);
-          // 100ms throttle to prevent rate limiting HIBP API
-          await new Promise(r => setTimeout(r, 100));
-        } catch {
-          item.breachedCount = 0;
-        }
-      }
-
-      if (!mountedRef.current) return;
-
-      completedChecks++;
-      setProgress(Math.round((completedChecks / totalChecks) * 100));
-      setAnalyzedItems([...results]);
-    }
-
-    passwordMap.clear();
-    breachCache.clear();
-
-    if (mountedRef.current) {
-      setAnalyzing(false);
-      setHasAnalyzed(true);
-    }
-  };
-
-  const weakItems = analyzedItems.filter(i => i.login_type !== 'google' && i.strengthScore !== undefined && i.strengthScore < 3);
-  const reusedItems = analyzedItems.filter(i => i.login_type !== 'google' && i.isReused);
-  const breachedItems = analyzedItems.filter(i => i.login_type !== 'google' && i.breachedCount !== undefined && i.breachedCount > 0);
-  const googleItems = analyzedItems.filter(i => i.login_type === 'google');
-
-  // Calculate Health Score (0-100)
-  let score = 100;
-  if (items.length > 0) {
-    const penaltyPerWeak = 5;
-    const penaltyPerReused = 10;
-    const penaltyPerBreached = 20;
-
-    score -= (weakItems.length * penaltyPerWeak);
-    score -= (reusedItems.length * penaltyPerReused);
-    score -= (breachedItems.length * penaltyPerBreached);
-    score = Math.max(0, score);
-  } else {
-    score = 0;
-  }
-
-  const getScoreColor = () => {
-    if (score >= 90) return 'text-emerald-400';
-    if (score >= 70) return 'text-yellow-400';
-    if (score >= 40) return 'text-orange-400';
-    return 'text-red-400';
-  };
+  const {
+    analyzing,
+    progress,
+    hasAnalyzed,
+    weakItems,
+    reusedItems,
+    breachedItems,
+    googleItems,
+    score,
+    getScoreColor,
+    startAnalysis,
+  } = useVaultSecurityAnalysis({ items });
 
   return (
     <div className="flex-1 flex flex-col bg-dark-bg overflow-y-auto p-8 animate-fade-in relative pb-32">
       <div className="max-w-4xl mx-auto w-full">
-        
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-dark-text flex items-center gap-3">
@@ -157,8 +42,8 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
             </h1>
             <p className="text-dark-subtext mt-1">Analise a integridade de todas as suas senhas do cofre.</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={startAnalysis}
             disabled={analyzing || items.length === 0}
             className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2"
@@ -179,31 +64,43 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
             <ShieldCheck size={48} className="mx-auto text-brand-400 mb-4 animate-bounce" />
             <h2 className="text-xl font-semibold text-dark-text mb-2">Verificando {items.length} itens...</h2>
             <div className="w-full max-w-md mx-auto bg-black/30 rounded-full h-2.5 mb-2 overflow-hidden">
-              <div className="bg-brand-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              <div
+                className="bg-brand-500 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
-            <p className="text-sm text-dark-subtext">{progress}% concluído (checando força, repetição e vazamentos...)</p>
+            <p className="text-sm text-dark-subtext">
+              {progress}% concluído (checando força, repetição e vazamentos...)
+            </p>
           </div>
         )}
 
         {hasAnalyzed && !analyzing && (
           <div className="space-y-8 animate-fade-in-up">
-            
             {/* SCORE GERAL */}
             <div className="bg-dark-card/60 border border-white/5 rounded-3xl p-8 shadow-2xl flex items-center justify-between relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              
+
               <div className="z-10">
-                <h2 className="text-lg font-semibold text-dark-subtext mb-1 uppercase tracking-widest">Saúde do Cofre</h2>
+                <h2 className="text-lg font-semibold text-dark-subtext mb-1 uppercase tracking-widest">
+                  Saúde do Cofre
+                </h2>
                 <div className="flex items-end gap-2">
                   <span className={`text-6xl font-bold ${getScoreColor()}`}>{score}</span>
                   <span className="text-2xl text-dark-subtext mb-1">/100</span>
                 </div>
                 {score === 100 ? (
-                  <p className="text-emerald-400 mt-2 flex items-center gap-1"><CheckCircle2 size={16} /> Excelente! Seu cofre está impenetrável.</p>
+                  <p className="text-emerald-400 mt-2 flex items-center gap-1">
+                    <CheckCircle2 size={16} /> Excelente! Seu cofre está impenetrável.
+                  </p>
                 ) : score >= 70 ? (
-                  <p className="text-yellow-400 mt-2 flex items-center gap-1"><AlertCircle size={16} /> Muito bom, mas pode melhorar alguns detalhes.</p>
+                  <p className="text-yellow-400 mt-2 flex items-center gap-1">
+                    <AlertCircle size={16} /> Muito bom, mas pode melhorar alguns detalhes.
+                  </p>
                 ) : (
-                  <p className="text-red-400 mt-2 flex items-center gap-1"><AlertTriangle size={16} /> Atenção! Você tem vulnerabilidades críticas.</p>
+                  <p className="text-red-400 mt-2 flex items-center gap-1">
+                    <AlertTriangle size={16} /> Atenção! Você tem vulnerabilidades críticas.
+                  </p>
                 )}
               </div>
 
@@ -231,92 +128,61 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
 
             {/* LISTAS DETALHADAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              
-              {/* Senhas Vazadas */}
-              <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-red-500/10 text-red-400 rounded-lg"><AlertTriangle size={20} /></div>
-                  <h3 className="text-lg font-semibold text-dark-text">Vazadas ({breachedItems.length})</h3>
-                </div>
-                <p className="text-xs text-dark-subtext mb-4">Senhas expostas na internet. Mude imediatamente.</p>
-                
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {breachedItems.length === 0 ? (
-                    <div className="text-emerald-400 text-sm py-4 text-center bg-emerald-500/5 rounded-xl border border-emerald-500/10">Nenhuma senha vazada!</div>
-                  ) : breachedItems.map(item => (
-                    <div key={item.id} onClick={() => onEditItem(item)} className="p-3 bg-black/20 hover:bg-black/40 border border-white/5 rounded-xl cursor-pointer transition-colors group">
-                      <div className="font-medium text-sm text-dark-text group-hover:text-brand-400 transition-colors">{item.label}</div>
-                      <div className="text-xs text-dark-subtext">{item.username || item.email}</div>
-                      <div className="text-xs text-red-400 mt-1 font-semibold">{item.breachedCount?.toLocaleString()} vazamentos</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <VaultSecurityCategoryCard
+                icon={<AlertTriangle size={20} />}
+                iconBgColor="bg-red-500/10 text-red-400"
+                title="Vazadas"
+                count={breachedItems.length}
+                description="Senhas expostas na internet. Mude imediatamente."
+                emptyMessage="Nenhuma senha vazada!"
+                items={breachedItems}
+                extraBadge={(item) => (
+                  <div className="text-xs text-red-400 mt-1 font-semibold">
+                    {item.breachedCount?.toLocaleString()} vazamentos
+                  </div>
+                )}
+                onEditItem={onEditItem}
+              />
 
-              {/* Senhas Reutilizadas */}
-              <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-orange-500/10 text-orange-400 rounded-lg"><RefreshCw size={20} /></div>
-                  <h3 className="text-lg font-semibold text-dark-text">Reutilizadas ({reusedItems.length})</h3>
-                </div>
-                <p className="text-xs text-dark-subtext mb-4">Usar a mesma senha em vários sites é perigoso.</p>
-                
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {reusedItems.length === 0 ? (
-                    <div className="text-emerald-400 text-sm py-4 text-center bg-emerald-500/5 rounded-xl border border-emerald-500/10">Nenhuma senha repetida!</div>
-                  ) : reusedItems.map(item => (
-                    <div key={item.id} onClick={() => onEditItem(item)} className="p-3 bg-black/20 hover:bg-black/40 border border-white/5 rounded-xl cursor-pointer transition-colors group">
-                      <div className="font-medium text-sm text-dark-text group-hover:text-brand-400 transition-colors">{item.label}</div>
-                      <div className="text-xs text-dark-subtext">{item.username || item.email}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <VaultSecurityCategoryCard
+                icon={<RefreshCw size={20} />}
+                iconBgColor="bg-orange-500/10 text-orange-400"
+                title="Reutilizadas"
+                count={reusedItems.length}
+                description="Usar a mesma senha em vários sites é perigoso."
+                emptyMessage="Nenhuma senha repetida!"
+                items={reusedItems}
+                onEditItem={onEditItem}
+              />
 
-              {/* Senhas Fracas */}
-              <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-yellow-500/10 text-yellow-400 rounded-lg"><Key size={20} /></div>
-                  <h3 className="text-lg font-semibold text-dark-text">Fracas ({weakItems.length})</h3>
-                </div>
-                <p className="text-xs text-dark-subtext mb-4">Fáceis de quebrar. Tente senhas mais longas.</p>
-                
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {weakItems.length === 0 ? (
-                    <div className="text-emerald-400 text-sm py-4 text-center bg-emerald-500/5 rounded-xl border border-emerald-500/10">Nenhuma senha fraca!</div>
-                  ) : weakItems.map(item => (
-                    <div key={item.id} onClick={() => onEditItem(item)} className="p-3 bg-black/20 hover:bg-black/40 border border-white/5 rounded-xl cursor-pointer transition-colors group">
-                      <div className="font-medium text-sm text-dark-text group-hover:text-brand-400 transition-colors">{item.label}</div>
-                      <div className="text-xs text-dark-subtext">{item.username || item.email}</div>
-                      <div className="text-xs text-yellow-400 mt-1">Score: {item.strengthScore}/4</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <VaultSecurityCategoryCard
+                icon={<Key size={20} />}
+                iconBgColor="bg-yellow-500/10 text-yellow-400"
+                title="Fracas"
+                count={weakItems.length}
+                description="Fáceis de quebrar. Tente senhas mais longas."
+                emptyMessage="Nenhuma senha fraca!"
+                items={weakItems}
+                extraBadge={(item) => (
+                  <div className="text-xs text-yellow-400 mt-1">
+                    Score: {item.strengthScore}/4
+                  </div>
+                )}
+                onEditItem={onEditItem}
+              />
 
-              {/* Contas Vinculadas ao Google (SSO) */}
               {googleItems.length > 0 && (
-                <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-white/5 text-white rounded-lg"><GoogleGIcon size={20} /></div>
-                    <h3 className="text-lg font-semibold text-dark-text">Google SSO ({googleItems.length})</h3>
-                  </div>
-                  <p className="text-xs text-dark-subtext mb-4">Acesso federado seguro (sem senha local vulnerável).</p>
-                  
-                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                    {googleItems.map(item => (
-                      <div key={item.id} onClick={() => onEditItem(item)} className="p-3 bg-black/20 hover:bg-black/40 border border-white/5 rounded-xl cursor-pointer transition-colors group">
-                        <div className="font-medium text-sm text-dark-text group-hover:text-brand-400 transition-colors flex items-center justify-between">
-                          <span>{item.label}</span>
-                          <span className="text-[10px] text-emerald-400 font-medium">SSO</span>
-                        </div>
-                        <div className="text-xs text-dark-subtext">{item.email || item.username || 'Conta Google'}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <VaultSecurityCategoryCard
+                  icon={<GoogleGIcon size={20} />}
+                  iconBgColor="bg-white/5 text-white"
+                  title="Google SSO"
+                  count={googleItems.length}
+                  description="Acesso federado seguro (sem senha local vulnerável)."
+                  emptyMessage="Nenhuma conta vinculada."
+                  items={googleItems}
+                  onEditItem={onEditItem}
+                />
               )}
-
             </div>
           </div>
         )}

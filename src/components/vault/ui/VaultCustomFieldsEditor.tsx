@@ -6,7 +6,7 @@ interface VaultCustomFieldsEditorProps {
   onChange: (fields: VaultCustomField[]) => void;
 }
 
-export function VaultCustomFieldsEditor({ customFields, onChange }: VaultCustomFieldsEditorProps) {
+export function VaultCustomFieldsEditor({ customFields = [], onChange }: VaultCustomFieldsEditorProps) {
   const handleAddField = () => {
     onChange([...customFields, { key: '', value: '', type: 'text' }]);
   };
