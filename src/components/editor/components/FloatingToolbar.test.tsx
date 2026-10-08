@@ -21,6 +21,8 @@ describe('FloatingToolbar Component', () => {
       toggleHighlight: vi.fn().mockReturnThis(),
       unsetHighlight: vi.fn().mockReturnThis(),
       toggleSpoiler: vi.fn().mockReturnThis(),
+      setColor: vi.fn().mockReturnThis(),
+      unsetColor: vi.fn().mockReturnThis(),
       run: vi.fn().mockReturnValue(true),
     };
 
@@ -62,6 +64,48 @@ describe('FloatingToolbar Component', () => {
 
     expect(mockEditor.chain).toHaveBeenCalled();
     expect(chainObj.toggleSpoiler).toHaveBeenCalled();
+    expect(chainObj.run).toHaveBeenCalled();
+  });
+
+  it('opens color menu and applies text color', () => {
+    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+
+    const paletteBtn = getByTitle(/Cores e Destaque/i);
+    fireEvent.click(paletteBtn);
+
+    const blueColorBtn = getByTitle('Azul');
+    fireEvent.click(blueColorBtn);
+
+    expect(mockEditor.chain).toHaveBeenCalled();
+    expect(chainObj.setColor).toHaveBeenCalledWith('#3B82F6');
+    expect(chainObj.run).toHaveBeenCalled();
+  });
+
+  it('unsets text color when Padrão is selected', () => {
+    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+
+    const paletteBtn = getByTitle(/Cores e Destaque/i);
+    fireEvent.click(paletteBtn);
+
+    const defaultColorBtn = getByTitle('Cor padrão');
+    fireEvent.click(defaultColorBtn);
+
+    expect(mockEditor.chain).toHaveBeenCalled();
+    expect(chainObj.unsetColor).toHaveBeenCalled();
+    expect(chainObj.run).toHaveBeenCalled();
+  });
+
+  it('opens color menu and applies highlight color', () => {
+    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+
+    const paletteBtn = getByTitle(/Cores e Destaque/i);
+    fireEvent.click(paletteBtn);
+
+    const blueBgBtn = getByTitle('Fundo Azul');
+    fireEvent.click(blueBgBtn);
+
+    expect(mockEditor.chain).toHaveBeenCalled();
+    expect(chainObj.toggleHighlight).toHaveBeenCalledWith({ color: '#3B82F6' });
     expect(chainObj.run).toHaveBeenCalled();
   });
 });

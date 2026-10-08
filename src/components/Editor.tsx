@@ -15,6 +15,7 @@ import { useBlockHandle } from './editor/hooks/useBlockHandle';
 import BlockHandle from './editor/components/BlockHandle';
 import EditorModalHost from './editor/components/EditorModalHost';
 import TableExcelGrips from './editor/components/table/TableExcelGrips';
+import { useTableCellValidation } from './editor/hooks/useTableCellValidation';
 
 interface EditorProps {
   pageId: string | null;
@@ -233,6 +234,9 @@ export default function Editor({
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Cell validation: applies visual CSS classes for typed columns (number, date, select, checkbox)
+  useTableCellValidation(editor);
 
   useEffect(() => {
     if (editor && !editor.isDestroyed && !hasInitializedContentRef.current) {

@@ -270,6 +270,75 @@
   outline-offset: -2px;
 }
 
+/* Typed Column Cell Validation */
+.ProseMirror td.table-cell-invalid {
+  outline: 1px solid rgba(244, 63, 94, 0.35);
+  outline-offset: -1px;
+  background-color: rgba(244, 63, 94, 0.04);
+}
+
+/* Checkbox Column Cell Styling */
+.ProseMirror td.table-cell-checkbox {
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.ProseMirror td.table-cell-checkbox:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.ProseMirror td.table-cell-checkbox-checked {
+  color: #34d399;
+  font-weight: 600;
+}
+
+.ProseMirror td.table-cell-checkbox-unchecked {
+  color: rgba(244, 63, 94, 0.7);
+}
+
+/* Select Column Cell Styling */
+.ProseMirror td.table-cell-select {
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.ProseMirror td.table-cell-select:hover {
+  background-color: rgba(139, 92, 246, 0.06);
+}
+
+.ProseMirror td.table-cell-select:hover::after {
+  content: '▾';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: rgba(167, 139, 250, 0.6);
+  pointer-events: none;
+}
+
+.ProseMirror td.table-cell-select-valid {
+  color: #c4b5fd;
+}
+
+/* Date Column Cell Styling */
+.ProseMirror td.table-cell-date {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ProseMirror td.table-cell-date:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Typed Column Header Indicator (subtle accent on typed th) */
+.ProseMirror th[data-column-type]:not([data-column-type="text"]) {
+  border-bottom: 2px solid rgba(139, 92, 246, 0.4);
+}
+
 /* Question Block Styles - Reset for Tiptap wrapper */
 .question-block {
   display: block;

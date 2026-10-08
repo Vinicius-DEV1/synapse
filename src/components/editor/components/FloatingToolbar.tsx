@@ -1,6 +1,6 @@
 import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link as LinkIcon, Check, X, Trash, EyeOff } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { BG_COLORS } from '../../../utils/colors';
+import { TEXT_COLORS, BG_COLORS } from '../../../utils/colors';
 import type { Editor } from '@tiptap/react';
 
 interface FloatingToolbarProps {
@@ -61,6 +61,13 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
       case 'unlink':
         editor.chain().focus().unsetLink().run();
         break;
+      case 'color':
+        if (value && value !== 'inherit') {
+          editor.chain().focus().setColor(value).run();
+        } else {
+          editor.chain().focus().unsetColor().run();
+        }
+        break;
       case 'highlight':
         if (value) {
           editor.chain().focus().toggleHighlight({ color: value }).run();
@@ -93,6 +100,9 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
     if (e.key === 'Escape') setShowLinkInput(false);
   };
 
+  const rawTextColor = editor.getAttributes('textStyle')?.color;
+  const currentTextColor = typeof rawTextColor === 'string' ? rawTextColor : undefined;
+
   const formatState = {
     bold: editor.isActive('bold'),
     italic: editor.isActive('italic'),
@@ -101,6 +111,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
     code: editor.isActive('code'),
     spoiler: editor.isActive('spoiler'),
     highlight: editor.isActive('highlight'),
+    textColor: currentTextColor,
     link: editor.isActive('link'),
     linkHref: editor.getAttributes('link').href,
   };
@@ -189,29 +200,105 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
           <div className="relative">
             <button
               onClick={() => setShowColors(!showColors)}
-              className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight ? activeClass : inactiveClass}`}
-              title="Destaque"
+              className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight || !!formatState?.textColor ? activeClass : inactiveClass}`}
+              title="Cores e Destaque"
             >
               <Palette size={15} />
             </button>
             {showColors && (
-              <div ref={colorMenuRef} className="absolute bottom-full mb-2 left-0 bg-dark-card border border-white/10 rounded-xl p-2 shadow-xl flex gap-1 z-50">
-                {BG_COLORS.filter(c => c.value !== 'transparent').map(color => (
-                  <button 
-                    key={color.name}
-                    onClick={() => { handleFormat('highlight', color.hex); setShowColors(false); }}
-                    className="w-6 h-6 rounded-full border border-white/20 hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
-                  />
-                ))}
-                <button 
-                  onClick={() => { handleFormat('highlight', ''); setShowColors(false); }}
-                  className="w-6 h-6 rounded-full border border-white/20 hover:scale-110 transition-transform bg-transparent flex items-center justify-center text-white/50 hover:text-white"
-                  title="Remover Destaque"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
+              <div
+                ref={colorMenuRef}
+                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card/95 backdrop-blur-xl border border-white/10 rounded-xl p-2.5 shadow-2xl flex flex-col gap-2 min-w-[210px] z-50 animate-scale-in"
+              >
+                {/* Cor do Texto */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 px-0.5">
+                    <span className="text-[10px] font-bold text-dark-subtext uppercase tracking-wider">
+                      Cor do Texto
+                    </span>
+                    {formatState?.textColor && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleFormat('color', '');
+                          setShowColors(false);
+                        }}
+                        className="text-[10px] text-brand-400 hover:text-brand-300 transition-colors"
+                        title="Restaurar cor padrão"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {TEXT_COLORS.map((c) => (
+                      <button
+                        key={`text-${c.name}`}
+                        type="button"
+                        onClick={() => {
+                          handleFormat('color', c.value);
+                          setShowColors(false);
+                        }}
+                        className="w-6 h-6 rounded-full border border-white/15 hover:scale-110 hover:border-brand-400 transition-all flex items-center justify-center text-[10px] font-bold"
+                        style={{
+                          backgroundColor: c.value === 'inherit' ? '#262533' : c.hex,
+                          color: '#fff',
+                        }}
+                        title={c.value === 'inherit' ? 'Cor padrão' : c.name}
+                      >
+                        {c.value === 'inherit' ? 'A' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/5" />
+
+                {/* Destaque (Marca-texto) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 px-0.5">
+                    <span className="text-[10px] font-bold text-dark-subtext uppercase tracking-wider">
+                      Destaque
+                    </span>
+                    {formatState?.highlight && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleFormat('highlight', '');
+                          setShowColors(false);
+                        }}
+                        className="text-[10px] text-brand-400 hover:text-brand-300 transition-colors"
+                        title="Remover destaque"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {BG_COLORS.map((color) => (
+                      <button
+                        key={`bg-${color.name}`}
+                        type="button"
+                        onClick={() => {
+                          if (color.value === 'transparent') {
+                            handleFormat('highlight', '');
+                          } else {
+                            handleFormat('highlight', color.hex);
+                          }
+                          setShowColors(false);
+                        }}
+                        className="w-6 h-6 rounded-md border border-white/15 hover:scale-110 hover:border-brand-400 transition-all flex items-center justify-center text-xs font-bold"
+                        style={{
+                          backgroundColor: color.value === 'transparent' ? '#262533' : color.hex,
+                          color: color.hex === 'transparent' ? 'rgba(255,255,255,0.4)' : '#fff',
+                        }}
+                        title={color.value === 'transparent' ? 'Sem destaque' : color.name}
+                      >
+                        {color.value === 'transparent' ? <X size={12} /> : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>

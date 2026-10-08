@@ -7,6 +7,8 @@ export const BlockquoteToggle = Node.create({
   group: 'block',
   content: 'block+',
   draggable: true,
+  isolating: true,
+  defining: true,
 
   addAttributes() {
     return {

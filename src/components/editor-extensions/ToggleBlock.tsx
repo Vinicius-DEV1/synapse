@@ -7,6 +7,8 @@ export const ToggleBlock = Node.create({
   group: 'block',
   content: 'block+',
   draggable: true,
+  isolating: true,
+  defining: true,
 
   addAttributes() {
     return {
