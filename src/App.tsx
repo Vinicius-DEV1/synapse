@@ -6,7 +6,7 @@ import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
 import { FocusProvider, useFocusActions } from './store/FocusContext';
 import Sidebar from './components/layout/sidebar/Sidebar';
 import TabBar from './components/layout/TabBar';
-import ContextMenu from './components/modals/ContextMenu';
+import { AppContextMenu } from './components/layout/AppContextMenu';
 import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
@@ -45,18 +45,12 @@ function AppContent() {
 
   // Prevent default window-level file drop navigation (e.g. WebKitGTK navigating to file://)
   useEffect(() => {
-    const handleWindowDragOver = (e: DragEvent) => {
-      e.preventDefault();
-    };
-    const handleWindowDrop = (e: DragEvent) => {
-      e.preventDefault();
-    };
-
-    window.addEventListener('dragover', handleWindowDragOver);
-    window.addEventListener('drop', handleWindowDrop);
+    const preventDrag = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', preventDrag);
+    window.addEventListener('drop', preventDrag);
     return () => {
-      window.removeEventListener('dragover', handleWindowDragOver);
-      window.removeEventListener('drop', handleWindowDrop);
+      window.removeEventListener('dragover', preventDrag);
+      window.removeEventListener('drop', preventDrag);
     };
   }, []);
   
@@ -106,8 +100,6 @@ function AppContent() {
       }
     }
   });
-
-
 
   const loadPages = useCallback(async () => {
     if (window.api) {
@@ -253,51 +245,17 @@ function AppContent() {
 
       {/* Context Menu */}
       {state.contextMenu && (
-        (() => {
-          const contextPage = state.pages.find(p => p.id === state.contextMenu!.pageId);
-          return (
-            <ContextMenu
-              x={state.contextMenu.x}
-              y={state.contextMenu.y}
-              pageId={state.contextMenu.pageId}
-              isPinned={!!contextPage?.is_pinned}
-              onOpenInNewTab={(id) => {
-                dispatch({ type: 'HIDE_CONTEXT_MENU' });
-                const tabId = 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-                dispatch({
-                  type: 'ADD_TAB',
-                  tab: {
-                    id: tabId,
-                    module: 'notes',
-                    pageId: id,
-                    unsavedContent: null,
-                    scrollY: 0,
-                  },
-                });
-              }}
-              onCreateSubPage={handleCreatePage}
-              onImportSubPage={handleImportPage}
-              onExportPage={handleExportPage}
-              onSharePage={(id) => {
-                window.dispatchEvent(new CustomEvent('caderno-open-share-page', { detail: { pageId: id } }));
-              }}
-              onDelete={(id) => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: id })}
-              onRename={(id) => setRenamePageId(id)}
-              onMovePage={(id) => setMovePageId(id)}
-              onTogglePin={(id) => {
-                const isPinning = !contextPage?.is_pinned;
-                const maxOrder = state.pages
-                  .filter(p => p.is_pinned)
-                  .reduce((max, p) => Math.max(max, p.pinned_order || 0), -1);
-                handleUpdatePage(id, {
-                  is_pinned: isPinning ? 1 : 0,
-                  pinned_order: isPinning ? maxOrder + 1 : 0,
-                });
-              }}
-              onClose={() => dispatch({ type: 'HIDE_CONTEXT_MENU' })}
-            />
-          );
-        })()
+        <AppContextMenu
+          contextMenu={state.contextMenu}
+          pages={state.pages}
+          dispatch={dispatch}
+          handleCreatePage={handleCreatePage}
+          handleImportPage={handleImportPage}
+          handleExportPage={handleExportPage}
+          handleUpdatePage={handleUpdatePage}
+          setRenamePageId={setRenamePageId}
+          setMovePageId={setMovePageId}
+        />
       )}
 
 

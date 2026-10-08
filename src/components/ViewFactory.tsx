@@ -9,24 +9,20 @@ function lazyWithRetry<T extends ComponentType<any>>(
   return lazy(async () => {
     try {
       return await componentImport();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn('[ViewFactory] Falha ao carregar chunk de módulo, tentando atualizar...', error);
       const isRefreshed = sessionStorage.getItem('chunk_retry_' + window.location.pathname);
       if (!isRefreshed) {
         sessionStorage.setItem('chunk_retry_' + window.location.pathname, 'true');
         window.location.reload();
-        return new Promise(() => {}); // Never resolves as reload is triggered
+        return new Promise<{ default: T }>(() => {}); // Never resolves as reload is triggered
       }
       throw error;
     }
   });
 }
 
-// UI navigates to 'settings' module as a tab, although type
-// `Tab['module']` (defined in src/types/store.ts) does not include it yet
-// value. We widen the type here to reflect the actual runtime value
-// (same convention used in src/components/layout/sidebar/Sidebar.tsx).
-type ModuleId = Tab['module'] | 'settings';
+type ModuleId = Tab['module'];
 
 const HomeView = lazyWithRetry(() => import('./home/HomeView'));
 const PageView = lazyWithRetry(() => import('./page-view/PageView'));
