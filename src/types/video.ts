@@ -48,3 +48,26 @@ export interface VideoWord {
   deleted_at?: string;
 }
 
+export interface YoutubeWatchedRecord {
+  id: string;
+  video_id: string;
+  title: string;
+  channel_name: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface YoutubeSummaryRecord {
+  id: string;
+  video_id: string;
+  title?: string;
+  channel_name?: string;
+  summary?: string;
+  raw_transcript?: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+

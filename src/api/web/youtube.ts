@@ -1,3 +1,7 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
+import type { YoutubeWatchedRecord, YoutubeSummaryRecord } from '../../types/video';
+
 // Helper to parse ISO8601 duration
 const parseISO8601Duration = (duration: string) => {
   const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
@@ -18,21 +22,26 @@ const extractPlaylistId = (url: string) => {
   return match ? match[1] : null;
 };
 
-export const webYoutubeApi = (db: any, generateId: () => string) => ({
-  getWatched: async (videoIds: string[]) => {
+export const webYoutubeApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+  getWatched: async (videoIds: string[]): Promise<string[]> => {
     if (!videoIds || videoIds.length === 0) return [];
     const watched: string[] = [];
     for (const vid of videoIds) {
-      const all = await db.getAllFromIndex('youtube_watched', 'video_id', vid) || [];
-      const item = all.find((x: any) => !x.deleted_at);
+      const all = (await db.getAllFromIndex('youtube_watched', 'video_id', vid)) || [];
+      const item = all.find((x) => !x.deleted_at);
       if (item) watched.push(vid);
     }
     return watched;
   },
-  setWatched: async (videoId: string, isWatched: boolean, title?: string, channel?: string) => {
-    const all = await db.getAllFromIndex('youtube_watched', 'video_id', videoId) || [];
+  setWatched: async (
+    videoId: string,
+    isWatched: boolean,
+    title?: string,
+    channel?: string
+  ): Promise<boolean> => {
+    const all = (await db.getAllFromIndex('youtube_watched', 'video_id', videoId)) || [];
     const existing = all[0];
-    
+
     if (isWatched) {
       if (existing) {
         existing.deleted_at = null;
@@ -41,15 +50,16 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         if (channel) existing.channel_name = channel;
         await db.put('youtube_watched', existing);
       } else {
-        await db.put('youtube_watched', {
+        const newWatched: YoutubeWatchedRecord = {
           id: generateId(),
           video_id: videoId,
           title: title || '',
           channel_name: channel || '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          deleted_at: null
-        });
+          deleted_at: null,
+        };
+        await db.put('youtube_watched', newWatched);
       }
     } else {
       if (existing) {
@@ -60,7 +70,8 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
     }
     return true;
   },
-  getSummary: async (videoId: string) => {
+
+  getSummary: async (videoId: string): Promise<YoutubeSummaryRecord | null> => {
     try {
       const all = (await db.getAllFromIndex('youtube_summaries', 'video_id', videoId)) || [];
       return all[0] || null;
@@ -68,7 +79,14 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
       return null;
     }
   },
-  saveSummary: async (videoId: string, title?: string, channel?: string, summary?: string, rawTranscript?: string) => {
+
+  saveSummary: async (
+    videoId: string,
+    title?: string,
+    channel?: string,
+    summary?: string,
+    rawTranscript?: string
+  ): Promise<boolean> => {
     try {
       const all = (await db.getAllFromIndex('youtube_summaries', 'video_id', videoId)) || [];
       const existing = all[0];
@@ -80,7 +98,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
         existing.updated_at = new Date().toISOString();
         await db.put('youtube_summaries', existing);
       } else {
-        await db.put('youtube_summaries', {
+        const newSummary: YoutubeSummaryRecord = {
           id: generateId(),
           video_id: videoId,
           title: title || '',
@@ -89,7 +107,8 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
           raw_transcript: rawTranscript || '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        };
+        await db.put('youtube_summaries', newSummary);
       }
       return true;
     } catch {

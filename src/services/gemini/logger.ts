@@ -1,16 +1,28 @@
 import { getWebDb } from '../db-web';
 
+export interface AiLogEntry {
+  id: string;
+  module: string;
+  model: string;
+  prompt: string;
+  response: string | null;
+  error: string | null;
+  status: 'error' | 'success';
+  token_usage?: unknown;
+  created_at: string;
+}
+
 export async function logAIApiCall(
   module: string,
   model: string,
-  prompt: any,
-  response: any,
+  prompt: unknown,
+  response: unknown,
   error?: string,
-  tokenUsage?: any
+  tokenUsage?: unknown
 ): Promise<void> {
   try {
     const db = await getWebDb();
-    await db.put('ai_logs', {
+    const log: AiLogEntry = {
       id: crypto.randomUUID(),
       module,
       model,
@@ -19,8 +31,9 @@ export async function logAIApiCall(
       error: error || null,
       status: error ? 'error' : 'success',
       token_usage: tokenUsage || null,
-      created_at: new Date().toISOString()
-    });
+      created_at: new Date().toISOString(),
+    };
+    await db.put('ai_logs', log);
   } catch (e) {
     console.warn('Failed to log AI call', e);
   }

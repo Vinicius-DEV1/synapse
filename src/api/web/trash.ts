@@ -35,7 +35,7 @@ export const webTrashApi = (db: IDBPDatabase<CadernoDBSchema>): TrashApi => ({
 
     for (const [table, meta] of Object.entries(tables) as [TrashSupportedStore, { type: string; titleKey: string }][]) {
       try {
-        const all = ((await db.getAll(table)) as Array<Record<string, unknown>>) || [];
+        const all = ((await db.getAll(table)) as unknown as Array<Record<string, unknown>>) || [];
         const deleted = all.filter((x) => Boolean(x.deleted_at));
         for (const item of deleted) {
           items.push({
@@ -71,7 +71,7 @@ export const webTrashApi = (db: IDBPDatabase<CadernoDBSchema>): TrashApi => ({
     if (item) {
       item.deleted_at = null;
       item.updated_at = new Date().toISOString();
-      await db.put(table, item);
+      await (db as any).put(table, item);
       return true;
     }
     return false;
@@ -91,7 +91,7 @@ export const webTrashApi = (db: IDBPDatabase<CadernoDBSchema>): TrashApi => ({
     ];
     for (const table of tables) {
       try {
-        const all = ((await db.getAll(table)) as Array<Record<string, unknown>>) || [];
+        const all = ((await db.getAll(table)) as unknown as Array<Record<string, unknown>>) || [];
         const deleted = all.filter((x) => Boolean(x.deleted_at));
         for (const item of deleted) {
           await db.delete(table, String(item.id));

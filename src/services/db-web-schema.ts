@@ -36,6 +36,26 @@ import type { Transaction, WishlistItem, Account } from '../types/finance';
 import type { CalendarEvent } from '../types/calendar';
 import type { AppNotification } from '../types/core';
 import type { Habit, HabitLog } from '../types/habits';
+import type { Page, PageHistoryEntry } from '../types/notes';
+import type { LofiItem } from '../types/lofi';
+import type {
+  VideoItem,
+  VideoWord,
+  YoutubeWatchedRecord,
+  YoutubeSummaryRecord,
+} from '../types/video';
+import type { TutorSession, TutorMessage, TutorMemory } from '../types/practice';
+import type { ActivityLog } from '../types';
+import type { AiLogEntry } from './gemini/logger';
+
+export interface LinkMetadataCacheEntry {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -48,8 +68,8 @@ export interface SharedPageKeyRecord {
 // NOTE: IDB schema uses 'value: any' for CRDT flexibility and dynamic document entities
 // across unstructured stores, avoiding serialization/unmarshalling friction with external models.
 export interface CadernoDBSchema extends DBSchema {
-  pages: { key: string; value: any; indexes: { parent_id: string } };
-  page_history: { key: string; value: any; indexes: { page_id: string } };
+  pages: { key: string; value: Page; indexes: { parent_id: string } };
+  page_history: { key: string; value: PageHistoryEntry; indexes: { page_id: string } };
   transactions: { key: string; value: Transaction; indexes: { date: string } };
   wishlist: { key: string; value: WishlistItem };
   finance_accounts: { key: string; value: Account };
@@ -63,16 +83,16 @@ export interface CadernoDBSchema extends DBSchema {
   library_book_files: { key: string; value: { id: string; data: ArrayBuffer | Blob } };
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
-  videos: { key: string; value: any };
-  video_words: { key: string; value: any; indexes: { video_id: string } };
-  youtube_watched: { key: string; value: any; indexes: { video_id: string } };
-  youtube_summaries: { key: string; value: any; indexes: { video_id: string } };
-  lofis: { key: string; value: any };
+  videos: { key: string; value: VideoItem };
+  video_words: { key: string; value: VideoWord; indexes: { video_id: string } };
+  youtube_watched: { key: string; value: YoutubeWatchedRecord; indexes: { video_id: string } };
+  youtube_summaries: { key: string; value: YoutubeSummaryRecord; indexes: { video_id: string } };
+  lofis: { key: string; value: LofiItem };
   culture_items: { key: string; value: CultureItem };
   culture_episodes: { key: string; value: CultureEpisode; indexes: { item_id: string } };
   focus_sessions: { key: string; value: Session };
   alarms: { key: number; value: Alarm };
-  activity_logs: { key: string; value: any };
+  activity_logs: { key: string; value: ActivityLog };
   calendar_events: { key: string; value: CalendarEvent };
   notifications: { key: string; value: AppNotification };
   vault_groups: { key: string; value: VaultGroup };
@@ -82,9 +102,9 @@ export interface CadernoDBSchema extends DBSchema {
     value: VaultPasswordHistoryEntry;
     indexes: { item_id: string };
   };
-  tutor_sessions: { key: string; value: any };
-  tutor_messages: { key: string; value: any; indexes: { session_id: string } };
-  tutor_memories: { key: string; value: any };
+  tutor_sessions: { key: string; value: TutorSession };
+  tutor_messages: { key: string; value: TutorMessage; indexes: { session_id: string } };
+  tutor_memories: { key: string; value: TutorMemory };
   anki_decks: { key: string; value: AnkiDeckRecord };
   anki_notes: { key: string; value: AnkiNoteRecord; indexes: { deck_id: string } };
   anki_cards: { key: string; value: AnkiCardRecord; indexes: { deck_id: string; note_id: string } };
@@ -94,7 +114,7 @@ export interface CadernoDBSchema extends DBSchema {
   files: { key: string; value: FileItem };
   file_folders: { key: string; value: FileFolder };
   file_page_links: { key: string; value: FilePageLink; indexes: { file_id: string; page_id: string } };
-  ai_logs: { key: string; value: any; indexes: { module: string } };
+  ai_logs: { key: string; value: AiLogEntry; indexes: { module: string } };
   ai_prompts: {
     key: string;
     value: { id: string; module: string; content: string; updated_at?: string };
@@ -113,7 +133,7 @@ export interface CadernoDBSchema extends DBSchema {
     value: QuizPageLink;
     indexes: { battery_id: string; page_id: string };
   };
-  link_metadata_cache: { key: string; value: any };
+  link_metadata_cache: { key: string; value: LinkMetadataCacheEntry };
   scraps: {
     key: string;
     value: { id: string; encrypted_data: ArrayBuffer; updated_at?: string };
