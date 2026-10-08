@@ -8,13 +8,15 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     try {
       const cached = await window.api.links.getMetadata(url);
       if (cached && (cached.title || cached.channel)) {
+        const rawPlaylistCount = cached.playlistCount ?? cached.playlist_count;
+        const rawUploadDate = cached.uploadDate ?? cached.upload_date;
         return {
-          title: cached.title,
-          channel: cached.channel,
-          duration: cached.duration,
+          title: typeof cached.title === 'string' ? cached.title : null,
+          channel: typeof cached.channel === 'string' ? cached.channel : null,
+          duration: typeof cached.duration === 'number' ? cached.duration : null,
           isPlaylist: Boolean(cached.isPlaylist || cached.is_playlist),
-          playlistCount: cached.playlistCount ?? cached.playlist_count,
-          uploadDate: cached.uploadDate ?? cached.upload_date,
+          playlistCount: typeof rawPlaylistCount === 'number' ? rawPlaylistCount : null,
+          uploadDate: typeof rawUploadDate === 'string' ? rawUploadDate : null,
         };
       }
     } catch (e) {
