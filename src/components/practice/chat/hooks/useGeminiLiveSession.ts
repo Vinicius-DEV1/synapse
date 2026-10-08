@@ -255,8 +255,8 @@ export function useGeminiLiveSession({
         };
 
         wsRef.current = ws;
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
       }
     },
     [session.custom_prompt, memories, globalSystemPrompt, handleWsMessage]

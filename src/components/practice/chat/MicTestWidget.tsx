@@ -27,8 +27,8 @@ export function MicTestWidget() {
       recorder.start();
       mediaRecorderRef.current = recorder;
       setState('recording');
-    } catch (e: any) {
-      console.error(e);
+    } catch (e) {
+      console.error('Failed to access microphone for test:', e);
       triggerToast('Erro ao acessar microfone para teste.', 'error');
     }
   };
