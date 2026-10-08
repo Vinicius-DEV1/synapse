@@ -1,23 +1,27 @@
-export const createStatsApi = (db: any, generateId: () => string) => ({
-  startReadingSession: async (data: any) => {
-    const session = { id: generateId(), ...data, started_at: new Date().toISOString() };
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { ReadingSession, GlobalReadingStats } from '../../../types/library';
+
+export const createStatsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+  startReadingSession: async (data: Omit<ReadingSession, 'id' | 'started_at'>): Promise<ReadingSession> => {
+    const session: ReadingSession = { id: generateId(), ...data, started_at: new Date().toISOString() };
     await db.put('library_reading_sessions', session);
     return session;
   },
-  endReadingSession: async (data: any) => {
+  endReadingSession: async (data: Partial<ReadingSession> & { id: string }): Promise<boolean> => {
     const existing = await db.get('library_reading_sessions', data.id);
     if (existing) {
       await db.put('library_reading_sessions', { ...existing, ...data, ended_at: new Date().toISOString() });
     }
     return true;
   },
-  getReadingStats: async (): Promise<{ bookStats?: any; globalStats: any }> => {
+  getReadingStats: async (): Promise<{ bookStats?: Record<string, unknown>; globalStats: GlobalReadingStats }> => {
     try {
-      const books = (await db.getAll('library_books') || []).filter((b: any) => !b.deleted_at);
-      const sessions = (await db.getAll('library_reading_sessions') || []).filter((s: any) => !s.deleted_at);
+      const books = ((await db.getAll('library_books')) || []).filter((b) => !b.deleted_at);
+      const sessions = ((await db.getAll('library_reading_sessions')) || []).filter((s) => !s.deleted_at);
 
-      const totalBooksStarted = books.filter((b: any) => b.reading_status === 'reading').length;
-      const totalBooksFinished = books.filter((b: any) => b.reading_status === 'finished').length;
+      const totalBooksStarted = books.filter((b) => b.reading_status === 'reading').length;
+      const totalBooksFinished = books.filter((b) => b.reading_status === 'finished').length;
 
       let totalPagesRead = 0;
       let totalDurationSecs = 0;
@@ -88,7 +92,7 @@ export const createStatsApi = (db: any, generateId: () => string) => ({
       }
 
       const totalTimeMinutes = Math.round(totalDurationSecs / 60);
-      const highlights = (await db.getAll('library_highlights') || []).filter((h: any) => !h.deleted_at);
+      const highlights = ((await db.getAll('library_highlights')) || []).filter((h) => !h.deleted_at);
       const totalHighlights = highlights.length;
 
       return {

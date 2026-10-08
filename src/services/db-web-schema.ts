@@ -18,6 +18,15 @@ import type {
   AnkiReviewRecord,
   AnkiDeckSettings,
 } from '../types/anki';
+import type {
+  LibraryBook,
+  LibraryHighlight,
+  LibraryBookmark,
+  LibraryCollection,
+  LibraryBookCollectionRecord,
+  ReadingSession,
+  OcrCacheEntry,
+} from '../types/library';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -35,14 +44,14 @@ export interface CadernoDBSchema extends DBSchema {
   transactions: { key: string; value: any; indexes: { date: string } };
   wishlist: { key: string; value: any };
   finance_accounts: { key: string; value: any };
-  library_books: { key: string; value: any; indexes: { reading_status: string } };
-  library_highlights: { key: string; value: any; indexes: { book_id: string } };
-  library_bookmarks: { key: string; value: any; indexes: { book_id: string } };
-  library_collections: { key: string; value: any };
-  library_book_collections: { key: string; value: any; indexes: { book_id: string } };
-  library_reading_sessions: { key: string; value: any; indexes: { book_id: string } };
-  library_ocr_cache: { key: string; value: any; indexes: { book_id: string } };
-  library_book_files: { key: string; value: { id: string; data: ArrayBuffer } };
+  library_books: { key: string; value: LibraryBook; indexes: { reading_status: string } };
+  library_highlights: { key: string; value: LibraryHighlight; indexes: { book_id: string } };
+  library_bookmarks: { key: string; value: LibraryBookmark; indexes: { book_id: string } };
+  library_collections: { key: string; value: LibraryCollection };
+  library_book_collections: { key: string; value: LibraryBookCollectionRecord; indexes: { book_id: string } };
+  library_reading_sessions: { key: string; value: ReadingSession; indexes: { book_id: string } };
+  library_ocr_cache: { key: string; value: OcrCacheEntry; indexes: { book_id: string } };
+  library_book_files: { key: string; value: { id: string; data: ArrayBuffer | Blob } };
   config: { key: string; value: any };
   image_cache: { key: string; value: { id: string; data: ArrayBuffer; mimeType: string } };
   videos: { key: string; value: any };

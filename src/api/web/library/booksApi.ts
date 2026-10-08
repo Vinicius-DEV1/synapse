@@ -1,13 +1,20 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { LibraryBook } from '../../../types/library';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { getDecryptedPdf, encryptFileChunked } from '../../../services/storage';
 
-export const createBooksApi = (db: any, generateId: () => string, getMasterKey: () => CryptoKey | null) => ({
-  getBooks: async () => {
+export const createBooksApi = (
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  getMasterKey: () => CryptoKey | null
+) => ({
+  getBooks: async (): Promise<LibraryBook[]> => {
     const all = await db.getAll('library_books');
-    return all.filter((b: any) => !b.deleted_at);
+    return all.filter((b) => !b.deleted_at);
   },
 
-  getBook: async (id: string) => {
+  getBook: async (id: string): Promise<LibraryBook | null> => {
     const book = await db.get('library_books', id);
     if (!book || book.deleted_at) return null;
     return book;
@@ -39,7 +46,7 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
         }
         
         try {
-          const importedBooks: any[] = [];
+          const importedBooks: LibraryBook[] = [];
           const total = files.length;
           for (let i = 0; i < total; i++) {
             const file = files[i];
@@ -78,7 +85,7 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
             }
             
             const title = file.name.replace(/\.(pdf|epub)$/i, '');
-            const book = {
+            const book: LibraryBook = {
               id: bookId,
               title,
               author: '',
@@ -209,7 +216,7 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
     return false;
   },
 
-  updateBook: async (book: any) => {
+  updateBook: async (book: Partial<LibraryBook> & { id: string }): Promise<number> => {
     const existing = await db.get('library_books', book.id);
     if (!existing) return 0;
     await db.put('library_books', { ...existing, ...book, updated_at: new Date().toISOString() });

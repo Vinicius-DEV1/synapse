@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { LibraryHeader } from './ui/LibraryHeader';
 import { LibraryBulkActionsBar } from './ui/LibraryBulkActionsBar';
@@ -10,9 +10,7 @@ import {
   ReadingStatsModal,
   UploadResultModal,
 } from './modals';
-
-const PdfReader = lazy(() => import('./pdf/PdfReader'));
-const EpubReader = lazy(() => import('./epub/EpubReader'));
+import { LibraryReaderHost } from './LibraryReaderHost';
 import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
@@ -154,36 +152,12 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
   };
 
   if (selectedBook) {
-    const filePathLower = (selectedBook.file_path || '').toLowerCase();
-    const titleLower = (selectedBook.title || '').toLowerCase();
-    const origNameLower = (selectedBook.original_name || '').toLowerCase();
-
-    const isEpub = filePathLower.endsWith('.epub') || 
-                   filePathLower.endsWith('.epub.enc') ||
-                   filePathLower.includes('.epub.') ||
-                   titleLower.endsWith('.epub') ||
-                   origNameLower.endsWith('.epub');
-
-    if (isEpub) {
-      return (
-        <Suspense fallback={<div className="h-full flex items-center justify-center bg-dark-bg"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>}>
-          <EpubReader
-            book={selectedBook}
-            onBack={handleBackFromReader}
-            onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
-          />
-        </Suspense>
-      );
-    }
-
     return (
-      <Suspense fallback={<div className="h-full flex items-center justify-center bg-dark-bg"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>}>
-        <PdfReader
-          book={selectedBook}
-          onBack={handleBackFromReader}
-          onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
-        />
-      </Suspense>
+      <LibraryReaderHost
+        book={selectedBook}
+        onBack={handleBackFromReader}
+        onUpdateBook={(updates) => handleUpdateBook(selectedBook.id, updates)}
+      />
     );
   }
 
@@ -197,10 +171,10 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         handleImport={handleImport}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        sortBy={sortBy as any}
-        setSortBy={setSortBy as any}
-        sortOrder={sortOrder as any}
-        setSortOrder={setSortOrder as any}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
         showSortDropdown={showSortDropdown}
         setShowSortDropdown={setShowSortDropdown}
         statusFilter={statusFilter}

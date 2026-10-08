@@ -7,7 +7,7 @@ export interface LibraryBook {
   id: string;
   title: string;
   author: string;
-  file_path: string;
+  file_path: string | null;
   original_name: string;
   cover_image: string;
   total_pages: number;
@@ -28,6 +28,7 @@ export interface LibraryBook {
   current_page?: number | null;
   /** Serialized JSON reading preferences: { fontSize, readingMode, fontFamily, textWidth } */
   reading_preferences?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface LibraryCollection {
@@ -35,6 +36,17 @@ export interface LibraryCollection {
   name: string;
   color: string;
   created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+}
+
+export interface LibraryBookCollectionRecord {
+  id: string;
+  book_id: string;
+  collection_id: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface LibraryHighlight {
@@ -47,6 +59,8 @@ export interface LibraryHighlight {
   highlight_type: HighlightType;
   note: string;
   created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface LibraryBookmark {
@@ -55,6 +69,8 @@ export interface LibraryBookmark {
   page_number: number;
   label: string;
   created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface OcrCacheEntry {
@@ -63,6 +79,7 @@ export interface OcrCacheEntry {
   page_number: number;
   text_content: string;
   word_boxes: string;
+  deleted_at?: string | null;
 }
 
 export interface ReadingSession {
@@ -73,6 +90,7 @@ export interface ReadingSession {
   pages_read: number;
   start_page: number;
   end_page: number;
+  deleted_at?: string | null;
 }
 
 export interface BookReadingStats {

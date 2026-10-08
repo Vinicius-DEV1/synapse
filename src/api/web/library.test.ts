@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
 import { webLibraryApi } from './library';
 
 describe('webLibraryApi Unit Tests', () => {
-  let inMemoryDb: Record<string, any[]>;
+  let inMemoryDb: Record<string, unknown[]>;
   let idCounter = 0;
   const generateId = () => `id_${++idCounter}`;
   const getMasterKey = () => null;
@@ -37,9 +39,9 @@ describe('webLibraryApi Unit Tests', () => {
         }
       },
       getAllFromIndex: async (table: string, indexKey: string, indexValue: string) => {
-        return (inMemoryDb[table] || []).filter((item) => item[indexKey] === indexValue);
+        return (inMemoryDb[table] || []).filter((item: any) => item[indexKey] === indexValue);
       },
-    };
+    } as unknown as IDBPDatabase<CadernoDBSchema>;
   };
 
   let api: ReturnType<typeof webLibraryApi>;

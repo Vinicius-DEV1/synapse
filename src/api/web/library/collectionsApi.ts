@@ -1,23 +1,26 @@
-export const createCollectionsApi = (db: any, generateId: () => string) => ({
-  getCollections: async () => {
-    const all = await db.getAll('library_collections') || [];
-    return all.filter((c: any) => !c.deleted_at);
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { LibraryCollection } from '../../../types/library';
+
+export const createCollectionsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+  getCollections: async (): Promise<LibraryCollection[]> => {
+    const all = (await db.getAll('library_collections')) || [];
+    return all.filter((c) => !c.deleted_at);
   },
-  createCollection: async (c: any) => {
-    const col = { id: generateId(), ...c, created_at: new Date().toISOString() };
+  createCollection: async (c: Omit<LibraryCollection, 'id' | 'created_at'>): Promise<LibraryCollection> => {
+    const col: LibraryCollection = { id: generateId(), ...c, created_at: new Date().toISOString() };
     await db.put('library_collections', col);
     return col;
   },
-  updateCollection: async (c: any) => {
+  updateCollection: async (c: Partial<LibraryCollection> & { id: string }): Promise<number> => {
     const existing = await db.get('library_collections', c.id);
     if (existing) await db.put('library_collections', { ...existing, ...c });
     return 1;
   },
-  deleteCollection: async (id: string) => {
+  deleteCollection: async (id: string): Promise<boolean> => {
     const existing = await db.get('library_collections', id);
     if (existing) {
       existing.deleted_at = new Date().toISOString();
-      existing.updated_at = new Date().toISOString();
       await db.put('library_collections', existing);
     }
     return true;
@@ -41,7 +44,7 @@ export const createCollectionsApi = (db: any, generateId: () => string) => ({
       }
     }
     
-    const existingColIds = existing.map((e: any) => e.collection_id);
+    const existingColIds = existing.map((e) => e.collection_id);
     const newCols = collectionIds.filter((id: string) => !existingColIds.includes(id));
     for (const colId of newCols) {
       await db.put('library_book_collections', {
@@ -55,17 +58,17 @@ export const createCollectionsApi = (db: any, generateId: () => string) => ({
     }
     return true;
   },
-  getBookCollections: async (bookId: string) => {
+  getBookCollections: async (bookId: string): Promise<LibraryCollection[]> => {
     const bookCols = await db.getAllFromIndex('library_book_collections', 'book_id', bookId);
-    const activeCols = bookCols.filter((r: any) => !r.deleted_at).map((r: any) => r.collection_id);
+    const activeCols = bookCols.filter((r) => !r.deleted_at).map((r) => r.collection_id);
     
     const allCollections = await db.getAll('library_collections');
-    return allCollections.filter((c: any) => activeCols.includes(c.id) && !c.deleted_at);
+    return allCollections.filter((c) => activeCols.includes(c.id) && !c.deleted_at);
   },
   getAllBookCollections: async (): Promise<Record<string, string[]>> => {
-    const allBookCols = await db.getAll('library_book_collections') || [];
-    const allCols = await db.getAll('library_collections') || [];
-    const validColIds = new Set(allCols.filter((c: any) => !c.deleted_at).map((c: any) => c.id));
+    const allBookCols = (await db.getAll('library_book_collections')) || [];
+    const allCols = (await db.getAll('library_collections')) || [];
+    const validColIds = new Set(allCols.filter((c) => !c.deleted_at).map((c) => c.id));
     
     const map: Record<string, string[]> = {};
     for (const r of allBookCols) {

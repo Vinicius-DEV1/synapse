@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   X,
   BookCheck,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 import type { LibraryBook, GlobalReadingStats } from '../../../types';
+import { ReadingSummaryCard as SummaryCard } from '../ui/ReadingSummaryCard';
 
 export interface ReadingStatsModalProps {
   onClose: () => void;
@@ -282,28 +283,3 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
 }
 
 export default ReadingStatsModal;
-
-// Helper component for summary statistic tiles
-function SummaryCard({
-  icon,
-  label,
-  value,
-  color,
-  bgColor,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  color: string;
-  bgColor: string;
-}) {
-  return (
-    <div className="bg-dark-bg rounded-xl border border-white/5 p-4 flex flex-col gap-2">
-      <div className={`p-2 rounded-lg ${bgColor} w-fit`}>
-        <span className={color}>{icon}</span>
-      </div>
-      <span className="text-xl font-bold text-dark-text">{value}</span>
-      <span className="text-[11px] text-dark-subtext">{label}</span>
-    </div>
-  );
-}

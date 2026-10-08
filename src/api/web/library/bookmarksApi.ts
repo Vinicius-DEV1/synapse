@@ -1,14 +1,18 @@
-export const createBookmarksApi = (db: any, generateId: () => string) => ({
-  getBookmarks: async (bookId: string) => {
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { LibraryBookmark } from '../../../types/library';
+
+export const createBookmarksApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+  getBookmarks: async (bookId: string): Promise<LibraryBookmark[]> => {
     const all = await db.getAllFromIndex('library_bookmarks', 'book_id', bookId);
-    return all.filter((b: any) => !b.deleted_at);
+    return all.filter((b) => !b.deleted_at);
   },
-  createBookmark: async (b: any) => {
-    const bm = { id: generateId(), ...b, created_at: new Date().toISOString(), deleted_at: null };
+  createBookmark: async (b: Omit<LibraryBookmark, 'id' | 'created_at'>): Promise<LibraryBookmark> => {
+    const bm: LibraryBookmark = { id: generateId(), ...b, created_at: new Date().toISOString(), deleted_at: null };
     await db.put('library_bookmarks', bm);
     return bm;
   },
-  updateBookmark: async (b: any) => {
+  updateBookmark: async (b: Partial<LibraryBookmark> & { id: string }): Promise<number> => {
     const existing = await db.get('library_bookmarks', b.id);
     if (existing) {
       await db.put('library_bookmarks', {
