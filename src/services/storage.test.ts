@@ -3,6 +3,7 @@ import {
   encryptFile,
   decryptFile,
   encryptFileChunked,
+  decryptFileChunked,
   uploadEncryptedPdf,
   getDecryptedPdf,
 } from './storage';
@@ -61,8 +62,8 @@ describe('storage service (File E2EE and Chunked Encryption)', () => {
 
   it('uploads encrypted PDF and retrieves decrypted buffer from Drive', async () => {
     const dummyPdf = new TextEncoder().encode('%PDF-1.4 Mock PDF Content').buffer;
-    (drive.getValidAccessToken as any).mockResolvedValue('valid_token');
-    (drive.uploadToDrive as any).mockResolvedValue('drive_file_id_999');
+    vi.mocked(drive.getValidAccessToken).mockResolvedValue('valid_token');
+    vi.mocked(drive.uploadToDrive).mockResolvedValue('drive_file_id_999');
 
     const remotePath = await uploadEncryptedPdf('book_1', dummyPdf, masterKey);
     expect(remotePath).toBe('drive://drive_file_id_999');
@@ -70,10 +71,46 @@ describe('storage service (File E2EE and Chunked Encryption)', () => {
 
     // Now test download & decrypt
     const encryptedMock = await encryptFile(dummyPdf, masterKey);
-    (drive.downloadFromDrive as any).mockResolvedValue(encryptedMock);
+    vi.mocked(drive.downloadFromDrive).mockResolvedValue(encryptedMock);
 
     const decryptedPdf = await getDecryptedPdf('drive://drive_file_id_999', masterKey);
     const decryptedString = new TextDecoder().decode(decryptedPdf);
     expect(decryptedString).toBe('%PDF-1.4 Mock PDF Content');
+  });
+
+  it('decrypts chunked ENC1 files back to identical original payload', async () => {
+    const originalText = 'Hello Chunked World! Testing streaming E2EE decryption.';
+    const originalBytes = new TextEncoder().encode(originalText);
+    const file = new Blob([originalBytes], { type: 'text/plain' });
+
+    const encryptedBlob = await encryptFileChunked(file, masterKey);
+    const decryptedBlob = await decryptFileChunked(encryptedBlob, masterKey);
+
+    const decryptedText = await decryptedBlob.text();
+    expect(decryptedText).toBe(originalText);
+  });
+
+  it('rejects corrupt ENC1 files with zero chunk size', async () => {
+    // Construct header with MAGIC = "ENC1", size = 100, chunkSize = 0
+    const headerBuffer = new ArrayBuffer(16);
+    const view = new DataView(headerBuffer);
+    view.setUint8(0, 0x45); // E
+    view.setUint8(1, 0x4E); // N
+    view.setUint8(2, 0x43); // C
+    view.setUint8(3, 0x31); // 1
+    view.setBigUint64(4, 100n, true);
+    view.setUint32(12, 0, true); // Zero chunk size
+
+    const corruptBlob = new Blob([headerBuffer, new Uint8Array(32)]);
+    await expect(decryptFileChunked(corruptBlob, masterKey)).rejects.toThrow(
+      'Invalid encrypted file: chunk size cannot be zero'
+    );
+  });
+
+  it('rejects encrypted files smaller than header size', async () => {
+    const tinyBlob = new Blob([new Uint8Array(8)]);
+    await expect(decryptFileChunked(tinyBlob, masterKey)).rejects.toThrow(
+      'Invalid encrypted file: too small'
+    );
   });
 });

@@ -9,11 +9,13 @@ import type {
 } from '../types/culture-recommendations';
 
 
+import type { SharedPageConfig } from '../types/sharing';
+
 export interface SharedPageKeyRecord {
   shareId: string;
   pageId: string;
   shareKeyBase64: string;
-  config: any;
+  config: SharedPageConfig;
   createdAt: string;
 }
 

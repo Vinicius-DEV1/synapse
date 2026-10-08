@@ -358,7 +358,21 @@ export interface ICadernoAPI {
   };
 
   youtube?: IYouTubeAPI;
-  trash?: any;
+  trash?: TrashApi;
+}
+
+export interface TrashItem {
+  id: string;
+  title: string;
+  item_type: string;
+  deleted_at: string;
+}
+
+export interface TrashApi {
+  getAll: () => Promise<TrashItem[]>;
+  restore: (id: string, itemType: string) => Promise<boolean>;
+  empty: () => Promise<boolean>;
+  deletePermanently: (id: string, itemType: string) => Promise<boolean>;
 }
 
 export interface YouTubeTranscriptResult {

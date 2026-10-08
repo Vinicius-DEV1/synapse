@@ -122,6 +122,9 @@ export async function decryptFileChunked(encryptedBlob: Blob, masterKey: CryptoK
 
   const originalSize = Number(headerView.getBigUint64(4, true));
   const chunkSize = headerView.getUint32(12, true);
+  if (chunkSize === 0) {
+    throw new Error('Invalid encrypted file: chunk size cannot be zero');
+  }
   
   const decryptedParts: BlobPart[] = [];
   let offset = HEADER_SIZE;

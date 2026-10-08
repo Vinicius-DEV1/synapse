@@ -77,5 +77,24 @@ describe('webTrashApi (IndexedDB)', () => {
     const restored = await db.get('wishlist', 'wish-trash-1');
     expect(restored.deleted_at).toBeNull();
   });
+
+  it('permanently deletes a quiz battery from quiz_batteries store', async () => {
+    await db.put('quiz_batteries', {
+      id: 'quiz-trash-1',
+      title: 'Biology Test',
+      deleted_at: '2026-08-20T10:00:00.000Z',
+    });
+
+    let trash = await api.getAll();
+    expect(trash.some((t: { id: string }) => t.id === 'quiz-trash-1')).toBe(true);
+
+    await api.deletePermanently('quiz-trash-1', 'quiz_battery');
+
+    const check = await db.get('quiz_batteries', 'quiz-trash-1');
+    expect(check).toBeUndefined();
+
+    trash = await api.getAll();
+    expect(trash.some((t: { id: string }) => t.id === 'quiz-trash-1')).toBe(false);
+  });
 });
 
