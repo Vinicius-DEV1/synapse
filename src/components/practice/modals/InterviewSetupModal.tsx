@@ -1,17 +1,14 @@
-import { useState, useRef, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   X,
   Briefcase,
-  Upload,
-  FileText,
-  Trash2,
-  Loader2,
   Building2,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 import type { InterviewConfig, InterviewSeniority, InterviewType } from '../../../types';
 import { extractTextFromFile } from './fileContextReader';
+import { InterviewContextFilesSection, type AttachedFileItem } from './InterviewContextFilesSection';
 
 interface InterviewSetupModalProps {
   isOpen: boolean;
@@ -33,12 +30,9 @@ export function InterviewSetupModal({
 
   const [resumeText, setResumeText] = useState('');
   const [jobDescriptionText, setJobDescriptionText] = useState('');
-  const [attachedFiles, setAttachedFiles] = useState<{ name: string; type: 'resume' | 'job' }[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-
-  const resumeInputRef = useRef<HTMLInputElement>(null);
-  const jobInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -98,7 +92,7 @@ export function InterviewSetupModal({
             <button
               type="button"
               onClick={onBack}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white transition-colors cursor-pointer"
               title="Voltar"
             >
               <ArrowLeft size={16} />
@@ -116,7 +110,7 @@ export function InterviewSetupModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white transition-colors"
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -190,111 +184,27 @@ export function InterviewSetupModal({
           </div>
 
           {/* Anexar Arquivos de Contexto */}
-          <div className="pt-2 border-t border-white/5">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-white/70 flex items-center gap-1.5">
-                <FileText size={14} className="text-brand-400" />
-                Contexto Adicional (Arquivos & Currículo)
-              </label>
-              {isReadingFile && (
-                <span className="flex items-center gap-1 text-xs text-brand-400">
-                  <Loader2 size={12} className="animate-spin" /> Lendo documento...
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-dark-subtext mb-3">
-              Anexe seu currículo ou a descrição da vaga (PDF ou TXT). O entrevistador usará essas informações para fazer perguntas realistas sobre seu histórico.
-            </p>
-
-            {/* Buttons for file upload */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => resumeInputRef.current?.click()}
-                disabled={isReadingFile}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] text-xs font-medium text-white/80 hover:text-white transition-all disabled:opacity-50"
-              >
-                <Upload size={14} className="text-brand-400" />
-                Anexar Currículo (PDF/TXT)
-              </button>
-              <input
-                ref={resumeInputRef}
-                type="file"
-                accept=".pdf,.txt,.md"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file, 'resume');
-                  e.target.value = '';
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={() => jobInputRef.current?.click()}
-                disabled={isReadingFile}
-                className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] text-xs font-medium text-white/80 hover:text-white transition-all disabled:opacity-50"
-              >
-                <Upload size={14} className="text-sky-400" />
-                Anexar Vaga (PDF/TXT)
-              </button>
-              <input
-                ref={jobInputRef}
-                type="file"
-                accept=".pdf,.txt,.md"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file, 'job');
-                  e.target.value = '';
-                }}
-              />
-            </div>
-
-            {/* Error Message */}
-            {fileError && (
-              <p className="text-xs text-red-400 mt-2">{fileError}</p>
-            )}
-
-            {/* Attached Files List */}
-            {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {attachedFiles.map((file, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-xs text-white"
-                  >
-                    <FileText size={12} className={file.type === 'resume' ? 'text-brand-400' : 'text-sky-400'} />
-                    <span className="truncate max-w-[200px]">{file.name}</span>
-                    <span className="text-[10px] text-dark-subtext">
-                      ({file.type === 'resume' ? 'Currículo' : 'Vaga'})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachedFile(file.name, file.type)}
-                      className="text-dark-subtext hover:text-red-400 transition-colors ml-1"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <InterviewContextFilesSection
+            attachedFiles={attachedFiles}
+            isReadingFile={isReadingFile}
+            fileError={fileError}
+            onFileUpload={handleFileUpload}
+            onRemoveFile={removeAttachedFile}
+          />
 
           {/* Submit Actions */}
           <div className="pt-4 border-t border-white/5 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-medium text-dark-subtext hover:text-white transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-medium text-dark-subtext hover:text-white transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!jobTitle.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Sparkles size={16} />
               Iniciar Entrevista com Avatar
