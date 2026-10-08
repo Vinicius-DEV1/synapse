@@ -32,6 +32,9 @@ import type { Session, Alarm } from '../components/focus/types';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 import type { QuizBattery, QuizQuestion, QuizAttempt, QuizPageLink } from '../types/quiz';
 import type { Transaction, WishlistItem, Account } from '../types/finance';
+import type { CalendarEvent } from '../types/calendar';
+import type { AppNotification } from '../types/core';
+import type { Habit, HabitLog } from '../types/habits';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -69,8 +72,8 @@ export interface CadernoDBSchema extends DBSchema {
   focus_sessions: { key: string; value: Session };
   alarms: { key: number; value: Alarm };
   activity_logs: { key: string; value: any };
-  calendar_events: { key: string; value: any };
-  notifications: { key: string; value: any };
+  calendar_events: { key: string; value: CalendarEvent };
+  notifications: { key: string; value: AppNotification };
   vault_groups: { key: string; value: VaultGroup };
   vault_items: { key: string; value: VaultItem; indexes: { group_id: string } };
   vault_password_history: {
@@ -121,11 +124,11 @@ export interface CadernoDBSchema extends DBSchema {
   };
   habits: {
     key: string;
-    value: any;
+    value: Habit;
   };
   habit_logs: {
     key: string;
-    value: any;
+    value: HabitLog;
     indexes: { habit_id: string; date: string };
   };
   culture_disliked_items: {
