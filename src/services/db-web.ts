@@ -9,7 +9,7 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 26, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 27, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('shared_page_keys')) {
           const store = db.createObjectStore('shared_page_keys', { keyPath: 'shareId' });
@@ -223,6 +223,16 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
           const store = db.createObjectStore('habit_logs', { keyPath: 'id' });
           store.createIndex('habit_id', 'habit_id');
           store.createIndex('date', 'date');
+        }
+        // Culture Recommendations
+        if (!db.objectStoreNames.contains('culture_disliked_items')) {
+          db.createObjectStore('culture_disliked_items', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('culture_ignored_items')) {
+          db.createObjectStore('culture_ignored_items', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('culture_recommendations_cache')) {
+          db.createObjectStore('culture_recommendations_cache', { keyPath: 'id' });
         }
       },
     });

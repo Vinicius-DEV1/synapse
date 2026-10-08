@@ -43,6 +43,9 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN crdt_state TEXT", []);
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN encrypted_content TEXT", []);
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE quiz_batteries ADD COLUMN parent_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE quiz_batteries ADD COLUMN sort_order INTEGER DEFAULT 0", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_batteries_parent ON quiz_batteries(parent_id)", []);
 
     // Dynamic column migrations for legacy schemas updated via web/sync
     let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
@@ -208,8 +211,8 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN account_id TEXT", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN destination_account_id TEXT", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN linked_loan_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN expected_amount REAL", []);
     let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN position INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN login_type TEXT DEFAULT 'password'", []);
 
     let accounts_count: i64 = conn.query_row("SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL", [], |row| row.get(0)).unwrap_or(0);
     if accounts_count == 0 {

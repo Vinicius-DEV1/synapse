@@ -206,11 +206,13 @@ export function useVault() {
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return items;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     return items.filter(i => 
       i.label.toLowerCase().includes(q) || 
       (i.username && i.username.toLowerCase().includes(q)) ||
-      (i.url && i.url.toLowerCase().includes(q))
+      (i.email && i.email.toLowerCase().includes(q)) ||
+      (i.url && i.url.toLowerCase().includes(q)) ||
+      (i.login_type && i.login_type.toLowerCase().includes(q))
     );
   }, [items, searchQuery]);
 

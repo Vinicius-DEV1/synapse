@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Key, Star, ExternalLink, Trash2, Eye, EyeOff, Check, Copy, History } from 'lucide-react';
 import type { VaultItem, VaultCustomField } from '../../types';
 import { parseVaultCustomFields } from '../../types';
+import { GoogleGIcon } from './ui/GoogleGIcon';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { triggerToast } from '../ui/ToastContext';
@@ -32,16 +33,29 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
     return parseVaultCustomFields(item.custom_fields);
   }, [item.custom_fields]);
 
+  const isGoogle = item.login_type === 'google';
+
   return (
     <div className="max-w-3xl mx-auto w-full p-8 animate-fade-in">
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
-            <Key size={32} />
-          </div>
+          {isGoogle ? (
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center shadow-lg flex-shrink-0">
+              <GoogleGIcon size={32} />
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/10 border border-brand-500/20 flex items-center justify-center text-brand-400 flex-shrink-0">
+              <Key size={32} />
+            </div>
+          )}
           <div>
-            <h1 className="text-2xl font-bold text-dark-text flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-dark-text flex items-center gap-2 flex-wrap">
               {item.label}
+              {isGoogle && (
+                <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-dark-subtext flex items-center gap-1.5 shadow-sm">
+                  <GoogleGIcon size={12} /> Google SSO
+                </span>
+              )}
               {item.is_favorite === 1 && <Star size={20} className="text-yellow-500" fill="currentColor" />}
             </h1>
             {item.url && (
@@ -77,6 +91,23 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
           <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Credenciais</h3>
 
+          {isGoogle && (
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                  <GoogleGIcon size={18} />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-dark-text">Conta vinculada ao Google</div>
+                  <div className="text-[11px] text-dark-subtext">Acesso direto via autenticação federada (sem senha dedicada)</div>
+                </div>
+              </div>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium whitespace-nowrap">
+                SSO Ativo
+              </span>
+            </div>
+          )}
+
           {item.username && (
             <div className="group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
               <div className="flex flex-col">
@@ -95,7 +126,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
           {item.email && (
             <div className="group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
               <div className="flex flex-col">
-                <span className="text-xs text-dark-subtext">E-mail</span>
+                <span className="text-xs text-dark-subtext">{isGoogle ? 'E-mail da Conta Google' : 'E-mail'}</span>
                 <span className="text-dark-text font-medium">{item.email}</span>
               </div>
               <button
@@ -105,6 +136,17 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
                 {copiedField === 'email' ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
               </button>
             </div>
+          )}
+
+          {isGoogle && !item.password && item.url && (
+            <a
+              href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl flex items-center justify-center gap-2 text-xs font-medium transition-all"
+            >
+              <ExternalLink size={14} /> Abrir serviço para Entrar com Google
+            </a>
           )}
 
           {item.password && (
@@ -181,12 +223,14 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
         )}
 
         {/* Histórico de Senhas */}
-        <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-          <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-4 flex items-center gap-2">
-            <History size={16} /> Histórico de Senhas
-          </h3>
-          <VaultPasswordHistory itemId={item.id} />
-        </div>
+        {(!isGoogle || Boolean(item.password)) && (
+          <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+            <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-4 flex items-center gap-2">
+              <History size={16} /> Histórico de Senhas
+            </h3>
+            <VaultPasswordHistory itemId={item.id} />
+          </div>
+        )}
       </div>
     </div>
   );

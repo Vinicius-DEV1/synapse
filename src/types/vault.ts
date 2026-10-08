@@ -10,6 +10,8 @@ export interface VaultGroup {
   itemCount?: number; // Computed on frontend
 }
 
+export type VaultLoginType = 'password' | 'google';
+
 export interface VaultItem {
   id: string;
   group_id: string | null;
@@ -28,6 +30,7 @@ export interface VaultItem {
   deleted_at: string | null;
   position?: number;
   groupName?: string; // Virtual joined property
+  login_type?: VaultLoginType; // Authentication type: traditional password or Google SSO
 }
 
 export interface VaultCustomField {

@@ -1,5 +1,13 @@
 import type { DBSchema } from 'idb';
 import type { VaultGroup, VaultItem, VaultPasswordHistoryEntry } from '../types/vault';
+import type {
+  DislikedCultureItem,
+  IgnoredCultureItem,
+  CachedRecommendations,
+  RecentRecommendedTitlesEntry,
+  AiCulturalDnaProfile,
+} from '../types/culture-recommendations';
+
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -65,7 +73,7 @@ export interface CadernoDBSchema extends DBSchema {
     indexes: { module: string };
   };
   diagrams: { key: string; value: any };
-  quiz_batteries: { key: string; value: any; indexes: { page_id: string } };
+  quiz_batteries: { key: string; value: any; indexes: { page_id: string; parent_id?: string } };
   quiz_questions: { key: string; value: any; indexes: { battery_id: string } };
   quiz_attempts: {
     key: string;
@@ -96,4 +104,17 @@ export interface CadernoDBSchema extends DBSchema {
     value: any;
     indexes: { habit_id: string; date: string };
   };
+  culture_disliked_items: {
+    key: string;
+    value: DislikedCultureItem;
+  };
+  culture_ignored_items: {
+    key: string;
+    value: IgnoredCultureItem;
+  };
+  culture_recommendations_cache: {
+    key: string;
+    value: CachedRecommendations | RecentRecommendedTitlesEntry | (AiCulturalDnaProfile & { id: string });
+  };
 }
+

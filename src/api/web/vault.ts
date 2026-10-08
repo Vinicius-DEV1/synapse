@@ -32,6 +32,7 @@ async function decryptItemFields(item: VaultItem, key?: string): Promise<VaultIt
     url: item.url ? await decryptVaultField(item.url, key) : item.url,
     notes: item.notes ? await decryptVaultField(item.notes, key) : item.notes,
     custom_fields: item.custom_fields ? await decryptVaultField(item.custom_fields, key) : item.custom_fields,
+    login_type: item.login_type || 'password',
   };
 }
 

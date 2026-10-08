@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Save, RefreshCw, Star, Eye, EyeOff } from 'lucide-react';
-import type { VaultItem, VaultGroup, VaultCustomField } from '../../types';
+import type { VaultItem, VaultGroup, VaultCustomField, VaultLoginType } from '../../types';
 import { parseVaultCustomFields } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
+import { VaultAuthTypeToggle } from './ui/VaultAuthTypeToggle';
 import { triggerToast } from '../ui/ToastContext';
 
 interface VaultItemFormProps {
@@ -16,6 +17,7 @@ interface VaultItemFormProps {
 
 export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: VaultItemFormProps) {
   const [label, setLabel] = useState(item?.label || '');
+  const [loginType, setLoginType] = useState<VaultLoginType>(item?.login_type || 'password');
   const [username, setUsername] = useState(item?.username || '');
   const [email, setEmail] = useState(item?.email || '');
   const [password, setPassword] = useState(item?.password || '');
@@ -55,19 +57,21 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
     }
     
     try {
+      const isGoogle = loginType === 'google';
       const itemToSave: VaultItem = {
         ...item,
         id: item?.id || crypto.randomUUID(),
         group_id: selectedGroupId || null,
         label: label.trim(),
+        login_type: loginType,
         username: username || null,
         email: email || null,
-        password: password || null,
+        password: isGoogle ? null : (password || null),
         url: url || null,
         notes: notes || null,
         custom_fields: customFields.length > 0 ? JSON.stringify(customFields) : null,
         is_favorite: isFavorite ? 1 : 0,
-        password_strength: passwordStrength,
+        password_strength: isGoogle ? 4 : passwordStrength,
         created_at: item?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: item?.deleted_at || null,
@@ -173,6 +177,9 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
         {/* Credenciais */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
           <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Credenciais</h3>
+
+          {/* Seletor de Tipo de Autenticação */}
+          <VaultAuthTypeToggle loginType={loginType} onChange={setLoginType} />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -180,79 +187,83 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
               <input 
                 type="text" 
                 value={username} 
-                onChange={e => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value)} 
                 placeholder="Ex: vinicius123"
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-xs text-dark-subtext mb-1.5">E-mail</label>
+              <label className="block text-xs text-dark-subtext mb-1.5">
+                {loginType === 'google' ? 'E-mail da Conta Google' : 'E-mail'}
+              </label>
               <input 
                 type="email" 
                 value={email} 
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)} 
                 placeholder="Ex: usuario@gmail.com"
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
               />
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs text-dark-subtext">Senha</label>
-              <button 
-                type="button" 
-                onClick={generatePassword}
-                className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors"
-              >
-                <RefreshCw size={12} /> Gerar Senha Forte
-              </button>
-            </div>
-            <div className="relative flex items-center">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password} 
-                onChange={e => {
-                  setPassword(e.target.value);
-                  checkStrength(e.target.value);
-                }}
-                placeholder="Digite ou gere uma senha"
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-dark-text font-mono focus:outline-none focus:border-brand-500 transition-colors"
-              />
-              {password ? (
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 p-1 text-dark-subtext hover:text-white transition-colors"
-                  title={showPassword ? "Ocultar senha" : "Ver senha"}
+          {loginType !== 'google' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs text-dark-subtext">Senha</label>
+                <button 
+                  type="button" 
+                  onClick={generatePassword}
+                  className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <RefreshCw size={12} /> Gerar Senha Forte
                 </button>
-              ) : null}
-            </div>
-            
-            {password && (
-              <div className="mt-3 space-y-1.5">
-                <div className="flex gap-1 h-1.5 w-full bg-black/40 rounded-full overflow-hidden p-0.5">
-                  {[0, 1, 2, 3, 4].map(idx => (
-                    <div 
-                      key={idx} 
-                      className={`flex-1 rounded-full transition-all duration-300 ${
-                        idx <= passwordStrength ? strengthColors[passwordStrength] : 'opacity-0'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <div className="text-xs text-right opacity-70" style={{ color: passwordStrength > 2 ? '#4ade80' : '#f87171' }}>
-                  {strengthLabels[passwordStrength]}
-                </div>
               </div>
-            )}
-            
-            <div className="mt-4">
-              <VaultBreachBadge password={password} />
+              <div className="relative flex items-center">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password} 
+                  onChange={e => {
+                    setPassword(e.target.value);
+                    checkStrength(e.target.value);
+                  }}
+                  placeholder="Digite ou gere uma senha"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-dark-text font-mono focus:outline-none focus:border-brand-500 transition-colors"
+                />
+                {password ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 p-1 text-dark-subtext hover:text-white transition-colors"
+                    title={showPassword ? "Ocultar senha" : "Ver senha"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                ) : null}
+              </div>
+              
+              {password && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex gap-1 h-1.5 w-full bg-black/40 rounded-full overflow-hidden p-0.5">
+                    {[0, 1, 2, 3, 4].map(idx => (
+                      <div 
+                        key={idx} 
+                        className={`flex-1 rounded-full transition-all duration-300 ${
+                          idx <= passwordStrength ? strengthColors[passwordStrength] : 'opacity-0'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-xs text-right opacity-70" style={{ color: passwordStrength > 2 ? '#4ade80' : '#f87171' }}>
+                    {strengthLabels[passwordStrength]}
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-4">
+                <VaultBreachBadge password={password} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs text-dark-subtext mb-1.5">URL / Site</label>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Key, RefreshCw, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { VaultItem } from '../../types';
+import { GoogleGIcon } from './ui/GoogleGIcon';
 
 interface VaultSecurityDashboardProps {
   items: VaultItem[];
@@ -36,10 +37,10 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
     // Deep clone each item to prevent mutating parent component state in-place
     const results: AnalyzedItem[] = items.map((item) => ({ ...item }));
     
-    // Group passwords to find reused ones
+    // Group passwords to find reused ones (excluding Google SSO items which don't have passwords)
     const passwordMap = new Map<string, string[]>(); // password -> itemIds
     items.forEach(item => {
-      if (item.password && item.password.length > 0) {
+      if (item.login_type !== 'google' && item.password && item.password.length > 0) {
         const existing = passwordMap.get(item.password) || [];
         existing.push(item.id);
         passwordMap.set(item.password, existing);
@@ -67,7 +68,7 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
       }
 
       const item = results[i];
-      if (!item.password) {
+      if (item.login_type === 'google' || !item.password) {
         completedChecks++;
         if (mountedRef.current) {
           setProgress(Math.round((completedChecks / totalChecks) * 100));
@@ -117,9 +118,10 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
     }
   };
 
-  const weakItems = analyzedItems.filter(i => i.strengthScore !== undefined && i.strengthScore < 3);
-  const reusedItems = analyzedItems.filter(i => i.isReused);
-  const breachedItems = analyzedItems.filter(i => i.breachedCount !== undefined && i.breachedCount > 0);
+  const weakItems = analyzedItems.filter(i => i.login_type !== 'google' && i.strengthScore !== undefined && i.strengthScore < 3);
+  const reusedItems = analyzedItems.filter(i => i.login_type !== 'google' && i.isReused);
+  const breachedItems = analyzedItems.filter(i => i.login_type !== 'google' && i.breachedCount !== undefined && i.breachedCount > 0);
+  const googleItems = analyzedItems.filter(i => i.login_type === 'google');
 
   // Calculate Health Score (0-100)
   let score = 100;
@@ -205,7 +207,13 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
                 )}
               </div>
 
-              <div className="flex gap-4 z-10">
+              <div className="flex gap-4 z-10 flex-wrap">
+                {googleItems.length > 0 && (
+                  <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-bold text-brand-400 mb-1">{googleItems.length}</span>
+                    <span className="text-xs text-dark-subtext uppercase tracking-wider">Google SSO</span>
+                  </div>
+                )}
                 <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
                   <span className="text-3xl font-bold text-red-400 mb-1">{breachedItems.length}</span>
                   <span className="text-xs text-dark-subtext uppercase tracking-wider">Vazadas</span>
@@ -285,6 +293,29 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
                   ))}
                 </div>
               </div>
+
+              {/* Contas Vinculadas ao Google (SSO) */}
+              {googleItems.length > 0 && (
+                <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-white/5 text-white rounded-lg"><GoogleGIcon size={20} /></div>
+                    <h3 className="text-lg font-semibold text-dark-text">Google SSO ({googleItems.length})</h3>
+                  </div>
+                  <p className="text-xs text-dark-subtext mb-4">Acesso federado seguro (sem senha local vulnerável).</p>
+                  
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {googleItems.map(item => (
+                      <div key={item.id} onClick={() => onEditItem(item)} className="p-3 bg-black/20 hover:bg-black/40 border border-white/5 rounded-xl cursor-pointer transition-colors group">
+                        <div className="font-medium text-sm text-dark-text group-hover:text-brand-400 transition-colors flex items-center justify-between">
+                          <span>{item.label}</span>
+                          <span className="text-[10px] text-emerald-400 font-medium">SSO</span>
+                        </div>
+                        <div className="text-xs text-dark-subtext">{item.email || item.username || 'Conta Google'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>

@@ -29,6 +29,7 @@ pub fn row_to_vault_item(row: &rusqlite::Row) -> VaultItem {
         updated_at: row.get(13).unwrap_or_default(),
         deleted_at: row.get(14).unwrap_or_default(),
         position: row.get(15).unwrap_or(0),
+        login_type: row.get(16).unwrap_or(Some("password".to_string())),
     }
 }
 

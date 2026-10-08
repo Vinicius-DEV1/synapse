@@ -32,6 +32,7 @@ pub struct VaultItem {
     pub updated_at: String,
     pub deleted_at: Option<String>,
     pub position: i32,
+    pub login_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

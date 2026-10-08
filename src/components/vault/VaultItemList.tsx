@@ -1,5 +1,6 @@
 import { Search, Plus, Key, Star, GripVertical } from 'lucide-react';
 import type { VaultItem } from '../../types';
+import { GoogleGIcon } from './ui/GoogleGIcon';
 import {
   DndContext,
   closestCenter,
@@ -65,12 +66,23 @@ function SortableVaultItem({ item, isSelected, onSelect, isDragDisabled }: Sorta
           : 'hover:bg-white/5'
       }`}
     >
-      <div className="w-10 h-10 rounded-full bg-dark-bg flex items-center justify-center flex-shrink-0 text-brand-400">
-        <Key size={18} />
-      </div>
+      {item.login_type === 'google' ? (
+        <div
+          className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center flex-shrink-0 shadow-sm"
+          title="Conta vinculada ao Google (SSO)"
+        >
+          <GoogleGIcon size={18} />
+        </div>
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-dark-bg flex items-center justify-center flex-shrink-0 text-brand-400">
+          <Key size={18} />
+        </div>
+      )}
       <div className="overflow-hidden flex-1">
         <div className="font-medium text-sm truncate text-dark-text">{item.label}</div>
-        <div className="text-xs text-dark-subtext truncate">{item.username || item.email || 'Sem usuário'}</div>
+        <div className="text-xs text-dark-subtext truncate">
+          {item.username || item.email || (item.login_type === 'google' ? 'Conta Google' : 'Sem usuário')}
+        </div>
       </div>
       <div className="flex flex-col items-end gap-1">
         {item.is_favorite === 1 && (
