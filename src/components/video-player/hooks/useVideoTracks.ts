@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { VideoItem, TrackItem } from '../../../types';
+import { getVideoStreamLink } from '../../../services/video';
 
 function parseAudioTracks(json?: string | null): TrackItem[] {
   if (json) {
@@ -74,11 +75,12 @@ export function useVideoTracks(
           const streamUrl = window.api.video.convertFileSrc(track.local_path);
           if (isMounted) setActiveAudioUrl(streamUrl);
         } else if (track.drive_id) {
-          const { getVideoStreamLink } = await import('../../../services/video');
           try {
             const url = await getVideoStreamLink(track.drive_id);
             if (isMounted) setActiveAudioUrl(url);
-          } catch(e) { console.error(e); }
+          } catch (e) {
+            console.error('Failed to resolve video stream link:', e);
+          }
         }
       };
       resolveUrl();

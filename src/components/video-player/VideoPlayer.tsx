@@ -19,7 +19,7 @@ import { VideoResumePrompt } from './ui/VideoResumePrompt';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
 import { VideoHelpModal } from './modals/VideoHelpModal';
 import { FastForward, Rewind, Gauge, MessageSquare, Volume2 as VolIcon, Repeat } from 'lucide-react';
-import { attachSubtitleToVideo } from '../../services/video';
+import { attachSubtitleToVideo, getSubtitleText } from '../../services/video';
 import { getCultureKey } from '../../store/useStore';
 import { triggerToast } from '../ui/ToastContext';
 
@@ -136,8 +136,6 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
       if (activeSubtitleIndex > 0 && subtitleTracks[activeSubtitleIndex]) {
         try {
           const track = subtitleTracks[activeSubtitleIndex];
-          const { getSubtitleText } = await import('../../services/video');
-          const { getCultureKey } = await import('../../store/useStore');
           const subText = (await getSubtitleText(track.drive_id, track.local_path, getCultureKey())) || '';
           
           if (isMounted) {
@@ -149,7 +147,7 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
             }
           }
         } catch (e) {
-          console.error('Erro ao trocar legenda:', e);
+          console.error('Error switching subtitle:', e);
           if (isMounted) setCues([]);
         }
       } else {
