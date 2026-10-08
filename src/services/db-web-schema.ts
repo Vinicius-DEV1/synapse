@@ -28,6 +28,7 @@ import type {
   ReadingSession,
   OcrCacheEntry,
 } from '../types/library';
+import type { DiagramRecord } from '../types/diagrams';
 import type { Session, Alarm } from '../components/focus/types';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 import type { QuizBattery, QuizQuestion, QuizAttempt, QuizPageLink } from '../types/quiz';
@@ -99,7 +100,7 @@ export interface CadernoDBSchema extends DBSchema {
     value: { id: string; module: string; content: string; updated_at?: string };
     indexes: { module: string };
   };
-  diagrams: { key: string; value: any };
+  diagrams: { key: string; value: DiagramRecord };
   quiz_batteries: { key: string; value: QuizBattery; indexes: { page_id: string; parent_id?: string } };
   quiz_questions: { key: string; value: QuizQuestion; indexes: { battery_id: string } };
   quiz_attempts: {
