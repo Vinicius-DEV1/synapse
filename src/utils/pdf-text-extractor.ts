@@ -26,7 +26,7 @@ export async function extractTextFromPdf(
       const page = await pdfDoc.getPage(i);
       const textContent = await page.getTextContent();
       const text = textContent.items
-        .map((item: any) => (typeof item.str === 'string' ? item.str : ''))
+        .map((item) => ('str' in item && typeof item.str === 'string' ? item.str : ''))
         .join(' ')
         .trim();
 

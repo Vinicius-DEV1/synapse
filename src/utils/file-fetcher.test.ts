@@ -34,10 +34,9 @@ describe('file-fetcher utilities', () => {
     const remoteUrl = 'https://example.com/notes.txt';
     const mockText = 'Remote text content';
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(mockText),
-    } as any);
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(mockText, { status: 200 })
+    );
 
     const result = await fetchTextFromUrl(remoteUrl);
     expect(result).toBe(mockText);

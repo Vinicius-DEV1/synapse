@@ -33,7 +33,7 @@ export class NetworkResilience {
         attempt++;
         if (attempt >= maxRetries) {
           if (isTimedOut) {
-            throw new Error(`Tempo limite de ${Math.round(timeoutMs / 1000)}s excedido na comunicação com o servidor.`);
+            throw new Error(`Tempo limite de ${Math.round(timeoutMs / 1000)}s excedido na comunicação com o servidor.`, { cause: error });
           }
           throw error;
         }

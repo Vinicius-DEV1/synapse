@@ -61,8 +61,6 @@ export function calculateHabitStreak(
         currentStreak++;
         prevDate = shiftDateString(prevDate, -1);
       }
-    } else {
-      currentStreak = 0;
     }
   }
 

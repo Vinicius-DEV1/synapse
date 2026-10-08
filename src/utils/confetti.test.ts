@@ -39,6 +39,7 @@ describe('confetti utilities', () => {
   it('triggerCelebrationConfetti automatically stops previous ongoing celebration', () => {
     vi.useFakeTimers();
     const cancel1 = triggerCelebrationConfetti({ durationMs: 2000 });
+    expect(typeof cancel1).toBe('function');
     // Calling triggerCelebrationConfetti again cancels the first one automatically
     const cancel2 = triggerCelebrationConfetti({ durationMs: 1000 });
     expect(typeof cancel2).toBe('function');
