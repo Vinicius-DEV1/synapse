@@ -162,7 +162,9 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     setSerendipityModeState(newMode);
     try {
       localStorage.setItem('culture_rec_serendipity_mode', newMode);
-    } catch {}
+    } catch (e) {
+      console.debug('[useRecommendations] Failed to save serendipity mode to localStorage:', e);
+    }
     loadRecommendations(false, newMode);
   }, [loadRecommendations]);
 

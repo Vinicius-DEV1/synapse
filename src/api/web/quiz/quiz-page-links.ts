@@ -5,7 +5,7 @@ import type { QuizPageLink } from '../../../types/quiz';
 export function createQuizPageLinksApi(db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) {
   return {
     async getLinksByBattery(batteryId: string): Promise<QuizPageLink[]> {
-      let links: QuizPageLink[] = [];
+      let links: QuizPageLink[];
       try {
         links = (await db.getAllFromIndex('quiz_page_links', 'battery_id', batteryId)) || [];
       } catch {
@@ -16,7 +16,7 @@ export function createQuizPageLinksApi(db: IDBPDatabase<CadernoDBSchema>, genera
     },
 
     async getLinksByPage(pageId: string): Promise<QuizPageLink[]> {
-      let links: QuizPageLink[] = [];
+      let links: QuizPageLink[];
       try {
         links = (await db.getAllFromIndex('quiz_page_links', 'page_id', pageId)) || [];
       } catch {

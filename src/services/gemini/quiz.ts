@@ -62,7 +62,7 @@ export async function promptGeminiForQuestion(
     };
   } catch (err) {
     console.error('Failed to parse Gemini JSON for question:', responseText, err);
-    throw new Error('A IA não retornou um JSON válido.');
+    throw new Error('A IA não retornou um JSON válido.', { cause: err });
   }
 }
 
@@ -104,7 +104,7 @@ export async function promptGeminiForOpenQuestionEvaluation(
       responseText,
       err
     );
-    throw new Error('A IA não retornou um JSON válido na avaliação.');
+    throw new Error('A IA não retornou um JSON válido na avaliação.', { cause: err });
   }
 }
 
@@ -147,7 +147,7 @@ export async function promptGeminiToGenerateBlockQuestion(
       responseText,
       err
     );
-    throw new Error('A IA não retornou um JSON válido ao gerar a questão.');
+    throw new Error('A IA não retornou um JSON válido ao gerar a questão.', { cause: err });
   }
 }
 
@@ -178,20 +178,20 @@ export async function promptGeminiToGenerateBatchQuestions(
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     const rawArray = Array.isArray(parsed) ? parsed : [parsed];
-    return rawArray.map((q: any) => ({
-      type: (q.type || '').toLowerCase().includes('open')
+    return rawArray.map((q: Record<string, unknown>) => ({
+      type: (typeof q.type === 'string' && q.type.toLowerCase().includes('open'))
         ? 'open'
         : 'multiple_choice',
-      question: q.question || q.enunciado || '',
-      options: q.options || q.opcoes,
+      question: (q.question as string) || (q.enunciado as string) || '',
+      options: (q.options as string[]) || (q.opcoes as string[]),
       correctIndex:
         typeof q.correctIndex === 'number'
           ? q.correctIndex
-          : (q.correta ?? 0),
+          : (typeof q.correta === 'number' ? q.correta : 0),
       expectedAnswer: sanitizeExpectedAnswer(
-        q.expectedAnswer || q.respostaEsperada || ''
+        (q.expectedAnswer as string) || (q.respostaEsperada as string) || ''
       ),
-      explanation: q.explanation || q.explicacao || '',
+      explanation: (q.explanation as string) || (q.explicacao as string) || '',
     }));
   } catch (err) {
     console.error(
@@ -200,7 +200,8 @@ export async function promptGeminiToGenerateBatchQuestions(
       err
     );
     throw new Error(
-      'A IA não retornou um JSON válido ao gerar a bateria de questões.'
+      'A IA não retornou um JSON válido ao gerar a bateria de questões.',
+      { cause: err }
     );
   }
 }
@@ -208,7 +209,7 @@ export async function promptGeminiToGenerateBatchQuestions(
 // Interactive AI Pedagogical Quiz Assistant
 export async function promptGeminiQuizAssistant(
   chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
-  currentQuestions: any[],
+  currentQuestions: unknown[],
   userMessage: string,
   contextText?: string,
   blockTitle?: string,
@@ -217,7 +218,7 @@ export async function promptGeminiQuizAssistant(
     title: string;
     pageTitle?: string;
     questionCount?: number;
-    questions: any[];
+    questions: unknown[];
   }>,
   onProgress?: (step: 'generating' | 'validating', model: string) => void
 ): Promise<{
@@ -258,7 +259,7 @@ export async function promptGeminiQuizAssistant(
     message?: string;
     suggestedActions?: CandidateQuestionAction[];
     validationSummary?: string;
-  } = {};
+  };
 
   const cleanText = cleanJsonBlock(responseText);
 
@@ -450,7 +451,7 @@ export async function promptGeminiToParseDocumentToQuizJSON(
 
   const customPrompt = buildDocumentToQuizPrompt(documentContent, fileType);
 
-  let responseText = '';
+  let responseText: string;
   try {
     // Generous 180s (3 minutes) timeout for parsing large documents in a single pass
     const response = await promptGemini(customPrompt, undefined, [], undefined, undefined, 180000);
@@ -459,14 +460,14 @@ export async function promptGeminiToParseDocumentToQuizJSON(
     console.error('Error during Gemini document parsing request:', err);
     if (err instanceof Error) {
       if (err.name === 'AbortError' || err.message.toLowerCase().includes('timeout') || err.message.toLowerCase().includes('tempo limite') || err.message.toLowerCase().includes('aborted')) {
-        throw new Error('Tempo limite excedido ao processar o documento. O arquivo é extenso ou a conexão demorou para responder. Tente novamente.');
+        throw new Error('Tempo limite excedido ao processar o documento. O arquivo é extenso ou a conexão demorou para responder. Tente novamente.', { cause: err });
       }
       if (err.message.includes('RATE_LIMIT') || err.message.includes('cota excedida') || err.message.includes('429')) {
-        throw new Error('Limite de requisições da IA atingido. Aguarde alguns instantes ou verifique suas chaves nas Configurações.');
+        throw new Error('Limite de requisições da IA atingido. Aguarde alguns instantes ou verifique suas chaves nas Configurações.', { cause: err });
       }
       throw err;
     }
-    throw new Error('Falha na comunicação com a IA ao analisar o documento.');
+    throw new Error('Falha na comunicação com a IA ao analisar o documento.', { cause: err });
   }
 
   let parsed: unknown;
@@ -475,7 +476,7 @@ export async function promptGeminiToParseDocumentToQuizJSON(
     parsed = JSON.parse(cleanJson);
   } catch (err: unknown) {
     console.error('Failed to parse Gemini JSON for document import:', responseText, err);
-    throw new Error('A IA não conseguiu estruturar as questões do documento em um JSON válido. Verifique se o conteúdo possui formato legível.');
+    throw new Error('A IA não conseguiu estruturar as questões do documento em um JSON válido. Verifique se o conteúdo possui formato legível.', { cause: err });
   }
 
   const normalized = normalizeRawParsedQuestions(parsed);
@@ -503,7 +504,7 @@ export async function promptGeminiToRefineImportedQuestions(
     parsed = JSON.parse(cleanJson);
   } catch (err: unknown) {
     console.error('Failed to parse Gemini JSON for questions refinement:', responseText, err);
-    throw new Error('A IA não conseguiu refinar as questões com a instrução fornecida.');
+    throw new Error('A IA não conseguiu refinar as questões com a instrução fornecida.', { cause: err });
   }
 
   const normalized = normalizeRawParsedQuestions(parsed);

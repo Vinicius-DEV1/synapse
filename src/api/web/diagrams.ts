@@ -9,7 +9,7 @@ export function webDiagramsApi(db: IDBPDatabase<any>, generateId: () => string, 
         .filter(d => !d.deleted_at)
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
         .map(d => {
-          const { content, encrypted_content, ...rest } = d;
+          const { content: _content, encrypted_content: _encrypted_content, ...rest } = d;
           return rest;
         });
     },
@@ -45,7 +45,7 @@ export function webDiagramsApi(db: IDBPDatabase<any>, generateId: () => string, 
         deleted_at: null
       };
       await db.put('diagrams', diagram);
-      const { content, encrypted_content, ...rest } = diagram;
+      const { content: _content, encrypted_content: _encrypted_content, ...rest } = diagram;
       return rest;
     },
     update: async (payload: { id: string; title?: string; icon?: string; content?: string }) => {

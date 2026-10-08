@@ -8,7 +8,7 @@ export async function convertToggleNodeToPage(editor: any, node: any, getPos: ()
   const rawTitle = node.attrs?.title;
   const title = typeof rawTitle === 'string' ? rawTitle.trim() || 'Sem Título' : (rawTitle ? String(rawTitle).trim() : 'Sem Título');
 
-  let bodyHtml = '';
+  let bodyHtml: string;
   try {
     const serializer = DOMSerializer.fromSchema(editor.schema);
     const tempDiv = document.createElement('div');

@@ -212,24 +212,6 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     }
   }, [modeToast]);
 
-  if (pdfError) {
-    return (
-      <PdfErrorState
-        book={book}
-        reattachError={reattachError}
-        isReattaching={isReattaching}
-        isDeleting={isDeleting}
-        confirmDelete={confirmDelete}
-        onReattach={handleReattach}
-        onReload={reload}
-        onBack={onBack}
-        onDeleteBook={handleDeleteBook}
-        setConfirmDelete={setConfirmDelete}
-        pdfError={pdfError}
-      />
-    );
-  }
-
   const isDarkMode = ['dim', 'nord', 'midnight', 'dark', 'high-contrast'].includes(readingMode);
   const cssFilter = getPdfCssFilter(readingMode);
 
@@ -267,6 +249,24 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     },
     [setActiveHighlight]
   );
+
+  if (pdfError) {
+    return (
+      <PdfErrorState
+        book={book}
+        reattachError={reattachError}
+        isReattaching={isReattaching}
+        isDeleting={isDeleting}
+        confirmDelete={confirmDelete}
+        onReattach={handleReattach}
+        onReload={reload}
+        onBack={onBack}
+        onDeleteBook={handleDeleteBook}
+        setConfirmDelete={setConfirmDelete}
+        pdfError={pdfError}
+      />
+    );
+  }
 
   // Calculate stable spacers without layout thrashing
   let topSpacerHeight = 0;

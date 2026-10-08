@@ -125,7 +125,7 @@ export function useSlashCommand({
           }
           return null;
         }
-      } catch (e) {
+      } catch {
         return null;
       }
     });
@@ -298,7 +298,7 @@ export function useSlashCommand({
         break;
       }
       case 'scrap': {
-        let targetUrl = extractSlashCommandArgument(slashMenu.query || '', [
+        const targetUrl = extractSlashCommandArgument(slashMenu.query || '', [
           'snapshot web',
           'snapshot',
           'scrap',

@@ -296,7 +296,7 @@ export function parseJsonToQuestions(raw: string): QuestionItem[] {
   }
 
   // 3. Attempt JSON parse with automatic trailing-comma repair fallback
-  let parsed: unknown = null;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
   } catch (initialErr) {

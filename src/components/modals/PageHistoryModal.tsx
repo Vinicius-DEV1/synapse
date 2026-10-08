@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Clock, AlertCircle } from 'lucide-react';
 import type { PageHistoryEntry } from '../../types';
-// @ts-ignore
 import HtmlDiff from 'htmldiff-js';
 import DOMPurify from 'dompurify';
 import { Portal } from '../ui/Portal';

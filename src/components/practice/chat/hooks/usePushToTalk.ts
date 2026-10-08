@@ -217,7 +217,7 @@ export function usePushToTalk({
             // Real-time streaming to Gemini Live WebSocket
             const pcm16 = new Int16Array(inputData.length);
             for (let i = 0; i < inputData.length; i++) {
-              let s = Math.max(-1, Math.min(1, inputData[i]));
+              const s = Math.max(-1, Math.min(1, inputData[i]));
               pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
             }
             const buffer = new Uint8Array(pcm16.buffer);
@@ -369,7 +369,7 @@ export function usePushToTalk({
           
           const pcm16 = new Int16Array(combined.length);
           for (let i = 0; i < combined.length; i++) {
-            let s = Math.max(-1, Math.min(1, combined[i]));
+            const s = Math.max(-1, Math.min(1, combined[i]));
             pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
           
@@ -444,7 +444,7 @@ export function usePushToTalk({
         if (recognitionRef.current) {
           try {
             recognitionRef.current.start();
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
@@ -471,7 +471,7 @@ export function usePushToTalk({
         if (recognitionRef.current) {
           try {
             recognitionRef.current.start();
-          } catch (e) {
+          } catch {
             // ignore
           }
         }

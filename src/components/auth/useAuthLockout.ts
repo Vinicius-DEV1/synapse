@@ -25,7 +25,6 @@ export function useAuthLockout(isSetup: boolean) {
   }, [isSetup]);
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
     let localLock: { failedAttempts: number; lastFailedAt: number } | null = null;
 
     const initLock = async () => {
@@ -50,7 +49,7 @@ export function useAuthLockout(isSetup: boolean) {
     };
 
     initLock();
-    interval = setInterval(updateLockout, 1000);
+    const interval = setInterval(updateLockout, 1000);
     return () => clearInterval(interval);
   }, [isSetup]);
 

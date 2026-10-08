@@ -88,8 +88,8 @@ export function repairMalformedJson(raw: string): string {
   repaired = repaired.replace(/,\s*([}\]])/g, '$1');
 
   // 2. Add missing commas between adjacent objects or arrays
-  repaired = repaired.replace(/}\s*([{\[])/g, '}, $1');
-  repaired = repaired.replace(/]\s*([{\[])/g, '], $1');
+  repaired = repaired.replace(/}\s*([{[])/g, '}, $1');
+  repaired = repaired.replace(/]\s*([{[])/g, '], $1');
 
   return repaired;
 }

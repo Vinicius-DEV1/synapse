@@ -162,7 +162,6 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
         setCrdtFailed(true);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { ydocRef, crdtFailed };

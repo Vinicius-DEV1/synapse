@@ -103,11 +103,10 @@ export function distillHtmlContent(rawHtml: string, originalUrl?: string): Disti
   const doc = parser.parseFromString(rawHtml, 'text/html');
 
   // 1. Extract Title
-  let title = '';
   const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content');
   const docTitle = doc.title;
   const h1 = doc.querySelector('h1')?.textContent?.trim();
-  title = ogTitle || h1 || docTitle || '';
+  const title = ogTitle || h1 || docTitle || '';
 
   // 2. Discover Embedded YouTube Videos BEFORE stripping iframes
   const embeddedYouTubeVideoIds: string[] = [];
@@ -165,7 +164,9 @@ export function distillHtmlContent(rawHtml: string, originalUrl?: string): Disti
           keyOutboundLinks.push({ href, text });
           if (keyOutboundLinks.length >= 8) break;
         }
-      } catch {}
+      } catch {
+      // Ignored
+    }
     }
   }
 
@@ -174,7 +175,9 @@ export function distillHtmlContent(rawHtml: string, originalUrl?: string): Disti
     try {
       const elements = doc.querySelectorAll(selector);
       elements.forEach((el) => el.remove());
-    } catch {}
+    } catch {
+      // Ignored
+    }
   }
 
   // 6. Find Primary Content Container

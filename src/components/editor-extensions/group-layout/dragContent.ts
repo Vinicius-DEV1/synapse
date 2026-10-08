@@ -39,7 +39,7 @@ export function selectNodeForDrag(
   const doc = view.state.doc;
   const at = safeNodeAt(doc, pos);
   
-  let target: number | null = null;
+  let target: number | null;
   if (at === node || at?.eq(node)) {
     target = pos;
   } else {

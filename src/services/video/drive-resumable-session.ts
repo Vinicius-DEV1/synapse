@@ -6,8 +6,8 @@ export async function uploadLocalFileToDrive(
   localPath: string,
   driveFileName: string,
   onProgress?: (p: number) => void
-): Promise<any> {
-  const doUpload = async (activeToken: string): Promise<any> => {
+): Promise<string> {
+  const doUpload = async (activeToken: string): Promise<string> => {
     if (window.api?.video?.uploadFileToDrive) {
       if (onProgress) onProgress(10);
       const { getOrCreateAppFolder } = await import('../drive');
@@ -30,7 +30,7 @@ export async function uploadLocalFileToDrive(
       const { getValidAccessToken } = await import('../drive');
       const newToken = await getValidAccessToken(true);
       if (!newToken) {
-        throw new Error('Google Drive is disconnected or failed to refresh authentication token.');
+        throw new Error('Google Drive is disconnected or failed to refresh authentication token.', { cause: err });
       }
       return await doUpload(newToken);
     }

@@ -85,7 +85,7 @@ export const webVaultApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
     },
 
     getItems: async (groupId?: string): Promise<VaultItem[]> => {
-      let all: VaultItem[] = [];
+      let all: VaultItem[];
       if (groupId) {
         all = await db.getAllFromIndex('vault_items', 'group_id', groupId);
       } else {

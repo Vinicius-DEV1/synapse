@@ -69,7 +69,7 @@ export async function downloadVideoToLocal(video: VideoItem, onProgress?: (perce
   const targetFileName = (shouldUseWebVersion && video.drive_web_file_id) ? `${baseName}_web.mp4` : video.original_name;
 
   const desktopVideoApi = window.api.video as DesktopVideoApi;
-  let localPath = "";
+  let localPath: string;
   if (window.api.video.downloadFromDrive) {
     let unlisten: (() => void) | undefined;
     if (desktopVideoApi.onDownloadProgress && onProgress) {

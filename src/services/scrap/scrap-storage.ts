@@ -155,7 +155,7 @@ export async function getDecryptedScrap(
     } catch (driveErr: unknown) {
       const msg = driveErr instanceof Error ? driveErr.message : 'Erro de conexão';
       console.error('[ScrapStorage] Falha ao baixar ou decriptografar snapshot do Google Drive:', driveErr);
-      throw new Error(`Falha ao baixar snapshot da nuvem: ${msg}`);
+      throw new Error(`Falha ao baixar snapshot da nuvem: ${msg}`, { cause: driveErr });
     }
   }
 

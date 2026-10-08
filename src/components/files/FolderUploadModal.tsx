@@ -90,7 +90,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                   ref={fileInputRef}
                   onChange={handleFolderSelect}
                   className="hidden" 
-                  // @ts-ignore - webkitdirectory is standard but not in types
+                  // @ts-expect-error webkitdirectory and directory are browser attributes not yet in React JSX types
                   webkitdirectory="true" 
                   directory="true"
                   multiple 

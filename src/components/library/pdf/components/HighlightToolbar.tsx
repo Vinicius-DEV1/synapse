@@ -224,7 +224,7 @@ export default function HighlightToolbar({
                 <div className="flex justify-end mt-1">
                   <button
                     onClick={() => {
-                      let preloadedData: unknown = null;
+                      let preloadedData: unknown;
                       try {
                         preloadedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
                       } catch {

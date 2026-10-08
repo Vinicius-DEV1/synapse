@@ -35,7 +35,7 @@ export function useDocumentSync({ item, masterKey, onContentUpdated }: UseDocume
             newLocalPath = await window.api.files.saveLocal(item.name, bytes);
           } catch (localErr) {
             console.error('[useDocumentSync] Failed to save local file:', localErr);
-            throw new Error('Falha ao gravar arquivo no disco local.');
+            throw new Error('Falha ao gravar arquivo no disco local.', { cause: localErr });
           }
         }
 

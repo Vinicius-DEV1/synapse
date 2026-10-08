@@ -22,9 +22,9 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
     // Get files in lofi folder
     const lofiFiles = await listFiles(token, lofiFolderId);
 
-    let library = { size: 0, files: [] as DriveFile[] };
-    let videos = { size: 0, files: [] as DriveFile[] };
-    let others = { size: 0, files: [] as DriveFile[] };
+    const library = { size: 0, files: [] as DriveFile[] };
+    const videos = { size: 0, files: [] as DriveFile[] };
+    const others = { size: 0, files: [] as DriveFile[] };
     
     for (const f of mainFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
@@ -43,7 +43,7 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
       }
     }
 
-    let photos = { size: 0, files: [] as DriveFile[] };
+    const photos = { size: 0, files: [] as DriveFile[] };
     for (const f of photoFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
       const size = parseInt(f.size || '0', 10);
@@ -51,7 +51,7 @@ export async function getDriveStorageUsage(): Promise<DriveStorageUsage | null> 
       photos.files.push(f);
     }
 
-    let lofi = { size: 0, files: [] as DriveFile[] };
+    const lofi = { size: 0, files: [] as DriveFile[] };
     for (const f of lofiFiles) {
       if (f.mimeType === 'application/vnd.google-apps.folder') continue;
       const size = parseInt(f.size || '0', 10);

@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Code, Copy } from 'lucide-react';
 import { ScrollablePre } from '../../../../utils/scroll-forwarding';
 
-const MARKDOWN_SYNTAX_REGEX = /[`*_~\[\]#$<\\]|\n/;
+const MARKDOWN_SYNTAX_REGEX = /[`*_~[\]#$<\\]|\n/;
 
 export function isPlainMarkdownText(text: string): boolean {
   if (!text) return true;

@@ -109,7 +109,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
       }
     } catch (e: unknown) {
       console.warn("Não foi possível processar o vídeo localmente:", e);
-      throw new Error("Falha no processamento nativo: " + (e instanceof Error ? e.message : String(e)));
+      throw new Error("Falha no processamento nativo: " + (e instanceof Error ? e.message : String(e)), { cause: e });
     }
   }
 
@@ -130,7 +130,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
         driveFileName = standardizedName;
       } catch (err: unknown) {
         if ((err instanceof Error && err.message === 'Cancelado pelo usuário') || signal?.aborted) {
-          throw new Error('Cancelado pelo usuário');
+          throw new Error('Cancelado pelo usuário', { cause: err });
         }
         console.error('Falha no FFmpeg Web:', err);
         // Fallback to original

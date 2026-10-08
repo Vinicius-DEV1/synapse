@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import StudySession from './StudySession';
 
-let mockHandleRating = vi.fn();
-let mockRevealAnswer = vi.fn();
-let mockLoadDueCards = vi.fn();
+const mockHandleRating = vi.fn();
+const mockRevealAnswer = vi.fn();
+const mockLoadDueCards = vi.fn();
 
 vi.mock('./hooks/useStudySession', () => ({
   useStudySession: vi.fn(() => ({

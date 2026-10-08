@@ -45,7 +45,6 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
   }, [mode, effectiveTitle, filteredPages, localQuery]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [localQuery]);
 

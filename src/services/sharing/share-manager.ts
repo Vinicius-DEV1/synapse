@@ -68,7 +68,7 @@ export function buildShareUrl(shareId: string): string {
     return `${window.location.origin}/s/${shareId}`;
   }
 
-  let rawDomain = (import.meta.env.VITE_FIREBASE_SHARE_DOMAIN as string | undefined) || 'synapse-dev.web.app';
+  const rawDomain = (import.meta.env.VITE_FIREBASE_SHARE_DOMAIN as string | undefined) || 'synapse-dev.web.app';
   let cleanDomain = rawDomain.trim().replace(/\/+$/, '');
   if (cleanDomain.includes('tauri://') || cleanDomain.includes('localhost')) {
     cleanDomain = 'synapse-dev.web.app';

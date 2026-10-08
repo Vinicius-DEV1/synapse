@@ -114,7 +114,7 @@ export async function upsertRowWithColumnFallback(
     await window.api.sync.upsertRow(table, rowToUpsert);
   } catch (upsertErr: unknown) {
     const errMessage = upsertErr instanceof Error ? upsertErr.message : String(upsertErr);
-    let retryRow: Record<string, unknown> = { ...rowToUpsert };
+    const retryRow: Record<string, unknown> = { ...rowToUpsert };
     let lastErr: Error | null = upsertErr instanceof Error ? upsertErr : new Error(String(upsertErr));
 
     for (let attempt = 0; attempt < 5; attempt++) {

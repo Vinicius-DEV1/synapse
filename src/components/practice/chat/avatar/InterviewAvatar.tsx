@@ -88,9 +88,6 @@ export function InterviewAvatar({
         const t = speechTimeRef.current;
 
         let hasFftData = false;
-        let lowEnergy = 0;
-        let midEnergy = 0;
-        let highEnergy = 0;
 
         if (playbackAnalyserRef.current) {
           try {
@@ -103,19 +100,19 @@ export function InterviewAvatar({
             let sumLow = 0;
             const lowEnd = Math.min(10, bufferLength);
             for (let i = 1; i < lowEnd; i++) sumLow += dataArray[i];
-            lowEnergy = sumLow / (lowEnd - 1);
+            const lowEnergy = sumLow / (lowEnd - 1);
 
             // Mid frequency (800 - 2400 Hz): Formant F2, mouth shape & vowels
             let sumMid = 0;
             const midEnd = Math.min(26, bufferLength);
             for (let i = lowEnd; i < midEnd; i++) sumMid += dataArray[i];
-            midEnergy = sumMid / (midEnd - lowEnd);
+            const midEnergy = sumMid / (midEnd - lowEnd);
 
             // High frequency (2400 - 5500 Hz): Fricatives, sibilants (S, T, Z, teeth showing)
             let sumHigh = 0;
             const highEnd = Math.min(55, bufferLength);
             for (let i = midEnd; i < highEnd; i++) sumHigh += dataArray[i];
-            highEnergy = sumHigh / (highEnd - midEnd);
+            const highEnergy = sumHigh / (highEnd - midEnd);
 
             const totalEnergy = (lowEnergy * 1.3 + midEnergy * 1.0 + highEnergy * 0.8) / 3.1;
             if (totalEnergy > 5) {

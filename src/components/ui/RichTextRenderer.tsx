@@ -36,9 +36,9 @@ export const DescriptionRenderer = React.memo(({ text }: { text: string }) => {
         return;
       }
       
-      const parts = text.split(/(\!\[image\]\([a-zA-Z0-9_]+\))/g);
+      const parts = text.split(/(!\[image\]\([a-zA-Z0-9_]+\))/g);
       const newEls = await Promise.all(parts.map(async (part, i) => {
-        const match = part.match(/\!\[image\]\(([a-zA-Z0-9_]+)\)/);
+        const match = part.match(/!\[image\]\(([a-zA-Z0-9_]+)\)/);
         if (match && window.api?.imageCache) {
           try {
             const cacheItem = await window.api.imageCache.get(match[1]);

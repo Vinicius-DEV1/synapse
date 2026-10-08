@@ -25,7 +25,7 @@ export function createQuizAttemptsApi(db: IDBPDatabase<CadernoDBSchema>, generat
     },
 
     async getLatestAttempts(batteryId?: string): Promise<Record<string, QuizAttempt>> {
-      let attempts: QuizAttempt[] = [];
+      let attempts: QuizAttempt[];
       try {
         if (batteryId) {
           attempts = (await db.getAllFromIndex('quiz_attempts', 'battery_id', batteryId)) || [];

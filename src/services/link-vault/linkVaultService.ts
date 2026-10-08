@@ -60,7 +60,9 @@ export function getLinkEntitySync(rawUrl: string): LinkEntityRecord | null {
           return parsed;
         }
       }
-    } catch {}
+    } catch {
+      // Handled silently
+    }
   }
 
   return null;
@@ -86,7 +88,9 @@ async function readPersistentEntity(configKey: string): Promise<LinkEntityRecord
         const parsed = JSON.parse(localRaw) as LinkEntityRecord;
         if (parsed) return parsed;
       }
-    } catch {}
+    } catch {
+      // Handled silently
+    }
   }
 
   // 2. Desktop IPC check (targeted query by ID preferred over full table scan)
@@ -102,7 +106,9 @@ async function readPersistentEntity(configKey: string): Promise<LinkEntityRecord
               return JSON.parse(rawJson) as LinkEntityRecord;
             }
           }
-        } catch {}
+        } catch {
+      // Handled silently
+    }
       }
 
       if (window.api.sync.getTable) {
@@ -148,7 +154,9 @@ async function writePersistentEntity(configKey: string, record: LinkEntityRecord
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(configKey, jsonStr);
-    } catch {}
+    } catch {
+      // Handled silently
+    }
   }
 
   try {
@@ -278,7 +286,9 @@ export async function getAllLinkEntities(): Promise<LinkEntityRecord[]> {
               const parsed = JSON.parse(raw) as LinkEntityRecord;
               entities.push(parsed);
               memoryVaultCache.set(parsed.canonicalUrl, parsed);
-            } catch {}
+            } catch {
+      // Handled silently
+    }
           }
         }
       }
@@ -296,7 +306,9 @@ export async function getAllLinkEntities(): Promise<LinkEntityRecord[]> {
               const parsed = JSON.parse(raw) as LinkEntityRecord;
               entities.push(parsed);
               memoryVaultCache.set(parsed.canonicalUrl, parsed);
-            } catch {}
+            } catch {
+      // Handled silently
+    }
           } else if (row.canonicalUrl) {
             entities.push(row as LinkEntityRecord);
             memoryVaultCache.set(row.canonicalUrl, row as LinkEntityRecord);
@@ -323,7 +335,9 @@ export async function deleteLinkEntity(rawUrl: string): Promise<void> {
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.removeItem(configKey);
-    } catch {}
+    } catch {
+      // Handled silently
+    }
   }
 
   try {

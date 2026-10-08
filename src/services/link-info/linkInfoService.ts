@@ -139,7 +139,9 @@ export async function fetchRawPageHtml(
       if (html && html.length > 50) {
         return html;
       }
-    } catch {}
+    } catch {
+      // Ignored
+    }
   }
 
   throw new Error('Não foi possível obter o conteúdo da página. Verifique a conexão com a internet ou as restrições do site.');
@@ -242,7 +244,9 @@ export async function getOrGenerateLinkInfo(
             createdAt: ytRecord.created_at || new Date().toISOString(),
           };
         }
-      } catch {}
+      } catch {
+      // Ignored
+    }
     }
   }
 

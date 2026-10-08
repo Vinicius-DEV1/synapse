@@ -31,7 +31,7 @@ export function computeAnkiStats(reviews: any[], cards: any[]) {
   let streak = 0;
   const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().split('T')[0];
   if (reviewDates.has(todayStr) || reviewDates.has(yesterdayStr)) {
-    let currDate = reviewDates.has(todayStr) ? new Date(now) : new Date(now.getTime() - 86400000);
+    const currDate = reviewDates.has(todayStr) ? new Date(now) : new Date(now.getTime() - 86400000);
     while (true) {
       const dateStr = currDate.toISOString().split('T')[0];
       if (reviewDates.has(dateStr)) {

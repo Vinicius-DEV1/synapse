@@ -56,18 +56,17 @@ export function useFinanceMetrics({
       }
     }
 
-    let calculatedBalanceCents = 0;
-    if (selectedAccountId === 'all') {
-      calculatedBalanceCents = accounts.reduce(
-        (sum, acc) => sum + Math.round(calculateAccountBalance(acc, transactions) * 100),
-        0
-      );
-    } else {
-      const targetAcc = accounts.find(a => a.id === selectedAccountId);
-      calculatedBalanceCents = targetAcc
-        ? Math.round(calculateAccountBalance(targetAcc, transactions) * 100)
-        : (incCents - expCents);
-    }
+    const calculatedBalanceCents = selectedAccountId === 'all'
+      ? accounts.reduce(
+          (sum, acc) => sum + Math.round(calculateAccountBalance(acc, transactions) * 100),
+          0
+        )
+      : (() => {
+          const targetAcc = accounts.find(a => a.id === selectedAccountId);
+          return targetAcc
+            ? Math.round(calculateAccountBalance(targetAcc, transactions) * 100)
+            : (incCents - expCents);
+        })();
 
     const loans = transactions.filter((t) => t.type === 'loan_made' || t.type === 'loan_taken');
     const regulars = transactions.filter((t) => t.type === 'income' || t.type === 'expense' || t.type === 'transfer');

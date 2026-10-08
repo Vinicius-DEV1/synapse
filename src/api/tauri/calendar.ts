@@ -25,7 +25,7 @@ export const tauriCalendarApi = {
   },
   updateEvent: async (idOrEvent: string | any, eventData?: any): Promise<{ success: boolean }> => {
     let targetEvent: any;
-    let targetId: string | null = null;
+    let targetId: string | null;
     if (typeof idOrEvent === 'string') {
       targetId = idOrEvent;
       targetEvent = { ...(eventData || {}), id: idOrEvent };

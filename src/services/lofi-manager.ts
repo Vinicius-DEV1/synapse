@@ -111,7 +111,7 @@ export async function decryptLofiBufferToPlainAudio(
       }
 
       console.error("Falha ao descriptografar áudio do Lofi (arquivo ENC1):", primaryErr);
-      throw new Error("Não foi possível descriptografar a faixa de áudio (chave inválida).");
+      throw new Error("Não foi possível descriptografar a faixa de áudio (chave inválida).", { cause: primaryErr });
     }
   }
 
@@ -152,7 +152,7 @@ export async function downloadLofiToLocal(
     throw new Error("Não foi possível autenticar com o Google Drive. Conecte sua conta para fazer o download.");
   }
 
-  let localPath = "";
+  let localPath: string;
   if (window.api.lofi.downloadFromDrive) {
     let unlisten: (() => void) | undefined;
     if (onProgress && window.api.lofi.onDownloadProgress) {
@@ -231,7 +231,6 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
 
   let isLocal = false;
   let localPath: string | undefined = undefined;
-  let mainFileId = '';
   
   const baseName = file.name.replace(/\.[^/.]+$/, "");
   
@@ -273,7 +272,7 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
     }
   }
 
-  mainFileId = await uploadToDrive(token, finalFileName, finalBufferToUpload, 'lofi', (p) => {
+  const mainFileId = await uploadToDrive(token, finalFileName, finalBufferToUpload, 'lofi', (p) => {
     if (onProgress) onProgress(40 + (p * 0.6));
   });
 

@@ -44,7 +44,7 @@ export async function promptGeminiForAnkiEvaluation(
     return JSON.parse(cleanJson);
   } catch (err) {
     console.error('Failed to parse Gemini JSON for Anki evaluation:', responseText, err);
-    throw new Error('A IA não retornou um JSON válido na avaliação.');
+    throw new Error('A IA não retornou um JSON válido na avaliação.', { cause: err });
   }
 }
 
@@ -117,10 +117,11 @@ export async function promptGeminiForCardSuggestions(
       return parsed;
     } catch (err) {
       logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, responseText, 'Invalid JSON returned', response.usage);
-      throw new Error('A IA não retornou um JSON válido na geração de cartões.');
+      throw new Error('A IA não retornou um JSON válido na geração de cartões.', { cause: err });
     }
-  } catch (e: any) {
-    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, null, e.message);
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    logAIApiCall('anki_card_suggestions', customModelId || 'default', finalPrompt, null, errorMsg);
     throw e;
   }
 }
@@ -226,7 +227,7 @@ export async function promptGeminiForChatAnalysis(
             action.new_tags = action.new_tags.filter((t: string) => {
               const lowerT = t.toLowerCase();
               if (lowerT === rootDeckName) return false;
-              for (let subName of subdecksMap.values()) {
+              for (const subName of subdecksMap.values()) {
                 if (lowerT === subName) return false;
               }
               return true;

@@ -27,7 +27,7 @@ export const tauriAnkiApi = {
 
     const now = new Date().toISOString();
     let newCards = [];
-    let learningCards = [];
+    const learningCards = [];
     let reviewCards = [];
 
     for (const c of allCards) {

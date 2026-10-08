@@ -41,7 +41,6 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         dictIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadKeys = async () => {

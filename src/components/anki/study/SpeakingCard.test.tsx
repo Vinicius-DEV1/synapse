@@ -3,8 +3,8 @@ import { render, fireEvent } from '@testing-library/react';
 import { SpeakingCard } from './SpeakingCard';
 import type { Card } from '../types';
 
-let mockStartRecording = vi.fn();
-let mockStopRecording = vi.fn();
+const mockStartRecording = vi.fn();
+const mockStopRecording = vi.fn();
 let mockIsRecording = false;
 
 vi.mock('../hooks/useAudioRecorder', () => ({

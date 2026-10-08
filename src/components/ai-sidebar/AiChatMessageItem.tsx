@@ -71,7 +71,7 @@ export function AiChatMessageItem({ msg, idx, onInsert }: AiChatMessageItemProps
                   </ul>
                 </div>
               );
-            } catch (e) {
+            } catch {
               return (
                 <div className="text-sm">
                   <AiChatMarkdown content={textContent} />

@@ -31,7 +31,7 @@ export const webYoutubeApi = (db: any, generateId: () => string) => ({
   },
   setWatched: async (videoId: string, isWatched: boolean, title?: string, channel?: string) => {
     const all = await db.getAllFromIndex('youtube_watched', 'video_id', videoId) || [];
-    let existing = all[0];
+    const existing = all[0];
     
     if (isWatched) {
       if (existing) {

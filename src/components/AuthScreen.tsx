@@ -94,7 +94,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
            try {
              pulled = await pullModularKeysFromCloud(masterKey);
            } catch (e: unknown) {
-             if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou (Timeout). App Web bloqueado.");
+             if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou (Timeout). App Web bloqueado.", { cause: e });
            }
            if (pulled) {
              existingKeysToUse = { ...existingKeysToUse, ...pulled };
@@ -113,7 +113,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
              try {
                rawKeys = existingKeysToUse || await pullModularKeysFromCloud(masterKey);
              } catch (e: unknown) {
-               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
+               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.", { cause: e });
                rawKeys = existingKeysToUse;
              }
           }
@@ -158,7 +158,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             cloudKeys = await pullModularKeysFromCloud(masterKey);
           } catch (e: unknown) {
             if (platform.platform === 'web') {
-              throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.");
+              throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.", { cause: e });
             }
           }
 
@@ -172,7 +172,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
              try {
                rawKeys = await pullModularKeysFromCloud(masterKey);
              } catch (e: unknown) {
-               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.");
+               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.", { cause: e });
              }
           }
 

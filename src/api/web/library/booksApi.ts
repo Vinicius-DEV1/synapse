@@ -232,7 +232,7 @@ export const createBooksApi = (db: any, generateId: () => string, getMasterKey: 
         try {
           const decryptedBlob = await decryptFileChunked(blob, _masterKey);
           return await decryptedBlob.arrayBuffer();
-        } catch (err) {
+        } catch {
           // Fallback for old unchunked ArrayBuffers
           const decrypted = await decryptFile(await blob.arrayBuffer(), _masterKey);
           return decrypted;

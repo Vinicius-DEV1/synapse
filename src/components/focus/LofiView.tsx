@@ -13,7 +13,8 @@ import {
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors
+  useSensors,
+  type DragEndEvent
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -77,8 +78,6 @@ export const LofiView: React.FC = () => {
     return lofis.some(l => selectedIds.has(l.id) && !l.is_local && l.drive_file_id);
   }, [lofis, selectedIds]);
 
-  if (view !== 'lofi') return null;
-
   const sortedLofis = useMemo(() => {
     const list = [...lofis];
     if (sortMode === 'date') {
@@ -90,7 +89,9 @@ export const LofiView: React.FC = () => {
     return list.sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [lofis, sortMode]);
 
-  const handleDragEnd = async (event: any) => {
+  if (view !== 'lofi') return null;
+
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = sortedLofis.findIndex(l => l.id === active.id);

@@ -125,7 +125,7 @@ export function useCulture() {
   }, []);
 
   const filteredItems = useMemo(() => {
-    let filtered = items.filter(item => {
+    const filtered = items.filter(item => {
       const titleStr = item.title || 'Obra sem nome';
       const matchSearch =
         titleStr.toLowerCase().includes(search.toLowerCase()) ||

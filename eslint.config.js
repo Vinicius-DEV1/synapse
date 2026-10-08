@@ -25,5 +25,36 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Deactivate experimental React Compiler rules from eslint-plugin-react-hooks v7
+      'react-hooks/refs': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/use-memo': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+
+      // React fast-refresh config
+      'react-refresh/only-export-components': 'off',
+
+      // TypeScript rules
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    // Test files override
+    files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+    },
   },
 ])

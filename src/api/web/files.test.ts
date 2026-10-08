@@ -95,7 +95,7 @@ describe('webFilesApi (IndexedDB)', () => {
     let byPage = await api.links.getByPage('page-xyz');
     expect(byPage).toHaveLength(1);
 
-    let byFile = await api.links.getByFile('file-abc');
+    const byFile = await api.links.getByFile('file-abc');
     expect(byFile).toHaveLength(1);
 
     await api.links.delete(link.id);

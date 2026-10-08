@@ -92,7 +92,7 @@ export async function fetchCinemetaMetadata(
 
     cinemetaCache.set(cacheKey, { timestamp: Date.now(), data: result });
     return result;
-  } catch (err) {
+  } catch {
     return null;
   } finally {
     clearTimeout(timer);
@@ -186,7 +186,7 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -242,7 +242,7 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -293,7 +293,7 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch (err) {
+  } catch {
     return [];
   }
 }

@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.pageId && window.api?.updatePage) {
         await window.api.updatePage({ id: this.props.pageId, crdt_state: null });
       }
-    } catch (_) { /* noop */ }
+    } catch { /* noop */ }
     window.location.reload();
   };
 

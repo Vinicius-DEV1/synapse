@@ -72,7 +72,6 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   }, [query]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [query]);
 

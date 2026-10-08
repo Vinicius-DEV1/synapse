@@ -139,7 +139,7 @@ export const webFinanceApi = (db: IDatabaseDriver, generateId: () => string): Fi
   },
 
   getAccounts: async (): Promise<Account[]> => {
-    let all: SoftDeletable<Account>[] = [];
+    let all: SoftDeletable<Account>[];
     try {
       all = await db.getAll<SoftDeletable<Account>>('finance_accounts');
     } catch {

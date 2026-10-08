@@ -20,7 +20,7 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
   const calculateTimeLeft = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     const now = new Date();
-    let alarmDate = new Date();
+    const alarmDate = new Date();
     alarmDate.setHours(hours, minutes, 0, 0);
 
     if (alarmDate.getTime() <= now.getTime()) {

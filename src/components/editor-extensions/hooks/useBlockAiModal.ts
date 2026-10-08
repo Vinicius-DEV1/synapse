@@ -102,7 +102,7 @@ export function useBlockAiModal({
     }
 
     if (blockType === 'blockquote') {
-      let bodyText = '';
+      let bodyText: string;
       if (editor) {
         try {
           const serializer = DOMSerializer.fromSchema(editor.schema);
@@ -138,7 +138,7 @@ REGRAS E LIMITES MANDATÓRIOS:
     const typeLabel = isCallout ? 'Toggle Callout (Destaque Recolhível)' : 'Toggle (Lista Oculta)';
     const title = (node.attrs.title as string) || '';
 
-    let bodyText = '';
+    let bodyText: string;
     if (editor) {
       try {
         const serializer = DOMSerializer.fromSchema(editor.schema);
@@ -359,7 +359,7 @@ DIRETRIZES DE CONTEXTO E ESTRUTURA:
         return;
       }
 
-      let cleanContent = content;
+      const cleanContent = content;
       const endPos = pos + node.nodeSize - 1;
       const htmlContent = markdownToHtml(cleanContent);
       editor.chain().focus().insertContentAt(endPos, htmlContent).run();

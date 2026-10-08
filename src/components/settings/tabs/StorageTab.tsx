@@ -20,7 +20,7 @@ export default function StorageTab() {
       } else {
         setError('Não foi possível obter o armazenamento. Verifique se você está conectado ao Google Drive na aba Geral.');
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar os dados de armazenamento.');
     } finally {
       setIsLoading(false);

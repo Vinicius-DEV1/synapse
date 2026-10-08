@@ -241,13 +241,13 @@ ${userInstruction}`;
     console.error('[documentAiService] Gemini prompt error:', err);
 
     if (msg.includes('Nenhuma chave da API Gemini ativa') || msg.includes('chaves da API estão esgotadas')) {
-      throw new Error('Chave da API Gemini não configurada ou cota esgotada. Verifique suas configurações de Inteligência Artificial.');
+      throw new Error('Chave da API Gemini não configurada ou cota esgotada. Verifique suas configurações de Inteligência Artificial.', { cause: err });
     }
 
     if (msg.includes('429') || msg.includes('Resource has been exhausted')) {
-      throw new Error('Limite de requisições excedido no momento. Aguarde alguns instantes e tente novamente.');
+      throw new Error('Limite de requisições excedido no momento. Aguarde alguns instantes e tente novamente.', { cause: err });
     }
 
-    throw new Error(msg);
+    throw new Error(msg, { cause: err });
   }
 }

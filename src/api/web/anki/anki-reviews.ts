@@ -28,7 +28,7 @@ export async function getDueCards(db: any, deckId: string) {
   const joinedCards = joinCardsWithNotes(validCards, allNotes);
 
   let newCards: any[] = [];
-  let learningCards: any[] = [];
+  const learningCards: any[] = [];
   let reviewCards: any[] = [];
 
   for (const c of joinedCards) {

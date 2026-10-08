@@ -214,7 +214,7 @@ export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Re
       try {
         const decryptedJson = await decryptText(docSnap.data().encryptedData, masterKey);
         return JSON.parse(decryptedJson);
-      } catch (err) {
+      } catch {
         console.warn("Nao foi possivel decifrar as chaves modulares da nuvem. Usando chaves locais.");
         return null;
       }

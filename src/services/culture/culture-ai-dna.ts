@@ -8,11 +8,14 @@ function parseJsonFromAiResponse<T>(text: string): T | null {
   if (!text || typeof text !== 'string') return null;
 
   const sanitize = (str: string) =>
+    // eslint-disable-next-line no-control-regex
     str.replace(/,\s*([\]}])/g, '$1').replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
 
   try {
     return JSON.parse(text) as T;
-  } catch {}
+  } catch {
+    // Continue fallback
+  }
 
   const blockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (blockMatch) {
@@ -21,7 +24,9 @@ function parseJsonFromAiResponse<T>(text: string): T | null {
     } catch {
       try {
         return JSON.parse(sanitize(blockMatch[1])) as T;
-      } catch {}
+      } catch {
+        // Continue fallback
+      }
     }
   }
 
@@ -34,7 +39,9 @@ function parseJsonFromAiResponse<T>(text: string): T | null {
     } catch {
       try {
         return JSON.parse(sanitize(raw)) as T;
-      } catch {}
+      } catch {
+        // All attempts failed
+      }
     }
   }
 

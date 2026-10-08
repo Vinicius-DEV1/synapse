@@ -5,7 +5,7 @@ import type { QuizQuestion } from '../../../types/quiz';
 export function createQuizQuestionsApi(db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) {
   return {
     async getByBattery(batteryId: string): Promise<QuizQuestion[]> {
-      let questions: QuizQuestion[] = [];
+      let questions: QuizQuestion[];
       try {
         questions = (await db.getAllFromIndex('quiz_questions', 'battery_id', batteryId)) || [];
       } catch {

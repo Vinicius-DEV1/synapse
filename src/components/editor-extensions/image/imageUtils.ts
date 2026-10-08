@@ -172,7 +172,11 @@ function blobToPng(blob: Blob): Promise<Blob> {
         ctx.drawImage(img, 0, 0);
         canvas.toBlob((out) => {
           URL.revokeObjectURL(url);
-          out ? resolve(out) : reject(new Error('falha ao converter para PNG'));
+          if (out) {
+            resolve(out);
+          } else {
+            reject(new Error('falha ao converter para PNG'));
+          }
         }, 'image/png');
       } catch (err) {
         URL.revokeObjectURL(url);

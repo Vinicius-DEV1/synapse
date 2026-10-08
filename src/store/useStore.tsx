@@ -128,10 +128,6 @@ export function getNotesKey(): CryptoKey | undefined {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
-  // Keep imperative ref immediately updated during render
-  _storeStateRef = state;
-  _storeDispatchRef = dispatch;
 
   useEffect(() => {
     _storeStateRef = state;

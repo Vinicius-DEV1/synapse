@@ -43,6 +43,7 @@ export function extractJsonFromResponse(text: string): RawGeminiOutput | null {
   const sanitizeJsonString = (str: string): string => {
     return str
       .replace(/,\s*([\]}])/g, '$1')
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
   };
 
@@ -113,6 +114,7 @@ export function extractRecommendationsListFromResponse(text: string): RawAIRecom
   const sanitizeJsonString = (str: string): string => {
     return str
       .replace(/,\s*([\]}])/g, '$1')
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F]/g, '');
   };
 

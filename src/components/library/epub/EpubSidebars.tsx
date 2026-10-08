@@ -33,6 +33,7 @@ export default function EpubSidebars() {
               results.push(...matches);
             }
           } catch (e) {
+            console.debug('Failed to search spine item:', e);
           } finally {
             item.unload();
           }
@@ -239,7 +240,7 @@ export default function EpubSidebars() {
                                       <div className="line-clamp-2 opacity-90">{textToShow}</div>
                                     </div>
                                   );
-                                } catch (e) {
+                                } catch {
                                   return <>📝 {hl.note}</>;
                                 }
                               })()

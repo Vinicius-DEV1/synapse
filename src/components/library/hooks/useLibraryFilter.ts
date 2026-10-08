@@ -50,7 +50,7 @@ export function useLibraryFilter(books: LibraryBook[]) {
 
     // Sort
     result.sort((a, b) => {
-      let cmp = 0;
+      let cmp: number;
       switch (sortBy) {
         case 'title':
           cmp = a.title.localeCompare(b.title, 'pt-BR');
@@ -62,11 +62,12 @@ export function useLibraryFilter(books: LibraryBook[]) {
           cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
         case 'last_read':
-        default:
+        default: {
           const aTime = a.last_read_at ? new Date(a.last_read_at).getTime() : 0;
           const bTime = b.last_read_at ? new Date(b.last_read_at).getTime() : 0;
           cmp = aTime - bTime;
           break;
+        }
       }
       return sortOrder === 'asc' ? cmp : -cmp;
     });

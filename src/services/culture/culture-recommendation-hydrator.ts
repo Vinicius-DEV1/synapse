@@ -360,7 +360,7 @@ export async function hydrateRecommendations(
                 match.api_id,
                 rawItem.type === 'série' ? 'series' : 'movie'
               );
-            } catch (cinErr) {
+            } catch {
               // Gracefully continue with base match
             }
           }
